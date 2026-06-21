@@ -57,15 +57,15 @@
   {/if}
 </header>
 
-<Tabs.Root value="stories" class="rounded-card border-muted bg-background-alt shadow-card mb-4 w-full border p-3">
-  <Tabs.List class="rounded-9px bg-dark-10 shadow-mini-inset dark:bg-background dark:border dark:border-border grid w-full grid-cols-2 gap-1 p-1 text-sm font-semibold leading-[0.01em]">
+<Tabs.Root value="stories" class="w-full">
+  <Tabs.List class="mb-2 flex items-center gap-6 border-b border-border text-sm font-medium">
     <Tabs.Trigger
       value="stories"
-      class="data-[state=active]:shadow-mini inline-flex h-8 items-center justify-center rounded-[7px] bg-transparent py-2 data-[state=active]:bg-background dark:data-[state=active]:bg-muted"
+      class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center border-b border-transparent py-3"
     >Stories</Tabs.Trigger>
     <Tabs.Trigger
       value="about"
-      class="data-[state=active]:shadow-mini inline-flex h-8 items-center justify-center rounded-[7px] bg-transparent py-2 data-[state=active]:bg-background dark:data-[state=active]:bg-muted"
+      class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center border-b border-transparent py-3"
     >About</Tabs.Trigger>
   </Tabs.List>
 
