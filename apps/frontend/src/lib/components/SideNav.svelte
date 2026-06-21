@@ -15,11 +15,7 @@
           { label: "Write", href: "/compose", icon: "compose" },
           { label: "Profile", href: `/@${user.username}`, icon: "user" },
         ]
-      : [
-          { label: "Home", href: "/", icon: "home" },
-          { label: "Sign in", href: "/login", icon: "login" },
-          { label: "Get started", href: "/register", icon: "feather" },
-        ],
+      : [{ label: "Home", href: "/", icon: "home" }],
   );
 
   function active(href: string): boolean {
