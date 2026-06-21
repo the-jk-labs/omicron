@@ -1,37 +1,74 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Rendered post content (the HTML produced by Tiptap). Kept minimal and
-   Medium-like; extend here as the editor gains features. */
+/* Bits UI docs theme tokens (ported verbatim from the docs :root). Channel form
+   so Tailwind's `<alpha-value>` opacity modifiers work in v3. */
+:root {
+  --background: 0 0% 100%;
+  --background-alt: 0 0% 100%;
+  --foreground: 0 0% 9%;
+  --foreground-alt: 0 0% 32%;
+  --muted: 240 5% 96%;
+  --muted-foreground: 0 0% 9% / 0.4;
+  --border-card: 240 6% 10% / 0.1;
+  --border-input: 240 6% 10% / 0.17;
+  --dark: 240 6% 10%;
+  --dark-10: 240 6% 10% / 0.1;
+  --dark-40: 240 6% 10% / 0.4;
+  --dark-04: 240 6% 10% / 0.04;
+  --accent: 204 94% 94%;
+  --accent-foreground: 204 80% 16%;
+  --destructive: 347 77% 50%;
+  --tertiary: 37.7 92.1% 50.2%;
+  --line: 0 0% 100%;
+  --contrast: 0 0% 0%;
+}
+
+/* Rendered post content (the HTML produced by Tiptap). Medium-like serif
+   reading column — generous size, relaxed leading. Extend as the editor grows. */
 .prose-omicron {
-  @apply text-lg leading-relaxed text-neutral-800;
+  @apply font-serif text-[1.25rem] leading-[1.8] text-neutral-800;
 }
 .prose-omicron h1 {
-  @apply mt-8 mb-4 text-3xl font-bold tracking-tight;
+  @apply mt-10 mb-4 font-sans text-3xl font-bold tracking-tight text-neutral-900;
 }
 .prose-omicron h2 {
-  @apply mt-6 mb-3 text-2xl font-bold tracking-tight;
+  @apply mt-8 mb-3 font-sans text-2xl font-bold tracking-tight text-neutral-900;
 }
 .prose-omicron p {
-  @apply my-4;
+  @apply my-5;
 }
 .prose-omicron a {
-  @apply text-emerald-700 underline;
+  @apply text-neutral-900 underline underline-offset-2 hover:text-neutral-600;
 }
 .prose-omicron ul {
-  @apply my-4 list-disc pl-6;
+  @apply my-5 list-disc pl-6;
 }
 .prose-omicron ol {
-  @apply my-4 list-decimal pl-6;
+  @apply my-5 list-decimal pl-6;
+}
+.prose-omicron li {
+  @apply my-2;
 }
 .prose-omicron blockquote {
-  @apply my-4 border-l-4 border-neutral-300 pl-4 italic text-neutral-600;
+  @apply my-6 border-l-[3px] border-neutral-900 pl-5 italic text-neutral-700;
+}
+.prose-omicron pre {
+  @apply my-6 overflow-x-auto rounded-lg bg-neutral-900 p-4 font-mono text-sm text-neutral-100;
+}
+.prose-omicron code {
+  @apply rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-[0.9em] text-neutral-800;
+}
+.prose-omicron pre code {
+  @apply bg-transparent p-0 text-inherit;
 }
 
 /* Tiptap editor surface */
 .tiptap {
-  @apply min-h-[300px] outline-none;
+  @apply min-h-[320px] outline-none;
 }
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);

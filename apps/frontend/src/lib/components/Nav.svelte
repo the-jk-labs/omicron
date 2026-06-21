@@ -1,8 +1,10 @@
 <script lang="ts">
   import { goto, invalidateAll } from "$app/navigation";
   import { env } from "$env/dynamic/public";
+  import { DropdownMenu } from "bits-ui";
   import { endpoints } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
+  import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import type { User } from "$lib/types";
 
@@ -13,22 +15,59 @@
     await invalidateAll();
     goto("/");
   }
+
+  // Verbatim Bits UI docs DropdownMenu.Item class (v4 `data-highlighted:` /
+  // `ring-0!` rewritten to the v3 `data-[highlighted]:` / `!ring-0` syntax).
+  const itemClass =
+    "rounded-button data-[highlighted]:bg-muted !ring-0 !ring-transparent flex h-10 w-full cursor-pointer select-none items-center gap-2.5 py-3 pl-3 pr-1.5 text-sm font-medium focus-visible:outline-none";
 </script>
 
-<header class="sticky top-0 z-10 border-b border-neutral-200 bg-white/90 backdrop-blur">
-  <nav class="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-    <Button href="/" variant="ghost" class="!px-0 text-lg font-semibold text-neutral-900">
-      <Icon name="feather" />{env.PUBLIC_APP_NAME || "Omicron"}
+<header class="sticky top-0 z-20 border-b border-neutral-200 bg-white/80 backdrop-blur">
+  <nav class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+    <Button href="/" variant="plain" class="flex items-center gap-2 text-neutral-900 hover:opacity-80">
+      <Icon name="feather" size={22} />
+      <span class="text-xl font-bold tracking-tight">{env.PUBLIC_APP_NAME || "Omicron"}</span>
     </Button>
 
-    <div class="flex items-center gap-1">
-      <Button href="/" variant="icon" aria-label="Home"><Icon name="home" /></Button>
+    <div class="flex items-center gap-1.5">
       {#if user}
-        <Button href="/compose" variant="ghost"><Icon name="compose" /> Write</Button>
-        <Button href={`/@${user.username}`} variant="icon" aria-label="Profile"><Icon name="user" /></Button>
-        <Button onclick={logout} variant="icon"><Icon name="logout" /></Button>
+        <Button href="/compose" variant="ghost" class="text-neutral-600">
+          <Icon name="compose" size={18} /> <span class="hidden sm:inline">Write</span>
+        </Button>
+
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger
+            class="border-input text-foreground shadow-btn hover:bg-muted ml-1 inline-flex select-none items-center justify-center rounded-full border active:scale-[0.98]"
+            aria-label="Account menu"
+          >
+            <Avatar name={user.displayName} size={34} />
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              sideOffset={8}
+              align="end"
+              class="border-muted bg-background shadow-popover z-30 w-[229px] rounded-xl border px-1 py-1.5 focus-visible:outline-none"
+            >
+              <div class="px-3 py-2">
+                <p class="text-foreground truncate text-sm font-semibold">{user.displayName}</p>
+                <p class="text-muted-foreground truncate text-xs">@{user.username}</p>
+              </div>
+              <DropdownMenu.Separator class="bg-muted -mx-1 my-1 h-px" />
+              <DropdownMenu.Item onSelect={() => goto(`/@${user.username}`)} class={itemClass}>
+                <Icon name="user" size={18} /> Profile
+              </DropdownMenu.Item>
+              <DropdownMenu.Item onSelect={() => goto("/compose")} class={itemClass}>
+                <Icon name="compose" size={18} /> Write a story
+              </DropdownMenu.Item>
+              <DropdownMenu.Separator class="bg-muted -mx-1 my-1 h-px" />
+              <DropdownMenu.Item onSelect={logout} class={itemClass}>
+                <Icon name="logout" size={18} /> Sign out
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
       {:else}
-        <Button href="/login" variant="ghost"><Icon name="login" /> Sign in</Button>
+        <Button href="/login" variant="ghost" class="text-neutral-600">Sign in</Button>
         <Button href="/register" variant="solid">Get started</Button>
       {/if}
     </div>

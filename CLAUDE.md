@@ -26,7 +26,7 @@ Core goals:
 
 ### Frontend
 - SvelteKit
-- bits-ui
+- bits-ui (strictly use this for everything possible)
 - TailwindCSS
 - Tiptap (editor)
 - Lucide (icons)

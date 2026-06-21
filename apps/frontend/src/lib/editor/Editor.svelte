@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import { Editor } from "@tiptap/core";
-  import { Toggle } from "bits-ui";
+  import { Separator, Toolbar } from "bits-ui";
+  import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import { extensions } from "./extensions";
 
   // Isolated Tiptap integration. The parent receives content via `onUpdate`.
@@ -16,8 +17,8 @@
   let editor: Editor;
 
   // Reflects which marks/blocks are active at the cursor, refreshed on every
-  // Tiptap transaction so the bits-ui Toggle buttons stay in sync.
-  let active = $state({ h1: false, h2: false, bold: false, italic: false, bulletList: false, blockquote: false });
+  // Tiptap transaction so the toolbar buttons stay in sync.
+  let active = $state({ h1: false, h2: false, bold: false, italic: false, list: false, quote: false });
 
   function refreshActive() {
     active = {
@@ -25,8 +26,8 @@
       h2: editor.isActive("heading", { level: 2 }),
       bold: editor.isActive("bold"),
       italic: editor.isActive("italic"),
-      bulletList: editor.isActive("bulletList"),
-      blockquote: editor.isActive("blockquote"),
+      list: editor.isActive("bulletList"),
+      quote: editor.isActive("blockquote"),
     };
   }
 
@@ -42,40 +43,36 @@
   });
 
   onDestroy(() => editor?.destroy());
+
+  type Tool = { key: keyof typeof active; icon: IconName; label: string; run: () => void };
+  const tools: Tool[] = [
+    { key: "h1", icon: "h1", label: "Heading 1", run: () => editor.chain().focus().toggleHeading({ level: 1 }).run() },
+    { key: "h2", icon: "h2", label: "Heading 2", run: () => editor.chain().focus().toggleHeading({ level: 2 }).run() },
+    { key: "bold", icon: "bold", label: "Bold", run: () => editor.chain().focus().toggleBold().run() },
+    { key: "italic", icon: "italic", label: "Italic", run: () => editor.chain().focus().toggleItalic().run() },
+    { key: "list", icon: "list", label: "Bullet list", run: () => editor.chain().focus().toggleBulletList().run() },
+    { key: "quote", icon: "quote", label: "Quote", run: () => editor.chain().focus().toggleBlockquote().run() },
+  ];
+
+  const btn =
+    "rounded-9px bg-background-alt hover:bg-muted active:bg-dark-10 inline-flex size-10 items-center justify-center transition-all active:scale-[0.98]";
 </script>
 
 <div>
-  <div class="mb-3 flex gap-1 border-b border-neutral-200 pb-3">
-    <Toggle.Root
-      pressed={active.h1}
-      onPressedChange={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-      class="rounded-md px-2.5 py-1.5 text-sm font-semibold text-neutral-600 hover:bg-neutral-100 data-[state=on]:bg-neutral-200 data-[state=on]:text-neutral-900"
-    >H1</Toggle.Root>
-    <Toggle.Root
-      pressed={active.h2}
-      onPressedChange={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-      class="rounded-md px-2.5 py-1.5 text-sm font-semibold text-neutral-600 hover:bg-neutral-100 data-[state=on]:bg-neutral-200 data-[state=on]:text-neutral-900"
-    >H2</Toggle.Root>
-    <Toggle.Root
-      pressed={active.bold}
-      onPressedChange={() => editor.chain().focus().toggleBold().run()}
-      class="rounded-md px-2.5 py-1.5 text-sm font-bold text-neutral-600 hover:bg-neutral-100 data-[state=on]:bg-neutral-200 data-[state=on]:text-neutral-900"
-    >B</Toggle.Root>
-    <Toggle.Root
-      pressed={active.italic}
-      onPressedChange={() => editor.chain().focus().toggleItalic().run()}
-      class="rounded-md px-2.5 py-1.5 text-sm italic text-neutral-600 hover:bg-neutral-100 data-[state=on]:bg-neutral-200 data-[state=on]:text-neutral-900"
-    >i</Toggle.Root>
-    <Toggle.Root
-      pressed={active.bulletList}
-      onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
-      class="rounded-md px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 data-[state=on]:bg-neutral-200 data-[state=on]:text-neutral-900"
-    >• List</Toggle.Root>
-    <Toggle.Root
-      pressed={active.blockquote}
-      onPressedChange={() => editor.chain().focus().toggleBlockquote().run()}
-      class="rounded-md px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 data-[state=on]:bg-neutral-200 data-[state=on]:text-neutral-900"
-    >❝</Toggle.Root>
-  </div>
+  <Toolbar.Root class="rounded-10px border-border bg-background-alt shadow-mini mb-4 flex min-w-max items-center gap-x-0.5 border px-[4px] py-1">
+    {#each tools as tool (tool.key)}
+      {#if tool.key === "bold"}
+        <Separator.Root orientation="vertical" class="bg-border mx-1 shrink-0 data-[orientation=vertical]:h-7 data-[orientation=vertical]:w-px" />
+      {/if}
+      <Toolbar.Button
+        onclick={tool.run}
+        aria-label={tool.label}
+        aria-pressed={active[tool.key]}
+        class={`${btn} ${active[tool.key] ? "bg-muted text-foreground/80" : "text-foreground/60"}`}
+      >
+        <Icon name={tool.icon} size={18} />
+      </Toolbar.Button>
+    {/each}
+  </Toolbar.Root>
   <div bind:this={element}></div>
 </div>

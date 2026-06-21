@@ -3,6 +3,7 @@
   import { goto } from "$app/navigation";
   import { endpoints, ApiError } from "$lib/api";
   import Button from "$lib/components/ui/Button.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   // Lazy-load the Tiptap editor so it stays out of the initial bundle.
   type EditorComp = typeof import("$lib/editor/Editor.svelte").default;
@@ -45,27 +46,25 @@
 
 <svelte:head><title>Write · Omicron</title></svelte:head>
 
-<div class="mx-auto max-w-2xl">
-  <div class="mb-6 flex items-center justify-between">
-    <h1 class="text-2xl font-bold tracking-tight text-neutral-900">Write a story</h1>
-    <Button onclick={publish} disabled={busy} variant="solid">
-      {busy ? "Publishing…" : "Publish"}
-    </Button>
-  </div>
-
-  <input
-    placeholder="Title"
-    bind:value={title}
-    class="mb-4 w-full border-none text-3xl font-bold tracking-tight text-neutral-900 placeholder:text-neutral-300 focus:outline-none"
-  />
-
-  <div>
-    {#if EditorComponent}
-      <EditorComponent {onUpdate} />
-    {:else}
-      <p class="text-neutral-500">Loading editor…</p>
-    {/if}
-  </div>
-
-  {#if error}<p class="mt-3 text-sm text-red-600">{error}</p>{/if}
+<div class="mb-8 flex items-center justify-between">
+  <p class="flex items-center gap-1.5 text-sm font-medium text-neutral-500">
+    <Icon name="compose" size={16} /> Draft
+  </p>
+  <Button onclick={publish} disabled={busy} variant="solid">
+    {busy ? "Publishing…" : "Publish"}
+  </Button>
 </div>
+
+<input
+  placeholder="Title"
+  bind:value={title}
+  class="mb-6 w-full border-none bg-transparent text-4xl font-bold tracking-tight text-neutral-900 placeholder:text-neutral-300 focus:outline-none"
+/>
+
+{#if EditorComponent}
+  <EditorComponent {onUpdate} />
+{:else}
+  <p class="text-neutral-400">Loading editor…</p>
+{/if}
+
+{#if error}<p class="mt-4 text-sm text-red-600">{error}</p>{/if}
