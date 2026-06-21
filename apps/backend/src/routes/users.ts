@@ -3,9 +3,10 @@ import * as followsService from "@/services/follows.ts";
 import * as postsService from "@/services/posts.ts";
 import * as usersService from "@/services/users.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
+import { enrichPosts } from "@/services/engagement.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { requireUser } from "@/routes/middleware.ts";
-import { postWithAuthor, publicUser } from "@/routes/serializers.ts";
+import { publicUser } from "@/routes/serializers.ts";
 import { notFound } from "@/lib/http.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
@@ -44,11 +45,12 @@ userRoutes.get("/:username", async (c) => {
 
 // A user's posts (public, cursor-paginated).
 userRoutes.get("/:username/posts", async (c) => {
+  const viewer = c.get("user");
   const user = await usersRepo.findByUsername(c.req.param("username"));
   if (!user) throw notFound("User not found.");
   const cursor = decodeCursor(c.req.query("cursor"));
   const { items, nextCursor } = await postsService.listByAuthor(user.id, cursor);
-  return c.json({ items: items.map(postWithAuthor), nextCursor });
+  return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
 });
 
 // Follow / unfollow (auth required).

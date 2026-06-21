@@ -32,6 +32,8 @@
     Camera,
     Pencil,
     X,
+    Heart,
+    MessageCircle,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -64,6 +66,8 @@
     camera: Camera,
     edit: Pencil,
     close: X,
+    heart: Heart,
+    comment: MessageCircle,
   } as const;
 
   export type IconName = keyof typeof icons;

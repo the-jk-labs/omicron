@@ -1,5 +1,7 @@
 import { makeApi } from "./client";
-import type { Page, Post, Profile, User } from "$lib/types";
+import type { Comment, Page, Post, Profile, User } from "$lib/types";
+
+type LikeState = { likeCount: number; liked: boolean };
 
 export { ApiError } from "./client";
 
@@ -27,6 +29,16 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     post: (id: string) => api.get<{ post: Post }>(`/posts/${id}`),
     createPost: (body: { title?: string; contentHtml: string; contentJson?: unknown }) =>
       api.post<{ post: { id: string } }>("/posts", body),
+
+    // likes + comments
+    likePost: (id: string) => api.post<LikeState>(`/posts/${id}/like`),
+    unlikePost: (id: string) => api.del<LikeState>(`/posts/${id}/like`),
+    comments: (id: string, cursor?: string | null) =>
+      api.get<Page<Comment>>(
+        `/posts/${id}/comments${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+      ),
+    createComment: (id: string, content: string) =>
+      api.post<{ comment: Comment }>(`/posts/${id}/comments`, { content }),
 
     // current user's profile editing
     updateProfile: (body: { displayName?: string; bio?: string }) =>

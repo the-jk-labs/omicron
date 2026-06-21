@@ -24,6 +24,16 @@ export type Post = {
   remote: boolean;
   createdAt: string;
   author: PostAuthor;
+  likeCount: number;
+  liked: boolean;
+  commentCount: number;
+};
+
+export type Comment = {
+  id: string;
+  content: string;
+  createdAt: string;
+  author: PostAuthor;
 };
 
 export type Page<T> = {

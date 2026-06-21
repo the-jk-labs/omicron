@@ -33,6 +33,8 @@
   <div class="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
     <span>{formatDate(post.createdAt)}</span>
     <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
+    <span class="flex items-center gap-1"><Icon name="heart" size={13} /> {post.likeCount}</span>
+    <span class="flex items-center gap-1"><Icon name="comment" size={13} /> {post.commentCount}</span>
     {#if post.remote}
       <span class="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
         <Icon name="globe" size={12} /> Federated

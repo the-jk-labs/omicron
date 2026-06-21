@@ -79,6 +79,34 @@ export const follows = pgTable("follows", {
   index("follows_followee_idx").on(t.followeeId),
 ]);
 
+// ── likes ──────────────────────────────────────────────────────────────
+// One row per (post, user). The unique index makes liking idempotent and lets
+// us derive counts + the viewer's own like state with a single grouped query.
+export const likes = pgTable("likes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // deno-lint-ignore no-explicit-any -- see note on users table.
+}, (t: any) => [
+  uniqueIndex("likes_post_user_idx").on(t.postId, t.userId),
+  index("likes_post_idx").on(t.postId),
+]);
+
+// ── comments ───────────────────────────────────────────────────────────
+// Flat (non-threaded) comments. `content` is plain text — rendered escaped on
+// the client, never as HTML.
+export const comments = pgTable("comments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  authorId: uuid("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // deno-lint-ignore no-explicit-any -- see note on users table.
+}, (t: any) => [
+  index("comments_post_created_idx").on(t.postId, t.createdAt.desc(), t.id.desc()),
+]);
+
 // ── sessions ───────────────────────────────────────────────────────────
 // Server-side sessions (cookie holds the opaque token = id). Keeps the app
 // stateless; all session state lives in Postgres.
@@ -97,4 +125,7 @@ export type NewUser = typeof users.$inferInsert;
 export type Post = typeof posts.$inferSelect;
 export type NewPost = typeof posts.$inferInsert;
 export type Follow = typeof follows.$inferSelect;
+export type Like = typeof likes.$inferSelect;
+export type Comment = typeof comments.$inferSelect;
+export type NewComment = typeof comments.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
