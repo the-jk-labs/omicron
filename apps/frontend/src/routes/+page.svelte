@@ -111,17 +111,17 @@
 {/snippet}
 
 {#if data.personalized}
-  <Tabs.Root value="for-you" onValueChange={onTabChange} class="rounded-card border-muted bg-background-alt shadow-card mb-4 w-full border p-3">
-    <Tabs.List class="rounded-9px bg-dark-10 shadow-mini-inset dark:bg-background dark:border dark:border-border grid w-full grid-cols-2 gap-1 p-1 text-sm font-semibold leading-[0.01em]">
+  <Tabs.Root value="for-you" onValueChange={onTabChange} class="w-full">
+    <Tabs.List class="mb-2 flex items-center gap-6 border-b border-border text-sm font-medium">
       <Tabs.Trigger
         value="for-you"
-        class="data-[state=active]:shadow-mini inline-flex h-8 items-center justify-center gap-1.5 rounded-[7px] bg-transparent py-2 data-[state=active]:bg-background dark:data-[state=active]:bg-muted"
+        class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center gap-1.5 border-b border-transparent py-3"
       >
         <Icon name="sparkles" size={16} /> For you
       </Tabs.Trigger>
       <Tabs.Trigger
         value="latest"
-        class="data-[state=active]:shadow-mini inline-flex h-8 items-center justify-center gap-1.5 rounded-[7px] bg-transparent py-2 data-[state=active]:bg-background dark:data-[state=active]:bg-muted"
+        class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center gap-1.5 border-b border-transparent py-3"
       >
         <Icon name="globe" size={16} /> Latest
       </Tabs.Trigger>

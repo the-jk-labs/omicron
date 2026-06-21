@@ -1,21 +1,34 @@
 <script lang="ts">
   import "../app.css";
-  import { env } from "$env/dynamic/public";
   import Nav from "$lib/components/Nav.svelte";
+  import SideNav from "$lib/components/SideNav.svelte";
+  import Discover from "$lib/components/Discover.svelte";
   import type { LayoutData } from "./$types";
 
   let { data, children }: { data: LayoutData; children: import("svelte").Snippet } = $props();
 </script>
 
-<div class="flex min-h-screen flex-col bg-background text-foreground">
+<div class="min-h-screen bg-background text-foreground">
   <Nav user={data.user} />
-  <main class="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
-    {@render children()}
-  </main>
-  <footer class="border-t border-border">
-    <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-muted-foreground">
-      <span>© {new Date().getFullYear()} {env.PUBLIC_APP_NAME || "Omicron"}</span>
-      <span>A federated blog · powered by ActivityPub</span>
+
+  <div class="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-4 py-8 lg:grid-cols-[180px_minmax(0,1fr)] xl:grid-cols-[180px_minmax(0,1fr)_260px]">
+    <!-- Left rail: primary navigation -->
+    <div class="hidden lg:block">
+      <div class="sticky top-20">
+        <SideNav user={data.user} />
+      </div>
     </div>
-  </footer>
+
+    <!-- Center: page content -->
+    <main class="min-w-0">
+      {@render children()}
+    </main>
+
+    <!-- Right rail: discovery -->
+    <div class="hidden xl:block">
+      <div class="sticky top-20 border-l border-border pl-8">
+        <Discover user={data.user} />
+      </div>
+    </div>
+  </div>
 </div>
