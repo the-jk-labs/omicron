@@ -22,6 +22,8 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.get<Page<Post>>(`/feed${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
     globalTimeline: (cursor?: string | null) =>
       api.get<Page<Post>>(`/posts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
+    localTimeline: (cursor?: string | null) =>
+      api.get<Page<Post>>(`/posts?scope=local${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`),
     post: (id: string) => api.get<{ post: Post }>(`/posts/${id}`),
     createPost: (body: { title?: string; contentHtml: string; contentJson?: unknown }) =>
       api.post<{ post: { id: string } }>("/posts", body),

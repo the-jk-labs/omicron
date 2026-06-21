@@ -3,15 +3,20 @@
   import { endpoints } from "$lib/api";
   import PostCard from "$lib/components/PostCard.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/Icon.svelte";
+  import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import type { Page, Post } from "$lib/types";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
 
-  // Each feed is an independent paginated list. For signed-in users the server
-  // pre-loads "For you"; "Latest" loads lazily the first time its tab opens.
+  // Each tab is an independent paginated list. The server pre-loads the default
+  // tab ("For you" when signed in, otherwise "Global"); the others load lazily
+  // the first time they are opened.
   type Feed = {
+    value: string;
+    label: string;
+    icon: IconName;
+    empty: string;
     items: Post[];
     cursor: string | null;
     loaded: boolean;
@@ -21,21 +26,49 @@
 
   const api = endpoints();
 
-  const forYou = $state<Feed>({
-    items: data.page.items,
-    cursor: data.page.nextCursor,
-    loaded: true,
-    loading: false,
+  function makeFeed(
+    init: Pick<Feed, "value" | "label" | "icon" | "empty" | "fetch"> & { preload?: Page<Post> },
+  ): Feed {
+    return {
+      ...init,
+      items: init.preload?.items ?? [],
+      cursor: init.preload?.nextCursor ?? null,
+      loaded: !!init.preload,
+      loading: false,
+    };
+  }
+
+  // "For you" exists only when signed in; "Global" is the default for guests.
+  const forYou = makeFeed({
+    value: "for-you",
+    label: "For you",
+    icon: "sparkles",
+    empty: "Your feed is empty — follow some writers to fill it.",
     fetch: api.feed,
+    preload: data.personalized ? data.page : undefined,
   });
 
-  const latest = $state<Feed>({
-    items: data.personalized ? [] : data.page.items,
-    cursor: data.personalized ? null : data.page.nextCursor,
-    loaded: !data.personalized,
-    loading: false,
-    fetch: api.globalTimeline,
+  const local = makeFeed({
+    value: "local",
+    label: "Local",
+    icon: "users",
+    empty: "No stories on this instance yet.",
+    fetch: api.localTimeline,
   });
+
+  const global = makeFeed({
+    value: "global",
+    label: "Global",
+    icon: "globe",
+    empty: "No federated stories yet.",
+    fetch: api.globalTimeline,
+    preload: data.personalized ? undefined : data.page,
+  });
+
+  const feeds = $state<Feed[]>(
+    data.personalized ? [forYou, local, global] : [global, local],
+  );
+  const defaultTab = data.personalized ? "for-you" : "global";
 
   async function loadMore(feed: Feed) {
     if (feed.loading || !feed.cursor) return;
@@ -49,8 +82,9 @@
     }
   }
 
-  async function ensureLoaded(feed: Feed) {
-    if (feed.loaded || feed.loading) return;
+  async function ensureLoaded(value: string) {
+    const feed = feeds.find((f) => f.value === value);
+    if (!feed || feed.loaded || feed.loading) return;
     feed.loading = true;
     try {
       const res = await feed.fetch();
@@ -60,10 +94,6 @@
     } finally {
       feed.loading = false;
     }
-  }
-
-  function onTabChange(value: string) {
-    if (value === "latest") ensureLoaded(latest);
   }
 </script>
 
@@ -86,12 +116,12 @@
   </section>
 {/if}
 
-{#snippet feedView(feed: Feed, empty: string)}
+{#snippet feedView(feed: Feed)}
   {#if feed.loading && feed.items.length === 0}
     <p class="py-8 text-center text-muted-foreground">Loading…</p>
   {:else if feed.items.length === 0}
     <div class="py-10 text-center text-muted-foreground">
-      <p>{empty}</p>
+      <p>{feed.empty}</p>
       <div class="mt-4 flex justify-center">
         <Button href="/compose" variant="outline"><Icon name="compose" size={16} /> Write a story</Button>
       </div>
@@ -110,30 +140,20 @@
   {/if}
 {/snippet}
 
-{#if data.personalized}
-  <Tabs.Root value="for-you" onValueChange={onTabChange} class="w-full">
-    <Tabs.List class="mb-2 flex items-center gap-6 border-b border-border text-sm font-medium">
+<Tabs.Root value={defaultTab} onValueChange={ensureLoaded} class="w-full">
+  <Tabs.List class="mb-2 flex items-center gap-6 border-b border-border text-sm font-medium">
+    {#each feeds as feed (feed.value)}
       <Tabs.Trigger
-        value="for-you"
+        value={feed.value}
         class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center gap-1.5 border-b border-transparent py-3"
       >
-        <Icon name="sparkles" size={16} /> For you
+        <Icon name={feed.icon} size={16} /> {feed.label}
       </Tabs.Trigger>
-      <Tabs.Trigger
-        value="latest"
-        class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center gap-1.5 border-b border-transparent py-3"
-      >
-        <Icon name="globe" size={16} /> Latest
-      </Tabs.Trigger>
-    </Tabs.List>
-    <Tabs.Content value="for-you" class="select-none pt-3">
-      {@render feedView(forYou, "Your feed is empty — follow some writers to fill it.")}
+    {/each}
+  </Tabs.List>
+  {#each feeds as feed (feed.value)}
+    <Tabs.Content value={feed.value} class="select-none pt-3">
+      {@render feedView(feed)}
     </Tabs.Content>
-    <Tabs.Content value="latest" class="select-none pt-3">
-      {@render feedView(latest, "No stories on this instance yet.")}
-    </Tabs.Content>
-  </Tabs.Root>
-{:else}
-  <h2 class="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Latest stories</h2>
-  {@render feedView(latest, "No stories on this instance yet.")}
-{/if}
+  {/each}
+</Tabs.Root>

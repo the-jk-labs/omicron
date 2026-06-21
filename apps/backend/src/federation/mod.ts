@@ -140,9 +140,13 @@ function setupInbox(f: Federation<ContextData>) {
       }
     })
     .on(Create, async (ctx, create) => {
-      // Ingest a remote note as a local (remote-flagged) post.
+      // Ingest a remote post as a local (remote-flagged) record. We tag the AP
+      // object type so the Global feed can surface blog Articles while excluding
+      // microblog Notes (Mastodon, Pixelfed, …).
       const object = await create.getObject(ctx);
-      if (!(object instanceof Note) || !object.id) return;
+      if (!(object instanceof Article) && !(object instanceof Note)) return;
+      if (!object.id) return;
+      const apType = object instanceof Article ? "Article" : "Note";
       if (await postsRepo.findByApId(object.id.href)) return;
       const author = await create.getActor(ctx);
       if (!isActor(author) || !author.id) return;
@@ -150,11 +154,13 @@ function setupInbox(f: Federation<ContextData>) {
       const local = await usersRepo.findByUsername(
         `${author.preferredUsername ?? "remote"}`,
       );
-      if (!local) return; // Only ingest notes from actors we already know.
+      if (!local) return; // Only ingest posts from actors we already know.
       await postsRepo.create({
         authorId: local.id,
+        title: object.name?.toString() ?? null,
         contentHtml: object.content?.toString() ?? "",
         apId: object.id.href,
+        apType,
         remote: true,
       });
     });
