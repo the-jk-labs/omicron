@@ -5,6 +5,7 @@ export type User = {
   username: string;
   displayName: string;
   bio: string;
+  avatarUrl: string | null;
   isAdmin: boolean;
   createdAt: string;
 };

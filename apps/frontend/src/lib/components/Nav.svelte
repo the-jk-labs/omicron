@@ -56,7 +56,7 @@
             class="border-input text-foreground shadow-btn hover:bg-muted ml-1 inline-flex select-none items-center justify-center rounded-full border active:scale-[0.98]"
             aria-label="Account menu"
           >
-            <Avatar name={user.displayName} size={34} />
+            <Avatar name={user.displayName} src={user.avatarUrl ?? undefined} size={34} />
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
             <DropdownMenu.Content

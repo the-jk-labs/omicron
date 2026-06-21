@@ -10,6 +10,7 @@ const schema = z.object({
     .default("false"),
   SESSION_SECRET: z.string().min(8),
   PORT: z.coerce.number().int().positive().default(8000),
+  UPLOADS_DIR: z.string().min(1).default("./uploads"),
 });
 
 function load() {
@@ -19,6 +20,7 @@ function load() {
     FEDERATION_ENABLED: Deno.env.get("FEDERATION_ENABLED"),
     SESSION_SECRET: Deno.env.get("SESSION_SECRET"),
     PORT: Deno.env.get("PORT"),
+    UPLOADS_DIR: Deno.env.get("UPLOADS_DIR"),
   });
 
   if (!parsed.success) {

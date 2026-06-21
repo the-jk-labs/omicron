@@ -1,0 +1,1 @@
+ALTER TABLE "posts" ADD COLUMN IF NOT EXISTS "ap_type" text DEFAULT 'Article' NOT NULL;

@@ -9,6 +9,7 @@ export function publicUser(u: User) {
     username: u.username,
     displayName: u.displayName,
     bio: u.bio,
+    avatarUrl: u.avatarUrl,
     isAdmin: u.isAdmin,
     createdAt: u.createdAt,
   };

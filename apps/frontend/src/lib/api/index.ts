@@ -26,6 +26,12 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     createPost: (body: { title?: string; contentHtml: string; contentJson?: unknown }) =>
       api.post<{ post: { id: string } }>("/posts", body),
 
+    // current user's profile editing
+    updateProfile: (body: { displayName?: string; bio?: string }) =>
+      api.patch<{ user: User }>("/users/me", body),
+    uploadAvatar: (file: File) =>
+      api.postRaw<{ user: User }>("/users/me/avatar", file, file.type),
+
     // users + follows
     profile: (username: string) => api.get<Profile>(`/users/${username}`),
     userPosts: (username: string, cursor?: string | null) =>

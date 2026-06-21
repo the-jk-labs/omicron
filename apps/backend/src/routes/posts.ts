@@ -7,10 +7,13 @@ import type { AppEnv } from "@/routes/types.ts";
 
 export const postRoutes = new Hono<AppEnv>();
 
-// Global timeline (public).
+// Timeline (public). `?scope=local` returns only posts from this instance;
+// otherwise the global blog feed across the fediverse.
 postRoutes.get("/", async (c) => {
   const cursor = decodeCursor(c.req.query("cursor"));
-  const { items, nextCursor } = await postsService.globalTimeline(cursor);
+  const { items, nextCursor } = c.req.query("scope") === "local"
+    ? await postsService.localTimeline(cursor)
+    : await postsService.globalTimeline(cursor);
   return c.json({ items: items.map(postWithAuthor), nextCursor });
 });
 

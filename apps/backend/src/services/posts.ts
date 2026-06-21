@@ -56,3 +56,8 @@ export async function globalTimeline(cursor: Cursor | null) {
   const rows = await postsRepo.listGlobal(cursor, DEFAULT_PAGE_SIZE);
   return pageOf(rows, DEFAULT_PAGE_SIZE);
 }
+
+export async function localTimeline(cursor: Cursor | null) {
+  const rows = await postsRepo.listLocal(cursor, DEFAULT_PAGE_SIZE);
+  return pageOf(rows, DEFAULT_PAGE_SIZE);
+}

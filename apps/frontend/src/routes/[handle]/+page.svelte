@@ -3,6 +3,7 @@
   import { endpoints } from "$lib/api";
   import PostCard from "$lib/components/PostCard.svelte";
   import FollowButton from "$lib/components/FollowButton.svelte";
+  import EditProfileDialog from "$lib/components/EditProfileDialog.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
@@ -36,7 +37,7 @@
 
 <header class="mb-8 flex items-start justify-between gap-4 border-b border-border pb-8">
   <div class="flex items-start gap-4">
-    <Avatar name={profile.user.displayName} size={72} />
+    <Avatar name={profile.user.displayName} src={profile.user.avatarUrl ?? undefined} size={72} />
     <div>
       <h1 class="text-2xl font-bold tracking-tight text-foreground">{profile.user.displayName}</h1>
       <p class="text-muted-foreground">@{profile.user.username}</p>
@@ -52,7 +53,9 @@
       </div>
     </div>
   </div>
-  {#if data.user && !isSelf}
+  {#if isSelf}
+    <EditProfileDialog user={profile.user} />
+  {:else if data.user}
     <FollowButton username={profile.user.username} following={profile.isFollowing} />
   {/if}
 </header>

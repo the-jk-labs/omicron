@@ -43,12 +43,25 @@ function beforeCursor(cursor: Cursor | null) {
   );
 }
 
+// Global feed: blog-type content across the whole fediverse (local + remote).
+// Filtered to "Article" so microblog Notes (Mastodon, Pixelfed, …) are excluded.
 export function listGlobal(cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
   return db
     .select({ post: posts, author: authorColumns })
     .from(posts)
     .innerJoin(users, eq(posts.authorId, users.id))
-    .where(beforeCursor(cursor))
+    .where(and(eq(posts.apType, "Article"), beforeCursor(cursor)))
+    .orderBy(desc(posts.createdAt), desc(posts.id))
+    .limit(limit + 1);
+}
+
+// Local feed: posts authored on this instance only.
+export function listLocal(cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
+  return db
+    .select({ post: posts, author: authorColumns })
+    .from(posts)
+    .innerJoin(users, eq(posts.authorId, users.id))
+    .where(and(eq(posts.remote, false), beforeCursor(cursor)))
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
 }

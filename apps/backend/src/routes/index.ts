@@ -3,6 +3,7 @@ import { authRoutes } from "@/routes/auth.ts";
 import { postRoutes } from "@/routes/posts.ts";
 import { feedRoutes } from "@/routes/feed.ts";
 import { userRoutes } from "@/routes/users.ts";
+import { mediaRoutes } from "@/routes/media.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 // Mounts the JSON API under /api.
@@ -12,3 +13,4 @@ apiRoutes.route("/auth", authRoutes);
 apiRoutes.route("/posts", postRoutes);
 apiRoutes.route("/feed", feedRoutes);
 apiRoutes.route("/users", userRoutes);
+apiRoutes.route("/uploads", mediaRoutes);

@@ -34,6 +34,10 @@ services:
       FEDERATION_ENABLED: ${FEDERATION_ENABLED}
       SESSION_SECRET: ${SESSION_SECRET}
       PORT: ${PORT}
+      UPLOADS_DIR: /data/uploads
+    volumes:
+      # Persist user-uploaded media (avatars) across restarts/upgrades.
+      - uploads:/data/uploads
     ports:
       # Exposed so other fediverse servers can reach /.well-known and /users.
       - "8000:8000"
@@ -53,3 +57,4 @@ services:
 
 volumes:
   pgdata:
+  uploads:

@@ -29,6 +29,9 @@
     ChevronDown,
     Sun,
     Moon,
+    Camera,
+    Pencil,
+    X,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -58,6 +61,9 @@
     chevronDown: ChevronDown,
     sun: Sun,
     moon: Moon,
+    camera: Camera,
+    edit: Pencil,
+    close: X,
   } as const;
 
   export type IconName = keyof typeof icons;

@@ -17,7 +17,9 @@ const proxy: RequestHandler = async ({ request, params, url }) => {
 
   const init: RequestInit = { method: request.method, headers };
   if (!["GET", "HEAD"].includes(request.method)) {
-    init.body = await request.text();
+    // Forward the body as raw bytes so binary uploads (e.g. avatar images) pass
+    // through untouched; JSON bodies are equally preserved.
+    init.body = await request.arrayBuffer();
   }
 
   const res = await fetch(target, init);

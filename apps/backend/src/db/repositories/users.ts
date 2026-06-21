@@ -29,3 +29,10 @@ export async function create(data: NewUser) {
 export async function setKeyPair(id: string, keyPair: ActorKeyPair) {
   await db.update(users).set({ actorKeyPair: keyPair }).where(eq(users.id, id));
 }
+
+// Partial update of mutable profile fields (display name, bio, avatar). Returns
+// the updated row.
+export async function update(id: string, data: Partial<NewUser>) {
+  const [row] = await db.update(users).set(data).where(eq(users.id, id)).returning();
+  return row;
+}

@@ -8,6 +8,20 @@
       "when": 1718000000000,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1718100000000,
+      "tag": "0001_add_avatar_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1718200000000,
+      "tag": "0002_add_post_ap_type",
+      "breakpoints": true
     }
   ]
 }

@@ -20,6 +20,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   displayName: text("display_name").notNull(),
   bio: text("bio").notNull().default(""),
+  avatarUrl: text("avatar_url"),
   isAdmin: boolean("is_admin").notNull().default(false),
   actorKeyPair: jsonb("actor_key_pair").$type<ActorKeyPair | null>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -44,6 +45,10 @@ export const posts = pgTable("posts", {
   contentHtml: text("content_html").notNull(),
   contentJson: jsonb("content_json"),
   apId: text("ap_id"),
+  // ActivityPub object type. Long-form blog content is "Article" (what Omicron,
+  // Ghost, WriteFreely publish); microblog content is "Note" (Mastodon, etc.).
+  // Drives the Global feed, which surfaces blogs only.
+  apType: text("ap_type").notNull().default("Article"),
   remote: boolean("remote").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   // deno-lint-ignore no-explicit-any -- see note on users table.

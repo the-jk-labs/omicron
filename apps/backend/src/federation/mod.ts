@@ -8,6 +8,7 @@ import {
 } from "@fedify/fedify";
 import {
   Accept,
+  Article,
   Create,
   Endpoints,
   Follow,

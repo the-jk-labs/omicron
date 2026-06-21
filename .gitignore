@@ -13,5 +13,8 @@ apps/frontend/.vite/
 # Deno
 apps/backend/.deno/
 
+# User uploads (local dev)
+apps/backend/uploads/
+
 # OS
 .DS_Store
