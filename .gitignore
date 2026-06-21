@@ -1,0 +1,17 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Node / SvelteKit
+node_modules/
+apps/frontend/.svelte-kit/
+apps/frontend/build/
+apps/frontend/.vite/
+*.log
+
+# Deno
+apps/backend/.deno/
+
+# OS
+.DS_Store

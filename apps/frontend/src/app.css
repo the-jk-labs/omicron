@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Rendered post content (the HTML produced by Tiptap). Kept minimal and
+   Medium-like; extend here as the editor gains features. */
+.prose-omicron {
+  @apply text-lg leading-relaxed text-neutral-800;
+}
+.prose-omicron h1 {
+  @apply mt-8 mb-4 text-3xl font-bold tracking-tight;
+}
+.prose-omicron h2 {
+  @apply mt-6 mb-3 text-2xl font-bold tracking-tight;
+}
+.prose-omicron p {
+  @apply my-4;
+}
+.prose-omicron a {
+  @apply text-emerald-700 underline;
+}
+.prose-omicron ul {
+  @apply my-4 list-disc pl-6;
+}
+.prose-omicron ol {
+  @apply my-4 list-decimal pl-6;
+}
+.prose-omicron blockquote {
+  @apply my-4 border-l-4 border-neutral-300 pl-4 italic text-neutral-600;
+}
+
+/* Tiptap editor surface */
+.tiptap {
+  @apply min-h-[300px] outline-none;
+}
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  @apply pointer-events-none float-left h-0 text-neutral-400;
+}
