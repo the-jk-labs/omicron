@@ -11,7 +11,7 @@
   let busy = $state(false);
 
   const field =
-    "rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm outline-none focus:border-neutral-900";
+    "rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground";
 
   async function submit(e: SubmitEvent) {
     e.preventDefault();
@@ -33,9 +33,9 @@
 
 <div class="mx-auto max-w-sm py-6">
   <div class="mb-6 text-center">
-    <div class="mb-3 flex justify-center text-neutral-900"><Icon name="feather" size={32} /></div>
-    <h1 class="text-2xl font-bold tracking-tight text-neutral-900">Welcome back</h1>
-    <p class="mt-1 text-sm text-neutral-500">Sign in to continue to Omicron.</p>
+    <div class="mb-3 flex justify-center text-foreground"><Icon name="feather" size={32} /></div>
+    <h1 class="text-2xl font-bold tracking-tight text-foreground">Welcome back</h1>
+    <p class="mt-1 text-sm text-muted-foreground">Sign in to continue to Omicron.</p>
   </div>
 
   <form onsubmit={submit} class="flex flex-col gap-4">
@@ -47,13 +47,13 @@
       <Label.Root for="password" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Password</Label.Root>
       <input id="password" type="password" bind:value={password} autocomplete="current-password" class={field} />
     </div>
-    {#if error}<p class="text-sm text-red-600">{error}</p>{/if}
+    {#if error}<p class="text-sm text-destructive">{error}</p>{/if}
     <Button type="submit" disabled={busy} variant="solid" class="justify-center py-2.5">
       {busy ? "Signing in…" : "Sign in"}
     </Button>
   </form>
 
-  <p class="mt-6 text-center text-sm text-neutral-500">
+  <p class="mt-6 text-center text-sm text-muted-foreground">
     No account?
     <Button href="/register" variant="link">Create one</Button>
   </p>

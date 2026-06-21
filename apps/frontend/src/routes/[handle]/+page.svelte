@@ -34,20 +34,20 @@
 
 <svelte:head><title>{profile.user.displayName} · Omicron</title></svelte:head>
 
-<header class="mb-8 flex items-start justify-between gap-4 border-b border-neutral-200 pb-8">
+<header class="mb-8 flex items-start justify-between gap-4 border-b border-border pb-8">
   <div class="flex items-start gap-4">
     <Avatar name={profile.user.displayName} size={72} />
     <div>
-      <h1 class="text-2xl font-bold tracking-tight text-neutral-900">{profile.user.displayName}</h1>
-      <p class="text-neutral-500">@{profile.user.username}</p>
-      {#if profile.user.bio}<p class="mt-2 max-w-prose text-neutral-700">{profile.user.bio}</p>{/if}
-      <div class="mt-3 flex items-center gap-4 text-sm text-neutral-500">
+      <h1 class="text-2xl font-bold tracking-tight text-foreground">{profile.user.displayName}</h1>
+      <p class="text-muted-foreground">@{profile.user.username}</p>
+      {#if profile.user.bio}<p class="mt-2 max-w-prose text-foreground-alt">{profile.user.bio}</p>{/if}
+      <div class="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
         <span class="flex items-center gap-1">
           <Icon name="users" size={15} />
-          <strong class="text-neutral-900">{profile.counts.followers}</strong> followers
+          <strong class="text-foreground">{profile.counts.followers}</strong> followers
         </span>
         <span>
-          <strong class="text-neutral-900">{profile.counts.following}</strong> following
+          <strong class="text-foreground">{profile.counts.following}</strong> following
         </span>
       </div>
     </div>
@@ -58,20 +58,20 @@
 </header>
 
 <Tabs.Root value="stories" class="rounded-card border-muted bg-background-alt shadow-card mb-4 w-full border p-3">
-  <Tabs.List class="rounded-9px bg-dark-10 shadow-mini-inset grid w-full grid-cols-2 gap-1 p-1 text-sm font-semibold leading-[0.01em]">
+  <Tabs.List class="rounded-9px bg-dark-10 shadow-mini-inset dark:bg-background dark:border dark:border-border grid w-full grid-cols-2 gap-1 p-1 text-sm font-semibold leading-[0.01em]">
     <Tabs.Trigger
       value="stories"
-      class="data-[state=active]:shadow-mini inline-flex h-8 items-center justify-center rounded-[7px] bg-transparent py-2 data-[state=active]:bg-white"
+      class="data-[state=active]:shadow-mini inline-flex h-8 items-center justify-center rounded-[7px] bg-transparent py-2 data-[state=active]:bg-background dark:data-[state=active]:bg-muted"
     >Stories</Tabs.Trigger>
     <Tabs.Trigger
       value="about"
-      class="data-[state=active]:shadow-mini inline-flex h-8 items-center justify-center rounded-[7px] bg-transparent py-2 data-[state=active]:bg-white"
+      class="data-[state=active]:shadow-mini inline-flex h-8 items-center justify-center rounded-[7px] bg-transparent py-2 data-[state=active]:bg-background dark:data-[state=active]:bg-muted"
     >About</Tabs.Trigger>
   </Tabs.List>
 
   <Tabs.Content value="stories" class="select-none pt-3">
     {#if posts.length === 0}
-      <p class="py-10 text-center text-neutral-500">No stories yet.</p>
+      <p class="py-10 text-center text-muted-foreground">No stories yet.</p>
     {:else}
       {#each posts as post (post.id)}
         <PostCard {post} />
@@ -86,12 +86,12 @@
     {/if}
   </Tabs.Content>
 
-  <Tabs.Content value="about" class="select-none px-1 pt-3 text-neutral-700">
+  <Tabs.Content value="about" class="select-none px-1 pt-3 text-foreground-alt">
     {#if profile.user.bio}
       <p class="max-w-prose">{profile.user.bio}</p>
     {:else}
-      <p class="text-neutral-500">No bio yet.</p>
+      <p class="text-muted-foreground">No bio yet.</p>
     {/if}
-    <p class="mt-4 text-sm text-neutral-500">Joined {formatDate(profile.user.createdAt)}</p>
+    <p class="mt-4 text-sm text-muted-foreground">Joined {formatDate(profile.user.createdAt)}</p>
   </Tabs.Content>
 </Tabs.Root>

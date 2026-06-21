@@ -1,14 +1,21 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { goto, invalidateAll } from "$app/navigation";
   import { env } from "$env/dynamic/public";
   import { DropdownMenu } from "bits-ui";
   import { endpoints } from "$lib/api";
+  import { theme } from "$lib/theme.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import type { User } from "$lib/types";
 
   let { user }: { user: User | null } = $props();
+
+  // Render the resolved icon only after mount so SSR (always "light") and the
+  // first client render match — avoids a hydration mismatch on the toggle.
+  let ready = $state(false);
+  onMount(() => (ready = true));
 
   async function logout() {
     await endpoints().logout();
@@ -22,16 +29,25 @@
     "rounded-button data-[highlighted]:bg-muted !ring-0 !ring-transparent flex h-10 w-full cursor-pointer select-none items-center gap-2.5 py-3 pl-3 pr-1.5 text-sm font-medium focus-visible:outline-none";
 </script>
 
-<header class="sticky top-0 z-20 border-b border-neutral-200 bg-white/80 backdrop-blur">
+<header class="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur">
   <nav class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-    <Button href="/" variant="plain" class="flex items-center gap-2 text-neutral-900 hover:opacity-80">
+    <Button href="/" variant="plain" class="flex items-center gap-2 text-foreground hover:opacity-80">
       <Icon name="feather" size={22} />
       <span class="text-xl font-bold tracking-tight">{env.PUBLIC_APP_NAME || "Omicron"}</span>
     </Button>
 
     <div class="flex items-center gap-1.5">
+      <Button
+        onclick={() => theme.toggle()}
+        variant="icon"
+        aria-label="Toggle dark mode"
+        title="Toggle theme"
+      >
+        <Icon name={ready && theme.current === "dark" ? "sun" : "moon"} size={18} />
+      </Button>
+
       {#if user}
-        <Button href="/compose" variant="ghost" class="text-neutral-600">
+        <Button href="/compose" variant="ghost" class="text-muted-foreground">
           <Icon name="compose" size={18} /> <span class="hidden sm:inline">Write</span>
         </Button>
 
@@ -67,7 +83,7 @@
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
       {:else}
-        <Button href="/login" variant="ghost" class="text-neutral-600">Sign in</Button>
+        <Button href="/login" variant="ghost" class="text-muted-foreground">Sign in</Button>
         <Button href="/register" variant="solid">Get started</Button>
       {/if}
     </div>

@@ -13,7 +13,7 @@
   let busy = $state(false);
 
   const field =
-    "rounded-lg border border-neutral-300 px-3.5 py-2.5 text-sm outline-none focus:border-neutral-900";
+    "rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground";
 
   async function submit(e: SubmitEvent) {
     e.preventDefault();
@@ -35,9 +35,9 @@
 
 <div class="mx-auto max-w-sm py-6">
   <div class="mb-6 text-center">
-    <div class="mb-3 flex justify-center text-neutral-900"><Icon name="feather" size={32} /></div>
-    <h1 class="text-2xl font-bold tracking-tight text-neutral-900">Create your account</h1>
-    <p class="mt-1 text-sm text-neutral-500">The first account on a fresh instance becomes the admin.</p>
+    <div class="mb-3 flex justify-center text-foreground"><Icon name="feather" size={32} /></div>
+    <h1 class="text-2xl font-bold tracking-tight text-foreground">Create your account</h1>
+    <p class="mt-1 text-sm text-muted-foreground">The first account on a fresh instance becomes the admin.</p>
   </div>
 
   <form onsubmit={submit} class="flex flex-col gap-4">
@@ -57,13 +57,13 @@
       <Label.Root for="password" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Password</Label.Root>
       <input id="password" type="password" bind:value={password} autocomplete="new-password" placeholder="min 8 characters" class={field} />
     </div>
-    {#if error}<p class="text-sm text-red-600">{error}</p>{/if}
+    {#if error}<p class="text-sm text-destructive">{error}</p>{/if}
     <Button type="submit" disabled={busy} variant="solid" class="justify-center py-2.5">
       {busy ? "Creating…" : "Create account"}
     </Button>
   </form>
 
-  <p class="mt-6 text-center text-sm text-neutral-500">
+  <p class="mt-6 text-center text-sm text-muted-foreground">
     Already have an account?
     <Button href="/login" variant="link">Sign in</Button>
   </p>

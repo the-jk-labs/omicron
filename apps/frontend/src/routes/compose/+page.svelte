@@ -47,7 +47,7 @@
 <svelte:head><title>Write · Omicron</title></svelte:head>
 
 <div class="mb-8 flex items-center justify-between">
-  <p class="flex items-center gap-1.5 text-sm font-medium text-neutral-500">
+  <p class="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
     <Icon name="compose" size={16} /> Draft
   </p>
   <Button onclick={publish} disabled={busy} variant="solid">
@@ -58,13 +58,13 @@
 <input
   placeholder="Title"
   bind:value={title}
-  class="mb-6 w-full border-none bg-transparent text-4xl font-bold tracking-tight text-neutral-900 placeholder:text-neutral-300 focus:outline-none"
+  class="mb-6 w-full border-none bg-transparent text-4xl font-bold tracking-tight text-foreground placeholder:text-muted-foreground focus:outline-none"
 />
 
 {#if EditorComponent}
   <EditorComponent {onUpdate} />
 {:else}
-  <p class="text-neutral-400">Loading editor…</p>
+  <p class="text-muted-foreground">Loading editor…</p>
 {/if}
 
-{#if error}<p class="mt-4 text-sm text-red-600">{error}</p>{/if}
+{#if error}<p class="mt-4 text-sm text-destructive">{error}</p>{/if}

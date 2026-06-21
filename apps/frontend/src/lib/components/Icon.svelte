@@ -27,6 +27,8 @@
     List,
     Quote,
     ChevronDown,
+    Sun,
+    Moon,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -54,6 +56,8 @@
     list: List,
     quote: Quote,
     chevronDown: ChevronDown,
+    sun: Sun,
+    moon: Moon,
   } as const;
 
   export type IconName = keyof typeof icons;
