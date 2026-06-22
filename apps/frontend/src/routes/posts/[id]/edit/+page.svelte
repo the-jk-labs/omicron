@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import type { Content } from "@tiptap/core";
   import { goto } from "$app/navigation";
   import { endpoints, ApiError } from "$lib/api";
   import Button from "$lib/components/ui/Button.svelte";
@@ -69,7 +70,7 @@
 />
 
 {#if EditorComponent}
-  <EditorComponent {onUpdate} content={post.contentHtml} />
+  <EditorComponent {onUpdate} content={(post.contentJson as Content) ?? post.contentHtml} />
 {:else}
   <p class="text-muted-foreground">Loading editor…</p>
 {/if}

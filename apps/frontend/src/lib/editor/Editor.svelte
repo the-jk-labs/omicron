@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import { Editor } from "@tiptap/core";
+  import { type Content, Editor } from "@tiptap/core";
   import { Separator, Toolbar } from "bits-ui";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import { extensions } from "./extensions";
@@ -8,6 +8,10 @@
   // Isolated Tiptap integration. The parent receives content via `onUpdate`.
   // This component is lazy-loaded (dynamic import) so Tiptap stays out of the
   // initial bundle — see /compose.
+  //
+  // `content` should be Tiptap's native JSON (ProseMirror doc) when rehydrating
+  // an existing post — a plain string is parsed as Markdown by the markdown
+  // extension, so passing stored HTML as a string would show the tags verbatim.
   let {
     onUpdate,
     placeholder = "Tell your story…",
@@ -15,7 +19,7 @@
   }: {
     onUpdate: (html: string, json: unknown) => void;
     placeholder?: string;
-    content?: string;
+    content?: Content;
   } = $props();
 
   let element: HTMLDivElement;
