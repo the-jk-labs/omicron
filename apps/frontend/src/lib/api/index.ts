@@ -39,6 +39,13 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       ),
     createComment: (id: string, content: string, parentId?: string | null) =>
       api.post<{ comment: Comment }>(`/posts/${id}/comments`, { content, parentId }),
+    editComment: (postId: string, commentId: string, content: string) =>
+      api.patch<{ comment: { id: string; content: string } }>(
+        `/posts/${postId}/comments/${commentId}`,
+        { content },
+      ),
+    deleteComment: (postId: string, commentId: string) =>
+      api.del<{ ok: true }>(`/posts/${postId}/comments/${commentId}`),
     likeComment: (postId: string, commentId: string) =>
       api.post<LikeState>(`/posts/${postId}/comments/${commentId}/like`),
     unlikeComment: (postId: string, commentId: string) =>

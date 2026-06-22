@@ -29,6 +29,16 @@ export function findById(id: string) {
     .then((r) => r[0] ?? null);
 }
 
+export async function update(id: string, content: string) {
+  const [row] = await db.update(comments).set({ content }).where(eq(comments.id, id)).returning();
+  return row;
+}
+
+// Deletes a comment; replies cascade via the parent_id foreign key.
+export async function remove(id: string) {
+  await db.delete(comments).where(eq(comments.id, id));
+}
+
 function beforeCursor(cursor: Cursor | null) {
   if (!cursor) return undefined;
   const ts = new Date(cursor.createdAt);

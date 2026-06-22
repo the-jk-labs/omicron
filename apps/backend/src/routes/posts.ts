@@ -79,6 +79,21 @@ postRoutes.post("/:id/comments", async (c) => {
   }, 201);
 });
 
+// Edit a comment (auth required; author only).
+postRoutes.patch("/:id/comments/:commentId", async (c) => {
+  const user = requireUser(c);
+  const body = await c.req.json();
+  const comment = await commentsService.edit(user.id, c.req.param("commentId"), body.content);
+  return c.json({ comment: { id: comment.id, content: comment.content } });
+});
+
+// Delete a comment (auth required; author or admin only).
+postRoutes.delete("/:id/comments/:commentId", async (c) => {
+  const user = requireUser(c);
+  await commentsService.remove(user.id, user.isAdmin, c.req.param("commentId"));
+  return c.json({ ok: true });
+});
+
 // Like / unlike a comment (auth required). Returns fresh like stats.
 postRoutes.post("/:id/comments/:commentId/like", async (c) => {
   const user = requireUser(c);

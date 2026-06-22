@@ -35,6 +35,7 @@
     Heart,
     MessageCircle,
     Reply,
+    Trash2,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -70,6 +71,7 @@
     heart: Heart,
     comment: MessageCircle,
     reply: Reply,
+    trash: Trash2,
   } as const;
 
   export type IconName = keyof typeof icons;

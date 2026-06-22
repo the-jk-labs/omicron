@@ -71,8 +71,13 @@
     </div>
   </div>
 
+  <!-- Content is server-rendered HTML produced by the Tiptap editor. -->
+  <div class="prose-omicron">
+    {@html post.contentHtml}
+  </div>
+
   <!-- Engagement bar -->
-  <div class="flex items-center gap-2 border-y border-border py-2.5">
+  <div class="mt-10 flex items-center gap-2 border-y border-border py-2.5">
     <Button
       onclick={toggleLike}
       variant="ghost"
@@ -87,11 +92,6 @@
       <Icon name="comment" size={18} />
       <span class="tabular-nums">{commentCount}</span>
     </a>
-  </div>
-
-  <!-- Content is server-rendered HTML produced by the Tiptap editor. -->
-  <div class="prose-omicron mt-8">
-    {@html post.contentHtml}
   </div>
 </article>
 
