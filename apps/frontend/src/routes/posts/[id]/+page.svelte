@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { DropdownMenu, Separator } from "bits-ui";
   import { goto } from "$app/navigation";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import * as postsRepo from "@/db/repositories/posts.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";

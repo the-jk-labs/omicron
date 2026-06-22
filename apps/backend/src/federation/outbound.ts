@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { Follow, isActor, Undo } from "@fedify/fedify/vocab";
 import { getFederation } from "@/federation/mod.ts";
 import { origin } from "@/config.ts";

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import * as commentsRepo from "@/db/repositories/comments.ts";
 import * as commentLikesRepo from "@/db/repositories/commentLikes.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";

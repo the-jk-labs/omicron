@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Small presentation helpers shared across feed/profile/post views.
 
 export function stripHtml(html: string): string {

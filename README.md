@@ -13,7 +13,7 @@ other writers, read a personalized feed, and federate with the fediverse
 ## Quick start
 
 ```bash
-git clone <repo> omicron
+git clone https://github.com/the-jk-labs/omicron.git omicron
 cd omicron
 cp .env.example .env        # edit SESSION_SECRET and APP_DOMAIN
 docker compose up -d --build
@@ -138,3 +138,16 @@ cd apps/frontend && npm install && npm run dev   # http://localhost:5173
 ```
 
 Useful checks: `deno task check && deno lint` (backend), `npm run check` (frontend).
+
+---
+
+## License
+
+Omicron is free software licensed under the **GNU Affero General Public License
+v3.0 or later** (AGPL-3.0-or-later). See [LICENSE](LICENSE) for the full text.
+
+Because Omicron is typically run as a network service, the AGPL's §13 applies:
+if you run a modified version on a server and let users interact with it over a
+network, you must offer those users the corresponding source code of your
+modified version. The app surfaces a "Source" link in the UI for this purpose —
+point it at your fork if you deploy changes.

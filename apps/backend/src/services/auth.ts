@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as sessionsRepo from "@/db/repositories/sessions.ts";
 import { hashPassword, verifyPassword } from "@/lib/password.ts";

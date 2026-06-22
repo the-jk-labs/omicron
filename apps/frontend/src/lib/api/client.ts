@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Thin client over the same-origin /api proxy. Works in the browser (global
 // fetch) and in SSR load functions (pass the provided `fetch`).
 

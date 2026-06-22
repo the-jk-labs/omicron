@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts" module>
   // Single source of truth for icons. Every icon in the app comes from here, so
   // the icon set can be swapped or upgraded in ONE place. Add new icons to this

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Shared API types (mirror the backend serializers).
 
 export type User = {

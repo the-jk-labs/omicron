@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Minimal job-queue abstraction. The call site (`queue.add(name, payload)`) and
 // signature match a future Redis/BullMQ-backed queue, so swapping the backend
 // later touches only this file. For now jobs run in-process, fire-and-forget.

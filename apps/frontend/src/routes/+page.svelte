@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Tabs } from "bits-ui";
   import { endpoints } from "$lib/api";

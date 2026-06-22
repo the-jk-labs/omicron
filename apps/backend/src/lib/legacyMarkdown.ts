@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Repairs posts authored before the editor parsed Markdown. Back then the editor
 // dropped pasted Markdown in verbatim, so each source line became its own
 // `<p>…</p>` with the block markers (`## `, `- `, `> `, …) left as literal text.

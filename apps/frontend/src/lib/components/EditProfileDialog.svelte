@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Dialog, Label } from "bits-ui";
   import { invalidateAll } from "$app/navigation";

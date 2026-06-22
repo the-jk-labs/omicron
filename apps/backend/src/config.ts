@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { z } from "zod";
 
 // Centralized, validated environment config. Fail fast on misconfiguration.

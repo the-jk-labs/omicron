@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { badRequest, notFound } from "@/lib/http.ts";

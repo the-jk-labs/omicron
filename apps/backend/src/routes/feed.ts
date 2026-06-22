@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
 import * as feedService from "@/services/feed.ts";
 import { enrichPosts } from "@/services/engagement.ts";

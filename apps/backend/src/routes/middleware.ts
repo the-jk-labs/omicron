@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { createMiddleware } from "hono/factory";
 import { getCookie } from "hono/cookie";
 import * as sessionsRepo from "@/db/repositories/sessions.ts";

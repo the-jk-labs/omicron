@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Context } from "hono";
 
 // Thin HTTP helpers so routes stay terse and consistent.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { config } from "@/config.ts";
 import { registerHandler } from "@/queue/queue.ts";
 

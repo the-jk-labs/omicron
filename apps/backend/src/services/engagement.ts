@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import * as likesRepo from "@/db/repositories/likes.ts";
 import * as commentsRepo from "@/db/repositories/comments.ts";
 import { postWithAuthor } from "@/routes/serializers.ts";

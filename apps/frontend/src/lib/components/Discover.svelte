@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { env } from "$env/dynamic/public";
   import Icon from "$lib/components/Icon.svelte";
@@ -21,6 +22,15 @@
     class="text-muted-foreground hover:text-foreground inline-flex items-center gap-2"
   >
     <Icon name="globe" size={16} /> Learn about the fediverse
+  </a>
+
+  <a
+    href="https://github.com/the-jk-labs/omicron"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="text-muted-foreground hover:text-foreground inline-flex items-center gap-2"
+  >
+    <Icon name="code" size={16} /> Source code (AGPL-3.0)
   </a>
 
   <p class="text-muted-foreground text-xs">

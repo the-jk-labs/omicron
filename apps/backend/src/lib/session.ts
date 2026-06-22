@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Session token generation + cookie name/attributes in one place.
 export const SESSION_COOKIE = "omicron_session";
 export const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days

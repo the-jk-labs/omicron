@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { env } from "$env/dynamic/private";
 import type { RequestHandler } from "./$types";
 

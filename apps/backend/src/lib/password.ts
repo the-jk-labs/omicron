@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import bcrypt from "bcryptjs";
 
 // Password hashing isolated here so the algorithm can be swapped centrally.

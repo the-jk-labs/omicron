@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, desc, eq, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { type NewPost, posts, users } from "@/db/schema.ts";

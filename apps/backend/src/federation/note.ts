@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Context } from "@fedify/fedify";
 import { Note, PUBLIC_COLLECTION } from "@fedify/fedify/vocab";
 import type { Post } from "@/db/schema.ts";

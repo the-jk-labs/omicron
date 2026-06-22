@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { error } from "@sveltejs/kit";
 import { endpoints, ApiError } from "$lib/api";
 import type { PageServerLoad } from "./$types";

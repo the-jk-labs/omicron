@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // Opaque cursor for keyset pagination over (created_at, id) tuples.
 // Never use OFFSET — cursors stay correct as rows are inserted.
 

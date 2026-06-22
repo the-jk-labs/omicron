@@ -1,4 +1,5 @@
 {
+  "license": "AGPL-3.0-or-later",
   "tasks": {
     "dev": "deno run --watch -A src/main.ts",
     "start": "deno run -A src/main.ts",

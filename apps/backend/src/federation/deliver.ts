@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { Create, isActor, PUBLIC_COLLECTION } from "@fedify/fedify/vocab";
 import { getFederation } from "@/federation/mod.ts";
 import { buildNote } from "@/federation/note.ts";

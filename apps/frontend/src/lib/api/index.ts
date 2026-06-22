@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 import { makeApi } from "./client";
 import type { Comment, Page, Post, Profile, User } from "$lib/types";
 

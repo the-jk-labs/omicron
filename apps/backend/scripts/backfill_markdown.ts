@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
 // One-time backfill: re-render posts whose Markdown was stored as literal text
 // by the pre-Markdown editor (headings, lists and quotes showing their raw
 // `## ` / `- ` / `> ` markers in the reader).
