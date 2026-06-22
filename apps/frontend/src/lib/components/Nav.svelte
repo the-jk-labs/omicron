@@ -41,6 +41,7 @@
       <Button
         onclick={() => theme.toggle()}
         variant="icon"
+        class="!border-0 !shadow-none"
         aria-label="Toggle dark mode"
         title="Toggle theme"
       >
