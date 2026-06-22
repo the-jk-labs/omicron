@@ -93,7 +93,7 @@
     <ul class="flex flex-col gap-6">
       {#each comments as comment (comment.id)}
         <li class="flex gap-3">
-          <Avatar name={comment.author.displayName} size={36} />
+          <Avatar name={comment.author.displayName} src={comment.author.avatarUrl ?? undefined} size={36} />
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2 text-sm">
               <a href={`/@${comment.author.username}`} class="text-foreground font-medium hover:underline">

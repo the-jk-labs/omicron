@@ -63,7 +63,7 @@ postRoutes.post("/:id/comments", async (c) => {
   return c.json({
     comment: commentView({
       comment,
-      author: { id: user.id, username: user.username, displayName: user.displayName },
+      author: { id: user.id, username: user.username, displayName: user.displayName, avatarUrl: user.avatarUrl },
     }),
   }, 201);
 });

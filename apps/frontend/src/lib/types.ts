@@ -14,6 +14,7 @@ export type PostAuthor = {
   id: string;
   username: string;
   displayName: string;
+  avatarUrl: string | null;
 };
 
 export type Post = {

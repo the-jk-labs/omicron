@@ -2,7 +2,7 @@
   import { Avatar } from "bits-ui";
 
   // Styled with the Bits UI docs' Avatar classes verbatim (bg-muted fallback with
-  // initials). No avatar URLs exist yet, so the fallback is what normally renders.
+  // initials). Falls back to initials when `src` is absent or the image fails to load.
   let {
     name,
     src = undefined,

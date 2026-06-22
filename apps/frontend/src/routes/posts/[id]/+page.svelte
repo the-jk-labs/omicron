@@ -54,7 +54,7 @@
   {/if}
 
   <div class="flex items-center gap-3 pb-8">
-    <Avatar name={post.author.displayName} size={44} />
+    <Avatar name={post.author.displayName} src={post.author.avatarUrl ?? undefined} size={44} />
     <div class="text-sm">
       <Button href={`/@${post.author.username}`} variant="plain" class="font-medium text-foreground hover:underline">
         {post.author.displayName}
