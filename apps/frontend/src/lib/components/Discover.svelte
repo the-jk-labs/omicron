@@ -1,6 +1,5 @@
 <script lang="ts">
   import { env } from "$env/dynamic/public";
-  import { Separator } from "bits-ui";
   import Icon from "$lib/components/Icon.svelte";
 
   const appName = env.PUBLIC_APP_NAME || "Omicron";
@@ -14,8 +13,6 @@
       self-hostable.
     </p>
   </div>
-
-  <Separator.Root class="bg-border h-px w-full" />
 
   <a
     href="https://activitypub.rocks"

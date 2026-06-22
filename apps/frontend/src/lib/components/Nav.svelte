@@ -30,7 +30,7 @@
     "rounded-button data-[highlighted]:bg-muted !ring-0 !ring-transparent flex h-10 w-full cursor-pointer select-none items-center gap-2.5 py-3 pl-3 pr-1.5 text-sm font-medium focus-visible:outline-none";
 </script>
 
-<header class="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur">
+<header class="sticky top-0 z-20 bg-background/80 backdrop-blur">
   <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
     <Button href="/" variant="plain" class="flex items-center gap-2 text-foreground hover:opacity-80">
       <img src={logo} alt="" class="h-7 w-auto" />

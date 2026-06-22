@@ -49,7 +49,7 @@
 
     <!-- Right rail: discovery -->
     <div class="hidden xl:block">
-      <div class="sticky top-20 border-l border-border pl-8">
+      <div class="sticky top-20">
         <Discover />
       </div>
     </div>
