@@ -25,14 +25,14 @@ words.
 
 ### Why Omicron
 
-- 🌐 **Federated** — every user is an ActivityPub actor; follow and be followed
+- **Federated** — every user is an ActivityPub actor; follow and be followed
   across the fediverse.
-- 🪶 **Minimal & modern** — a clean, distraction-free reading and writing
+- **Minimal & modern** — a clean, distraction-free reading and writing
   experience built on a small, readable codebase.
-- 🗽 **Free expression** — your instance, your rules, your data.
-- 📦 **Self-hostable** — Docker-first, one command, auto-migrating, seamless
+- **Free expression** — your instance, your rules, your data.
+- **Self-hostable** — Docker-first, one command, auto-migrating, seamless
   upgrades.
-- ✍️ **Real writing tools** — a Tiptap editor with full Markdown support.
+- **Real writing tools** — a Tiptap editor with full Markdown support.
 
 **Stack** — Backend: Deno · Hono · Fedify · Drizzle · PostgreSQL · Frontend:
 SvelteKit · bits-ui · Tiptap · TailwindCSS.
