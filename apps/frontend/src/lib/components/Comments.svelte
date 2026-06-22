@@ -4,8 +4,8 @@
   import { endpoints, ApiError } from "$lib/api";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/Icon.svelte";
-  import { formatDate } from "$lib/format";
+  import CommentNode from "$lib/components/CommentNode.svelte";
+  import type { CommentActions, CommentUiState } from "$lib/components/comments";
   import type { Comment, Page, User } from "$lib/types";
 
   let {
@@ -27,29 +27,26 @@
   let busy = $state(false);
   let loadingMore = $state(false);
 
-  // Inline reply state: at most one open reply box at a time.
-  let replyingTo = $state<string | null>(null);
-  let replyDraft = $state("");
-  let replyBusy = $state(false);
-  let replyError = $state("");
-
-  // Guards against double-firing a like toggle / delete for the same comment.
-  let likeBusy = $state<Set<string>>(new Set());
-  let deleteBusy = $state<Set<string>>(new Set());
-
-  // Inline edit state: at most one comment is edited at a time.
-  let editingId = $state<string | null>(null);
-  let editDraft = $state("");
-  let editBusy = $state(false);
-  let editError = $state("");
-
-  // Top-level comment ids whose reply threads are expanded (YouTube-style).
-  let expanded = $state<Set<string>>(new Set());
+  // All per-interaction UI state, shared by reference with every CommentNode so
+  // that at most one reply box / edit box is open across the tree at a time.
+  let ui = $state<CommentUiState>({
+    editingId: null,
+    editDraft: "",
+    editBusy: false,
+    editError: "",
+    replyingTo: null,
+    replyDraft: "",
+    replyBusy: false,
+    replyError: "",
+    likeBusy: new Set(),
+    deleteBusy: new Set(),
+    expanded: new Set(),
+  });
 
   function toggleThread(threadId: string) {
-    if (expanded.has(threadId)) expanded.delete(threadId);
-    else expanded.add(threadId);
-    expanded = new Set(expanded);
+    if (ui.expanded.has(threadId)) ui.expanded.delete(threadId);
+    else ui.expanded.add(threadId);
+    ui.expanded = new Set(ui.expanded);
   }
 
   // Total responses = top-level comments + every reply.
@@ -81,36 +78,36 @@
       goto("/login");
       return;
     }
-    if (replyingTo === target.id) {
-      replyingTo = null;
+    if (ui.replyingTo === target.id) {
+      ui.replyingTo = null;
       return;
     }
-    replyingTo = target.id;
-    replyDraft = target.id === thread.id ? "" : `@${target.author.displayName} `;
-    replyError = "";
-    expanded.add(thread.id);
-    expanded = new Set(expanded);
+    ui.replyingTo = target.id;
+    ui.replyDraft = target.id === thread.id ? "" : `@${target.author.displayName} `;
+    ui.replyError = "";
+    ui.expanded.add(thread.id);
+    ui.expanded = new Set(ui.expanded);
   }
 
   async function submitReply(e: SubmitEvent, target: Comment, thread: Comment) {
     e.preventDefault();
-    if (!replyDraft.trim()) return;
-    replyError = "";
-    replyBusy = true;
+    if (!ui.replyDraft.trim()) return;
+    ui.replyError = "";
+    ui.replyBusy = true;
     try {
       // The backend flattens to one level, so every reply lands in the same
       // thread regardless of which comment was replied to.
-      const { comment } = await endpoints().createComment(postId, replyDraft, target.id);
+      const { comment } = await endpoints().createComment(postId, ui.replyDraft, target.id);
       thread.replies = [...thread.replies, comment];
-      expanded.add(thread.id);
-      expanded = new Set(expanded);
-      replyingTo = null;
-      replyDraft = "";
+      ui.expanded.add(thread.id);
+      ui.expanded = new Set(ui.expanded);
+      ui.replyingTo = null;
+      ui.replyDraft = "";
       onCountChange?.(1);
     } catch (err) {
-      replyError = err instanceof ApiError ? err.message : "Failed to post reply.";
+      ui.replyError = err instanceof ApiError ? err.message : "Failed to post reply.";
     } finally {
-      replyBusy = false;
+      ui.replyBusy = false;
     }
   }
 
@@ -119,9 +116,9 @@
       goto("/login");
       return;
     }
-    if (likeBusy.has(comment.id)) return;
-    likeBusy.add(comment.id);
-    likeBusy = new Set(likeBusy);
+    if (ui.likeBusy.has(comment.id)) return;
+    ui.likeBusy.add(comment.id);
+    ui.likeBusy = new Set(ui.likeBusy);
 
     const wasLiked = comment.liked;
     comment.liked = !wasLiked;
@@ -136,8 +133,8 @@
       comment.liked = wasLiked;
       comment.likeCount += wasLiked ? 1 : -1;
     } finally {
-      likeBusy.delete(comment.id);
-      likeBusy = new Set(likeBusy);
+      ui.likeBusy.delete(comment.id);
+      ui.likeBusy = new Set(ui.likeBusy);
     }
   }
 
@@ -149,39 +146,39 @@
   const canEdit = (comment: Comment) => !!user && user.id === comment.author.id;
 
   function openEdit(comment: Comment) {
-    editingId = comment.id;
-    editDraft = comment.content;
-    editError = "";
+    ui.editingId = comment.id;
+    ui.editDraft = comment.content;
+    ui.editError = "";
   }
 
   async function submitEdit(e: SubmitEvent, comment: Comment) {
     e.preventDefault();
-    const text = editDraft.trim();
+    const text = ui.editDraft.trim();
     if (!text || text === comment.content) {
-      editingId = null;
+      ui.editingId = null;
       return;
     }
-    editError = "";
-    editBusy = true;
+    ui.editError = "";
+    ui.editBusy = true;
     try {
       const { comment: updated } = await endpoints().editComment(postId, comment.id, text);
       comment.content = updated.content;
-      editingId = null;
-      editDraft = "";
+      ui.editingId = null;
+      ui.editDraft = "";
     } catch (err) {
-      editError = err instanceof ApiError ? err.message : "Failed to save changes.";
+      ui.editError = err instanceof ApiError ? err.message : "Failed to save changes.";
     } finally {
-      editBusy = false;
+      ui.editBusy = false;
     }
   }
 
   async function deleteComment(comment: Comment, thread: Comment) {
     if (!canDelete(comment)) return;
-    if (deleteBusy.has(comment.id)) return;
+    if (ui.deleteBusy.has(comment.id)) return;
     if (!confirm("Delete this comment? This can't be undone.")) return;
 
-    deleteBusy.add(comment.id);
-    deleteBusy = new Set(deleteBusy);
+    ui.deleteBusy.add(comment.id);
+    ui.deleteBusy = new Set(ui.deleteBusy);
     try {
       await endpoints().deleteComment(postId, comment.id);
       if (comment.id === thread.id) {
@@ -195,8 +192,8 @@
     } catch {
       // Leave the comment in place on failure.
     } finally {
-      deleteBusy.delete(comment.id);
-      deleteBusy = new Set(deleteBusy);
+      ui.deleteBusy.delete(comment.id);
+      ui.deleteBusy = new Set(ui.deleteBusy);
     }
   }
 
@@ -214,140 +211,20 @@
 
   const field =
     "rounded-input border border-input bg-background shadow-btn w-full px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground resize-none";
+
+  // Bundled once and passed down to every CommentNode.
+  const actions: CommentActions = {
+    toggleLike,
+    openReply,
+    submitReply,
+    openEdit,
+    submitEdit,
+    deleteComment,
+    toggleThread,
+    canEdit,
+    canDelete,
+  };
 </script>
-
-{#snippet commentNode(comment: Comment, thread: Comment)}
-  {@const isReply = comment.id !== thread.id}
-  <li class="flex gap-3">
-    <Avatar
-      name={comment.author.displayName}
-      src={comment.author.avatarUrl ?? undefined}
-      size={isReply ? 28 : 36}
-    />
-    <div class="min-w-0 flex-1">
-      <div class="flex items-center gap-2 text-sm">
-        <a href={`/@${comment.author.username}`} class="text-foreground font-medium hover:underline">
-          {comment.author.displayName}
-        </a>
-        <span class="text-muted-foreground text-xs">{formatDate(comment.createdAt)}</span>
-      </div>
-      {#if editingId === comment.id}
-        <form onsubmit={(e) => submitEdit(e, comment)} class="mt-2">
-          <textarea
-            bind:value={editDraft}
-            rows={2}
-            maxlength={2000}
-            placeholder="Edit your comment…"
-            class={field}
-          ></textarea>
-          {#if editError}<p class="text-destructive mt-1.5 text-sm">{editError}</p>{/if}
-          <div class="mt-2 flex justify-end gap-2">
-            <Button type="button" variant="ghost" class="h-9 px-4 text-sm" onclick={() => (editingId = null)}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="solid" class="h-9 px-4 text-sm" disabled={editBusy || !editDraft.trim()}>
-              {editBusy ? "Saving…" : "Save"}
-            </Button>
-          </div>
-        </form>
-      {:else}
-        <p class="text-foreground-alt mt-1 whitespace-pre-wrap break-words text-sm">{comment.content}</p>
-      {/if}
-
-      <!-- Actions (negative margin offsets the buttons' padding so the heart
-           icon lines up with the author name + comment text above). -->
-      {#if editingId !== comment.id}
-        <div class="-ml-2 mt-1.5 flex items-center gap-1">
-          <Button
-            onclick={() => toggleLike(comment)}
-            variant="ghost"
-            class={`h-8 gap-1.5 px-2 text-xs ${comment.liked ? "text-foreground" : "text-muted-foreground"}`}
-            aria-pressed={comment.liked}
-            aria-label={comment.liked ? "Unlike" : "Like"}
-          >
-            <Icon name="heart" size={15} class={comment.liked ? "fill-current" : ""} />
-            {#if comment.likeCount > 0}<span class="tabular-nums">{comment.likeCount}</span>{/if}
-          </Button>
-          <Button
-            onclick={() => openReply(comment, thread)}
-            variant="ghost"
-            class="text-muted-foreground h-8 gap-1.5 px-2 text-xs"
-          >
-            <Icon name="reply" size={15} />
-            Reply
-          </Button>
-          {#if canEdit(comment)}
-            <Button
-              onclick={() => openEdit(comment)}
-              variant="ghost"
-              class="text-muted-foreground h-8 gap-1.5 px-2 text-xs"
-              aria-label="Edit comment"
-            >
-              <Icon name="edit" size={15} />
-              Edit
-            </Button>
-          {/if}
-          {#if canDelete(comment)}
-            <Button
-              onclick={() => deleteComment(comment, thread)}
-              variant="ghost"
-              class="text-muted-foreground hover:text-destructive h-8 gap-1.5 px-2 text-xs"
-              disabled={deleteBusy.has(comment.id)}
-              aria-label="Delete comment"
-            >
-              <Icon name="trash" size={15} />
-              Delete
-            </Button>
-          {/if}
-        </div>
-      {/if}
-
-      <!-- Reply composer (appears under whichever comment was replied to) -->
-      {#if replyingTo === comment.id}
-        <form onsubmit={(e) => submitReply(e, comment, thread)} class="mt-3 flex gap-3">
-          <Avatar name={user?.displayName ?? "?"} src={user?.avatarUrl ?? undefined} size={28} />
-          <div class="flex-1">
-            <textarea
-              bind:value={replyDraft}
-              rows={2}
-              maxlength={2000}
-              placeholder={`Reply to ${comment.author.displayName}…`}
-              class={field}
-            ></textarea>
-            {#if replyError}<p class="text-destructive mt-1.5 text-sm">{replyError}</p>{/if}
-            <div class="mt-2 flex justify-end gap-2">
-              <Button type="button" variant="ghost" class="h-9 px-4 text-sm" onclick={() => (replyingTo = null)}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="solid" class="h-9 px-4 text-sm" disabled={replyBusy || !replyDraft.trim()}>
-                {replyBusy ? "Posting…" : "Reply"}
-              </Button>
-            </div>
-          </div>
-        </form>
-      {/if}
-
-      <!-- Thread: collapsible flat list of replies (top-level only) -->
-      {#if !isReply && comment.replies.length > 0}
-        <Button
-          onclick={() => toggleThread(comment.id)}
-          variant="ghost"
-          class="text-accent hover:text-accent -ml-2 mt-2 h-8 gap-1.5 px-2 text-xs font-semibold"
-        >
-          <Icon name="chevronDown" size={15} class={`transition-transform ${expanded.has(comment.id) ? "rotate-180" : ""}`} />
-          {expanded.has(comment.id) ? "Hide" : `${comment.replies.length} ${comment.replies.length === 1 ? "reply" : "replies"}`}
-        </Button>
-        {#if expanded.has(comment.id)}
-          <ul class="mt-4 flex flex-col gap-4 border-l border-border pl-4">
-            {#each comment.replies as reply (reply.id)}
-              {@render commentNode(reply, comment)}
-            {/each}
-          </ul>
-        {/if}
-      {/if}
-    </div>
-  </li>
-{/snippet}
 
 <section class="mt-2">
   <h2 class="text-foreground mb-5 text-lg font-semibold tracking-tight">
@@ -384,7 +261,7 @@
   {:else}
     <ul class="flex flex-col gap-6">
       {#each comments as comment (comment.id)}
-        {@render commentNode(comment, comment)}
+        <CommentNode {comment} thread={comment} {user} {ui} {actions} {field} />
       {/each}
     </ul>
 

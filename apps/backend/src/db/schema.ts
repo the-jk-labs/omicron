@@ -26,8 +26,7 @@ export const users = pgTable("users", {
   isAdmin: boolean("is_admin").notNull().default(false),
   actorKeyPair: jsonb("actor_key_pair").$type<ActorKeyPair | null>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  // deno-lint-ignore no-explicit-any -- drizzle's index-callback type degrades to any in the full program graph; isolated it infers fine, and indexes are also in the migration SQL.
-}, (t: any) => [
+}, (t) => [
   uniqueIndex("users_username_idx").on(t.username),
   uniqueIndex("users_email_idx").on(t.email),
 ]);
@@ -53,8 +52,7 @@ export const posts = pgTable("posts", {
   apType: text("ap_type").notNull().default("Article"),
   remote: boolean("remote").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  // deno-lint-ignore no-explicit-any -- see note on users table.
-}, (t: any) => [
+}, (t) => [
   // Keyset pagination of the global/profile timelines.
   index("posts_created_at_idx").on(t.createdAt.desc(), t.id.desc()),
   index("posts_author_created_idx").on(t.authorId, t.createdAt.desc()),
@@ -71,8 +69,7 @@ export const follows = pgTable("follows", {
   remoteActor: text("remote_actor"),
   approved: boolean("approved").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  // deno-lint-ignore no-explicit-any -- see note on users table.
-}, (t: any) => [
+}, (t) => [
   // Prevent duplicate local follow edges.
   uniqueIndex("follows_local_unique_idx")
     .on(t.followerId, t.followeeId)
@@ -89,8 +86,7 @@ export const likes = pgTable("likes", {
   postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  // deno-lint-ignore no-explicit-any -- see note on users table.
-}, (t: any) => [
+}, (t) => [
   uniqueIndex("likes_post_user_idx").on(t.postId, t.userId),
   index("likes_post_idx").on(t.postId),
 ]);
@@ -107,8 +103,7 @@ export const comments = pgTable("comments", {
   parentId: uuid("parent_id").references((): AnyPgColumn => comments.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  // deno-lint-ignore no-explicit-any -- see note on users table.
-}, (t: any) => [
+}, (t) => [
   index("comments_post_created_idx").on(t.postId, t.createdAt.desc(), t.id.desc()),
   index("comments_parent_idx").on(t.parentId, t.createdAt, t.id),
 ]);
@@ -121,8 +116,7 @@ export const commentLikes = pgTable("comment_likes", {
   commentId: uuid("comment_id").notNull().references(() => comments.id, { onDelete: "cascade" }),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  // deno-lint-ignore no-explicit-any -- see note on users table.
-}, (t: any) => [
+}, (t) => [
   uniqueIndex("comment_likes_comment_user_idx").on(t.commentId, t.userId),
   index("comment_likes_comment_idx").on(t.commentId),
 ]);
@@ -135,8 +129,7 @@ export const sessions = pgTable("sessions", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  // deno-lint-ignore no-explicit-any -- see note on users table.
-}, (t: any) => [
+}, (t) => [
   index("sessions_user_idx").on(t.userId),
 ]);
 
