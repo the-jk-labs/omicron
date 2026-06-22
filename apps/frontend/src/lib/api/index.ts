@@ -37,8 +37,12 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.get<Page<Comment>>(
         `/posts/${id}/comments${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
       ),
-    createComment: (id: string, content: string) =>
-      api.post<{ comment: Comment }>(`/posts/${id}/comments`, { content }),
+    createComment: (id: string, content: string, parentId?: string | null) =>
+      api.post<{ comment: Comment }>(`/posts/${id}/comments`, { content, parentId }),
+    likeComment: (postId: string, commentId: string) =>
+      api.post<LikeState>(`/posts/${postId}/comments/${commentId}/like`),
+    unlikeComment: (postId: string, commentId: string) =>
+      api.del<LikeState>(`/posts/${postId}/comments/${commentId}/like`),
 
     // current user's profile editing
     updateProfile: (body: { displayName?: string; bio?: string }) =>

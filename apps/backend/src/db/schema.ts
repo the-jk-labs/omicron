@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   index,
   jsonb,
@@ -94,17 +95,35 @@ export const likes = pgTable("likes", {
 ]);
 
 // ── comments ───────────────────────────────────────────────────────────
-// Flat (non-threaded) comments. `content` is plain text — rendered escaped on
-// the client, never as HTML.
+// Single-level threaded comments. `content` is plain text — rendered escaped
+// on the client, never as HTML. `parentId` is null for top-level comments and
+// points at the top-level comment a reply belongs to (replies are not nested
+// beyond one level — replying to a reply attaches to its top-level parent).
 export const comments = pgTable("comments", {
   id: uuid("id").primaryKey().defaultRandom(),
   postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
   authorId: uuid("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  parentId: uuid("parent_id").references((): AnyPgColumn => comments.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   // deno-lint-ignore no-explicit-any -- see note on users table.
 }, (t: any) => [
   index("comments_post_created_idx").on(t.postId, t.createdAt.desc(), t.id.desc()),
+  index("comments_parent_idx").on(t.parentId, t.createdAt, t.id),
+]);
+
+// ── comment likes ──────────────────────────────────────────────────────
+// One row per (comment, user); mirrors `likes` for posts. The unique index
+// makes liking idempotent and powers batched count + viewer-state queries.
+export const commentLikes = pgTable("comment_likes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  commentId: uuid("comment_id").notNull().references(() => comments.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // deno-lint-ignore no-explicit-any -- see note on users table.
+}, (t: any) => [
+  uniqueIndex("comment_likes_comment_user_idx").on(t.commentId, t.userId),
+  index("comment_likes_comment_idx").on(t.commentId),
 ]);
 
 // ── sessions ───────────────────────────────────────────────────────────
@@ -128,4 +147,5 @@ export type Follow = typeof follows.$inferSelect;
 export type Like = typeof likes.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;
+export type CommentLike = typeof commentLikes.$inferSelect;
 export type Session = typeof sessions.$inferSelect;

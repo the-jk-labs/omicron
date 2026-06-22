@@ -35,6 +35,10 @@ export type Comment = {
   content: string;
   createdAt: string;
   author: PostAuthor;
+  parentId: string | null;
+  likeCount: number;
+  liked: boolean;
+  replies: Comment[];
 };
 
 export type Page<T> = {

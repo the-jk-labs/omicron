@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import * as postsService from "@/services/posts.ts";
 import * as likesService from "@/services/likes.ts";
 import * as commentsService from "@/services/comments.ts";
+import * as commentLikesService from "@/services/commentLikes.ts";
 import { enrichPost, enrichPosts } from "@/services/engagement.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { requireUser } from "@/routes/middleware.ts";
@@ -51,19 +52,42 @@ postRoutes.delete("/:id/like", async (c) => {
 
 // Comments (list public, create requires auth).
 postRoutes.get("/:id/comments", async (c) => {
+  const viewer = c.get("user");
   const cursor = decodeCursor(c.req.query("cursor"));
-  const { items, nextCursor } = await commentsService.list(c.req.param("id"), cursor);
+  const { items, nextCursor } = await commentsService.list(
+    c.req.param("id"),
+    cursor,
+    viewer?.id ?? null,
+  );
   return c.json({ items: items.map(commentView), nextCursor });
 });
 
 postRoutes.post("/:id/comments", async (c) => {
   const user = requireUser(c);
   const body = await c.req.json();
-  const comment = await commentsService.create(user.id, c.req.param("id"), body.content);
+  const comment = await commentsService.create(
+    user.id,
+    c.req.param("id"),
+    body.content,
+    body.parentId ?? null,
+  );
   return c.json({
     comment: commentView({
       comment,
       author: { id: user.id, username: user.username, displayName: user.displayName, avatarUrl: user.avatarUrl },
     }),
   }, 201);
+});
+
+// Like / unlike a comment (auth required). Returns fresh like stats.
+postRoutes.post("/:id/comments/:commentId/like", async (c) => {
+  const user = requireUser(c);
+  const stats = await commentLikesService.like(user.id, c.req.param("commentId"));
+  return c.json({ likeCount: stats.count, liked: stats.liked });
+});
+
+postRoutes.delete("/:id/comments/:commentId/like", async (c) => {
+  const user = requireUser(c);
+  const stats = await commentLikesService.unlike(user.id, c.req.param("commentId"));
+  return c.json({ likeCount: stats.count, liked: stats.liked });
 });

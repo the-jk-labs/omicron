@@ -1,26 +1,76 @@
 import * as commentsRepo from "@/db/repositories/comments.ts";
+import * as commentLikesRepo from "@/db/repositories/commentLikes.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { badRequest, notFound } from "@/lib/http.ts";
+import type { CommentWithAuthor } from "@/db/repositories/comments.ts";
 
 // Business logic for comments. Content is plain text (max 2 000 chars); the
-// client renders it escaped, never as HTML.
+// client renders it escaped, never as HTML. Comments are single-level threaded:
+// a reply's `parentId` always points at a top-level comment.
 
 const MAX_LENGTH = 2000;
 
-export async function create(authorId: string, postId: string, content: string) {
+const NO_LIKES: commentLikesRepo.LikeStats = { count: 0, liked: false };
+
+export type EnrichedComment = CommentWithAuthor & {
+  likeStats: commentLikesRepo.LikeStats;
+  replies: (CommentWithAuthor & { likeStats: commentLikesRepo.LikeStats })[];
+};
+
+export async function create(
+  authorId: string,
+  postId: string,
+  content: string,
+  parentId?: string | null,
+) {
   const text = content?.trim();
   if (!text) throw badRequest("Comment cannot be empty.");
   if (text.length > MAX_LENGTH) throw badRequest(`Comment must be ${MAX_LENGTH} characters or fewer.`);
   if (!(await postsRepo.findById(postId))) throw notFound("Post not found.");
-  return commentsRepo.create({ postId, authorId, content: text });
+
+  // Resolve the parent: replies attach to a top-level comment, so replying to a
+  // reply re-targets its parent (keeps the thread one level deep).
+  let resolvedParentId: string | null = null;
+  if (parentId) {
+    const parent = await commentsRepo.findById(parentId);
+    if (!parent || parent.postId !== postId) throw notFound("Parent comment not found.");
+    resolvedParentId = parent.parentId ?? parent.id;
+  }
+
+  return commentsRepo.create({ postId, authorId, content: text, parentId: resolvedParentId });
 }
 
-export async function list(postId: string, cursor: Cursor | null) {
+export async function list(
+  postId: string,
+  cursor: Cursor | null,
+  viewerId: string | null,
+): Promise<{ items: EnrichedComment[]; nextCursor: string | null }> {
   const rows = await commentsRepo.listByPost(postId, cursor, DEFAULT_PAGE_SIZE);
   const hasMore = rows.length > DEFAULT_PAGE_SIZE;
-  const items = hasMore ? rows.slice(0, DEFAULT_PAGE_SIZE) : rows;
-  const last = items.at(-1);
+  const tops = hasMore ? rows.slice(0, DEFAULT_PAGE_SIZE) : rows;
+  const last = tops.at(-1);
+
+  const replies = await commentsRepo.listReplies(tops.map((r) => r.comment.id));
+
+  // One batched like-stats query covering every comment + reply on this page.
+  const allIds = [...tops, ...replies].map((r) => r.comment.id);
+  const stats = await commentLikesRepo.statsFor(allIds, viewerId);
+  const statsOf = (id: string) => stats.get(id) ?? NO_LIKES;
+
+  const repliesByParent = new Map<string, EnrichedComment["replies"]>();
+  for (const r of replies) {
+    const bucket = repliesByParent.get(r.comment.parentId!) ?? [];
+    bucket.push({ ...r, likeStats: statsOf(r.comment.id) });
+    repliesByParent.set(r.comment.parentId!, bucket);
+  }
+
+  const items = tops.map((r) => ({
+    ...r,
+    likeStats: statsOf(r.comment.id),
+    replies: repliesByParent.get(r.comment.id) ?? [],
+  }));
+
   return {
     items,
     nextCursor: hasMore && last

@@ -1,4 +1,4 @@
-import type { Comment, Post, User } from "@/db/schema.ts";
+import type { Post, User } from "@/db/schema.ts";
 import type { PostWithAuthor } from "@/db/repositories/posts.ts";
 import type { CommentWithAuthor } from "@/db/repositories/comments.ts";
 
@@ -33,12 +33,35 @@ export function postWithAuthor(row: PostWithAuthor, engagement?: Engagement) {
   };
 }
 
-export function commentView(row: CommentWithAuthor) {
+type LikeStats = { count: number; liked: boolean };
+
+// Accepts a plain author row plus optional like stats and nested replies (only
+// top-level comments carry replies). Replies are themselves rendered via
+// commentView so the shape is uniform at every level.
+export function commentView(
+  row: CommentWithAuthor & {
+    likeStats?: LikeStats;
+    replies?: (CommentWithAuthor & { likeStats?: LikeStats })[];
+  },
+): {
+  id: string;
+  content: string;
+  createdAt: Date;
+  author: CommentWithAuthor["author"];
+  parentId: string | null;
+  likeCount: number;
+  liked: boolean;
+  replies: ReturnType<typeof commentView>[];
+} {
   return {
     id: row.comment.id,
     content: row.comment.content,
     createdAt: row.comment.createdAt,
     author: row.author,
+    parentId: row.comment.parentId,
+    likeCount: row.likeStats?.count ?? 0,
+    liked: row.likeStats?.liked ?? false,
+    replies: (row.replies ?? []).map((r) => commentView(r)),
   };
 }
 
