@@ -39,6 +39,16 @@ export async function update(id: string, data: Partial<NewPost>) {
   return row;
 }
 
+// All locally-authored posts (id + raw HTML). Used by maintenance scripts such
+// as the Markdown backfill; remote posts are owned by their origin instance and
+// are never rewritten here.
+export function listAllLocal() {
+  return db
+    .select({ id: posts.id, contentHtml: posts.contentHtml })
+    .from(posts)
+    .where(eq(posts.remote, false));
+}
+
 export async function remove(id: string) {
   await db.delete(posts).where(eq(posts.id, id));
 }

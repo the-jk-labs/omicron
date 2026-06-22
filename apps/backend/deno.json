@@ -4,6 +4,7 @@
     "start": "deno run -A src/main.ts",
     "db:generate": "deno run -A npm:drizzle-kit@^0.30 generate",
     "db:studio": "deno run -A npm:drizzle-kit@^0.30 studio",
+    "backfill:markdown": "deno run -A scripts/backfill_markdown.ts",
     "check": "deno check src/main.ts",
     "fmt": "deno fmt",
     "lint": "deno lint"

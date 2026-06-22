@@ -61,8 +61,27 @@
 .prose-omicron h2 {
   @apply mt-8 mb-3 font-sans text-2xl font-bold tracking-tight text-foreground;
 }
+.prose-omicron h3 {
+  @apply mt-7 mb-2 font-sans text-xl font-bold tracking-tight text-foreground;
+}
+.prose-omicron h4 {
+  @apply mt-6 mb-2 font-sans text-lg font-semibold tracking-tight text-foreground;
+}
+.prose-omicron h5 {
+  @apply mt-6 mb-2 font-sans text-base font-semibold tracking-tight text-foreground;
+}
+.prose-omicron h6 {
+  @apply mt-6 mb-2 font-sans text-sm font-semibold uppercase tracking-wide text-muted-foreground;
+}
 .prose-omicron p {
   @apply my-5;
+}
+.prose-omicron s,
+.prose-omicron del {
+  @apply line-through;
+}
+.prose-omicron hr {
+  @apply my-10 border-t border-border;
 }
 .prose-omicron a {
   @apply text-foreground underline underline-offset-2 hover:text-muted-foreground;
