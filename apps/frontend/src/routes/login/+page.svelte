@@ -3,7 +3,7 @@
   import { Label } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
   import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/Icon.svelte";
+  import logo from "$lib/assets/omicron.svg";
 
   let identifier = $state("");
   let password = $state("");
@@ -33,7 +33,7 @@
 
 <div class="mx-auto max-w-sm py-6">
   <div class="mb-6 text-center">
-    <div class="mb-3 flex justify-center text-foreground"><Icon name="feather" size={32} /></div>
+    <div class="mb-3 flex justify-center"><img src={logo} alt="" class="h-12 w-auto" /></div>
     <h1 class="text-2xl font-bold tracking-tight text-foreground">Welcome back</h1>
     <p class="mt-1 text-sm text-muted-foreground">Sign in to continue to Omicron.</p>
   </div>

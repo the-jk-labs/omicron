@@ -8,6 +8,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import logo from "$lib/assets/omicron.svg";
   import type { User } from "$lib/types";
 
   let { user }: { user: User | null } = $props();
@@ -32,7 +33,7 @@
 <header class="sticky top-0 z-20 border-b border-border bg-background/80 backdrop-blur">
   <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
     <Button href="/" variant="plain" class="flex items-center gap-2 text-foreground hover:opacity-80">
-      <Icon name="feather" size={22} />
+      <img src={logo} alt="" class="h-7 w-auto" />
       <span class="text-xl font-bold tracking-tight">{env.PUBLIC_APP_NAME || "Omicron"}</span>
     </Button>
 

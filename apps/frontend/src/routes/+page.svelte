@@ -97,7 +97,7 @@
   }
 </script>
 
-<svelte:head><title>Omicron — Human stories &amp; ideas</title></svelte:head>
+<svelte:head><title>Omicron</title></svelte:head>
 
 {#if !data.personalized}
   <!-- Logged-out hero, Medium style. -->
