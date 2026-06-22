@@ -1,12 +1,42 @@
-# Omicron
+<p align="center">
+  <img src="assets/logo.png" alt="Omicron" width="120" />
+</p>
 
-A self-hostable, **federated blogging platform** — write rich-text posts, follow
-other writers, read a personalized feed, and federate with the fediverse
-(Mastodon, other Omicron instances, …) over **ActivityPub**.
+<h1 align="center">Omicron</h1>
 
-- **Backend:** Deno · Hono · Fedify (ActivityPub) · Drizzle ORM · PostgreSQL
-- **Frontend:** SvelteKit · bits-ui · Lucide · Tiptap · TailwindCSS
-- **Deploy:** Docker-first, one command, auto-migrating, seamless upgrades.
+<p align="center">
+  <strong>A home for free expression on the fediverse</strong><br />
+  Minimal, modern, self-hostable blogging over ActivityPub.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License: AGPL-3.0" />
+  <img src="https://img.shields.io/badge/protocol-ActivityPub-6364FF" alt="ActivityPub" />
+  <img src="https://img.shields.io/badge/backend-Deno-000000?logo=deno&logoColor=white" alt="Deno" />
+  <img src="https://img.shields.io/badge/frontend-SvelteKit-FF3E00?logo=svelte&logoColor=white" alt="SvelteKit" />
+</p>
+
+---
+
+Omicron is a federated blogging platform. Write rich-text posts, follow other
+writers, read a personalized feed, and federate with the wider fediverse
+(Mastodon, other Omicron instances, …) over **ActivityPub** — with no vendor
+lock-in and no gatekeepers. Run your own instance in one command and own your
+words.
+
+### Why Omicron
+
+- 🌐 **Federated** — every user is an ActivityPub actor; follow and be followed
+  across the fediverse.
+- 🪶 **Minimal & modern** — a clean, distraction-free reading and writing
+  experience built on a small, readable codebase.
+- 🗽 **Free expression** — your instance, your rules, your data.
+- 📦 **Self-hostable** — Docker-first, one command, auto-migrating, seamless
+  upgrades.
+- ✍️ **Real writing tools** — a Tiptap editor with full Markdown support.
+
+**Stack** — Backend: Deno · Hono · Fedify · Drizzle · PostgreSQL · Frontend:
+SvelteKit · bits-ui · Tiptap · TailwindCSS.
 
 ---
 
