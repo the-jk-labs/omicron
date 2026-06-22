@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { Separator } from "bits-ui";
+  import { DropdownMenu, Separator } from "bits-ui";
   import { goto } from "$app/navigation";
-  import { endpoints } from "$lib/api";
+  import { endpoints, ApiError } from "$lib/api";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
@@ -18,6 +18,31 @@
   let likeCount = $state(data.post.likeCount);
   let commentCount = $state(data.post.commentCount);
   let busy = $state(false);
+  let deleting = $state(false);
+
+  // Authoring controls: edit is author-only; delete is author or admin. Neither
+  // applies to federated posts owned by a remote instance.
+  const canEdit = $derived(!!data.user && !post.remote && data.user.id === post.author.id);
+  const canManage = $derived(
+    !!data.user && !post.remote && (data.user.id === post.author.id || data.user.isAdmin),
+  );
+
+  // Verbatim Bits UI docs DropdownMenu.Item class (v3 syntax).
+  const itemClass =
+    "rounded-button data-[highlighted]:bg-muted !ring-0 !ring-transparent flex h-10 w-full cursor-pointer select-none items-center gap-2.5 py-3 pl-3 pr-1.5 text-sm font-medium focus-visible:outline-none";
+
+  async function deletePost() {
+    if (deleting) return;
+    if (!confirm("Delete this post? This can't be undone.")) return;
+    deleting = true;
+    try {
+      await endpoints().deletePost(post.id);
+      goto("/");
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Failed to delete.");
+      deleting = false;
+    }
+  }
 
   async function toggleLike() {
     if (!data.user) {
@@ -69,6 +94,33 @@
         {/if}
       </div>
     </div>
+
+    {#if canManage}
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger
+          class="border-input text-muted-foreground shadow-btn hover:bg-muted hover:text-foreground ml-auto inline-flex size-9 items-center justify-center rounded-full border active:scale-[0.98]"
+          aria-label="Post options"
+        >
+          <Icon name="more" size={18} />
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            sideOffset={8}
+            align="end"
+            class="border-muted bg-background shadow-popover z-30 w-[180px] rounded-xl border px-1 py-1.5 focus-visible:outline-none"
+          >
+            {#if canEdit}
+              <DropdownMenu.Item onSelect={() => goto(`/posts/${post.id}/edit`)} class={itemClass}>
+                <Icon name="edit" size={18} /> Edit
+              </DropdownMenu.Item>
+            {/if}
+            <DropdownMenu.Item onSelect={deletePost} class={`${itemClass} text-destructive`}>
+              <Icon name="trash" size={18} /> Delete
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+    {/if}
   </div>
 
   <!-- Content is server-rendered HTML produced by the Tiptap editor. -->

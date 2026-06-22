@@ -34,6 +34,15 @@ export function findByApId(apId: string) {
   return db.query.posts.findFirst({ where: eq(posts.apId, apId) });
 }
 
+export async function update(id: string, data: Partial<NewPost>) {
+  const [row] = await db.update(posts).set(data).where(eq(posts.id, id)).returning();
+  return row;
+}
+
+export async function remove(id: string) {
+  await db.delete(posts).where(eq(posts.id, id));
+}
+
 // Keyset condition: rows strictly "before" the cursor in (created_at, id) order.
 function beforeCursor(cursor: Cursor | null) {
   if (!cursor) return undefined;

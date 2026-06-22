@@ -1,6 +1,6 @@
 import * as postsRepo from "@/db/repositories/posts.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
-import { badRequest, notFound } from "@/lib/http.ts";
+import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import { queue } from "@/queue/queue.ts";
 
 // Business logic for posts. Creating a local post enqueues federation delivery.
@@ -29,6 +29,41 @@ export async function getPost(id: string) {
   const row = await postsRepo.findById(id);
   if (!row) throw notFound("Post not found.");
   return row;
+}
+
+// Edits a post. Only the author may edit, and only local posts (remote posts
+// are owned by their origin instance). Re-enqueues federation for the update.
+export async function updatePost(authorId: string, id: string, input: {
+  title?: string;
+  contentHtml?: string;
+  contentJson?: unknown;
+}) {
+  const row = await postsRepo.findById(id);
+  if (!row) throw notFound("Post not found.");
+  if (row.post.remote) throw forbidden("Federated posts cannot be edited here.");
+  if (row.post.authorId !== authorId) throw forbidden("You can only edit your own posts.");
+
+  const html = input.contentHtml?.trim();
+  if (input.contentHtml !== undefined && !html) throw badRequest("Post content cannot be empty.");
+
+  const post = await postsRepo.update(id, {
+    title: input.title?.trim() || null,
+    ...(html ? { contentHtml: html, contentJson: input.contentJson ?? null } : {}),
+  });
+
+  queue.add("federate_post", { postId: post.id });
+  return post;
+}
+
+// Deletes a post. The author or an admin may delete; only local posts.
+export async function deletePost(userId: string, isAdmin: boolean, id: string) {
+  const row = await postsRepo.findById(id);
+  if (!row) throw notFound("Post not found.");
+  if (row.post.remote) throw forbidden("Federated posts cannot be deleted here.");
+  if (row.post.authorId !== userId && !isAdmin) {
+    throw forbidden("You can only delete your own posts.");
+  }
+  await postsRepo.remove(id);
 }
 
 // Pagination over the nested {post, author} rows returned by the repo.

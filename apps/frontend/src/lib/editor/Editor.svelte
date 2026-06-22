@@ -11,7 +11,12 @@
   let {
     onUpdate,
     placeholder = "Tell your story…",
-  }: { onUpdate: (html: string, json: unknown) => void; placeholder?: string } = $props();
+    content,
+  }: {
+    onUpdate: (html: string, json: unknown) => void;
+    placeholder?: string;
+    content?: string;
+  } = $props();
 
   let element: HTMLDivElement;
   let editor: Editor;
@@ -35,6 +40,7 @@
     editor = new Editor({
       element,
       extensions,
+      content,
       editorProps: { attributes: { class: "tiptap prose-omicron", "data-placeholder": placeholder } },
       onUpdate: ({ editor }) => onUpdate(editor.getHTML(), editor.getJSON()),
       onTransaction: refreshActive,

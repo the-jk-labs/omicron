@@ -37,6 +37,21 @@ postRoutes.get("/:id", async (c) => {
   return c.json({ post: await enrichPost(row, viewer?.id ?? null) });
 });
 
+// Edit a post (auth required; author only, local posts only).
+postRoutes.patch("/:id", async (c) => {
+  const user = requireUser(c);
+  const body = await c.req.json();
+  const post = await postsService.updatePost(user.id, c.req.param("id"), body);
+  return c.json({ post: barePost(post) });
+});
+
+// Delete a post (auth required; author or admin, local posts only).
+postRoutes.delete("/:id", async (c) => {
+  const user = requireUser(c);
+  await postsService.deletePost(user.id, user.isAdmin, c.req.param("id"));
+  return c.json({ ok: true });
+});
+
 // Like / unlike a post (auth required). Returns fresh like stats.
 postRoutes.post("/:id/like", async (c) => {
   const user = requireUser(c);

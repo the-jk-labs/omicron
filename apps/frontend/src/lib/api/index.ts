@@ -29,6 +29,9 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     post: (id: string) => api.get<{ post: Post }>(`/posts/${id}`),
     createPost: (body: { title?: string; contentHtml: string; contentJson?: unknown }) =>
       api.post<{ post: { id: string } }>("/posts", body),
+    updatePost: (id: string, body: { title?: string; contentHtml?: string; contentJson?: unknown }) =>
+      api.patch<{ post: { id: string } }>(`/posts/${id}`, body),
+    deletePost: (id: string) => api.del<{ ok: true }>(`/posts/${id}`),
 
     // likes + comments
     likePost: (id: string) => api.post<LikeState>(`/posts/${id}/like`),
