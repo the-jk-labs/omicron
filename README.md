@@ -19,8 +19,7 @@
 ---
 
 Omicron is a federated blogging platform. Write rich-text posts, follow other
-writers, read a personalized feed, and federate with the wider fediverse
-(Mastodon, other Omicron instances, …) over **ActivityPub** — with no vendor
+writers, read a personalized feed, and federate with the wider fediverse over **ActivityPub** — with no vendor
 lock-in and no gatekeepers. Run your own instance in one command and own your
 words.
 
