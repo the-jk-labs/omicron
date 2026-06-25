@@ -53,7 +53,7 @@ export default {
         xxs: "10px",
       },
       fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["Inter Variable", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
         // Medium-like reading typography for rendered post content.
         serif: ["Georgia", "Cambria", "Times New Roman", "serif"],
       },

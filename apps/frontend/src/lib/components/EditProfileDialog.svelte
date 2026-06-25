@@ -6,6 +6,7 @@
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import { AVATAR_MAX_DIMENSION, prepareImage } from "$lib/editor/image";
   import type { User } from "$lib/types";
 
   let { user }: { user: User } = $props();
@@ -62,7 +63,10 @@
     error = "";
     busy = true;
     try {
-      if (file) await endpoints().uploadAvatar(file);
+      if (file) {
+        const { blob, type } = await prepareImage(file, AVATAR_MAX_DIMENSION);
+        await endpoints().uploadAvatar(blob, type);
+      }
       await endpoints().updateProfile({ displayName, bio });
       await invalidateAll();
       open = false;

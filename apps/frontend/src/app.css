@@ -1,4 +1,7 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+/* Self-hosted Inter (variable). Removes the render-blocking third-party
+   Google Fonts request; the browser fetches only the subsets it needs via the
+   font's unicode-range and renders with `font-display: swap`. */
+@import "@fontsource-variable/inter/index.css";
 
 @tailwind base;
 @tailwind components;

@@ -24,6 +24,7 @@
     "vite": "^5.4.0"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.2.8",
     "@lucide/svelte": "^1.21.0",
     "@tiptap/core": "^2.10.0",
     "@tiptap/extension-image": "^2.27.2",

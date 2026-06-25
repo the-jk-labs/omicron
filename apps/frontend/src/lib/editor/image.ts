@@ -7,6 +7,9 @@
 
 // Longest edge after resizing; large enough for a full-width blog image.
 const MAX_DIMENSION = 1600;
+// Avatars never render large (~72px in the profile, smaller in feeds); 256px
+// covers retina without shipping a multi-hundred-KB photo.
+export const AVATAR_MAX_DIMENSION = 256;
 // WebP quality — a good size/quality trade-off for photographic content.
 const WEBP_QUALITY = 0.82;
 
@@ -16,13 +19,18 @@ export type PreparedImage = { blob: Blob; type: string };
 
 // Resizes and re-encodes `file` for upload. Animated GIFs are passed through
 // untouched (a canvas would flatten them to a single frame). On any failure the
-// original file is returned so the upload can still proceed.
-export async function prepareImage(file: File): Promise<PreparedImage> {
+// original file is returned so the upload can still proceed. `maxDimension`
+// caps the longest edge — pass a smaller value for avatars, which never render
+// large (see AVATAR_MAX_DIMENSION).
+export async function prepareImage(
+  file: File,
+  maxDimension: number = MAX_DIMENSION,
+): Promise<PreparedImage> {
   if (file.type === "image/gif") return { blob: file, type: file.type };
 
   try {
     const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
     const width = Math.round(bitmap.width * scale);
     const height = Math.round(bitmap.height * scale);
 

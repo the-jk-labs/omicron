@@ -25,12 +25,27 @@ const proxy: RequestHandler = async ({ request, params, url }) => {
 
   const res = await fetch(target, init);
 
-  // Pass the body + content-type + any Set-Cookie back to the browser.
+  // Pass the body back along with the response headers the browser needs:
+  // content-type, Set-Cookie, and the caching/validation headers the backend
+  // sets on static media (cache-control etc.) — without forwarding these,
+  // uploaded images re-download on every visit.
   const out = new Headers();
-  const ct = res.headers.get("content-type");
-  if (ct) out.set("content-type", ct);
   const setCookie = res.headers.get("set-cookie");
   if (setCookie) out.set("set-cookie", setCookie);
+  for (
+    const h of [
+      "content-type",
+      "cache-control",
+      "etag",
+      "last-modified",
+      "expires",
+      "vary",
+      "content-disposition",
+    ]
+  ) {
+    const v = res.headers.get(h);
+    if (v) out.set(h, v);
+  }
 
   return new Response(res.body, { status: res.status, headers: out });
 };

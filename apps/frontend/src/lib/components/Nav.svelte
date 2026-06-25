@@ -34,7 +34,7 @@
 <header class="sticky top-0 z-20 bg-background/80 backdrop-blur">
   <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
     <Button href="/" variant="plain" class="flex items-center gap-2 text-foreground hover:opacity-80">
-      <img src={logo} alt="" class="h-7 w-auto" />
+      <img src={logo} alt="" width="28" height="28" class="h-7 w-auto" />
       <span class="text-xl font-bold tracking-tight">{env.PUBLIC_APP_NAME || "Omicron"}</span>
     </Button>
 
