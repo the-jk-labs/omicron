@@ -50,7 +50,7 @@
       </Button>
 
       {#if user}
-        <Button href="/compose" variant="ghost" class="text-muted-foreground" aria-label="Write">
+        <Button href="/compose" variant="ghost" class="hidden text-muted-foreground sm:inline-flex" aria-label="Write">
           <Icon name="compose" size={18} /> <span class="hidden sm:inline">Write</span>
         </Button>
 
@@ -89,7 +89,7 @@
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
       {:else}
-        <Button href="/login" variant="ghost" class="text-muted-foreground">Sign in</Button>
+        <Button href="/login" variant="ghost" class="hidden text-muted-foreground sm:inline-flex">Sign in</Button>
         <Button href="/register" variant="solid">Get started</Button>
       {/if}
     </div>

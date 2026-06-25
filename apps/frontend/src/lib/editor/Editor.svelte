@@ -180,17 +180,17 @@
   ];
 
   const btn =
-    "rounded-9px bg-background-alt hover:bg-muted active:bg-dark-10 inline-flex size-10 items-center justify-center transition-all active:scale-[0.98]";
+    "rounded-9px bg-background-alt hover:bg-muted active:bg-dark-10 inline-flex size-10 shrink-0 items-center justify-center transition-all active:scale-[0.98]";
   // Auto-width variant for the text-style dropdown trigger (icon + chevron).
   const headingTrigger =
-    "rounded-9px bg-background-alt hover:bg-muted active:bg-dark-10 inline-flex h-10 items-center gap-1 px-2.5 transition-all active:scale-[0.98]";
+    "rounded-9px bg-background-alt hover:bg-muted active:bg-dark-10 inline-flex h-10 shrink-0 items-center gap-1 px-2.5 transition-all active:scale-[0.98]";
   // Verbatim Bits UI docs DropdownMenu.Item class (v3 syntax), matching the post menu.
   const itemClass =
     "rounded-button data-[highlighted]:bg-muted !ring-0 !ring-transparent flex h-9 w-full cursor-pointer select-none items-center gap-2.5 px-2.5 text-sm font-medium focus-visible:outline-none";
 </script>
 
 <div>
-  <Toolbar.Root class="rounded-10px border-border bg-background-alt shadow-mini mb-4 flex w-full items-center justify-between border px-2 py-1">
+  <Toolbar.Root class="rounded-10px border-border bg-background-alt shadow-mini no-scrollbar mb-4 flex w-full items-center justify-start gap-0.5 overflow-x-auto border px-2 py-1 sm:justify-between sm:gap-0">
     <!-- Text style: a single dropdown for normal text + Heading 1–6. -->
     <DropdownMenu.Root>
       <DropdownMenu.Trigger

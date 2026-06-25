@@ -68,62 +68,21 @@
 
 <svelte:head><title>{profile.user.displayName} · Omicron</title></svelte:head>
 
-<header class="mb-8 flex items-start justify-between gap-4 pb-2">
-  <div class="flex min-w-0 items-start gap-4">
+<!-- Responsive grid. Mobile (app-style): avatar + action on the top row, identity
+     stacked full-width below. Desktop (sm+): the original three-column row —
+     avatar · identity · action. -->
+<header
+  class="mb-8 grid grid-cols-[auto_1fr] items-start gap-x-4 gap-y-4 pb-2 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-y-0"
+>
+  <div class="col-start-1 row-start-1 self-center sm:self-start">
     <Avatar name={profile.user.displayName} src={profile.user.avatarUrl ?? undefined} size={72} />
-    <div class="min-w-0">
-      <h1 class="text-2xl font-bold tracking-tight text-foreground">{profile.user.displayName}</h1>
-      <div class="flex flex-wrap items-center gap-2">
-        <!-- Remote usernames are `user@host`; drop the host here since the
-             instance badge beside it already shows it (no duplication). -->
-        <p class="truncate text-muted-foreground">@{profile.user.username.split("@")[0]}</p>
-        {#if data.remote}
-          <a
-            href={data.profile.user.apId}
-            target="_blank"
-            rel="noreferrer"
-            title="View on {data.profile.user.host}"
-            class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-dark-10 hover:text-foreground"
-          >
-            <Icon name="globe" size={12} /> {data.profile.user.host}
-          </a>
-        {/if}
-      </div>
-      {#if profile.user.bio}<p class="mt-2 max-w-prose whitespace-pre-line text-foreground-alt">{profile.user.bio}</p>{/if}
-      <div class="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
-        {#if data.remote}
-          <span class="flex items-center gap-1">
-            <Icon name="users" size={15} />
-            <strong class="text-foreground">{profile.counts.followers}</strong> followers
-          </span>
-          <span>
-            <strong class="text-foreground">{profile.counts.following}</strong> following
-          </span>
-        {:else}
-          <FollowListDialog
-            username={profile.user.username}
-            kind="followers"
-            title="Followers"
-          >
-            <span class="flex items-center gap-1">
-              <Icon name="users" size={15} />
-              <strong class="text-foreground">{profile.counts.followers}</strong> followers
-            </span>
-          </FollowListDialog>
-          <FollowListDialog
-            username={profile.user.username}
-            kind="following"
-            title="Following"
-          >
-            <span><strong class="text-foreground">{profile.counts.following}</strong> following</span>
-          </FollowListDialog>
-        {/if}
-      </div>
-    </div>
   </div>
+
   {#if data.remote}
     {#if data.user}
-      <div class="flex shrink-0 items-center gap-2 self-center">
+      <div
+        class="col-start-2 row-start-1 flex shrink-0 items-center gap-2 justify-self-end self-center sm:col-start-3"
+      >
         <FollowButton
           username={data.profile.user.username}
           following={data.profile.isFollowing}
@@ -138,7 +97,9 @@
       </div>
     {/if}
   {:else}
-    <div class="flex shrink-0 items-center gap-2 self-center">
+    <div
+      class="col-start-2 row-start-1 flex shrink-0 items-center gap-2 justify-self-end self-center sm:col-start-3"
+    >
       {#if isSelf}
         <EditProfileDialog user={data.profile.user} />
       {:else if data.user}
@@ -151,6 +112,58 @@
       {/if}
     </div>
   {/if}
+
+  <!-- Identity block: name, handle, bio, stats. Spans both columns on mobile
+       (its own row), middle column on desktop. -->
+  <div class="col-span-2 row-start-2 min-w-0 sm:col-span-1 sm:col-start-2 sm:row-start-1">
+    <h1 class="text-2xl font-bold tracking-tight text-foreground">{profile.user.displayName}</h1>
+    <div class="flex flex-wrap items-center gap-2">
+      <!-- Remote usernames are `user@host`; drop the host here since the
+           instance badge beside it already shows it (no duplication). -->
+      <p class="truncate text-muted-foreground">@{profile.user.username.split("@")[0]}</p>
+      {#if data.remote}
+        <a
+          href={data.profile.user.apId}
+          target="_blank"
+          rel="noreferrer"
+          title="View on {data.profile.user.host}"
+          class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-dark-10 hover:text-foreground"
+        >
+          <Icon name="globe" size={12} /> {data.profile.user.host}
+        </a>
+      {/if}
+    </div>
+    {#if profile.user.bio}<p class="mt-2 max-w-prose whitespace-pre-line text-foreground-alt">{profile.user.bio}</p>{/if}
+    <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+      {#if data.remote}
+        <span class="flex items-center gap-1">
+          <Icon name="users" size={15} />
+          <strong class="text-foreground">{profile.counts.followers}</strong> followers
+        </span>
+        <span>
+          <strong class="text-foreground">{profile.counts.following}</strong> following
+        </span>
+      {:else}
+        <FollowListDialog
+          username={profile.user.username}
+          kind="followers"
+          title="Followers"
+        >
+          <span class="flex items-center gap-1">
+            <Icon name="users" size={15} />
+            <strong class="text-foreground">{profile.counts.followers}</strong> followers
+          </span>
+        </FollowListDialog>
+        <FollowListDialog
+          username={profile.user.username}
+          kind="following"
+          title="Following"
+        >
+          <span><strong class="text-foreground">{profile.counts.following}</strong> following</span>
+        </FollowListDialog>
+      {/if}
+    </div>
+  </div>
 </header>
 
 <Tabs.Root value="stories" class="w-full">

@@ -35,7 +35,7 @@
     {/if}
   </Button>
 
-  <div class="mt-4 flex items-center gap-3 text-xs text-muted-foreground">
+  <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
     <span>{formatDate(post.createdAt)}</span>
     <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
     <span class="flex items-center gap-1"><Icon name="heart" size={13} /> {post.likeCount}</span>

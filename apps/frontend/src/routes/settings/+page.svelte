@@ -210,7 +210,7 @@
     <h2 class="text-lg font-semibold tracking-tight text-foreground">Appearance</h2>
     <p class="mt-1 text-sm text-muted-foreground">Choose how Omicron looks to you.</p>
 
-    <div class="mt-4 flex items-center justify-between gap-4">
+    <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div>
         <p class="text-sm font-medium text-foreground">Theme</p>
         <p class="text-xs text-muted-foreground">
@@ -218,7 +218,7 @@
         </p>
       </div>
       <div
-        class="inline-flex items-center gap-1 rounded-input border border-input bg-background-alt p-1 shadow-btn"
+        class="inline-flex items-center gap-1 self-start rounded-input border border-input bg-background-alt p-1 shadow-btn sm:self-auto"
       >
         {#each themeOptions as opt (opt.value)}
           <ButtonPrimitive.Root
@@ -242,13 +242,13 @@
     <h2 class="text-lg font-semibold tracking-tight text-foreground">Reading</h2>
     <p class="mt-1 text-sm text-muted-foreground">Customize your reading experience.</p>
 
-    <div class="mt-4 flex items-center justify-between gap-4">
+    <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div>
         <p class="text-sm font-medium text-foreground">Default feed</p>
         <p class="text-xs text-muted-foreground">Which tab opens first on the home page.</p>
       </div>
       <div
-        class="inline-flex items-center gap-1 rounded-input border border-input bg-background-alt p-1 shadow-btn"
+        class="inline-flex items-center gap-1 self-start rounded-input border border-input bg-background-alt p-1 shadow-btn sm:self-auto"
       >
         {#each feedOptions as opt (opt.value)}
           <ButtonPrimitive.Root

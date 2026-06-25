@@ -20,7 +20,7 @@
   // Shared geometry for the text-button variants (everything except icon/link/plain,
   // which carry their own complete styling below).
   const base =
-    "inline-flex items-center justify-center gap-1.5 active:scale-[0.98] active:transition-all";
+    "inline-flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-[0.98] active:transition-all";
   const sizes: Record<Size, string> = {
     default: "h-10 px-4 text-sm",
     sm: "h-9 px-3 text-sm",

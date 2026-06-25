@@ -14,6 +14,16 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* Horizontally scrollable strips (e.g. the editor toolbar on phones) without a
+   visible scrollbar. */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Bits UI docs theme tokens (ported verbatim from the docs :root). Channel form
    so Tailwind's `<alpha-value>` opacity modifiers work in v3. */
 :root {
@@ -67,7 +77,12 @@ html {
 /* Rendered post content (the HTML produced by Tiptap). Medium-like serif
    reading column — generous size, relaxed leading. Extend as the editor grows. */
 .prose-omicron {
-  @apply font-serif text-[1.25rem] leading-[1.8] text-foreground;
+  @apply font-serif text-[1.125rem] leading-[1.75] text-foreground sm:text-[1.25rem] sm:leading-[1.8];
+}
+/* Media never overflows the reading column on narrow screens. */
+.prose-omicron img,
+.tiptap img {
+  @apply mx-auto my-6 h-auto max-w-full rounded-card;
 }
 .prose-omicron h1 {
   @apply mt-10 mb-4 font-sans text-3xl font-bold tracking-tight text-foreground;

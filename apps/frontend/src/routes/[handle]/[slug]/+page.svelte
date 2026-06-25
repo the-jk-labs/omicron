@@ -115,7 +115,7 @@
   {/if}
 
   {#if post.title}
-    <h1 class="mb-6 text-4xl font-bold leading-tight tracking-tight text-foreground">{post.title}</h1>
+    <h1 class="mb-6 text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl">{post.title}</h1>
   {/if}
 
   <div class="flex items-center gap-3 pb-8">
@@ -124,7 +124,7 @@
       <Button href={`/@${post.author.username}`} variant="plain" class="font-medium text-foreground hover:underline">
         {post.author.displayName}
       </Button>
-      <div class="flex items-center gap-2 text-muted-foreground">
+      <div class="flex flex-wrap items-center gap-2 text-muted-foreground">
         <span>{formatDate(post.createdAt)}</span>
         <Separator.Root orientation="vertical" class="bg-border shrink-0 data-[orientation=vertical]:h-3 data-[orientation=vertical]:w-px" />
         <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>

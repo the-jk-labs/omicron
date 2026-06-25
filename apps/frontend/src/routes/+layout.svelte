@@ -5,6 +5,7 @@
   import { env } from "$env/dynamic/public";
   import Nav from "$lib/components/Nav.svelte";
   import SideNav from "$lib/components/SideNav.svelte";
+  import MobileNav from "$lib/components/MobileNav.svelte";
   import Discover from "$lib/components/Discover.svelte";
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
   import type { LayoutData } from "./$types";
@@ -43,9 +44,9 @@
   <Nav user={data.user} />
 
   <div
-    class="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-4 py-8 lg:grid-cols-[180px_minmax(0,1fr)] {showDiscover
+    class="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-4 py-6 sm:py-8 lg:grid-cols-[180px_minmax(0,1fr)] {showDiscover
       ? 'xl:grid-cols-[180px_minmax(0,1fr)_260px]'
-      : ''}"
+      : ''} {data.user ? 'pb-[calc(env(safe-area-inset-bottom)+5rem)] lg:pb-8' : ''}"
   >
     <!-- Left rail: primary navigation. Sticky offset (top-24) sits at the rail's
          natural position under the nav, so it pins from the first pixel of
@@ -69,6 +70,10 @@
     </div>
   </div>
 </div>
+
+{#if data.user}
+  <MobileNav user={data.user} />
+{/if}
 
 <!-- Global host for the promise-based confirm() helper. -->
 <ConfirmDialog />
