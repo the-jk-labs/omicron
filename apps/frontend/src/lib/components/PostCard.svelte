@@ -13,7 +13,7 @@
   const minutes = $derived(readTime(post.contentHtml));
 </script>
 
-<article class="border-b border-border py-7">
+<article class="py-5">
   <div class="mb-3 flex items-center gap-2 text-sm text-foreground-alt">
     <Button href={`/@${post.author.username}`} variant="plain" class="flex items-center gap-2 hover:opacity-80">
       <Avatar name={post.author.displayName} src={post.author.avatarUrl ?? undefined} size={24} />

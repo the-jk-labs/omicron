@@ -171,7 +171,7 @@
   </div>
 
   <!-- Engagement bar -->
-  <div class="mt-10 flex items-center gap-2 border-y border-border py-2.5">
+  <div class="mt-8 flex items-center gap-2 py-2.5">
     <Button
       onclick={toggleLike}
       variant="ghost"
@@ -189,9 +189,7 @@
   </div>
 </article>
 
-<Separator.Root class="bg-border my-10 shrink-0 data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full" />
-
-<div id="responses">
+<div id="responses" class="mt-12">
   <Comments
     postId={post.id}
     initial={data.comments}

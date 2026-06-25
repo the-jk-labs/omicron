@@ -46,7 +46,7 @@
 
 <svelte:head><title>Drafts · Omicron</title></svelte:head>
 
-<header class="mb-8 border-b border-border pb-6">
+<header class="mb-6 pb-2">
   <h1 class="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
     <Icon name="draft" size={22} /> Drafts
   </h1>
@@ -61,9 +61,9 @@
     <Button href="/compose" variant="solid" class="mt-4">Start writing</Button>
   </div>
 {:else}
-  <ul>
+  <ul class="space-y-2">
     {#each drafts as draft (draft.id)}
-      <li class="flex items-start justify-between gap-4 border-b border-border py-6">
+      <li class="flex items-start justify-between gap-4 rounded-card px-4 py-5 transition-colors hover:bg-muted">
         <Button href={`/compose?id=${draft.id}`} variant="plain" class="group block min-w-0 flex-1 text-left">
           <h2 class="truncate text-xl font-bold leading-snug text-foreground group-hover:text-foreground-alt">
             {draft.title?.trim() || "Untitled draft"}

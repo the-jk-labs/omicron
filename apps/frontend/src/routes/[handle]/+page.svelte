@@ -40,7 +40,7 @@
 
 <svelte:head><title>{profile.user.displayName} · Omicron</title></svelte:head>
 
-<header class="mb-8 flex items-start justify-between gap-4 border-b border-border pb-8">
+<header class="mb-8 flex items-start justify-between gap-4 pb-2">
   <div class="flex min-w-0 items-start gap-4">
     <Avatar name={profile.user.displayName} src={profile.user.avatarUrl ?? undefined} size={72} />
     <div class="min-w-0">
@@ -93,7 +93,7 @@
 </header>
 
 <Tabs.Root value="stories" class="w-full">
-  <Tabs.List class="mb-2 flex items-center gap-6 border-b border-border text-sm font-medium">
+  <Tabs.List class="mb-2 flex items-center gap-6 text-sm font-medium">
     <Tabs.Trigger
       value="stories"
       class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center border-b border-transparent py-3"

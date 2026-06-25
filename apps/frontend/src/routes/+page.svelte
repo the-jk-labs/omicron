@@ -102,7 +102,7 @@
 
 {#if !data.personalized}
   <!-- Logged-out hero, Medium style. -->
-  <section class="mb-10 border-b border-border pb-10">
+  <section class="mb-10 pb-10">
     <h1 class="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
       Human stories &amp; ideas
     </h1>
@@ -142,7 +142,7 @@
 {/snippet}
 
 <Tabs.Root value={defaultTab} onValueChange={ensureLoaded} class="w-full">
-  <Tabs.List class="mb-2 flex items-center gap-6 border-b border-border text-sm font-medium">
+  <Tabs.List class="mb-2 flex items-center gap-6 text-sm font-medium">
     {#each feeds as feed (feed.value)}
       <Tabs.Trigger
         value={feed.value}
