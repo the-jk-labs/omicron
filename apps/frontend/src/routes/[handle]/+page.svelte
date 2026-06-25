@@ -71,7 +71,17 @@
       </div>
     </div>
   </div>
-  {#if !data.remote}
+  {#if data.remote}
+    {#if data.user}
+      <div class="shrink-0 self-center">
+        <FollowButton
+          username={data.profile.user.username}
+          following={data.profile.isFollowing}
+          remote
+        />
+      </div>
+    {/if}
+  {:else}
     <div class="shrink-0 self-center">
       {#if isSelf}
         <EditProfileDialog user={data.profile.user} />

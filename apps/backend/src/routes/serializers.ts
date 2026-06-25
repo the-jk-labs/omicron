@@ -60,7 +60,7 @@ export function postWithAuthor(row: PostWithAuthor, engagement?: Engagement) {
 
 // Profile payload for a cached remote actor, shaped like the local profile
 // response (`{ user, counts, isFollowing }`) so the frontend reuses one layout.
-export function remoteProfile(actor: RemoteActor) {
+export function remoteProfile(actor: RemoteActor, isFollowing = false) {
   return {
     user: {
       id: actor.id,
@@ -77,7 +77,7 @@ export function remoteProfile(actor: RemoteActor) {
       followers: actor.followersCount ?? 0,
       following: actor.followingCount ?? 0,
     },
-    isFollowing: false,
+    isFollowing,
   };
 }
 

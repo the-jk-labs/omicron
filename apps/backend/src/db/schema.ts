@@ -89,13 +89,18 @@ export const posts = pgTable("posts", {
 ]);
 
 // ── follows ────────────────────────────────────────────────────────────
-// Supports local↔local and remote↔local relationships. For inbound remote
-// follows, `follower_id` is null and `remote_actor` holds the actor URI.
+// Three edge shapes share this table:
+//   local → local:   follower_id + followee_id
+//   remote → local:   followee_id + remote_actor (inbound; the remote follower URI)
+//   local → remote:   follower_id + remote_followee_id (outbound; FK to remote_actors)
 export const follows = pgTable("follows", {
   id: uuid("id").primaryKey().defaultRandom(),
   followerId: uuid("follower_id").references(() => users.id, { onDelete: "cascade" }),
   followeeId: uuid("followee_id").references(() => users.id, { onDelete: "cascade" }),
   remoteActor: text("remote_actor"),
+  remoteFolloweeId: uuid("remote_followee_id").references(() => remoteActors.id, {
+    onDelete: "cascade",
+  }),
   approved: boolean("approved").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
@@ -103,6 +108,10 @@ export const follows = pgTable("follows", {
   uniqueIndex("follows_local_unique_idx")
     .on(t.followerId, t.followeeId)
     .where(sql`${t.followerId} is not null and ${t.followeeId} is not null`),
+  // Prevent duplicate outbound local→remote follow edges.
+  uniqueIndex("follows_remote_followee_unique_idx")
+    .on(t.followerId, t.remoteFolloweeId)
+    .where(sql`${t.followerId} is not null and ${t.remoteFolloweeId} is not null`),
   index("follows_follower_idx").on(t.followerId),
   index("follows_followee_idx").on(t.followeeId),
 ]);

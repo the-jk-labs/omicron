@@ -43,6 +43,13 @@
       "when": 1718500000000,
       "tag": "0005_remote_actors",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1718600000000,
+      "tag": "0006_remote_following",
+      "breakpoints": true
     }
   ]
 }

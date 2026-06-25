@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
+import * as followsRepo from "@/db/repositories/follows.ts";
 import { resolveActor, fetchOutboxPosts } from "@/federation/remote.ts";
+import { queue } from "@/queue/queue.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { notFound } from "@/lib/http.ts";
 import type { RemoteActor } from "@/db/schema.ts";
@@ -24,6 +26,31 @@ export async function getProfile(handle: string): Promise<RemoteActor> {
   if (resolved) return resolved;
   if (cached) return cached; // serve stale data rather than fail
   throw notFound("Remote user not found.");
+}
+
+// Profile plus whether `viewerId` follows this remote actor.
+export async function getProfileView(handle: string, viewerId: string | null) {
+  const actor = await getProfile(handle);
+  const isFollowing = viewerId
+    ? await followsRepo.isFollowingRemote(viewerId, actor.id)
+    : false;
+  return { actor, isFollowing };
+}
+
+// Follow a remote actor: record the edge, crawl their recent posts so the
+// viewer's feed isn't empty until the first delivery, and send a signed Follow.
+export async function follow(viewerId: string, handle: string): Promise<void> {
+  const actor = await getProfile(handle);
+  await followsRepo.createRemoteFollowing(viewerId, actor.id);
+  await fetchOutboxPosts(handle, actor.id);
+  queue.add("send_follow", { followerId: viewerId, targetActor: actor.apId });
+}
+
+export async function unfollow(viewerId: string, handle: string): Promise<void> {
+  const actor = await remoteActorsRepo.findByHandle(handle);
+  if (!actor) throw notFound("Remote user not found.");
+  await followsRepo.removeRemoteFollowing(viewerId, actor.id);
+  queue.add("send_unfollow", { followerId: viewerId, targetActor: actor.apId });
 }
 
 export async function getPosts(handle: string, cursor: Cursor | null) {

@@ -7,8 +7,8 @@ const schema = z.object({
   APP_DOMAIN: z.string().min(1),
   FEDERATION_ENABLED: z
     .string()
-    .transform((v) => v.toLowerCase() === "true")
-    .default("false"),
+    .transform((v) => v.toLowerCase() !== "false")
+    .default("true"),
   SESSION_SECRET: z.string().min(8),
   PORT: z.coerce.number().int().positive().default(8000),
   UPLOADS_DIR: z.string().min(1).default("./uploads"),

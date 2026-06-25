@@ -22,6 +22,7 @@ import {
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
+import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import { buildNote } from "@/federation/note.ts";
 import { cacheActor } from "@/federation/remote.ts";
 
@@ -139,6 +140,22 @@ function setupInbox(f: Federation<ContextData>) {
       const followee = await usersRepo.findByUsername(parsed.identifier);
       if (followee && undo.actorId) {
         await followsRepo.removeRemoteFollower(followee.id, undo.actorId.href);
+      }
+    })
+    .on(Accept, async (ctx, accept) => {
+      // A remote actor accepted our outbound Follow. The Accept wraps the
+      // original Follow(actor = our local actor, object = the remote actor);
+      // mark that edge approved so the UI can reflect a confirmed follow.
+      const object = await accept.getObject(ctx);
+      if (!(object instanceof Follow) || !object.actorId) return;
+      const parsed = ctx.parseUri(object.actorId);
+      if (parsed?.type !== "actor") return;
+      const follower = await usersRepo.findByUsername(parsed.identifier);
+      const remoteActorUri = accept.actorId?.href;
+      if (!follower || !remoteActorUri) return;
+      const remoteActor = await remoteActorsRepo.findByApId(remoteActorUri);
+      if (remoteActor) {
+        await followsRepo.approveRemoteFollowing(follower.id, remoteActor.id);
       }
     })
     .on(Create, async (ctx, create) => {

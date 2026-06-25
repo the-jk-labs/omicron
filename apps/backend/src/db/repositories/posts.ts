@@ -116,8 +116,11 @@ function beforeCursor(cursor: Cursor | null) {
   );
 }
 
-// Global feed: blog-type content across the whole fediverse (local + remote).
-// Filtered to "Article" so microblog Notes (Mastodon, Pixelfed, …) are excluded.
+// Global (federated) feed: blog-type content across the whole fediverse,
+// local + remote. Filtered to "Article" so microblog Notes (Mastodon,
+// Pixelfed, …) are excluded. Remote posts here are ones already cached on this
+// instance (fetched when browsed, or delivered to our inbox) — the feed just
+// reads the cache, it never crawls, so listing stays cheap.
 export function listGlobal(cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
   return selectPosts()
     .where(and(eq(posts.apType, "Article"), beforeCursor(cursor)))
@@ -152,16 +155,26 @@ export function listByRemoteActor(
     .limit(limit + 1);
 }
 
-// Personalized feed: own posts + posts by followed authors.
+// Personalized feed: own posts + posts by followed authors, local and remote.
+// Remote follows contribute the cached posts of the remote actors this user
+// follows (delivered to our inbox, or crawled when first followed).
 export function listFeed(userId: string, cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
-  const followed = sql`(
+  const followedLocal = sql`(
     select followee_id from follows
     where follower_id = ${userId} and followee_id is not null
+  )`;
+  const followedRemote = sql`(
+    select remote_followee_id from follows
+    where follower_id = ${userId} and remote_followee_id is not null
   )`;
   return selectPosts()
     .where(
       and(
-        or(eq(posts.authorId, userId), sql`${posts.authorId} in ${followed}`),
+        or(
+          eq(posts.authorId, userId),
+          sql`${posts.authorId} in ${followedLocal}`,
+          sql`${posts.remoteActorId} in ${followedRemote}`,
+        ),
         beforeCursor(cursor),
       ),
     )

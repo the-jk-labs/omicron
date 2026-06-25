@@ -69,5 +69,5 @@ export type RemoteProfile = {
     remote: true;
   };
   counts: { followers: number; following: number };
-  isFollowing: false;
+  isFollowing: boolean;
 };

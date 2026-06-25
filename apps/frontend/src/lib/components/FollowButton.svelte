@@ -4,15 +4,25 @@
   import Icon from "$lib/components/Icon.svelte";
   import Button from "$lib/components/ui/Button.svelte";
 
-  let { username, following }: { username: string; following: boolean } = $props();
+  // For remote actors `username` is the full `user@host` handle and follows go
+  // through the federated endpoints (signed Follow/Undo); local follows are
+  // internal. The button looks and behaves the same either way.
+  let { username, following, remote = false }: {
+    username: string;
+    following: boolean;
+    remote?: boolean;
+  } = $props();
   let isFollowing = $state(following);
   let busy = $state(false);
 
   async function toggle() {
     busy = true;
     try {
-      if (isFollowing) await endpoints().unfollow(username);
-      else await endpoints().follow(username);
+      if (isFollowing) {
+        await (remote ? endpoints().remoteUnfollow(username) : endpoints().unfollow(username));
+      } else {
+        await (remote ? endpoints().remoteFollow(username) : endpoints().follow(username));
+      }
       isFollowing = !isFollowing;
     } finally {
       busy = false;

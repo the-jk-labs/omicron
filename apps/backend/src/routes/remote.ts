@@ -6,6 +6,7 @@ import { enrichPosts } from "@/services/engagement.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { remoteProfile } from "@/routes/serializers.ts";
 import { notFound } from "@/lib/http.ts";
+import { requireUser } from "@/routes/middleware.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 // Read-only browsing of remote fediverse actors and their posts. Mounted under
@@ -18,11 +19,28 @@ remoteRoutes.use("*", async (_c, next) => {
   await next();
 });
 
-// Remote profile by `user@host` handle.
+// Remote profile by `user@host` handle (includes the viewer's follow state).
 remoteRoutes.get("/users/:handle", async (c) => {
+  const viewer = c.get("user");
   const handle = c.req.param("handle");
-  const actor = await remoteProfilesService.getProfile(handle);
-  return c.json(remoteProfile(actor));
+  const { actor, isFollowing } = await remoteProfilesService.getProfileView(
+    handle,
+    viewer?.id ?? null,
+  );
+  return c.json(remoteProfile(actor, isFollowing));
+});
+
+// Follow / unfollow a remote actor (auth required).
+remoteRoutes.post("/users/:handle/follow", async (c) => {
+  const viewer = requireUser(c);
+  await remoteProfilesService.follow(viewer.id, c.req.param("handle"));
+  return c.json({ ok: true }, 201);
+});
+
+remoteRoutes.delete("/users/:handle/follow", async (c) => {
+  const viewer = requireUser(c);
+  await remoteProfilesService.unfollow(viewer.id, c.req.param("handle"));
+  return c.json({ ok: true });
 });
 
 // A remote actor's posts (their cached outbox), cursor-paginated.

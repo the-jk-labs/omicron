@@ -41,6 +41,48 @@ export async function isFollowing(followerId: string, followeeId: string): Promi
   return !!row;
 }
 
+// ── outbound local → remote follows ──────────────────────────────────────
+
+export async function createRemoteFollowing(followerId: string, remoteFolloweeId: string) {
+  const [row] = await db
+    .insert(follows)
+    .values({ followerId, remoteFolloweeId, approved: false })
+    .onConflictDoNothing()
+    .returning();
+  return row;
+}
+
+export async function removeRemoteFollowing(followerId: string, remoteFolloweeId: string) {
+  await db
+    .delete(follows)
+    .where(
+      and(eq(follows.followerId, followerId), eq(follows.remoteFolloweeId, remoteFolloweeId)),
+    );
+}
+
+export async function isFollowingRemote(
+  followerId: string,
+  remoteFolloweeId: string,
+): Promise<boolean> {
+  const row = await db.query.follows.findFirst({
+    where: and(
+      eq(follows.followerId, followerId),
+      eq(follows.remoteFolloweeId, remoteFolloweeId),
+    ),
+  });
+  return !!row;
+}
+
+// Marks an outbound follow approved once the remote actor sends back Accept.
+export async function approveRemoteFollowing(followerId: string, remoteFolloweeId: string) {
+  await db
+    .update(follows)
+    .set({ approved: true })
+    .where(
+      and(eq(follows.followerId, followerId), eq(follows.remoteFolloweeId, remoteFolloweeId)),
+    );
+}
+
 // Remote follower actor URIs — used for federated delivery of new posts.
 export async function remoteFollowerActors(followeeId: string): Promise<string[]> {
   const rows = await db

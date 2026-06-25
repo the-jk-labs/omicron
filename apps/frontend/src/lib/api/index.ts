@@ -79,5 +79,9 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
           cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""
         }`,
       ),
+    remoteFollow: (handle: string) =>
+      api.post(`/remote/users/${encodeURIComponent(handle)}/follow`),
+    remoteUnfollow: (handle: string) =>
+      api.del(`/remote/users/${encodeURIComponent(handle)}/follow`),
   };
 }
