@@ -16,6 +16,9 @@
   const description =
     "A place to read, write, and connect — powered by ActivityPub. No lock-in, fully self-hostable.";
   const ogImage = $derived(`${$page.url.origin}/og-image.png`);
+
+  // Reading view: hide the right discovery rail on a single blog post, like Medium.
+  const isReadingView = $derived($page.route.id === "/posts/[id]");
 </script>
 
 <svelte:head>
@@ -35,7 +38,11 @@
 <div class="min-h-screen bg-background text-foreground">
   <Nav user={data.user} />
 
-  <div class="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-4 py-8 lg:grid-cols-[180px_minmax(0,1fr)] xl:grid-cols-[180px_minmax(0,1fr)_260px]">
+  <div
+    class="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-4 py-8 lg:grid-cols-[180px_minmax(0,1fr)] {isReadingView
+      ? ''
+      : 'xl:grid-cols-[180px_minmax(0,1fr)_260px]'}"
+  >
     <!-- Left rail: primary navigation -->
     <div class="hidden lg:block">
       <div class="sticky top-20">
@@ -49,7 +56,7 @@
     </main>
 
     <!-- Right rail: discovery -->
-    <div class="hidden xl:block">
+    <div class={isReadingView ? "hidden" : "hidden xl:block"}>
       <div class="sticky top-20">
         <Discover />
       </div>
