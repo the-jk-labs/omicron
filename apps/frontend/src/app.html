@@ -9,14 +9,15 @@
     <meta name="theme-color" content="#000000" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <script>
-      // Apply the theme before first paint to avoid a flash. Stored choice wins;
-      // otherwise follow the OS preference (dark theme detection).
+      // Apply the theme before first paint to avoid a flash. An explicit
+      // "light"/"dark" choice wins; otherwise ("system" or unset) follow the OS.
       (function () {
         try {
           var stored = localStorage.getItem("theme");
-          var dark = stored
-            ? stored === "dark"
-            : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var dark =
+            stored === "light" || stored === "dark"
+              ? stored === "dark"
+              : window.matchMedia("(prefers-color-scheme: dark)").matches;
           document.documentElement.classList.toggle("dark", dark);
         } catch (e) {}
       })();

@@ -1,13 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { goto, invalidateAll } from "$app/navigation";
-  import { Label } from "bits-ui";
+  import { Button as ButtonPrimitive, Label } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
-  import { theme } from "$lib/theme.svelte";
+  import { theme, type ThemePreference } from "$lib/theme.svelte";
   import { formatDate } from "$lib/format";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/Icon.svelte";
+  import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -24,6 +24,12 @@
   let busy = $state(false);
 
   const MAX_BYTES = 2 * 1024 * 1024;
+
+  const themeOptions: { value: ThemePreference; label: string; icon: IconName }[] = [
+    { value: "light", label: "Light", icon: "sun" },
+    { value: "dark", label: "Dark", icon: "moon" },
+    { value: "system", label: "System", icon: "monitor" },
+  ];
 
   const dirty = $derived(
     displayName !== data.user.displayName || bio !== data.user.bio || file !== null,
@@ -166,15 +172,30 @@
     <h2 class="text-lg font-semibold tracking-tight text-foreground">Appearance</h2>
     <p class="mt-1 text-sm text-muted-foreground">Choose how Omicron looks to you.</p>
 
-    <div class="mt-4 flex items-center justify-between">
+    <div class="mt-4 flex items-center justify-between gap-4">
       <div>
         <p class="text-sm font-medium text-foreground">Theme</p>
-        <p class="text-xs text-muted-foreground">Switch between light and dark mode.</p>
+        <p class="text-xs text-muted-foreground">
+          Use a fixed theme, or follow your system setting.
+        </p>
       </div>
-      <Button variant="outline" size="sm" onclick={() => theme.toggle()}>
-        <Icon name={theme.current === "dark" ? "sun" : "moon"} size={15} />
-        {theme.current === "dark" ? "Light mode" : "Dark mode"}
-      </Button>
+      <div
+        class="inline-flex items-center gap-1 rounded-input border border-input bg-background-alt p-1 shadow-btn"
+      >
+        {#each themeOptions as opt (opt.value)}
+          <ButtonPrimitive.Root
+            onclick={() => theme.set(opt.value)}
+            aria-pressed={theme.preference === opt.value}
+            class={`inline-flex h-8 items-center gap-1.5 rounded-button px-3 text-sm font-medium active:scale-[0.98] ${
+              theme.preference === opt.value
+                ? "bg-background text-foreground shadow-mini"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Icon name={opt.icon} size={15} /> {opt.label}
+          </ButtonPrimitive.Root>
+        {/each}
+      </div>
     </div>
   </section>
 
