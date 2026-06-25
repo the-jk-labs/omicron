@@ -18,8 +18,11 @@
     "A place to read, write, and connect — powered by ActivityPub. No lock-in, fully self-hostable.";
   const ogImage = $derived(`${$page.url.origin}/og-image.png`);
 
-  // Reading view: hide the right discovery rail on a single blog post, like Medium.
-  const isReadingView = $derived($page.route.id === "/[handle]/[slug]");
+  // The right discovery rail only belongs on the home feed and profile pages;
+  // every other route (post, compose, settings, auth, …) hides it.
+  const showDiscover = $derived(
+    $page.route.id === "/" || $page.route.id === "/[handle]",
+  );
 </script>
 
 <svelte:head>
@@ -40,9 +43,9 @@
   <Nav user={data.user} />
 
   <div
-    class="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-4 py-8 lg:grid-cols-[180px_minmax(0,1fr)] {isReadingView
-      ? ''
-      : 'xl:grid-cols-[180px_minmax(0,1fr)_260px]'}"
+    class="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-4 py-8 lg:grid-cols-[180px_minmax(0,1fr)] {showDiscover
+      ? 'xl:grid-cols-[180px_minmax(0,1fr)_260px]'
+      : ''}"
   >
     <!-- Left rail: primary navigation. Sticky offset (top-24) sits at the rail's
          natural position under the nav, so it pins from the first pixel of
@@ -58,8 +61,8 @@
       {@render children()}
     </main>
 
-    <!-- Right rail: discovery -->
-    <div class={isReadingView ? "hidden" : "hidden xl:block"}>
+    <!-- Right rail: discovery (home feed and profile pages only) -->
+    <div class={showDiscover ? "hidden xl:block" : "hidden"}>
       <div class="sticky top-24">
         <Discover />
       </div>
