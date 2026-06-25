@@ -9,6 +9,7 @@
 
   type Item = { label: string; href: string; icon: IconName };
 
+  // Primary navigation sits at the top of the rail.
   const items = $derived<Item[]>(
     user
       ? [
@@ -20,23 +21,38 @@
       : [{ label: "Home", href: "/", icon: "home" }],
   );
 
+  // Settings is pinned to the bottom of the rail, away from the primary items.
+  const footerItems = $derived<Item[]>(
+    user ? [{ label: "Settings", href: "/settings", icon: "settings" }] : [],
+  );
+
   function active(href: string): boolean {
     const path = page.url.pathname;
     return href === "/" ? path === "/" : path.startsWith(href);
   }
+
+  const itemClass = (href: string) =>
+    `inline-flex h-10 items-center gap-3 rounded-input px-3 text-sm font-medium active:scale-[0.98] ${
+      active(href)
+        ? "bg-muted text-foreground"
+        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+    }`;
 </script>
 
-<nav class="flex flex-col gap-1">
+<nav class="flex min-h-[calc(100vh-8.5rem)] flex-col gap-1">
   {#each items as item (item.href)}
-    <Button.Root
-      href={item.href}
-      class={`inline-flex h-10 items-center gap-3 rounded-input px-3 text-sm font-medium active:scale-[0.98] ${
-        active(item.href)
-          ? "bg-muted text-foreground"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-      }`}
-    >
+    <Button.Root href={item.href} class={itemClass(item.href)}>
       <Icon name={item.icon} size={20} /> {item.label}
     </Button.Root>
   {/each}
+
+  {#if footerItems.length}
+    <div class="mt-auto flex flex-col gap-1">
+      {#each footerItems as item (item.href)}
+        <Button.Root href={item.href} class={itemClass(item.href)}>
+          <Icon name={item.icon} size={20} /> {item.label}
+        </Button.Root>
+      {/each}
+    </div>
+  {/if}
 </nav>
