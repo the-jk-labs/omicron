@@ -41,19 +41,25 @@
 <svelte:head><title>{profile.user.displayName} · Omicron</title></svelte:head>
 
 <header class="mb-8 flex items-start justify-between gap-4 border-b border-border pb-8">
-  <div class="flex items-start gap-4">
+  <div class="flex min-w-0 items-start gap-4">
     <Avatar name={profile.user.displayName} src={profile.user.avatarUrl ?? undefined} size={72} />
-    <div>
+    <div class="min-w-0">
       <h1 class="text-2xl font-bold tracking-tight text-foreground">{profile.user.displayName}</h1>
-      <div class="flex items-center gap-2">
-        <p class="text-muted-foreground">@{profile.user.username}</p>
+      <div class="flex flex-wrap items-center gap-2">
+        <p class="truncate text-muted-foreground">@{profile.user.username}</p>
         {#if data.remote}
-          <span class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+          <a
+            href={data.profile.user.apId}
+            target="_blank"
+            rel="noreferrer"
+            title="View on {data.profile.user.host}"
+            class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-dark-10 hover:text-foreground"
+          >
             <Icon name="globe" size={12} /> {data.profile.user.host}
-          </span>
+          </a>
         {/if}
       </div>
-      {#if profile.user.bio}<p class="mt-2 max-w-prose text-foreground-alt">{profile.user.bio}</p>{/if}
+      {#if profile.user.bio}<p class="mt-2 max-w-prose whitespace-pre-line text-foreground-alt">{profile.user.bio}</p>{/if}
       <div class="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
         <span class="flex items-center gap-1">
           <Icon name="users" size={15} />
@@ -65,14 +71,14 @@
       </div>
     </div>
   </div>
-  {#if data.remote}
-    <Button href={data.profile.user.apId} variant="outline" class="shrink-0">
-      <Icon name="globe" size={16} /> View on {data.profile.user.host}
-    </Button>
-  {:else if isSelf}
-    <EditProfileDialog user={data.profile.user} />
-  {:else if data.user}
-    <FollowButton username={data.profile.user.username} following={data.profile.isFollowing} />
+  {#if !data.remote}
+    <div class="shrink-0 self-center">
+      {#if isSelf}
+        <EditProfileDialog user={data.profile.user} />
+      {:else if data.user}
+        <FollowButton username={data.profile.user.username} following={data.profile.isFollowing} />
+      {/if}
+    </div>
   {/if}
 </header>
 
@@ -107,7 +113,7 @@
 
   <Tabs.Content value="about" class="select-none px-1 pt-3 text-foreground-alt">
     {#if profile.user.bio}
-      <p class="max-w-prose">{profile.user.bio}</p>
+      <p class="max-w-prose whitespace-pre-line">{profile.user.bio}</p>
     {:else}
       <p class="text-muted-foreground">No bio yet.</p>
     {/if}

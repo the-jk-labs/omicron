@@ -2,6 +2,7 @@
 import type { Post, RemoteActor, User } from "@/db/schema.ts";
 import type { PostWithAuthor } from "@/db/repositories/posts.ts";
 import type { CommentWithAuthor } from "@/db/repositories/comments.ts";
+import { htmlToText } from "@/lib/html.ts";
 
 // Minimal API payloads — never leak password hashes, keys, or emails publicly.
 
@@ -36,7 +37,7 @@ function postAuthor(row: PostWithAuthor) {
   return {
     id: a.id,
     username: a.handle,
-    displayName: a.displayName,
+    displayName: htmlToText(a.displayName) || a.handle,
     avatarUrl: a.avatarUrl,
     remote: true,
   };
@@ -64,8 +65,9 @@ export function remoteProfile(actor: RemoteActor) {
     user: {
       id: actor.id,
       username: actor.handle,
-      displayName: actor.displayName,
-      bio: actor.bio,
+      // Mastodon delivers name/summary as HTML; present them as plain text.
+      displayName: htmlToText(actor.displayName) || actor.handle,
+      bio: htmlToText(actor.bio),
       avatarUrl: actor.avatarUrl,
       host: actor.host,
       apId: actor.apId,

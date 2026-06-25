@@ -19,11 +19,11 @@
 <Avatar.Root
   delayMs={200}
   style={`width:${size}px;height:${size}px;font-size:${Math.round(size * 0.36)}px`}
-  class={`data-[status=loaded]:border-foreground bg-muted text-muted-foreground rounded-full border font-medium uppercase data-[status=loading]:border-transparent ${className}`}
+  class={`data-[status=loaded]:border-foreground bg-muted text-muted-foreground shrink-0 rounded-full border font-medium uppercase data-[status=loading]:border-transparent ${className}`}
 >
   <div class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-transparent">
     {#if src}
-      <Avatar.Image {src} alt={name} class="aspect-square h-full w-full" />
+      <Avatar.Image {src} alt={name} class="aspect-square h-full w-full object-cover" />
     {/if}
     <Avatar.Fallback class="border-muted flex h-full w-full items-center justify-center rounded-full border">
       {initials}
