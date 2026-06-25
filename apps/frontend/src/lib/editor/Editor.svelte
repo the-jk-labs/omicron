@@ -3,7 +3,7 @@
   import { onDestroy, onMount } from "svelte";
   import { type Content, Editor } from "@tiptap/core";
   import Placeholder from "@tiptap/extension-placeholder";
-  import { Dialog, Label, Separator, Toolbar } from "bits-ui";
+  import { Dialog, DropdownMenu, Label, Toolbar } from "bits-ui";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import { endpoints, ApiError } from "$lib/api";
   import { ACCEPTED_IMAGE_TYPES, prepareImage } from "./image";
@@ -29,12 +29,15 @@
   let element: HTMLDivElement;
   let editor: Editor;
 
+  // Heading levels offered in the text-style dropdown.
+  const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const;
+  type HeadingLevel = (typeof HEADING_LEVELS)[number];
+
   // Reflects which marks/blocks are active at the cursor, refreshed on every
-  // Tiptap transaction so the toolbar buttons stay in sync.
+  // Tiptap transaction so the toolbar buttons stay in sync. Headings are tracked
+  // as a single level (0 = normal text) and surfaced through the dropdown.
+  let headingLevel = $state(0);
   let active = $state({
-    h1: false,
-    h2: false,
-    h3: false,
     bold: false,
     italic: false,
     strike: false,
@@ -47,10 +50,8 @@
   });
 
   function refreshActive() {
+    headingLevel = HEADING_LEVELS.find((level) => editor.isActive("heading", { level })) ?? 0;
     active = {
-      h1: editor.isActive("heading", { level: 1 }),
-      h2: editor.isActive("heading", { level: 2 }),
-      h3: editor.isActive("heading", { level: 3 }),
       bold: editor.isActive("bold"),
       italic: editor.isActive("italic"),
       strike: editor.isActive("strike"),
@@ -61,6 +62,14 @@
       codeBlock: editor.isActive("codeBlock"),
       link: editor.isActive("link"),
     };
+  }
+
+  // Set an explicit heading level from the dropdown, or return to normal text.
+  function setHeading(level: HeadingLevel) {
+    editor.chain().focus().setHeading({ level }).run();
+  }
+  function setParagraph() {
+    editor.chain().focus().setParagraph().run();
   }
 
   // Link insertion uses a Bits UI dialog (not window.prompt). Toggling an active
@@ -157,10 +166,7 @@
     divider?: boolean;
   };
   const tools: Tool[] = [
-    { key: "h1", icon: "h1", label: "Heading 1", run: () => editor.chain().focus().toggleHeading({ level: 1 }).run() },
-    { key: "h2", icon: "h2", label: "Heading 2", run: () => editor.chain().focus().toggleHeading({ level: 2 }).run() },
-    { key: "h3", icon: "h3", label: "Heading 3", run: () => editor.chain().focus().toggleHeading({ level: 3 }).run() },
-    { key: "bold", icon: "bold", label: "Bold", divider: true, run: () => editor.chain().focus().toggleBold().run() },
+    { key: "bold", icon: "bold", label: "Bold", run: () => editor.chain().focus().toggleBold().run() },
     { key: "italic", icon: "italic", label: "Italic", run: () => editor.chain().focus().toggleItalic().run() },
     { key: "strike", icon: "strike", label: "Strikethrough", run: () => editor.chain().focus().toggleStrike().run() },
     { key: "code", icon: "code", label: "Inline code", run: () => editor.chain().focus().toggleCode().run() },
@@ -175,14 +181,51 @@
 
   const btn =
     "rounded-9px bg-background-alt hover:bg-muted active:bg-dark-10 inline-flex size-10 items-center justify-center transition-all active:scale-[0.98]";
+  // Auto-width variant for the text-style dropdown trigger (icon + chevron).
+  const headingTrigger =
+    "rounded-9px bg-background-alt hover:bg-muted active:bg-dark-10 inline-flex h-10 items-center gap-1 px-2.5 transition-all active:scale-[0.98]";
+  // Verbatim Bits UI docs DropdownMenu.Item class (v3 syntax), matching the post menu.
+  const itemClass =
+    "rounded-button data-[highlighted]:bg-muted !ring-0 !ring-transparent flex h-9 w-full cursor-pointer select-none items-center gap-2.5 px-2.5 text-sm font-medium focus-visible:outline-none";
 </script>
 
 <div>
-  <Toolbar.Root class="rounded-10px border-border bg-background-alt shadow-mini mb-4 flex min-w-max items-center gap-x-0.5 border px-[4px] py-1">
+  <Toolbar.Root class="rounded-10px border-border bg-background-alt shadow-mini mb-4 flex w-full items-center justify-between border px-2 py-1">
+    <!-- Text style: a single dropdown for normal text + Heading 1–6. -->
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger
+        class={`${headingTrigger} ${headingLevel ? "text-foreground/80" : "text-foreground/60"}`}
+        aria-label="Text style"
+        title="Text style"
+      >
+        <Icon name={headingLevel ? (`h${headingLevel}` as IconName) : "heading"} size={18} />
+        <Icon name="chevronDown" size={14} />
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          sideOffset={8}
+          align="start"
+          class="border-muted bg-background shadow-popover z-30 w-[200px] rounded-xl border px-1 py-1.5 focus-visible:outline-none"
+        >
+          <DropdownMenu.Item
+            onSelect={setParagraph}
+            class={`${itemClass} ${headingLevel === 0 ? "bg-muted" : ""}`}
+          >
+            <Icon name="paragraph" size={16} /> Normal text
+          </DropdownMenu.Item>
+          {#each HEADING_LEVELS as level (level)}
+            <DropdownMenu.Item
+              onSelect={() => setHeading(level)}
+              class={`${itemClass} ${headingLevel === level ? "bg-muted" : ""}`}
+            >
+              <Icon name={`h${level}` as IconName} size={16} /> Heading {level}
+            </DropdownMenu.Item>
+          {/each}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+
     {#each tools as tool (tool.label)}
-      {#if tool.divider}
-        <Separator.Root orientation="vertical" class="bg-border mx-1 shrink-0 data-[orientation=vertical]:h-7 data-[orientation=vertical]:w-px" />
-      {/if}
       <Toolbar.Button
         onclick={tool.run}
         aria-label={tool.label}
