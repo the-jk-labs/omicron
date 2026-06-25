@@ -3,12 +3,13 @@
 // signature match a future Redis/BullMQ-backed queue, so swapping the backend
 // later touches only this file. For now jobs run in-process, fire-and-forget.
 
-export type JobName = "federate_post" | "send_follow" | "send_unfollow";
+export type JobName = "federate_post" | "send_follow" | "send_unfollow" | "delete_actor";
 
 export type JobPayloads = {
   federate_post: { postId: string };
   send_follow: { followerId: string; targetActor: string };
   send_unfollow: { followerId: string; targetActor: string };
+  delete_actor: { userId: string };
 };
 
 type Handler<N extends JobName> = (payload: JobPayloads[N]) => Promise<void>;

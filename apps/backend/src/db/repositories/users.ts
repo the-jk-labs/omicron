@@ -43,3 +43,9 @@ export async function update(id: string, data: Partial<NewUser>) {
   const [row] = await db.update(users).set(data).where(eq(users.id, id)).returning();
   return row;
 }
+
+// Permanently deletes a user. FK cascades remove their posts, follows, likes,
+// comments, sessions, mutes and blocks.
+export async function remove(id: string) {
+  await db.delete(users).where(eq(users.id, id));
+}

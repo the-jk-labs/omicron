@@ -27,6 +27,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     login: (body: { identifier: string; password: string }) =>
       api.post<{ user: User }>("/auth/login", body),
     logout: () => api.post<{ ok: true }>("/auth/logout"),
+    deleteAccount: (password: string) => api.del<{ ok: true }>("/auth/me", { password }),
 
     // feed + posts
     feed: (cursor?: string | null) =>

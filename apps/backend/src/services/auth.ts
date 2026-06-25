@@ -3,7 +3,8 @@ import * as usersRepo from "@/db/repositories/users.ts";
 import * as sessionsRepo from "@/db/repositories/sessions.ts";
 import { hashPassword, verifyPassword } from "@/lib/password.ts";
 import { newSessionToken, sessionExpiry } from "@/lib/session.ts";
-import { badRequest, conflict, unauthorized } from "@/lib/http.ts";
+import { badRequest, conflict, notFound, unauthorized } from "@/lib/http.ts";
+import { queue } from "@/queue/queue.ts";
 import type { User } from "@/db/schema.ts";
 
 // Business logic for authentication. First registered user becomes admin.
@@ -57,4 +58,17 @@ export async function login(identifier: string, password: string): Promise<{
 
 export function logout(token: string): Promise<void> {
   return sessionsRepo.remove(token);
+}
+
+// Permanently deletes the signed-in user's account after confirming their
+// password. The actual removal (and the federated Delete(actor) broadcast that
+// tells other instances to tombstone us) runs in a background job, so the
+// request returns promptly and the caller can clear the session cookie.
+export async function deleteAccount(userId: string, password: string): Promise<void> {
+  const user = await usersRepo.findById(userId);
+  if (!user) throw notFound("Account not found.");
+  if (!(await verifyPassword(password, user.passwordHash))) {
+    throw unauthorized("Incorrect password.");
+  }
+  queue.add("delete_actor", { userId });
 }

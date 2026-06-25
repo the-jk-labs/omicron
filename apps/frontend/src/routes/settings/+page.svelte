@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { goto, invalidateAll } from "$app/navigation";
-  import { Button as ButtonPrimitive, Label } from "bits-ui";
+  import { Button as ButtonPrimitive, Dialog, Label } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
   import { theme, type ThemePreference } from "$lib/theme.svelte";
   import { reading, type FeedTab } from "$lib/prefs.svelte";
@@ -90,6 +90,33 @@
     await endpoints().logout();
     await invalidateAll();
     goto("/");
+  }
+
+  // Account deletion — guarded by a dialog that requires the current password.
+  let deleteOpen = $state(false);
+  let deletePassword = $state("");
+  let deleteError = $state("");
+  let deleting = $state(false);
+
+  function onDeleteOpenChange(next: boolean) {
+    deleteOpen = next;
+    if (next) {
+      deletePassword = "";
+      deleteError = "";
+    }
+  }
+
+  async function deleteAccount() {
+    deleteError = "";
+    deleting = true;
+    try {
+      await endpoints().deleteAccount(deletePassword);
+      await invalidateAll();
+      goto("/");
+    } catch (err) {
+      deleteError = err instanceof ApiError ? err.message : "Failed to delete account.";
+      deleting = false;
+    }
   }
 
   const field =
@@ -257,8 +284,13 @@
     <h2 class="text-lg font-semibold tracking-tight text-foreground">Account</h2>
 
     <dl class="mt-4 flex flex-col gap-3 text-sm">
-      <div class="flex items-center justify-between gap-4">
-        <dt class="text-muted-foreground">Username</dt>
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <dt class="text-muted-foreground">Username</dt>
+          <p class="mt-0.5 text-xs text-muted-foreground">
+            Your fediverse handle — permanent and can't be changed.
+          </p>
+        </div>
         <dd class="font-medium text-foreground">@{data.user.username}</dd>
       </div>
       <div class="flex items-center justify-between gap-4">
@@ -268,9 +300,70 @@
     </dl>
 
     <div class="mt-6 flex justify-end">
-      <Button variant="outline" size="sm" onclick={logout} class="text-destructive">
+      <Button variant="outline" size="sm" onclick={logout}>
         <Icon name="logout" size={15} /> Sign out
       </Button>
     </div>
   </section>
+
+  <!-- Danger zone -->
+  <section class="rounded-card border border-destructive/40 bg-background p-6">
+    <h2 class="text-lg font-semibold tracking-tight text-destructive">Delete account</h2>
+    <p class="mt-1 max-w-prose text-sm text-muted-foreground">
+      Permanently delete your account, posts, and follows. If your instance is federated, other
+      servers are told to remove your profile too. This cannot be undone.
+    </p>
+
+    <div class="mt-4 flex justify-end">
+      <Button variant="destructive" size="sm" onclick={() => onDeleteOpenChange(true)}>
+        <Icon name="trash" size={15} /> Delete account
+      </Button>
+    </div>
+  </section>
 </div>
+
+<Dialog.Root bind:open={deleteOpen} onOpenChange={onDeleteOpenChange}>
+  <Dialog.Portal>
+    <Dialog.Overlay
+      class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+    />
+    <Dialog.Content
+      class="rounded-card bg-background shadow-popover fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 border border-border p-6 sm:max-w-[440px]"
+    >
+      <Dialog.Title class="text-foreground text-lg font-semibold tracking-tight">
+        Delete account
+      </Dialog.Title>
+      <Dialog.Description class="text-muted-foreground mt-1 text-sm">
+        This permanently deletes <strong class="text-foreground">@{data.user.username}</strong> and
+        everything in it. Enter your password to confirm.
+      </Dialog.Description>
+
+      <div class="mt-5 flex flex-col gap-1.5">
+        <Label.Root for="delete-password" class={labelClass}>Password</Label.Root>
+        <input
+          id="delete-password"
+          type="password"
+          bind:value={deletePassword}
+          autocomplete="current-password"
+          class={field}
+        />
+        {#if deleteError}<p class="text-destructive text-sm">{deleteError}</p>{/if}
+      </div>
+
+      <div class="mt-6 flex justify-end gap-2">
+        <Dialog.Close
+          class="text-foreground hover:bg-muted inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium active:scale-[0.98]"
+        >
+          Cancel
+        </Dialog.Close>
+        <Button
+          variant="destructive"
+          disabled={deleting || deletePassword.length === 0}
+          onclick={deleteAccount}
+        >
+          {deleting ? "Deleting…" : "Delete forever"}
+        </Button>
+      </div>
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>

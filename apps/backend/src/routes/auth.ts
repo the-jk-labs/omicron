@@ -5,6 +5,7 @@ import * as authService from "@/services/auth.ts";
 import * as sessionsRepo from "@/db/repositories/sessions.ts";
 import { SESSION_COOKIE, SESSION_TTL_MS } from "@/lib/session.ts";
 import { config } from "@/config.ts";
+import { requireUser } from "@/routes/middleware.ts";
 import { publicUser } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
@@ -43,4 +44,13 @@ authRoutes.post("/logout", async (c) => {
 authRoutes.get("/me", (c) => {
   const user = c.get("user");
   return c.json({ user: user ? publicUser(user) : null });
+});
+
+// Permanently delete the signed-in account (requires the current password).
+authRoutes.delete("/me", async (c) => {
+  const user = requireUser(c);
+  const { password } = await c.req.json().catch(() => ({ password: "" }));
+  await authService.deleteAccount(user.id, password ?? "");
+  deleteCookie(c, SESSION_COOKIE, { path: "/" });
+  return c.json({ ok: true });
 });
