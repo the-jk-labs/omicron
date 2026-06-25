@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Tabs } from "bits-ui";
+  import { onMount } from "svelte";
+  import { Tabs, Separator } from "bits-ui";
   import { endpoints } from "$lib/api";
   import PostCard from "$lib/components/PostCard.svelte";
   import FollowButton from "$lib/components/FollowButton.svelte";
@@ -17,10 +18,35 @@
   const profile = $derived(data.profile);
   // Self/edit/follow only apply to local profiles; remote browsing is read-only.
   const isSelf = $derived(!data.remote && data.user?.id === profile.user.id);
+  const isAdmin = $derived(!data.remote && "isAdmin" in profile.user && profile.user.isAdmin);
 
   let posts = $state<Post[]>(data.page.items);
   let cursor = $state<string | null>(data.page.nextCursor);
   let loading = $state(false);
+
+  // The full fediverse address (@user@host). Remote handles already carry the
+  // host; for local users the host is the instance we're being served from, so
+  // we read it from the browser once mounted (unknown during SSR).
+  let host = $state("");
+  onMount(() => (host = location.host));
+  const fediHandle = $derived(
+    data.remote
+      ? `@${profile.user.username}`
+      : host
+        ? `@${profile.user.username}@${host}`
+        : `@${profile.user.username}`,
+  );
+
+  let copied = $state(false);
+  async function copyHandle() {
+    try {
+      await navigator.clipboard.writeText(fediHandle);
+      copied = true;
+      setTimeout(() => (copied = false), 1500);
+    } catch {
+      // Clipboard unavailable (insecure context); silently ignore.
+    }
+  }
 
   async function loadMore() {
     if (!cursor) return;
@@ -121,14 +147,70 @@
     {/if}
   </Tabs.Content>
 
-  <Tabs.Content value="about" class="select-none px-1 pt-3 text-foreground-alt">
-    {#if profile.user.bio}
-      <p class="max-w-prose whitespace-pre-line">{profile.user.bio}</p>
-    {:else}
-      <p class="text-muted-foreground">No bio yet.</p>
-    {/if}
-    {#if !data.remote}
-      <p class="mt-4 text-sm text-muted-foreground">Joined {formatDate(data.profile.user.createdAt)}</p>
+  <Tabs.Content value="about" class="pt-3">
+    <dl class="max-w-prose divide-y divide-border rounded-card border border-border bg-background-alt">
+      <div class="flex items-center justify-between gap-3 px-4 py-3">
+        <dt class="flex items-center gap-2 text-sm text-muted-foreground">
+          <Icon name="at" size={15} /> Fediverse address
+        </dt>
+        <dd class="flex min-w-0 items-center gap-2">
+          <span class="truncate text-sm text-foreground">{fediHandle}</span>
+          <button
+            type="button"
+            onclick={copyHandle}
+            title="Copy address"
+            aria-label="Copy fediverse address"
+            class="inline-flex size-7 shrink-0 items-center justify-center rounded-button text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Icon name={copied ? "check" : "copy"} size={15} />
+          </button>
+        </dd>
+      </div>
+
+      {#if !data.remote}
+        <div class="flex items-center justify-between gap-3 px-4 py-3">
+          <dt class="flex items-center gap-2 text-sm text-muted-foreground">
+            <Icon name="calendar" size={15} /> Joined
+          </dt>
+          <dd class="text-sm text-foreground">{formatDate(data.profile.user.createdAt)}</dd>
+        </div>
+
+        {#if isAdmin}
+          <div class="flex items-center justify-between gap-3 px-4 py-3">
+            <dt class="flex items-center gap-2 text-sm text-muted-foreground">
+              <Icon name="admin" size={15} /> Role
+            </dt>
+            <dd>
+              <span class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+                <Icon name="admin" size={12} /> Admin
+              </span>
+            </dd>
+          </div>
+        {/if}
+      {:else}
+        <div class="flex items-center justify-between gap-3 px-4 py-3">
+          <dt class="flex items-center gap-2 text-sm text-muted-foreground">
+            <Icon name="globe" size={15} /> Profile
+          </dt>
+          <dd class="min-w-0">
+            <a
+              href={data.profile.user.apId}
+              target="_blank"
+              rel="noreferrer"
+              class="truncate text-sm text-foreground underline-offset-4 hover:underline"
+            >View on {data.profile.user.host}</a>
+          </dd>
+        </div>
+      {/if}
+    </dl>
+
+    {#if isSelf && !profile.user.bio}
+      <div class="mt-3 max-w-prose">
+        <Separator.Root class="bg-border my-3 h-px" />
+        <p class="text-sm text-muted-foreground">
+          Your profile has no bio yet — add one from Edit profile to tell people who you are.
+        </p>
+      </div>
     {/if}
   </Tabs.Content>
 </Tabs.Root>

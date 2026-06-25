@@ -53,6 +53,10 @@
     Check,
     Image as ImageIcon,
     FileText,
+    Calendar,
+    Copy,
+    ShieldCheck,
+    AtSign,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -105,6 +109,10 @@
     check: Check,
     image: ImageIcon,
     draft: FileText,
+    calendar: Calendar,
+    copy: Copy,
+    admin: ShieldCheck,
+    at: AtSign,
   } as const;
 
   export type IconName = keyof typeof icons;
