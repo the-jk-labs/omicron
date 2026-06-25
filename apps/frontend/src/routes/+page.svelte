@@ -1,7 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { onMount } from "svelte";
   import { Tabs } from "bits-ui";
   import { endpoints } from "$lib/api";
+  import { reading } from "$lib/prefs.svelte";
   import PostCard from "$lib/components/PostCard.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
@@ -70,6 +72,19 @@
     data.personalized ? [forYou, local, global] : [global, local],
   );
   const defaultTab = data.personalized ? "for-you" : "global";
+
+  // Controlled active tab. SSR and the first client render both use `defaultTab`
+  // (the preloaded feed) so hydration matches; after mount we honour the user's
+  // saved reading preference if it points at an available tab.
+  let activeTab = $state(defaultTab);
+
+  onMount(() => {
+    const pref = reading.defaultFeed;
+    if (pref && pref !== activeTab && feeds.some((f) => f.value === pref)) {
+      activeTab = pref;
+      ensureLoaded(pref);
+    }
+  });
 
   async function loadMore(feed: Feed) {
     if (feed.loading || !feed.cursor) return;
@@ -141,7 +156,7 @@
   {/if}
 {/snippet}
 
-<Tabs.Root value={defaultTab} onValueChange={ensureLoaded} class="w-full">
+<Tabs.Root bind:value={activeTab} onValueChange={ensureLoaded} class="w-full">
   <Tabs.List class="mb-2 flex items-center gap-6 text-sm font-medium">
     {#each feeds as feed (feed.value)}
       <Tabs.Trigger

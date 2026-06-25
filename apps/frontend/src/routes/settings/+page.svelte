@@ -4,6 +4,7 @@
   import { Button as ButtonPrimitive, Label } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
   import { theme, type ThemePreference } from "$lib/theme.svelte";
+  import { reading, type FeedTab } from "$lib/prefs.svelte";
   import { formatDate } from "$lib/format";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -30,6 +31,15 @@
     { value: "dark", label: "Dark", icon: "moon" },
     { value: "system", label: "System", icon: "monitor" },
   ];
+
+  const feedOptions: { value: FeedTab; label: string; icon: IconName }[] = [
+    { value: "for-you", label: "For you", icon: "sparkles" },
+    { value: "local", label: "Local", icon: "users" },
+    { value: "global", label: "Global", icon: "globe" },
+  ];
+
+  // Default to "For you" when no explicit choice has been saved yet.
+  const currentFeed = $derived(reading.defaultFeed ?? "for-you");
 
   const dirty = $derived(
     displayName !== data.user.displayName || bio !== data.user.bio || file !== null,
@@ -188,6 +198,36 @@
             aria-pressed={theme.preference === opt.value}
             class={`inline-flex h-8 items-center gap-1.5 rounded-button px-3 text-sm font-medium active:scale-[0.98] ${
               theme.preference === opt.value
+                ? "bg-background text-foreground shadow-mini"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Icon name={opt.icon} size={15} /> {opt.label}
+          </ButtonPrimitive.Root>
+        {/each}
+      </div>
+    </div>
+  </section>
+
+  <!-- Reading -->
+  <section class="rounded-card border border-border bg-background p-6">
+    <h2 class="text-lg font-semibold tracking-tight text-foreground">Reading</h2>
+    <p class="mt-1 text-sm text-muted-foreground">Customize your reading experience.</p>
+
+    <div class="mt-4 flex items-center justify-between gap-4">
+      <div>
+        <p class="text-sm font-medium text-foreground">Default feed</p>
+        <p class="text-xs text-muted-foreground">Which tab opens first on the home page.</p>
+      </div>
+      <div
+        class="inline-flex items-center gap-1 rounded-input border border-input bg-background-alt p-1 shadow-btn"
+      >
+        {#each feedOptions as opt (opt.value)}
+          <ButtonPrimitive.Root
+            onclick={() => reading.setDefaultFeed(opt.value)}
+            aria-pressed={currentFeed === opt.value}
+            class={`inline-flex h-8 items-center gap-1.5 rounded-button px-3 text-sm font-medium active:scale-[0.98] ${
+              currentFeed === opt.value
                 ? "bg-background text-foreground shadow-mini"
                 : "text-muted-foreground hover:text-foreground"
             }`}
