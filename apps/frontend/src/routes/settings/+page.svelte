@@ -5,6 +5,7 @@
   import { endpoints, ApiError } from "$lib/api";
   import { theme, type ThemePreference } from "$lib/theme.svelte";
   import { reading, type FeedTab } from "$lib/prefs.svelte";
+  import { AVATAR_MAX_DIMENSION, prepareImage } from "$lib/editor/image";
   import { formatDate } from "$lib/format";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -46,10 +47,32 @@
     displayName !== data.user.displayName || bio !== data.user.bio || file !== null,
   );
 
+  let removingPhoto = $state(false);
+
   function clearFile() {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     file = null;
     previewUrl = null;
+  }
+
+  // Discards a freshly-picked (unsaved) photo, or removes the saved avatar so the
+  // profile reverts to initials.
+  async function removePhoto() {
+    error = "";
+    if (file) {
+      clearFile();
+      return;
+    }
+    if (!data.user.avatarUrl) return;
+    removingPhoto = true;
+    try {
+      await endpoints().removeAvatar();
+      await invalidateAll();
+    } catch (err) {
+      error = err instanceof ApiError ? err.message : "Failed to remove photo.";
+    } finally {
+      removingPhoto = false;
+    }
   }
 
   function onFileChange(e: Event) {
@@ -74,7 +97,12 @@
     saved = false;
     busy = true;
     try {
-      if (file) await endpoints().uploadAvatar(file);
+      if (file) {
+        // Downscale/re-encode to ~256px before upload so avatars aren't shipped
+        // at full photo resolution (matches EditProfileDialog).
+        const { blob, type } = await prepareImage(file, AVATAR_MAX_DIMENSION);
+        await endpoints().uploadAvatar(blob, type);
+      }
       await endpoints().updateProfile({ displayName, bio });
       await invalidateAll();
       clearFile();
@@ -160,9 +188,22 @@
           </span>
         </button>
         <div class="flex flex-col gap-1.5">
-          <Button variant="outline" size="sm" onclick={() => fileInput?.click()}>
-            <Icon name="camera" size={15} /> Change photo
-          </Button>
+          <div class="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onclick={() => fileInput?.click()}>
+              <Icon name="camera" size={15} /> Change photo
+            </Button>
+            {#if file || data.user.avatarUrl}
+              <Button
+                variant="ghost"
+                size="sm"
+                onclick={removePhoto}
+                disabled={removingPhoto}
+                class="text-muted-foreground hover:text-destructive"
+              >
+                <Icon name="trash" size={15} /> {removingPhoto ? "Removing…" : "Remove"}
+              </Button>
+            {/if}
+          </div>
           <p class="text-xs text-muted-foreground">PNG, JPEG, WebP or GIF · max 2 MB</p>
         </div>
         <input

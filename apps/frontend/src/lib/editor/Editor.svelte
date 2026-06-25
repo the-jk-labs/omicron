@@ -6,7 +6,7 @@
   import { Dialog, DropdownMenu, Label, Toolbar } from "bits-ui";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import { endpoints, ApiError } from "$lib/api";
-  import { ACCEPTED_IMAGE_TYPES, prepareImage } from "./image";
+  import { isAcceptedImage, prepareImage } from "./image";
   import { extensions } from "./extensions";
 
   // Isolated Tiptap integration. The parent receives content via `onUpdate`.
@@ -104,7 +104,7 @@
     const file = input.files?.[0];
     input.value = ""; // allow re-picking the same file later
     if (!file) return;
-    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+    if (!isAcceptedImage(file)) {
       uploadError = "Unsupported image type. Use PNG, JPEG, WebP, or GIF.";
       return;
     }

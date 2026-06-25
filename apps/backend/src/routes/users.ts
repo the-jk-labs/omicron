@@ -35,6 +35,13 @@ userRoutes.post("/me/avatar", async (c) => {
   return c.json({ user: publicUser(user) });
 });
 
+// Remove the current avatar (revert to initials).
+userRoutes.delete("/me/avatar", async (c) => {
+  const viewer = requireUser(c);
+  const user = await usersService.removeAvatar(viewer.id);
+  return c.json({ user: publicUser(user) });
+});
+
 // Relation-management lists for the signed-in user (Settings → Connections).
 userRoutes.get("/me/muted", async (c) => {
   const viewer = requireUser(c);

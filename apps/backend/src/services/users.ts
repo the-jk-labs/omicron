@@ -59,3 +59,10 @@ export async function setAvatar(
 
   return usersRepo.update(userId, { avatarUrl: `/api/uploads/${filename}` });
 }
+
+// Clears the avatar so the profile falls back to initials. The previous file is
+// left on disk (it may still be referenced by federated copies), matching how
+// `setAvatar` doesn't prune the prior image.
+export function removeAvatar(userId: string): Promise<User> {
+  return usersRepo.update(userId, { avatarUrl: null });
+}

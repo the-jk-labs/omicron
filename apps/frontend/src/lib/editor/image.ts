@@ -14,6 +14,16 @@ export const AVATAR_MAX_DIMENSION = 256;
 const WEBP_QUALITY = 0.82;
 
 export const ACCEPTED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+const ACCEPTED_EXTENSIONS = [".png", ".jpg", ".jpeg", ".webp", ".gif"];
+
+// Whether a picked file is an image we accept. We can't rely on `file.type`
+// alone: some browsers/OSes report a non-standard MIME (e.g. "image/jpg") or an
+// empty string for otherwise-valid files, so fall back to the file extension.
+export function isAcceptedImage(file: File): boolean {
+  if (file.type && ACCEPTED_IMAGE_TYPES.includes(file.type)) return true;
+  const name = file.name.toLowerCase();
+  return ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext));
+}
 
 export type PreparedImage = { blob: Blob; type: string };
 

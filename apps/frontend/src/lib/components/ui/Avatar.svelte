@@ -23,7 +23,15 @@
 >
   <div class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-transparent">
     {#if src}
-      <Avatar.Image {src} alt={name} class="aspect-square h-full w-full object-cover" />
+      <Avatar.Image
+        {src}
+        alt={name}
+        width={size}
+        height={size}
+        loading="lazy"
+        decoding="async"
+        class="aspect-square h-full w-full object-cover"
+      />
     {/if}
     <Avatar.Fallback class="border-muted flex h-full w-full items-center justify-center rounded-full border">
       {initials}

@@ -75,6 +75,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // The blob is downscaled/re-encoded client-side (see prepareImage).
     uploadAvatar: (blob: Blob, contentType: string) =>
       api.postRaw<{ user: User }>("/users/me/avatar", blob, contentType),
+    removeAvatar: () => api.del<{ user: User }>("/users/me/avatar"),
     // Post-body image upload. The blob is already resized/compressed client-side.
     uploadImage: (blob: Blob, contentType: string) =>
       api.postRaw<{ url: string }>("/uploads", blob, contentType),
