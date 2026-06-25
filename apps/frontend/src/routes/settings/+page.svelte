@@ -99,7 +99,7 @@
     try {
       if (file) {
         // Downscale/re-encode to ~256px before upload so avatars aren't shipped
-        // at full photo resolution (matches EditProfileDialog).
+        // at full photo resolution.
         const { blob, type } = await prepareImage(file, AVATAR_MAX_DIMENSION);
         await endpoints().uploadAvatar(blob, type);
       }

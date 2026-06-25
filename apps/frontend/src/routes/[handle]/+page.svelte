@@ -7,7 +7,6 @@
   import FollowButton from "$lib/components/FollowButton.svelte";
   import ProfileMenu from "$lib/components/ProfileMenu.svelte";
   import FollowListDialog from "$lib/components/FollowListDialog.svelte";
-  import EditProfileDialog from "$lib/components/EditProfileDialog.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
@@ -101,7 +100,9 @@
       class="col-start-2 row-start-1 flex shrink-0 items-center gap-2 justify-self-end self-center sm:col-start-3"
     >
       {#if isSelf}
-        <EditProfileDialog user={data.profile.user} />
+        <Button href="/settings" variant="outline" size="sm">
+          <Icon name="edit" size={15} /> Edit profile
+        </Button>
       {:else if data.user}
         <FollowButton username={data.profile.user.username} following={data.profile.isFollowing} />
         <ProfileMenu
