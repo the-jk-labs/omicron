@@ -182,7 +182,7 @@
       <Icon name="heart" size={18} class={liked ? "fill-current" : ""} />
       <span class="tabular-nums">{likeCount}</span>
     </Button>
-    <a href="#responses" class="text-muted-foreground hover:bg-muted inline-flex h-10 items-center gap-1.5 rounded-input px-3 text-sm font-medium">
+    <a href="#responses" class="text-muted-foreground hover:bg-muted inline-flex h-10 items-center gap-1.5 rounded-input px-4 text-sm font-medium">
       <Icon name="comment" size={18} />
       <span class="tabular-nums">{commentCount}</span>
     </a>

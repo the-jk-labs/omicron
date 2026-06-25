@@ -116,7 +116,7 @@
             </span>
           </button>
           <div class="flex flex-col gap-1.5">
-            <Button variant="outline" class="h-9 px-3 text-sm" onclick={() => fileInput?.click()}>
+            <Button variant="outline" size="sm" onclick={() => fileInput?.click()}>
               <Icon name="camera" size={15} /> Change photo
             </Button>
             <p class="text-muted-foreground text-xs">PNG, JPEG, WebP or GIF · max 2 MB</p>
@@ -159,7 +159,7 @@
         >
           Cancel
         </Dialog.Close>
-        <Button variant="solid" class="h-10 px-5 text-sm" disabled={busy} onclick={save}>
+        <Button variant="solid" disabled={busy} onclick={save}>
           {busy ? "Saving…" : "Save changes"}
         </Button>
       </div>

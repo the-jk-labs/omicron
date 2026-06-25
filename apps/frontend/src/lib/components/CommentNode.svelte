@@ -57,10 +57,10 @@
         ></textarea>
         {#if ui.editError}<p class="text-destructive mt-1.5 text-sm">{ui.editError}</p>{/if}
         <div class="mt-2 flex justify-end gap-2">
-          <Button type="button" variant="ghost" class="h-9 px-4 text-sm" onclick={() => (ui.editingId = null)}>
+          <Button type="button" variant="ghost" size="sm" onclick={() => (ui.editingId = null)}>
             Cancel
           </Button>
-          <Button type="submit" variant="solid" class="h-9 px-4 text-sm" disabled={ui.editBusy || !ui.editDraft.trim()}>
+          <Button type="submit" variant="solid" size="sm" disabled={ui.editBusy || !ui.editDraft.trim()}>
             {ui.editBusy ? "Saving…" : "Save"}
           </Button>
         </div>
@@ -76,7 +76,8 @@
         <Button
           onclick={() => actions.toggleLike(comment)}
           variant="ghost"
-          class={`h-8 gap-1.5 px-2 text-xs ${comment.liked ? "text-foreground" : "text-muted-foreground"}`}
+          size="xs"
+          class={comment.liked ? "text-foreground" : "text-muted-foreground"}
           aria-pressed={comment.liked}
           aria-label={comment.liked ? "Unlike" : "Like"}
         >
@@ -86,7 +87,8 @@
         <Button
           onclick={() => actions.openReply(comment, thread)}
           variant="ghost"
-          class="text-muted-foreground h-8 gap-1.5 px-2 text-xs"
+          size="xs"
+          class="text-muted-foreground"
         >
           <Icon name="reply" size={15} />
           Reply
@@ -95,7 +97,8 @@
           <Button
             onclick={() => actions.openEdit(comment)}
             variant="ghost"
-            class="text-muted-foreground h-8 gap-1.5 px-2 text-xs"
+            size="xs"
+            class="text-muted-foreground"
             aria-label="Edit comment"
           >
             <Icon name="edit" size={15} />
@@ -106,7 +109,8 @@
           <Button
             onclick={() => actions.deleteComment(comment, thread)}
             variant="ghost"
-            class="text-muted-foreground hover:text-destructive h-8 gap-1.5 px-2 text-xs"
+            size="xs"
+            class="text-muted-foreground hover:text-destructive"
             disabled={ui.deleteBusy.has(comment.id)}
             aria-label="Delete comment"
           >
@@ -131,10 +135,10 @@
           ></textarea>
           {#if ui.replyError}<p class="text-destructive mt-1.5 text-sm">{ui.replyError}</p>{/if}
           <div class="mt-2 flex justify-end gap-2">
-            <Button type="button" variant="ghost" class="h-9 px-4 text-sm" onclick={() => (ui.replyingTo = null)}>
+            <Button type="button" variant="ghost" size="sm" onclick={() => (ui.replyingTo = null)}>
               Cancel
             </Button>
-            <Button type="submit" variant="solid" class="h-9 px-4 text-sm" disabled={ui.replyBusy || !ui.replyDraft.trim()}>
+            <Button type="submit" variant="solid" size="sm" disabled={ui.replyBusy || !ui.replyDraft.trim()}>
               {ui.replyBusy ? "Posting…" : "Reply"}
             </Button>
           </div>

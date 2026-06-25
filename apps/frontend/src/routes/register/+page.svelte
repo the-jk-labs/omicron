@@ -59,7 +59,7 @@
       <input id="password" type="password" bind:value={password} autocomplete="new-password" placeholder="min 8 characters" class={field} />
     </div>
     {#if error}<p class="text-sm text-destructive">{error}</p>{/if}
-    <Button type="submit" disabled={busy} variant="solid" class="justify-center py-2.5">
+    <Button type="submit" disabled={busy} variant="solid">
       {busy ? "Creating…" : "Create account"}
     </Button>
   </form>

@@ -49,7 +49,7 @@
       <input id="password" type="password" bind:value={password} autocomplete="current-password" class={field} />
     </div>
     {#if error}<p class="text-sm text-destructive">{error}</p>{/if}
-    <Button type="submit" disabled={busy} variant="solid" class="justify-center py-2.5">
+    <Button type="submit" disabled={busy} variant="solid">
       {busy ? "Signing in…" : "Sign in"}
     </Button>
   </form>

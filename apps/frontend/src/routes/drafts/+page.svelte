@@ -76,7 +76,7 @@
           </span>
         </Button>
         <div class="flex shrink-0 items-center gap-2 self-center">
-          <Button href={`/compose?id=${draft.id}`} variant="outline" class="h-9 px-3 text-sm">
+          <Button href={`/compose?id=${draft.id}`} variant="outline" size="sm">
             <Icon name="edit" size={15} /> Continue
           </Button>
           <Button

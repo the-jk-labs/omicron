@@ -251,7 +251,7 @@
         ></textarea>
         {#if error}<p class="text-destructive mt-1.5 text-sm">{error}</p>{/if}
         <div class="mt-2 flex justify-end">
-          <Button type="submit" variant="solid" class="h-9 px-4 text-sm" disabled={busy || !draft.trim()}>
+          <Button type="submit" variant="solid" size="sm" disabled={busy || !draft.trim()}>
             {busy ? "Posting…" : "Respond"}
           </Button>
         </div>
@@ -274,7 +274,7 @@
 
     {#if cursor}
       <div class="mt-6 flex justify-center">
-        <Button onclick={loadMore} disabled={loadingMore} variant="outline" class="h-9 px-4 text-sm">
+        <Button onclick={loadMore} disabled={loadingMore} variant="outline" size="sm">
           {loadingMore ? "Loading…" : "Show more responses"}
         </Button>
       </div>
