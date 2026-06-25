@@ -44,9 +44,11 @@
       ? ''
       : 'xl:grid-cols-[180px_minmax(0,1fr)_260px]'}"
   >
-    <!-- Left rail: primary navigation -->
+    <!-- Left rail: primary navigation. Sticky offset (top-24) sits at the rail's
+         natural position under the nav, so it pins from the first pixel of
+         scroll — fixed, with no pre-pin drift. -->
     <div class="hidden lg:block">
-      <div class="sticky top-20">
+      <div class="sticky top-24">
         <SideNav user={data.user} />
       </div>
     </div>
@@ -58,7 +60,7 @@
 
     <!-- Right rail: discovery -->
     <div class={isReadingView ? "hidden" : "hidden xl:block"}>
-      <div class="sticky top-20">
+      <div class="sticky top-24">
         <Discover />
       </div>
     </div>
