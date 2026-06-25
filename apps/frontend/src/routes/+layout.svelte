@@ -6,6 +6,7 @@
   import Nav from "$lib/components/Nav.svelte";
   import SideNav from "$lib/components/SideNav.svelte";
   import Discover from "$lib/components/Discover.svelte";
+  import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
   import type { LayoutData } from "./$types";
 
   let { data, children }: { data: LayoutData; children: import("svelte").Snippet } = $props();
@@ -63,3 +64,6 @@
     </div>
   </div>
 </div>
+
+<!-- Global host for the promise-based confirm() helper. -->
+<ConfirmDialog />

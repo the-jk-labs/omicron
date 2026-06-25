@@ -2,7 +2,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import { type Content, Editor } from "@tiptap/core";
-  import { Separator, Toolbar } from "bits-ui";
+  import { Dialog, Label, Separator, Toolbar } from "bits-ui";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import { extensions } from "./extensions";
 
@@ -60,14 +60,25 @@
     };
   }
 
-  // Prompts for a URL and toggles a link on the current selection.
+  // Link insertion uses a Bits UI dialog (not window.prompt). Toggling an active
+  // link removes it; otherwise the dialog collects a URL for the selection.
+  let linkOpen = $state(false);
+  let linkUrl = $state("");
+
   function toggleLink() {
     if (editor.isActive("link")) {
       editor.chain().focus().unsetLink().run();
       return;
     }
-    const url = window.prompt("Link URL");
+    linkUrl = "";
+    linkOpen = true;
+  }
+
+  function applyLink(e: SubmitEvent) {
+    e.preventDefault();
+    const url = linkUrl.trim();
     if (url) editor.chain().focus().setLink({ href: url }).run();
+    linkOpen = false;
   }
 
   onMount(() => {
@@ -133,3 +144,45 @@
   </Toolbar.Root>
   <div bind:this={element}></div>
 </div>
+
+<Dialog.Root bind:open={linkOpen}>
+  <Dialog.Portal>
+    <Dialog.Overlay
+      class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+    />
+    <Dialog.Content
+      class="rounded-card bg-background shadow-popover fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 border border-border p-6 sm:max-w-[420px]"
+    >
+      <Dialog.Title class="text-foreground text-lg font-semibold tracking-tight">
+        Add link
+      </Dialog.Title>
+      <form onsubmit={applyLink} class="mt-4 flex flex-col gap-4">
+        <div class="flex flex-col gap-1.5">
+          <Label.Root for="link-url" class="text-sm font-medium leading-none">URL</Label.Root>
+          <!-- svelte-ignore a11y_autofocus -->
+          <input
+            id="link-url"
+            bind:value={linkUrl}
+            type="url"
+            placeholder="https://example.com"
+            autofocus
+            class="rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
+          />
+        </div>
+        <div class="flex justify-end gap-2">
+          <Dialog.Close
+            class="text-foreground hover:bg-muted inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium active:scale-[0.98]"
+          >
+            Cancel
+          </Dialog.Close>
+          <button
+            type="submit"
+            class="rounded-input bg-dark text-background shadow-mini hover:bg-dark/95 inline-flex h-10 items-center justify-center px-5 text-sm font-semibold active:scale-[0.98]"
+          >
+            Add link
+          </button>
+        </div>
+      </form>
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>

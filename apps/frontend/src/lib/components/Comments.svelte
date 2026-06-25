@@ -4,6 +4,7 @@
   import { endpoints, ApiError } from "$lib/api";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import { confirm } from "$lib/components/ui/confirm";
   import CommentNode from "$lib/components/CommentNode.svelte";
   import type { CommentActions, CommentUiState } from "$lib/components/comments";
   import type { Comment, Page, User } from "$lib/types";
@@ -175,7 +176,13 @@
   async function deleteComment(comment: Comment, thread: Comment) {
     if (!canDelete(comment)) return;
     if (ui.deleteBusy.has(comment.id)) return;
-    if (!confirm("Delete this comment? This can't be undone.")) return;
+    const ok = await confirm({
+      title: "Delete comment",
+      description: "Delete this comment? This can't be undone.",
+      confirmText: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
 
     ui.deleteBusy.add(comment.id);
     ui.deleteBusy = new Set(ui.deleteBusy);

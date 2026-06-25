@@ -5,7 +5,7 @@
   // Every clickable element is bits-ui Button.Root, styled with the Bits UI docs'
   // own class strings: `solid` is the verbatim Button demo; `outline`/`icon`
   // reuse the docs DropdownMenu.Trigger style; `link` is the docs `.link` recipe.
-  type Variant = "solid" | "outline" | "ghost" | "icon" | "link" | "plain";
+  type Variant = "solid" | "destructive" | "outline" | "ghost" | "icon" | "link" | "plain";
 
   let {
     children,
@@ -17,6 +17,8 @@
   const variants: Record<Variant, string> = {
     solid:
       "rounded-input bg-dark text-background shadow-mini hover:bg-dark/95 inline-flex h-12 items-center justify-center gap-1.5 px-[21px] text-[15px] font-semibold active:scale-[0.98] active:transition-all",
+    destructive:
+      "rounded-input bg-destructive text-background shadow-mini hover:bg-destructive/90 inline-flex h-12 items-center justify-center gap-1.5 px-[21px] text-[15px] font-semibold active:scale-[0.98] active:transition-all",
     outline:
       "border-input text-foreground shadow-btn hover:bg-muted inline-flex h-12 select-none items-center justify-center gap-1.5 rounded-input border px-[21px] text-[15px] font-semibold active:scale-[0.98] active:transition-all",
     ghost:

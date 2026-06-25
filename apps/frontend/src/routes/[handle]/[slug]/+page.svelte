@@ -6,6 +6,7 @@
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import { confirm } from "$lib/components/ui/confirm";
   import Comments from "$lib/components/Comments.svelte";
   import { formatDate, readTime } from "$lib/format";
   import type { PageData } from "./$types";
@@ -20,6 +21,7 @@
   let commentCount = $state(data.post.commentCount);
   let busy = $state(false);
   let deleting = $state(false);
+  let deleteError = $state("");
   let shared = $state(false);
 
   // Authoring controls: edit is author-only; delete is author or admin. Neither
@@ -56,13 +58,20 @@
 
   async function deletePost() {
     if (deleting) return;
-    if (!confirm("Delete this post? This can't be undone.")) return;
+    const ok = await confirm({
+      title: "Delete post",
+      description: "Delete this post? This can't be undone.",
+      confirmText: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     deleting = true;
+    deleteError = "";
     try {
       await endpoints().deletePost(post.id);
       goto("/");
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Failed to delete.");
+      deleteError = err instanceof ApiError ? err.message : "Failed to delete.";
       deleting = false;
     }
   }
@@ -97,6 +106,12 @@
 <svelte:head><title>{post.title ?? "Post"} · Omicron</title></svelte:head>
 
 <article>
+  {#if deleteError}
+    <p class="mb-6 rounded-input border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+      {deleteError}
+    </p>
+  {/if}
+
   {#if post.title}
     <h1 class="mb-6 text-4xl font-bold leading-tight tracking-tight text-foreground">{post.title}</h1>
   {/if}
