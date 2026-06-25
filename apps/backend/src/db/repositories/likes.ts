@@ -27,9 +27,7 @@ export async function statsFor(
     .select({
       postId: likes.postId,
       count: sql<number>`count(*)::int`,
-      liked: viewerId
-        ? sql<boolean>`bool_or(${likes.userId} = ${viewerId})`
-        : sql<boolean>`false`,
+      liked: viewerId ? sql<boolean>`bool_or(${likes.userId} = ${viewerId})` : sql<boolean>`false`,
     })
     .from(likes)
     .where(inArray(likes.postId, postIds))

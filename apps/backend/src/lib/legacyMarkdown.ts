@@ -34,12 +34,19 @@ export function upgradeLegacyMarkdown(html: string): string {
   });
 
   // Phase 2: collapse runs of adjacent sentinels into real list/quote elements.
-  out = out.replace(/(?:<!ul>[\s\S]*?<!\/ul>)+/g, (run) =>
-    "<ul>" + run.replace(/<!ul>/g, "<li>").replace(/<!\/ul>/g, "</li>") + "</ul>");
-  out = out.replace(/(?:<!ol>[\s\S]*?<!\/ol>)+/g, (run) =>
-    "<ol>" + run.replace(/<!ol>/g, "<li>").replace(/<!\/ol>/g, "</li>") + "</ol>");
-  out = out.replace(/(?:<!bq>[\s\S]*?<!\/bq>)+/g, (run) =>
-    "<blockquote>" + run.replace(/<!bq>/g, "<p>").replace(/<!\/bq>/g, "</p>") + "</blockquote>");
+  out = out.replace(
+    /(?:<!ul>[\s\S]*?<!\/ul>)+/g,
+    (run) => "<ul>" + run.replace(/<!ul>/g, "<li>").replace(/<!\/ul>/g, "</li>") + "</ul>",
+  );
+  out = out.replace(
+    /(?:<!ol>[\s\S]*?<!\/ol>)+/g,
+    (run) => "<ol>" + run.replace(/<!ol>/g, "<li>").replace(/<!\/ol>/g, "</li>") + "</ol>",
+  );
+  out = out.replace(
+    /(?:<!bq>[\s\S]*?<!\/bq>)+/g,
+    (run) =>
+      "<blockquote>" + run.replace(/<!bq>/g, "<p>").replace(/<!\/bq>/g, "</p>") + "</blockquote>",
+  );
 
   return out;
 }

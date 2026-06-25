@@ -19,7 +19,7 @@ export const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2 MB
 
 // Updates the mutable profile fields. Only the keys present in `input` are
 // touched, so callers can patch display name and bio independently.
-export async function updateProfile(
+export function updateProfile(
   userId: string,
   input: { displayName?: string; bio?: string },
 ): Promise<User> {

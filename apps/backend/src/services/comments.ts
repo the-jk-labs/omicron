@@ -27,7 +27,9 @@ export async function create(
 ) {
   const text = content?.trim();
   if (!text) throw badRequest("Comment cannot be empty.");
-  if (text.length > MAX_LENGTH) throw badRequest(`Comment must be ${MAX_LENGTH} characters or fewer.`);
+  if (text.length > MAX_LENGTH) {
+    throw badRequest(`Comment must be ${MAX_LENGTH} characters or fewer.`);
+  }
   if (!(await postsRepo.findById(postId))) throw notFound("Post not found.");
 
   // Resolve the parent: replies attach to a top-level comment, so replying to a
@@ -47,7 +49,9 @@ export async function create(
 export async function edit(userId: string, commentId: string, content: string) {
   const text = content?.trim();
   if (!text) throw badRequest("Comment cannot be empty.");
-  if (text.length > MAX_LENGTH) throw badRequest(`Comment must be ${MAX_LENGTH} characters or fewer.`);
+  if (text.length > MAX_LENGTH) {
+    throw badRequest(`Comment must be ${MAX_LENGTH} characters or fewer.`);
+  }
 
   const comment = await commentsRepo.findById(commentId);
   if (!comment) throw notFound("Comment not found.");

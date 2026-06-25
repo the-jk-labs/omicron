@@ -19,9 +19,7 @@ function decodeEntities(s: string): string {
   return s.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (match, body: string) => {
     const lower = body.toLowerCase();
     if (lower[0] === "#") {
-      const code = lower[1] === "x"
-        ? parseInt(lower.slice(2), 16)
-        : parseInt(lower.slice(1), 10);
+      const code = lower[1] === "x" ? parseInt(lower.slice(2), 16) : parseInt(lower.slice(1), 10);
       return Number.isFinite(code) ? String.fromCodePoint(code) : match;
     }
     return NAMED_ENTITIES[lower] ?? match;
