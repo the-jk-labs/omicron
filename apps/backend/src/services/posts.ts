@@ -14,9 +14,12 @@ export async function createPost(authorId: string, input: {
   const html = input.contentHtml?.trim();
   if (!html) throw badRequest("Post content cannot be empty.");
 
+  const title = input.title?.trim();
+  if (!title) throw badRequest("A blog post must have a title.");
+
   const post = await postsRepo.create({
     authorId,
-    title: input.title?.trim() || null,
+    title,
     contentHtml: html,
     contentJson: input.contentJson ?? null,
   });
@@ -50,8 +53,11 @@ export async function updatePost(authorId: string, id: string, input: {
   const html = input.contentHtml?.trim();
   if (input.contentHtml !== undefined && !html) throw badRequest("Post content cannot be empty.");
 
+  const title = input.title?.trim();
+  if (input.title !== undefined && !title) throw badRequest("A blog post must have a title.");
+
   const post = await postsRepo.update(id, {
-    title: input.title?.trim() || null,
+    ...(input.title !== undefined ? { title } : {}),
     ...(html ? { contentHtml: html, contentJson: input.contentJson ?? null } : {}),
   });
 

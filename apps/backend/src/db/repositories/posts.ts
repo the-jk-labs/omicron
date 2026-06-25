@@ -143,14 +143,22 @@ export function listByAuthor(authorId: string, cursor: Cursor | null, limit = DE
     .limit(limit + 1);
 }
 
-// All posts by a cached remote actor (their fetched outbox).
+// All Article posts by a cached remote actor (their fetched outbox). Filtered
+// to "Article" so any microblog Notes cached before this instance went
+// long-form-only never surface on the actor's profile.
 export function listByRemoteActor(
   remoteActorId: string,
   cursor: Cursor | null,
   limit = DEFAULT_PAGE_SIZE,
 ) {
   return selectPosts()
-    .where(and(eq(posts.remoteActorId, remoteActorId), beforeCursor(cursor)))
+    .where(
+      and(
+        eq(posts.remoteActorId, remoteActorId),
+        eq(posts.apType, "Article"),
+        beforeCursor(cursor),
+      ),
+    )
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
 }
@@ -170,6 +178,7 @@ export function listFeed(userId: string, cursor: Cursor | null, limit = DEFAULT_
   return selectPosts()
     .where(
       and(
+        eq(posts.apType, "Article"),
         or(
           eq(posts.authorId, userId),
           sql`${posts.authorId} in ${followedLocal}`,

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { DocumentLoader } from "@fedify/fedify";
-import { type Actor, Article, Create, isActor, Note } from "@fedify/fedify/vocab";
+import { type Actor, Article, Create, isActor } from "@fedify/fedify/vocab";
 import { getFederation } from "@/federation/mod.ts";
 import { origin } from "@/config.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
@@ -68,8 +68,8 @@ export async function cacheActor(actor: Actor, handle?: string): Promise<RemoteA
   });
 }
 
-// Fetches the first page of an actor's outbox and upserts each Article/Note as
-// a local (remote-flagged) post. Best-effort: failures are swallowed so the
+// Fetches the first page of an actor's outbox and upserts each Article as a
+// local (remote-flagged) post. Best-effort: failures are swallowed so the
 // profile still renders from whatever is cached.
 export async function fetchOutboxPosts(handle: string, remoteActorId: string): Promise<void> {
   try {
@@ -90,14 +90,15 @@ export async function fetchOutboxPosts(handle: string, remoteActorId: string): P
     for await (const item of page.getItems({ documentLoader })) {
       if (count >= MAX_OUTBOX_POSTS) break;
       const obj = item instanceof Create ? await item.getObject({ documentLoader }) : item;
-      if (!(obj instanceof Article) && !(obj instanceof Note)) continue;
+      // Long-form only: keep Articles, skip microblog Notes (Mastodon, …).
+      if (!(obj instanceof Article)) continue;
       if (!obj.id) continue;
       await postsRepo.upsertRemotePost({
         remoteActorId,
         apId: obj.id.href,
         title: obj.name ? text(obj.name) : null,
         contentHtml: text(obj.content),
-        apType: obj instanceof Article ? "Article" : "Note",
+        apType: "Article",
         createdAt: obj.published ? new Date(obj.published.epochMilliseconds) : undefined,
       });
       count++;

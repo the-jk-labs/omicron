@@ -25,6 +25,10 @@
   }
 
   async function publish() {
+    if (!title.trim()) {
+      error = "A blog post must have a title.";
+      return;
+    }
     if (!html.trim() || html === "<p></p>") {
       error = "Write something first.";
       return;
@@ -33,7 +37,7 @@
     busy = true;
     try {
       const { post } = await endpoints().createPost({
-        title: title.trim() || undefined,
+        title: title.trim(),
         contentHtml: html,
         contentJson: json,
       });

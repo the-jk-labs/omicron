@@ -14,7 +14,6 @@ import {
   Endpoints,
   Follow,
   isActor,
-  Note,
   Person,
   PUBLIC_COLLECTION,
   Undo,
@@ -23,7 +22,7 @@ import * as usersRepo from "@/db/repositories/users.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
-import { buildNote } from "@/federation/note.ts";
+import { buildArticle } from "@/federation/article.ts";
 import { cacheActor } from "@/federation/remote.ts";
 
 // ── ActivityPub wiring (isolated) ────────────────────────────────────────
@@ -159,13 +158,12 @@ function setupInbox(f: Federation<ContextData>) {
       }
     })
     .on(Create, async (ctx, create) => {
-      // Ingest a remote post. We cache the author as a remote actor and tag the
-      // AP object type so the Global feed can surface blog Articles while
-      // excluding microblog Notes (Mastodon, Pixelfed, …).
+      // Ingest a remote post. This is a long-form blogging platform, so we only
+      // accept ActivityPub Articles (Omicron, WriteFreely, Ghost, Plume, …) and
+      // ignore microblog Notes (Mastodon, Pixelfed, …) outright.
       const object = await create.getObject(ctx);
-      if (!(object instanceof Article) && !(object instanceof Note)) return;
+      if (!(object instanceof Article)) return;
       if (!object.id) return;
-      const apType = object instanceof Article ? "Article" : "Note";
       if (await postsRepo.findByApId(object.id.href)) return;
       const author = await create.getActor(ctx);
       if (!isActor(author) || !author.id) return;
@@ -175,13 +173,13 @@ function setupInbox(f: Federation<ContextData>) {
         apId: object.id.href,
         title: object.name?.toString() ?? null,
         contentHtml: object.content?.toString() ?? "",
-        apType,
+        apType: "Article",
         createdAt: object.published ? new Date(object.published.epochMilliseconds) : undefined,
       });
     });
 }
 
-// ── Outbox: list the user's notes ─────────────────────────────────────────
+// ── Outbox: list the user's articles ──────────────────────────────────────
 function setupOutbox(f: Federation<ContextData>) {
   f.setOutboxDispatcher("/users/{identifier}/outbox", async (ctx, identifier) => {
     const user = await usersRepo.findByUsername(identifier);
@@ -191,7 +189,7 @@ function setupOutbox(f: Federation<ContextData>) {
       new Create({
         id: new URL(`${post.id}/activity`, ctx.getOutboxUri(identifier)),
         actor: ctx.getActorUri(identifier),
-        object: buildNote(ctx, identifier, post),
+        object: buildArticle(ctx, identifier, post),
         tos: [PUBLIC_COLLECTION],
       })
     );

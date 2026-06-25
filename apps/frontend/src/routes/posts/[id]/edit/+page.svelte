@@ -31,6 +31,10 @@
   }
 
   async function save() {
+    if (!title.trim()) {
+      error = "A blog post must have a title.";
+      return;
+    }
     if (!html.trim() || html === "<p></p>") {
       error = "Write something first.";
       return;
@@ -39,12 +43,12 @@
     busy = true;
     try {
       await endpoints().updatePost(post.id, {
-        title: title.trim() || undefined,
+        title: title.trim(),
         contentHtml: html,
         contentJson: json,
       });
       // Title may have changed, so navigate to the freshly-built canonical path.
-      goto(postPath({ ...post, title: title.trim() || null }));
+      goto(postPath({ ...post, title: title.trim() }));
     } catch (err) {
       error = err instanceof ApiError ? err.message : "Failed to save.";
       busy = false;

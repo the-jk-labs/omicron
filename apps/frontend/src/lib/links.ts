@@ -8,8 +8,10 @@
 import type { Post } from "$lib/types";
 
 // A trailing short id (8+ hex) or a full UUID anywhere (for legacy links).
+// The short id may follow a slug (`some-title-9e962281`) or stand alone when a
+// post has no title (`9e962281`), so the leading dash is optional.
 const FULL_UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-const SHORT_ID = /-([0-9a-f]{8,})$/i;
+const SHORT_ID = /(?:^|-)([0-9a-f]{8,})$/i;
 
 /** Short, URL-facing id for a post: the first block of its UUID. */
 function shortId(id: string): string {
