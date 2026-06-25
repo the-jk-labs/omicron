@@ -28,10 +28,15 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     localTimeline: (cursor?: string | null) =>
       api.get<Page<Post>>(`/posts?scope=local${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`),
     post: (id: string) => api.get<{ post: Post }>(`/posts/${id}`),
-    createPost: (body: { title?: string; contentHtml: string; contentJson?: unknown }) =>
-      api.post<{ post: { id: string } }>("/posts", body),
-    updatePost: (id: string, body: { title?: string; contentHtml?: string; contentJson?: unknown }) =>
-      api.patch<{ post: { id: string } }>(`/posts/${id}`, body),
+    drafts: (cursor?: string | null) =>
+      api.get<Page<Post>>(`/posts/drafts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
+    createPost: (
+      body: { title?: string; contentHtml: string; contentJson?: unknown; status?: "draft" | "published" },
+    ) => api.post<{ post: { id: string } }>("/posts", body),
+    updatePost: (
+      id: string,
+      body: { title?: string; contentHtml?: string; contentJson?: unknown; status?: "draft" | "published" },
+    ) => api.patch<{ post: { id: string } }>(`/posts/${id}`, body),
     deletePost: (id: string) => api.del<{ ok: true }>(`/posts/${id}`),
 
     // likes + comments

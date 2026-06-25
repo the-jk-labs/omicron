@@ -31,10 +31,19 @@ postRoutes.post("/", async (c) => {
   return c.json({ post: barePost(post) }, 201);
 });
 
-// Single post (public).
+// The signed-in author's own drafts (auth required). Registered before "/:id"
+// so "drafts" isn't captured as a post id.
+postRoutes.get("/drafts", async (c) => {
+  const user = requireUser(c);
+  const cursor = decodeCursor(c.req.query("cursor"));
+  const { items, nextCursor } = await postsService.listDrafts(user.id, cursor);
+  return c.json({ items: await enrichPosts(items, user.id), nextCursor });
+});
+
+// Single post (public). Drafts are visible only to their author.
 postRoutes.get("/:id", async (c) => {
   const viewer = c.get("user");
-  const row = await postsService.getPost(c.req.param("id"));
+  const row = await postsService.getPost(c.req.param("id"), viewer?.id ?? null);
   return c.json({ post: await enrichPost(row, viewer?.id ?? null) });
 });
 
@@ -90,7 +99,12 @@ postRoutes.post("/:id/comments", async (c) => {
   return c.json({
     comment: commentView({
       comment,
-      author: { id: user.id, username: user.username, displayName: user.displayName, avatarUrl: user.avatarUrl },
+      author: {
+        id: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        avatarUrl: user.avatarUrl,
+      },
     }),
   }, 201);
 });

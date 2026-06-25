@@ -52,6 +52,7 @@
     Share,
     Check,
     Image as ImageIcon,
+    FileText,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -103,6 +104,7 @@
     share: Share,
     check: Check,
     image: ImageIcon,
+    draft: FileText,
   } as const;
 
   export type IconName = keyof typeof icons;

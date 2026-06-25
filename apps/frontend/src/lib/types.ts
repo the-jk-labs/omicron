@@ -26,6 +26,7 @@ export type Post = {
   contentHtml: string;
   contentJson?: unknown;
   remote: boolean;
+  status?: "draft" | "published";
   createdAt: string;
   author: PostAuthor;
   likeCount: number;

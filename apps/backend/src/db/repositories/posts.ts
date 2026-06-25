@@ -116,6 +116,10 @@ function beforeCursor(cursor: Cursor | null) {
   );
 }
 
+// Only published posts surface in public feeds and profiles; drafts are private
+// to their author (see listDraftsByAuthor).
+const isPublished = eq(posts.status, "published");
+
 // Global (federated) feed: blog-type content across the whole fediverse,
 // local + remote. Filtered to "Article" so microblog Notes (Mastodon,
 // Pixelfed, …) are excluded. Remote posts here are ones already cached on this
@@ -123,7 +127,7 @@ function beforeCursor(cursor: Cursor | null) {
 // reads the cache, it never crawls, so listing stays cheap.
 export function listGlobal(cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
   return selectPosts()
-    .where(and(eq(posts.apType, "Article"), beforeCursor(cursor)))
+    .where(and(eq(posts.apType, "Article"), isPublished, beforeCursor(cursor)))
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
 }
@@ -131,14 +135,27 @@ export function listGlobal(cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
 // Local feed: posts authored on this instance only.
 export function listLocal(cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
   return selectPosts()
-    .where(and(eq(posts.remote, false), beforeCursor(cursor)))
+    .where(and(eq(posts.remote, false), isPublished, beforeCursor(cursor)))
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
 }
 
 export function listByAuthor(authorId: string, cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
   return selectPosts()
-    .where(and(eq(posts.authorId, authorId), beforeCursor(cursor)))
+    .where(and(eq(posts.authorId, authorId), isPublished, beforeCursor(cursor)))
+    .orderBy(desc(posts.createdAt), desc(posts.id))
+    .limit(limit + 1);
+}
+
+// An author's own drafts — never exposed publicly; the compose/Drafts UI reads
+// these for the signed-in author only.
+export function listDraftsByAuthor(
+  authorId: string,
+  cursor: Cursor | null,
+  limit = DEFAULT_PAGE_SIZE,
+) {
+  return selectPosts()
+    .where(and(eq(posts.authorId, authorId), eq(posts.status, "draft"), beforeCursor(cursor)))
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
 }
@@ -179,6 +196,7 @@ export function listFeed(userId: string, cursor: Cursor | null, limit = DEFAULT_
     .where(
       and(
         eq(posts.apType, "Article"),
+        isPublished,
         or(
           eq(posts.authorId, userId),
           sql`${posts.authorId} in ${followedLocal}`,

@@ -78,6 +78,9 @@
               <DropdownMenu.Item onSelect={() => goto("/compose")} class={itemClass}>
                 <Icon name="compose" size={18} /> Write a story
               </DropdownMenu.Item>
+              <DropdownMenu.Item onSelect={() => goto("/drafts")} class={itemClass}>
+                <Icon name="draft" size={18} /> Drafts
+              </DropdownMenu.Item>
               <DropdownMenu.Separator class="bg-muted -mx-1 my-1 h-px" />
               <DropdownMenu.Item onSelect={logout} class={itemClass}>
                 <Icon name="logout" size={18} /> Sign out

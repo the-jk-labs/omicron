@@ -50,6 +50,7 @@ export function postWithAuthor(row: PostWithAuthor, engagement?: Engagement) {
     contentHtml: row.post.contentHtml,
     contentJson: row.post.contentJson,
     remote: row.post.remote,
+    status: row.post.status,
     createdAt: row.post.createdAt,
     author: postAuthor(row),
     likeCount: engagement?.likeCount ?? 0,
@@ -118,6 +119,7 @@ export function barePost(p: Post) {
     id: p.id,
     title: p.title,
     contentHtml: p.contentHtml,
+    status: p.status,
     createdAt: p.createdAt,
   };
 }

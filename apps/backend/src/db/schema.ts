@@ -79,11 +79,17 @@ export const posts = pgTable("posts", {
   // Drives the Global feed, which surfaces blogs only.
   apType: text("ap_type").notNull().default("Article"),
   remote: boolean("remote").notNull().default(false),
+  // Publication state. `draft` posts are private to their author (never federated,
+  // never surfaced in any public feed or profile) until published. Remote posts
+  // are always `published`. Existing rows default to `published` on migration.
+  status: text("status").notNull().default("published"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   // Keyset pagination of the global/profile timelines.
   index("posts_created_at_idx").on(t.createdAt.desc(), t.id.desc()),
   index("posts_author_created_idx").on(t.authorId, t.createdAt.desc()),
+  // Drafts listing: an author's posts filtered by status, newest first.
+  index("posts_author_status_created_idx").on(t.authorId, t.status, t.createdAt.desc()),
   index("posts_remote_actor_created_idx").on(t.remoteActorId, t.createdAt.desc()),
   uniqueIndex("posts_ap_id_idx").on(t.apId),
 ]);

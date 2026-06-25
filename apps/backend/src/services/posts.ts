@@ -10,32 +10,46 @@ export async function createPost(authorId: string, input: {
   title?: string;
   contentHtml: string;
   contentJson?: unknown;
+  status?: string;
 }) {
+  const status = input.status === "draft" ? "draft" : "published";
+
   const html = input.contentHtml?.trim();
   if (!html) throw badRequest("Post content cannot be empty.");
 
+  // A title is required to publish; drafts may be saved untitled (work in progress).
   const title = input.title?.trim();
-  if (!title) throw badRequest("A blog post must have a title.");
+  if (status === "published" && !title) throw badRequest("A blog post must have a title.");
 
   const post = await postsRepo.create({
     authorId,
-    title,
+    title: title || null,
     contentHtml: html,
     contentJson: input.contentJson ?? null,
+    status,
   });
 
-  // Async fan-out to remote followers (no-op when federation is disabled).
-  queue.add("federate_post", { postId: post.id });
+  // Only published posts fan out to remote followers; drafts stay private.
+  if (status === "published") queue.add("federate_post", { postId: post.id });
   return post;
 }
 
-export async function getPost(id: string) {
+export async function getPost(id: string, viewerId: string | null = null) {
   // `id` is a full UUID or a hex id-prefix from a canonical URL; reject anything
   // else so LIKE wildcards can't reach the query.
   if (!/^[0-9a-f-]{8,}$/i.test(id)) throw notFound("Post not found.");
   const row = await postsRepo.findById(id);
   if (!row) throw notFound("Post not found.");
+  // Drafts are private to their author — anyone else gets a plain not-found.
+  if (row.post.status === "draft" && row.post.authorId !== viewerId) {
+    throw notFound("Post not found.");
+  }
   return row;
+}
+
+export async function listDrafts(authorId: string, cursor: Cursor | null) {
+  const rows = await postsRepo.listDraftsByAuthor(authorId, cursor, DEFAULT_PAGE_SIZE);
+  return pageOf(rows, DEFAULT_PAGE_SIZE);
 }
 
 // Edits a post. Only the author may edit, and only local posts (remote posts
@@ -44,24 +58,38 @@ export async function updatePost(authorId: string, id: string, input: {
   title?: string;
   contentHtml?: string;
   contentJson?: unknown;
+  status?: string;
 }) {
   const row = await postsRepo.findById(id);
   if (!row) throw notFound("Post not found.");
   if (row.post.remote) throw forbidden("Federated posts cannot be edited here.");
   if (row.post.authorId !== authorId) throw forbidden("You can only edit your own posts.");
 
+  const status = input.status === undefined
+    ? row.post.status
+    : input.status === "draft"
+    ? "draft"
+    : "published";
+
   const html = input.contentHtml?.trim();
   if (input.contentHtml !== undefined && !html) throw badRequest("Post content cannot be empty.");
 
   const title = input.title?.trim();
-  if (input.title !== undefined && !title) throw badRequest("A blog post must have a title.");
+  // Untitled drafts are allowed, but a post must have a title to be published.
+  const resolvedTitle = input.title !== undefined ? (title || null) : row.post.title;
+  if (status === "published" && !resolvedTitle) {
+    throw badRequest("A blog post must have a title.");
+  }
 
   const post = await postsRepo.update(id, {
-    ...(input.title !== undefined ? { title } : {}),
+    ...(input.title !== undefined ? { title: title || null } : {}),
     ...(html ? { contentHtml: html, contentJson: input.contentJson ?? null } : {}),
+    ...(input.status !== undefined ? { status } : {}),
   });
 
-  queue.add("federate_post", { postId: post.id });
+  // Federate only published posts. Publishing a draft (draft → published) fans
+  // out for the first time here; edits to an already-published post re-deliver.
+  if (post.status === "published") queue.add("federate_post", { postId: post.id });
   return post;
 }
 
