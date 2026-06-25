@@ -20,6 +20,7 @@
   let commentCount = $state(data.post.commentCount);
   let busy = $state(false);
   let deleting = $state(false);
+  let shared = $state(false);
 
   // Authoring controls: edit is author-only; delete is author or admin. Neither
   // applies to federated posts owned by a remote instance.
@@ -31,6 +32,27 @@
   // Verbatim Bits UI docs DropdownMenu.Item class (v3 syntax).
   const itemClass =
     "rounded-button data-[highlighted]:bg-muted !ring-0 !ring-transparent flex h-10 w-full cursor-pointer select-none items-center gap-2.5 py-3 pl-3 pr-1.5 text-sm font-medium focus-visible:outline-none";
+
+  // Share via the native sheet where available, falling back to copying the link.
+  async function sharePost() {
+    const url = window.location.href;
+    const title = post.title ?? "Post";
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, url });
+        return;
+      } catch {
+        // User cancelled or share failed — fall through to clipboard copy.
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      shared = true;
+      setTimeout(() => (shared = false), 2000);
+    } catch {
+      // Ignore — nothing more we can do.
+    }
+  }
 
   async function deletePost() {
     if (deleting) return;
@@ -96,32 +118,36 @@
       </div>
     </div>
 
-    {#if canManage}
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger
-          class="border-input text-muted-foreground shadow-btn hover:bg-muted hover:text-foreground ml-auto inline-flex size-9 items-center justify-center rounded-full border active:scale-[0.98]"
-          aria-label="Post options"
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger
+        class="border-input text-muted-foreground shadow-btn hover:bg-muted hover:text-foreground ml-auto inline-flex size-9 items-center justify-center rounded-full border active:scale-[0.98]"
+        aria-label="Post options"
+      >
+        <Icon name="more" size={18} />
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          sideOffset={8}
+          align="end"
+          class="border-muted bg-background shadow-popover z-30 w-[180px] rounded-xl border px-1 py-1.5 focus-visible:outline-none"
         >
-          <Icon name="more" size={18} />
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Portal>
-          <DropdownMenu.Content
-            sideOffset={8}
-            align="end"
-            class="border-muted bg-background shadow-popover z-30 w-[180px] rounded-xl border px-1 py-1.5 focus-visible:outline-none"
-          >
-            {#if canEdit}
-              <DropdownMenu.Item onSelect={() => goto(`/posts/${post.id}/edit`)} class={itemClass}>
-                <Icon name="edit" size={18} /> Edit
-              </DropdownMenu.Item>
-            {/if}
+          <DropdownMenu.Item onSelect={sharePost} class={itemClass}>
+            <Icon name={shared ? "check" : "share"} size={18} />
+            {shared ? "Link copied" : "Share"}
+          </DropdownMenu.Item>
+          {#if canEdit}
+            <DropdownMenu.Item onSelect={() => goto(`/posts/${post.id}/edit`)} class={itemClass}>
+              <Icon name="edit" size={18} /> Edit
+            </DropdownMenu.Item>
+          {/if}
+          {#if canManage}
             <DropdownMenu.Item onSelect={deletePost} class={`${itemClass} text-destructive`}>
               <Icon name="trash" size={18} /> Delete
             </DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
-      </DropdownMenu.Root>
-    {/if}
+          {/if}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   </div>
 
   <!-- Content is server-rendered HTML produced by the Tiptap editor. -->

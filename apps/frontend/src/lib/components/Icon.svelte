@@ -44,6 +44,8 @@
     MessageCircle,
     Reply,
     Trash2,
+    Share,
+    Check,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -87,6 +89,8 @@
     comment: MessageCircle,
     reply: Reply,
     trash: Trash2,
+    share: Share,
+    check: Check,
   } as const;
 
   export type IconName = keyof typeof icons;
