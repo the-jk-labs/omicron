@@ -11,6 +11,9 @@
 
   const summary = $derived(excerpt(post.contentHtml));
   const minutes = $derived(readTime(post.contentHtml));
+  // Remote authors carry a `user@host` handle; surface the origin instance
+  // (the host) rather than a generic "Federated" label.
+  const originInstance = $derived(post.author.username.split("@")[1] ?? null);
 </script>
 
 <article class="py-5">
@@ -37,9 +40,9 @@
     <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
     <span class="flex items-center gap-1"><Icon name="heart" size={13} /> {post.likeCount}</span>
     <span class="flex items-center gap-1"><Icon name="comment" size={13} /> {post.commentCount}</span>
-    {#if post.remote}
+    {#if post.remote && originInstance}
       <span class="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
-        <Icon name="globe" size={12} /> Federated
+        <Icon name="globe" size={12} /> {originInstance}
       </span>
     {/if}
   </div>

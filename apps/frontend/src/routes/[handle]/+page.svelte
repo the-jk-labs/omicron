@@ -74,7 +74,9 @@
     <div class="min-w-0">
       <h1 class="text-2xl font-bold tracking-tight text-foreground">{profile.user.displayName}</h1>
       <div class="flex flex-wrap items-center gap-2">
-        <p class="truncate text-muted-foreground">@{profile.user.username}</p>
+        <!-- Remote usernames are `user@host`; drop the host here since the
+             instance badge beside it already shows it (no duplication). -->
+        <p class="truncate text-muted-foreground">@{profile.user.username.split("@")[0]}</p>
         {#if data.remote}
           <a
             href={data.profile.user.apId}

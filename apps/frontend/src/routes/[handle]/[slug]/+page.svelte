@@ -14,6 +14,8 @@
   let { data }: { data: PageData } = $props();
   const post = $derived(data.post);
   const minutes = $derived(readTime(post.contentHtml));
+  // Origin instance (host) parsed from a remote author's `user@host` handle.
+  const originInstance = $derived(post.author.username.split("@")[1] ?? null);
 
   // Like state is seeded from the SSR payload (viewer-aware) and updated locally.
   let liked = $state(data.post.liked);
@@ -126,9 +128,9 @@
         <span>{formatDate(post.createdAt)}</span>
         <Separator.Root orientation="vertical" class="bg-border shrink-0 data-[orientation=vertical]:h-3 data-[orientation=vertical]:w-px" />
         <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
-        {#if post.remote}
+        {#if post.remote && originInstance}
           <Separator.Root orientation="vertical" class="bg-border shrink-0 data-[orientation=vertical]:h-3 data-[orientation=vertical]:w-px" />
-          <span class="flex items-center gap-1"><Icon name="globe" size={13} /> Federated</span>
+          <span class="flex items-center gap-1"><Icon name="globe" size={13} /> {originInstance}</span>
         {/if}
       </div>
     </div>
