@@ -50,7 +50,7 @@
       </Button>
 
       {#if user}
-        <Button href="/compose" variant="ghost" class="text-muted-foreground">
+        <Button href="/compose" variant="ghost" class="text-muted-foreground" aria-label="Write">
           <Icon name="compose" size={18} /> <span class="hidden sm:inline">Write</span>
         </Button>
 

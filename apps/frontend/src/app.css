@@ -15,7 +15,9 @@
   --foreground: 0 0% 9%;
   --foreground-alt: 0 0% 32%;
   --muted: 240 5% 96%;
-  --muted-foreground: 0 0% 9% / 0.4;
+  /* Raised from the docs' 0.4 alpha to meet WCAG AA (4.5:1) for secondary text
+     — at 0.4 this fails contrast on the page background (~2.3:1). */
+  --muted-foreground: 0 0% 9% / 0.65;
   --border-card: 240 6% 10% / 0.1;
   --border-input: 240 6% 10% / 0.17;
   --dark: 240 6% 10%;
@@ -38,7 +40,9 @@
   --foreground: 0 0% 95%;
   --foreground-alt: 0 0% 70%;
   --muted: 240 4% 16%;
-  --muted-foreground: 0 0% 100% / 0.4;
+  /* Raised from the docs' 0.4 alpha to meet WCAG AA (4.5:1); at 0.4 white text
+     on the ~#0D background is only ~3.8:1. */
+  --muted-foreground: 0 0% 100% / 0.55;
   --border-card: 0 0% 96% / 0.1;
   --border-input: 0 0% 96% / 0.17;
   --dark: 0 0% 96%;
