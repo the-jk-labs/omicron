@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
 import { Markdown } from "tiptap-markdown";
 import type { Extensions } from "@tiptap/core";
 
@@ -18,6 +19,12 @@ export const extensions: Extensions = [
     openOnClick: false,
     autolink: true,
     HTMLAttributes: { rel: "noopener noreferrer nofollow", target: "_blank" },
+  }),
+  // Inline images uploaded by the author. Base64 is disabled, so only the
+  // same-origin URLs we serve get inserted and post HTML stays small and portable.
+  Image.configure({
+    allowBase64: false,
+    HTMLAttributes: { class: "rounded-card mx-auto my-6 max-w-full" },
   }),
   Markdown.configure({
     html: false, // don't trust raw HTML embedded in Markdown

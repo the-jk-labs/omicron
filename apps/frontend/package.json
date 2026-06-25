@@ -26,7 +26,9 @@
   "dependencies": {
     "@lucide/svelte": "^1.21.0",
     "@tiptap/core": "^2.10.0",
+    "@tiptap/extension-image": "^2.27.2",
     "@tiptap/extension-link": "^2.27.2",
+    "@tiptap/extension-placeholder": "^2.27.2",
     "@tiptap/pm": "^2.10.0",
     "@tiptap/starter-kit": "^2.10.0",
     "bits-ui": "^1.0.0",

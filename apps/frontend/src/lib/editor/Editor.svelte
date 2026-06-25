@@ -2,8 +2,11 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import { type Content, Editor } from "@tiptap/core";
+  import Placeholder from "@tiptap/extension-placeholder";
   import { Dialog, Label, Separator, Toolbar } from "bits-ui";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
+  import { endpoints, ApiError } from "$lib/api";
+  import { ACCEPTED_IMAGE_TYPES, prepareImage } from "./image";
   import { extensions } from "./extensions";
 
   // Isolated Tiptap integration. The parent receives content via `onUpdate`.
@@ -81,12 +84,60 @@
     linkOpen = false;
   }
 
+  // Image upload: the picked file is resized/compressed in the browser (see
+  // image.ts), uploaded, then inserted at the cursor as an image node.
+  let imageInput = $state<HTMLInputElement | null>(null);
+  let uploading = $state(false);
+  let uploadError = $state("");
+
+  async function onImagePick(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = ""; // allow re-picking the same file later
+    if (!file) return;
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      uploadError = "Unsupported image type. Use PNG, JPEG, WebP, or GIF.";
+      return;
+    }
+    uploadError = "";
+    uploading = true;
+    try {
+      const { blob, type } = await prepareImage(file);
+      const { url } = await endpoints().uploadImage(blob, type);
+      // Insert the image together with a trailing paragraph, then move the cursor
+      // into that fresh line and scroll it into view so the author can keep
+      // writing immediately — just like a normal editor.
+      editor
+        .chain()
+        .insertContent([
+          { type: "image", attrs: { src: url } },
+          { type: "paragraph" },
+        ])
+        .focus("end")
+        .scrollIntoView()
+        .run();
+    } catch (err) {
+      uploadError = err instanceof ApiError ? err.message : "Failed to upload image.";
+    } finally {
+      uploading = false;
+    }
+  }
+
   onMount(() => {
     editor = new Editor({
       element,
-      extensions,
+      // Placeholder is per-instance (it needs the `placeholder` prop), so it's
+      // appended to the shared base extensions here. The first line shows the
+      // story prompt; every other empty line (e.g. below an image) shows a
+      // generic hint, so there's always a visible caret target.
+      extensions: [
+        ...extensions,
+        Placeholder.configure({
+          placeholder: ({ pos }) => (pos === 0 ? placeholder : "Write something…"),
+        }),
+      ],
       content,
-      editorProps: { attributes: { class: "tiptap prose-omicron", "data-placeholder": placeholder } },
+      editorProps: { attributes: { class: "tiptap prose-omicron" } },
       onUpdate: ({ editor }) => onUpdate(editor.getHTML(), editor.getJSON()),
       onTransaction: refreshActive,
     });
@@ -118,7 +169,8 @@
     { key: "orderedList", icon: "orderedList", label: "Numbered list", run: () => editor.chain().focus().toggleOrderedList().run() },
     { key: "quote", icon: "quote", label: "Quote", run: () => editor.chain().focus().toggleBlockquote().run() },
     { key: "codeBlock", icon: "codeBlock", label: "Code block", run: () => editor.chain().focus().toggleCodeBlock().run() },
-    { icon: "hr", label: "Divider", divider: true, run: () => editor.chain().focus().setHorizontalRule().run() },
+    { icon: "image", label: "Image", divider: true, run: () => imageInput?.click() },
+    { icon: "hr", label: "Divider", run: () => editor.chain().focus().setHorizontalRule().run() },
   ];
 
   const btn =
@@ -142,6 +194,24 @@
       </Toolbar.Button>
     {/each}
   </Toolbar.Root>
+
+  <input
+    bind:this={imageInput}
+    type="file"
+    accept="image/png,image/jpeg,image/webp,image/gif"
+    class="hidden"
+    onchange={onImagePick}
+  />
+
+  {#if uploading}
+    <p class="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+      <Icon name="spinner" size={15} class="animate-spin" /> Uploading image…
+    </p>
+  {/if}
+  {#if uploadError}
+    <p class="mb-3 text-sm text-destructive">{uploadError}</p>
+  {/if}
+
   <div bind:this={element}></div>
 </div>
 

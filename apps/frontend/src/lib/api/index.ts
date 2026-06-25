@@ -60,6 +60,9 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.patch<{ user: User }>("/users/me", body),
     uploadAvatar: (file: File) =>
       api.postRaw<{ user: User }>("/users/me/avatar", file, file.type),
+    // Post-body image upload. The blob is already resized/compressed client-side.
+    uploadImage: (blob: Blob, contentType: string) =>
+      api.postRaw<{ url: string }>("/uploads", blob, contentType),
 
     // users + follows
     profile: (username: string) => api.get<Profile>(`/users/${username}`),

@@ -16,8 +16,6 @@
   <img src="https://img.shields.io/badge/frontend-SvelteKit-FF3E00?logo=svelte&logoColor=white" alt="SvelteKit" />
 </p>
 
----
-
 Omicron is a federated blogging platform. Write rich-text posts, follow other
 writers, read a personalized feed, and federate with the wider fediverse over **ActivityPub** — with no vendor
 lock-in and no gatekeepers. Run your own instance in one command and own your
