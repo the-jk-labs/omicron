@@ -120,17 +120,21 @@ function pageOf(
   };
 }
 
-export async function listByAuthor(authorId: string, cursor: Cursor | null) {
-  const rows = await postsRepo.listByAuthor(authorId, cursor, DEFAULT_PAGE_SIZE);
+export async function listByAuthor(
+  authorId: string,
+  cursor: Cursor | null,
+  viewerId: string | null = null,
+) {
+  const rows = await postsRepo.listByAuthor(authorId, viewerId, cursor, DEFAULT_PAGE_SIZE);
   return pageOf(rows, DEFAULT_PAGE_SIZE);
 }
 
-export async function globalTimeline(cursor: Cursor | null) {
-  const rows = await postsRepo.listGlobal(cursor, DEFAULT_PAGE_SIZE);
+export async function globalTimeline(cursor: Cursor | null, viewerId: string | null = null) {
+  const rows = await postsRepo.listGlobal(viewerId, cursor, DEFAULT_PAGE_SIZE);
   return pageOf(rows, DEFAULT_PAGE_SIZE);
 }
 
-export async function localTimeline(cursor: Cursor | null) {
-  const rows = await postsRepo.listLocal(cursor, DEFAULT_PAGE_SIZE);
+export async function localTimeline(cursor: Cursor | null, viewerId: string | null = null) {
+  const rows = await postsRepo.listLocal(viewerId, cursor, DEFAULT_PAGE_SIZE);
   return pageOf(rows, DEFAULT_PAGE_SIZE);
 }

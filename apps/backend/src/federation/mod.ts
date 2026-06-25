@@ -184,7 +184,7 @@ function setupOutbox(f: Federation<ContextData>) {
   f.setOutboxDispatcher("/users/{identifier}/outbox", async (ctx, identifier) => {
     const user = await usersRepo.findByUsername(identifier);
     if (!user) return null;
-    const rows: postsRepo.PostWithAuthor[] = await postsRepo.listByAuthor(user.id, null, 20);
+    const rows: postsRepo.PostWithAuthor[] = await postsRepo.listByAuthor(user.id, null, null, 20);
     const items = rows.slice(0, 20).map(({ post }) =>
       new Create({
         id: new URL(`${post.id}/activity`, ctx.getOutboxUri(identifier)),

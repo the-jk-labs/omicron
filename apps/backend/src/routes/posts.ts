@@ -18,8 +18,8 @@ postRoutes.get("/", async (c) => {
   const viewer = c.get("user");
   const cursor = decodeCursor(c.req.query("cursor"));
   const { items, nextCursor } = c.req.query("scope") === "local"
-    ? await postsService.localTimeline(cursor)
-    : await postsService.globalTimeline(cursor);
+    ? await postsService.localTimeline(cursor, viewer?.id ?? null)
+    : await postsService.globalTimeline(cursor, viewer?.id ?? null);
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
 });
 

@@ -122,6 +122,41 @@ export const follows = pgTable("follows", {
   index("follows_followee_idx").on(t.followeeId),
 ]);
 
+// ── mutes & blocks ───────────────────────────────────────────────────────
+// Personal moderation edges. Both share the same shape as a follow edge: an
+// actor (`user_id`, always a local user) targeting either a local user
+// (`target_user_id`) or a cached remote actor (`target_remote_actor_id`).
+//
+// MUTE hides the target's posts from the muter's feeds and profile views. It is
+// silent and one-directional.
+//
+// BLOCK is stronger and bidirectional locally: the blocked actor's posts are
+// hidden from the blocker, and the blocker's posts are hidden from the blocked
+// user. Blocks are NOT federated (no ActivityPub Block is sent) — they only
+// affect what this instance shows.
+function relationTable(name: string) {
+  return pgTable(name, {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    targetUserId: uuid("target_user_id").references(() => users.id, { onDelete: "cascade" }),
+    targetRemoteActorId: uuid("target_remote_actor_id").references(() => remoteActors.id, {
+      onDelete: "cascade",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  }, (t) => [
+    uniqueIndex(`${name}_local_unique_idx`)
+      .on(t.userId, t.targetUserId)
+      .where(sql`${t.targetUserId} is not null`),
+    uniqueIndex(`${name}_remote_unique_idx`)
+      .on(t.userId, t.targetRemoteActorId)
+      .where(sql`${t.targetRemoteActorId} is not null`),
+    index(`${name}_user_idx`).on(t.userId),
+  ]);
+}
+
+export const mutes = relationTable("mutes");
+export const blocks = relationTable("blocks");
+
 // ── likes ──────────────────────────────────────────────────────────────
 // One row per (post, user). The unique index makes liking idempotent and lets
 // us derive counts + the viewer's own like state with a single grouped query.
@@ -184,6 +219,8 @@ export type NewPost = typeof posts.$inferInsert;
 export type RemoteActor = typeof remoteActors.$inferSelect;
 export type NewRemoteActor = typeof remoteActors.$inferInsert;
 export type Follow = typeof follows.$inferSelect;
+export type Mute = typeof mutes.$inferSelect;
+export type Block = typeof blocks.$inferSelect;
 export type Like = typeof likes.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;

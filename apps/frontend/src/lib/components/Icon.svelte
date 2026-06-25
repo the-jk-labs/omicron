@@ -58,6 +58,8 @@
     Copy,
     ShieldCheck,
     AtSign,
+    VolumeX,
+    Ban,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -115,6 +117,8 @@
     copy: Copy,
     admin: ShieldCheck,
     at: AtSign,
+    mute: VolumeX,
+    block: Ban,
   } as const;
 
   export type IconName = keyof typeof icons;

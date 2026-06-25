@@ -54,6 +54,8 @@ export type Profile = {
   user: User;
   counts: { followers: number; following: number };
   isFollowing: boolean;
+  isMuted: boolean;
+  isBlocked: boolean;
 };
 
 // A remote actor's profile, shaped like the local profile response so the
@@ -71,4 +73,17 @@ export type RemoteProfile = {
   };
   counts: { followers: number; following: number };
   isFollowing: boolean;
+  isMuted: boolean;
+  isBlocked: boolean;
+};
+
+// A followed / muted / blocked account in the connections lists. `username` is
+// a plain username for local accounts and a `user@host` handle for remote ones,
+// so `/@${username}` links resolve to the right profile either way.
+export type RelationActor = {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  remote: boolean;
 };

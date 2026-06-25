@@ -8,6 +8,7 @@
   import { formatDate } from "$lib/format";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import ConnectionsManager from "$lib/components/ConnectionsManager.svelte";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import type { PageData } from "./$types";
 
@@ -236,6 +237,18 @@
           </ButtonPrimitive.Root>
         {/each}
       </div>
+    </div>
+  </section>
+
+  <!-- Connections -->
+  <section class="rounded-card border border-border bg-background p-6">
+    <h2 class="text-lg font-semibold tracking-tight text-foreground">Muted &amp; blocked</h2>
+    <p class="mt-1 text-sm text-muted-foreground">
+      Accounts you've muted or blocked. Manage who you follow from your profile.
+    </p>
+
+    <div class="mt-4">
+      <ConnectionsManager />
     </div>
   </section>
 

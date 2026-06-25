@@ -120,29 +120,75 @@ function beforeCursor(cursor: Cursor | null) {
 // to their author (see listDraftsByAuthor).
 const isPublished = eq(posts.status, "published");
 
+// Excludes authors the viewer has muted or blocked, and authors who have blocked
+// the viewer (blocks are bidirectional locally). Returns undefined for guests —
+// `and()` drops undefined operands, so feeds are unfiltered when logged out.
+function notHidden(viewerId: string | null) {
+  if (!viewerId) return undefined;
+  const hiddenLocal = sql`(
+    select target_user_id from mutes
+      where user_id = ${viewerId} and target_user_id is not null
+    union
+    select target_user_id from blocks
+      where user_id = ${viewerId} and target_user_id is not null
+    union
+    select user_id from blocks where target_user_id = ${viewerId}
+  )`;
+  const hiddenRemote = sql`(
+    select target_remote_actor_id from mutes
+      where user_id = ${viewerId} and target_remote_actor_id is not null
+    union
+    select target_remote_actor_id from blocks
+      where user_id = ${viewerId} and target_remote_actor_id is not null
+  )`;
+  return and(
+    sql`(${posts.authorId} is null or ${posts.authorId} not in ${hiddenLocal})`,
+    sql`(${posts.remoteActorId} is null or ${posts.remoteActorId} not in ${hiddenRemote})`,
+  );
+}
+
 // Global (federated) feed: blog-type content across the whole fediverse,
 // local + remote. Filtered to "Article" so microblog Notes (Mastodon,
 // Pixelfed, …) are excluded. Remote posts here are ones already cached on this
 // instance (fetched when browsed, or delivered to our inbox) — the feed just
 // reads the cache, it never crawls, so listing stays cheap.
-export function listGlobal(cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
+export function listGlobal(
+  viewerId: string | null,
+  cursor: Cursor | null,
+  limit = DEFAULT_PAGE_SIZE,
+) {
   return selectPosts()
-    .where(and(eq(posts.apType, "Article"), isPublished, beforeCursor(cursor)))
+    .where(
+      and(eq(posts.apType, "Article"), isPublished, notHidden(viewerId), beforeCursor(cursor)),
+    )
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
 }
 
 // Local feed: posts authored on this instance only.
-export function listLocal(cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
+export function listLocal(
+  viewerId: string | null,
+  cursor: Cursor | null,
+  limit = DEFAULT_PAGE_SIZE,
+) {
   return selectPosts()
-    .where(and(eq(posts.remote, false), isPublished, beforeCursor(cursor)))
+    .where(
+      and(eq(posts.remote, false), isPublished, notHidden(viewerId), beforeCursor(cursor)),
+    )
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
 }
 
-export function listByAuthor(authorId: string, cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
+export function listByAuthor(
+  authorId: string,
+  viewerId: string | null,
+  cursor: Cursor | null,
+  limit = DEFAULT_PAGE_SIZE,
+) {
   return selectPosts()
-    .where(and(eq(posts.authorId, authorId), isPublished, beforeCursor(cursor)))
+    .where(
+      and(eq(posts.authorId, authorId), isPublished, notHidden(viewerId), beforeCursor(cursor)),
+    )
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
 }
@@ -165,6 +211,7 @@ export function listDraftsByAuthor(
 // long-form-only never surface on the actor's profile.
 export function listByRemoteActor(
   remoteActorId: string,
+  viewerId: string | null,
   cursor: Cursor | null,
   limit = DEFAULT_PAGE_SIZE,
 ) {
@@ -173,6 +220,7 @@ export function listByRemoteActor(
       and(
         eq(posts.remoteActorId, remoteActorId),
         eq(posts.apType, "Article"),
+        notHidden(viewerId),
         beforeCursor(cursor),
       ),
     )
@@ -202,6 +250,7 @@ export function listFeed(userId: string, cursor: Cursor | null, limit = DEFAULT_
           sql`${posts.authorId} in ${followedLocal}`,
           sql`${posts.remoteActorId} in ${followedRemote}`,
         ),
+        notHidden(userId),
         beforeCursor(cursor),
       ),
     )

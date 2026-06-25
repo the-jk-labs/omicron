@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { makeApi } from "./client";
-import type { Comment, Page, Post, Profile, RemoteProfile, User } from "$lib/types";
+import type {
+  Comment,
+  Page,
+  Post,
+  Profile,
+  RelationActor,
+  RemoteProfile,
+  User,
+} from "$lib/types";
 
 type LikeState = { likeCount: number; liked: boolean };
 
@@ -78,6 +86,22 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     follow: (username: string) => api.post(`/users/${username}/follow`),
     unfollow: (username: string) => api.del(`/users/${username}/follow`),
 
+    // mute / block local users (auth required)
+    mute: (username: string) => api.post(`/users/${username}/mute`),
+    unmute: (username: string) => api.del(`/users/${username}/mute`),
+    block: (username: string) => api.post(`/users/${username}/block`),
+    unblock: (username: string) => api.del(`/users/${username}/block`),
+
+    // a profile's public follower / following lists
+    userFollowers: (username: string) =>
+      api.get<{ items: RelationActor[] }>(`/users/${username}/followers`),
+    userFollowing: (username: string) =>
+      api.get<{ items: RelationActor[] }>(`/users/${username}/following`),
+
+    // muted / blocked lists for the signed-in user (Settings → Connections)
+    muted: () => api.get<{ items: RelationActor[] }>("/users/me/muted"),
+    blocked: () => api.get<{ items: RelationActor[] }>("/users/me/blocked"),
+
     // remote (federated) profiles + their posts, browsed read-only
     remoteProfile: (handle: string) =>
       api.get<RemoteProfile>(`/remote/users/${encodeURIComponent(handle)}`),
@@ -91,5 +115,13 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.post(`/remote/users/${encodeURIComponent(handle)}/follow`),
     remoteUnfollow: (handle: string) =>
       api.del(`/remote/users/${encodeURIComponent(handle)}/follow`),
+    remoteMute: (handle: string) =>
+      api.post(`/remote/users/${encodeURIComponent(handle)}/mute`),
+    remoteUnmute: (handle: string) =>
+      api.del(`/remote/users/${encodeURIComponent(handle)}/mute`),
+    remoteBlock: (handle: string) =>
+      api.post(`/remote/users/${encodeURIComponent(handle)}/block`),
+    remoteUnblock: (handle: string) =>
+      api.del(`/remote/users/${encodeURIComponent(handle)}/block`),
   };
 }

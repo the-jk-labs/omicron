@@ -57,6 +57,13 @@
       "when": 1718700000000,
       "tag": "0007_add_post_status",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1718800000000,
+      "tag": "0008_mutes_blocks",
+      "breakpoints": true
     }
   ]
 }

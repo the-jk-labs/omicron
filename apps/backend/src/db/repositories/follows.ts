@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { follows, users } from "@/db/schema.ts";
+import { follows, remoteActors, users } from "@/db/schema.ts";
 
 // Follow-edge DB access. Supports local↔local and remote↔local rows.
 
@@ -112,10 +112,63 @@ export async function localFollowerUsernames(followeeId: string): Promise<string
   return rows.map((r: { username: string }) => r.username);
 }
 
-export function listFollowing(followerId: string) {
+// Local accounts this user follows (for the "Following" management list).
+export function listLocalFollowing(followerId: string) {
   return db
-    .select({ id: users.id, username: users.username, displayName: users.displayName })
+    .select({
+      id: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      avatarUrl: users.avatarUrl,
+    })
     .from(follows)
     .innerJoin(users, eq(follows.followeeId, users.id))
-    .where(eq(follows.followerId, followerId));
+    .where(eq(follows.followerId, followerId))
+    .orderBy(follows.createdAt);
+}
+
+// Local accounts that follow this user.
+export function listLocalFollowers(followeeId: string) {
+  return db
+    .select({
+      id: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      avatarUrl: users.avatarUrl,
+    })
+    .from(follows)
+    .innerJoin(users, eq(follows.followerId, users.id))
+    .where(eq(follows.followeeId, followeeId))
+    .orderBy(follows.createdAt);
+}
+
+// Remote actors that follow this user — only those we've cached (matched by
+// their actor URI). Uncached inbound followers carry only a URI and are omitted.
+export function listRemoteFollowers(followeeId: string) {
+  return db
+    .select({
+      id: remoteActors.id,
+      handle: remoteActors.handle,
+      displayName: remoteActors.displayName,
+      avatarUrl: remoteActors.avatarUrl,
+    })
+    .from(follows)
+    .innerJoin(remoteActors, eq(follows.remoteActor, remoteActors.apId))
+    .where(eq(follows.followeeId, followeeId))
+    .orderBy(follows.createdAt);
+}
+
+// Remote actors this user follows, joined to the cached actor.
+export function listRemoteFollowing(followerId: string) {
+  return db
+    .select({
+      id: remoteActors.id,
+      handle: remoteActors.handle,
+      displayName: remoteActors.displayName,
+      avatarUrl: remoteActors.avatarUrl,
+    })
+    .from(follows)
+    .innerJoin(remoteActors, eq(follows.remoteFolloweeId, remoteActors.id))
+    .where(eq(follows.followerId, followerId))
+    .orderBy(follows.createdAt);
 }

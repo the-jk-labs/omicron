@@ -2,7 +2,8 @@
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
-import { resolveActor, fetchOutboxPosts } from "@/federation/remote.ts";
+import * as relationsRepo from "@/db/repositories/relations.ts";
+import { fetchOutboxPosts, resolveActor } from "@/federation/remote.ts";
 import { queue } from "@/queue/queue.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { notFound } from "@/lib/http.ts";
@@ -31,10 +32,10 @@ export async function getProfile(handle: string): Promise<RemoteActor> {
 // Profile plus whether `viewerId` follows this remote actor.
 export async function getProfileView(handle: string, viewerId: string | null) {
   const actor = await getProfile(handle);
-  const isFollowing = viewerId
-    ? await followsRepo.isFollowingRemote(viewerId, actor.id)
-    : false;
-  return { actor, isFollowing };
+  const isFollowing = viewerId ? await followsRepo.isFollowingRemote(viewerId, actor.id) : false;
+  const isMuted = viewerId ? await relationsRepo.hasRemote("mute", viewerId, actor.id) : false;
+  const isBlocked = viewerId ? await relationsRepo.hasRemote("block", viewerId, actor.id) : false;
+  return { actor, isFollowing, isMuted, isBlocked };
 }
 
 // Follow a remote actor: record the edge, crawl their recent posts so the
@@ -53,7 +54,11 @@ export async function unfollow(viewerId: string, handle: string): Promise<void> 
   queue.add("send_unfollow", { followerId: viewerId, targetActor: actor.apId });
 }
 
-export async function getPosts(handle: string, cursor: Cursor | null) {
+export async function getPosts(
+  handle: string,
+  cursor: Cursor | null,
+  viewerId: string | null = null,
+) {
   const actor = await getProfile(handle);
   // Only re-crawl the outbox on the first page, and only when stale, so
   // pagination stays cheap and stable.
@@ -62,11 +67,11 @@ export async function getPosts(handle: string, cursor: Cursor | null) {
   } else if (!cursor) {
     // Fresh-but-empty (e.g. first ever view in the same TTL window): ensure we
     // have at least crawled once.
-    const existing = await postsRepo.listByRemoteActor(actor.id, null, 1);
+    const existing = await postsRepo.listByRemoteActor(actor.id, null, null, 1);
     if (existing.length === 0) await fetchOutboxPosts(handle, actor.id);
   }
 
-  const rows = await postsRepo.listByRemoteActor(actor.id, cursor, DEFAULT_PAGE_SIZE);
+  const rows = await postsRepo.listByRemoteActor(actor.id, viewerId, cursor, DEFAULT_PAGE_SIZE);
   const hasMore = rows.length > DEFAULT_PAGE_SIZE;
   const items = hasMore ? rows.slice(0, DEFAULT_PAGE_SIZE) : rows;
   const last = items.at(-1);

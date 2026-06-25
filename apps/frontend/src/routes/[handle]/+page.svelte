@@ -5,6 +5,8 @@
   import { endpoints } from "$lib/api";
   import PostCard from "$lib/components/PostCard.svelte";
   import FollowButton from "$lib/components/FollowButton.svelte";
+  import ProfileMenu from "$lib/components/ProfileMenu.svelte";
+  import FollowListDialog from "$lib/components/FollowListDialog.svelte";
   import EditProfileDialog from "$lib/components/EditProfileDialog.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -87,32 +89,63 @@
       </div>
       {#if profile.user.bio}<p class="mt-2 max-w-prose whitespace-pre-line text-foreground-alt">{profile.user.bio}</p>{/if}
       <div class="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
-        <span class="flex items-center gap-1">
-          <Icon name="users" size={15} />
-          <strong class="text-foreground">{profile.counts.followers}</strong> followers
-        </span>
-        <span>
-          <strong class="text-foreground">{profile.counts.following}</strong> following
-        </span>
+        {#if data.remote}
+          <span class="flex items-center gap-1">
+            <Icon name="users" size={15} />
+            <strong class="text-foreground">{profile.counts.followers}</strong> followers
+          </span>
+          <span>
+            <strong class="text-foreground">{profile.counts.following}</strong> following
+          </span>
+        {:else}
+          <FollowListDialog
+            username={profile.user.username}
+            kind="followers"
+            title="Followers"
+          >
+            <span class="flex items-center gap-1">
+              <Icon name="users" size={15} />
+              <strong class="text-foreground">{profile.counts.followers}</strong> followers
+            </span>
+          </FollowListDialog>
+          <FollowListDialog
+            username={profile.user.username}
+            kind="following"
+            title="Following"
+          >
+            <span><strong class="text-foreground">{profile.counts.following}</strong> following</span>
+          </FollowListDialog>
+        {/if}
       </div>
     </div>
   </div>
   {#if data.remote}
     {#if data.user}
-      <div class="shrink-0 self-center">
+      <div class="flex shrink-0 items-center gap-2 self-center">
         <FollowButton
           username={data.profile.user.username}
           following={data.profile.isFollowing}
           remote
         />
+        <ProfileMenu
+          username={data.profile.user.username}
+          muted={data.profile.isMuted}
+          blocked={data.profile.isBlocked}
+          remote
+        />
       </div>
     {/if}
   {:else}
-    <div class="shrink-0 self-center">
+    <div class="flex shrink-0 items-center gap-2 self-center">
       {#if isSelf}
         <EditProfileDialog user={data.profile.user} />
       {:else if data.user}
         <FollowButton username={data.profile.user.username} following={data.profile.isFollowing} />
+        <ProfileMenu
+          username={data.profile.user.username}
+          muted={data.profile.isMuted}
+          blocked={data.profile.isBlocked}
+        />
       {/if}
     </div>
   {/if}
