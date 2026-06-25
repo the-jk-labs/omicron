@@ -16,11 +16,11 @@
 
   const variants: Record<Variant, string> = {
     solid:
-      "rounded-input bg-dark text-background shadow-mini hover:bg-dark/95 inline-flex h-12 items-center justify-center gap-1.5 px-[21px] text-[15px] font-semibold active:scale-[0.98] active:transition-all",
+      "rounded-input bg-dark text-background shadow-mini hover:bg-dark/95 inline-flex h-10 items-center justify-center gap-1.5 px-4 text-sm font-semibold active:scale-[0.98] active:transition-all",
     destructive:
-      "rounded-input bg-destructive text-background shadow-mini hover:bg-destructive/90 inline-flex h-12 items-center justify-center gap-1.5 px-[21px] text-[15px] font-semibold active:scale-[0.98] active:transition-all",
+      "rounded-input bg-destructive text-background shadow-mini hover:bg-destructive/90 inline-flex h-10 items-center justify-center gap-1.5 px-4 text-sm font-semibold active:scale-[0.98] active:transition-all",
     outline:
-      "border-input text-foreground shadow-btn hover:bg-muted inline-flex h-12 select-none items-center justify-center gap-1.5 rounded-input border px-[21px] text-[15px] font-semibold active:scale-[0.98] active:transition-all",
+      "border-input text-foreground shadow-btn hover:bg-muted inline-flex h-10 select-none items-center justify-center gap-1.5 rounded-input border px-4 text-sm font-semibold active:scale-[0.98] active:transition-all",
     ghost:
       "text-foreground hover:bg-muted inline-flex h-10 items-center justify-center gap-1.5 rounded-input px-3 text-sm font-medium active:scale-[0.98] active:transition-all",
     icon:
