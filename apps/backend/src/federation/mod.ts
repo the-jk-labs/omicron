@@ -23,6 +23,7 @@ import * as usersRepo from "@/db/repositories/users.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import { buildNote } from "@/federation/note.ts";
+import { cacheActor } from "@/federation/remote.ts";
 
 // ── ActivityPub wiring (isolated) ────────────────────────────────────────
 // This module is only imported when FEDERATION_ENABLED=true (see app.ts), so a
@@ -141,9 +142,9 @@ function setupInbox(f: Federation<ContextData>) {
       }
     })
     .on(Create, async (ctx, create) => {
-      // Ingest a remote post as a local (remote-flagged) record. We tag the AP
-      // object type so the Global feed can surface blog Articles while excluding
-      // microblog Notes (Mastodon, Pixelfed, …).
+      // Ingest a remote post. We cache the author as a remote actor and tag the
+      // AP object type so the Global feed can surface blog Articles while
+      // excluding microblog Notes (Mastodon, Pixelfed, …).
       const object = await create.getObject(ctx);
       if (!(object instanceof Article) && !(object instanceof Note)) return;
       if (!object.id) return;
@@ -151,18 +152,14 @@ function setupInbox(f: Federation<ContextData>) {
       if (await postsRepo.findByApId(object.id.href)) return;
       const author = await create.getActor(ctx);
       if (!isActor(author) || !author.id) return;
-      // Map the remote author to a local placeholder user keyed by actor URI.
-      const local = await usersRepo.findByUsername(
-        `${author.preferredUsername ?? "remote"}`,
-      );
-      if (!local) return; // Only ingest posts from actors we already know.
-      await postsRepo.create({
-        authorId: local.id,
+      const actor = await cacheActor(author);
+      await postsRepo.upsertRemotePost({
+        remoteActorId: actor.id,
+        apId: object.id.href,
         title: object.name?.toString() ?? null,
         contentHtml: object.content?.toString() ?? "",
-        apId: object.id.href,
         apType,
-        remote: true,
+        createdAt: object.published ? new Date(object.published.epochMilliseconds) : undefined,
       });
     });
 }

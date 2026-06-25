@@ -18,7 +18,7 @@
   const ogImage = $derived(`${$page.url.origin}/og-image.png`);
 
   // Reading view: hide the right discovery rail on a single blog post, like Medium.
-  const isReadingView = $derived($page.route.id === "/posts/[id]");
+  const isReadingView = $derived($page.route.id === "/[handle]/[slug]");
 </script>
 
 <svelte:head>

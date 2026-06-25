@@ -15,7 +15,8 @@
   let { data }: { data: PageData } = $props();
 
   const profile = $derived(data.profile);
-  const isSelf = $derived(data.user?.id === profile.user.id);
+  // Self/edit/follow only apply to local profiles; remote browsing is read-only.
+  const isSelf = $derived(!data.remote && data.user?.id === profile.user.id);
 
   let posts = $state<Post[]>(data.page.items);
   let cursor = $state<string | null>(data.page.nextCursor);
@@ -25,7 +26,10 @@
     if (!cursor) return;
     loading = true;
     try {
-      const next = await endpoints().userPosts(profile.user.username, cursor);
+      const handle = profile.user.username;
+      const next = data.remote
+        ? await endpoints().remoteUserPosts(handle, cursor)
+        : await endpoints().userPosts(handle, cursor);
       posts = [...posts, ...next.items];
       cursor = next.nextCursor;
     } finally {
@@ -41,7 +45,14 @@
     <Avatar name={profile.user.displayName} src={profile.user.avatarUrl ?? undefined} size={72} />
     <div>
       <h1 class="text-2xl font-bold tracking-tight text-foreground">{profile.user.displayName}</h1>
-      <p class="text-muted-foreground">@{profile.user.username}</p>
+      <div class="flex items-center gap-2">
+        <p class="text-muted-foreground">@{profile.user.username}</p>
+        {#if data.remote}
+          <span class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+            <Icon name="globe" size={12} /> {data.profile.user.host}
+          </span>
+        {/if}
+      </div>
       {#if profile.user.bio}<p class="mt-2 max-w-prose text-foreground-alt">{profile.user.bio}</p>{/if}
       <div class="mt-3 flex items-center gap-4 text-sm text-muted-foreground">
         <span class="flex items-center gap-1">
@@ -54,10 +65,14 @@
       </div>
     </div>
   </div>
-  {#if isSelf}
-    <EditProfileDialog user={profile.user} />
+  {#if data.remote}
+    <Button href={data.profile.user.apId} variant="outline" class="shrink-0">
+      <Icon name="globe" size={16} /> View on {data.profile.user.host}
+    </Button>
+  {:else if isSelf}
+    <EditProfileDialog user={data.profile.user} />
   {:else if data.user}
-    <FollowButton username={profile.user.username} following={profile.isFollowing} />
+    <FollowButton username={data.profile.user.username} following={data.profile.isFollowing} />
   {/if}
 </header>
 
@@ -96,6 +111,8 @@
     {:else}
       <p class="text-muted-foreground">No bio yet.</p>
     {/if}
-    <p class="mt-4 text-sm text-muted-foreground">Joined {formatDate(profile.user.createdAt)}</p>
+    {#if !data.remote}
+      <p class="mt-4 text-sm text-muted-foreground">Joined {formatDate(data.profile.user.createdAt)}</p>
+    {/if}
   </Tabs.Content>
 </Tabs.Root>

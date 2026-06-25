@@ -17,6 +17,12 @@ export function findByEmail(email: string) {
   return db.query.users.findFirst({ where: eq(users.email, email) });
 }
 
+// The oldest local account. Used as the signing identity for outbound fetches
+// (e.g. resolving remote actors on instances that require authorized fetch).
+export function firstUser() {
+  return db.query.users.findFirst({ orderBy: (u, { asc }) => asc(u.createdAt) });
+}
+
 export async function countUsers(): Promise<number> {
   const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(users);
   return row?.n ?? 0;

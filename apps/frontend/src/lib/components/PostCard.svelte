@@ -4,6 +4,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import { excerpt, formatDate, readTime } from "$lib/format";
+  import { postPath } from "$lib/links";
   import type { Post } from "$lib/types";
 
   let { post }: { post: Post } = $props();
@@ -20,7 +21,7 @@
     </Button>
   </div>
 
-  <Button href={`/posts/${post.id}`} variant="plain" class="group block w-full text-left">
+  <Button href={postPath(post)} variant="plain" class="group block w-full text-left">
     {#if post.title}
       <h2 class="text-xl font-bold leading-snug text-foreground group-hover:text-foreground-alt sm:text-2xl">
         {post.title}

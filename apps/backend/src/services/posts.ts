@@ -27,6 +27,9 @@ export async function createPost(authorId: string, input: {
 }
 
 export async function getPost(id: string) {
+  // `id` is a full UUID or a hex id-prefix from a canonical URL; reject anything
+  // else so LIKE wildcards can't reach the query.
+  if (!/^[0-9a-f-]{8,}$/i.test(id)) throw notFound("Post not found.");
   const row = await postsRepo.findById(id);
   if (!row) throw notFound("Post not found.");
   return row;

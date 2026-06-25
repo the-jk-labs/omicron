@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Post, User } from "@/db/schema.ts";
+import type { Post, RemoteActor, User } from "@/db/schema.ts";
 import type { PostWithAuthor } from "@/db/repositories/posts.ts";
 import type { CommentWithAuthor } from "@/db/repositories/comments.ts";
 
@@ -19,6 +19,29 @@ export function publicUser(u: User) {
   };
 }
 
+// Coalesces the two possible author sources into one uniform shape. For remote
+// authors `username` is the full `user@host` handle, so the frontend's
+// `/@${author.username}` links resolve straight back to the remote profile.
+function postAuthor(row: PostWithAuthor) {
+  if (row.localAuthor) {
+    return {
+      id: row.localAuthor.id,
+      username: row.localAuthor.username,
+      displayName: row.localAuthor.displayName,
+      avatarUrl: row.localAuthor.avatarUrl,
+      remote: false,
+    };
+  }
+  const a = row.remoteActor!;
+  return {
+    id: a.id,
+    username: a.handle,
+    displayName: a.displayName,
+    avatarUrl: a.avatarUrl,
+    remote: true,
+  };
+}
+
 export function postWithAuthor(row: PostWithAuthor, engagement?: Engagement) {
   return {
     id: row.post.id,
@@ -27,10 +50,32 @@ export function postWithAuthor(row: PostWithAuthor, engagement?: Engagement) {
     contentJson: row.post.contentJson,
     remote: row.post.remote,
     createdAt: row.post.createdAt,
-    author: row.author,
+    author: postAuthor(row),
     likeCount: engagement?.likeCount ?? 0,
     liked: engagement?.liked ?? false,
     commentCount: engagement?.commentCount ?? 0,
+  };
+}
+
+// Profile payload for a cached remote actor, shaped like the local profile
+// response (`{ user, counts, isFollowing }`) so the frontend reuses one layout.
+export function remoteProfile(actor: RemoteActor) {
+  return {
+    user: {
+      id: actor.id,
+      username: actor.handle,
+      displayName: actor.displayName,
+      bio: actor.bio,
+      avatarUrl: actor.avatarUrl,
+      host: actor.host,
+      apId: actor.apId,
+      remote: true as const,
+    },
+    counts: {
+      followers: actor.followersCount ?? 0,
+      following: actor.followingCount ?? 0,
+    },
+    isFollowing: false,
   };
 }
 

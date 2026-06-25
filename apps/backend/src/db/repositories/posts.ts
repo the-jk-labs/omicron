@@ -1,18 +1,35 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, desc, eq, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { type NewPost, posts, users } from "@/db/schema.ts";
+import { type NewPost, posts, remoteActors, users } from "@/db/schema.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
 
 // Post DB access. Queries fetch `limit + 1` rows so the service can derive a
 // next-cursor without a second round-trip.
 
-const authorColumns = {
+// A post's author is either a local user or a cached remote actor; every read
+// left-joins both and the serializer coalesces whichever side is present.
+const localAuthorColumns = {
   id: users.id,
   username: users.username,
   displayName: users.displayName,
   avatarUrl: users.avatarUrl,
 };
+
+const remoteActorColumns = {
+  id: remoteActors.id,
+  handle: remoteActors.handle,
+  displayName: remoteActors.displayName,
+  avatarUrl: remoteActors.avatarUrl,
+};
+
+function selectPosts() {
+  return db
+    .select({ post: posts, localAuthor: localAuthorColumns, remoteActor: remoteActorColumns })
+    .from(posts)
+    .leftJoin(users, eq(posts.authorId, users.id))
+    .leftJoin(remoteActors, eq(posts.remoteActorId, remoteActors.id));
+}
 
 export type PostWithAuthor = Awaited<ReturnType<typeof listGlobal>>[number];
 
@@ -21,12 +38,47 @@ export async function create(data: NewPost) {
   return row;
 }
 
+// Upserts a post fetched from a remote actor's outbox (or inbox Create),
+// keyed by its ActivityPub id so re-fetching is idempotent.
+export async function upsertRemotePost(data: {
+  remoteActorId: string;
+  apId: string;
+  title: string | null;
+  contentHtml: string;
+  apType: string;
+  createdAt?: Date;
+}) {
+  const [row] = await db
+    .insert(posts)
+    .values({
+      remoteActorId: data.remoteActorId,
+      apId: data.apId,
+      title: data.title,
+      contentHtml: data.contentHtml,
+      apType: data.apType,
+      remote: true,
+      ...(data.createdAt ? { createdAt: data.createdAt } : {}),
+    })
+    .onConflictDoUpdate({
+      target: posts.apId,
+      set: { title: data.title, contentHtml: data.contentHtml },
+    })
+    .returning();
+  return row;
+}
+
+// Accepts either a full UUID or a hex id-prefix (the short suffix used in
+// canonical post URLs, e.g. `9e962281`). The prefix path matches on the text
+// form of the id; 8 hex chars is 32 bits, so collisions are negligible for a
+// single instance and we deterministically return the oldest match.
 export function findById(id: string) {
-  return db
-    .select({ post: posts, author: authorColumns })
-    .from(posts)
-    .innerJoin(users, eq(posts.authorId, users.id))
-    .where(eq(posts.id, id))
+  const isFullUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  const match = isFullUuid
+    ? eq(posts.id, id)
+    : sql`${posts.id}::text like ${`${id.toLowerCase()}%`}`;
+  return selectPosts()
+    .where(match)
+    .orderBy(posts.createdAt)
     .limit(1)
     .then((r: unknown[]) => (r[0] ?? null) as PostWithAuthor | null);
 }
@@ -67,10 +119,7 @@ function beforeCursor(cursor: Cursor | null) {
 // Global feed: blog-type content across the whole fediverse (local + remote).
 // Filtered to "Article" so microblog Notes (Mastodon, Pixelfed, …) are excluded.
 export function listGlobal(cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
-  return db
-    .select({ post: posts, author: authorColumns })
-    .from(posts)
-    .innerJoin(users, eq(posts.authorId, users.id))
+  return selectPosts()
     .where(and(eq(posts.apType, "Article"), beforeCursor(cursor)))
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
@@ -78,21 +127,27 @@ export function listGlobal(cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
 
 // Local feed: posts authored on this instance only.
 export function listLocal(cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
-  return db
-    .select({ post: posts, author: authorColumns })
-    .from(posts)
-    .innerJoin(users, eq(posts.authorId, users.id))
+  return selectPosts()
     .where(and(eq(posts.remote, false), beforeCursor(cursor)))
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
 }
 
 export function listByAuthor(authorId: string, cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
-  return db
-    .select({ post: posts, author: authorColumns })
-    .from(posts)
-    .innerJoin(users, eq(posts.authorId, users.id))
+  return selectPosts()
     .where(and(eq(posts.authorId, authorId), beforeCursor(cursor)))
+    .orderBy(desc(posts.createdAt), desc(posts.id))
+    .limit(limit + 1);
+}
+
+// All posts by a cached remote actor (their fetched outbox).
+export function listByRemoteActor(
+  remoteActorId: string,
+  cursor: Cursor | null,
+  limit = DEFAULT_PAGE_SIZE,
+) {
+  return selectPosts()
+    .where(and(eq(posts.remoteActorId, remoteActorId), beforeCursor(cursor)))
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
 }
@@ -103,10 +158,7 @@ export function listFeed(userId: string, cursor: Cursor | null, limit = DEFAULT_
     select followee_id from follows
     where follower_id = ${userId} and followee_id is not null
   )`;
-  return db
-    .select({ post: posts, author: authorColumns })
-    .from(posts)
-    .innerJoin(users, eq(posts.authorId, users.id))
+  return selectPosts()
     .where(
       and(
         or(eq(posts.authorId, userId), sql`${posts.authorId} in ${followed}`),

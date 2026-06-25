@@ -11,7 +11,7 @@ import * as postsRepo from "@/db/repositories/posts.ts";
 // Fedify handles HTTP signatures, batching and delivery retries.
 export async function deliverPost(postId: string): Promise<void> {
   const row = await postsRepo.findById(postId);
-  if (!row || row.post.remote) return;
+  if (!row || row.post.remote || !row.post.authorId) return;
 
   const author = await usersRepo.findById(row.post.authorId);
   if (!author) return;

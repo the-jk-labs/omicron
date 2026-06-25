@@ -16,6 +16,8 @@ export type PostAuthor = {
   username: string;
   displayName: string;
   avatarUrl: string | null;
+  // True when the author is a cached remote actor (username is a user@host handle).
+  remote?: boolean;
 };
 
 export type Post = {
@@ -51,4 +53,21 @@ export type Profile = {
   user: User;
   counts: { followers: number; following: number };
   isFollowing: boolean;
+};
+
+// A remote actor's profile, shaped like the local profile response so the
+// profile page can render either with one layout.
+export type RemoteProfile = {
+  user: {
+    id: string;
+    username: string; // user@host handle
+    displayName: string;
+    bio: string;
+    avatarUrl: string | null;
+    host: string;
+    apId: string;
+    remote: true;
+  };
+  counts: { followers: number; following: number };
+  isFollowing: false;
 };

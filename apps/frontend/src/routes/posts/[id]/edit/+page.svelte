@@ -6,6 +6,7 @@
   import { endpoints, ApiError } from "$lib/api";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import { postPath } from "$lib/links";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -42,7 +43,8 @@
         contentHtml: html,
         contentJson: json,
       });
-      goto(`/posts/${post.id}`);
+      // Title may have changed, so navigate to the freshly-built canonical path.
+      goto(postPath({ ...post, title: title.trim() || null }));
     } catch (err) {
       error = err instanceof ApiError ? err.message : "Failed to save.";
       busy = false;
@@ -57,7 +59,7 @@
     <Icon name="edit" size={16} /> Editing
   </p>
   <div class="flex items-center gap-2">
-    <Button href={`/posts/${post.id}`} variant="ghost">Cancel</Button>
+    <Button href={postPath(post)} variant="ghost">Cancel</Button>
     <Button onclick={save} disabled={busy} variant="solid">
       {busy ? "Saving…" : "Save"}
     </Button>

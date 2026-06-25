@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { makeApi } from "./client";
-import type { Comment, Page, Post, Profile, User } from "$lib/types";
+import type { Comment, Page, Post, Profile, RemoteProfile, User } from "$lib/types";
 
 type LikeState = { likeCount: number; liked: boolean };
 
@@ -69,5 +69,15 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       ),
     follow: (username: string) => api.post(`/users/${username}/follow`),
     unfollow: (username: string) => api.del(`/users/${username}/follow`),
+
+    // remote (federated) profiles + their posts, browsed read-only
+    remoteProfile: (handle: string) =>
+      api.get<RemoteProfile>(`/remote/users/${encodeURIComponent(handle)}`),
+    remoteUserPosts: (handle: string, cursor?: string | null) =>
+      api.get<Page<Post>>(
+        `/remote/users/${encodeURIComponent(handle)}/posts${
+          cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""
+        }`,
+      ),
   };
 }

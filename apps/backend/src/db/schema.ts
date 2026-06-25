@@ -4,6 +4,7 @@ import {
   type AnyPgColumn,
   boolean,
   index,
+  integer,
   jsonb,
   pgTable,
   text,
@@ -36,12 +37,39 @@ export type ActorKeyPair = {
   publicKey: JsonWebKey;
 };
 
+// ── remote actors ───────────────────────────────────────────────────────
+// Cached fediverse Person objects, resolved on demand via WebFinger when a
+// viewer opens /@user@host. Distinct from `users` (which are local accounts
+// with credentials) so local identity stays free of federated junk.
+export const remoteActors = pgTable("remote_actors", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  apId: text("ap_id").notNull(),
+  handle: text("handle").notNull(), // "user@host"
+  username: text("username").notNull(), // preferredUsername
+  host: text("host").notNull(),
+  displayName: text("display_name").notNull().default(""),
+  bio: text("bio").notNull().default(""),
+  avatarUrl: text("avatar_url"),
+  inboxUrl: text("inbox_url"),
+  sharedInboxUrl: text("shared_inbox_url"),
+  outboxUrl: text("outbox_url"),
+  followersCount: integer("followers_count"),
+  followingCount: integer("following_count"),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("remote_actors_ap_id_idx").on(t.apId),
+  uniqueIndex("remote_actors_handle_idx").on(t.handle),
+]);
+
 // ── posts ──────────────────────────────────────────────────────────────
 // `content_json` is the Tiptap document; `content_html` is the rendered HTML.
-// Remote posts (ingested via federation) set `remote=true` and carry `ap_id`.
+// Local posts carry `author_id`; remote posts (ingested via federation or
+// fetched from a remote outbox) set `remote=true`, carry `ap_id`, and reference
+// `remote_actor_id`. Exactly one of the two author columns is set (DB CHECK).
 export const posts = pgTable("posts", {
   id: uuid("id").primaryKey().defaultRandom(),
-  authorId: uuid("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  authorId: uuid("author_id").references(() => users.id, { onDelete: "cascade" }),
+  remoteActorId: uuid("remote_actor_id").references(() => remoteActors.id, { onDelete: "cascade" }),
   title: text("title"),
   contentHtml: text("content_html").notNull(),
   contentJson: jsonb("content_json"),
@@ -56,6 +84,7 @@ export const posts = pgTable("posts", {
   // Keyset pagination of the global/profile timelines.
   index("posts_created_at_idx").on(t.createdAt.desc(), t.id.desc()),
   index("posts_author_created_idx").on(t.authorId, t.createdAt.desc()),
+  index("posts_remote_actor_created_idx").on(t.remoteActorId, t.createdAt.desc()),
   uniqueIndex("posts_ap_id_idx").on(t.apId),
 ]);
 
@@ -137,6 +166,8 @@ export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Post = typeof posts.$inferSelect;
 export type NewPost = typeof posts.$inferInsert;
+export type RemoteActor = typeof remoteActors.$inferSelect;
+export type NewRemoteActor = typeof remoteActors.$inferInsert;
 export type Follow = typeof follows.$inferSelect;
 export type Like = typeof likes.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
