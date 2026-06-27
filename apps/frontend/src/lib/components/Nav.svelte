@@ -33,14 +33,22 @@
 </script>
 
 <header class="sticky top-0 z-20 bg-background/80 backdrop-blur">
-  <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+  <nav class="relative mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
     <Button href="/" variant="plain" class="flex items-center gap-2 text-foreground hover:opacity-80">
       <img src={logo} alt="" width="28" height="28" class="h-7 w-auto" />
       <span class="text-xl font-bold tracking-tight">{env.PUBLIC_APP_NAME || "Omicron"}</span>
     </Button>
 
-    <div class="flex items-center gap-1.5">
+    <!-- Centered search pill (sm and up) -->
+    <div class="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 sm:block">
       <SearchBar />
+    </div>
+
+    <div class="flex items-center gap-1.5">
+      <!-- Icon-only search fallback (below sm) -->
+      <Button href="/search" variant="icon" class="!border-0 !shadow-none sm:hidden" aria-label="Search">
+        <Icon name="search" size={18} />
+      </Button>
 
       <Button
         onclick={() => theme.toggle()}
