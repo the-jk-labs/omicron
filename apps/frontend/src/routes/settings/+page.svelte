@@ -12,6 +12,7 @@
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import ConnectionsManager from "$lib/components/ConnectionsManager.svelte";
+  import FollowedTagsManager from "$lib/components/FollowedTagsManager.svelte";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import type { PageData } from "./$types";
 
@@ -335,6 +336,18 @@
           </ButtonPrimitive.Root>
         {/each}
       </div>
+    </div>
+  </section>
+
+  <!-- Followed tags -->
+  <section class="rounded-card border border-border bg-background p-6">
+    <h2 class="text-lg font-semibold tracking-tight text-foreground">Followed tags</h2>
+    <p class="mt-1 text-sm text-muted-foreground">
+      Stories tagged with these show up in your “For you” feed. Open any tag to follow it.
+    </p>
+
+    <div class="mt-4">
+      <FollowedTagsManager />
     </div>
   </section>
 
