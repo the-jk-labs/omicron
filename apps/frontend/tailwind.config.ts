@@ -53,9 +53,13 @@ export default {
         xxs: "10px",
       },
       fontFamily: {
-        sans: ["Inter Variable", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        // "Twemoji" leads both stacks but is unicode-range-scoped to emoji
+        // codepoints (see @font-face in app.css), so it only ever supplies emoji
+        // glyphs — text still renders with Inter/Georgia. This gives consistent
+        // Twemoji artwork across every OS without touching stored content.
+        sans: ["Twemoji", "Inter Variable", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
         // Medium-like reading typography for rendered post content.
-        serif: ["Georgia", "Cambria", "Times New Roman", "serif"],
+        serif: ["Twemoji", "Georgia", "Cambria", "Times New Roman", "serif"],
       },
     },
   },

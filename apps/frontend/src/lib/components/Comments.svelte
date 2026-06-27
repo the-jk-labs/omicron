@@ -4,7 +4,9 @@
   import { endpoints, ApiError } from "$lib/api";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
   import { confirm } from "$lib/components/ui/confirm";
+  import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
   import CommentNode from "$lib/components/CommentNode.svelte";
   import type { CommentActions, CommentUiState } from "$lib/components/comments";
   import type { Comment, Page, User } from "$lib/types";
@@ -24,6 +26,9 @@
   let comments = $state<Comment[]>(initial.items);
   let cursor = $state<string | null>(initial.nextCursor);
   let draft = $state("");
+  let draftEl = $state<HTMLTextAreaElement | null>(null);
+  const insertDraftEmoji = (emoji: string) =>
+    insertEmojiIntoField(draftEl, draft, 2000, emoji, (v) => (draft = v));
   let error = $state("");
   let busy = $state(false);
   let loadingMore = $state(false);
@@ -242,13 +247,21 @@
     <form onsubmit={submit} class="mb-8 flex gap-3">
       <Avatar name={user.displayName} src={user.avatarUrl ?? undefined} size={36} />
       <div class="flex-1">
-        <textarea
-          bind:value={draft}
-          rows={2}
-          maxlength={2000}
-          placeholder="What are your thoughts?"
-          class={field}
-        ></textarea>
+        <div class="relative">
+          <textarea
+            bind:this={draftEl}
+            bind:value={draft}
+            rows={2}
+            maxlength={2000}
+            placeholder="What are your thoughts?"
+            class={`${field} pr-11`}
+          ></textarea>
+          <EmojiTrigger
+            onPick={insertDraftEmoji}
+            align="end"
+            class={`${emojiOverlayBtn} bottom-2 right-1.5`}
+          />
+        </div>
         {#if error}<p class="text-destructive mt-1.5 text-sm">{error}</p>{/if}
         <div class="mt-2 flex justify-end">
           <Button type="submit" variant="solid" size="sm" disabled={busy || !draft.trim()}>

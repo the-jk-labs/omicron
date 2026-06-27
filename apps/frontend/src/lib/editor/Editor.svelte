@@ -5,6 +5,7 @@
   import Placeholder from "@tiptap/extension-placeholder";
   import { Dialog, DropdownMenu, Label, Toolbar } from "bits-ui";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
+  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
   import { endpoints, ApiError } from "$lib/api";
   import { isAcceptedImage, prepareImage } from "./image";
   import { extensions } from "./extensions";
@@ -91,6 +92,13 @@
     const url = linkUrl.trim();
     if (url) editor.chain().focus().setLink({ href: url }).run();
     linkOpen = false;
+  }
+
+  // Emoji picker: inserts the picked Unicode emoji at the cursor. Emoji are
+  // stored as plain Unicode (not images) and rendered as Twemoji by the
+  // unicode-range font, so federated/exported content stays text.
+  function insertEmoji(emoji: string) {
+    editor.chain().focus().insertContent(emoji).run();
   }
 
   // Image upload: the picked file is resized/compressed in the browser (see
@@ -236,6 +244,10 @@
         <Icon name={tool.icon} size={18} />
       </Toolbar.Button>
     {/each}
+
+    <!-- Emoji picker. The web component is lazy-loaded on first open (see
+         EmojiPicker.svelte), so it stays out of the editor's initial work. -->
+    <EmojiTrigger onPick={insertEmoji} class={`${btn} text-foreground/60`} />
   </Toolbar.Root>
 
   <input

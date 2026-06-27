@@ -9,6 +9,8 @@
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
+  import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
   import { formatDate } from "$lib/format";
   import type { Comment, User } from "$lib/types";
   import type { CommentActions, CommentUiState } from "$lib/components/comments";
@@ -31,6 +33,15 @@
   } = $props();
 
   const isReply = $derived(comment.id !== thread.id);
+
+  // Local refs for caret-aware emoji insertion into the edit/reply boxes. Only
+  // one of each is ever open at a time (state lives in the shared `ui`).
+  let editEl = $state<HTMLTextAreaElement | null>(null);
+  let replyEl = $state<HTMLTextAreaElement | null>(null);
+  const insertEditEmoji = (emoji: string) =>
+    insertEmojiIntoField(editEl, ui.editDraft, 2000, emoji, (v) => (ui.editDraft = v));
+  const insertReplyEmoji = (emoji: string) =>
+    insertEmojiIntoField(replyEl, ui.replyDraft, 2000, emoji, (v) => (ui.replyDraft = v));
 </script>
 
 <li class="flex gap-3">
@@ -48,13 +59,21 @@
     </div>
     {#if ui.editingId === comment.id}
       <form onsubmit={(e) => actions.submitEdit(e, comment)} class="mt-2">
-        <textarea
-          bind:value={ui.editDraft}
-          rows={2}
-          maxlength={2000}
-          placeholder="Edit your comment…"
-          class={field}
-        ></textarea>
+        <div class="relative">
+          <textarea
+            bind:this={editEl}
+            bind:value={ui.editDraft}
+            rows={2}
+            maxlength={2000}
+            placeholder="Edit your comment…"
+            class={`${field} pr-11`}
+          ></textarea>
+          <EmojiTrigger
+            onPick={insertEditEmoji}
+            align="end"
+            class={`${emojiOverlayBtn} bottom-2 right-1.5`}
+          />
+        </div>
         {#if ui.editError}<p class="text-destructive mt-1.5 text-sm">{ui.editError}</p>{/if}
         <div class="mt-2 flex justify-end gap-2">
           <Button type="button" variant="ghost" size="sm" onclick={() => (ui.editingId = null)}>
@@ -126,13 +145,21 @@
       <form onsubmit={(e) => actions.submitReply(e, comment, thread)} class="mt-3 flex gap-3">
         <Avatar name={user?.displayName ?? "?"} src={user?.avatarUrl ?? undefined} size={28} />
         <div class="flex-1">
-          <textarea
-            bind:value={ui.replyDraft}
-            rows={2}
-            maxlength={2000}
-            placeholder={`Reply to ${comment.author.displayName}…`}
-            class={field}
-          ></textarea>
+          <div class="relative">
+            <textarea
+              bind:this={replyEl}
+              bind:value={ui.replyDraft}
+              rows={2}
+              maxlength={2000}
+              placeholder={`Reply to ${comment.author.displayName}…`}
+              class={`${field} pr-11`}
+            ></textarea>
+            <EmojiTrigger
+              onPick={insertReplyEmoji}
+              align="end"
+              class={`${emojiOverlayBtn} bottom-2 right-1.5`}
+            />
+          </div>
           {#if ui.replyError}<p class="text-destructive mt-1.5 text-sm">{ui.replyError}</p>{/if}
           <div class="mt-2 flex justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onclick={() => (ui.replyingTo = null)}>

@@ -2,6 +2,8 @@
 <script lang="ts">
   import { goto, invalidateAll } from "$app/navigation";
   import { Button as ButtonPrimitive, Dialog, Label } from "bits-ui";
+  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
+  import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
   import { endpoints, ApiError } from "$lib/api";
   import { theme, type ThemePreference } from "$lib/theme.svelte";
   import { reading, type FeedTab } from "$lib/prefs.svelte";
@@ -18,6 +20,13 @@
   // Profile form — seeded from the loaded user.
   let displayName = $state(data.user.displayName);
   let bio = $state(data.user.bio);
+  let nameEl = $state<HTMLInputElement | null>(null);
+  let bioEl = $state<HTMLTextAreaElement | null>(null);
+
+  const insertNameEmoji = (emoji: string) =>
+    insertEmojiIntoField(nameEl, displayName, 60, emoji, (v) => (displayName = v));
+  const insertBioEmoji = (emoji: string) =>
+    insertEmojiIntoField(bioEl, bio, 500, emoji, (v) => (bio = v));
   let file = $state<File | null>(null);
   let previewUrl = $state<string | null>(null);
   let fileInput = $state<HTMLInputElement | null>(null);
@@ -218,20 +227,41 @@
       <!-- Display name -->
       <div class="flex flex-col gap-1.5">
         <Label.Root for="displayName" class={labelClass}>Display name</Label.Root>
-        <input id="displayName" bind:value={displayName} maxlength={60} class={field} />
+        <div class="relative">
+          <input
+            id="displayName"
+            bind:this={nameEl}
+            bind:value={displayName}
+            maxlength={60}
+            class={`${field} w-full pr-11`}
+          />
+          <EmojiTrigger
+            onPick={insertNameEmoji}
+            align="end"
+            class={`${emojiOverlayBtn} right-1.5 top-1/2 -translate-y-1/2`}
+          />
+        </div>
       </div>
 
       <!-- Bio -->
       <div class="flex flex-col gap-1.5">
         <Label.Root for="bio" class={labelClass}>Bio</Label.Root>
-        <textarea
-          id="bio"
-          bind:value={bio}
-          rows={3}
-          maxlength={500}
-          placeholder="Tell people about yourself"
-          class={`${field} resize-none`}
-        ></textarea>
+        <div class="relative">
+          <textarea
+            id="bio"
+            bind:this={bioEl}
+            bind:value={bio}
+            rows={3}
+            maxlength={500}
+            placeholder="Tell people about yourself"
+            class={`${field} w-full resize-none pr-11`}
+          ></textarea>
+          <EmojiTrigger
+            onPick={insertBioEmoji}
+            align="end"
+            class={`${emojiOverlayBtn} bottom-2 right-1.5`}
+          />
+        </div>
         <p class="self-end text-xs text-muted-foreground">{bio.length}/500</p>
       </div>
 
