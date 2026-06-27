@@ -265,7 +265,7 @@
           <ButtonPrimitive.Root
             onclick={() => theme.set(opt.value)}
             aria-pressed={theme.preference === opt.value}
-            class={`inline-flex h-8 items-center gap-1.5 rounded-button px-3 text-sm font-medium active:scale-[0.98] ${
+            class={`inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-button px-3 text-sm font-medium active:scale-[0.98] ${
               theme.preference === opt.value
                 ? "bg-background text-foreground shadow-mini"
                 : "text-muted-foreground hover:text-foreground"
@@ -295,7 +295,7 @@
           <ButtonPrimitive.Root
             onclick={() => reading.setDefaultFeed(opt.value)}
             aria-pressed={currentFeed === opt.value}
-            class={`inline-flex h-8 items-center gap-1.5 rounded-button px-3 text-sm font-medium active:scale-[0.98] ${
+            class={`inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-button px-3 text-sm font-medium active:scale-[0.98] ${
               currentFeed === opt.value
                 ? "bg-background text-foreground shadow-mini"
                 : "text-muted-foreground hover:text-foreground"
