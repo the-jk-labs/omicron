@@ -4,7 +4,6 @@
   import PostCard from "$lib/components/PostCard.svelte";
   import TagFollowButton from "$lib/components/TagFollowButton.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/Icon.svelte";
   import type { Post } from "$lib/types";
   import type { PageData } from "./$types";
 
@@ -33,9 +32,7 @@
 
 <header class="mb-8 flex items-start justify-between gap-4 pb-2">
   <div class="min-w-0">
-    <h1 class="flex items-center gap-1.5 text-2xl font-bold tracking-tight text-foreground">
-      <Icon name="tag" size={22} class="text-muted-foreground" />#{tag.name}
-    </h1>
+    <h1 class="text-2xl font-bold tracking-tight text-foreground">#{tag.name}</h1>
     <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
       <span>
         <strong class="text-foreground">{data.detail.postCount}</strong>
