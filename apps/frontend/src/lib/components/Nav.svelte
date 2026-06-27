@@ -13,7 +13,9 @@
   import logo from "$lib/assets/omicron.svg";
   import type { User } from "$lib/types";
 
-  let { user }: { user: User | null } = $props();
+  // `minimal` strips the nav down to logo + theme toggle for standalone pages
+  // (auth screens), which carry their own focused layout.
+  let { user, minimal = false }: { user: User | null; minimal?: boolean } = $props();
 
   // Render the resolved icon only after mount so SSR (always "light") and the
   // first client render match — avoids a hydration mismatch on the toggle.
@@ -39,16 +41,20 @@
       <span class="text-xl font-bold tracking-tight">{env.PUBLIC_APP_NAME || "Omicron"}</span>
     </Button>
 
-    <!-- Centered search pill (sm and up) -->
-    <div class="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 sm:block">
-      <SearchBar />
-    </div>
+    {#if !minimal}
+      <!-- Centered search pill (sm and up) -->
+      <div class="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 sm:block">
+        <SearchBar />
+      </div>
+    {/if}
 
     <div class="flex items-center gap-1.5">
-      <!-- Icon-only search fallback (below sm) -->
-      <Button href="/search" variant="icon" class="!border-0 !shadow-none sm:hidden" aria-label="Search">
-        <Icon name="search" size={18} />
-      </Button>
+      {#if !minimal}
+        <!-- Icon-only search fallback (below sm) -->
+        <Button href="/search" variant="icon" class="!border-0 !shadow-none sm:hidden" aria-label="Search">
+          <Icon name="search" size={18} />
+        </Button>
+      {/if}
 
       <Button
         onclick={() => theme.toggle()}
@@ -60,7 +66,9 @@
         <Icon name={ready && theme.current === "dark" ? "sun" : "moon"} size={18} />
       </Button>
 
-      {#if user}
+      {#if minimal}
+        <!-- nothing else: auth pages own their own sign-in / register actions -->
+      {:else if user}
         <Button href="/compose" variant="ghost" class="hidden text-muted-foreground sm:inline-flex" aria-label="Write">
           <Icon name="compose" size={18} /> <span class="hidden sm:inline">Write</span>
         </Button>
