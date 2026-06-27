@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Tabs } from "bits-ui";
+  import { goto } from "$app/navigation";
   import PostCard from "$lib/components/PostCard.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Icon from "$lib/components/Icon.svelte";
@@ -12,11 +13,57 @@
   const people = $derived(data.results.people);
   // Open whichever tab has matches; default to Stories.
   const defaultTab = $derived(posts.length === 0 && people.length > 0 ? "people" : "stories");
+
+  // The nav's search pill is hidden below `sm`, so on mobile this page is the
+  // only place to type a query. Seed it from the active query and search live
+  // as the user types — debounced so we don't refetch on every keystroke.
+  // The page's load function owns the actual results.
+  let query = $state(data.query ?? "");
+
+  function run(q: string) {
+    // replaceState keeps the query out of history so Back doesn't step through
+    // every keystroke; keepFocus leaves the field active as results stream in.
+    goto(q ? `/search?q=${encodeURIComponent(q)}` : "/search", {
+      keepFocus: true,
+      replaceState: true,
+    });
+  }
+
+  function submit(e: SubmitEvent) {
+    e.preventDefault();
+    run(query.trim());
+  }
+
+  $effect(() => {
+    const q = query.trim();
+    if (q === (data.query ?? "")) return; // already showing this query
+    const t = setTimeout(() => run(q), 250);
+    return () => clearTimeout(t);
+  });
 </script>
 
 <svelte:head>
   <title>{data.query ? `Search · ${data.query}` : "Search"} · Omicron</title>
 </svelte:head>
+
+<!-- Mobile-only search field (nav pill is hidden below `sm`). Autofocuses on
+     the empty state so tapping search in the nav lands ready to type. -->
+<form onsubmit={submit} role="search" class="mb-6 sm:hidden">
+  <div
+    class="bg-muted/60 focus-within:bg-muted flex h-11 items-center gap-2.5 rounded-full px-4 transition-colors"
+  >
+    <Icon name="search" size={18} class="text-muted-foreground shrink-0" />
+    <!-- svelte-ignore a11y_autofocus -->
+    <input
+      bind:value={query}
+      type="search"
+      placeholder="Search"
+      aria-label="Search stories and people"
+      autofocus={!data.query}
+      class="placeholder:text-muted-foreground w-full bg-transparent text-[15px] outline-none"
+    />
+  </div>
+</form>
 
 {#if !data.query}
   <div class="py-20 text-center">
