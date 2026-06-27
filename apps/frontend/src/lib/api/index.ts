@@ -93,7 +93,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.del<LikeState>(`/posts/${postId}/comments/${commentId}/like`),
 
     // current user's profile editing
-    updateProfile: (body: { displayName?: string; bio?: string }) =>
+    updateProfile: (body: { displayName?: string; bio?: string; tags?: string[] }) =>
       api.patch<{ user: User }>("/users/me", body),
     // The blob is downscaled/re-encoded client-side (see prepareImage).
     uploadAvatar: (blob: Blob, contentType: string) =>

@@ -7,12 +7,14 @@
   import { endpoints, ApiError } from "$lib/api";
   import { theme, type ThemePreference } from "$lib/theme.svelte";
   import { reading, type FeedTab } from "$lib/prefs.svelte";
+  import { MAX_PROFILE_TAGS } from "$lib/tags";
   import { AVATAR_MAX_DIMENSION, prepareImage } from "$lib/editor/image";
   import { formatDate } from "$lib/format";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import ConnectionsManager from "$lib/components/ConnectionsManager.svelte";
   import FollowedTagsManager from "$lib/components/FollowedTagsManager.svelte";
+  import TagInput from "$lib/components/TagInput.svelte";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import type { PageData } from "./$types";
 
@@ -21,6 +23,8 @@
   // Profile form — seeded from the loaded user.
   let displayName = $state(data.user.displayName);
   let bio = $state(data.user.bio);
+  let profileTags = $state<string[]>(data.user.tags?.map((t) => t.name) ?? []);
+  const initialTags = (data.user.tags?.map((t) => t.name) ?? []).join(",");
   let nameEl = $state<HTMLInputElement | null>(null);
   let bioEl = $state<HTMLTextAreaElement | null>(null);
 
@@ -54,7 +58,10 @@
   const currentFeed = $derived(reading.defaultFeed ?? "for-you");
 
   const dirty = $derived(
-    displayName !== data.user.displayName || bio !== data.user.bio || file !== null,
+    displayName !== data.user.displayName ||
+      bio !== data.user.bio ||
+      file !== null ||
+      profileTags.join(",") !== initialTags,
   );
 
   let removingPhoto = $state(false);
@@ -113,7 +120,7 @@
         const { blob, type } = await prepareImage(file, AVATAR_MAX_DIMENSION);
         await endpoints().uploadAvatar(blob, type);
       }
-      await endpoints().updateProfile({ displayName, bio });
+      await endpoints().updateProfile({ displayName, bio, tags: profileTags });
       await invalidateAll();
       clearFile();
       saved = true;
@@ -264,6 +271,16 @@
           />
         </div>
         <p class="self-end text-xs text-muted-foreground">{bio.length}/500</p>
+      </div>
+
+      <!-- Profile tags -->
+      <div class="flex flex-col gap-1.5">
+        <Label.Root class={labelClass}>Tags</Label.Root>
+        <TagInput
+          bind:tags={profileTags}
+          max={MAX_PROFILE_TAGS}
+          hint="Topics you post about — shown on your profile and federated to other servers."
+        />
       </div>
 
       {#if error}<p class="text-sm text-destructive">{error}</p>{/if}

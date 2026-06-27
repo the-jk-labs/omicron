@@ -3,6 +3,7 @@ import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
 import { fetchOutboxPosts, resolveActor } from "@/federation/remote.ts";
 import { queue } from "@/queue/queue.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
@@ -35,7 +36,8 @@ export async function getProfileView(handle: string, viewerId: string | null) {
   const isFollowing = viewerId ? await followsRepo.isFollowingRemote(viewerId, actor.id) : false;
   const isMuted = viewerId ? await relationsRepo.hasRemote("mute", viewerId, actor.id) : false;
   const isBlocked = viewerId ? await relationsRepo.hasRemote("block", viewerId, actor.id) : false;
-  return { actor, isFollowing, isMuted, isBlocked };
+  const tags = await tagsRepo.tagsForRemoteActor(actor.id);
+  return { actor, isFollowing, isMuted, isBlocked, tags };
 }
 
 // Follow a remote actor: record the edge, crawl their recent posts so the

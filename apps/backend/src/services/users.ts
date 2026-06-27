@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as usersRepo from "@/db/repositories/users.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
 import { config } from "@/config.ts";
 import { badRequest } from "@/lib/http.ts";
+import { MAX_PROFILE_TAGS, normalizeTags } from "@/lib/tags.ts";
 import type { User } from "@/db/schema.ts";
 
 // Business logic for editing one's own profile. Routes stay HTTP-only and call
@@ -18,11 +20,12 @@ export const AVATAR_TYPES: Record<string, string> = {
 export const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2 MB
 
 // Updates the mutable profile fields. Only the keys present in `input` are
-// touched, so callers can patch display name and bio independently.
-export function updateProfile(
+// touched, so callers can patch display name, bio and profile tags
+// independently. Returns the updated user plus their current profile tags.
+export async function updateProfile(
   userId: string,
-  input: { displayName?: string; bio?: string },
-): Promise<User> {
+  input: { displayName?: string; bio?: string; tags?: string[] },
+): Promise<{ user: User; tags: tagsRepo.TagSummary[] }> {
   const patch: { displayName?: string; bio?: string } = {};
 
   if (input.displayName !== undefined) {
@@ -38,7 +41,21 @@ export function updateProfile(
     patch.bio = input.bio.trim();
   }
 
-  return usersRepo.update(userId, patch);
+  if (input.tags !== undefined) {
+    const slugs = normalizeTags(input.tags);
+    if (slugs.length > MAX_PROFILE_TAGS) {
+      throw badRequest(`A profile can have at most ${MAX_PROFILE_TAGS} tags.`);
+    }
+    await tagsRepo.setUserTags(userId, slugs);
+  }
+
+  // A tags-only update touches no user columns; drizzle rejects an empty SET, so
+  // only call update when there's something to change.
+  const user = Object.keys(patch).length > 0
+    ? await usersRepo.update(userId, patch)
+    : (await usersRepo.findById(userId))!;
+
+  return { user, tags: await tagsRepo.tagsForUser(userId) };
 }
 
 // Persists an uploaded avatar to local disk and stores its public URL. The URL

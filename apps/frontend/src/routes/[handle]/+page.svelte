@@ -7,6 +7,7 @@
   import FollowButton from "$lib/components/FollowButton.svelte";
   import ProfileMenu from "$lib/components/ProfileMenu.svelte";
   import FollowListDialog from "$lib/components/FollowListDialog.svelte";
+  import TagList from "$lib/components/TagList.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
@@ -135,6 +136,9 @@
       {/if}
     </div>
     {#if profile.user.bio}<p class="mt-2 max-w-prose whitespace-pre-line text-foreground-alt">{profile.user.bio}</p>{/if}
+    {#if profile.user.tags?.length}
+      <TagList tags={profile.user.tags} class="mt-3" />
+    {/if}
     <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
       {#if data.remote}
         <span class="flex items-center gap-1">

@@ -10,6 +10,7 @@
 
 export const MAX_TAG_LENGTH = 50;
 export const MAX_TAGS_PER_POST = 5;
+export const MAX_PROFILE_TAGS = 10;
 
 export function normalizeTag(raw: string): string {
   return raw

@@ -6,11 +6,15 @@
   import Icon from "$lib/components/Icon.svelte";
   import { MAX_TAGS_PER_POST, normalizeTag } from "$lib/tags";
 
-  let { tags = $bindable([]) }: { tags?: string[] } = $props();
+  let {
+    tags = $bindable([]),
+    max = MAX_TAGS_PER_POST,
+    hint = `Up to ${max} tags help readers discover your story.`,
+  }: { tags?: string[]; max?: number; hint?: string } = $props();
 
   let draft = $state("");
 
-  const atLimit = $derived(tags.length >= MAX_TAGS_PER_POST);
+  const atLimit = $derived(tags.length >= max);
 
   function commit() {
     const slug = normalizeTag(draft);
@@ -64,6 +68,4 @@
     />
   {/if}
 </div>
-<p class="text-muted-foreground mt-1.5 text-xs">
-  Up to {MAX_TAGS_PER_POST} tags help readers discover your story.
-</p>
+<p class="text-muted-foreground mt-1.5 text-xs">{hint}</p>

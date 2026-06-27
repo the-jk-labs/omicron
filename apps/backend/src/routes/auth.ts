@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import * as authService from "@/services/auth.ts";
 import * as sessionsRepo from "@/db/repositories/sessions.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
 import { SESSION_COOKIE, SESSION_TTL_MS } from "@/lib/session.ts";
 import { config } from "@/config.ts";
 import { requireUser } from "@/routes/middleware.ts";
@@ -31,7 +32,7 @@ authRoutes.post("/login", async (c) => {
   const { identifier, password } = await c.req.json();
   const { user, token } = await authService.login(identifier, password);
   setCookie(c, SESSION_COOKIE, token, cookieOpts);
-  return c.json({ user: publicUser(user) });
+  return c.json({ user: publicUser(user, await tagsRepo.tagsForUser(user.id)) });
 });
 
 authRoutes.post("/logout", async (c) => {
@@ -41,9 +42,11 @@ authRoutes.post("/logout", async (c) => {
   return c.json({ ok: true });
 });
 
-authRoutes.get("/me", (c) => {
+authRoutes.get("/me", async (c) => {
   const user = c.get("user");
-  return c.json({ user: user ? publicUser(user) : null });
+  return c.json({
+    user: user ? publicUser(user, await tagsRepo.tagsForUser(user.id)) : null,
+  });
 });
 
 // Permanently delete the signed-in account (requires the current password).

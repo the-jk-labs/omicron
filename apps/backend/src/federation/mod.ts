@@ -26,6 +26,7 @@ import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import { buildArticle } from "@/federation/article.ts";
 import { cacheActor } from "@/federation/remote.ts";
+import { origin } from "@/config.ts";
 import { normalizeTags } from "@/lib/tags.ts";
 
 // ── ActivityPub wiring (isolated) ────────────────────────────────────────
@@ -62,6 +63,7 @@ function setupActor(f: Federation<ContextData>) {
     const user = await usersRepo.findByUsername(identifier);
     if (!user) return null;
     const keys = await ctx.getActorKeyPairs(identifier);
+    const tags = await tagsRepo.tagsForUser(user.id);
     return new Person({
       id: ctx.getActorUri(identifier),
       preferredUsername: identifier,
@@ -74,6 +76,10 @@ function setupActor(f: Federation<ContextData>) {
       url: ctx.getActorUri(identifier),
       publicKey: keys[0]?.cryptographicKey,
       assertionMethods: keys.map((k) => k.multikey),
+      // Profile tags, federated as Hashtags (like Mastodon's featured tags).
+      tags: tags.map((t) =>
+        new Hashtag({ name: `#${t.name}`, href: new URL(`/tags/${t.slug}`, origin) })
+      ),
     });
   })
     // Generate + persist an RSA key pair on first use; reuse thereafter.

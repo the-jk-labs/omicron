@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { DocumentLoader } from "@fedify/fedify";
-import { type Actor, Article, Create, isActor } from "@fedify/fedify/vocab";
+import { type Actor, Article, Create, Hashtag, isActor } from "@fedify/fedify/vocab";
 import { getFederation } from "@/federation/mod.ts";
 import { origin } from "@/config.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
+import { normalizeTags } from "@/lib/tags.ts";
 import type { RemoteActor } from "@/db/schema.ts";
 
 // Resolving and caching remote fediverse actors + their posts. This is the
@@ -52,7 +54,7 @@ export async function cacheActor(actor: Actor, handle?: string): Promise<RemoteA
   const icon = await actor.getIcon().catch(() => null);
   const avatarUrl = icon?.url instanceof URL ? icon.url.href : null;
 
-  return await remoteActorsRepo.upsert({
+  const cached = await remoteActorsRepo.upsert({
     apId,
     handle: handle ?? `${username}@${host}`,
     username,
@@ -66,6 +68,15 @@ export async function cacheActor(actor: Actor, handle?: string): Promise<RemoteA
     followersCount: null,
     followingCount: null,
   });
+
+  // Mirror the actor's profile Hashtags so federated profiles show their tags.
+  const tagNames: string[] = [];
+  for await (const tag of actor.getTags()) {
+    if (tag instanceof Hashtag && tag.name) tagNames.push(tag.name.toString());
+  }
+  await tagsRepo.setRemoteActorTags(cached.id, normalizeTags(tagNames));
+
+  return cached;
 }
 
 // Fetches the first page of an actor's outbox and upserts each Article as a

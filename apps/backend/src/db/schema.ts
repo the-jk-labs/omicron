@@ -256,6 +256,35 @@ export const postTags = pgTable("post_tags", {
   index("post_tags_post_idx").on(t.postId),
 ]);
 
+// ── user ↔ tag join (profile tags) ───────────────────────────────────────
+// Topic tags a local user features on their profile (like Mastodon's featured
+// hashtags). One row per (user, tag); federated out on the actor's `tag`.
+export const userTags = pgTable("user_tags", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tagId: uuid("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("user_tags_unique_idx").on(t.userId, t.tagId),
+  index("user_tags_user_idx").on(t.userId),
+]);
+
+// ── remote actor ↔ tag join (cached profile tags) ────────────────────────
+// Profile tags parsed from a cached remote actor's Person `tag` Hashtags, so
+// federated profiles display their tags too. Refreshed when the actor is
+// re-cached (see federation/remote.ts).
+export const remoteActorTags = pgTable("remote_actor_tags", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  remoteActorId: uuid("remote_actor_id").notNull().references(() => remoteActors.id, {
+    onDelete: "cascade",
+  }),
+  tagId: uuid("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("remote_actor_tags_unique_idx").on(t.remoteActorId, t.tagId),
+  index("remote_actor_tags_actor_idx").on(t.remoteActorId),
+]);
+
 // ── tag follows ──────────────────────────────────────────────────────────
 // A local user following a tag. Posts carrying a followed tag surface in the
 // follower's personalized ("For you") feed, alongside followed authors.
@@ -300,3 +329,5 @@ export type Tag = typeof tags.$inferSelect;
 export type NewTag = typeof tags.$inferInsert;
 export type PostTag = typeof postTags.$inferSelect;
 export type TagFollow = typeof tagFollows.$inferSelect;
+export type UserTag = typeof userTags.$inferSelect;
+export type RemoteActorTag = typeof remoteActorTags.$inferSelect;

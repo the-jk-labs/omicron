@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { postTags, posts, tagFollows, tags } from "@/db/schema.ts";
+import {
+  postTags,
+  posts,
+  remoteActorTags,
+  tagFollows,
+  tags,
+  userTags,
+} from "@/db/schema.ts";
 
 // Tag DB access. Callers pass already-normalized slugs (see lib/tags.ts); the
 // stored `name` mirrors the slug so display and matching stay consistent.
@@ -124,6 +131,61 @@ export async function isFollowing(userId: string, tagId: string): Promise<boolea
     where: and(eq(tagFollows.userId, userId), eq(tagFollows.tagId, tagId)),
   });
   return !!row;
+}
+
+// ── profile tags (local users + cached remote actors) ─────────────────────
+
+// Replaces a local user's profile tags with the given slugs, in one transaction
+// (mirrors setPostTags).
+export async function setUserTags(userId: string, slugs: string[]): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.delete(userTags).where(eq(userTags.userId, userId));
+    if (slugs.length === 0) return;
+    await tx
+      .insert(tags)
+      .values(slugs.map((slug) => ({ slug, name: slug })))
+      .onConflictDoNothing({ target: tags.slug });
+    const rows = await tx.select({ id: tags.id }).from(tags).where(inArray(tags.slug, slugs));
+    await tx
+      .insert(userTags)
+      .values(rows.map((r: { id: string }) => ({ userId, tagId: r.id })))
+      .onConflictDoNothing();
+  });
+}
+
+export async function tagsForUser(userId: string): Promise<TagSummary[]> {
+  return await db
+    .select({ slug: tags.slug, name: tags.name })
+    .from(userTags)
+    .innerJoin(tags, eq(tags.id, userTags.tagId))
+    .where(eq(userTags.userId, userId))
+    .orderBy(userTags.createdAt);
+}
+
+// Replaces a cached remote actor's profile tags with the given slugs.
+export async function setRemoteActorTags(remoteActorId: string, slugs: string[]): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.delete(remoteActorTags).where(eq(remoteActorTags.remoteActorId, remoteActorId));
+    if (slugs.length === 0) return;
+    await tx
+      .insert(tags)
+      .values(slugs.map((slug) => ({ slug, name: slug })))
+      .onConflictDoNothing({ target: tags.slug });
+    const rows = await tx.select({ id: tags.id }).from(tags).where(inArray(tags.slug, slugs));
+    await tx
+      .insert(remoteActorTags)
+      .values(rows.map((r: { id: string }) => ({ remoteActorId, tagId: r.id })))
+      .onConflictDoNothing();
+  });
+}
+
+export async function tagsForRemoteActor(remoteActorId: string): Promise<TagSummary[]> {
+  return await db
+    .select({ slug: tags.slug, name: tags.name })
+    .from(remoteActorTags)
+    .innerJoin(tags, eq(tags.id, remoteActorTags.tagId))
+    .where(eq(remoteActorTags.remoteActorId, remoteActorId))
+    .orderBy(remoteActorTags.createdAt);
 }
 
 // Tags a user follows, with each tag's post count, newest follow first.

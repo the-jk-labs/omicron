@@ -5,6 +5,7 @@ import * as postsService from "@/services/posts.ts";
 import * as usersService from "@/services/users.ts";
 import * as relationsService from "@/services/relations.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
 import { enrichPosts } from "@/services/engagement.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { requireUser } from "@/routes/middleware.ts";
@@ -19,11 +20,12 @@ export const userRoutes = new Hono<AppEnv>();
 userRoutes.patch("/me", async (c) => {
   const viewer = requireUser(c);
   const body = await c.req.json();
-  const user = await usersService.updateProfile(viewer.id, {
+  const { user, tags } = await usersService.updateProfile(viewer.id, {
     displayName: body.displayName,
     bio: body.bio,
+    tags: body.tags,
   });
-  return c.json({ user: publicUser(user) });
+  return c.json({ user: publicUser(user, tags) });
 });
 
 // Upload a new avatar (raw image body; content-type identifies the format).
@@ -60,7 +62,8 @@ userRoutes.get("/:username", async (c) => {
     c.req.param("username"),
     viewer?.id ?? null,
   );
-  return c.json({ user: publicUser(user), counts, isFollowing, isMuted, isBlocked });
+  const tags = await tagsRepo.tagsForUser(user.id);
+  return c.json({ user: publicUser(user, tags), counts, isFollowing, isMuted, isBlocked });
 });
 
 // Public follower / following lists for a profile (local + cached remote).

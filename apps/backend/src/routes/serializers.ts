@@ -8,7 +8,7 @@ import { htmlToText } from "@/lib/html.ts";
 
 export type Engagement = { likeCount: number; liked: boolean; commentCount: number };
 
-export function publicUser(u: User) {
+export function publicUser(u: User, tags: TagSummary[] = []) {
   return {
     id: u.id,
     username: u.username,
@@ -17,6 +17,7 @@ export function publicUser(u: User) {
     avatarUrl: u.avatarUrl,
     isAdmin: u.isAdmin,
     createdAt: u.createdAt,
+    tags,
   };
 }
 
@@ -72,6 +73,7 @@ export function remoteProfile(
   actor: RemoteActor,
   isFollowing = false,
   relation: { isMuted: boolean; isBlocked: boolean } = { isMuted: false, isBlocked: false },
+  tags: TagSummary[] = [],
 ) {
   return {
     user: {
@@ -84,6 +86,7 @@ export function remoteProfile(
       host: actor.host,
       apId: actor.apId,
       remote: true as const,
+      tags,
     },
     counts: {
       followers: actor.followersCount ?? 0,

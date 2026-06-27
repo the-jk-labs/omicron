@@ -24,11 +24,9 @@ remoteRoutes.use("*", async (_c, next) => {
 remoteRoutes.get("/users/:handle", async (c) => {
   const viewer = c.get("user");
   const handle = c.req.param("handle");
-  const { actor, isFollowing, isMuted, isBlocked } = await remoteProfilesService.getProfileView(
-    handle,
-    viewer?.id ?? null,
-  );
-  return c.json(remoteProfile(actor, isFollowing, { isMuted, isBlocked }));
+  const { actor, isFollowing, isMuted, isBlocked, tags } = await remoteProfilesService
+    .getProfileView(handle, viewer?.id ?? null);
+  return c.json(remoteProfile(actor, isFollowing, { isMuted, isBlocked }, tags));
 });
 
 // Follow / unfollow a remote actor (auth required).

@@ -9,6 +9,7 @@ export type User = {
   avatarUrl: string | null;
   isAdmin: boolean;
   createdAt: string;
+  tags: Tag[];
 };
 
 export type PostAuthor = {
@@ -84,6 +85,7 @@ export type RemoteProfile = {
     host: string;
     apId: string;
     remote: true;
+    tags: Tag[];
   };
   counts: { followers: number; following: number };
   isFollowing: boolean;
