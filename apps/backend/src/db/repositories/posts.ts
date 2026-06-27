@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, desc, eq, getTableColumns, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { type NewPost, posts, remoteActors, users } from "@/db/schema.ts";
+import { type NewPost, postTags, posts, remoteActors, tags, users } from "@/db/schema.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
 
 // Post DB access. Queries fetch `limit + 1` rows so the service can derive a
@@ -257,9 +257,34 @@ export function listByRemoteActor(
     .limit(limit + 1);
 }
 
-// Personalized feed: own posts + posts by followed authors, local and remote.
-// Remote follows contribute the cached posts of the remote actors this user
-// follows (delivered to our inbox, or crawled when first followed).
+// Published Article posts carrying a given tag (by slug), local + cached remote.
+// Joins through the post_tags / tags tables; otherwise mirrors listGlobal.
+export function listByTag(
+  slug: string,
+  viewerId: string | null,
+  cursor: Cursor | null,
+  limit = DEFAULT_PAGE_SIZE,
+) {
+  return selectPosts()
+    .innerJoin(postTags, eq(postTags.postId, posts.id))
+    .innerJoin(tags, eq(tags.id, postTags.tagId))
+    .where(
+      and(
+        eq(tags.slug, slug),
+        eq(posts.apType, "Article"),
+        isPublished,
+        notHidden(viewerId),
+        beforeCursor(cursor),
+      ),
+    )
+    .orderBy(desc(posts.createdAt), desc(posts.id))
+    .limit(limit + 1);
+}
+
+// Personalized feed: own posts + posts by followed authors + posts carrying a
+// followed tag, local and remote. Remote follows contribute the cached posts of
+// the remote actors this user follows (delivered to our inbox, or crawled when
+// first followed); followed tags pull in any matching published Article.
 export function listFeed(userId: string, cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
   const followedLocal = sql`(
     select followee_id from follows
@@ -268,6 +293,11 @@ export function listFeed(userId: string, cursor: Cursor | null, limit = DEFAULT_
   const followedRemote = sql`(
     select remote_followee_id from follows
     where follower_id = ${userId} and remote_followee_id is not null
+  )`;
+  const followedTagPosts = sql`(
+    select pt.post_id from post_tags pt
+    join tag_follows tf on tf.tag_id = pt.tag_id
+    where tf.user_id = ${userId}
   )`;
   return selectPosts()
     .where(
@@ -278,6 +308,7 @@ export function listFeed(userId: string, cursor: Cursor | null, limit = DEFAULT_
           eq(posts.authorId, userId),
           sql`${posts.authorId} in ${followedLocal}`,
           sql`${posts.remoteActorId} in ${followedRemote}`,
+          sql`${posts.id} in ${followedTagPosts}`,
         ),
         notHidden(userId),
         beforeCursor(cursor),

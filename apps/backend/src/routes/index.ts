@@ -7,6 +7,7 @@ import { userRoutes } from "@/routes/users.ts";
 import { mediaRoutes } from "@/routes/media.ts";
 import { remoteRoutes } from "@/routes/remote.ts";
 import { searchRoutes } from "@/routes/search.ts";
+import { tagRoutes } from "@/routes/tags.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 // Mounts the JSON API under /api.
@@ -19,3 +20,4 @@ apiRoutes.route("/users", userRoutes);
 apiRoutes.route("/uploads", mediaRoutes);
 apiRoutes.route("/remote", remoteRoutes);
 apiRoutes.route("/search", searchRoutes);
+apiRoutes.route("/tags", tagRoutes);

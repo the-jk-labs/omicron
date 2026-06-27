@@ -1,16 +1,28 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as postsRepo from "@/db/repositories/posts.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";
+import { MAX_TAGS_PER_POST, normalizeTags } from "@/lib/tags.ts";
 import { queue } from "@/queue/queue.ts";
 
 // Business logic for posts. Creating a local post enqueues federation delivery.
+
+// Normalizes and validates author-supplied tags, capping the count per post.
+function resolveTags(raw: string[]): string[] {
+  const slugs = normalizeTags(raw);
+  if (slugs.length > MAX_TAGS_PER_POST) {
+    throw badRequest(`A post can have at most ${MAX_TAGS_PER_POST} tags.`);
+  }
+  return slugs;
+}
 
 export async function createPost(authorId: string, input: {
   title?: string;
   contentHtml: string;
   contentJson?: unknown;
   status?: string;
+  tags?: string[];
 }) {
   const status = input.status === "draft" ? "draft" : "published";
 
@@ -21,6 +33,8 @@ export async function createPost(authorId: string, input: {
   const title = input.title?.trim();
   if (status === "published" && !title) throw badRequest("A blog post must have a title.");
 
+  const tags = input.tags !== undefined ? resolveTags(input.tags) : undefined;
+
   const post = await postsRepo.create({
     authorId,
     title: title || null,
@@ -28,6 +42,8 @@ export async function createPost(authorId: string, input: {
     contentJson: input.contentJson ?? null,
     status,
   });
+
+  if (tags !== undefined) await tagsRepo.setPostTags(post.id, tags);
 
   // Only published posts fan out to remote followers; drafts stay private.
   if (status === "published") queue.add("federate_post", { postId: post.id });
@@ -59,6 +75,7 @@ export async function updatePost(authorId: string, id: string, input: {
   contentHtml?: string;
   contentJson?: unknown;
   status?: string;
+  tags?: string[];
 }) {
   const row = await postsRepo.findById(id);
   if (!row) throw notFound("Post not found.");
@@ -81,11 +98,20 @@ export async function updatePost(authorId: string, id: string, input: {
     throw badRequest("A blog post must have a title.");
   }
 
-  const post = await postsRepo.update(id, {
+  const changes = {
     ...(input.title !== undefined ? { title: title || null } : {}),
     ...(html ? { contentHtml: html, contentJson: input.contentJson ?? null } : {}),
     ...(input.status !== undefined ? { status } : {}),
-  });
+  };
+
+  // A tags-only edit touches no post columns; skip the update (drizzle rejects
+  // an empty SET) and keep the existing row.
+  const post = Object.keys(changes).length > 0
+    ? await postsRepo.update(id, changes)
+    : row.post;
+
+  // Tags are replaced wholesale when provided; an empty array clears them.
+  if (input.tags !== undefined) await tagsRepo.setPostTags(post.id, resolveTags(input.tags));
 
   // Federate only published posts. Publishing a draft (draft → published) fans
   // out for the first time here; edits to an already-published post re-deliver.
@@ -105,7 +131,7 @@ export async function deletePost(userId: string, isAdmin: boolean, id: string) {
 }
 
 // Pagination over the nested {post, author} rows returned by the repo.
-function pageOf(
+export function pageOf(
   rows: postsRepo.PostWithAuthor[],
   limit: number,
 ): { items: postsRepo.PostWithAuthor[]; nextCursor: string | null } {

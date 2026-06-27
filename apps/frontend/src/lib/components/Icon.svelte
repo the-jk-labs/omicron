@@ -61,6 +61,7 @@
     AtSign,
     VolumeX,
     Ban,
+    Hash,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -121,6 +122,7 @@
     at: AtSign,
     mute: VolumeX,
     block: Ban,
+    tag: Hash,
   } as const;
 
   export type IconName = keyof typeof icons;

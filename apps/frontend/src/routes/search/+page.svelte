@@ -11,8 +11,17 @@
 
   const posts = $derived(data.results.posts);
   const people = $derived(data.results.people);
-  // Open whichever tab has matches; default to Stories.
-  const defaultTab = $derived(posts.length === 0 && people.length > 0 ? "people" : "stories");
+  const tags = $derived(data.results.tags);
+  // Open whichever tab has matches; default to Stories, then Tags, then People.
+  const defaultTab = $derived(
+    posts.length > 0
+      ? "stories"
+      : tags.length > 0
+        ? "tags"
+        : people.length > 0
+          ? "people"
+          : "stories",
+  );
 
   // The nav's search pill is hidden below `sm`, so on mobile this page is the
   // only place to type a query. Seed it from the active query and search live
@@ -88,6 +97,13 @@
           <span class="text-muted-foreground text-xs">{posts.length}</span>
         </Tabs.Trigger>
         <Tabs.Trigger
+          value="tags"
+          class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center gap-1.5 border-b border-transparent py-3"
+        >
+          <Icon name="tag" size={16} /> Tags
+          <span class="text-muted-foreground text-xs">{tags.length}</span>
+        </Tabs.Trigger>
+        <Tabs.Trigger
           value="people"
           class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center gap-1.5 border-b border-transparent py-3"
         >
@@ -103,6 +119,38 @@
           {#each posts as post (post.id)}
             <PostCard {post} />
           {/each}
+        {/if}
+      </Tabs.Content>
+
+      <Tabs.Content value="tags" class="pt-3">
+        {#if tags.length === 0}
+          <p class="text-muted-foreground py-10 text-center">No tags match “{data.query}”.</p>
+        {:else}
+          <ul class="divide-border divide-y">
+            {#each tags as tag (tag.slug)}
+              <li>
+                <a
+                  href={`/tags/${tag.slug}`}
+                  class="hover:bg-muted -mx-3 flex min-w-0 items-center gap-3 rounded-card px-3 py-3 transition-colors"
+                >
+                  <span
+                    class="bg-muted text-foreground-alt flex size-11 shrink-0 items-center justify-center rounded-full"
+                  >
+                    <Icon name="tag" size={20} />
+                  </span>
+                  <span class="min-w-0">
+                    <span class="text-foreground block truncate text-sm font-semibold">
+                      #{tag.name}
+                    </span>
+                    <span class="text-muted-foreground block truncate text-xs">
+                      {tag.postCount}
+                      {tag.postCount === 1 ? "story" : "stories"}
+                    </span>
+                  </span>
+                </a>
+              </li>
+            {/each}
+          </ul>
         {/if}
       </Tabs.Content>
 

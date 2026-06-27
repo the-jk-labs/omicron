@@ -3,6 +3,7 @@
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import TagList from "$lib/components/TagList.svelte";
   import { excerpt, formatDate, readTime } from "$lib/format";
   import { postPath } from "$lib/links";
   import type { Post } from "$lib/types";
@@ -34,6 +35,10 @@
       <p class="mt-1.5 line-clamp-3 text-muted-foreground">{summary}</p>
     {/if}
   </Button>
+
+  {#if post.tags?.length}
+    <TagList tags={post.tags} class="mt-3" />
+  {/if}
 
   <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
     <span>{formatDate(post.createdAt)}</span>

@@ -20,6 +20,11 @@ export type PostAuthor = {
   remote?: boolean;
 };
 
+// A tag attached to a post. `slug` is the normalized key used in URLs; `name`
+// is the display form. `postCount` is present in discovery/search payloads.
+export type Tag = { slug: string; name: string };
+export type TagWithCount = Tag & { postCount: number };
+
 export type Post = {
   id: string;
   title: string | null;
@@ -29,9 +34,18 @@ export type Post = {
   status?: "draft" | "published";
   createdAt: string;
   author: PostAuthor;
+  tags: Tag[];
   likeCount: number;
   liked: boolean;
   commentCount: number;
+};
+
+// A tag's detail payload, powering the tag page header.
+export type TagDetail = {
+  tag: Tag;
+  postCount: number;
+  followerCount: number;
+  isFollowing: boolean;
 };
 
 export type Comment = {
@@ -88,9 +102,10 @@ export type RelationActor = {
   remote: boolean;
 };
 
-// Site-search payload: matching stories and people. People reuse the
+// Site-search payload: matching stories, people and tags. People reuse the
 // `RelationActor` shape so `/@${username}` links resolve local or remote.
 export type SearchResults = {
   posts: Post[];
   people: RelationActor[];
+  tags: TagWithCount[];
 };

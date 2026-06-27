@@ -8,6 +8,8 @@ import type {
   RelationActor,
   RemoteProfile,
   SearchResults,
+  TagDetail,
+  TagWithCount,
   User,
 } from "$lib/types";
 
@@ -31,10 +33,24 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     deleteAccount: (password: string) => api.del<{ ok: true }>("/auth/me", { password }),
 
     // search
-    search: (query: string, scope?: "posts" | "people") =>
+    search: (query: string, scope?: "posts" | "people" | "tags") =>
       api.get<SearchResults>(
         `/search?q=${encodeURIComponent(query)}${scope ? `&scope=${scope}` : ""}`,
       ),
+
+    // tags
+    tag: (slug: string) => api.get<TagDetail>(`/tags/${encodeURIComponent(slug)}`),
+    tagPosts: (slug: string, cursor?: string | null) =>
+      api.get<Page<Post>>(
+        `/tags/${encodeURIComponent(slug)}/posts${
+          cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""
+        }`,
+      ),
+    followTag: (slug: string) => api.post<{ ok: true }>(`/tags/${encodeURIComponent(slug)}/follow`),
+    unfollowTag: (slug: string) =>
+      api.del<{ ok: true }>(`/tags/${encodeURIComponent(slug)}/follow`),
+    trendingTags: () => api.get<{ tags: TagWithCount[] }>("/tags"),
+    followedTags: () => api.get<{ tags: TagWithCount[] }>("/tags/following"),
 
     // feed + posts
     feed: (cursor?: string | null) =>
@@ -47,11 +63,11 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     drafts: (cursor?: string | null) =>
       api.get<Page<Post>>(`/posts/drafts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
     createPost: (
-      body: { title?: string; contentHtml: string; contentJson?: unknown; status?: "draft" | "published" },
+      body: { title?: string; contentHtml: string; contentJson?: unknown; status?: "draft" | "published"; tags?: string[] },
     ) => api.post<{ post: { id: string } }>("/posts", body),
     updatePost: (
       id: string,
-      body: { title?: string; contentHtml?: string; contentJson?: unknown; status?: "draft" | "published" },
+      body: { title?: string; contentHtml?: string; contentJson?: unknown; status?: "draft" | "published"; tags?: string[] },
     ) => api.patch<{ post: { id: string } }>(`/posts/${id}`, body),
     deletePost: (id: string) => api.del<{ ok: true }>(`/posts/${id}`),
 

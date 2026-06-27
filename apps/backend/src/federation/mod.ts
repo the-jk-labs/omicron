@@ -13,6 +13,7 @@ import {
   Create,
   Endpoints,
   Follow,
+  Hashtag,
   isActor,
   Person,
   PUBLIC_COLLECTION,
@@ -22,8 +23,10 @@ import * as usersRepo from "@/db/repositories/users.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
 import { buildArticle } from "@/federation/article.ts";
 import { cacheActor } from "@/federation/remote.ts";
+import { normalizeTags } from "@/lib/tags.ts";
 
 // ── ActivityPub wiring (isolated) ────────────────────────────────────────
 // This module is only imported when FEDERATION_ENABLED=true (see app.ts), so a
@@ -168,7 +171,7 @@ function setupInbox(f: Federation<ContextData>) {
       const author = await create.getActor(ctx);
       if (!isActor(author) || !author.id) return;
       const actor = await cacheActor(author);
-      await postsRepo.upsertRemotePost({
+      const post = await postsRepo.upsertRemotePost({
         remoteActorId: actor.id,
         apId: object.id.href,
         title: object.name?.toString() ?? null,
@@ -176,6 +179,13 @@ function setupInbox(f: Federation<ContextData>) {
         apType: "Article",
         createdAt: object.published ? new Date(object.published.epochMilliseconds) : undefined,
       });
+
+      // Mirror any Hashtag tags onto the post so it joins our tag pages/feeds.
+      const tagNames: string[] = [];
+      for await (const tag of object.getTags(ctx)) {
+        if (tag instanceof Hashtag && tag.name) tagNames.push(tag.name.toString());
+      }
+      await tagsRepo.setPostTags(post.id, normalizeTags(tagNames));
     });
 }
 
@@ -185,11 +195,13 @@ function setupOutbox(f: Federation<ContextData>) {
     const user = await usersRepo.findByUsername(identifier);
     if (!user) return null;
     const rows: postsRepo.PostWithAuthor[] = await postsRepo.listByAuthor(user.id, null, null, 20);
-    const items = rows.slice(0, 20).map(({ post }) =>
+    const page = rows.slice(0, 20);
+    const tagsByPost = await tagsRepo.tagsForPosts(page.map(({ post }) => post.id));
+    const items = page.map(({ post }) =>
       new Create({
         id: new URL(`${post.id}/activity`, ctx.getOutboxUri(identifier)),
         actor: ctx.getActorUri(identifier),
-        object: buildArticle(ctx, identifier, post),
+        object: buildArticle(ctx, identifier, post, tagsByPost.get(post.id) ?? []),
         tos: [PUBLIC_COLLECTION],
       })
     );

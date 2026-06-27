@@ -6,7 +6,7 @@ import type { PageLoad } from "./$types";
 // A blank query renders the empty prompt without hitting the API.
 export const load: PageLoad = async ({ url, fetch }) => {
   const query = (url.searchParams.get("q") ?? "").trim();
-  if (!query) return { query, results: { posts: [], people: [] } };
+  if (!query) return { query, results: { posts: [], people: [], tags: [] } };
   const results = await endpoints(fetch).search(query);
   return { query, results };
 };

@@ -43,7 +43,13 @@ function postAuthor(row: PostWithAuthor) {
   };
 }
 
-export function postWithAuthor(row: PostWithAuthor, engagement?: Engagement) {
+export type TagSummary = { slug: string; name: string };
+
+export function postWithAuthor(
+  row: PostWithAuthor,
+  engagement?: Engagement,
+  tags: TagSummary[] = [],
+) {
   return {
     id: row.post.id,
     title: row.post.title,
@@ -53,6 +59,7 @@ export function postWithAuthor(row: PostWithAuthor, engagement?: Engagement) {
     status: row.post.status,
     createdAt: row.post.createdAt,
     author: postAuthor(row),
+    tags,
     likeCount: engagement?.likeCount ?? 0,
     liked: engagement?.liked ?? false,
     commentCount: engagement?.commentCount ?? 0,
@@ -147,7 +154,7 @@ export function commentView(
   };
 }
 
-export function barePost(p: Post) {
+export function barePost(p: Omit<Post, "searchVector">) {
   return {
     id: p.id,
     title: p.title,

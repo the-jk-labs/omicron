@@ -6,6 +6,7 @@ import { origin } from "@/config.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
 
 // Sends a Create(Article) for a local post to all remote followers' inboxes.
 // Fedify handles HTTP signatures, batching and delivery retries.
@@ -28,13 +29,15 @@ export async function deliverPost(postId: string): Promise<void> {
   }
   if (recipients.length === 0) return;
 
+  const tags = await tagsRepo.tagsForPost(row.post.id);
+
   await ctx.sendActivity(
     { identifier: author.username },
     recipients,
     new Create({
       id: new URL(`/posts/${row.post.id}/activity`, ctx.getActorUri(author.username)),
       actor: ctx.getActorUri(author.username),
-      object: buildArticle(ctx, author.username, row.post),
+      object: buildArticle(ctx, author.username, row.post, tags),
       tos: [PUBLIC_COLLECTION],
     }),
   );

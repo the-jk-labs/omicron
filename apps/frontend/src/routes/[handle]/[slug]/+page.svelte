@@ -8,6 +8,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import { confirm } from "$lib/components/ui/confirm";
   import Comments from "$lib/components/Comments.svelte";
+  import TagList from "$lib/components/TagList.svelte";
   import { formatDate, readTime } from "$lib/format";
   import type { PageData } from "./$types";
 
@@ -171,6 +172,10 @@
   <div class="prose-omicron">
     {@html post.contentHtml}
   </div>
+
+  {#if post.tags?.length}
+    <TagList tags={post.tags} class="mt-8" />
+  {/if}
 
   <!-- Engagement bar -->
   <div class="mt-8 flex items-center gap-2 py-2.5">

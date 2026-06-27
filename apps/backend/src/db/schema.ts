@@ -225,6 +225,51 @@ export const commentLikes = pgTable("comment_likes", {
   index("comment_likes_comment_idx").on(t.commentId),
 ]);
 
+// ── tags ───────────────────────────────────────────────────────────────
+// Topical hashtags attached to posts. `slug` is the normalized key (lowercase,
+// `#` stripped — see lib/tags.ts) used for uniqueness, URLs and matching;
+// `name` keeps the display form as first written. Tags federate as ActivityPub
+// Hashtag objects on a post's `tag` property.
+export const tags = pgTable("tags", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull(),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("tags_slug_idx").on(t.slug),
+  // Trigram index for tag search (ILIKE '%term%' on the slug).
+  index("tags_slug_trgm_idx").using("gin", sql`${t.slug} gin_trgm_ops`),
+]);
+
+// ── post ↔ tag join ──────────────────────────────────────────────────────
+// One row per (post, tag). The unique index makes tagging idempotent; the
+// tag-keyed index backs tag-feed lookups and the post-keyed index backs the
+// batched tag load that enriches timelines.
+export const postTags = pgTable("post_tags", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  tagId: uuid("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("post_tags_unique_idx").on(t.postId, t.tagId),
+  index("post_tags_tag_idx").on(t.tagId),
+  index("post_tags_post_idx").on(t.postId),
+]);
+
+// ── tag follows ──────────────────────────────────────────────────────────
+// A local user following a tag. Posts carrying a followed tag surface in the
+// follower's personalized ("For you") feed, alongside followed authors.
+export const tagFollows = pgTable("tag_follows", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tagId: uuid("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("tag_follows_unique_idx").on(t.userId, t.tagId),
+  index("tag_follows_user_idx").on(t.userId),
+  index("tag_follows_tag_idx").on(t.tagId),
+]);
+
 // ── sessions ───────────────────────────────────────────────────────────
 // Server-side sessions (cookie holds the opaque token = id). Keeps the app
 // stateless; all session state lives in Postgres.
@@ -251,3 +296,7 @@ export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;
 export type CommentLike = typeof commentLikes.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
+export type Tag = typeof tags.$inferSelect;
+export type NewTag = typeof tags.$inferInsert;
+export type PostTag = typeof postTags.$inferSelect;
+export type TagFollow = typeof tagFollows.$inferSelect;

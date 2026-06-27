@@ -15,10 +15,14 @@
       ? [
           { label: "Home", href: "/", icon: "home" },
           { label: "Profile", href: `/@${user.username}`, icon: "user" },
+          { label: "Tags", href: "/tags", icon: "tag" },
           { label: "Write", href: "/compose", icon: "compose" },
           { label: "Drafts", href: "/drafts", icon: "draft" },
         ]
-      : [{ label: "Home", href: "/", icon: "home" }],
+      : [
+          { label: "Home", href: "/", icon: "home" },
+          { label: "Tags", href: "/tags", icon: "tag" },
+        ],
   );
 
   // Settings is pinned to the bottom of the rail, away from the primary items.

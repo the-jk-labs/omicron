@@ -7,6 +7,7 @@
   import { confirm } from "$lib/components/ui/confirm";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import TagInput from "$lib/components/TagInput.svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -24,14 +25,15 @@
   // first "Save draft" of a fresh post.
   let postId = $state<string | null>(draft?.id ?? null);
   let title = $state(draft?.title ?? "");
+  let tags = $state<string[]>(draft?.tags?.map((t) => t.name) ?? []);
   let html = $state(draft?.contentHtml ?? "");
   let json = $state<unknown>(draft?.contentJson ?? null);
   let error = $state("");
   let busy = $state(false);
   let savingDraft = $state(false);
 
-  // Set once the author edits the title or body, so the unsaved-changes guards
-  // only fire on real changes (not when simply opening and closing a draft).
+  // Set once the author edits the title, tags or body, so the unsaved-changes
+  // guards only fire on real changes (not when simply opening/closing a draft).
   let touched = false;
 
   function onUpdate(h: string, j: unknown) {
@@ -40,11 +42,22 @@
     touched = true;
   }
 
+  // The tag input mutates `tags` directly; mark touched when it diverges from
+  // the draft's original tags.
+  const initialTags = (draft?.tags?.map((t) => t.name) ?? []).join(",");
+  $effect(() => {
+    if (tags.join(",") !== initialTags) touched = true;
+  });
+
   // There's unsaved work worth keeping if the author has edited and there's
   // some content (an empty body is `<p></p>`).
   function hasContent(): boolean {
     if (!touched) return false;
-    return title.trim().length > 0 || (html.trim().length > 0 && html !== "<p></p>");
+    return (
+      title.trim().length > 0 ||
+      tags.length > 0 ||
+      (html.trim().length > 0 && html !== "<p></p>")
+    );
   }
 
   // `bypass` lets our own post-save navigations through the unsaved-changes guard.
@@ -70,7 +83,7 @@
     if (status === "published") busy = true;
     else savingDraft = true;
     try {
-      const body = { title: title.trim(), contentHtml: html, contentJson: json, status };
+      const body = { title: title.trim(), contentHtml: html, contentJson: json, status, tags };
       if (postId) {
         await endpoints().updatePost(postId, body);
       } else {
@@ -143,6 +156,10 @@
   oninput={() => (touched = true)}
   class="mb-6 w-full border-none bg-transparent text-3xl font-bold tracking-tight text-foreground placeholder:text-muted-foreground focus:outline-none sm:text-4xl"
 />
+
+<div class="mb-6">
+  <TagInput bind:tags />
+</div>
 
 {#if EditorComponent}
   <EditorComponent {onUpdate} content={(draft?.contentJson as Content) ?? draft?.contentHtml} />

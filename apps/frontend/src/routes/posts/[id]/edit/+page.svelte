@@ -6,6 +6,7 @@
   import { endpoints, ApiError } from "$lib/api";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import TagInput from "$lib/components/TagInput.svelte";
   import { postPath } from "$lib/links";
   import type { PageData } from "./$types";
 
@@ -20,6 +21,7 @@
   });
 
   let title = $state(post.title ?? "");
+  let tags = $state<string[]>(post.tags?.map((t) => t.name) ?? []);
   let html = $state(post.contentHtml);
   let json = $state<unknown>(post.contentJson ?? null);
   let error = $state("");
@@ -46,6 +48,7 @@
         title: title.trim(),
         contentHtml: html,
         contentJson: json,
+        tags,
       });
       // Title may have changed, so navigate to the freshly-built canonical path.
       goto(postPath({ ...post, title: title.trim() }));
@@ -75,6 +78,10 @@
   bind:value={title}
   class="mb-6 w-full border-none bg-transparent text-3xl font-bold tracking-tight text-foreground placeholder:text-muted-foreground focus:outline-none sm:text-4xl"
 />
+
+<div class="mb-6">
+  <TagInput bind:tags />
+</div>
 
 {#if EditorComponent}
   <EditorComponent {onUpdate} content={(post.contentJson as Content) ?? post.contentHtml} />
