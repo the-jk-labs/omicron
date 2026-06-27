@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { eq, sql } from "drizzle-orm";
+import { eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { type ActorKeyPair, type NewUser, users } from "@/db/schema.ts";
 
@@ -7,6 +7,24 @@ import { type ActorKeyPair, type NewUser, users } from "@/db/schema.ts";
 
 export function findById(id: string) {
   return db.query.users.findFirst({ where: eq(users.id, id) });
+}
+
+// Find local accounts by handle or display name. Substring, case-insensitive —
+// the cheapest match that feels right for a name lookup. `%` and `_` in the
+// query are escaped so they match literally.
+export function search(query: string, limit = 10) {
+  const term = `%${query.replace(/[%_\\]/g, "\\$&")}%`;
+  return db
+    .select({
+      id: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      avatarUrl: users.avatarUrl,
+    })
+    .from(users)
+    .where(or(ilike(users.username, term), ilike(users.displayName, term)))
+    .orderBy(users.displayName)
+    .limit(limit);
 }
 
 export function findByUsername(username: string) {

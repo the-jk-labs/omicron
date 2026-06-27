@@ -7,6 +7,7 @@ import type {
   Profile,
   RelationActor,
   RemoteProfile,
+  SearchResults,
   User,
 } from "$lib/types";
 
@@ -28,6 +29,12 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.post<{ user: User }>("/auth/login", body),
     logout: () => api.post<{ ok: true }>("/auth/logout"),
     deleteAccount: (password: string) => api.del<{ ok: true }>("/auth/me", { password }),
+
+    // search
+    search: (query: string, scope?: "posts" | "people") =>
+      api.get<SearchResults>(
+        `/search?q=${encodeURIComponent(query)}${scope ? `&scope=${scope}` : ""}`,
+      ),
 
     // feed + posts
     feed: (cursor?: string | null) =>

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { eq } from "drizzle-orm";
+import { eq, ilike, or } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { type NewRemoteActor, remoteActors } from "@/db/schema.ts";
 
@@ -7,6 +7,23 @@ import { type NewRemoteActor, remoteActors } from "@/db/schema.ts";
 
 export function findByHandle(handle: string) {
   return db.query.remoteActors.findFirst({ where: eq(remoteActors.handle, handle) });
+}
+
+// Find already-cached remote actors by handle or display name. This only sees
+// actors this instance has encountered before — it never crawls the fediverse.
+export function search(query: string, limit = 10) {
+  const term = `%${query.replace(/[%_\\]/g, "\\$&")}%`;
+  return db
+    .select({
+      id: remoteActors.id,
+      handle: remoteActors.handle,
+      displayName: remoteActors.displayName,
+      avatarUrl: remoteActors.avatarUrl,
+    })
+    .from(remoteActors)
+    .where(or(ilike(remoteActors.handle, term), ilike(remoteActors.displayName, term)))
+    .orderBy(remoteActors.displayName)
+    .limit(limit);
 }
 
 export function findByApId(apId: string) {

@@ -64,6 +64,13 @@
       "when": 1718800000000,
       "tag": "0008_mutes_blocks",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1718900000000,
+      "tag": "0009_search_indexes",
+      "breakpoints": true
     }
   ]
 }

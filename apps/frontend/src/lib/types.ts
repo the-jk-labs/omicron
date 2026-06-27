@@ -87,3 +87,10 @@ export type RelationActor = {
   avatarUrl: string | null;
   remote: boolean;
 };
+
+// Site-search payload: matching stories and people. People reuse the
+// `RelationActor` shape so `/@${username}` links resolve local or remote.
+export type SearchResults = {
+  posts: Post[];
+  people: RelationActor[];
+};

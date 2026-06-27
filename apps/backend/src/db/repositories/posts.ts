@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, desc, eq, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { type NewPost, posts, remoteActors, users } from "@/db/schema.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
@@ -23,9 +23,14 @@ const remoteActorColumns = {
   avatarUrl: remoteActors.avatarUrl,
 };
 
+// Every post column except the full-text `search_vector` — that column is large
+// and only ever used inside the search query's `@@` / `ts_rank`, so timelines
+// must not pull it back for every row.
+const { searchVector: _searchVector, ...postColumns } = getTableColumns(posts);
+
 function selectPosts() {
   return db
-    .select({ post: posts, localAuthor: localAuthorColumns, remoteActor: remoteActorColumns })
+    .select({ post: postColumns, localAuthor: localAuthorColumns, remoteActor: remoteActorColumns })
     .from(posts)
     .leftJoin(users, eq(posts.authorId, users.id))
     .leftJoin(remoteActors, eq(posts.remoteActorId, remoteActors.id));
@@ -163,6 +168,30 @@ export function listGlobal(
     )
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
+}
+
+// Full-text search over published Article posts (local + cached remote). Matches
+// against the precomputed `search_vector` (title weight A + tag-stripped body
+// weight B), backed by a GIN index — an index lookup, not a per-row recompute.
+// `websearch_to_tsquery` accepts plain user input (quoted phrases, `or`, `-term`)
+// and never throws on stray syntax. Ranked by relevance, then recency.
+export function searchPosts(viewerId: string | null, query: string, limit = DEFAULT_PAGE_SIZE) {
+  const tsquery = sql`websearch_to_tsquery('english', ${query})`;
+  return selectPosts()
+    .where(
+      and(
+        eq(posts.apType, "Article"),
+        isPublished,
+        notHidden(viewerId),
+        sql`${posts.searchVector} @@ ${tsquery}`,
+      ),
+    )
+    .orderBy(
+      sql`ts_rank(${posts.searchVector}, ${tsquery}) desc`,
+      desc(posts.createdAt),
+      desc(posts.id),
+    )
+    .limit(limit);
 }
 
 // Local feed: posts authored on this instance only.

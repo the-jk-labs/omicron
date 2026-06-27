@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
   boolean,
+  customType,
   index,
   integer,
   jsonb,
@@ -12,6 +13,15 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+
+// Postgres full-text search vector. Drizzle has no native `tsvector` type, so we
+// declare a minimal custom type purely so the column and its GIN index live in
+// the schema (source of truth); the value is always database-generated.
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
 
 // ── users ──────────────────────────────────────────────────────────────
 // The first registered user becomes admin. `actor_key_pair` holds the
@@ -30,6 +40,9 @@ export const users = pgTable("users", {
 }, (t) => [
   uniqueIndex("users_username_idx").on(t.username),
   uniqueIndex("users_email_idx").on(t.email),
+  // Trigram indexes for people search (ILIKE '%term%' on handle / display name).
+  index("users_username_trgm_idx").using("gin", sql`${t.username} gin_trgm_ops`),
+  index("users_display_name_trgm_idx").using("gin", sql`${t.displayName} gin_trgm_ops`),
 ]);
 
 export type ActorKeyPair = {
@@ -59,6 +72,9 @@ export const remoteActors = pgTable("remote_actors", {
 }, (t) => [
   uniqueIndex("remote_actors_ap_id_idx").on(t.apId),
   uniqueIndex("remote_actors_handle_idx").on(t.handle),
+  // Trigram indexes for people search (ILIKE '%term%' on handle / display name).
+  index("remote_actors_handle_trgm_idx").using("gin", sql`${t.handle} gin_trgm_ops`),
+  index("remote_actors_display_name_trgm_idx").using("gin", sql`${t.displayName} gin_trgm_ops`),
 ]);
 
 // ── posts ──────────────────────────────────────────────────────────────
@@ -84,9 +100,18 @@ export const posts = pgTable("posts", {
   // are always `published`. Existing rows default to `published` on migration.
   status: text("status").notNull().default("published"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // Precomputed full-text search document: title (weight A) + tag-stripped body
+  // (weight B). STORED + GIN-indexed, so search is an index lookup instead of a
+  // per-row recompute. Always database-generated; excluded from feed selects
+  // (see selectPosts) so timelines never ship the vector over the wire.
+  searchVector: tsvector("search_vector").generatedAlwaysAs(
+    sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', regexp_replace(content_html, '<[^>]+>', ' ', 'g')), 'B')`,
+  ),
 }, (t) => [
   // Keyset pagination of the global/profile timelines.
   index("posts_created_at_idx").on(t.createdAt.desc(), t.id.desc()),
+  // Backs full-text search (websearch_to_tsquery `@@` + ts_rank).
+  index("posts_search_idx").using("gin", t.searchVector),
   index("posts_author_created_idx").on(t.authorId, t.createdAt.desc()),
   // Drafts listing: an author's posts filtered by status, newest first.
   index("posts_author_status_created_idx").on(t.authorId, t.status, t.createdAt.desc()),

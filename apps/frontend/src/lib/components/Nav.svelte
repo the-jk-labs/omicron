@@ -7,6 +7,7 @@
   import { endpoints } from "$lib/api";
   import { theme } from "$lib/theme.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import SearchBar from "$lib/components/SearchBar.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import logo from "$lib/assets/omicron.svg";
@@ -39,6 +40,8 @@
     </Button>
 
     <div class="flex items-center gap-1.5">
+      <SearchBar />
+
       <Button
         onclick={() => theme.toggle()}
         variant="icon"
