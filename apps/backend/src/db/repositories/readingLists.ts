@@ -47,8 +47,15 @@ export async function ensureReadLater(userId: string): Promise<ReadingList> {
   return winner;
 }
 
+// Accepts a full UUID or a hex id-prefix (the short suffix used in canonical
+// list URLs, e.g. `66635376`). 8 hex chars is 32 bits, so collisions are
+// negligible for a single instance; we deterministically return the oldest match.
 export function findById(id: string): Promise<ReadingList | undefined> {
-  return db.query.readingLists.findFirst({ where: eq(readingLists.id, id) });
+  const isFullUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  const match = isFullUuid
+    ? eq(readingLists.id, id)
+    : sql`${readingLists.id}::text like ${`${id.toLowerCase()}%`}`;
+  return db.query.readingLists.findFirst({ where: match, orderBy: readingLists.createdAt });
 }
 
 // A user's lists, read-later pinned first, then newest first. `onlyPublic`
@@ -119,6 +126,21 @@ export async function listIdsContaining(
     .where(and(inArray(readingListItems.listId, listIds), eq(readingListItems.postId, postId)));
   for (const r of rows as { listId: string }[]) set.add(r.listId);
   return set;
+}
+
+// Minimal references for federating a list as an OrderedCollection: each saved
+// post's id + (for remote posts) its canonical ActivityPub URI. Ordered
+// newest-added first to match the on-site list order.
+export type ItemRef = { id: string; apId: string | null; remote: boolean };
+
+export async function itemRefs(listId: string): Promise<ItemRef[]> {
+  const rows = await db
+    .select({ id: posts.id, apId: posts.apId, remote: posts.remote })
+    .from(readingListItems)
+    .innerJoin(posts, eq(readingListItems.postId, posts.id))
+    .where(eq(readingListItems.listId, listId))
+    .orderBy(desc(readingListItems.createdAt), desc(readingListItems.id));
+  return rows as ItemRef[];
 }
 
 // A row carries its post (with author) plus the join row's id/createdAt, which

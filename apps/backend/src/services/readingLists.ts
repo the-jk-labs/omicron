@@ -5,6 +5,7 @@ import * as usersRepo from "@/db/repositories/users.ts";
 import type { ReadingList } from "@/db/schema.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";
+import { queue } from "@/queue/queue.ts";
 
 // Business logic for reading lists. Ownership and visibility are enforced here;
 // routes stay thin. The "Read later" list is a normal list flagged
@@ -110,8 +111,10 @@ export async function getList(
 }
 
 export async function listItems(listId: string, viewerId: string | null, cursor: Cursor | null) {
-  await readableList(listId, viewerId);
-  const rows = await listsRepo.listItems(listId, cursor, DEFAULT_PAGE_SIZE);
+  // `listId` may be a short id-prefix from a canonical URL; resolve to the full
+  // row first, then query items by its real UUID.
+  const list = await readableList(listId, viewerId);
+  const rows = await listsRepo.listItems(list.id, cursor, DEFAULT_PAGE_SIZE);
   const hasMore = rows.length > DEFAULT_PAGE_SIZE;
   const items = hasMore ? rows.slice(0, DEFAULT_PAGE_SIZE) : rows;
   const last = items.at(-1);
@@ -149,7 +152,7 @@ export async function updateList(
   }
   if (input.visibility !== undefined) patch.visibility = normalizeVisibility(input.visibility);
 
-  const updated = Object.keys(patch).length ? await listsRepo.update(listId, patch) : list;
+  const updated = Object.keys(patch).length ? await listsRepo.update(list.id, patch) : list;
   const [withCount] = await withCounts([updated]);
   return withCount;
 }
@@ -158,18 +161,26 @@ export async function deleteList(userId: string, listId: string): Promise<void> 
   const list = await ownedList(listId, userId);
   // The read-later list is a fixture, like YouTube's Watch Later — not deletable.
   if (list.isReadLater) throw badRequest("The Read later list can't be deleted.");
-  await listsRepo.remove(listId);
+  await listsRepo.remove(list.id);
 }
 
 export async function addItem(userId: string, listId: string, postId: string): Promise<void> {
-  await ownedList(listId, userId);
+  const list = await ownedList(listId, userId);
   if (!(await postsRepo.findById(postId))) throw notFound("Post not found.");
-  await listsRepo.addItem(listId, postId);
+  await listsRepo.addItem(list.id, postId);
+  // Public lists federate an Add to the owner's remote followers; private and
+  // Read-later-while-private lists stay local.
+  if (list.visibility === "public") {
+    queue.add("federate_list_item", { listId: list.id, postId, action: "add" });
+  }
 }
 
 export async function removeItem(userId: string, listId: string, postId: string): Promise<void> {
-  await ownedList(listId, userId);
-  await listsRepo.removeItem(listId, postId);
+  const list = await ownedList(listId, userId);
+  await listsRepo.removeItem(list.id, postId);
+  if (list.visibility === "public") {
+    queue.add("federate_list_item", { listId: list.id, postId, action: "remove" });
+  }
 }
 
 // The save-menu payload: every list the user owns, each flagged with whether it

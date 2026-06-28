@@ -13,6 +13,12 @@ export function registerJobHandlers() {
     await deliverPost(postId);
   });
 
+  registerHandler("federate_list_item", async ({ listId, postId, action }) => {
+    if (!config.FEDERATION_ENABLED) return;
+    const { deliverListItem } = await import("@/federation/lists.ts");
+    await deliverListItem(listId, postId, action);
+  });
+
   registerHandler("send_follow", async ({ followerId, targetActor }) => {
     if (!config.FEDERATION_ENABLED) return;
     const { sendFollow } = await import("@/federation/outbound.ts");

@@ -15,6 +15,7 @@ import {
   Follow,
   Hashtag,
   isActor,
+  OrderedCollection,
   Person,
   PUBLIC_COLLECTION,
   Undo,
@@ -24,6 +25,7 @@ import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
+import * as listsRepo from "@/db/repositories/readingLists.ts";
 import { buildArticle } from "@/federation/article.ts";
 import { cacheActor } from "@/federation/remote.ts";
 import { origin } from "@/config.ts";
@@ -45,6 +47,7 @@ export function getFederation(): Federation<ContextData> {
   const f = createFederationInstance();
   setupActor(f);
   setupFollowers(f);
+  setupLists(f);
   setupInbox(f);
   setupOutbox(f);
   federation = f;
@@ -64,6 +67,9 @@ function setupActor(f: Federation<ContextData>) {
     if (!user) return null;
     const keys = await ctx.getActorKeyPairs(identifier);
     const tags = await tagsRepo.tagsForUser(user.id);
+    // Advertise the user's public reading lists as supplementary collections
+    // (`streams`), so federated clients can discover and fetch them.
+    const publicLists = await listsRepo.listForUser(user.id, true);
     return new Person({
       id: ctx.getActorUri(identifier),
       preferredUsername: identifier,
@@ -79,6 +85,9 @@ function setupActor(f: Federation<ContextData>) {
       // Profile tags, federated as Hashtags (like Mastodon's featured tags).
       tags: tags.map((t) =>
         new Hashtag({ name: `#${t.name}`, href: new URL(`/tags/${t.slug}`, origin) })
+      ),
+      streams: publicLists.map((l) =>
+        ctx.getObjectUri(OrderedCollection, { identifier, listId: l.id })
       ),
     });
   })
@@ -119,6 +128,37 @@ function setupFollowers(f: Federation<ContextData>) {
     ];
     return { items };
   });
+}
+
+// ── Reading lists: public lists as OrderedCollections ─────────────────────
+// Each public list is fetchable at /users/{identifier}/lists/{listId} as an
+// OrderedCollection whose items are the saved posts' ActivityPub URIs (local
+// posts → this instance's /posts/{id}; remote posts → their origin apId).
+// Private and Read-later-while-private lists are never served (404), so only
+// public lists ever leave the instance.
+function setupLists(f: Federation<ContextData>) {
+  f.setObjectDispatcher(
+    OrderedCollection,
+    "/users/{identifier}/lists/{listId}",
+    async (ctx, { identifier, listId }) => {
+      const user = await usersRepo.findByUsername(identifier);
+      if (!user) return null;
+      const list = await listsRepo.findById(listId);
+      if (!list || list.userId !== user.id || list.visibility !== "public") return null;
+
+      const refs = await listsRepo.itemRefs(list.id);
+      const items = refs.map((r) =>
+        r.remote && r.apId ? new URL(r.apId) : new URL(`/posts/${r.id}`, origin)
+      );
+      return new OrderedCollection({
+        id: ctx.getObjectUri(OrderedCollection, { identifier, listId }),
+        name: list.title,
+        summary: list.description || undefined,
+        totalItems: items.length,
+        items,
+      });
+    },
+  );
 }
 
 // ── Inbox: inbound Follow / Undo / Create ────────────────────────────────

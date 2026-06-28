@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import Icon from "$lib/components/Icon.svelte";
+  import { listPath } from "$lib/links";
   import type { ReadingList } from "$lib/types";
 
   // A single reading list in a grid, like a playlist card. Links to the list.
@@ -10,7 +11,7 @@
 </script>
 
 <a
-  href={`/lists/${list.id}`}
+  href={listPath(list)}
   class="group rounded-card border-border bg-background-alt hover:bg-muted flex flex-col gap-2 border p-4 transition-colors focus-visible:outline-none"
 >
   <div class="flex items-start justify-between gap-2">

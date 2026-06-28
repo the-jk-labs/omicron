@@ -5,7 +5,7 @@
 // backend resolves it by prefix. The slug is cosmetic and regenerated from the
 // title, so renaming a post is safe and stale slugs still redirect to canonical.
 
-import type { Post } from "$lib/types";
+import type { Post, ReadingList } from "$lib/types";
 
 // A trailing short id (8+ hex) or a full UUID anywhere (for legacy links).
 // The short id may follow a slug (`some-title-9e962281`) or stand alone when a
@@ -45,6 +45,20 @@ export function postPath(post: Pick<Post, "id" | "title" | "author">): string {
  * is present.
  */
 export function postIdFromSlug(slug: string): string | null {
+  const full = slug.match(FULL_UUID)?.[0];
+  if (full) return full.toLowerCase();
+  return slug.match(SHORT_ID)?.[1].toLowerCase() ?? null;
+}
+
+/** Canonical path for a reading list, e.g. `/lists/weekend-reads-66635376`. */
+export function listPath(list: Pick<ReadingList, "id" | "title">): string {
+  const slug = slugify(list.title);
+  const id = shortId(list.id);
+  return `/lists/${slug ? `${slug}-${id}` : id}`;
+}
+
+/** Resolve a list id from a `[slug]` route param (full UUID or trailing short id). */
+export function listIdFromSlug(slug: string): string | null {
   const full = slug.match(FULL_UUID)?.[0];
   if (full) return full.toLowerCase();
   return slug.match(SHORT_ID)?.[1].toLowerCase() ?? null;
