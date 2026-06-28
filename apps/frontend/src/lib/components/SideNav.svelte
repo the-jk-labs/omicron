@@ -15,6 +15,7 @@
       ? [
           { label: "Home", href: "/", icon: "home" },
           { label: "Profile", href: `/@${user.username}`, icon: "user" },
+          { label: "Lists", href: "/lists", icon: "library" },
           { label: "Write", href: "/compose", icon: "compose" },
           { label: "Drafts", href: "/drafts", icon: "draft" },
         ]

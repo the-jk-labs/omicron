@@ -299,6 +299,50 @@ export const tagFollows = pgTable("tag_follows", {
   index("tag_follows_tag_idx").on(t.tagId),
 ]);
 
+// ── reading lists ────────────────────────────────────────────────────────
+// User-curated collections of posts, like YouTube playlists. A user can own
+// many lists; each is `public` (surfaced on their profile) or `private` (only
+// the owner sees it). New lists default to public.
+//
+// Every user has exactly one special "Read later" list (`is_read_later`),
+// created lazily on first use and defaulting to private — the analogue of
+// YouTube's Watch Later. It cannot be deleted or renamed (enforced in the
+// service); its visibility is the only editable field. A partial unique index
+// guarantees at most one read-later list per user.
+export const readingLists = pgTable("reading_lists", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  visibility: text("visibility").notNull().default("public"), // "public" | "private"
+  isReadLater: boolean("is_read_later").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  // The owner's lists, newest first (lists management + profile tab).
+  index("reading_lists_user_created_idx").on(t.userId, t.createdAt.desc()),
+  // At most one read-later list per user.
+  uniqueIndex("reading_lists_read_later_idx")
+    .on(t.userId)
+    .where(sql`${t.isReadLater}`),
+]);
+
+// ── reading list ↔ post join ──────────────────────────────────────────────
+// One row per (list, post). The unique index makes adding idempotent; rows are
+// ordered by `created_at` so the most recently added post shows first (like a
+// playlist's "date added" order). Keyset-paginated on (created_at, id).
+export const readingListItems = pgTable("reading_list_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  listId: uuid("list_id").notNull().references(() => readingLists.id, { onDelete: "cascade" }),
+  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("reading_list_items_unique_idx").on(t.listId, t.postId),
+  // A list's items, newest-added first.
+  index("reading_list_items_list_created_idx").on(t.listId, t.createdAt.desc(), t.id.desc()),
+  // "Which of my lists contain this post" lookup for the save menu.
+  index("reading_list_items_post_idx").on(t.postId),
+]);
+
 // ── sessions ───────────────────────────────────────────────────────────
 // Server-side sessions (cookie holds the opaque token = id). Keeps the app
 // stateless; all session state lives in Postgres.
@@ -331,3 +375,6 @@ export type PostTag = typeof postTags.$inferSelect;
 export type TagFollow = typeof tagFollows.$inferSelect;
 export type UserTag = typeof userTags.$inferSelect;
 export type RemoteActorTag = typeof remoteActorTags.$inferSelect;
+export type ReadingList = typeof readingLists.$inferSelect;
+export type NewReadingList = typeof readingLists.$inferInsert;
+export type ReadingListItem = typeof readingListItems.$inferSelect;

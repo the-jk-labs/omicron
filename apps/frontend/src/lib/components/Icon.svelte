@@ -62,6 +62,12 @@
     VolumeX,
     Ban,
     Hash,
+    Bookmark,
+    BookmarkPlus,
+    BookmarkCheck,
+    Library,
+    Lock,
+    Plus,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -123,6 +129,12 @@
     mute: VolumeX,
     block: Ban,
     tag: Hash,
+    bookmark: Bookmark,
+    bookmarkPlus: BookmarkPlus,
+    bookmarkCheck: BookmarkCheck,
+    library: Library,
+    lock: Lock,
+    plus: Plus,
   } as const;
 
   export type IconName = keyof typeof icons;

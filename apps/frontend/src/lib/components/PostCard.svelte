@@ -1,15 +1,18 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { page } from "$app/state";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import TagList from "$lib/components/TagList.svelte";
+  import SaveToListButton from "$lib/components/SaveToListButton.svelte";
   import { excerpt, formatDate, readTime } from "$lib/format";
   import { postPath } from "$lib/links";
   import type { Post } from "$lib/types";
 
   let { post }: { post: Post } = $props();
 
+  const signedIn = $derived(!!page.data.user);
   const summary = $derived(excerpt(post.contentHtml));
   const minutes = $derived(readTime(post.contentHtml));
   // Remote authors carry a `user@host` handle; surface the origin instance
@@ -50,5 +53,6 @@
         <Icon name="globe" size={12} /> {originInstance}
       </span>
     {/if}
+    <span class="ml-auto"><SaveToListButton postId={post.id} {signedIn} /></span>
   </div>
 </article>

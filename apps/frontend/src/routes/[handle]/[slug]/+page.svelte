@@ -9,6 +9,7 @@
   import { confirm } from "$lib/components/ui/confirm";
   import Comments from "$lib/components/Comments.svelte";
   import TagList from "$lib/components/TagList.svelte";
+  import SaveToListButton from "$lib/components/SaveToListButton.svelte";
   import { formatDate, readTime } from "$lib/format";
   import type { PageData } from "./$types";
 
@@ -193,6 +194,9 @@
       <Icon name="comment" size={18} />
       <span class="tabular-nums">{commentCount}</span>
     </a>
+    <div class="ml-auto inline-flex h-10 items-center px-2">
+      <SaveToListButton postId={post.id} signedIn={!!data.user} />
+    </div>
   </div>
 </article>
 

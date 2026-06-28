@@ -16,8 +16,9 @@
 
   const items = $derived<Item[]>([
     { label: "Home", href: "/", icon: "home" },
-    { label: "Drafts", href: "/drafts", icon: "draft" },
+    { label: "Lists", href: "/lists", icon: "library" },
     { label: "Write", href: "/compose", icon: "compose" },
+    { label: "Drafts", href: "/drafts", icon: "draft" },
     { label: "Profile", href: `/@${user.username}`, icon: "user" },
     { label: "Settings", href: "/settings", icon: "settings" },
   ]);

@@ -4,6 +4,7 @@
   import { Tabs, Separator } from "bits-ui";
   import { endpoints } from "$lib/api";
   import PostCard from "$lib/components/PostCard.svelte";
+  import ReadingListCard from "$lib/components/ReadingListCard.svelte";
   import FollowButton from "$lib/components/FollowButton.svelte";
   import ProfileMenu from "$lib/components/ProfileMenu.svelte";
   import FollowListDialog from "$lib/components/FollowListDialog.svelte";
@@ -21,6 +22,8 @@
   // Self/edit/follow only apply to local profiles; remote browsing is read-only.
   const isSelf = $derived(!data.remote && data.user?.id === profile.user.id);
   const isAdmin = $derived(!data.remote && "isAdmin" in profile.user && profile.user.isAdmin);
+  // Public reading lists (local profiles only); the owner also sees their private ones.
+  const lists = $derived(!data.remote ? data.lists : []);
 
   let posts = $state<Post[]>(data.page.items);
   let cursor = $state<string | null>(data.page.nextCursor);
@@ -177,6 +180,12 @@
       value="stories"
       class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center border-b border-transparent py-3"
     >Stories</Tabs.Trigger>
+    {#if !data.remote}
+      <Tabs.Trigger
+        value="lists"
+        class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center border-b border-transparent py-3"
+      >Lists</Tabs.Trigger>
+    {/if}
     <Tabs.Trigger
       value="about"
       class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center border-b border-transparent py-3"
@@ -199,6 +208,22 @@
       {/if}
     {/if}
   </Tabs.Content>
+
+  {#if !data.remote}
+    <Tabs.Content value="lists" class="pt-3">
+      {#if lists.length === 0}
+        <p class="py-10 text-center text-muted-foreground">
+          {isSelf ? "You haven't shared any lists yet." : "No public lists yet."}
+        </p>
+      {:else}
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {#each lists as list (list.id)}
+            <ReadingListCard {list} />
+          {/each}
+        </div>
+      {/if}
+    </Tabs.Content>
+  {/if}
 
   <Tabs.Content value="about" class="pt-3">
     <dl class="max-w-prose divide-y divide-border rounded-card border border-border bg-background-alt">

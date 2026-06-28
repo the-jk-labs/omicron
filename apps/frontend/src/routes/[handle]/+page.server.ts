@@ -18,11 +18,13 @@ export const load: PageServerLoad = async ({ fetch, params }) => {
       ]);
       return { remote: true as const, profile, page: posts };
     }
-    const [profile, posts] = await Promise.all([
+    const [profile, posts, lists] = await Promise.all([
       api.profile(handle),
       api.userPosts(handle),
+      // Public lists (plus the owner's private ones, when they're the viewer).
+      api.userLists(handle),
     ]);
-    return { remote: false as const, profile, page: posts };
+    return { remote: false as const, profile, page: posts, lists: lists.lists };
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) error(404, "User not found");
     throw err;

@@ -5,6 +5,8 @@ import type {
   Page,
   Post,
   Profile,
+  ReadingList,
+  ReadingListDetail,
   RelationActor,
   RemoteProfile,
   SearchResults,
@@ -91,6 +93,27 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.post<LikeState>(`/posts/${postId}/comments/${commentId}/like`),
     unlikeComment: (postId: string, commentId: string) =>
       api.del<LikeState>(`/posts/${postId}/comments/${commentId}/like`),
+
+    // reading lists
+    myLists: () => api.get<{ lists: ReadingList[] }>("/lists"),
+    userLists: (username: string) =>
+      api.get<{ lists: ReadingList[] }>(`/lists/user/${encodeURIComponent(username)}`),
+    readLater: () => api.get<{ list: ReadingList }>("/lists/read-later"),
+    list: (id: string) => api.get<ReadingListDetail>(`/lists/${id}`),
+    listItems: (id: string, cursor?: string | null) =>
+      api.get<Page<Post>>(`/lists/${id}/items${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
+    listsForPost: (postId: string) => api.get<{ lists: ReadingList[] }>(`/lists/for-post/${postId}`),
+    createList: (body: { title: string; description?: string; visibility?: "public" | "private" }) =>
+      api.post<{ list: ReadingList }>("/lists", body),
+    updateList: (
+      id: string,
+      body: { title?: string; description?: string; visibility?: "public" | "private" },
+    ) => api.patch<{ list: ReadingList }>(`/lists/${id}`, body),
+    deleteList: (id: string) => api.del<{ ok: true }>(`/lists/${id}`),
+    addToList: (id: string, postId: string) =>
+      api.post<{ ok: true }>(`/lists/${id}/items`, { postId }),
+    removeFromList: (id: string, postId: string) =>
+      api.del<{ ok: true }>(`/lists/${id}/items/${postId}`),
 
     // current user's profile editing
     updateProfile: (body: { displayName?: string; bio?: string; tags?: string[] }) =>

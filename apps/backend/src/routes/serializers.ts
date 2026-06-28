@@ -166,3 +166,29 @@ export function barePost(p: Omit<Post, "searchVector">) {
     createdAt: p.createdAt,
   };
 }
+
+// Reading-list payload. `itemCount` is the number of saved posts; `contains` is
+// present only in the save-menu payload (whether the post in question is in it).
+export function readingListView(
+  list: {
+    id: string;
+    title: string;
+    description: string;
+    visibility: string;
+    isReadLater: boolean;
+    createdAt: Date;
+    itemCount: number;
+    contains?: boolean;
+  },
+) {
+  return {
+    id: list.id,
+    title: list.title,
+    description: list.description,
+    visibility: list.visibility,
+    isReadLater: list.isReadLater,
+    itemCount: list.itemCount,
+    createdAt: list.createdAt,
+    ...(list.contains !== undefined ? { contains: list.contains } : {}),
+  };
+}

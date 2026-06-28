@@ -85,6 +85,13 @@
       "when": 1719100000000,
       "tag": "0011_profile_tags",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1782646375510,
+      "tag": "0012_short_doctor_spectrum",
+      "breakpoints": true
     }
   ]
 }

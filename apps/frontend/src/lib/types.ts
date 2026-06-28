@@ -60,6 +60,27 @@ export type Comment = {
   replies: Comment[];
 };
 
+// A reading list (YouTube-playlist-style collection of posts). `isReadLater`
+// marks the special per-user "Read later" list. `contains` is present only in
+// the save-menu payload (whether a given post is already in this list).
+export type ReadingList = {
+  id: string;
+  title: string;
+  description: string;
+  visibility: "public" | "private";
+  isReadLater: boolean;
+  itemCount: number;
+  createdAt: string;
+  contains?: boolean;
+};
+
+// A single list's detail payload (header + ownership).
+export type ReadingListDetail = {
+  list: ReadingList;
+  isOwner: boolean;
+  owner: { username: string; displayName: string };
+};
+
 export type Page<T> = {
   items: T[];
   nextCursor: string | null;
