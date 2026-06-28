@@ -33,6 +33,9 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   displayName: text("display_name").notNull(),
   bio: text("bio").notNull().default(""),
+  // Optional contact address the user chooses to show on their public profile.
+  // Distinct from `email` (the private login address); empty means "not shown".
+  publicEmail: text("public_email").notNull().default(""),
   avatarUrl: text("avatar_url"),
   isAdmin: boolean("is_admin").notNull().default(false),
   actorKeyPair: jsonb("actor_key_pair").$type<ActorKeyPair | null>(),

@@ -6,6 +6,8 @@ export type User = {
   username: string;
   displayName: string;
   bio: string;
+  // Optional contact email the user shows on their profile; "" when unset.
+  publicEmail: string;
   avatarUrl: string | null;
   isAdmin: boolean;
   createdAt: string;

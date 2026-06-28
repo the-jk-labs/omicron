@@ -24,9 +24,9 @@ export const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2 MB
 // independently. Returns the updated user plus their current profile tags.
 export async function updateProfile(
   userId: string,
-  input: { displayName?: string; bio?: string; tags?: string[] },
+  input: { displayName?: string; bio?: string; publicEmail?: string; tags?: string[] },
 ): Promise<{ user: User; tags: tagsRepo.TagSummary[] }> {
-  const patch: { displayName?: string; bio?: string } = {};
+  const patch: { displayName?: string; bio?: string; publicEmail?: string } = {};
 
   if (input.displayName !== undefined) {
     const displayName = input.displayName.trim();
@@ -39,6 +39,18 @@ export async function updateProfile(
   if (input.bio !== undefined) {
     if (input.bio.length > 500) throw badRequest("Bio must be 500 characters or fewer.");
     patch.bio = input.bio.trim();
+  }
+
+  if (input.publicEmail !== undefined) {
+    // Optional; an empty value clears it. When set, require a plausible address.
+    const publicEmail = input.publicEmail.trim();
+    if (publicEmail) {
+      if (publicEmail.length > 254) throw badRequest("Email must be 254 characters or fewer.");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(publicEmail)) {
+        throw badRequest("Enter a valid email address.");
+      }
+    }
+    patch.publicEmail = publicEmail;
   }
 
   if (input.tags !== undefined) {

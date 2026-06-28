@@ -23,6 +23,7 @@
   // Profile form — seeded from the loaded user.
   let displayName = $state(data.user.displayName);
   let bio = $state(data.user.bio);
+  let publicEmail = $state(data.user.publicEmail);
   let profileTags = $state<string[]>(data.user.tags?.map((t) => t.name) ?? []);
   const initialTags = (data.user.tags?.map((t) => t.name) ?? []).join(",");
   let nameEl = $state<HTMLInputElement | null>(null);
@@ -60,6 +61,7 @@
   const dirty = $derived(
     displayName !== data.user.displayName ||
       bio !== data.user.bio ||
+      publicEmail !== data.user.publicEmail ||
       file !== null ||
       profileTags.join(",") !== initialTags,
   );
@@ -120,7 +122,7 @@
         const { blob, type } = await prepareImage(file, AVATAR_MAX_DIMENSION);
         await endpoints().uploadAvatar(blob, type);
       }
-      await endpoints().updateProfile({ displayName, bio, tags: profileTags });
+      await endpoints().updateProfile({ displayName, bio, publicEmail, tags: profileTags });
       await invalidateAll();
       clearFile();
       saved = true;
@@ -271,6 +273,23 @@
           />
         </div>
         <p class="self-end text-xs text-muted-foreground">{bio.length}/500</p>
+      </div>
+
+      <!-- Public email -->
+      <div class="flex flex-col gap-1.5">
+        <Label.Root for="publicEmail" class={labelClass}>Public email</Label.Root>
+        <input
+          id="publicEmail"
+          type="email"
+          bind:value={publicEmail}
+          maxlength={254}
+          placeholder="you@example.com"
+          autocomplete="off"
+          class={`${field} w-full`}
+        />
+        <p class="text-xs text-muted-foreground">
+          Optional — shown on your profile for anyone to contact you. Leave blank to hide it.
+        </p>
       </div>
 
       <!-- Profile tags -->

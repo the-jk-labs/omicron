@@ -14,6 +14,7 @@ export function publicUser(u: User, tags: TagSummary[] = []) {
     username: u.username,
     displayName: u.displayName,
     bio: u.bio,
+    publicEmail: u.publicEmail,
     avatarUrl: u.avatarUrl,
     isAdmin: u.isAdmin,
     createdAt: u.createdAt,

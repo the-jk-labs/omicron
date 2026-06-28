@@ -246,6 +246,20 @@
       </div>
 
       {#if !data.remote}
+        {#if data.profile.user.publicEmail}
+          <div class="flex items-center justify-between gap-3 px-4 py-3">
+            <dt class="flex items-center gap-2 text-sm text-muted-foreground">
+              <Icon name="mail" size={15} /> Email
+            </dt>
+            <dd class="min-w-0">
+              <a
+                href={`mailto:${data.profile.user.publicEmail}`}
+                class="truncate text-sm text-foreground underline-offset-4 hover:underline"
+              >{data.profile.user.publicEmail}</a>
+            </dd>
+          </div>
+        {/if}
+
         <div class="flex items-center justify-between gap-3 px-4 py-3">
           <dt class="flex items-center gap-2 text-sm text-muted-foreground">
             <Icon name="calendar" size={15} /> Joined

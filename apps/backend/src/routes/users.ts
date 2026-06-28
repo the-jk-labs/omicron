@@ -23,6 +23,7 @@ userRoutes.patch("/me", async (c) => {
   const { user, tags } = await usersService.updateProfile(viewer.id, {
     displayName: body.displayName,
     bio: body.bio,
+    publicEmail: body.publicEmail,
     tags: body.tags,
   });
   return c.json({ user: publicUser(user, tags) });

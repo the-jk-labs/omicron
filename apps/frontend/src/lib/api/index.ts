@@ -116,7 +116,9 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.del<{ ok: true }>(`/lists/${id}/items/${postId}`),
 
     // current user's profile editing
-    updateProfile: (body: { displayName?: string; bio?: string; tags?: string[] }) =>
+    updateProfile: (
+      body: { displayName?: string; bio?: string; publicEmail?: string; tags?: string[] },
+    ) =>
       api.patch<{ user: User }>("/users/me", body),
     // The blob is downscaled/re-encoded client-side (see prepareImage).
     uploadAvatar: (blob: Blob, contentType: string) =>
