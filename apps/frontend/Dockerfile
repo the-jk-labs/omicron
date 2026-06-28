@@ -12,5 +12,8 @@ ENV NODE_ENV=production
 COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./
+COPY --from=build /app/server.js ./
 EXPOSE 3000
-CMD ["node", "build"]
+# Custom server wraps adapter-node's handler with on-the-fly compression for the
+# dynamically rendered SSR HTML (precompress only covers static assets).
+CMD ["node", "server.js"]

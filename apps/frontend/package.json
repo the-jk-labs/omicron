@@ -8,7 +8,7 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node build",
+    "start": "node server.js",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
   },
   "devDependencies": {
@@ -35,6 +35,7 @@
     "@tiptap/pm": "^2.10.0",
     "@tiptap/starter-kit": "^2.10.0",
     "bits-ui": "^1.0.0",
+    "compression": "^1.8.1",
     "emoji-picker-element": "^1.29.1",
     "tiptap-markdown": "^0.8.10"
   }

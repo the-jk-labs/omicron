@@ -7,9 +7,10 @@
 
 // Longest edge after resizing; large enough for a full-width blog image.
 const MAX_DIMENSION = 1600;
-// Avatars never render large (~72px in the profile, smaller in feeds); 256px
-// covers retina without shipping a multi-hundred-KB photo.
-export const AVATAR_MAX_DIMENSION = 256;
+// Avatars never render large (72px in the profile is the biggest use, smaller in
+// feeds); 160px covers that at 2x retina without shipping an oversized photo that
+// Lighthouse flags as larger than its displayed dimensions.
+export const AVATAR_MAX_DIMENSION = 160;
 // WebP quality — a good size/quality trade-off for photographic content.
 const WEBP_QUALITY = 0.82;
 
