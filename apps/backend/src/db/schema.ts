@@ -80,6 +80,25 @@ export const remoteActors = pgTable("remote_actors", {
   index("remote_actors_display_name_trgm_idx").using("gin", sql`${t.displayName} gin_trgm_ops`),
 ]);
 
+// ── profile links ──────────────────────────────────────────────────────
+// External links a local user features on their profile (website, GitHub,
+// Mastodon, …). `platform` is a key from a fixed whitelist that drives the
+// brand icon and label; `position` preserves the user's chosen order.
+export const profileLinks = pgTable("profile_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  platform: text("platform").notNull(),
+  url: text("url").notNull(),
+  label: text("label").notNull().default(""),
+  position: integer("position").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("profile_links_user_position_idx").on(t.userId, t.position),
+]);
+
+export type ProfileLink = typeof profileLinks.$inferSelect;
+export type NewProfileLink = typeof profileLinks.$inferInsert;
+
 // ── posts ──────────────────────────────────────────────────────────────
 // `content_json` is the Tiptap document; `content_html` is the rendered HTML.
 // Local posts carry `author_id`; remote posts (ingested via federation or

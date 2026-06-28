@@ -5,6 +5,9 @@
   import { endpoints } from "$lib/api";
   import PostCard from "$lib/components/PostCard.svelte";
   import ReadingListCard from "$lib/components/ReadingListCard.svelte";
+  import ProfileLinksCard from "$lib/components/ProfileLinksCard.svelte";
+  import ProfileLinkIcon from "$lib/components/ProfileLinkIcon.svelte";
+  import { platformMeta } from "$lib/profileLinks";
   import FollowButton from "$lib/components/FollowButton.svelte";
   import ProfileMenu from "$lib/components/ProfileMenu.svelte";
   import FollowListDialog from "$lib/components/FollowListDialog.svelte";
@@ -139,6 +142,24 @@
       {/if}
     </div>
     {#if profile.user.bio}<p class="mt-2 max-w-prose whitespace-pre-line text-foreground-alt">{profile.user.bio}</p>{/if}
+    {#if profile.user.links?.length}
+      <!-- Compact icon-only links; the About tab carries the labelled detail. -->
+      <div class="mt-3 flex flex-wrap items-center gap-0.5">
+        {#each profile.user.links as link (link.platform + link.url)}
+          {@const meta = platformMeta(link.platform)}
+          <a
+            href={link.url}
+            target="_blank"
+            rel="me noopener noreferrer"
+            title={link.label || meta.label}
+            aria-label={link.label || meta.label}
+            class="inline-flex size-7 items-center justify-center rounded-button text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ProfileLinkIcon platform={link.platform} size={15} />
+          </a>
+        {/each}
+      </div>
+    {/if}
     {#if profile.user.tags?.length}
       <TagList tags={profile.user.tags} class="mt-3" />
     {/if}
@@ -226,6 +247,12 @@
   {/if}
 
   <Tabs.Content value="about" class="pt-3">
+    {#if !data.remote && data.profile.user.links.length > 0}
+      <div class="mb-3 max-w-prose">
+        <ProfileLinksCard links={data.profile.user.links} />
+      </div>
+    {/if}
+
     <dl class="max-w-prose divide-y divide-border rounded-card border border-border bg-background-alt">
       <div class="flex items-center justify-between gap-3 px-4 py-3">
         <dt class="flex items-center gap-2 text-sm text-muted-foreground">

@@ -4,10 +4,11 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import * as authService from "@/services/auth.ts";
 import * as sessionsRepo from "@/db/repositories/sessions.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
+import * as usersService from "@/services/users.ts";
 import { SESSION_COOKIE, SESSION_TTL_MS } from "@/lib/session.ts";
 import { config } from "@/config.ts";
 import { requireUser } from "@/routes/middleware.ts";
-import { publicUser } from "@/routes/serializers.ts";
+import { profileLinkView, publicUser } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 export const authRoutes = new Hono<AppEnv>();
@@ -44,9 +45,12 @@ authRoutes.post("/logout", async (c) => {
 
 authRoutes.get("/me", async (c) => {
   const user = c.get("user");
-  return c.json({
-    user: user ? publicUser(user, await tagsRepo.tagsForUser(user.id)) : null,
-  });
+  if (!user) return c.json({ user: null });
+  const [tags, links] = await Promise.all([
+    tagsRepo.tagsForUser(user.id),
+    usersService.profileLinks(user.id),
+  ]);
+  return c.json({ user: publicUser(user, tags, links.map(profileLinkView)) });
 });
 
 // Permanently delete the signed-in account (requires the current password).

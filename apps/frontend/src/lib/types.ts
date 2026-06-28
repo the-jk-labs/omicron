@@ -12,7 +12,12 @@ export type User = {
   isAdmin: boolean;
   createdAt: string;
   tags: Tag[];
+  links: ProfileLink[];
 };
+
+// An external link a user features on their profile. `platform` is a key from
+// the shared registry (see lib/profileLinks.ts) driving the brand icon + label.
+export type ProfileLink = { platform: string; url: string; label: string };
 
 export type PostAuthor = {
   id: string;

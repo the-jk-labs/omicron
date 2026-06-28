@@ -1,10 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
+import * as linksRepo from "@/db/repositories/profileLinks.ts";
 import { config } from "@/config.ts";
 import { badRequest } from "@/lib/http.ts";
 import { MAX_PROFILE_TAGS, normalizeTags } from "@/lib/tags.ts";
-import type { User } from "@/db/schema.ts";
+import {
+  isLinkPlatform,
+  MAX_LINK_LABEL_LEN,
+  MAX_PROFILE_LINKS,
+  normalizeLinkUrl,
+} from "@/lib/profileLinks.ts";
+import type { ProfileLink, User } from "@/db/schema.ts";
 
 // Business logic for editing one's own profile. Routes stay HTTP-only and call
 // into here; all disk + DB access is funnelled through the repository / services.
@@ -22,10 +29,35 @@ export const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2 MB
 // Updates the mutable profile fields. Only the keys present in `input` are
 // touched, so callers can patch display name, bio and profile tags
 // independently. Returns the updated user plus their current profile tags.
+export type ProfileLinkInput = { platform?: string; url?: string; label?: string };
+
+// Validates and normalizes a list of profile links, throwing on bad input.
+// Returns the clean rows ready to persist (order preserved from the input).
+function sanitizeLinks(
+  input: ProfileLinkInput[],
+): { platform: string; url: string; label: string }[] {
+  if (input.length > MAX_PROFILE_LINKS) {
+    throw badRequest(`A profile can have at most ${MAX_PROFILE_LINKS} links.`);
+  }
+  return input.map((link) => {
+    if (!isLinkPlatform(link.platform)) throw badRequest("Unknown link type.");
+    const url = normalizeLinkUrl(link.url ?? "");
+    if (!url) throw badRequest("Each link needs a valid web address.");
+    const label = (link.label ?? "").trim().slice(0, MAX_LINK_LABEL_LEN);
+    return { platform: link.platform, url, label };
+  });
+}
+
 export async function updateProfile(
   userId: string,
-  input: { displayName?: string; bio?: string; publicEmail?: string; tags?: string[] },
-): Promise<{ user: User; tags: tagsRepo.TagSummary[] }> {
+  input: {
+    displayName?: string;
+    bio?: string;
+    publicEmail?: string;
+    tags?: string[];
+    links?: ProfileLinkInput[];
+  },
+): Promise<{ user: User; tags: tagsRepo.TagSummary[]; links: ProfileLink[] }> {
   const patch: { displayName?: string; bio?: string; publicEmail?: string } = {};
 
   if (input.displayName !== undefined) {
@@ -61,13 +93,26 @@ export async function updateProfile(
     await tagsRepo.setUserTags(userId, slugs);
   }
 
-  // A tags-only update touches no user columns; drizzle rejects an empty SET, so
-  // only call update when there's something to change.
+  if (input.links !== undefined) {
+    await linksRepo.replaceForUser(userId, sanitizeLinks(input.links));
+  }
+
+  // A tags/links-only update touches no user columns; drizzle rejects an empty
+  // SET, so only call update when there's something to change.
   const user = Object.keys(patch).length > 0
     ? await usersRepo.update(userId, patch)
     : (await usersRepo.findById(userId))!;
 
-  return { user, tags: await tagsRepo.tagsForUser(userId) };
+  return {
+    user,
+    tags: await tagsRepo.tagsForUser(userId),
+    links: await linksRepo.listForUser(userId),
+  };
+}
+
+// A user's profile links, for the public profile and the settings editor.
+export function profileLinks(userId: string): Promise<ProfileLink[]> {
+  return linksRepo.listForUser(userId);
 }
 
 // Persists an uploaded avatar to local disk and stores its public URL. The URL

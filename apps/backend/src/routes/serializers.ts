@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Post, RemoteActor, User } from "@/db/schema.ts";
+import type { Post, ProfileLink, RemoteActor, User } from "@/db/schema.ts";
 import type { PostWithAuthor } from "@/db/repositories/posts.ts";
 import type { CommentWithAuthor } from "@/db/repositories/comments.ts";
 import { htmlToText } from "@/lib/html.ts";
@@ -8,7 +8,13 @@ import { htmlToText } from "@/lib/html.ts";
 
 export type Engagement = { likeCount: number; liked: boolean; commentCount: number };
 
-export function publicUser(u: User, tags: TagSummary[] = []) {
+export type LinkSummary = { platform: string; url: string; label: string };
+
+export function profileLinkView(l: ProfileLink): LinkSummary {
+  return { platform: l.platform, url: l.url, label: l.label };
+}
+
+export function publicUser(u: User, tags: TagSummary[] = [], links: LinkSummary[] = []) {
   return {
     id: u.id,
     username: u.username,
@@ -19,6 +25,7 @@ export function publicUser(u: User, tags: TagSummary[] = []) {
     isAdmin: u.isAdmin,
     createdAt: u.createdAt,
     tags,
+    links,
   };
 }
 

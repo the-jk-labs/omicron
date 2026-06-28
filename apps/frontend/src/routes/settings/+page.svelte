@@ -15,7 +15,10 @@
   import ConnectionsManager from "$lib/components/ConnectionsManager.svelte";
   import FollowedTagsManager from "$lib/components/FollowedTagsManager.svelte";
   import TagInput from "$lib/components/TagInput.svelte";
+  import ProfileLinksEditor from "$lib/components/ProfileLinksEditor.svelte";
+  import { identifierToUrl, platformMeta, urlToIdentifier } from "$lib/profileLinks";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
+  import type { ProfileLink } from "$lib/types";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -26,6 +29,13 @@
   let publicEmail = $state(data.user.publicEmail);
   let profileTags = $state<string[]>(data.user.tags?.map((t) => t.name) ?? []);
   const initialTags = (data.user.tags?.map((t) => t.name) ?? []).join(",");
+  // The editor works in "identifier" form (a handle / username), so seed from
+  // the stored canonical URLs and convert back on save. Deep-copied so edits
+  // don't mutate the loaded page data.
+  const toEditable = (links: ProfileLink[]) =>
+    links.map((l) => ({ platform: l.platform, url: urlToIdentifier(l.platform, l.url), label: l.label }));
+  let profileLinks = $state<ProfileLink[]>(toEditable(data.user.links ?? []));
+  const initialLinks = JSON.stringify(toEditable(data.user.links ?? []));
   let nameEl = $state<HTMLInputElement | null>(null);
   let bioEl = $state<HTMLTextAreaElement | null>(null);
 
@@ -63,7 +73,8 @@
       bio !== data.user.bio ||
       publicEmail !== data.user.publicEmail ||
       file !== null ||
-      profileTags.join(",") !== initialTags,
+      profileTags.join(",") !== initialTags ||
+      JSON.stringify(profileLinks) !== initialLinks,
   );
 
   let removingPhoto = $state(false);
@@ -122,7 +133,31 @@
         const { blob, type } = await prepareImage(file, AVATAR_MAX_DIMENSION);
         await endpoints().uploadAvatar(blob, type);
       }
-      await endpoints().updateProfile({ displayName, bio, publicEmail, tags: profileTags });
+      // Convert each typed identifier to a canonical URL, skipping blank rows.
+      const links = [];
+      for (const l of profileLinks) {
+        if (!l.url.trim()) continue;
+        const url = identifierToUrl(l.platform, l.url);
+        if (!url) {
+          const meta = platformMeta(l.platform);
+          const what = meta.input.kind === "fedi"
+            ? "handle (@user@instance)"
+            : meta.input.kind === "matrix"
+            ? "id (@user:server)"
+            : meta.input.kind === "xmpp"
+            ? "address (user@server)"
+            : meta.input.kind === "irc"
+            ? "address (ircs://host/#channel)"
+            : meta.input.kind === "handle"
+            ? "username"
+            : "web address";
+          error = `Enter a valid ${meta.label} ${what}.`;
+          busy = false;
+          return;
+        }
+        links.push({ platform: l.platform, url, label: l.label.trim() });
+      }
+      await endpoints().updateProfile({ displayName, bio, publicEmail, tags: profileTags, links });
       await invalidateAll();
       clearFile();
       saved = true;
@@ -300,6 +335,12 @@
           max={MAX_PROFILE_TAGS}
           hint="Topics you post about — shown on your profile and federated to other servers."
         />
+      </div>
+
+      <!-- Profile links -->
+      <div class="flex flex-col gap-1.5">
+        <Label.Root class={labelClass}>Links</Label.Root>
+        <ProfileLinksEditor bind:links={profileLinks} />
       </div>
 
       {#if error}<p class="text-sm text-destructive">{error}</p>{/if}

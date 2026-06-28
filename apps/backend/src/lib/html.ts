@@ -26,6 +26,18 @@ function decodeEntities(s: string): string {
   });
 }
 
+// Escapes a string for safe interpolation into HTML attribute values / text —
+// used when we build small HTML fragments to federate (e.g. PropertyValue
+// attachments whose value is an <a> tag).
+export function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function htmlToText(html: string): string {
   if (!html) return "";
   return decodeEntities(

@@ -117,7 +117,13 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
 
     // current user's profile editing
     updateProfile: (
-      body: { displayName?: string; bio?: string; publicEmail?: string; tags?: string[] },
+      body: {
+        displayName?: string;
+        bio?: string;
+        publicEmail?: string;
+        tags?: string[];
+        links?: { platform: string; url: string; label: string }[];
+      },
     ) =>
       api.patch<{ user: User }>("/users/me", body),
     // The blob is downscaled/re-encoded client-side (see prepareImage).

@@ -17,6 +17,7 @@ import {
   isActor,
   OrderedCollection,
   Person,
+  PropertyValue,
   PUBLIC_COLLECTION,
   Undo,
 } from "@fedify/fedify/vocab";
@@ -26,10 +27,13 @@ import * as postsRepo from "@/db/repositories/posts.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as listsRepo from "@/db/repositories/readingLists.ts";
+import * as linksRepo from "@/db/repositories/profileLinks.ts";
 import { buildArticle } from "@/federation/article.ts";
 import { cacheActor } from "@/federation/remote.ts";
 import { origin } from "@/config.ts";
 import { normalizeTags } from "@/lib/tags.ts";
+import { escapeHtml } from "@/lib/html.ts";
+import { linkDisplayText, linkLabel } from "@/lib/profileLinks.ts";
 
 // ── ActivityPub wiring (isolated) ────────────────────────────────────────
 // This module is only imported when FEDERATION_ENABLED=true (see app.ts), so a
@@ -70,6 +74,28 @@ function setupActor(f: Federation<ContextData>) {
     // Advertise the user's public reading lists as supplementary collections
     // (`streams`), so federated clients can discover and fetch them.
     const publicLists = await listsRepo.listForUser(user.id, true);
+    // Profile metadata fields, rendered by Mastodon et al. as the actor's
+    // PropertyValue table. Each link's value carries `rel="me"` so that, when
+    // the linked site links back the same way, Mastodon shows the green ✓
+    // verified badge. An optional public email is exposed as a plain field.
+    const links = await linksRepo.listForUser(user.id);
+    const attachments = [
+      ...(user.publicEmail
+        ? [new PropertyValue({ name: "Email", value: escapeHtml(user.publicEmail) })]
+        : []),
+      ...links.map((l) => {
+        // Custom links use the user's own label as the field name; known
+        // platforms use their canonical label ("GitHub", "Mastodon", …).
+        const name = l.platform === "custom" ? (l.label || "Link") : linkLabel(l.platform);
+        return new PropertyValue({
+          name,
+          value:
+            `<a href="${escapeHtml(l.url)}" target="_blank" rel="nofollow noopener noreferrer me" translate="no">${
+              escapeHtml(linkDisplayText(l.url))
+            }</a>`,
+        });
+      }),
+    ];
     return new Person({
       id: ctx.getActorUri(identifier),
       preferredUsername: identifier,
@@ -89,6 +115,7 @@ function setupActor(f: Federation<ContextData>) {
       streams: publicLists.map((l) =>
         ctx.getObjectUri(OrderedCollection, { identifier, listId: l.id })
       ),
+      attachments,
     });
   })
     // Generate + persist an RSA key pair on first use; reuse thereafter.

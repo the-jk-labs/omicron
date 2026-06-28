@@ -9,7 +9,7 @@ import * as tagsRepo from "@/db/repositories/tags.ts";
 import { enrichPosts } from "@/services/engagement.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { requireUser } from "@/routes/middleware.ts";
-import { publicUser } from "@/routes/serializers.ts";
+import { profileLinkView, publicUser } from "@/routes/serializers.ts";
 import { notFound } from "@/lib/http.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
@@ -20,13 +20,14 @@ export const userRoutes = new Hono<AppEnv>();
 userRoutes.patch("/me", async (c) => {
   const viewer = requireUser(c);
   const body = await c.req.json();
-  const { user, tags } = await usersService.updateProfile(viewer.id, {
+  const { user, tags, links } = await usersService.updateProfile(viewer.id, {
     displayName: body.displayName,
     bio: body.bio,
     publicEmail: body.publicEmail,
     tags: body.tags,
+    links: body.links,
   });
-  return c.json({ user: publicUser(user, tags) });
+  return c.json({ user: publicUser(user, tags, links.map(profileLinkView)) });
 });
 
 // Upload a new avatar (raw image body; content-type identifies the format).
@@ -64,7 +65,14 @@ userRoutes.get("/:username", async (c) => {
     viewer?.id ?? null,
   );
   const tags = await tagsRepo.tagsForUser(user.id);
-  return c.json({ user: publicUser(user, tags), counts, isFollowing, isMuted, isBlocked });
+  const links = await usersService.profileLinks(user.id);
+  return c.json({
+    user: publicUser(user, tags, links.map(profileLinkView)),
+    counts,
+    isFollowing,
+    isMuted,
+    isBlocked,
+  });
 });
 
 // Public follower / following lists for a profile (local + cached remote).

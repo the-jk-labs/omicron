@@ -8,6 +8,7 @@
   import MobileNav from "$lib/components/MobileNav.svelte";
   import Discover from "$lib/components/Discover.svelte";
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
+  import type { Post } from "$lib/types";
   import type { LayoutData } from "./$types";
 
   let { data, children }: { data: LayoutData; children: import("svelte").Snippet } = $props();
@@ -18,6 +19,32 @@
   const description =
     "A place to read, write, and connect — powered by ActivityPub. No lock-in, fully self-hostable.";
   const ogImage = $derived(`${$page.url.origin}/og-image.png`);
+
+  // On a post page we emit article-specific Open Graph + the Mastodon
+  // `fediverse:creator` tag, so shares render an author-attributed link card
+  // ("More from <author>"). Driven from `page.data` here (one head block) to
+  // avoid duplicate <meta> from a child <svelte:head>.
+  const post = $derived(
+    $page.route.id === "/[handle]/[slug]"
+      ? ($page.data as { post?: Post }).post
+      : undefined,
+  );
+  function excerpt(html: string): string {
+    const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    return text.length > 200 ? `${text.slice(0, 199).trimEnd()}…` : text;
+  }
+  // A local author's handle resolves against this instance; a remote author's
+  // `username` is already a `user@host` handle.
+  const creator = $derived(
+    post
+      ? post.author.remote
+        ? `@${post.author.username}`
+        : `@${post.author.username}@${$page.url.host}`
+      : null,
+  );
+  const ogTitle = $derived(post?.title || appName);
+  const ogDescription = $derived(post ? excerpt(post.contentHtml) : description);
+  const ogType = $derived(post ? "article" : "website");
 
   // The right discovery rail only belongs on the home feed and profile pages;
   // every other route (post, compose, settings, auth, …) hides it.
@@ -33,17 +60,22 @@
 </script>
 
 <svelte:head>
-  <meta name="description" content={description} />
+  <meta name="description" content={ogDescription} />
   <meta property="og:site_name" content={appName} />
-  <meta property="og:title" content={appName} />
-  <meta property="og:description" content={description} />
-  <meta property="og:type" content="website" />
+  <meta property="og:title" content={ogTitle} />
+  <meta property="og:description" content={ogDescription} />
+  <meta property="og:type" content={ogType} />
   <meta property="og:url" content={$page.url.href} />
   <meta property="og:image" content={ogImage} />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content={appName} />
-  <meta name="twitter:description" content={description} />
+  <meta name="twitter:title" content={ogTitle} />
+  <meta name="twitter:description" content={ogDescription} />
   <meta name="twitter:image" content={ogImage} />
+  {#if post && creator}
+    <!-- Mastodon link-preview author attribution. -->
+    <meta name="fediverse:creator" content={creator} />
+    <meta property="article:author" content={creator} />
+  {/if}
 </svelte:head>
 
 <div class="min-h-screen bg-background text-foreground">
