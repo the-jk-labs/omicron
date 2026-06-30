@@ -57,6 +57,13 @@ userRoutes.get("/me/blocked", async (c) => {
   return c.json({ items: await relationsService.listRelation("block", viewer.id) });
 });
 
+// "Who to follow" suggestions (public). Registered before "/:username" so the
+// literal "suggested" segment isn't captured as a username.
+userRoutes.get("/suggested", async (c) => {
+  const viewer = c.get("user");
+  return c.json({ items: await usersService.suggestedFollows(viewer?.id ?? null) });
+});
+
 // Public profile + the viewer's follow/mute/block state.
 userRoutes.get("/:username", async (c) => {
   const viewer = c.get("user");

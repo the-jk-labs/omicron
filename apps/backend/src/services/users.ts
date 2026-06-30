@@ -2,6 +2,7 @@
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as linksRepo from "@/db/repositories/profileLinks.ts";
+import { relationActorLocal } from "@/routes/serializers.ts";
 import { config } from "@/config.ts";
 import { badRequest } from "@/lib/http.ts";
 import { MAX_PROFILE_TAGS, normalizeTags } from "@/lib/tags.ts";
@@ -108,6 +109,14 @@ export async function updateProfile(
     tags: await tagsRepo.tagsForUser(userId),
     links: await linksRepo.listForUser(userId),
   };
+}
+
+// "Who to follow" suggestions for the discovery rail. Each suggestion carries
+// the actor summary (so `/@username` links + Follow work) plus a follower count
+// for a little social proof.
+export async function suggestedFollows(viewerId: string | null, limit = 5) {
+  const rows = await usersRepo.suggested(viewerId, limit);
+  return rows.map((r) => ({ ...relationActorLocal(r), followerCount: r.followerCount }));
 }
 
 // A user's profile links, for the public profile and the settings editor.

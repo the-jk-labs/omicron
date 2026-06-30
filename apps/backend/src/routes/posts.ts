@@ -41,6 +41,14 @@ postRoutes.get("/drafts", async (c) => {
   return c.json({ items: await enrichPosts(items, user.id), nextCursor });
 });
 
+// Trending posts (public) — the discovery rail's short "Trending" list.
+// Registered before "/:id" so "trending" isn't captured as a post id.
+postRoutes.get("/trending", async (c) => {
+  const viewer = c.get("user");
+  const items = await postsService.trending(viewer?.id ?? null);
+  return c.json({ items: await enrichPosts(items, viewer?.id ?? null) });
+});
+
 // Single post (public). Drafts are visible only to their author.
 postRoutes.get("/:id", async (c) => {
   const viewer = c.get("user");

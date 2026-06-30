@@ -12,6 +12,7 @@ import type {
   RelationActor,
   RemoteProfile,
   SearchResults,
+  SuggestedUser,
   TagDetail,
   TagWithCount,
   User,
@@ -70,6 +71,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.get<Page<Post>>(`/posts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
     localTimeline: (cursor?: string | null) =>
       api.get<Page<Post>>(`/posts?scope=local${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`),
+    trendingPosts: () => api.get<{ items: Post[] }>("/posts/trending"),
     post: (id: string) => api.get<{ post: Post }>(`/posts/${id}`),
     drafts: (cursor?: string | null) =>
       api.get<Page<Post>>(`/posts/drafts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
@@ -144,6 +146,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.postRaw<{ url: string }>("/uploads", blob, contentType),
 
     // users + follows
+    suggestedUsers: () => api.get<{ items: SuggestedUser[] }>("/users/suggested"),
     profile: (username: string) => api.get<Profile>(`/users/${username}`),
     userPosts: (username: string, cursor?: string | null) =>
       api.get<Page<Post>>(

@@ -7,10 +7,11 @@
   // For remote actors `username` is the full `user@host` handle and follows go
   // through the federated endpoints (signed Follow/Undo); local follows are
   // internal. The button looks and behaves the same either way.
-  let { username, following, remote = false }: {
+  let { username, following, remote = false, size = "default" }: {
     username: string;
     following: boolean;
     remote?: boolean;
+    size?: "default" | "sm" | "xs";
   } = $props();
   let isFollowing = $state(following);
   let busy = $state(false);
@@ -30,7 +31,7 @@
   }
 </script>
 
-<Button onclick={toggle} disabled={busy} variant={isFollowing ? "outline" : "solid"}>
-  <Icon name={isFollowing ? "unfollow" : "follow"} size={16} />
+<Button onclick={toggle} disabled={busy} {size} variant={isFollowing ? "outline" : "solid"}>
+  <Icon name={isFollowing ? "unfollow" : "follow"} size={size === "xs" ? 14 : 16} />
   {isFollowing ? "Following" : "Follow"}
 </Button>

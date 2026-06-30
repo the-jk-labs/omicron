@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, desc, eq, getTableColumns, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, gt, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { type NewPost, postTags, posts, remoteActors, tags, users } from "@/db/schema.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
@@ -191,6 +191,24 @@ export function searchPosts(viewerId: string | null, query: string, limit = DEFA
       desc(posts.createdAt),
       desc(posts.id),
     )
+    .limit(limit);
+}
+
+// Trending: the most-engaged published Article posts from a recent window
+// (local + cached remote). Score is likes + comments; correlated subqueries keep
+// it a single round-trip and it degrades gracefully to recency when nothing in
+// the window has engagement yet. No pagination — this is a short discovery list.
+export function listTrending(viewerId: string | null, limit = 5, sinceDays = 14) {
+  const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
+  const score = sql<number>`(
+    (select count(*) from likes where likes.post_id = ${posts.id})
+    + (select count(*) from comments where comments.post_id = ${posts.id})
+  )`;
+  return selectPosts()
+    .where(
+      and(eq(posts.apType, "Article"), isPublished, notHidden(viewerId), gt(posts.createdAt, since)),
+    )
+    .orderBy(desc(score), desc(posts.createdAt), desc(posts.id))
     .limit(limit);
 }
 

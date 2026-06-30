@@ -164,3 +164,9 @@ export async function localTimeline(cursor: Cursor | null, viewerId: string | nu
   const rows = await postsRepo.listLocal(viewerId, cursor, DEFAULT_PAGE_SIZE);
   return pageOf(rows, DEFAULT_PAGE_SIZE);
 }
+
+// The discovery rail's "Trending" list — a short, unpaginated set of the most
+// engaged recent posts, filtered by the viewer's mutes/blocks.
+export function trending(viewerId: string | null = null, limit = 5) {
+  return postsRepo.listTrending(viewerId, limit);
+}

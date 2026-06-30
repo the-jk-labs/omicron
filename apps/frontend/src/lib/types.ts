@@ -132,6 +132,11 @@ export type RelationActor = {
   remote: boolean;
 };
 
+// A "who to follow" suggestion — a local account plus a follower count for
+// social proof. Reuses the `RelationActor` shape so `/@${username}` links and
+// the Follow button work unchanged.
+export type SuggestedUser = RelationActor & { followerCount: number };
+
 // Site-search payload: matching stories, people and tags. People reuse the
 // `RelationActor` shape so `/@${username}` links resolve local or remote.
 export type SearchResults = {

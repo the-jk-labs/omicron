@@ -72,6 +72,7 @@
     Plus,
     ChartColumn,
     Eye,
+    TrendingUp,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -141,6 +142,7 @@
     library: Library,
     chart: ChartColumn,
     eye: Eye,
+    trending: TrendingUp,
     lock: Lock,
     plus: Plus,
   } as const;

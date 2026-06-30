@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { type ActorKeyPair, type NewUser, users } from "@/db/schema.ts";
+import { type ActorKeyPair, follows, type NewUser, users } from "@/db/schema.ts";
 
 // All user DB access lives here. Services/routes never touch `db` directly.
 
@@ -24,6 +24,36 @@ export function search(query: string, limit = 10) {
     .from(users)
     .where(or(ilike(users.username, term), ilike(users.displayName, term)))
     .orderBy(users.displayName)
+    .limit(limit);
+}
+
+// "Who to follow": local accounts ranked by follower count, newest as the
+// tie-break. Excludes the viewer and anyone they already follow so suggestions
+// stay actionable; for a signed-out viewer it's just the most-followed accounts.
+export function suggested(viewerId: string | null, limit = 5) {
+  const followerCount = sql<number>`count(${follows.followerId})::int`;
+  const exclude = viewerId
+    ? and(
+      ne(users.id, viewerId),
+      sql`${users.id} not in (
+        select followee_id from follows
+        where follower_id = ${viewerId} and followee_id is not null
+      )`,
+    )
+    : undefined;
+  return db
+    .select({
+      id: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      avatarUrl: users.avatarUrl,
+      followerCount,
+    })
+    .from(users)
+    .leftJoin(follows, eq(follows.followeeId, users.id))
+    .where(exclude)
+    .groupBy(users.id)
+    .orderBy(desc(followerCount), desc(users.createdAt))
     .limit(limit);
 }
 
