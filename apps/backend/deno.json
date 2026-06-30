@@ -20,8 +20,8 @@
     "drizzle-orm": "npm:drizzle-orm@0.45.2",
     "drizzle-kit": "npm:drizzle-kit@0.31.10",
     "postgres": "npm:postgres@^3.4",
-    "bcryptjs": "npm:bcryptjs@^2.4",
-    "zod": "npm:zod@^3.24",
+    "bcryptjs": "npm:bcryptjs@^3.0",
+    "zod": "npm:zod@^4.0",
     "@/": "./src/"
   },
   "nodeModulesDir": "auto",
