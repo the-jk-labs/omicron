@@ -34,6 +34,8 @@ export function makeApi(fetchFn: FetchFn = globalThis.fetch) {
       request<T>(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }, fetchFn),
     patch: <T>(path: string, body?: unknown) =>
       request<T>(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }, fetchFn),
+    put: <T>(path: string, body?: unknown) =>
+      request<T>(path, { method: "PUT", body: body ? JSON.stringify(body) : undefined }, fetchFn),
     del: <T>(path: string, body?: unknown) =>
       request<T>(path, { method: "DELETE", body: body ? JSON.stringify(body) : undefined }, fetchFn),
     // Raw binary POST (e.g. file uploads). The given content-type overrides the

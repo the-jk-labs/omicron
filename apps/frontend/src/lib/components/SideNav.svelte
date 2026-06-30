@@ -18,6 +18,7 @@
           { label: "Lists", href: "/lists", icon: "library" },
           { label: "Write", href: "/compose", icon: "compose" },
           { label: "Drafts", href: "/drafts", icon: "draft" },
+          { label: "Dashboard", href: "/dashboard", icon: "chart" },
         ]
       : [{ label: "Home", href: "/", icon: "home" }],
   );

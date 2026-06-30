@@ -4,10 +4,12 @@ import {
   type AnyPgColumn,
   boolean,
   customType,
+  date,
   index,
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -377,6 +379,46 @@ export const sessions = pgTable("sessions", {
   index("sessions_user_idx").on(t.userId),
 ]);
 
+// ── instance settings ──────────────────────────────────────────────────
+// Runtime, moderator-tunable instance config that cannot live in env (env is
+// fixed at boot). One row per key; `value` is JSON so a setting can be a bool,
+// number, or object. Typed accessors live in services/settings.ts. Used, e.g.,
+// for the analytics on-instance-views opt-out (see ANALYTICS.md).
+export const instanceSettings = pgTable("instance_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ── post views (aggregate, privacy-preserving) ─────────────────────────
+// One row per (post, day) holding a single integer: the number of *distinct*
+// readers that day (deduplicated via post_view_seen). A refresh never inflates
+// it. There is deliberately NO per-visit record, NO IP, NO identifier — a view
+// count can never be reversed into "who read this." Covers only pages served by
+// this instance; federated reads are invisible by design. See ANALYTICS.md.
+export const postViews = pgTable("post_views", {
+  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  day: date("day").notNull(),
+  views: integer("views").notNull().default(0),
+}, (t) => [
+  primaryKey({ columns: [t.postId, t.day] }),
+  index("post_views_post_idx").on(t.postId),
+]);
+
+// ── post view de-duplication (ephemeral) ───────────────────────────────
+// Makes a view count one reader once per day without storing who. A visitor is
+// reduced to hash(ip + user-agent + a daily-rotating, in-memory salt); only the
+// hash lands here, only to dedupe within the day. Past-day rows are pruned and
+// the salt is discarded each day (lib/analytics.ts), after which no hash can be
+// linked back to a visitor. See ANALYTICS.md.
+export const postViewSeen = pgTable("post_view_seen", {
+  day: date("day").notNull(),
+  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  visitorHash: text("visitor_hash").notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.day, t.postId, t.visitorHash] }),
+]);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Post = typeof posts.$inferSelect;
@@ -398,5 +440,7 @@ export type TagFollow = typeof tagFollows.$inferSelect;
 export type UserTag = typeof userTags.$inferSelect;
 export type RemoteActorTag = typeof remoteActorTags.$inferSelect;
 export type ReadingList = typeof readingLists.$inferSelect;
+export type InstanceSetting = typeof instanceSettings.$inferSelect;
+export type PostView = typeof postViews.$inferSelect;
 export type NewReadingList = typeof readingLists.$inferInsert;
 export type ReadingListItem = typeof readingListItems.$inferSelect;

@@ -139,3 +139,37 @@ export type SearchResults = {
   people: RelationActor[];
   tags: TagWithCount[];
 };
+
+// ── writer dashboard (analytics) ──
+// Per-post aggregate stats. `views` counts one distinct reader per day (a
+// refresh never inflates it) and is 0 when on-instance view counting is disabled
+// for the instance (see `DashboardSummary.onInstanceViews`).
+export type PostStat = {
+  postId: string;
+  title: string | null;
+  createdAt: string;
+  views: number;
+  likes: number;
+  comments: number;
+};
+
+// One day's summed view total, for the views-over-time chart.
+export type DayTotals = { day: string; views: number };
+
+// The signed-in author's own analytics. `onInstanceViews` is false when a
+// moderator has disabled view counting for the instance, in which case the UI
+// hides the views panels and shows only fediverse engagement. See ANALYTICS.md.
+export type DashboardSummary = {
+  onInstanceViews: boolean;
+  totals: {
+    views: number;
+    likes: number;
+    comments: number;
+    followers: number;
+  };
+  series: DayTotals[];
+  posts: PostStat[];
+};
+
+// Moderator-tunable instance settings (admin only).
+export type InstanceSettings = { onInstanceViews: boolean };

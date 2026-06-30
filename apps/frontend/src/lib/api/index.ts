@@ -2,6 +2,8 @@
 import { makeApi } from "./client";
 import type {
   Comment,
+  DashboardSummary,
+  InstanceSettings,
   Page,
   Post,
   Profile,
@@ -33,6 +35,13 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.post<{ user: User }>("/auth/login", body),
     logout: () => api.post<{ ok: true }>("/auth/logout"),
     deleteAccount: (password: string) => api.del<{ ok: true }>("/auth/me", { password }),
+
+    // writer dashboard (own analytics) + moderator instance settings
+    dashboard: (days?: number) =>
+      api.get<DashboardSummary>(`/dashboard${days ? `?days=${days}` : ""}`),
+    adminSettings: () => api.get<InstanceSettings>("/admin/settings"),
+    setAnalytics: (onInstanceViews: boolean) =>
+      api.put<InstanceSettings>("/admin/settings/analytics", { onInstanceViews }),
 
     // search
     search: (query: string, scope?: "posts" | "people" | "tags") =>

@@ -70,6 +70,8 @@
     Library,
     Lock,
     Plus,
+    ChartColumn,
+    Eye,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -137,6 +139,8 @@
     bookmarkPlus: BookmarkPlus,
     bookmarkCheck: BookmarkCheck,
     library: Library,
+    chart: ChartColumn,
+    eye: Eye,
     lock: Lock,
     plus: Plus,
   } as const;

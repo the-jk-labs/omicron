@@ -5,6 +5,7 @@ import * as likesService from "@/services/likes.ts";
 import * as commentsService from "@/services/comments.ts";
 import * as commentLikesService from "@/services/commentLikes.ts";
 import { enrichPost, enrichPosts } from "@/services/engagement.ts";
+import * as analyticsService from "@/services/analytics.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import { barePost, commentView } from "@/routes/serializers.ts";
@@ -44,6 +45,14 @@ postRoutes.get("/drafts", async (c) => {
 postRoutes.get("/:id", async (c) => {
   const viewer = c.get("user");
   const row = await postsService.getPost(c.req.param("id"), viewer?.id ?? null);
+
+  // Count an on-instance view of a local published post. Fire-and-forget and
+  // privacy-gated inside the service (DNT/GPC, bots, instance opt-out); it must
+  // never delay or fail serving the page. Drafts and remote posts are skipped.
+  if (row.post.authorId && row.post.status === "published") {
+    analyticsService.recordPostView(row.post.id, c.req.raw.headers).catch(() => {});
+  }
+
   return c.json({ post: await enrichPost(row, viewer?.id ?? null) });
 });
 

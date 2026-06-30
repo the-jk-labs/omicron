@@ -14,6 +14,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import ConnectionsManager from "$lib/components/ConnectionsManager.svelte";
   import FollowedTagsManager from "$lib/components/FollowedTagsManager.svelte";
+  import InstanceModeration from "$lib/components/InstanceModeration.svelte";
   import TagInput from "$lib/components/TagInput.svelte";
   import ProfileLinksEditor from "$lib/components/ProfileLinksEditor.svelte";
   import { identifierToUrl, platformMeta, urlToIdentifier } from "$lib/profileLinks";
@@ -439,6 +440,22 @@
       <ConnectionsManager />
     </div>
   </section>
+
+  {#if data.user.isAdmin}
+    <!-- Instance moderation (admins only). -->
+    <section class="rounded-card border border-border bg-background p-6">
+      <h2 class="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
+        <Icon name="admin" size={18} /> Instance moderation
+      </h2>
+      <p class="mt-1 text-sm text-muted-foreground">
+        Settings that apply to everyone on this instance.
+      </p>
+
+      <div class="mt-5">
+        <InstanceModeration />
+      </div>
+    </section>
+  {/if}
 
   <!-- Account -->
   <section class="rounded-card border border-border bg-background p-6">

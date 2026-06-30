@@ -19,6 +19,7 @@
     { label: "Lists", href: "/lists", icon: "library" },
     { label: "Write", href: "/compose", icon: "compose" },
     { label: "Drafts", href: "/drafts", icon: "draft" },
+    { label: "Stats", href: "/dashboard", icon: "chart" },
     { label: "Profile", href: `/@${user.username}`, icon: "user" },
     { label: "Settings", href: "/settings", icon: "settings" },
   ]);

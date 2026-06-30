@@ -235,6 +235,17 @@ export function listDraftsByAuthor(
     .limit(limit + 1);
 }
 
+// An author's published posts as lightweight (id, title, createdAt) rows — the
+// spine of the writer dashboard, which then attaches per-post engagement and
+// view stats. No pagination: an author's own catalogue, newest first.
+export function publishedBriefByAuthor(authorId: string) {
+  return db
+    .select({ id: posts.id, title: posts.title, createdAt: posts.createdAt })
+    .from(posts)
+    .where(and(eq(posts.authorId, authorId), eq(posts.status, "published")))
+    .orderBy(desc(posts.createdAt), desc(posts.id));
+}
+
 // All Article posts by a cached remote actor (their fetched outbox). Filtered
 // to "Article" so any microblog Notes cached before this instance went
 // long-form-only never surface on the actor's profile.
