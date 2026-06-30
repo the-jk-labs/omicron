@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
+    "@internationalized/date": "^3.12.2",
     "@lucide/svelte": "^1.22.0",
     "@tiptap/core": "^2.10.0",
     "@tiptap/extension-image": "^2.27.2",
@@ -34,7 +35,7 @@
     "@tiptap/extension-placeholder": "^2.27.2",
     "@tiptap/pm": "^2.10.0",
     "@tiptap/starter-kit": "^2.10.0",
-    "bits-ui": "^1.0.0",
+    "bits-ui": "^2.18.1",
     "compression": "^1.8.1",
     "emoji-picker-element": "^1.29.1",
     "tiptap-markdown": "^0.8.10"
