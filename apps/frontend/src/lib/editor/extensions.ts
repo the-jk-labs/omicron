@@ -14,6 +14,9 @@ import type { Extensions } from "@tiptap/core";
 export const extensions: Extensions = [
   StarterKit.configure({
     heading: { levels: [1, 2, 3, 4, 5, 6] },
+    // StarterKit v3 bundles Link, but we register our own below with custom
+    // attributes (rel/target, no open-on-click), so disable the built-in one.
+    link: false,
   }),
   Link.configure({
     openOnClick: false,

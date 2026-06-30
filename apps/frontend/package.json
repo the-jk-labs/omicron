@@ -22,22 +22,22 @@
     "svelte-check": "^4.0.0",
     "tailwindcss": "^3.4.15",
     "twemoji-colr-font": "^15.0.3",
-    "typescript": "^5.6.0",
+    "typescript": "^6.0.0",
     "vite": "^8.1.0"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
     "@internationalized/date": "^3.12.2",
     "@lucide/svelte": "^1.22.0",
-    "@tiptap/core": "^2.10.0",
-    "@tiptap/extension-image": "^2.27.2",
-    "@tiptap/extension-link": "^2.27.2",
-    "@tiptap/extension-placeholder": "^2.27.2",
-    "@tiptap/pm": "^2.10.0",
-    "@tiptap/starter-kit": "^2.10.0",
+    "@tiptap/core": "^3.0.0",
+    "@tiptap/extension-image": "^3.0.0",
+    "@tiptap/extension-link": "^3.0.0",
+    "@tiptap/extension-placeholder": "^3.0.0",
+    "@tiptap/pm": "^3.0.0",
+    "@tiptap/starter-kit": "^3.0.0",
     "bits-ui": "^2.18.1",
     "compression": "^1.8.1",
     "emoji-picker-element": "^1.29.1",
-    "tiptap-markdown": "^0.8.10"
+    "tiptap-markdown": "^0.9.0"
   }
 }
