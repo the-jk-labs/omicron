@@ -100,6 +100,16 @@
               <DropdownMenu.Item onSelect={() => goto("/drafts")} class={itemClass}>
                 <Icon name="draft" size={18} /> Drafts
               </DropdownMenu.Item>
+              <DropdownMenu.Item onSelect={() => goto("/lists")} class={itemClass}>
+                <Icon name="library" size={18} /> Lists
+              </DropdownMenu.Item>
+              <DropdownMenu.Separator class="bg-muted -mx-1 my-1 h-px" />
+              <DropdownMenu.Item onSelect={() => goto("/dashboard")} class={itemClass}>
+                <Icon name="chart" size={18} /> Stats
+              </DropdownMenu.Item>
+              <DropdownMenu.Item onSelect={() => goto("/settings")} class={itemClass}>
+                <Icon name="settings" size={18} /> Settings
+              </DropdownMenu.Item>
               <DropdownMenu.Separator class="bg-muted -mx-1 my-1 h-px" />
               <DropdownMenu.Item onSelect={logout} class={itemClass}>
                 <Icon name="logout" size={18} /> Sign out

@@ -1,8 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <!--
   Bottom tab bar shown only on small screens (below `lg`), where the left
-  SideNav rail is hidden. Mirrors the rail's destinations so navigation is
-  always reachable on phones. Signed-in only — guests navigate via the top bar.
+  SideNav rail is hidden. Carries just the few most-switched destinations to
+  stay uncrowded on phones; the rest (Drafts, Settings, …) live in the avatar
+  menu in the top bar. Signed-in only — guests navigate via the top bar.
 -->
 <script lang="ts">
   import { page } from "$app/state";
@@ -18,10 +19,8 @@
     { label: "Home", href: "/", icon: "home" },
     { label: "Lists", href: "/lists", icon: "library" },
     { label: "Write", href: "/compose", icon: "compose" },
-    { label: "Drafts", href: "/drafts", icon: "draft" },
     { label: "Stats", href: "/dashboard", icon: "chart" },
     { label: "Profile", href: `/@${user.username}`, icon: "user" },
-    { label: "Settings", href: "/settings", icon: "settings" },
   ]);
 
   function active(href: string): boolean {
