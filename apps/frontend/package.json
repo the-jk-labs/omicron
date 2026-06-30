@@ -14,7 +14,7 @@
   "devDependencies": {
     "@sveltejs/adapter-node": "^5.2.9",
     "@sveltejs/kit": "^2.8.0",
-    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "autoprefixer": "^10.4.20",
     "emoji-picker-element-data": "^1.8.0",
     "postcss": "^8.4.49",
@@ -23,7 +23,7 @@
     "tailwindcss": "^3.4.15",
     "twemoji-colr-font": "^15.0.3",
     "typescript": "^5.6.0",
-    "vite": "^5.4.0"
+    "vite": "^8.1.0"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
