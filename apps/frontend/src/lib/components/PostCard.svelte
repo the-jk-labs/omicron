@@ -22,10 +22,15 @@
 
 <article class="py-5">
   <div class="mb-3 flex items-center gap-2 text-sm text-foreground-alt">
-    <Button href={`/@${post.author.username}`} variant="plain" class="flex items-center gap-2 hover:opacity-80">
+    <Button href={`/@${post.author.username}`} variant="plain" class="flex min-w-0 items-center gap-2 hover:opacity-80">
       <Avatar name={post.author.displayName} src={post.author.avatarUrl ?? undefined} size={24} />
-      <span class="font-medium text-foreground">{post.author.displayName}</span>
+      <span class="truncate font-medium text-foreground">{post.author.displayName}</span>
     </Button>
+    {#if post.remote && originInstance}
+      <span class="flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+        <Icon name="globe" size={12} /> {originInstance}
+      </span>
+    {/if}
   </div>
 
   <Button href={postPath(post)} variant="plain" class="group block w-full text-left">
@@ -43,16 +48,13 @@
     <TagList tags={post.tags} class="mt-3" />
   {/if}
 
-  <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
-    <span>{formatDate(post.createdAt)}</span>
-    <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
-    <span class="flex items-center gap-1"><Icon name="heart" size={13} /> {post.likeCount}</span>
-    <span class="flex items-center gap-1"><Icon name="comment" size={13} /> {post.commentCount}</span>
-    {#if post.remote && originInstance}
-      <span class="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
-        <Icon name="globe" size={12} /> {originInstance}
-      </span>
-    {/if}
-    <span class="ml-auto"><SaveToListButton postId={post.id} {signedIn} /></span>
+  <div class="mt-4 flex items-center gap-3">
+    <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
+      <span>{formatDate(post.createdAt)}</span>
+      <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
+      <span class="flex items-center gap-1"><Icon name="heart" size={13} /> {post.likeCount}</span>
+      <span class="flex items-center gap-1"><Icon name="comment" size={13} /> {post.commentCount}</span>
+    </div>
+    <span class="ml-auto shrink-0"><SaveToListButton postId={post.id} {signedIn} /></span>
   </div>
 </article>
