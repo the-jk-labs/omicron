@@ -50,18 +50,23 @@
     link: false,
   });
 
-  function refreshActive() {
-    headingLevel = HEADING_LEVELS.find((level) => editor.isActive("heading", { level })) ?? 0;
+  // Tiptap v3 emits the first `onTransaction` synchronously *inside* the
+  // `new Editor(...)` call — before the `editor` variable below is assigned — so
+  // refreshActive must read the instance the callback hands it, not the
+  // (still-undefined) module variable. Falls back to `editor` for the manual
+  // call after construction.
+  function refreshActive(ed: Editor = editor) {
+    headingLevel = HEADING_LEVELS.find((level) => ed.isActive("heading", { level })) ?? 0;
     active = {
-      bold: editor.isActive("bold"),
-      italic: editor.isActive("italic"),
-      strike: editor.isActive("strike"),
-      code: editor.isActive("code"),
-      list: editor.isActive("bulletList"),
-      orderedList: editor.isActive("orderedList"),
-      quote: editor.isActive("blockquote"),
-      codeBlock: editor.isActive("codeBlock"),
-      link: editor.isActive("link"),
+      bold: ed.isActive("bold"),
+      italic: ed.isActive("italic"),
+      strike: ed.isActive("strike"),
+      code: ed.isActive("code"),
+      list: ed.isActive("bulletList"),
+      orderedList: ed.isActive("orderedList"),
+      quote: ed.isActive("blockquote"),
+      codeBlock: ed.isActive("codeBlock"),
+      link: ed.isActive("link"),
     };
   }
 
@@ -156,7 +161,7 @@
       content,
       editorProps: { attributes: { class: "tiptap prose-omicron" } },
       onUpdate: ({ editor }) => onUpdate(editor.getHTML(), editor.getJSON()),
-      onTransaction: refreshActive,
+      onTransaction: ({ editor }) => refreshActive(editor),
     });
     refreshActive();
   });
