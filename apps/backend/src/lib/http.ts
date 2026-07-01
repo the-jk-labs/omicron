@@ -14,6 +14,7 @@ export const unauthorized = (msg = "Unauthorized") => new HttpError(401, msg);
 export const forbidden = (msg = "Forbidden") => new HttpError(403, msg);
 export const notFound = (msg = "Not found") => new HttpError(404, msg);
 export const conflict = (msg: string) => new HttpError(409, msg);
+export const tooManyRequests = (msg = "Too many requests.") => new HttpError(429, msg);
 
 // Centralized error → JSON response mapping (wired in app.ts via onError).
 export function handleError(err: Error, c: Context): Response {

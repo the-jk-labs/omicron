@@ -16,6 +16,7 @@
     "hono/logger": "jsr:@hono/hono@4.12.27/logger",
     "hono/cookie": "jsr:@hono/hono@4.12.27/cookie",
     "hono/factory": "jsr:@hono/hono@4.12.27/factory",
+    "hono/deno": "jsr:@hono/hono@4.12.27/deno",
     "@fedify/fedify": "jsr:@fedify/fedify@2.3.1",
     "@fedify/fedify/vocab": "jsr:@fedify/fedify@2.3.1/vocab",
     "drizzle-orm": "npm:drizzle-orm@0.45.2",

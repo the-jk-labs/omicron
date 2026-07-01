@@ -33,12 +33,17 @@ or local user can inject executing scripts.
 
 ### 2. Rate limiting
 
-- [ ] Rate-limit auth endpoints (login, register) — per IP + per account.
-- [ ] Rate-limit posting and other write endpoints.
-- [ ] Rate-limit / size-cap the federation inbox.
-- [ ] Choose store: in-process token bucket now, Redis-swappable later (mirror
-      the queue abstraction pattern).
-- Files: `routes/middleware.ts`, `routes/auth.ts`, `federation/mod.ts`.
+- [x] Fixed-window limiter with per-request key (`lib/rateLimit.ts`), in-process
+      Map now, hidden behind `hit()` for a Redis swap later (queue-style).
+- [x] Rate-limit auth endpoints — per-IP login (15 / 15 min) and register
+      (5 / hr) limiters in `routes/auth.ts`.
+- [x] Rate-limit API writes — broad backstop on all non-GET `/api/*`
+      (120 / min per user, or per IP if anonymous) in `app.ts`.
+- [x] Rate-limit the federation inbox — per source-IP POST cap (300 / min).
+- [x] Real client IP: SvelteKit proxy now forwards `x-forwarded-for`; backend
+      `clientIp()` falls back to the connection address for direct traffic.
+- [ ] Follow-up: size-cap the inbox body (belongs with P1 item 7, robustness).
+- [ ] Follow-up: make limits env-configurable (currently sensible constants).
 
 ### 3. Account recovery & email
 

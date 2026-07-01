@@ -9,12 +9,24 @@ import type { RequestHandler } from "./$types";
 
 const BACKEND = env.INTERNAL_API_URL ?? "http://localhost:8000";
 
-const proxy: RequestHandler = async ({ request, params, url }) => {
+const proxy: RequestHandler = async ({ request, params, url, getClientAddress }) => {
   const target = `${BACKEND}/api/${params.path}${url.search}`;
 
   const headers = new Headers(request.headers);
   headers.delete("host");
   headers.delete("connection");
+
+  // The browser talks only to this proxy, so the backend would otherwise see the
+  // proxy's address for every request. Forward the real client IP so backend
+  // per-IP rate limiting works. Set (not append) it: clients can't be trusted to
+  // supply their own x-forwarded-for.
+  try {
+    headers.set("x-forwarded-for", getClientAddress());
+  } catch {
+    // getClientAddress throws when no adapter address is available (e.g. some
+    // dev/test contexts); the backend falls back to the connection address.
+    headers.delete("x-forwarded-for");
+  }
 
   const init: RequestInit = { method: request.method, headers };
   if (!["GET", "HEAD"].includes(request.method)) {

@@ -110,7 +110,7 @@
       <!-- Right rail: discovery (home feed and profile pages only) -->
       <div class={showDiscover ? "hidden xl:block" : "hidden"}>
         <div class="sticky top-24">
-          <Discover />
+          <Discover data={data.discover} />
         </div>
       </div>
     </div>

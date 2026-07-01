@@ -1,9 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { onMount } from "svelte";
   import { page } from "$app/state";
   import { env } from "$env/dynamic/public";
-  import { endpoints } from "$lib/api";
   import { postPath } from "$lib/links";
   import Icon from "$lib/components/Icon.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
@@ -12,46 +10,22 @@
   import type { Post, SuggestedUser, TagWithCount } from "$lib/types";
 
   // Discovery rail: what's worth reading and who's worth following right now.
-  // Three independent lists (trending posts, who to follow, topics) fetched in
-  // parallel on mount; each renders only when it has something to show, so the
-  // rail never displays an empty section.
+  // The three lists (trending posts, who to follow, topics) are fetched
+  // server-side in +layout.server.ts and passed in here, so the rail is present
+  // in the initial SSR HTML rather than popping in after client hydration. Each
+  // section renders only when it has something to show.
+  type Discover = { posts: Post[]; people: SuggestedUser[]; tags: TagWithCount[] };
+  let { data = null }: { data?: Discover | null } = $props();
+
   const appName = env.PUBLIC_APP_NAME || "Omicron";
   const signedIn = $derived(!!page.data.user);
 
-  let posts = $state<Post[]>([]);
-  let people = $state<SuggestedUser[]>([]);
-  let tags = $state<TagWithCount[]>([]);
-  let loading = $state(true);
-
-  onMount(async () => {
-    const api = endpoints();
-    // Each list is independent — a failure in one must not blank the others.
-    const [p, u, t] = await Promise.allSettled([
-      api.trendingPosts(),
-      api.suggestedUsers(),
-      api.trendingTags(),
-    ]);
-    if (p.status === "fulfilled") posts = p.value.items;
-    if (u.status === "fulfilled") people = u.value.items;
-    if (t.status === "fulfilled") tags = t.value.tags.slice(0, 8);
-    loading = false;
-  });
+  const posts = $derived(data?.posts ?? []);
+  const people = $derived(data?.people ?? []);
+  const tags = $derived(data?.tags ?? []);
 </script>
 
 <aside class="flex flex-col gap-6 text-sm">
-  {#if loading}
-    <!-- Skeleton while the three lists load, sized to the trending list so the
-         rail doesn't jump when content arrives. -->
-    <div class="space-y-3">
-      <div class="bg-muted h-4 w-24 rounded-9px"></div>
-      {#each Array(3) as _}
-        <div class="space-y-1.5">
-          <div class="bg-muted h-3 w-full rounded-9px"></div>
-          <div class="bg-muted h-3 w-2/3 rounded-9px"></div>
-        </div>
-      {/each}
-    </div>
-  {:else}
     {#if posts.length}
       <section>
         <h2 class="text-foreground mb-3 flex items-center gap-2 text-base font-semibold">
@@ -136,7 +110,6 @@
         </div>
       </section>
     {/if}
-  {/if}
 
   <p class="text-muted-foreground border-border border-t pt-4 text-xs">
     © {new Date().getFullYear()} {appName} · Federated blogging
