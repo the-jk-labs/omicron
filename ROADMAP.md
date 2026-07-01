@@ -42,8 +42,11 @@ or local user can inject executing scripts.
 - [x] Rate-limit the federation inbox — per source-IP POST cap (300 / min).
 - [x] Real client IP: SvelteKit proxy now forwards `x-forwarded-for`; backend
       `clientIp()` falls back to the connection address for direct traffic.
-- [ ] Follow-up: size-cap the inbox body (belongs with P1 item 7, robustness).
-- [ ] Follow-up: make limits env-configurable (currently sensible constants).
+- [x] Size-cap the inbox body — reject POSTs over `INBOX_MAX_BODY_BYTES`
+      (default 1 MB) by declared content-length, before Fedify parses (413).
+- [x] Env-configurable limits — `RATE_LIMIT_ENABLED` plus `RL_LOGIN_MAX`,
+      `RL_REGISTER_MAX`, `RL_API_WRITE_MAX`, `RL_INBOX_MAX`, `INBOX_MAX_BODY_BYTES`
+      in `config.ts` and documented in `.env.example`.
 
 ### 3. Account recovery & email
 

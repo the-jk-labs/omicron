@@ -12,6 +12,7 @@
 import { createMiddleware } from "hono/factory";
 import { getConnInfo } from "hono/deno";
 import type { Context } from "hono";
+import { config } from "@/config.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 type Bucket = { count: number; resetAt: number };
@@ -85,6 +86,7 @@ export function checkRateLimit(
   c: Context,
   opts: RateLimitOptions,
 ): { allowed: boolean; retryAfter: number } {
+  if (!config.RATE_LIMIT_ENABLED) return { allowed: true, retryAfter: 0 };
   const keyOf = opts.key ?? clientIp;
   const { allowed, resetAt } = hit(`${opts.name}:${keyOf(c)}`, opts.windowMs, opts.max);
   return { allowed, retryAfter: Math.max(0, Math.ceil((resetAt - Date.now()) / 1000)) };
@@ -99,6 +101,7 @@ export function rateLimit(opts: RateLimitOptions) {
   const { windowMs, max, name } = opts;
   const keyOf = opts.key ?? clientIp;
   return createMiddleware<AppEnv>(async (c, next) => {
+    if (!config.RATE_LIMIT_ENABLED) return await next();
     const key = `${name}:${keyOf(c)}`;
     const { allowed, remaining, resetAt } = hit(key, windowMs, max);
     const resetSecs = Math.max(0, Math.ceil((resetAt - Date.now()) / 1000));

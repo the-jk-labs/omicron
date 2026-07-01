@@ -16,8 +16,16 @@ export const authRoutes = new Hono<AppEnv>();
 
 // Per-IP throttles on the credential surface. Login is capped to blunt password
 // brute-forcing; registration is capped harder to slow automated sign-up spam.
-const loginLimiter = rateLimit({ name: "auth-login", windowMs: 15 * 60_000, max: 15 });
-const registerLimiter = rateLimit({ name: "auth-register", windowMs: 60 * 60_000, max: 5 });
+const loginLimiter = rateLimit({
+  name: "auth-login",
+  windowMs: 15 * 60_000,
+  max: config.RL_LOGIN_MAX,
+});
+const registerLimiter = rateLimit({
+  name: "auth-register",
+  windowMs: 60 * 60_000,
+  max: config.RL_REGISTER_MAX,
+});
 
 const cookieOpts = {
   httpOnly: true,

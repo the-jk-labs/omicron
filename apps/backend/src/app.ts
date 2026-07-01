@@ -18,7 +18,7 @@ const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const apiWriteLimiter = rateLimit({
   name: "api-write",
   windowMs: 60_000,
-  max: 120,
+  max: config.RL_API_WRITE_MAX,
   key: (c) => {
     const user = c.get("user");
     return user ? `u:${user.id}` : `ip:${clientIp(c)}`;
@@ -28,7 +28,7 @@ const apiWriteLimiter = rateLimit({
 // The federation inbox accepts unauthenticated POSTs from arbitrary instances;
 // cap per source IP so a hostile peer can't flood it. Generous, since a busy
 // instance legitimately delivers many activities.
-const INBOX_LIMIT = { name: "inbox", windowMs: 60_000, max: 300 };
+const INBOX_LIMIT = { name: "inbox", windowMs: 60_000, max: config.RL_INBOX_MAX };
 
 // Builds the fully-composed Hono app. Federation is mounted only when enabled,
 // keeping the standalone blog free of any ActivityPub code paths.
@@ -52,6 +52,13 @@ export async function buildApp() {
         // Throttle inbound activity delivery (POST); GET dispatchers (actor,
         // WebFinger, outbox) are cheap reads and left unthrottled here.
         if (c.req.method === "POST") {
+          // Reject oversized payloads up front by their declared length, before
+          // Fedify reads/parses the body. (A missing/chunked length can't be
+          // cheaply checked here; the rate limit still bounds overall volume.)
+          const declaredLen = Number(c.req.header("content-length"));
+          if (Number.isFinite(declaredLen) && declaredLen > config.INBOX_MAX_BODY_BYTES) {
+            return new Response("Payload Too Large", { status: 413 });
+          }
           const { allowed, retryAfter } = checkRateLimit(c, INBOX_LIMIT);
           if (!allowed) {
             return new Response("Too Many Requests", {
