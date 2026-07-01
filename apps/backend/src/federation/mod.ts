@@ -33,6 +33,7 @@ import { cacheActor } from "@/federation/remote.ts";
 import { origin } from "@/config.ts";
 import { normalizeTags } from "@/lib/tags.ts";
 import { escapeHtml } from "@/lib/html.ts";
+import { sanitizePostHtml } from "@/lib/sanitize.ts";
 import { linkDisplayText, linkLabel } from "@/lib/profileLinks.ts";
 
 // ── ActivityPub wiring (isolated) ────────────────────────────────────────
@@ -248,7 +249,9 @@ function setupInbox(f: Federation<ContextData>) {
         remoteActorId: actor.id,
         apId: object.id.href,
         title: object.name?.toString() ?? null,
-        contentHtml: object.content?.toString() ?? "",
+        // Remote HTML is untrusted and rendered with {@html} by the reader —
+        // sanitize before it ever touches the database.
+        contentHtml: sanitizePostHtml(object.content?.toString()),
         apType: "Article",
         createdAt: object.published ? new Date(object.published.epochMilliseconds) : undefined,
       });

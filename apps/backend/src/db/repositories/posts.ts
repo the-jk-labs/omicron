@@ -107,6 +107,15 @@ export function listAllLocal() {
     .where(eq(posts.remote, false));
 }
 
+// Every post (id + raw HTML), local AND remote. Used by the sanitizer backfill:
+// unlike listAllLocal, cached remote bodies are included because they are the
+// untrusted content that most needs re-sanitizing.
+export function listAllContent() {
+  return db
+    .select({ id: posts.id, contentHtml: posts.contentHtml })
+    .from(posts);
+}
+
 export async function remove(id: string) {
   await db.delete(posts).where(eq(posts.id, id));
 }

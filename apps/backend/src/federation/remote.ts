@@ -8,6 +8,7 @@ import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import { normalizeTags } from "@/lib/tags.ts";
+import { sanitizePostHtml } from "@/lib/sanitize.ts";
 import type { RemoteActor } from "@/db/schema.ts";
 
 // Resolving and caching remote fediverse actors + their posts. This is the
@@ -108,7 +109,9 @@ export async function fetchOutboxPosts(handle: string, remoteActorId: string): P
         remoteActorId,
         apId: obj.id.href,
         title: obj.name ? text(obj.name) : null,
-        contentHtml: text(obj.content),
+        // Untrusted remote HTML, rendered with {@html} by the reader — sanitize
+        // before store (same as the inbox Create path).
+        contentHtml: sanitizePostHtml(text(obj.content)),
         apType: "Article",
         createdAt: obj.published ? new Date(obj.published.epochMilliseconds) : undefined,
       });

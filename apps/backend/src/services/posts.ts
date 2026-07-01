@@ -4,6 +4,7 @@ import * as tagsRepo from "@/db/repositories/tags.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import { MAX_TAGS_PER_POST, normalizeTags } from "@/lib/tags.ts";
+import { sanitizePostHtml } from "@/lib/sanitize.ts";
 import { queue } from "@/queue/queue.ts";
 
 // Business logic for posts. Creating a local post enqueues federation delivery.
@@ -26,7 +27,10 @@ export async function createPost(authorId: string, input: {
 }) {
   const status = input.status === "draft" ? "draft" : "published";
 
-  const html = input.contentHtml?.trim();
+  // Author HTML is rendered with {@html} by the reader — sanitize before store.
+  // Sanitizing first means a body of only disallowed markup collapses to empty
+  // and is correctly rejected below.
+  const html = sanitizePostHtml(input.contentHtml).trim();
   if (!html) throw badRequest("Post content cannot be empty.");
 
   // A title is required to publish; drafts may be saved untitled (work in progress).
@@ -88,7 +92,11 @@ export async function updatePost(authorId: string, id: string, input: {
     ? "draft"
     : "published";
 
-  const html = input.contentHtml?.trim();
+  // Only sanitize when new content is supplied; an omitted field leaves the
+  // existing (already-sanitized) body untouched.
+  const html = input.contentHtml !== undefined
+    ? sanitizePostHtml(input.contentHtml).trim()
+    : undefined;
   if (input.contentHtml !== undefined && !html) throw badRequest("Post content cannot be empty.");
 
   const title = input.title?.trim();

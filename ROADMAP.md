@@ -18,15 +18,18 @@ Nothing ships publicly until this tier is clear.
 Remote Articles are stored raw and rendered with `{@html}`, so any remote actor
 or local user can inject executing scripts.
 
-- [ ] Add a server-side allowlist sanitizer (tags, attributes, URL schemes).
-- [ ] Sanitize remote content on ingest — `federation/mod.ts` `Create` handler
-      (`upsertRemotePost`).
-- [ ] Sanitize local content on write — post create/update in `services/posts.ts`.
-- [ ] Confirm `{@html post.contentHtml}` in the post page only ever receives
-      sanitized HTML; treat `contentHtml` as trusted-only downstream.
-- [ ] Backfill: re-sanitize existing rows in a migration.
-- Files: `apps/backend/src/lib/html.ts`, `federation/mod.ts:236`,
-  `services/posts.ts`, `routes/[handle]/[slug]/+page.svelte:174`.
+- [x] Add a server-side allowlist sanitizer (tags, attributes, URL schemes).
+      → `lib/sanitize.ts` (uses `sanitize-html`).
+- [x] Sanitize remote content on ingest — inbox `Create` handler
+      (`federation/mod.ts`) AND the browse-time outbox fetch (`federation/remote.ts`).
+- [x] Sanitize local content on write — post create/update in `services/posts.ts`.
+- [x] Confirm `{@html post.contentHtml}` only ever receives sanitized HTML —
+      all four write paths now sanitize before store, so `contentHtml` is
+      trusted downstream.
+- [x] Backfill existing rows — `scripts/backfill_sanitize.ts`
+      (`deno task backfill:sanitize`), covers local + remote.
+- Note: backfill is a JS script, not a SQL migration — HTML sanitization can't
+  run in SQL. Run it once per instance during upgrade.
 
 ### 2. Rate limiting
 

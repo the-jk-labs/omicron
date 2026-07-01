@@ -6,6 +6,7 @@
     "db:generate": "deno run -A npm:drizzle-kit@^0.31 generate",
     "db:studio": "deno run -A npm:drizzle-kit@^0.31 studio",
     "backfill:markdown": "deno run -A scripts/backfill_markdown.ts",
+    "backfill:sanitize": "deno run -A scripts/backfill_sanitize.ts",
     "check": "deno check src/main.ts",
     "fmt": "deno fmt",
     "lint": "deno lint"
@@ -21,6 +22,7 @@
     "drizzle-kit": "npm:drizzle-kit@0.31.10",
     "postgres": "npm:postgres@^3.4",
     "bcryptjs": "npm:bcryptjs@^3.0",
+    "sanitize-html": "npm:sanitize-html@2.14.0",
     "zod": "npm:zod@^4.0",
     "@/": "./src/"
   },
