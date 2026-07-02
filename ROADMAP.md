@@ -105,10 +105,16 @@ Ship-soon; wrong behaviour here degrades trust across the network.
 Remote edits and deletes are currently ignored, leaving stale/deleted copies
 (also a right-to-delete / GDPR concern).
 
-- [ ] Handle `Update(Article)` — re-sanitize and update the cached post.
-- [ ] Handle `Delete` — remove the cached post / tombstone it.
-- [ ] Handle `Delete(Actor)` — purge a remote actor and their cached posts.
-- Files: `federation/mod.ts` inbox listeners.
+- [x] Handle `Update(Article)` — re-sanitize and update the cached post in place.
+      Ownership-checked (the editor must be the post's cached author); tags
+      refreshed. Only Articles we already cache are touched.
+- [x] Handle `Delete` — remove the cached post by its ActivityPub id (ownership
+      checked so one actor can't delete another's post).
+- [x] Handle `Delete(Actor)` — when the deleted object is the sender itself,
+      purge the cached remote actor; their posts, follow edges, etc. cascade.
+- Files: `federation/mod.ts` inbox listeners (`Update`/`Delete`),
+  `db/repositories/{posts,remoteActors}.ts` (`removeByApId`). All inbound
+  handlers also drop activities from defederated domains (see P0 #4).
 
 ### 6. Outbound Update / Delete
 

@@ -11,6 +11,7 @@ import {
   Accept,
   Article,
   Create,
+  Delete,
   Endpoints,
   Follow,
   Hashtag,
@@ -20,6 +21,7 @@ import {
   PropertyValue,
   PUBLIC_COLLECTION,
   Undo,
+  Update,
 } from "@fedify/fedify/vocab";
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
@@ -278,6 +280,51 @@ function setupInbox(f: Federation<ContextData>) {
         if (tag instanceof Hashtag && tag.name) tagNames.push(tag.name.toString());
       }
       await tagsRepo.setPostTags(post.id, normalizeTags(tagNames));
+    })
+    .on(Update, async (ctx, update) => {
+      if (await fromBlockedDomain(update.actorId)) return;
+      // A remote author edited one of their Articles. Re-sanitize and update the
+      // cached copy in place. Only Articles we already cache are touched.
+      const object = await update.getObject(ctx);
+      if (!(object instanceof Article) || !object.id || !update.actorId) return;
+      const existing = await postsRepo.findByApId(object.id.href);
+      if (!existing) return;
+      // Ownership: the editor must be the post's cached author, so one actor
+      // can't rewrite another's content.
+      const actor = await remoteActorsRepo.findByApId(update.actorId.href);
+      if (!actor || actor.id !== existing.remoteActorId) return;
+
+      await postsRepo.update(existing.id, {
+        title: object.name?.toString() ?? null,
+        // Remote HTML is untrusted and rendered with {@html} — sanitize on edit
+        // exactly as on create.
+        contentHtml: sanitizePostHtml(object.content?.toString()),
+      });
+
+      const tagNames: string[] = [];
+      for await (const tag of object.getTags(ctx)) {
+        if (tag instanceof Hashtag && tag.name) tagNames.push(tag.name.toString());
+      }
+      await tagsRepo.setPostTags(existing.id, normalizeTags(tagNames));
+    })
+    .on(Delete, async (ctx, del) => {
+      if (await fromBlockedDomain(del.actorId)) return;
+      const objectId = del.objectId?.href;
+      if (!objectId || !del.actorId) return;
+
+      // Delete(Actor): an account deleting itself sends its own id as the object.
+      // Purge the cached actor; their posts, follow edges, etc. cascade away.
+      if (objectId === del.actorId.href) {
+        await remoteActorsRepo.removeByApId(objectId);
+        return;
+      }
+
+      // Delete(post): drop the cached copy, but only when the deleter owns it.
+      const post = await postsRepo.findByApId(objectId);
+      if (!post) return;
+      const actor = await remoteActorsRepo.findByApId(del.actorId.href);
+      if (!actor || actor.id !== post.remoteActorId) return;
+      await postsRepo.removeByApId(objectId);
     });
 }
 

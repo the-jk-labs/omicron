@@ -120,6 +120,12 @@ export async function remove(id: string) {
   await db.delete(posts).where(eq(posts.id, id));
 }
 
+// Removes a cached remote post by its ActivityPub id. Used by the inbound
+// Delete handler when a remote author deletes (tombstones) one of their posts.
+export async function removeByApId(apId: string) {
+  await db.delete(posts).where(eq(posts.apId, apId));
+}
+
 // Keyset condition: rows strictly "before" the cursor in (created_at, id) order.
 function beforeCursor(cursor: Cursor | null) {
   if (!cursor) return undefined;

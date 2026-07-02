@@ -30,6 +30,17 @@ export function findByApId(apId: string) {
   return db.query.remoteActors.findFirst({ where: eq(remoteActors.apId, apId) });
 }
 
+// Removes a cached actor by its ActivityPub id (their posts, follow edges, etc.
+// cascade via FKs). Used by the inbound Delete(Actor) handler. Returns whether a
+// row was removed.
+export async function removeByApId(apId: string): Promise<boolean> {
+  const rows = await db
+    .delete(remoteActors)
+    .where(eq(remoteActors.apId, apId))
+    .returning({ id: remoteActors.id });
+  return rows.length > 0;
+}
+
 // Purges every cached actor on a domain and its subdomains (their posts, follow
 // edges, etc. cascade via FKs). Used when defederating a domain so its content
 // stops surfacing here. Returns the number of actors removed.
