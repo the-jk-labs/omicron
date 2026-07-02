@@ -5,6 +5,8 @@ import type {
   BlockedDomain,
   Comment,
   DashboardSummary,
+  EmailInput,
+  EmailSettings,
   InstanceInfo,
   InstanceSettings,
   Page,
@@ -38,10 +40,13 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       body: {
         appName: string;
         appDomain?: string;
-        emailMode?: "console" | "smtp";
+        email?: EmailInput;
         admin: { username: string; email: string; password: string; displayName?: string };
       },
     ) => api.post<{ user: User }>("/setup", body),
+    // Send a wizard test email with not-yet-saved details (open pre-setup).
+    testSetupEmail: (body: { to: string; email?: EmailInput }) =>
+      api.post<{ ok: true }>("/setup/test-email", body),
 
     // auth
     me: () => api.get<{ user: User | null }>("/auth/me"),
@@ -67,6 +72,11 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     adminSettings: () => api.get<InstanceSettings>("/admin/settings"),
     setAnalytics: (onInstanceViews: boolean) =>
       api.put<InstanceSettings>("/admin/settings/analytics", { onInstanceViews }),
+
+    // admin email settings (runtime-configurable delivery)
+    adminEmail: () => api.get<EmailSettings>("/admin/email"),
+    setAdminEmail: (body: EmailInput) => api.put<EmailSettings>("/admin/email", body),
+    testAdminEmail: (to: string) => api.post<{ ok: true }>("/admin/email/test", { to }),
 
     // admin moderation
     adminUsers: (q?: string) =>

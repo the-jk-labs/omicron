@@ -1,3 +1,8 @@
+
+
+
+
+
 # Omicron — single-command self-hostable federated blog.
 #   docker compose up -d --build      (no .env editing required)
 #

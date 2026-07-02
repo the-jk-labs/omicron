@@ -192,6 +192,32 @@ export type InstanceInfo = {
   setupComplete: boolean;
 };
 
+// Web-managed email settings. `EmailInput` is what the wizard/admin form sends
+// (all fields optional; a blank password means "leave unchanged"); the backend
+// never echoes the password back, so `EmailSettings` reports `hasPassword`.
+export type EmailInput = {
+  mode?: "console" | "smtp";
+  from?: string;
+  smtp?: {
+    host?: string;
+    port?: number;
+    username?: string;
+    password?: string;
+    tls?: boolean;
+  };
+};
+export type EmailSettings = {
+  mode: "console" | "smtp";
+  from: string;
+  smtp: {
+    host?: string;
+    port: number;
+    username?: string;
+    tls: boolean;
+    hasPassword: boolean;
+  };
+};
+
 // ── moderation (admin only) ──
 // A row in the admin user table. Exposes the moderation-relevant private fields
 // (login email, verification + suspension state) — admin surfaces only.

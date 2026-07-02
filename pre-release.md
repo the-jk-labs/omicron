@@ -112,17 +112,32 @@ Goal: `noreply@domain` mail works with the least possible friction.
 > port 25, which most hosts block and fresh IPs get spam-filtered on. So "just
 > works" means one of the two paths below, chosen in the wizard.
 
-- [ ] **Path A — relay API key (easiest).** Operator pastes one API key
-      (e.g. a transactional provider); mail just works, no DNS. One third-party
-      dependency, no lock-in beyond swapping the key.
-- [ ] **Path B — self-host SMTP + guided DNS.** Bundle a lightweight sender; the
-      wizard/admin page **generates the exact SPF/DKIM/DMARC records to paste**
-      and **verifies them live** before declaring email healthy. Free, fully
-      self-hosted, at the cost of pasting three DNS records.
-- [ ] **Wizard email step** picks a path and validates it (send a test message /
-      poll DNS) so the operator never edits `SMTP_*` by hand.
-- Builds on the existing `services/email.ts` transport abstraction (console /
-  smtp already pluggable).
+- [x] **Web-managed email, zero env editing.** Email is fully configured from
+      the wizard/admin page and stored in `instance_settings`
+      (`services/emailSettings.ts`, DB → env → default precedence). The transport
+      is resolved **per-send** from that config (`services/email.ts`), so a
+      change takes effect immediately with no restart. `console` stays the
+      zero-config default; `smtp` covers any server **or provider relay** (Path A
+      via the provider's SMTP endpoint — paste host + key, no lock-in).
+- [x] **Wizard email step validates live.** The `/setup` email step collects the
+      SMTP details and sends a real **test message** (`POST /api/setup/test-email`,
+      open only pre-setup) so the operator confirms delivery before finishing —
+      never editing `SMTP_*` by hand. Admin parity ships too:
+      `GET/PUT /api/admin/email` (password redacted to `hasPassword`) and
+      `POST /api/admin/email/test`; the admin *page* UI lands in S4.
+- [x] **Correct links.** Outbound email (reset/verify/test) now builds URLs from
+      the effective domain (`instanceSetup.getOrigin()`), so a wizard-set domain
+      is reflected without a restart.
+- [ ] **Path B — self-host SMTP + guided DNS (deferred).** Bundling a sender that
+      **generates SPF/DKIM/DMARC records and verifies them live** is a larger
+      effort; deferred. Until then, deliverable mail uses an external SMTP relay
+      (the honest caveat above: fresh-IP self-send needs DNS + an open port 25).
+- [ ] **One-key HTTP relay APIs (deferred).** Native HTTP API transports (vs the
+      universal SMTP path) can come later if a true single-field key is wanted.
+- Files: `services/emailSettings.ts`, `services/email.ts` (per-send transport +
+  `sendTestEmail`), `services/instanceSetup.ts` (`getOrigin`, `completeSetup`
+  email), `routes/setup.ts` (`/test-email`), `routes/admin.ts` (email CRUD +
+  test); frontend `routes/setup/+page.svelte`, `lib/api`, `lib/types`.
 
 ## S4 — Admin settings page (runtime config)
 

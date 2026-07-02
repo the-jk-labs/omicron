@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
+import { type EmailInput, setEmailConfig } from "@/services/emailSettings.ts";
 import { config } from "@/config.ts";
 
 // First-run setup state + the wizard-managed instance settings, layered over the
@@ -46,6 +47,16 @@ export async function getAppDomain(): Promise<string> {
 export async function getEmailMode(): Promise<string> {
   const fromDb = await settingsRepo.get<string>(SETUP_KEYS.emailMode);
   return fromDb?.trim() || config.EMAIL_TRANSPORT;
+}
+
+// The effective instance origin (scheme + domain), honouring a wizard-set
+// domain rather than the boot-time env value. `http` only for a bare localhost
+// dev domain; `https` otherwise (the bundled Caddy terminates TLS). Used for the
+// links embedded in outbound email so they point at the real public domain.
+export async function getOrigin(): Promise<string> {
+  const domain = await getAppDomain();
+  const scheme = domain.startsWith("localhost") ? "http" : "https";
+  return `${scheme}://${domain}`;
 }
 
 // Reduce any domain/URL/host:port form to a bare, lowercased hostname so the
@@ -103,13 +114,12 @@ export async function publicInfo(): Promise<{
 export async function completeSetup(input: {
   appName: string;
   appDomain?: string;
-  emailMode?: string;
+  email?: EmailInput;
 }): Promise<void> {
   const name = input.appName.trim();
   if (name) await settingsRepo.set(SETUP_KEYS.appName, name);
   const domain = input.appDomain?.trim();
   if (domain) await settingsRepo.set(SETUP_KEYS.appDomain, domain);
-  const emailMode = input.emailMode?.trim();
-  if (emailMode) await settingsRepo.set(SETUP_KEYS.emailMode, emailMode);
+  if (input.email) await setEmailConfig(input.email);
   await settingsRepo.set(SETUP_KEYS.completed, true);
 }

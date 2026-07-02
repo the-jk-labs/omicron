@@ -8,10 +8,17 @@
 //   - `console` (default): logs the message and any link to stdout. Requires no
 //     configuration, so password reset / verification work out of the box for
 //     local dev and small single-user instances.
-//   - `smtp`: real delivery via any SMTP server. The client is imported lazily,
-//     so nothing SMTP-related loads unless an instance opts in.
+//   - `smtp`: real delivery via any SMTP server (or a provider's SMTP relay).
+//     The client is imported lazily, so nothing SMTP-related loads unless an
+//     instance opts in.
+//
+// The effective configuration is resolved per-send from the web-managed email
+// settings (DB → env → default; see services/emailSettings.ts), so a change
+// made in the setup wizard or admin page takes effect immediately — no restart,
+// no config file to edit.
 
-import { config, origin } from "@/config.ts";
+import { type EmailConfig, getEmailConfig } from "@/services/emailSettings.ts";
+import { getOrigin } from "@/services/instanceSetup.ts";
 
 export type EmailMessage = {
   to: string;
@@ -29,74 +36,97 @@ interface Transport {
 // Logs the message instead of delivering it. Invaluable in dev: the reset /
 // verification link is printed to the backend log, so the flow is fully
 // exercisable without an SMTP server.
-const consoleTransport: Transport = {
-  send(msg) {
-    console.log(
-      [
-        "",
-        "──────────── EMAIL (console transport) ────────────",
-        `From:    ${config.EMAIL_FROM}`,
-        `To:      ${msg.to}`,
-        `Subject: ${msg.subject}`,
-        "",
-        msg.text,
-        "───────────────────────────────────────────────────",
-        "",
-      ].join("\n"),
-    );
-    return Promise.resolve();
-  },
-};
+function consoleTransport(cfg: EmailConfig): Transport {
+  return {
+    send(msg) {
+      console.log(
+        [
+          "",
+          "──────────── EMAIL (console transport) ────────────",
+          `From:    ${cfg.from}`,
+          `To:      ${msg.to}`,
+          `Subject: ${msg.subject}`,
+          "",
+          msg.text,
+          "───────────────────────────────────────────────────",
+          "",
+        ].join("\n"),
+      );
+      return Promise.resolve();
+    },
+  };
+}
 
 // SMTP delivery via denomailer, loaded lazily so the dependency is only fetched
-// when an instance actually configures `EMAIL_TRANSPORT=smtp`. The specifier is
-// held in a variable so `deno check` doesn't eagerly resolve it (the transport
-// is optional and only needed at runtime).
-function smtpTransport(): Transport {
+// when an instance actually uses SMTP. The specifier is held in a variable so
+// `deno check` doesn't eagerly resolve it (the transport is optional and only
+// needed at runtime).
+function smtpTransport(cfg: EmailConfig): Transport {
   return {
     async send(msg) {
-      if (!config.SMTP_HOST) {
-        throw new Error("EMAIL_TRANSPORT=smtp but SMTP_HOST is not set.");
+      if (!cfg.smtp.host) {
+        throw new Error("Email mode is SMTP but no SMTP host is configured.");
       }
       const specifier = "https://deno.land/x/denomailer@1.6.0/mod.ts";
       // deno-lint-ignore no-explicit-any
       const { SMTPClient } = (await import(specifier)) as any;
       const client = new SMTPClient({
         connection: {
-          hostname: config.SMTP_HOST,
-          port: config.SMTP_PORT,
-          tls: config.SMTP_TLS,
-          auth: config.SMTP_USERNAME && config.SMTP_PASSWORD
-            ? { username: config.SMTP_USERNAME, password: config.SMTP_PASSWORD }
+          hostname: cfg.smtp.host,
+          port: cfg.smtp.port,
+          tls: cfg.smtp.tls,
+          auth: cfg.smtp.username && cfg.smtp.password
+            ? { username: cfg.smtp.username, password: cfg.smtp.password }
             : undefined,
         },
       });
       try {
         await client.send({
-          from: config.EMAIL_FROM,
+          from: cfg.from,
           to: msg.to,
           subject: msg.subject,
           content: msg.text,
           html: msg.html,
         });
       } finally {
-        await client.close();
+        // Best-effort: a failed connection can leave the client half-open, so a
+        // throwing close() must not mask the real send error.
+        try {
+          await client.close();
+        } catch { /* ignore */ }
       }
     },
   };
 }
 
-let transport: Transport | null = null;
-function getTransport(): Transport {
-  if (!transport) {
-    transport = config.EMAIL_TRANSPORT === "smtp" ? smtpTransport() : consoleTransport;
-  }
-  return transport;
+function transportFor(cfg: EmailConfig): Transport {
+  return cfg.mode === "smtp" ? smtpTransport(cfg) : consoleTransport(cfg);
 }
 
-/** Deliver one message through the configured transport. */
-export function sendMail(msg: EmailMessage): Promise<void> {
-  return getTransport().send(msg);
+/** Deliver one message through the currently-configured transport. */
+export async function sendMail(msg: EmailMessage): Promise<void> {
+  await transportFor(await getEmailConfig()).send(msg);
+}
+
+/**
+ * Send a diagnostic message to verify delivery works. `override` lets the setup
+ * wizard / admin page test details the operator has entered but not yet saved;
+ * omit it to test the stored configuration. Throws on failure so the caller can
+ * surface the transport error verbatim.
+ */
+export async function sendTestEmail(to: string, override?: EmailConfig): Promise<void> {
+  const cfg = override ?? await getEmailConfig();
+  await transportFor(cfg).send({
+    to,
+    subject: "Omicron email test",
+    text:
+      "This is a test message from your Omicron instance.\n\nIf you received it, outbound email is working.",
+    html: layout(
+      "Email is working",
+      "This is a test message from your Omicron instance. If you received it, outbound email is working.",
+      { label: "Open your instance", url: await getOrigin() },
+    ),
+  });
 }
 
 // ── Templates ──────────────────────────────────────────────────────────────
@@ -119,8 +149,8 @@ function layout(heading: string, body: string, cta: { label: string; url: string
 }
 
 /** Password-reset mail with a tokened link. */
-export function sendPasswordReset(to: string, token: string): Promise<void> {
-  const url = `${origin}/reset-password?token=${encodeURIComponent(token)}`;
+export async function sendPasswordReset(to: string, token: string): Promise<void> {
+  const url = `${await getOrigin()}/reset-password?token=${encodeURIComponent(token)}`;
   return sendMail({
     to,
     subject: "Reset your Omicron password",
@@ -135,8 +165,8 @@ export function sendPasswordReset(to: string, token: string): Promise<void> {
 }
 
 /** Email-verification mail with a tokened link. */
-export function sendEmailVerification(to: string, token: string): Promise<void> {
-  const url = `${origin}/verify-email?token=${encodeURIComponent(token)}`;
+export async function sendEmailVerification(to: string, token: string): Promise<void> {
+  const url = `${await getOrigin()}/verify-email?token=${encodeURIComponent(token)}`;
   return sendMail({
     to,
     subject: "Confirm your Omicron email",

@@ -3,6 +3,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import * as settings from "@/services/settings.ts";
 import * as moderation from "@/services/moderation.ts";
+import * as emailSettings from "@/services/emailSettings.ts";
+import { sendTestEmail } from "@/services/email.ts";
 import { requireAdmin } from "@/routes/middleware.ts";
 import { adminUserView } from "@/routes/serializers.ts";
 import { badRequest } from "@/lib/http.ts";
@@ -27,6 +29,62 @@ adminRoutes.put("/settings/analytics", async (c) => {
   if (!parsed.success) throw badRequest("Expected { onInstanceViews: boolean }.");
   await settings.setOnInstanceViewsEnabled(parsed.data.onInstanceViews);
   return c.json({ onInstanceViews: parsed.data.onInstanceViews });
+});
+
+// ── Email (runtime-configurable delivery) ────────────────────────────────────
+
+// Current email configuration, with the SMTP password redacted to `hasPassword`
+// so the admin form can show what's set without ever leaking the secret.
+adminRoutes.get("/email", async (c) => {
+  requireAdmin(c);
+  return c.json(await emailSettings.redactedConfig());
+});
+
+const emailUpdateSchema = z.object({
+  mode: z.enum(["console", "smtp"]).optional(),
+  from: z.string().trim().max(200).optional(),
+  smtp: z.object({
+    host: z.string().trim().max(255).optional(),
+    port: z.coerce.number().int().positive().max(65535).optional(),
+    username: z.string().trim().max(255).optional(),
+    // Blank/omitted = leave the stored password unchanged.
+    password: z.string().max(1024).optional(),
+    tls: z.boolean().optional(),
+  }).optional(),
+});
+
+// Update email settings. Partial: only the keys present are written, so toggling
+// the mode or fixing one field never wipes the rest.
+adminRoutes.put("/email", async (c) => {
+  requireAdmin(c);
+  const parsed = emailUpdateSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    throw badRequest(parsed.error.issues[0]?.message ?? "Invalid email settings.");
+  }
+  await emailSettings.setEmailConfig(parsed.data);
+  return c.json(await emailSettings.redactedConfig());
+});
+
+const emailTestSchema = z.object({
+  to: z.string().email("A valid recipient address is required."),
+});
+
+// Send a test message through the currently-saved configuration so the admin
+// can confirm delivery (and surface the transport error verbatim if it fails).
+adminRoutes.post("/email/test", async (c) => {
+  requireAdmin(c);
+  const parsed = emailTestSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    throw badRequest(parsed.error.issues[0]?.message ?? "A valid recipient is required.");
+  }
+  try {
+    await sendTestEmail(parsed.data.to);
+  } catch (err) {
+    throw badRequest(
+      `Could not send the test email: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  return c.json({ ok: true });
 });
 
 // ── Users ──────────────────────────────────────────────────────────────────
