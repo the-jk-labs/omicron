@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { redirect } from "@sveltejs/kit";
 import { endpoints } from "$lib/api";
 import type { LayoutServerLoad } from "./$types";
 
@@ -11,6 +12,16 @@ const DISCOVER_ROUTES = new Set(["/", "/[handle]"]);
 // the rail renders with the page instead of popping in after client hydration.
 export const load: LayoutServerLoad = async ({ fetch, route }) => {
   const api = endpoints(fetch);
+
+  // First-run gate: until the instance is set up, every route is redirected to
+  // the wizard; once set up, the wizard route redirects back into the app. If
+  // the backend is unreachable we skip gating and let normal errors surface.
+  const instance = await api.instance().catch(() => null);
+  if (instance) {
+    const onSetup = route.id === "/setup";
+    if (!instance.setupComplete && !onSetup) redirect(303, "/setup");
+    if (instance.setupComplete && onSetup) redirect(303, "/");
+  }
 
   const userPromise = api.me().then((r) => r.user).catch(() => null);
   const discoverPromise = DISCOVER_ROUTES.has(route.id ?? "")
@@ -32,5 +43,5 @@ export const load: LayoutServerLoad = async ({ fetch, route }) => {
     };
   }
 
-  return { user, discover };
+  return { user, discover, instance };
 };

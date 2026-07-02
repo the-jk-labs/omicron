@@ -14,8 +14,13 @@
   import type { User } from "$lib/types";
 
   // `minimal` strips the nav down to logo + theme toggle for standalone pages
-  // (auth screens), which carry their own focused layout.
-  let { user, minimal = false }: { user: User | null; minimal?: boolean } = $props();
+  // (auth screens), which carry their own focused layout. `appName` comes from
+  // the instance settings, falling back to the build-time env then the default.
+  let { user, minimal = false, appName = env.PUBLIC_APP_NAME || "Omicron" }: {
+    user: User | null;
+    minimal?: boolean;
+    appName?: string;
+  } = $props();
 
   // Render the resolved icon only after mount so SSR (always "light") and the
   // first client render match — avoids a hydration mismatch on the toggle.
@@ -38,7 +43,7 @@
   <nav class="relative mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
     <Button href="/" variant="plain" class="flex items-center gap-2 text-foreground hover:opacity-80">
       <img src={logo} alt="" width="28" height="28" class="h-7 w-auto" />
-      <span class="text-xl font-bold tracking-tight">{env.PUBLIC_APP_NAME || "Omicron"}</span>
+      <span class="text-xl font-bold tracking-tight">{appName}</span>
     </Button>
 
     {#if !minimal}

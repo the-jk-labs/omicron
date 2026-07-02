@@ -5,6 +5,7 @@ import type {
   BlockedDomain,
   Comment,
   DashboardSummary,
+  InstanceInfo,
   InstanceSettings,
   Page,
   Post,
@@ -31,6 +32,17 @@ export { ApiError } from "./client";
 export function endpoints(fetchFn?: typeof globalThis.fetch) {
   const api = makeApi(fetchFn);
   return {
+    // instance identity + first-run setup wizard
+    instance: () => api.get<InstanceInfo>("/instance"),
+    completeSetup: (
+      body: {
+        appName: string;
+        appDomain?: string;
+        emailMode?: "console" | "smtp";
+        admin: { username: string; email: string; password: string; displayName?: string };
+      },
+    ) => api.post<{ user: User }>("/setup", body),
+
     // auth
     me: () => api.get<{ user: User | null }>("/auth/me"),
     register: (body: { username: string; email: string; password: string; displayName?: string }) =>

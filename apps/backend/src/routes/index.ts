@@ -12,6 +12,7 @@ import { listRoutes } from "@/routes/lists.ts";
 import { dashboardRoutes } from "@/routes/dashboard.ts";
 import { adminRoutes } from "@/routes/admin.ts";
 import { reportRoutes } from "@/routes/reports.ts";
+import { instanceRoutes, setupRoutes } from "@/routes/setup.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 // Mounts the JSON API under /api.
@@ -29,3 +30,5 @@ apiRoutes.route("/lists", listRoutes);
 apiRoutes.route("/dashboard", dashboardRoutes);
 apiRoutes.route("/admin", adminRoutes);
 apiRoutes.route("/reports", reportRoutes);
+apiRoutes.route("/instance", instanceRoutes);
+apiRoutes.route("/setup", setupRoutes);

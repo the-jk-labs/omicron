@@ -183,6 +183,15 @@ export type DashboardSummary = {
 // Moderator-tunable instance settings (admin only).
 export type InstanceSettings = { onInstanceViews: boolean };
 
+// Public instance identity (unauthenticated). Drives the app-name chrome and
+// the first-run setup gate.
+export type InstanceInfo = {
+  name: string;
+  domain: string;
+  federationEnabled: boolean;
+  setupComplete: boolean;
+};
+
 // ── moderation (admin only) ──
 // A row in the admin user table. Exposes the moderation-relevant private fields
 // (login email, verification + suspension state) — admin surfaces only.

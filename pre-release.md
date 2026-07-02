@@ -55,18 +55,25 @@ running instance with sane defaults and no secrets to invent.
 Replace `.env` editing with a browser setup screen shown on first boot, gated
 until setup completes.
 
-- [ ] **Setup state** — persist a "configured" flag + wizard-managed settings in
-      the DB (new `instance_settings` repository); a middleware redirects to
-      `/setup` until the flag is set, and 404s the wizard afterward.
-- [ ] **Wizard steps** — domain, public app name, admin account (email +
-      password), and email choice (see S3). Validates the domain and writes
-      settings through a service, no restart required.
-- [ ] **Settings precedence** — DB-backed settings override env; env overrides
-      built-in defaults. Existing env-configured instances keep working
-      unchanged (env still wins where the wizard hasn't run).
-- Files (planned): `routes/setup.ts`, `services/instanceSettings.ts`,
-  `db/repositories/instanceSettings.ts`, migration `00xx_instance_settings`,
-  frontend `routes/setup/`.
+- [x] **Setup state** — `services/instanceSetup.ts` tracks completion over the
+      existing `instance_settings` KV store (`setup.completed`, with a
+      "any user exists" fallback so pre-wizard/env instances are treated as
+      already configured). The frontend `+layout.server.ts` gate redirects every
+      route to `/setup` until complete, and redirects `/setup` back to `/` after.
+- [x] **Wizard steps** — a 3-step `/setup` page (instance name + domain → admin
+      account → email choice). Submits to `POST /api/setup`, which creates the
+      admin (first user → admin, auto-verified), signs them in, and persists the
+      settings; no restart for app-level values. Single-shot: a 409 guard means
+      it can't run once an admin exists.
+- [x] **Settings precedence** — effective value is DB (wizard) → env → default,
+      via `getAppName` / `getAppDomain` / `getEmailMode`. App name flows to the
+      frontend via `GET /api/instance` (Nav/Discover/layout), so existing
+      env-configured instances keep working unchanged.
+- Files: `services/instanceSetup.ts`, `routes/setup.ts` (+ mount in
+  `routes/index.ts`), reusing `db/repositories/instanceSettings.ts`; frontend
+  `routes/setup/+page.svelte`, `+layout.server.ts` gate, `lib/api`, `lib/types`,
+  and the `Nav`/`Discover`/layout app-name wiring. (Domain change reaches
+  ActivityPub on restart — see the accessor note; deferred with S2 federation.)
 
 ## S2 — Bundled HTTPS + effortless domain
 

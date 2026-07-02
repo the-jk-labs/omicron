@@ -15,9 +15,10 @@
   // in the initial SSR HTML rather than popping in after client hydration. Each
   // section renders only when it has something to show.
   type Discover = { posts: Post[]; people: SuggestedUser[]; tags: TagWithCount[] };
-  let { data = null }: { data?: Discover | null } = $props();
-
-  const appName = env.PUBLIC_APP_NAME || "Omicron";
+  let { data = null, appName = env.PUBLIC_APP_NAME || "Omicron" }: {
+    data?: Discover | null;
+    appName?: string;
+  } = $props();
   const signedIn = $derived(!!page.data.user);
 
   const posts = $derived(data?.posts ?? []);

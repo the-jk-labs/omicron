@@ -14,8 +14,10 @@
   let { data, children }: { data: LayoutData; children: import("svelte").Snippet } = $props();
 
   // Site-wide social-share defaults. Pages may set their own <title>; these
-  // provide the brand image/description used in link previews everywhere.
-  const appName = $derived(env.PUBLIC_APP_NAME || "Omicron");
+  // provide the brand image/description used in link previews everywhere. The
+  // name comes from the instance settings (wizard/admin), falling back to the
+  // build-time env and then the default.
+  const appName = $derived(data.instance?.name || env.PUBLIC_APP_NAME || "Omicron");
   const description =
     "A place to read, write, and connect — powered by ActivityPub. No lock-in, fully self-hostable.";
   const ogImage = $derived(`${$page.url.origin}/og-image.png`);
@@ -62,6 +64,10 @@
     "/verify-email",
   ]);
   const isAuth = $derived(AUTH_ROUTES.has($page.route.id ?? ""));
+  // The first-run wizard is also a standalone screen (logo-only nav, no rails),
+  // but a touch wider than the auth forms to fit the stepped layout.
+  const isSetup = $derived($page.route.id === "/setup");
+  const standalone = $derived(isAuth || isSetup);
 </script>
 
 <svelte:head>
@@ -84,12 +90,17 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background text-foreground">
-  <Nav user={data.user} minimal={isAuth} />
+  <Nav user={data.user} {appName} minimal={standalone} />
 
-  {#if isAuth}
-    <!-- Auth: single centered column, no rails. Fills the space under the nav
-         so the form sits in the optical centre of the viewport. -->
-    <main class="mx-auto flex w-full max-w-sm flex-col justify-center px-4 py-12 sm:min-h-[calc(100vh-4rem)] sm:py-16">
+  {#if standalone}
+    <!-- Auth / setup: single centered column, no rails. Fills the space under
+         the nav so the content sits in the optical centre of the viewport. The
+         wizard gets a wider column than the auth forms. -->
+    <main
+      class="mx-auto flex w-full flex-col justify-center px-4 py-12 sm:min-h-[calc(100vh-4rem)] sm:py-16 {isSetup
+        ? 'max-w-xl'
+        : 'max-w-sm'}"
+    >
       {@render children()}
     </main>
   {:else}
@@ -115,7 +126,7 @@
       <!-- Right rail: discovery (home feed and profile pages only) -->
       <div class={showDiscover ? "hidden xl:block" : "hidden"}>
         <div class="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto">
-          <Discover data={data.discover} />
+          <Discover data={data.discover} {appName} />
         </div>
       </div>
     </div>
