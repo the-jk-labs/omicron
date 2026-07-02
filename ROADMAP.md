@@ -118,10 +118,20 @@ Remote edits and deletes are currently ignored, leaving stale/deleted copies
 
 ### 6. Outbound Update / Delete
 
-- [ ] Deliver `Update(Article)` when a local author edits a post.
-- [ ] Deliver `Delete` when a local author deletes a post.
-- [ ] Deliver `Delete(Actor)` on account deletion.
-- Files: `federation/outbound.ts`, `federation/deliver.ts`, `queue/handlers.ts`.
+- [x] Deliver `Update(Article)` when a local author edits a post. Editing an
+      already-published post enqueues `federate_post` with `action: "update"`
+      (fresh activity id, stable object id); publishing a draft for the first
+      time still sends a `Create`.
+- [x] Deliver `Delete` when a local author (or an admin takedown) deletes a
+      post. `deletePost` captures the author before removal and enqueues
+      `federate_post_delete`; delivery sends a `Delete` with a `Tombstone`
+      whose id matches the cached Article, so remote instances drop the copy.
+      Only ever-published posts fan out (drafts were never federated).
+- [x] Deliver `Delete(Actor)` on account deletion — `services/auth.ts` enqueues
+      `delete_actor`, which broadcasts `Delete(actor)` to remote followers via
+      `sendActorDelete` before the row (and its cascades) is removed.
+- Files: `federation/outbound.ts`, `federation/deliver.ts`, `queue/handlers.ts`,
+  `queue/queue.ts`, `services/posts.ts`.
 
 ### 7. Federation robustness
 

@@ -5,6 +5,7 @@
 
 export type JobName =
   | "federate_post"
+  | "federate_post_delete"
   | "federate_list_item"
   | "send_follow"
   | "send_unfollow"
@@ -13,7 +14,8 @@ export type JobName =
   | "send_email_verification";
 
 export type JobPayloads = {
-  federate_post: { postId: string };
+  federate_post: { postId: string; action?: "create" | "update" };
+  federate_post_delete: { postId: string; authorId: string };
   federate_list_item: { listId: string; postId: string; action: "add" | "remove" };
   send_follow: { followerId: string; targetActor: string };
   send_unfollow: { followerId: string; targetActor: string };

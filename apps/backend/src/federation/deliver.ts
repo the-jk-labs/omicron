@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { Create, isActor, PUBLIC_COLLECTION } from "@fedify/fedify/vocab";
+import type { Context } from "@fedify/fedify";
+import type { Actor } from "@fedify/fedify/vocab";
+import { Create, Delete, isActor, PUBLIC_COLLECTION, Tombstone, Update } from "@fedify/fedify/vocab";
 import { getFederation } from "@/federation/mod.ts";
 import { buildArticle } from "@/federation/article.ts";
 import { origin } from "@/config.ts";
@@ -9,42 +11,86 @@ import * as postsRepo from "@/db/repositories/posts.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 
-// Sends a Create(Article) for a local post to all remote followers' inboxes.
-// Fedify handles HTTP signatures, batching and delivery retries.
-export async function deliverPost(postId: string): Promise<void> {
+// Resolves a local author's remote followers into deliverable actor objects,
+// skipping any on a defederated domain (exact host or subdomain). Shared by
+// every outbound post activity (Create / Update / Delete).
+async function remoteRecipients(ctx: Context<unknown>, authorId: string): Promise<Actor[]> {
+  const uris = await followsRepo.remoteFollowerActors(authorId);
+  const recipients: Actor[] = [];
+  for (const uri of uris) {
+    try {
+      if (await blockedDomainsRepo.isBlocked(new URL(uri).host)) continue;
+    } catch {
+      // Unparseable follower URI — skip it (lookup would fail anyway).
+      continue;
+    }
+    const actor = await ctx.lookupObject(uri);
+    if (isActor(actor)) recipients.push(actor);
+  }
+  return recipients;
+}
+
+// Sends a Create(Article) — or an Update(Article) for an edit — of a local post
+// to all remote followers' inboxes. Fedify handles HTTP signatures, batching and
+// delivery retries. The Article id is stable, so an Update carries the same
+// object id the remote instance already cached.
+export async function deliverPost(
+  postId: string,
+  action: "create" | "update" = "create",
+): Promise<void> {
   const row = await postsRepo.findById(postId);
   if (!row || row.post.remote || !row.post.authorId) return;
 
   const author = await usersRepo.findById(row.post.authorId);
   if (!author) return;
 
-  const remoteActors = await followsRepo.remoteFollowerActors(author.id);
-  if (remoteActors.length === 0) return;
-
   const ctx = getFederation().createContext(new URL(origin), undefined);
-
-  const recipients = [];
-  for (const uri of remoteActors) {
-    // Never deliver to a defederated domain (exact host or subdomain).
-    try {
-      if (await blockedDomainsRepo.isBlocked(new URL(uri).host)) continue;
-    } catch {
-      // Unparseable follower URI — skip lookup below by not continuing here.
-    }
-    const actor = await ctx.lookupObject(uri);
-    if (isActor(actor)) recipients.push(actor);
-  }
+  const recipients = await remoteRecipients(ctx, author.id);
   if (recipients.length === 0) return;
 
   const tags = await tagsRepo.tagsForPost(row.post.id);
+  const actorUri = ctx.getActorUri(author.username);
+  const article = buildArticle(ctx, author.username, row.post, tags);
 
+  const activity = action === "update"
+    // Update needs a fresh, unique activity id each time; the object id is stable.
+    ? new Update({
+      id: new URL(`/posts/${row.post.id}/updates/${crypto.randomUUID()}`, actorUri),
+      actor: actorUri,
+      object: article,
+      tos: [PUBLIC_COLLECTION],
+    })
+    : new Create({
+      id: new URL(`/posts/${row.post.id}/activity`, actorUri),
+      actor: actorUri,
+      object: article,
+      tos: [PUBLIC_COLLECTION],
+    });
+
+  await ctx.sendActivity({ identifier: author.username }, recipients, activity);
+}
+
+// Sends a Delete for a local post that has already been removed from the DB.
+// The row is gone, so the caller passes the (former) author id and post id;
+// the remote follower edges live on the author and survive the post deletion.
+// The Tombstone id matches the Article id remote instances cached, so their
+// inbound Delete handler can drop the right copy.
+export async function deliverPostDelete(postId: string, authorId: string): Promise<void> {
+  const author = await usersRepo.findById(authorId);
+  if (!author) return;
+
+  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const recipients = await remoteRecipients(ctx, author.id);
+  if (recipients.length === 0) return;
+
+  const actorUri = ctx.getActorUri(author.username);
   await ctx.sendActivity(
     { identifier: author.username },
     recipients,
-    new Create({
-      id: new URL(`/posts/${row.post.id}/activity`, ctx.getActorUri(author.username)),
-      actor: ctx.getActorUri(author.username),
-      object: buildArticle(ctx, author.username, row.post, tags),
+    new Delete({
+      id: new URL(`/posts/${postId}/delete/${crypto.randomUUID()}`, actorUri),
+      actor: actorUri,
+      object: new Tombstone({ id: new URL(`/posts/${postId}`, actorUri) }),
       tos: [PUBLIC_COLLECTION],
     }),
   );

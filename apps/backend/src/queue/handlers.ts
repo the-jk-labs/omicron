@@ -8,10 +8,18 @@ import { sendEmailVerification, sendPasswordReset } from "@/services/email.ts";
 // Fedify is only loaded when FEDERATION_ENABLED=true; otherwise jobs no-op.
 
 export function registerJobHandlers() {
-  registerHandler("federate_post", async ({ postId }) => {
+  registerHandler("federate_post", async ({ postId, action }) => {
     if (!config.FEDERATION_ENABLED) return;
     const { deliverPost } = await import("@/federation/deliver.ts");
-    await deliverPost(postId);
+    await deliverPost(postId, action ?? "create");
+  });
+
+  // A local post was deleted; tombstone it on remote followers' instances. The
+  // row is already gone, so the payload carries the former author id.
+  registerHandler("federate_post_delete", async ({ postId, authorId }) => {
+    if (!config.FEDERATION_ENABLED) return;
+    const { deliverPostDelete } = await import("@/federation/deliver.ts");
+    await deliverPostDelete(postId, authorId);
   });
 
   registerHandler("federate_list_item", async ({ listId, postId, action }) => {

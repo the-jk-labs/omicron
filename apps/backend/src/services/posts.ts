@@ -122,8 +122,12 @@ export async function updatePost(authorId: string, id: string, input: {
   if (input.tags !== undefined) await tagsRepo.setPostTags(post.id, resolveTags(input.tags));
 
   // Federate only published posts. Publishing a draft (draft → published) fans
-  // out for the first time here; edits to an already-published post re-deliver.
-  if (post.status === "published") queue.add("federate_post", { postId: post.id });
+  // out for the first time as a Create; edits to an already-published post
+  // re-deliver as an Update so remote instances refresh their cached copy.
+  if (post.status === "published") {
+    const action = row.post.status === "published" ? "update" : "create";
+    queue.add("federate_post", { postId: post.id, action });
+  }
   return post;
 }
 
@@ -135,7 +139,18 @@ export async function deletePost(userId: string, isAdmin: boolean, id: string) {
   if (row.post.authorId !== userId && !isAdmin) {
     throw forbidden("You can only delete your own posts.");
   }
+
+  // Capture before removal — federation delivery needs the author, and the row
+  // is about to vanish. Only published posts were ever federated.
+  const wasPublished = row.post.status === "published";
+  const authorId = row.post.authorId;
   await postsRepo.remove(id);
+
+  // Tombstone the post on remote followers' instances (author-owned Delete;
+  // works for admin takedowns too, delivered on the original author's behalf).
+  if (wasPublished && authorId) {
+    queue.add("federate_post_delete", { postId: id, authorId });
+  }
 }
 
 // Pagination over the nested {post, author} rows returned by the repo.
