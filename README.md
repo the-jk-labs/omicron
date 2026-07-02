@@ -42,11 +42,13 @@ SvelteKit · bits-ui · Tiptap · TailwindCSS.
 ```bash
 git clone https://github.com/the-jk-labs/omicron.git omicron
 cd omicron
-cp .env.example .env        # edit SESSION_SECRET and APP_DOMAIN
 docker compose up -d --build
 ```
 
-Open <http://localhost:5173>. **The first account you register becomes the admin.**
+No config to edit — the session secret and database password are generated
+automatically on first boot. Open <http://localhost:5173>. **The first account
+you register becomes the admin.** To go public on your own domain, set
+`APP_DOMAIN` (see [.env.example](.env.example) for optional overrides).
 
 | Service  | URL                     | Notes                                  |
 | -------- | ----------------------- | -------------------------------------- |

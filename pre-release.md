@@ -34,17 +34,21 @@ boot, data in named volumes, first-registrant-becomes-admin.
 No required environment variables. `docker compose up` (or `podman`) must yield a
 running instance with sane defaults and no secrets to invent.
 
-- [ ] **Auto-generate `SESSION_SECRET`** if unset — generate a strong random
-      value on first boot and persist it to the data volume (not stdout), so
-      restarts and upgrades keep sessions valid. Never require the operator to
-      run `openssl`.
-- [ ] **Auto-generate the Postgres password** on first boot and wire both
-      services to it via the same persisted secret; drop the shipped
-      `omicron:omicron` default so no instance runs with a known password.
-- [ ] **Make `APP_DOMAIN` optional at boot** — default to the request host until
-      the wizard sets it, so the app is reachable before configuration.
-- [ ] **Trim `.env.example` to "advanced overrides only"** — the happy path
-      needs an empty (or absent) `.env`. Document that editing it is optional.
+- [x] **Auto-generate `SESSION_SECRET`** if unset — generated on first boot and
+      persisted (mode 0600), never to stdout, so restarts/upgrades keep sessions
+      valid. Resolution order: `SESSION_SECRET` env → `SESSION_SECRET_FILE` →
+      generate & persist to `STATE_DIR` (`config.ts`). In compose the
+      `init-secrets` service writes the file into the `secrets` volume.
+- [x] **Auto-generate the Postgres password** on first boot — `init-secrets`
+      generates it into the `secrets` volume; Postgres reads it via
+      `POSTGRES_PASSWORD_FILE` and the backend assembles `DATABASE_URL` from
+      `POSTGRES_*` + the same file. The shipped `omicron:omicron` default is
+      gone; existing `.env` `DATABASE_URL`/`SESSION_SECRET` still override.
+- [x] **Make `APP_DOMAIN` optional at boot** — defaults to `localhost:5173` so
+      the app is reachable before configuration. (Request-host defaulting and
+      the wizard-set value land in S1.)
+- [x] **Trim `.env.example` to "advanced overrides only"** — every var is now
+      commented out; `docker compose up` works with no `.env` at all.
 
 ## S1 — First-run web wizard
 

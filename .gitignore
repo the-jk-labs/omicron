@@ -16,5 +16,9 @@ apps/backend/.deno/
 # User uploads (local dev)
 apps/backend/uploads/
 
+# Generated secrets / state (local dev)
+apps/backend/.state/
+.state/
+
 # OS
 .DS_Store

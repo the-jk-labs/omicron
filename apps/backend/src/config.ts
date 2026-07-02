@@ -1,10 +1,85 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { z } from "zod";
 
+// The shipped placeholder from older .env.example files — treat it as "unset"
+// so an operator who never edited it still gets a real generated secret.
+const PLACEHOLDER_SECRET = "change-me-please-use-a-long-random-string";
+
+// Where generated secrets are persisted when nothing is supplied (the
+// zero-config path). In docker compose this maps to a small persistent volume;
+// locally it defaults to ./.state. Kept out of UPLOADS_DIR so a secret can
+// never be served as media.
+const STATE_DIR = Deno.env.get("STATE_DIR")?.trim() || "./.state";
+
+function readFileTrimmed(path?: string | null): string | undefined {
+  if (!path) return undefined;
+  try {
+    return Deno.readTextFileSync(path).trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function randomHex(bytes = 32): string {
+  const buf = new Uint8Array(bytes);
+  crypto.getRandomValues(buf);
+  return Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Resolve the session secret without ever forcing the operator to invent one:
+//   explicit SESSION_SECRET env → SESSION_SECRET_FILE → generate & persist.
+function resolveSessionSecret(): string {
+  const fromEnv = Deno.env.get("SESSION_SECRET")?.trim();
+  if (fromEnv && fromEnv !== PLACEHOLDER_SECRET) return fromEnv;
+
+  const fromFile = readFileTrimmed(Deno.env.get("SESSION_SECRET_FILE"));
+  if (fromFile) return fromFile;
+
+  // Nothing supplied — generate once and persist so sessions survive restarts
+  // and upgrades. This is the toy-easy default for local/dev and single-node.
+  const path = `${STATE_DIR}/session_secret`;
+  const existing = readFileTrimmed(path);
+  if (existing) return existing;
+
+  const secret = randomHex(32);
+  try {
+    Deno.mkdirSync(STATE_DIR, { recursive: true });
+    Deno.writeTextFileSync(path, secret, { mode: 0o600 });
+    console.log(`🔑 No SESSION_SECRET set — generated and persisted one at ${path}.`);
+  } catch (err) {
+    console.warn(
+      `⚠️  Could not persist a generated SESSION_SECRET to ${path}: ${err}. ` +
+        `Using an ephemeral secret — sessions will not survive a restart.`,
+    );
+  }
+  return secret;
+}
+
+// Resolve the database URL: explicit DATABASE_URL, or assemble it from
+// POSTGRES_* parts with the password read from a Docker secret file
+// (POSTGRES_PASSWORD_FILE) or POSTGRES_PASSWORD. Lets compose run without a
+// hardcoded connection string or a known-default password.
+function resolveDatabaseUrl(): string | undefined {
+  const explicit = Deno.env.get("DATABASE_URL")?.trim();
+  if (explicit) return explicit;
+
+  const password = readFileTrimmed(Deno.env.get("POSTGRES_PASSWORD_FILE")) ??
+    Deno.env.get("POSTGRES_PASSWORD")?.trim();
+  if (!password) return undefined;
+
+  const user = Deno.env.get("POSTGRES_USER")?.trim() || "omicron";
+  const dbname = Deno.env.get("POSTGRES_DB")?.trim() || "omicron";
+  const host = Deno.env.get("POSTGRES_HOST")?.trim() || "postgres";
+  const port = Deno.env.get("POSTGRES_PORT")?.trim() || "5432";
+  return `postgres://${user}:${encodeURIComponent(password)}@${host}:${port}/${dbname}`;
+}
+
 // Centralized, validated environment config. Fail fast on misconfiguration.
 const schema = z.object({
   DATABASE_URL: z.string().url(),
-  APP_DOMAIN: z.string().min(1),
+  // Optional at boot: defaults to localhost so the app is reachable before the
+  // setup wizard sets the real public domain (see pre-release.md S1).
+  APP_DOMAIN: z.string().min(1).default("localhost:5173"),
   FEDERATION_ENABLED: z
     .string()
     .transform((v) => v.toLowerCase() !== "false")
@@ -54,10 +129,10 @@ const schema = z.object({
 
 function load() {
   const parsed = schema.safeParse({
-    DATABASE_URL: Deno.env.get("DATABASE_URL"),
+    DATABASE_URL: resolveDatabaseUrl(),
     APP_DOMAIN: Deno.env.get("APP_DOMAIN"),
     FEDERATION_ENABLED: Deno.env.get("FEDERATION_ENABLED"),
-    SESSION_SECRET: Deno.env.get("SESSION_SECRET"),
+    SESSION_SECRET: resolveSessionSecret(),
     PORT: Deno.env.get("PORT"),
     UPLOADS_DIR: Deno.env.get("UPLOADS_DIR"),
     RATE_LIMIT_ENABLED: Deno.env.get("RATE_LIMIT_ENABLED"),
@@ -79,6 +154,12 @@ function load() {
   if (!parsed.success) {
     console.error("❌ Invalid environment configuration:");
     console.error(parsed.error.flatten().fieldErrors);
+    if (parsed.error.flatten().fieldErrors.DATABASE_URL) {
+      console.error(
+        "   No database configured. Set DATABASE_URL, or provide POSTGRES_PASSWORD_FILE / " +
+          "POSTGRES_PASSWORD (with optional POSTGRES_USER/DB/HOST/PORT).",
+      );
+    }
     Deno.exit(1);
   }
   return parsed.data;
