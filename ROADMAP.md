@@ -70,13 +70,23 @@ or local user can inject executing scripts.
 
 An open-speech instance needs takedown tools for legal and abuse reasons.
 
-- [ ] Report/flag flow (user reports post or actor).
-- [ ] Admin: suspend / unsuspend a local user.
-- [ ] Admin: remove a post (local and cached remote).
+- [x] Report/flag flow (user reports post or actor). Signed-in users flag a post
+      from its menu; `POST /reports` (per-user rate limited, dedupes open
+      reports). `reports` table + queue. Frontend: report dialog on the post page.
+- [x] Admin: suspend / unsuspend a local user. `users.suspended_at`; suspending
+      clears sessions and blocks sign-in (login gate). Admins can't suspend
+      themselves or other admins. `POST /admin/users/:id/suspend`.
+- [x] Admin: remove a post. `DELETE /admin/posts/:id` (moderator override of the
+      author-only delete; local posts only — remote/cached can't be removed here).
 - [ ] Instance-level defederation / domain blocklist.
-- [ ] Admin moderation queue view (frontend).
-- Files: `routes/admin.ts` (currently settings-only), `services/`, new repos,
-  frontend admin routes.
+- [x] Admin moderation queue view (frontend). Dedicated admins-only `/admin` tab
+      (side rail + avatar menu) with Reports / Users / Instance tabs; queue shows
+      open/resolved with remove-post, suspend-account and dismiss actions.
+- Files: `routes/admin.ts`, `routes/reports.ts`, `services/moderation.ts`,
+  `db/repositories/{reports,users}.ts`, schema + `0017_moderation`, frontend
+  `routes/admin/`, `components/Admin{Users,Reports}.svelte`.
+- Remaining: instance-level domain blocklist / defederation (touches the
+  federation inbox) — next step.
 
 ---
 

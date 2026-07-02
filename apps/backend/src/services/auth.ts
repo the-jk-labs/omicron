@@ -81,6 +81,11 @@ export async function login(identifier: string, password: string): Promise<{
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
     throw unauthorized("Invalid username or password.");
   }
+  // Suspended accounts cannot sign in. Checked after the password so it can't be
+  // used to probe which accounts exist.
+  if (user.suspendedAt) {
+    throw forbidden("This account has been suspended.");
+  }
   // Closed instances can require a confirmed email before first sign-in. The
   // error is distinct (403) so the client can surface a "resend" affordance.
   if (config.EMAIL_VERIFICATION_REQUIRED && !user.emailVerifiedAt) {

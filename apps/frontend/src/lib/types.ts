@@ -182,3 +182,36 @@ export type DashboardSummary = {
 
 // Moderator-tunable instance settings (admin only).
 export type InstanceSettings = { onInstanceViews: boolean };
+
+// ── moderation (admin only) ──
+// A row in the admin user table. Exposes the moderation-relevant private fields
+// (login email, verification + suspension state) — admin surfaces only.
+export type AdminUser = {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isAdmin: boolean;
+  email: string;
+  emailVerified: boolean;
+  suspended: boolean;
+  createdAt: string;
+};
+
+// A report in the moderation queue, enriched with light subject/reporter info.
+export type Report = {
+  id: string;
+  subjectType: "post" | "user";
+  reason: string;
+  status: "open" | "resolved";
+  resolution: string;
+  createdAt: string;
+  resolvedAt: string | null;
+  reporter: { username: string; displayName: string } | null;
+  postId: string | null;
+  postTitle: string | null;
+  postAuthor: string | null;
+  userId: string | null;
+  userUsername: string | null;
+  userDisplayName: string | null;
+};

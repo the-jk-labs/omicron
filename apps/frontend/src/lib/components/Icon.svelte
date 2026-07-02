@@ -73,6 +73,9 @@
     ChartColumn,
     Eye,
     TrendingUp,
+    Flag,
+    ShieldOff,
+    Inbox,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -145,6 +148,9 @@
     trending: TrendingUp,
     lock: Lock,
     plus: Plus,
+    flag: Flag,
+    shieldOff: ShieldOff,
+    inbox: Inbox,
   } as const;
 
   export type IconName = keyof typeof icons;

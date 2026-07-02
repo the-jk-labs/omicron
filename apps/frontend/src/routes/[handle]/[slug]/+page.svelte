@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { DropdownMenu, Separator } from "bits-ui";
+  import { Dialog, DropdownMenu, Label, Separator } from "bits-ui";
   import { goto } from "$app/navigation";
   import { endpoints, ApiError } from "$lib/api";
   import Avatar from "$lib/components/ui/Avatar.svelte";
@@ -34,6 +34,38 @@
   const canManage = $derived(
     !!data.user && !post.remote && (data.user.id === post.author.id || data.user.isAdmin),
   );
+  // Any signed-in reader can report a post that isn't their own (local or remote).
+  const canReport = $derived(!!data.user && data.user.id !== post.author.id);
+
+  // Report flow — a dialog for an optional reason, then a one-shot flag.
+  let reportOpen = $state(false);
+  let reportReason = $state("");
+  let reportBusy = $state(false);
+  let reportDone = $state(false);
+  let reportError = $state("");
+
+  function onReportOpenChange(next: boolean) {
+    reportOpen = next;
+    if (next) {
+      reportReason = "";
+      reportError = "";
+      reportDone = false;
+    }
+  }
+
+  async function submitReport() {
+    reportBusy = true;
+    reportError = "";
+    try {
+      await endpoints().report("post", post.id, reportReason.trim() || undefined);
+      reportDone = true;
+      setTimeout(() => (reportOpen = false), 1200);
+    } catch (err) {
+      reportError = err instanceof ApiError ? err.message : "Failed to submit report.";
+    } finally {
+      reportBusy = false;
+    }
+  }
 
   // Verbatim Bits UI docs DropdownMenu.Item class (v3 syntax).
   const itemClass =
@@ -159,6 +191,11 @@
               <Icon name="edit" size={18} /> Edit
             </DropdownMenu.Item>
           {/if}
+          {#if canReport}
+            <DropdownMenu.Item onSelect={() => onReportOpenChange(true)} class={itemClass}>
+              <Icon name="flag" size={18} /> Report
+            </DropdownMenu.Item>
+          {/if}
           {#if canManage}
             <DropdownMenu.Item onSelect={deletePost} class={`${itemClass} text-destructive`}>
               <Icon name="trash" size={18} /> Delete
@@ -208,3 +245,49 @@
     onCountChange={(delta) => (commentCount += delta)}
   />
 </div>
+
+<Dialog.Root bind:open={reportOpen} onOpenChange={onReportOpenChange}>
+  <Dialog.Portal>
+    <Dialog.Overlay
+      class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+    />
+    <Dialog.Content
+      class="rounded-card bg-background shadow-popover fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 border border-border p-6 sm:max-w-[440px]"
+    >
+      <Dialog.Title class="text-foreground text-lg font-semibold tracking-tight">Report post</Dialog.Title>
+      <Dialog.Description class="text-muted-foreground mt-1 text-sm">
+        Flag this post for a moderator to review. Tell us what's wrong (optional).
+      </Dialog.Description>
+
+      {#if reportDone}
+        <div class="mt-5 flex items-center gap-2 text-sm text-foreground">
+          <Icon name="check" size={16} /> Thanks — a moderator will take a look.
+        </div>
+      {:else}
+        <div class="mt-5 flex flex-col gap-1.5">
+          <Label.Root for="report-reason" class="text-sm font-medium leading-none">Reason</Label.Root>
+          <textarea
+            id="report-reason"
+            bind:value={reportReason}
+            rows={3}
+            maxlength={1000}
+            placeholder="e.g. spam, harassment, illegal content"
+            class="rounded-input border border-input bg-background shadow-btn resize-none px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
+          ></textarea>
+          {#if reportError}<p class="text-destructive text-sm">{reportError}</p>{/if}
+        </div>
+
+        <div class="mt-6 flex justify-end gap-2">
+          <Dialog.Close
+            class="text-foreground hover:bg-muted inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium active:scale-[0.98]"
+          >
+            Cancel
+          </Dialog.Close>
+          <Button variant="destructive" disabled={reportBusy} onclick={submitReport}>
+            <Icon name="flag" size={15} /> {reportBusy ? "Submitting…" : "Submit report"}
+          </Button>
+        </div>
+      {/if}
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>

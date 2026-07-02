@@ -97,3 +97,21 @@ export async function update(id: string, data: Partial<NewUser>) {
 export async function remove(id: string) {
   await db.delete(users).where(eq(users.id, id));
 }
+
+// Local accounts for the admin user table: newest first, optional handle /
+// name substring filter. Returns full rows (the admin serializer picks fields).
+export function listForAdmin(query = "", limit = 100) {
+  const where = query.trim()
+    ? (() => {
+      const term = `%${query.replace(/[%_\\]/g, "\\$&")}%`;
+      return or(ilike(users.username, term), ilike(users.displayName, term));
+    })()
+    : undefined;
+  return db.select().from(users).where(where).orderBy(desc(users.createdAt)).limit(limit);
+}
+
+// Sets (a Date) or clears (null) the suspension marker. Returns the updated row.
+export async function setSuspended(id: string, at: Date | null) {
+  const [row] = await db.update(users).set({ suspendedAt: at }).where(eq(users.id, id)).returning();
+  return row;
+}

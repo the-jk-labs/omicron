@@ -40,6 +40,23 @@ export function privateUser(u: User, tags: TagSummary[] = [], links: LinkSummary
   };
 }
 
+// Admin user-table row: identity plus the moderation-relevant private fields
+// (login email, verification + suspension state). Only ever returned to admins
+// via the admin routes — never on any public surface.
+export function adminUserView(u: User) {
+  return {
+    id: u.id,
+    username: u.username,
+    displayName: u.displayName,
+    avatarUrl: u.avatarUrl,
+    isAdmin: u.isAdmin,
+    email: u.email,
+    emailVerified: u.emailVerifiedAt !== null,
+    suspended: u.suspendedAt !== null,
+    createdAt: u.createdAt,
+  };
+}
+
 // Coalesces the two possible author sources into one uniform shape. For remote
 // authors `username` is the full `user@host` handle, so the frontend's
 // `/@${author.username}` links resolve straight back to the remote profile.

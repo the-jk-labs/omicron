@@ -43,6 +43,10 @@ export const users = pgTable("users", {
   // When the user confirmed their login email. Null until verified. Only gates
   // sign-in when EMAIL_VERIFICATION_REQUIRED is set (see services/auth.ts).
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+  // When an admin suspended this account (null = active). A suspended user is
+  // blocked from signing in and has their sessions cleared (see services/auth.ts
+  // and services/moderation.ts).
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
   actorKeyPair: jsonb("actor_key_pair").$type<ActorKeyPair | null>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
@@ -401,6 +405,29 @@ export const authTokens = pgTable("auth_tokens", {
   index("auth_tokens_user_purpose_idx").on(t.userId, t.purpose),
 ]);
 
+// ── reports (moderation queue) ─────────────────────────────────────────
+// User-submitted flags against a post or an account, worked through the admin
+// moderation queue. `subject_type` says which of `post_id` / `user_id` is set.
+// `reporter_id` and `handled_by` survive account deletion (set null) so the
+// audit trail isn't lost; the subject rows cascade (a removed post/user clears
+// its reports). `status` moves open -> resolved; `resolution` is the admin note.
+export const reports = pgTable("reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  reporterId: uuid("reporter_id").references(() => users.id, { onDelete: "set null" }),
+  subjectType: text("subject_type").notNull(), // "post" | "user"
+  postId: uuid("post_id").references(() => posts.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+  reason: text("reason").notNull().default(""),
+  status: text("status").notNull().default("open"), // "open" | "resolved"
+  resolution: text("resolution").notNull().default(""),
+  handledBy: uuid("handled_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+}, (t) => [
+  // Backs the queue: open reports first, newest first.
+  index("reports_status_created_idx").on(t.status, t.createdAt),
+]);
+
 // ── instance settings ──────────────────────────────────────────────────
 // Runtime, moderator-tunable instance config that cannot live in env (env is
 // fixed at boot). One row per key; `value` is JSON so a setting can be a bool,
@@ -465,6 +492,8 @@ export type UserTag = typeof userTags.$inferSelect;
 export type RemoteActorTag = typeof remoteActorTags.$inferSelect;
 export type ReadingList = typeof readingLists.$inferSelect;
 export type InstanceSetting = typeof instanceSettings.$inferSelect;
+export type Report = typeof reports.$inferSelect;
+export type NewReport = typeof reports.$inferInsert;
 export type PostView = typeof postViews.$inferSelect;
 export type NewReadingList = typeof readingLists.$inferInsert;
 export type ReadingListItem = typeof readingListItems.$inferSelect;

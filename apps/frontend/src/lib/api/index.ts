@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { makeApi } from "./client";
 import type {
+  AdminUser,
   Comment,
   DashboardSummary,
   InstanceSettings,
@@ -11,6 +12,7 @@ import type {
   ReadingListDetail,
   RelationActor,
   RemoteProfile,
+  Report,
   SearchResults,
   SuggestedUser,
   TagDetail,
@@ -52,6 +54,23 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     adminSettings: () => api.get<InstanceSettings>("/admin/settings"),
     setAnalytics: (onInstanceViews: boolean) =>
       api.put<InstanceSettings>("/admin/settings/analytics", { onInstanceViews }),
+
+    // admin moderation
+    adminUsers: (q?: string) =>
+      api.get<{ users: AdminUser[] }>(`/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+    suspendUser: (id: string, suspend: boolean) =>
+      api.post<{ ok: true }>(`/admin/users/${id}/suspend`, { suspend }),
+    adminRemovePost: (id: string) => api.del<{ ok: true }>(`/admin/posts/${id}`),
+    adminReports: (status?: "open" | "resolved") =>
+      api.get<{ reports: Report[]; openCount: number }>(
+        `/admin/reports${status ? `?status=${status}` : ""}`,
+      ),
+    resolveReport: (id: string, resolution?: string) =>
+      api.post<{ ok: true }>(`/admin/reports/${id}/resolve`, { resolution }),
+
+    // user-facing report (flag a post or account)
+    report: (subjectType: "post" | "user", subjectId: string, reason?: string) =>
+      api.post<{ ok: true }>("/reports", { subjectType, subjectId, reason }),
 
     // search
     search: (query: string, scope?: "posts" | "people" | "tags") =>

@@ -1,7 +1,22 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { Tabs } from "bits-ui";
   import InstanceModeration from "$lib/components/InstanceModeration.svelte";
-  import Icon from "$lib/components/Icon.svelte";
+  import AdminUsers from "$lib/components/AdminUsers.svelte";
+  import AdminReports from "$lib/components/AdminReports.svelte";
+  import Icon, { type IconName } from "$lib/components/Icon.svelte";
+  import type { PageData } from "./$types";
+
+  let { data }: { data: PageData } = $props();
+
+  const tabs: { value: string; label: string; icon: IconName }[] = [
+    { value: "reports", label: "Reports", icon: "flag" },
+    { value: "users", label: "Users", icon: "users" },
+    { value: "settings", label: "Instance", icon: "settings" },
+  ];
+
+  const triggerClass =
+    "data-[state=active]:bg-background data-[state=active]:shadow-mini text-muted-foreground data-[state=active]:text-foreground inline-flex h-9 items-center gap-1.5 rounded-button px-4 text-sm font-medium";
 </script>
 
 <svelte:head><title>Admin · Omicron</title></svelte:head>
@@ -15,16 +30,50 @@
   </p>
 </header>
 
-<div class="flex flex-col gap-8">
-  <!-- Instance settings -->
-  <section class="rounded-card border border-border bg-background p-6">
-    <h2 class="text-lg font-semibold tracking-tight text-foreground">Instance settings</h2>
-    <p class="mt-1 text-sm text-muted-foreground">
-      Settings that apply to everyone on this instance.
-    </p>
+<Tabs.Root value="reports">
+  <Tabs.List
+    class="inline-flex items-center gap-1 rounded-input border border-input bg-background-alt p-1 shadow-btn"
+  >
+    {#each tabs as t (t.value)}
+      <Tabs.Trigger value={t.value} class={triggerClass}>
+        <Icon name={t.icon} size={16} /> {t.label}
+      </Tabs.Trigger>
+    {/each}
+  </Tabs.List>
 
-    <div class="mt-5">
-      <InstanceModeration />
-    </div>
-  </section>
-</div>
+  <Tabs.Content value="reports" class="mt-6">
+    <section class="rounded-card border border-border bg-background p-6">
+      <h2 class="text-lg font-semibold tracking-tight text-foreground">Moderation queue</h2>
+      <p class="mt-1 text-sm text-muted-foreground">
+        Reports filed by users. Remove content or suspend accounts, then resolve.
+      </p>
+      <div class="mt-5">
+        <AdminReports />
+      </div>
+    </section>
+  </Tabs.Content>
+
+  <Tabs.Content value="users" class="mt-6">
+    <section class="rounded-card border border-border bg-background p-6">
+      <h2 class="text-lg font-semibold tracking-tight text-foreground">Users</h2>
+      <p class="mt-1 text-sm text-muted-foreground">
+        Every local account on this instance. Suspend to block sign-in.
+      </p>
+      <div class="mt-5">
+        <AdminUsers selfId={data.user.id} />
+      </div>
+    </section>
+  </Tabs.Content>
+
+  <Tabs.Content value="settings" class="mt-6">
+    <section class="rounded-card border border-border bg-background p-6">
+      <h2 class="text-lg font-semibold tracking-tight text-foreground">Instance settings</h2>
+      <p class="mt-1 text-sm text-muted-foreground">
+        Settings that apply to everyone on this instance.
+      </p>
+      <div class="mt-5">
+        <InstanceModeration />
+      </div>
+    </section>
+  </Tabs.Content>
+</Tabs.Root>
