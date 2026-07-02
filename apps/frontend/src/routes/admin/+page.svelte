@@ -4,6 +4,7 @@
   import InstanceModeration from "$lib/components/InstanceModeration.svelte";
   import AdminUsers from "$lib/components/AdminUsers.svelte";
   import AdminReports from "$lib/components/AdminReports.svelte";
+  import AdminDomains from "$lib/components/AdminDomains.svelte";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import type { PageData } from "./$types";
 
@@ -12,6 +13,7 @@
   const tabs: { value: string; label: string; icon: IconName }[] = [
     { value: "reports", label: "Reports", icon: "flag" },
     { value: "users", label: "Users", icon: "users" },
+    { value: "federation", label: "Federation", icon: "globe" },
     { value: "settings", label: "Instance", icon: "settings" },
   ];
 
@@ -61,6 +63,19 @@
       </p>
       <div class="mt-5">
         <AdminUsers selfId={data.user.id} />
+      </div>
+    </section>
+  </Tabs.Content>
+
+  <Tabs.Content value="federation" class="mt-6">
+    <section class="rounded-card border border-border bg-background p-6">
+      <h2 class="text-lg font-semibold tracking-tight text-foreground">Defederation</h2>
+      <p class="mt-1 text-sm text-muted-foreground">
+        Block domains this instance won't federate with. Inbound activity is dropped, delivery
+        skips them, and their content stops surfacing here.
+      </p>
+      <div class="mt-5">
+        <AdminDomains />
       </div>
     </section>
   </Tabs.Content>

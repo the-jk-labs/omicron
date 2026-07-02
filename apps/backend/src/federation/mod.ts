@@ -28,6 +28,7 @@ import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as listsRepo from "@/db/repositories/readingLists.ts";
 import * as linksRepo from "@/db/repositories/profileLinks.ts";
+import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import { buildArticle } from "@/federation/article.ts";
 import { cacheActor } from "@/federation/remote.ts";
 import { origin } from "@/config.ts";
@@ -189,10 +190,22 @@ function setupLists(f: Federation<ContextData>) {
   );
 }
 
+// Drops inbound activities whose sender is on a defederated domain (exact host
+// or subdomain). Every inbox listener bails on this before touching the DB.
+async function fromBlockedDomain(actorId: URL | null | undefined): Promise<boolean> {
+  if (!actorId) return false;
+  try {
+    return await blockedDomainsRepo.isBlocked(actorId.host);
+  } catch {
+    return false;
+  }
+}
+
 // ── Inbox: inbound Follow / Undo / Create ────────────────────────────────
 function setupInbox(f: Federation<ContextData>) {
   f.setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .on(Follow, async (ctx, follow) => {
+      if (await fromBlockedDomain(follow.actorId)) return;
       if (!follow.objectId) return;
       const parsed = ctx.parseUri(follow.objectId);
       if (parsed?.type !== "actor") return;
@@ -209,6 +222,7 @@ function setupInbox(f: Federation<ContextData>) {
       );
     })
     .on(Undo, async (ctx, undo) => {
+      if (await fromBlockedDomain(undo.actorId)) return;
       const object = await undo.getObject(ctx);
       if (!(object instanceof Follow) || !object.objectId) return;
       const parsed = ctx.parseUri(object.objectId);
@@ -219,6 +233,7 @@ function setupInbox(f: Federation<ContextData>) {
       }
     })
     .on(Accept, async (ctx, accept) => {
+      if (await fromBlockedDomain(accept.actorId)) return;
       // A remote actor accepted our outbound Follow. The Accept wraps the
       // original Follow(actor = our local actor, object = the remote actor);
       // mark that edge approved so the UI can reflect a confirmed follow.
@@ -235,6 +250,7 @@ function setupInbox(f: Federation<ContextData>) {
       }
     })
     .on(Create, async (ctx, create) => {
+      if (await fromBlockedDomain(create.actorId)) return;
       // Ingest a remote post. This is a long-form blogging platform, so we only
       // accept ActivityPub Articles (Omicron, WriteFreely, Ghost, Plume, …) and
       // ignore microblog Notes (Mastodon, Pixelfed, …) outright.

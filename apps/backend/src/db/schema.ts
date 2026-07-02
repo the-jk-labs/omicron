@@ -428,6 +428,17 @@ export const reports = pgTable("reports", {
   index("reports_status_created_idx").on(t.status, t.createdAt),
 ]);
 
+// ── blocked domains (defederation) ─────────────────────────────────────
+// Hostnames this instance refuses to federate with. Inbound activities from a
+// blocked host are dropped, outbound delivery skips them, and browse-time
+// fetches are refused. A block matches the exact host and any subdomain (see
+// lib/domain.ts). `domain` is the normalized, lowercased hostname.
+export const blockedDomains = pgTable("blocked_domains", {
+  domain: text("domain").primaryKey(),
+  reason: text("reason").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ── instance settings ──────────────────────────────────────────────────
 // Runtime, moderator-tunable instance config that cannot live in env (env is
 // fixed at boot). One row per key; `value` is JSON so a setting can be a bool,
@@ -494,6 +505,7 @@ export type ReadingList = typeof readingLists.$inferSelect;
 export type InstanceSetting = typeof instanceSettings.$inferSelect;
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
+export type BlockedDomain = typeof blockedDomains.$inferSelect;
 export type PostView = typeof postViews.$inferSelect;
 export type NewReadingList = typeof readingLists.$inferInsert;
 export type ReadingListItem = typeof readingListItems.$inferSelect;

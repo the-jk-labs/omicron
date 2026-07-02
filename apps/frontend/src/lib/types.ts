@@ -198,6 +198,9 @@ export type AdminUser = {
   createdAt: string;
 };
 
+// A defederated domain (admin only). Blocking a domain also blocks its subdomains.
+export type BlockedDomain = { domain: string; reason: string; createdAt: string };
+
 // A report in the moderation queue, enriched with light subject/reporter info.
 export type Report = {
   id: string;

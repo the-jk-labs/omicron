@@ -2,6 +2,7 @@
 import { makeApi } from "./client";
 import type {
   AdminUser,
+  BlockedDomain,
   Comment,
   DashboardSummary,
   InstanceSettings,
@@ -67,6 +68,11 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       ),
     resolveReport: (id: string, resolution?: string) =>
       api.post<{ ok: true }>(`/admin/reports/${id}/resolve`, { resolution }),
+    blockedDomains: () => api.get<{ domains: BlockedDomain[] }>("/admin/domains"),
+    blockDomain: (domain: string, reason?: string) =>
+      api.post<{ domain: string; purged: number }>("/admin/domains", { domain, reason }),
+    unblockDomain: (domain: string) =>
+      api.del<{ ok: true }>(`/admin/domains/${encodeURIComponent(domain)}`),
 
     // user-facing report (flag a post or account)
     report: (subjectType: "post" | "user", subjectId: string, reason?: string) =>

@@ -3,7 +3,12 @@ import * as usersRepo from "@/db/repositories/users.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as reportsRepo from "@/db/repositories/reports.ts";
 import * as sessionsRepo from "@/db/repositories/sessions.ts";
+import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
+import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";
+import { hostMatchesDomain, normalizeDomain } from "@/lib/domain.ts";
+import { config } from "@/config.ts";
+import type { BlockedDomain } from "@/db/schema.ts";
 import type { ReportRow } from "@/db/repositories/reports.ts";
 
 // Business logic for moderation. Admin authorization is enforced at the route
@@ -100,4 +105,40 @@ export async function removePost(id: string): Promise<void> {
   if (!row) throw notFound("Post not found.");
   if (row.post.remote) throw forbidden("Federated posts cannot be removed here.");
   await postsRepo.remove(id);
+}
+
+// ── Defederation (admin) ─────────────────────────────────────────────────
+
+export function listBlockedDomains(): Promise<BlockedDomain[]> {
+  return blockedDomainsRepo.list();
+}
+
+// Whether a hostname is defederated. On the federation hot path (cached).
+export function isDomainBlocked(host: string): Promise<boolean> {
+  return blockedDomainsRepo.isBlocked(host);
+}
+
+// Defederates a domain: refuses future federation with it and purges any content
+// already cached from it (actors + their posts cascade). Returns the normalized
+// domain and how many cached actors were removed.
+export async function blockDomain(
+  input: string,
+  reason: string,
+): Promise<{ domain: string; purged: number }> {
+  const domain = normalizeDomain(input);
+  if (!domain) throw badRequest("Enter a valid domain, e.g. example.social.");
+  // Guard against locking ourselves out of our own instance.
+  if (hostMatchesDomain(config.APP_DOMAIN, domain)) {
+    throw badRequest("You can't block your own instance.");
+  }
+  await blockedDomainsRepo.add(domain, (reason ?? "").trim().slice(0, 1000));
+  const purged = await remoteActorsRepo.removeByDomain(domain);
+  return { domain, purged };
+}
+
+// Re-federates a domain. Existing cached content isn't restored — it re-populates
+// on demand as users browse or the domain's servers deliver to us again.
+export async function unblockDomain(input: string): Promise<void> {
+  const domain = normalizeDomain(input) ?? input.trim().toLowerCase();
+  await blockedDomainsRepo.remove(domain);
 }

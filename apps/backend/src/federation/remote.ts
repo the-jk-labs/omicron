@@ -7,6 +7,7 @@ import * as usersRepo from "@/db/repositories/users.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
+import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import { normalizeTags } from "@/lib/tags.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
 import type { RemoteActor } from "@/db/schema.ts";
@@ -27,6 +28,11 @@ function fediHandle(handle: string): string {
   return handle.startsWith("@") ? handle : `@${handle}`;
 }
 
+// The host portion of a `user@host` (or `@user@host`) handle, for blocklist checks.
+function handleHost(handle: string): string {
+  return handle.replace(/^@/, "").split("@").pop() ?? "";
+}
+
 // A signed document loader (keyed to the oldest local user) so instances that
 // require authorized fetch / secure mode still serve us their documents. Falls
 // back to the default loader when there is no local user yet.
@@ -39,6 +45,8 @@ async function signedLoader(): Promise<DocumentLoader | undefined> {
 
 // Resolves `user@host` via WebFinger, then caches the actor document.
 export async function resolveActor(handle: string): Promise<RemoteActor | null> {
+  // Never reach out to a defederated domain.
+  if (await blockedDomainsRepo.isBlocked(handleHost(handle))) return null;
   const ctx = getFederation().createContext(new URL(origin), undefined);
   const documentLoader = await signedLoader();
   const object = await ctx.lookupObject(fediHandle(handle), { documentLoader });
@@ -85,6 +93,7 @@ export async function cacheActor(actor: Actor, handle?: string): Promise<RemoteA
 // profile still renders from whatever is cached.
 export async function fetchOutboxPosts(handle: string, remoteActorId: string): Promise<void> {
   try {
+    if (await blockedDomainsRepo.isBlocked(handleHost(handle))) return;
     const ctx = getFederation().createContext(new URL(origin), undefined);
     const documentLoader = await signedLoader();
     const actor = await ctx.lookupObject(fediHandle(handle), { documentLoader });

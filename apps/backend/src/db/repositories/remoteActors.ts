@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { eq, ilike, or } from "drizzle-orm";
+import { eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { type NewRemoteActor, remoteActors } from "@/db/schema.ts";
 
@@ -28,6 +28,17 @@ export function search(query: string, limit = 10) {
 
 export function findByApId(apId: string) {
   return db.query.remoteActors.findFirst({ where: eq(remoteActors.apId, apId) });
+}
+
+// Purges every cached actor on a domain and its subdomains (their posts, follow
+// edges, etc. cascade via FKs). Used when defederating a domain so its content
+// stops surfacing here. Returns the number of actors removed.
+export async function removeByDomain(domain: string): Promise<number> {
+  const rows = await db
+    .delete(remoteActors)
+    .where(or(eq(remoteActors.host, domain), sql`${remoteActors.host} like ${"%." + domain}`))
+    .returning({ id: remoteActors.id });
+  return rows.length;
 }
 
 // Inserts or refreshes a cached actor keyed by its ActivityPub id. Bumps

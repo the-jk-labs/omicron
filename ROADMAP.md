@@ -78,15 +78,21 @@ An open-speech instance needs takedown tools for legal and abuse reasons.
       themselves or other admins. `POST /admin/users/:id/suspend`.
 - [x] Admin: remove a post. `DELETE /admin/posts/:id` (moderator override of the
       author-only delete; local posts only — remote/cached can't be removed here).
-- [ ] Instance-level defederation / domain blocklist.
+- [x] Instance-level defederation / domain blocklist. `blocked_domains` table;
+      a block matches the exact host and any subdomain (`lib/domain.ts`).
+      Enforced on every federation path — inbound inbox (drops Follow/Undo/
+      Accept/Create from blocked senders), outbound delivery (skips blocked
+      recipients), and browse-time fetch (`remote.ts` refuses lookups). Blocking
+      purges already-cached actors + their posts. Endpoints `GET/POST/DELETE
+      /admin/domains`. Cached in-process (30s TTL) for the hot path.
 - [x] Admin moderation queue view (frontend). Dedicated admins-only `/admin` tab
-      (side rail + avatar menu) with Reports / Users / Instance tabs; queue shows
-      open/resolved with remove-post, suspend-account and dismiss actions.
+      (side rail + avatar menu) with Reports / Users / Federation / Instance tabs;
+      queue shows open/resolved with remove-post, suspend-account and dismiss.
 - Files: `routes/admin.ts`, `routes/reports.ts`, `services/moderation.ts`,
-  `db/repositories/{reports,users}.ts`, schema + `0017_moderation`, frontend
-  `routes/admin/`, `components/Admin{Users,Reports}.svelte`.
-- Remaining: instance-level domain blocklist / defederation (touches the
-  federation inbox) — next step.
+  `db/repositories/{reports,users,blockedDomains}.ts`, `lib/domain.ts`,
+  `federation/{mod,deliver,remote}.ts`, schema + `0017_moderation` +
+  `0018_blocked_domains`, frontend `routes/admin/`,
+  `components/Admin{Users,Reports,Domains}.svelte`.
 
 ---
 

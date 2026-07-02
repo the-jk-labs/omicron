@@ -82,3 +82,30 @@ adminRoutes.post("/reports/:id/resolve", async (c) => {
   await moderation.resolveReport(admin.id, c.req.param("id"), resolution);
   return c.json({ ok: true });
 });
+
+// ── Defederation (domain blocklist) ────────────────────────────────────────
+
+// The blocklist, alphabetical.
+adminRoutes.get("/domains", async (c) => {
+  requireAdmin(c);
+  return c.json({ domains: await moderation.listBlockedDomains() });
+});
+
+const blockDomainSchema = z.object({ domain: z.string().min(1), reason: z.string().optional() });
+
+// Defederate a domain. Returns the normalized domain and how many cached actors
+// were purged as a result.
+adminRoutes.post("/domains", async (c) => {
+  requireAdmin(c);
+  const parsed = blockDomainSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) throw badRequest("Expected { domain, reason? }.");
+  const result = await moderation.blockDomain(parsed.data.domain, parsed.data.reason ?? "");
+  return c.json(result, 201);
+});
+
+// Re-federate a domain. The param is the normalized domain (its primary key).
+adminRoutes.delete("/domains/:domain", async (c) => {
+  requireAdmin(c);
+  await moderation.unblockDomain(c.req.param("domain"));
+  return c.json({ ok: true });
+});

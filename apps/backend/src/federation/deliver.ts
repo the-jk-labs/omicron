@@ -7,6 +7,7 @@ import * as usersRepo from "@/db/repositories/users.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
+import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 
 // Sends a Create(Article) for a local post to all remote followers' inboxes.
 // Fedify handles HTTP signatures, batching and delivery retries.
@@ -24,6 +25,12 @@ export async function deliverPost(postId: string): Promise<void> {
 
   const recipients = [];
   for (const uri of remoteActors) {
+    // Never deliver to a defederated domain (exact host or subdomain).
+    try {
+      if (await blockedDomainsRepo.isBlocked(new URL(uri).host)) continue;
+    } catch {
+      // Unparseable follower URI — skip lookup below by not continuing here.
+    }
     const actor = await ctx.lookupObject(uri);
     if (isActor(actor)) recipients.push(actor);
   }
