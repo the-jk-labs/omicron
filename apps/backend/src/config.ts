@@ -26,6 +26,30 @@ const schema = z.object({
   RL_INBOX_MAX: z.coerce.number().int().positive().default(300),
   // Reject federation inbox POSTs whose declared body exceeds this many bytes.
   INBOX_MAX_BODY_BYTES: z.coerce.number().int().positive().default(1_000_000),
+
+  // Email. Transactional mail (password reset, verification). The default
+  // `console` transport just logs the message + link to stdout, so the whole
+  // flow works out of the box for local dev and single-user instances without
+  // any SMTP setup. Switch to `smtp` and fill the SMTP_* vars for real delivery.
+  EMAIL_TRANSPORT: z.enum(["console", "smtp"]).default("console"),
+  EMAIL_FROM: z.string().min(1).default("Omicron <no-reply@localhost>"),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_USERNAME: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  // Implicit TLS (port 465). When false, a STARTTLS upgrade is used (port 587).
+  SMTP_TLS: z
+    .string()
+    .transform((v) => v.toLowerCase() === "true")
+    .default(false),
+
+  // When true, new accounts must confirm their email before they can sign in
+  // (the gate for closed/invite instances). When false, verification mail is
+  // still sent as a courtesy but never blocks access.
+  EMAIL_VERIFICATION_REQUIRED: z
+    .string()
+    .transform((v) => v.toLowerCase() === "true")
+    .default(false),
 });
 
 function load() {
@@ -42,6 +66,14 @@ function load() {
     RL_API_WRITE_MAX: Deno.env.get("RL_API_WRITE_MAX"),
     RL_INBOX_MAX: Deno.env.get("RL_INBOX_MAX"),
     INBOX_MAX_BODY_BYTES: Deno.env.get("INBOX_MAX_BODY_BYTES"),
+    EMAIL_TRANSPORT: Deno.env.get("EMAIL_TRANSPORT"),
+    EMAIL_FROM: Deno.env.get("EMAIL_FROM"),
+    SMTP_HOST: Deno.env.get("SMTP_HOST"),
+    SMTP_PORT: Deno.env.get("SMTP_PORT"),
+    SMTP_USERNAME: Deno.env.get("SMTP_USERNAME"),
+    SMTP_PASSWORD: Deno.env.get("SMTP_PASSWORD"),
+    SMTP_TLS: Deno.env.get("SMTP_TLS"),
+    EMAIL_VERIFICATION_REQUIRED: Deno.env.get("EMAIL_VERIFICATION_REQUIRED"),
   });
 
   if (!parsed.success) {

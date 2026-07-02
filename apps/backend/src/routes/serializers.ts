@@ -29,6 +29,17 @@ export function publicUser(u: User, tags: TagSummary[] = [], links: LinkSummary[
   };
 }
 
+// Self-view payload: everything in `publicUser` plus the private account fields
+// (login email + verification state). Only ever returned to the authenticated
+// account owner (their own /auth/me, login, register) — never for other users.
+export function privateUser(u: User, tags: TagSummary[] = [], links: LinkSummary[] = []) {
+  return {
+    ...publicUser(u, tags, links),
+    email: u.email,
+    emailVerified: u.emailVerifiedAt !== null,
+  };
+}
+
 // Coalesces the two possible author sources into one uniform shape. For remote
 // authors `username` is the full `user@host` handle, so the frontend's
 // `/@${author.username}` links resolve straight back to the remote profile.

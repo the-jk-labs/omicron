@@ -2,6 +2,7 @@
 import { config } from "@/config.ts";
 import { registerHandler } from "@/queue/queue.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
+import { sendEmailVerification, sendPasswordReset } from "@/services/email.ts";
 
 // Registers all job handlers. Federation modules are imported dynamically so
 // Fedify is only loaded when FEDERATION_ENABLED=true; otherwise jobs no-op.
@@ -45,4 +46,12 @@ export function registerJobHandlers() {
     }
     await usersRepo.remove(userId);
   });
+
+  // Transactional email is delivered off the request path so response latency
+  // (and timing) doesn't depend on the mail server or whether an account exists.
+  registerHandler("send_password_reset", ({ to, token }) => sendPasswordReset(to, token));
+  registerHandler(
+    "send_email_verification",
+    ({ to, token }) => sendEmailVerification(to, token),
+  );
 }

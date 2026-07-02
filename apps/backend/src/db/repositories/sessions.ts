@@ -23,3 +23,9 @@ export async function findUser(id: string) {
 export async function remove(id: string) {
   await db.delete(sessions).where(eq(sessions.id, id));
 }
+
+// Drops every session for a user. Used after a password reset so any existing
+// logins (including a possible attacker's) are forced to re-authenticate.
+export async function removeAllForUser(userId: string) {
+  await db.delete(sessions).where(eq(sessions.userId, userId));
+}

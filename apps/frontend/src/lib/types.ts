@@ -13,6 +13,10 @@ export type User = {
   createdAt: string;
   tags: Tag[];
   links: ProfileLink[];
+  // Private account fields — present only on the signed-in user's own record
+  // (from /auth/me, login, register), never on other users' public profiles.
+  email?: string;
+  emailVerified?: boolean;
 };
 
 // An external link a user features on their profile. `platform` is a key from

@@ -35,6 +35,15 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     login: (body: { identifier: string; password: string }) =>
       api.post<{ user: User }>("/auth/login", body),
     logout: () => api.post<{ ok: true }>("/auth/logout"),
+    forgotPassword: (identifier: string) =>
+      api.post<{ ok: true }>("/auth/password/forgot", { identifier }),
+    resetPassword: (token: string, password: string) =>
+      api.post<{ ok: true }>("/auth/password/reset", { token, password }),
+    verifyEmail: (token: string) => api.post<{ ok: true }>("/auth/email/verify", { token }),
+    resendVerification: (email: string) =>
+      api.post<{ ok: true }>("/auth/email/resend", { email }),
+    changePassword: (currentPassword: string, newPassword: string) =>
+      api.post<{ ok: true }>("/auth/password/change", { currentPassword, newPassword }),
     deleteAccount: (password: string) => api.del<{ ok: true }>("/auth/me", { password }),
 
     // writer dashboard (own analytics) + moderator instance settings

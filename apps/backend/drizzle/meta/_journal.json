@@ -113,6 +113,13 @@
       "when": 1782815891050,
       "tag": "0015_massive_menace",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1782815891051,
+      "tag": "0016_auth_tokens",
+      "breakpoints": true
     }
   ]
 }

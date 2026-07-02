@@ -54,9 +54,14 @@
 
   // Auth screens stand alone: no side rails, just the form centered in the
   // viewport. The shared chrome (rails, grid) only applies to in-app routes.
-  const isAuth = $derived(
-    $page.route.id === "/login" || $page.route.id === "/register",
-  );
+  const AUTH_ROUTES = new Set([
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+    "/verify-email",
+  ]);
+  const isAuth = $derived(AUTH_ROUTES.has($page.route.id ?? ""));
 </script>
 
 <svelte:head>

@@ -45,7 +45,12 @@
     <input id="identifier" bind:value={identifier} autocomplete="username" class={field} />
   </div>
   <div class="flex flex-col gap-1.5">
-    <Label.Root for="password" class={labelClass}>Password</Label.Root>
+    <div class="flex items-center justify-between">
+      <Label.Root for="password" class={labelClass}>Password</Label.Root>
+      <a href="/forgot-password" class="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+        Forgot password?
+      </a>
+    </div>
     <input id="password" type="password" bind:value={password} autocomplete="current-password" class={field} />
   </div>
   {#if error}<p class="text-sm text-destructive">{error}</p>{/if}

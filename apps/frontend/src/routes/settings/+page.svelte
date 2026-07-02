@@ -175,6 +175,64 @@
     goto("/");
   }
 
+  // Resend email verification for an unverified account.
+  let resending = $state(false);
+  let resendDone = $state(false);
+  async function resendVerification() {
+    if (!data.user.email) return;
+    resending = true;
+    try {
+      await endpoints().resendVerification(data.user.email);
+      resendDone = true;
+    } catch {
+      // No-op surface: the endpoint never reveals account state; nothing to show.
+    } finally {
+      resending = false;
+    }
+  }
+
+  // Change password — dialog requiring the current password plus a new one.
+  let pwOpen = $state(false);
+  let currentPassword = $state("");
+  let newPassword = $state("");
+  let confirmPassword = $state("");
+  let pwError = $state("");
+  let pwBusy = $state(false);
+  let pwSaved = $state(false);
+
+  function onPwOpenChange(next: boolean) {
+    pwOpen = next;
+    if (next) {
+      currentPassword = "";
+      newPassword = "";
+      confirmPassword = "";
+      pwError = "";
+      pwSaved = false;
+    }
+  }
+
+  async function changePassword() {
+    pwError = "";
+    if (newPassword.length < 8) {
+      pwError = "New password must be at least 8 characters.";
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      pwError = "New passwords don't match.";
+      return;
+    }
+    pwBusy = true;
+    try {
+      await endpoints().changePassword(currentPassword, newPassword);
+      pwSaved = true;
+      pwOpen = false;
+    } catch (err) {
+      pwError = err instanceof ApiError ? err.message : "Failed to change password.";
+    } finally {
+      pwBusy = false;
+    }
+  }
+
   // Account deletion — guarded by a dialog that requires the current password.
   let deleteOpen = $state(false);
   let deletePassword = $state("");
@@ -471,6 +529,48 @@
         </div>
         <dd class="font-medium text-foreground">@{data.user.username}</dd>
       </div>
+      {#if data.user.email}
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <dt class="text-muted-foreground">Email</dt>
+            <p class="mt-0.5 text-xs text-muted-foreground">
+              Your private login address — used for sign-in and account recovery.
+            </p>
+          </div>
+          <dd class="flex flex-col items-end gap-1">
+            <span class="font-medium text-foreground">{data.user.email}</span>
+            {#if data.user.emailVerified}
+              <span class="inline-flex items-center gap-1 text-xs font-medium text-foreground">
+                <Icon name="check" size={13} /> Verified
+              </span>
+            {:else if resendDone}
+              <span class="text-xs text-muted-foreground">Verification link sent.</span>
+            {:else}
+              <span class="inline-flex items-center gap-2 text-xs">
+                <span class="text-muted-foreground">Unverified</span>
+                <ButtonPrimitive.Root
+                  onclick={resendVerification}
+                  disabled={resending}
+                  class="font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground disabled:opacity-60"
+                >
+                  {resending ? "Sending…" : "Resend link"}
+                </ButtonPrimitive.Root>
+              </span>
+            {/if}
+          </dd>
+        </div>
+      {/if}
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <dt class="text-muted-foreground">Password</dt>
+          {#if pwSaved}<p class="mt-0.5 text-xs text-muted-foreground">Password updated.</p>{/if}
+        </div>
+        <dd>
+          <Button variant="outline" size="sm" onclick={() => onPwOpenChange(true)}>
+            <Icon name="lock" size={15} /> Change password
+          </Button>
+        </dd>
+      </div>
       <div class="flex items-center justify-between gap-4">
         <dt class="text-muted-foreground">Joined</dt>
         <dd class="font-medium text-foreground">{formatDate(data.user.createdAt)}</dd>
@@ -499,6 +599,74 @@
     </div>
   </section>
 </div>
+
+<Dialog.Root bind:open={pwOpen} onOpenChange={onPwOpenChange}>
+  <Dialog.Portal>
+    <Dialog.Overlay
+      class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+    />
+    <Dialog.Content
+      class="rounded-card bg-background shadow-popover fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 border border-border p-6 sm:max-w-[440px]"
+    >
+      <Dialog.Title class="text-foreground text-lg font-semibold tracking-tight">
+        Change password
+      </Dialog.Title>
+      <Dialog.Description class="text-muted-foreground mt-1 text-sm">
+        Enter your current password, then choose a new one.
+      </Dialog.Description>
+
+      <div class="mt-5 flex flex-col gap-4">
+        <div class="flex flex-col gap-1.5">
+          <Label.Root for="current-password" class={labelClass}>Current password</Label.Root>
+          <input
+            id="current-password"
+            type="password"
+            bind:value={currentPassword}
+            autocomplete="current-password"
+            class={field}
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <Label.Root for="new-password" class={labelClass}>New password</Label.Root>
+          <input
+            id="new-password"
+            type="password"
+            bind:value={newPassword}
+            autocomplete="new-password"
+            placeholder="min 8 characters"
+            class={field}
+          />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <Label.Root for="confirm-password" class={labelClass}>Confirm new password</Label.Root>
+          <input
+            id="confirm-password"
+            type="password"
+            bind:value={confirmPassword}
+            autocomplete="new-password"
+            class={field}
+          />
+        </div>
+        {#if pwError}<p class="text-destructive text-sm">{pwError}</p>{/if}
+      </div>
+
+      <div class="mt-6 flex justify-end gap-2">
+        <Dialog.Close
+          class="text-foreground hover:bg-muted inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium active:scale-[0.98]"
+        >
+          Cancel
+        </Dialog.Close>
+        <Button
+          variant="solid"
+          disabled={pwBusy || !currentPassword || !newPassword}
+          onclick={changePassword}
+        >
+          {pwBusy ? "Saving…" : "Update password"}
+        </Button>
+      </div>
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
 
 <Dialog.Root bind:open={deleteOpen} onOpenChange={onDeleteOpenChange}>
   <Dialog.Portal>

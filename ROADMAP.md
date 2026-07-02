@@ -50,10 +50,21 @@ or local user can inject executing scripts.
 
 ### 3. Account recovery & email
 
-- [ ] Introduce an email-sending abstraction (pluggable SMTP/provider).
-- [ ] Password reset flow (request + tokened confirm).
-- [ ] Email verification on registration (config-gated for closed instances).
-- Files: new `services/email.ts`, `services/auth.ts`, `routes/auth.ts`, schema.
+- [x] Introduce an email-sending abstraction (pluggable SMTP/provider) —
+      `services/email.ts`. Ships a `console` transport (default, logs the link;
+      zero-config dev) and a lazily-loaded `smtp` transport (denomailer). Config
+      via `EMAIL_TRANSPORT`, `EMAIL_FROM`, `SMTP_*` in `config.ts`/`.env.example`.
+- [x] Password reset flow (request + tokened confirm). Single-use, hashed,
+      expiring tokens (`auth_tokens` table); reset invalidates all sessions.
+      Endpoints `POST /auth/password/{forgot,reset}`; no user enumeration.
+      Frontend: `/forgot-password`, `/reset-password`.
+- [x] Email verification on registration (config-gated for closed instances) —
+      `EMAIL_VERIFICATION_REQUIRED` gates sign-in for unverified accounts (first
+      account auto-verified). Endpoints `POST /auth/email/{verify,resend}`.
+      Frontend: `/verify-email` (auto-verify + resend).
+- Files: `services/email.ts`, `services/auth.ts`, `routes/auth.ts`,
+  `lib/tokens.ts`, `db/repositories/authTokens.ts`, schema + `0016_auth_tokens`,
+  queue jobs, and the frontend auth pages.
 
 ### 4. Moderation & admin tooling
 

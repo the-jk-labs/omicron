@@ -8,7 +8,9 @@ export type JobName =
   | "federate_list_item"
   | "send_follow"
   | "send_unfollow"
-  | "delete_actor";
+  | "delete_actor"
+  | "send_password_reset"
+  | "send_email_verification";
 
 export type JobPayloads = {
   federate_post: { postId: string };
@@ -16,6 +18,8 @@ export type JobPayloads = {
   send_follow: { followerId: string; targetActor: string };
   send_unfollow: { followerId: string; targetActor: string };
   delete_actor: { userId: string };
+  send_password_reset: { to: string; token: string };
+  send_email_verification: { to: string; token: string };
 };
 
 type Handler<N extends JobName> = (payload: JobPayloads[N]) => Promise<void>;

@@ -40,6 +40,9 @@ export const users = pgTable("users", {
   publicEmail: text("public_email").notNull().default(""),
   avatarUrl: text("avatar_url"),
   isAdmin: boolean("is_admin").notNull().default(false),
+  // When the user confirmed their login email. Null until verified. Only gates
+  // sign-in when EMAIL_VERIFICATION_REQUIRED is set (see services/auth.ts).
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
   actorKeyPair: jsonb("actor_key_pair").$type<ActorKeyPair | null>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
@@ -379,6 +382,25 @@ export const sessions = pgTable("sessions", {
   index("sessions_user_idx").on(t.userId),
 ]);
 
+// ── auth tokens ──────────────────────────────────────────────────────────
+// Single-use, expiring tokens for out-of-band auth flows: password reset and
+// email verification (`purpose` distinguishes them). Only a SHA-256 hash of the
+// token is stored — the raw token lives only in the emailed link, so a database
+// read can't be replayed into a valid link. `used_at` marks a token spent so it
+// can't be reused; expired/used rows are swept opportunistically on issue.
+export const authTokens = pgTable("auth_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  purpose: text("purpose").notNull(), // "password_reset" | "email_verify"
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("auth_tokens_hash_idx").on(t.tokenHash),
+  index("auth_tokens_user_purpose_idx").on(t.userId, t.purpose),
+]);
+
 // ── instance settings ──────────────────────────────────────────────────
 // Runtime, moderator-tunable instance config that cannot live in env (env is
 // fixed at boot). One row per key; `value` is JSON so a setting can be a bool,
@@ -433,6 +455,8 @@ export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;
 export type CommentLike = typeof commentLikes.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
+export type AuthToken = typeof authTokens.$inferSelect;
+export type NewAuthToken = typeof authTokens.$inferInsert;
 export type Tag = typeof tags.$inferSelect;
 export type NewTag = typeof tags.$inferInsert;
 export type PostTag = typeof postTags.$inferSelect;
