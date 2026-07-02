@@ -10,10 +10,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License: AGPL-3.0" />
-  <img src="https://img.shields.io/badge/protocol-ActivityPub-6364FF" alt="ActivityPub" />
-  <img src="https://img.shields.io/badge/backend-Deno-000000?logo=deno&logoColor=white" alt="Deno" />
-  <img src="https://img.shields.io/badge/frontend-SvelteKit-FF3E00?logo=svelte&logoColor=white" alt="SvelteKit" />
+  <img src="https://shieldcn.dev/badge/license-AGPL--3.0-blue.svg?logo=opensourceinitiative" alt="License: AGPL-3.0" />
+  <img src="https://shieldcn.dev/badge/protocol-ActivityPub-6364FF.svg?logo=activitypub" alt="ActivityPub" />
+  <img src="https://shieldcn.dev/badge/backend-Deno-000000.svg?logo=deno&logoColor=white" alt="Deno" />
+  <img src="https://shieldcn.dev/badge/frontend-SvelteKit-FF3E00.svg?logo=svelte&logoColor=white" alt="SvelteKit" />
 </p>
 
 Omicron is a federated blogging platform. Write rich-text posts, follow other
