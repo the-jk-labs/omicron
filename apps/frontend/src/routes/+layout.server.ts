@@ -23,10 +23,12 @@ export const load: LayoutServerLoad = async ({ fetch, route }) => {
   if (discoverPromise) {
     // Each list is independent — a failure in one must not blank the others.
     const [p, u, t] = await discoverPromise;
+    // Cap each list so the rail always fits within one viewport height and never
+    // becomes a second scroll region alongside the page.
     discover = {
-      posts: p.status === "fulfilled" ? p.value.items : [],
-      people: u.status === "fulfilled" ? u.value.items : [],
-      tags: t.status === "fulfilled" ? t.value.tags.slice(0, 8) : [],
+      posts: p.status === "fulfilled" ? p.value.items.slice(0, 4) : [],
+      people: u.status === "fulfilled" ? u.value.items.slice(0, 3) : [],
+      tags: t.status === "fulfilled" ? t.value.tags.slice(0, 6) : [],
     };
   }
 
