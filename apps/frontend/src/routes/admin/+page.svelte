@@ -2,6 +2,8 @@
 <script lang="ts">
   import { Tabs } from "bits-ui";
   import InstanceModeration from "$lib/components/InstanceModeration.svelte";
+  import AdminInstanceSettings from "$lib/components/AdminInstanceSettings.svelte";
+  import AdminEmail from "$lib/components/AdminEmail.svelte";
   import AdminUsers from "$lib/components/AdminUsers.svelte";
   import AdminReports from "$lib/components/AdminReports.svelte";
   import AdminDomains from "$lib/components/AdminDomains.svelte";
@@ -14,6 +16,7 @@
     { value: "reports", label: "Reports", icon: "flag" },
     { value: "users", label: "Users", icon: "users" },
     { value: "federation", label: "Federation", icon: "globe" },
+    { value: "email", label: "Email", icon: "mail" },
     { value: "settings", label: "Instance", icon: "settings" },
   ];
 
@@ -80,8 +83,31 @@
     </section>
   </Tabs.Content>
 
+  <Tabs.Content value="email" class="mt-6">
+    <section class="rounded-card border border-border bg-background p-6">
+      <h2 class="text-lg font-semibold tracking-tight text-foreground">Email delivery</h2>
+      <p class="mt-1 text-sm text-muted-foreground">
+        How this instance sends password-reset and verification mail. Configure and test it here —
+        no config files.
+      </p>
+      <div class="mt-5">
+        <AdminEmail />
+      </div>
+    </section>
+  </Tabs.Content>
+
   <Tabs.Content value="settings" class="mt-6">
     <section class="rounded-card border border-border bg-background p-6">
+      <h2 class="text-lg font-semibold tracking-tight text-foreground">Instance identity</h2>
+      <p class="mt-1 text-sm text-muted-foreground">
+        The public name and domain for this server.
+      </p>
+      <div class="mt-5">
+        <AdminInstanceSettings />
+      </div>
+    </section>
+
+    <section class="mt-6 rounded-card border border-border bg-background p-6">
       <h2 class="text-lg font-semibold tracking-tight text-foreground">Instance settings</h2>
       <p class="mt-1 text-sm text-muted-foreground">
         Settings that apply to everyone on this instance.

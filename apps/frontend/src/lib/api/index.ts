@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { makeApi } from "./client";
 import type {
+  AdminInstance,
   AdminUser,
   BlockedDomain,
   Comment,
@@ -72,6 +73,11 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     adminSettings: () => api.get<InstanceSettings>("/admin/settings"),
     setAnalytics: (onInstanceViews: boolean) =>
       api.put<InstanceSettings>("/admin/settings/analytics", { onInstanceViews }),
+
+    // admin instance identity (name + domain; federation shown read-only)
+    adminInstance: () => api.get<AdminInstance>("/admin/instance"),
+    setAdminInstance: (body: { appName?: string; appDomain?: string }) =>
+      api.put<AdminInstance>("/admin/instance", body),
 
     // admin email settings (runtime-configurable delivery)
     adminEmail: () => api.get<EmailSettings>("/admin/email"),

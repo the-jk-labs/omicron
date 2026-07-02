@@ -92,6 +92,20 @@ export async function isTlsDomainAllowed(domain: string): Promise<boolean> {
   return !(await isSetupComplete());
 }
 
+// Update the instance identity from the admin page (runtime config). Mirrors the
+// wizard, but usable after setup. An empty domain is stored as-is and falls back
+// to the env/default in getAppDomain, so clearing it reverts to the boot value.
+export async function setInstanceIdentity(input: {
+  appName?: string;
+  appDomain?: string;
+}): Promise<void> {
+  const name = input.appName?.trim();
+  if (name) await settingsRepo.set(SETUP_KEYS.appName, name);
+  if (input.appDomain !== undefined) {
+    await settingsRepo.set(SETUP_KEYS.appDomain, input.appDomain.trim());
+  }
+}
+
 // A public snapshot of the instance's identity, safe to expose unauthenticated.
 export async function publicInfo(): Promise<{
   name: string;

@@ -218,6 +218,14 @@ export type EmailSettings = {
   };
 };
 
+// Admin view of the instance identity. `federationEnabled` is boot/env-bound and
+// therefore read-only in the admin UI.
+export type AdminInstance = {
+  appName: string;
+  appDomain: string;
+  federationEnabled: boolean;
+};
+
 // ── moderation (admin only) ──
 // A row in the admin user table. Exposes the moderation-relevant private fields
 // (login email, verification + suspension state) — admin surfaces only.

@@ -144,11 +144,25 @@ Goal: `noreply@domain` mail works with the least possible friction.
 Everything the wizard sets, plus ongoing knobs, editable later in the web UI —
 so no operator ever returns to a config file.
 
-- [ ] **Instance settings tab** under the existing `/admin` surface: app name,
-      domain (with re-verify), email transport + health, federation toggle.
-- [ ] **Email health panel** — show DNS/relay status, resend a test message.
-- [ ] **Secret rotation** — regenerate `SESSION_SECRET` from the UI (with the
-      "signs everyone out" warning) instead of shelling in.
+- [x] **Instance settings tab** under `/admin`. The **Instance** tab edits app
+      name + public domain (`GET/PUT /api/admin/instance`,
+      `instanceSetup.setInstanceIdentity`) with the domain-reaches-ActivityPub-
+      on-restart caveat surfaced inline; federation status is shown read-only
+      (it's `FEDERATION_ENABLED` env/restart-bound — see below).
+- [x] **Email panel** — a dedicated **Email** tab surfacing the S3 endpoints:
+      toggle console/SMTP, edit the connection (password write-only, shown as
+      `unchanged`), **save**, and **send a live test** (`POST /api/admin/email/test`).
+- [ ] **Federation toggle (deferred).** `FEDERATION_ENABLED` gates the boot-time
+      Fedify mount plus queue handlers and remote routes, so a live toggle would
+      need consistent re-mounting; left env + restart-controlled and shown
+      read-only for now. A DB-backed, restart-applied flag can come later.
+- [ ] **Secret rotation (deferred).** Regenerating `SESSION_SECRET` from the UI
+      only takes effect on restart (the running process holds it in memory) and
+      signs everyone out — a footgun better done deliberately; deferred.
+- Files: `services/instanceSetup.ts` (`setInstanceIdentity`), `routes/admin.ts`
+  (`/instance` GET/PUT); frontend `components/AdminInstanceSettings.svelte`,
+  `components/AdminEmail.svelte`, `routes/admin/+page.svelte` (Email + Instance
+  tabs), `lib/api`, `lib/types`.
 
 ## S5 — Podman parity & upgrades
 

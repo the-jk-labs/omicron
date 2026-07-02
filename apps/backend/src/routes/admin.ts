@@ -4,10 +4,12 @@ import { z } from "zod";
 import * as settings from "@/services/settings.ts";
 import * as moderation from "@/services/moderation.ts";
 import * as emailSettings from "@/services/emailSettings.ts";
+import * as setup from "@/services/instanceSetup.ts";
 import { sendTestEmail } from "@/services/email.ts";
 import { requireAdmin } from "@/routes/middleware.ts";
 import { adminUserView } from "@/routes/serializers.ts";
 import { badRequest } from "@/lib/http.ts";
+import { config } from "@/config.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 export const adminRoutes = new Hono<AppEnv>();
@@ -29,6 +31,42 @@ adminRoutes.put("/settings/analytics", async (c) => {
   if (!parsed.success) throw badRequest("Expected { onInstanceViews: boolean }.");
   await settings.setOnInstanceViewsEnabled(parsed.data.onInstanceViews);
   return c.json({ onInstanceViews: parsed.data.onInstanceViews });
+});
+
+// ── Instance identity (runtime config) ──────────────────────────────────────
+
+// Current app name + public domain (effective values), plus the boot-time
+// federation flag for display. `federationEnabled` is env/restart-controlled, so
+// it's read-only here (see the admin UI note).
+adminRoutes.get("/instance", async (c) => {
+  requireAdmin(c);
+  return c.json({
+    appName: await setup.getAppName(),
+    appDomain: await setup.getAppDomain(),
+    federationEnabled: config.FEDERATION_ENABLED,
+  });
+});
+
+const instanceSchema = z.object({
+  appName: z.string().trim().min(1, "An instance name is required.").max(100).optional(),
+  appDomain: z.string().trim().max(253).optional(),
+});
+
+// Update the app name / public domain. A domain change reaches ActivityPub only
+// after a restart (federation identity binds at boot); app-level URLs update at
+// once. The UI surfaces that caveat.
+adminRoutes.put("/instance", async (c) => {
+  requireAdmin(c);
+  const parsed = instanceSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    throw badRequest(parsed.error.issues[0]?.message ?? "Invalid instance settings.");
+  }
+  await setup.setInstanceIdentity(parsed.data);
+  return c.json({
+    appName: await setup.getAppName(),
+    appDomain: await setup.getAppDomain(),
+    federationEnabled: config.FEDERATION_ENABLED,
+  });
 });
 
 // ── Email (runtime-configurable delivery) ────────────────────────────────────
