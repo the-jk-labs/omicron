@@ -135,10 +135,27 @@ Remote edits and deletes are currently ignored, leaving stale/deleted copies
 
 ### 7. Federation robustness
 
-- [ ] Verify HTTP signature handling on all inbound activities (Fedify defaults
-      audited).
-- [ ] Bound inbox payload size and reject oversized/malformed objects early.
-- [ ] Confirm delivery retry/backoff behaviour and dead-letter visibility.
+- [x] Verify HTTP signature handling on all inbound activities (Fedify defaults
+      audited). Every inbound activity is HTTP-Signature-verified within a
+      one-hour timestamp window; `skipSignatureVerification: false` is now set
+      explicitly in `createFederationInstance` so the guarantee can't silently
+      drift. Fedify only invokes an `.on(...)` listener after verification.
+- [x] Bound inbox payload size and reject oversized/malformed objects early.
+      Declared Content-Length over `INBOX_MAX_BODY_BYTES` is rejected up front
+      (413); the body is then buffered under a hard byte cap (`lib/inboxBody.ts`)
+      so a missing/chunked/spoofed length can't stream an unbounded payload into
+      Fedify's parser, and the request is rebuilt so the HTTP-Signature digest
+      still verifies. Malformed/unknown-type objects are dropped by the
+      listeners (Articles only; ownership/id checks).
+- [x] Confirm delivery retry/backoff behaviour and dead-letter visibility.
+      Outbound delivery now runs through an `InProcessMessageQueue`, giving
+      Fedify's default retry/backoff (exponential, up to 10 attempts over ~12h)
+      instead of a single synchronous send. `onOutboxError` logs each failed
+      attempt; `setOutboxPermanentFailureHandler` logs dead-letters once Fedify
+      gives up (permanent HTTP failure or circuit-breaker expiry). Queue is
+      in-process/non-durable for now — swap for Redis with the KV backend.
+- Files: `federation/mod.ts` (queue + signature/error handlers), `app.ts` +
+  `lib/inboxBody.ts` (capped-body inbox guard).
 
 ---
 

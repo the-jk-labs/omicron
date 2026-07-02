@@ -5,6 +5,7 @@ import {
   type Federation,
   generateCryptoKeyPair,
   importJwk,
+  InProcessMessageQueue,
   MemoryKvStore,
 } from "@fedify/fedify";
 import {
@@ -63,9 +64,42 @@ export function getFederation(): Federation<ContextData> {
 }
 
 function createFederationInstance(): Federation<ContextData> {
-  // MemoryKvStore + the built-in delivery queue are fine for a single instance.
-  // Both are swappable (e.g. a Postgres/Redis KV) without touching dispatchers.
-  return createFederation<ContextData>({ kv: new MemoryKvStore() });
+  // MemoryKvStore + an in-process message queue are fine for a single instance;
+  // both are swappable for a Postgres/Redis backing without touching dispatchers
+  // (the queue is non-durable, so undelivered activities are lost on restart —
+  // acceptable at MVP, revisit with the backend swap).
+  //
+  // The queue is what gives outbound delivery Fedify's retry/backoff (exponential,
+  // up to 10 attempts over ~12h) instead of a single synchronous best-effort send,
+  // and it lets inbound activities be processed with the inbox retry policy.
+  //
+  // Signatures: we rely on Fedify's secure defaults — every inbound activity is
+  // HTTP-Signature-verified within a one-hour timestamp window. Stated here
+  // explicitly (`skipSignatureVerification: false`) so the guarantee can't
+  // silently drift; never flip this on in production.
+  const f = createFederation<ContextData>({
+    kv: new MemoryKvStore(),
+    queue: new InProcessMessageQueue(),
+    skipSignatureVerification: false,
+    // Transient delivery failures are retried per the backoff schedule; surface
+    // each attempt so operators can see a struggling peer.
+    onOutboxError: (error, activity) => {
+      console.error(
+        `federation: outbound delivery error for ${activity?.id?.href ?? "<unknown>"}:`,
+        error,
+      );
+    },
+  });
+  // Dead-letter visibility: fired once Fedify gives up on an inbox (a permanent
+  // HTTP failure, or the circuit breaker's retention expiring). This is the
+  // signal that an activity was dropped for good.
+  f.setOutboxPermanentFailureHandler((_ctx, { inbox, activity, statusCode, reason }) => {
+    console.error(
+      `federation: gave up delivering ${activity.id?.href ?? "<unknown>"} to ${inbox.href} ` +
+        `(${reason}, status ${statusCode})`,
+    );
+  });
+  return f;
 }
 
 // ── Actor + key pairs ──────────────────────────────────────────────────
@@ -307,7 +341,7 @@ function setupInbox(f: Federation<ContextData>) {
       }
       await tagsRepo.setPostTags(existing.id, normalizeTags(tagNames));
     })
-    .on(Delete, async (ctx, del) => {
+    .on(Delete, async (_ctx, del) => {
       if (await fromBlockedDomain(del.actorId)) return;
       const objectId = del.objectId?.href;
       if (!objectId || !del.actorId) return;

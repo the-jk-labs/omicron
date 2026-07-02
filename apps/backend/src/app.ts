@@ -8,6 +8,7 @@ import { healthRoutes } from "@/routes/health.ts";
 import { apiRoutes } from "@/routes/index.ts";
 import { registerJobHandlers } from "@/queue/handlers.ts";
 import { checkRateLimit, clientIp, rateLimit } from "@/lib/rateLimit.ts";
+import { readCappedBody } from "@/lib/inboxBody.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 // Read-only requests are cheap and safe; the general limiter targets mutations.
@@ -53,8 +54,7 @@ export async function buildApp() {
         // WebFinger, outbox) are cheap reads and left unthrottled here.
         if (c.req.method === "POST") {
           // Reject oversized payloads up front by their declared length, before
-          // Fedify reads/parses the body. (A missing/chunked length can't be
-          // cheaply checked here; the rate limit still bounds overall volume.)
+          // touching the body at all — the cheap first gate.
           const declaredLen = Number(c.req.header("content-length"));
           if (Number.isFinite(declaredLen) && declaredLen > config.INBOX_MAX_BODY_BYTES) {
             return new Response("Payload Too Large", { status: 413 });
@@ -66,6 +66,20 @@ export async function buildApp() {
               headers: { "retry-after": String(retryAfter) },
             });
           }
+          // Buffer the body under a hard cap so a missing/chunked/spoofed
+          // Content-Length can't stream an unbounded payload into Fedify's
+          // parser. We consume the stream, so rebuild the request from the
+          // buffered bytes (headers/method/url preserved, so the HTTP-Signature
+          // digest still verifies against the exact same bytes).
+          const body = await readCappedBody(c.req.raw, config.INBOX_MAX_BODY_BYTES);
+          if (body === null) return new Response("Payload Too Large", { status: 413 });
+          const buffered = new Request(c.req.url, {
+            method: "POST",
+            headers: c.req.raw.headers,
+            // A Uint8Array is a valid runtime BodyInit; the DOM typing omits it.
+            body: body as BodyInit,
+          });
+          return await fed.fetch(buffered, { contextData: undefined });
         }
         return await fed.fetch(c.req.raw, { contextData: undefined });
       }
