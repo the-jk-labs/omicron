@@ -28,7 +28,7 @@
   const footerItems = $derived<Item[]>(
     user
       ? [
-          ...(user.isAdmin ? [{ label: "Admin", href: "/admin", icon: "admin" } as Item] : []),
+          ...(user.isAdmin ? [{ label: "Admin", href: "/admin", icon: "gavel" } as Item] : []),
           { label: "Settings", href: "/settings", icon: "settings" },
         ]
       : [],

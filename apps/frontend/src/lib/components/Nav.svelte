@@ -109,7 +109,7 @@
               </DropdownMenu.Item>
               {#if user.isAdmin}
                 <DropdownMenu.Item onSelect={() => goto("/admin")} class={itemClass}>
-                  <Icon name="admin" size={18} /> Admin
+                  <Icon name="gavel" size={18} /> Admin
                 </DropdownMenu.Item>
               {/if}
               <DropdownMenu.Item onSelect={() => goto("/settings")} class={itemClass}>

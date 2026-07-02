@@ -25,7 +25,7 @@
 
 <header class="mb-6 pb-2">
   <h1 class="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
-    <Icon name="admin" size={22} /> Admin
+    <Icon name="gavel" size={22} /> Admin
   </h1>
   <p class="mt-1 text-muted-foreground">
     Moderation and instance-wide controls for this server.

@@ -76,6 +76,7 @@
     Flag,
     ShieldOff,
     Inbox,
+    Gavel,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -151,6 +152,7 @@
     flag: Flag,
     shieldOff: ShieldOff,
     inbox: Inbox,
+    gavel: Gavel,
   } as const;
 
   export type IconName = keyof typeof icons;
