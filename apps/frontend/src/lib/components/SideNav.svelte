@@ -23,9 +23,15 @@
       : [{ label: "Home", href: "/", icon: "home" }],
   );
 
-  // Settings is pinned to the bottom of the rail, away from the primary items.
+  // Admin (moderators only) and Settings are pinned to the bottom of the rail,
+  // away from the primary items.
   const footerItems = $derived<Item[]>(
-    user ? [{ label: "Settings", href: "/settings", icon: "settings" }] : [],
+    user
+      ? [
+          ...(user.isAdmin ? [{ label: "Admin", href: "/admin", icon: "admin" } as Item] : []),
+          { label: "Settings", href: "/settings", icon: "settings" },
+        ]
+      : [],
   );
 
   function active(href: string): boolean {

@@ -107,6 +107,11 @@
               <DropdownMenu.Item onSelect={() => goto("/dashboard")} class={itemClass}>
                 <Icon name="chart" size={18} /> Stats
               </DropdownMenu.Item>
+              {#if user.isAdmin}
+                <DropdownMenu.Item onSelect={() => goto("/admin")} class={itemClass}>
+                  <Icon name="admin" size={18} /> Admin
+                </DropdownMenu.Item>
+              {/if}
               <DropdownMenu.Item onSelect={() => goto("/settings")} class={itemClass}>
                 <Icon name="settings" size={18} /> Settings
               </DropdownMenu.Item>
