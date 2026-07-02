@@ -46,17 +46,27 @@ docker compose up -d --build
 ```
 
 No config to edit — the session secret and database password are generated
-automatically on first boot. Open <http://localhost:5173>. **The first account
-you register becomes the admin.** To go public on your own domain, set
-`APP_DOMAIN` (see [.env.example](.env.example) for optional overrides).
+automatically on first boot. Open <http://localhost> (or
+<http://localhost:5173> for the app directly) and finish the short setup wizard.
+**The first account you create becomes the admin.**
 
-| Service  | URL                     | Notes                                  |
-| -------- | ----------------------- | -------------------------------------- |
-| Frontend | http://localhost:5173   | The app UI                             |
-| Backend  | http://localhost:8000   | JSON API + ActivityPub endpoints       |
-| Postgres | (internal)              | Data persisted in the `pgdata` volume  |
+| Service  | URL                     | Notes                                   |
+| -------- | ----------------------- | --------------------------------------- |
+| Caddy    | http://localhost        | Public entrypoint (HTTPS in production) |
+| Frontend | http://localhost:5173   | The app UI (direct, for debugging)      |
+| Backend  | http://localhost:8000   | JSON API + ActivityPub endpoints        |
+| Postgres | (internal)              | Data persisted in the `pgdata` volume   |
 
 Health checks: `curl localhost:8000/healthz` and `curl localhost:8000/version`.
+
+### Going public (HTTPS on your domain)
+
+The **only** manual step is DNS: point an `A`/`AAAA` record for your domain at
+this host. Then open `https://your-domain` — the bundled Caddy fetches a Let's
+Encrypt certificate on demand (no certbot, no domain in any config file) and the
+setup wizard runs over HTTPS. Certificates persist in the `caddy_data` volume,
+so upgrades keep them. If ports 80/443 are already used on the host, set
+`HTTP_PORT` / `HTTPS_PORT` (see [.env.example](.env.example)).
 
 ---
 

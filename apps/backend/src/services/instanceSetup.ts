@@ -48,6 +48,39 @@ export async function getEmailMode(): Promise<string> {
   return fromDb?.trim() || config.EMAIL_TRANSPORT;
 }
 
+// Reduce any domain/URL/host:port form to a bare, lowercased hostname so the
+// TLS ask endpoint compares apples to apples (the SNI Caddy sends is a bare
+// host, but the stored/env domain may carry a scheme, path, or port).
+function bareHost(value: string): string {
+  return value.trim().toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .split("/")[0]
+    .split(":")[0];
+}
+
+// Gate for Caddy's on-demand TLS: should we obtain a certificate for `domain`?
+// Answering yes triggers a real Let's Encrypt issuance, so this must be tight —
+// only ever the instance's own domain (plus its `www.` alias), never localhost.
+// Before setup completes there is a deliberate bootstrap window: any real
+// hostname is allowed so the operator can reach the wizard over HTTPS on the
+// domain they just pointed at us, before that domain is saved. Caddy rate-limits
+// on-demand issuance, so the window is bounded; once setup is done only the
+// saved domain gets a certificate.
+export async function isTlsDomainAllowed(domain: string): Promise<boolean> {
+  const host = bareHost(domain);
+  if (!host) return false;
+  // Public CAs can't validate these; never spend an issuance on them.
+  if (host === "localhost" || host.endsWith(".localhost")) return false;
+
+  const configured = bareHost(await getAppDomain());
+  if (configured && configured !== "localhost") {
+    if (host === configured || host === `www.${configured}`) return true;
+  }
+  // Bootstrap: pre-setup, allow the first real domain so HTTPS works on it
+  // immediately (the wizard is served over that same cert).
+  return !(await isSetupComplete());
+}
+
 // A public snapshot of the instance's identity, safe to expose unauthenticated.
 export async function publicInfo(): Promise<{
   name: string;

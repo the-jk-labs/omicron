@@ -94,10 +94,37 @@ services:
       PUBLIC_APP_NAME: ${PUBLIC_APP_NAME:-Omicron}
       APP_DOMAIN: ${APP_DOMAIN:-localhost:5173}
       PORT: 3000
+      # Behind Caddy the app is reached over TLS on the public domain; trust the
+      # proxy's forwarded headers so SvelteKit reconstructs the correct external
+      # origin (https + host) and the real client IP for redirects/links.
+      PROTOCOL_HEADER: x-forwarded-proto
+      HOST_HEADER: x-forwarded-host
+      ADDRESS_HEADER: x-forwarded-for
     ports:
+      # Direct port for local debugging; production traffic goes through Caddy.
       - "5173:3000"
+
+  # Public entrypoint: terminates TLS and reverse-proxies to frontend/backend.
+  # Obtains Let's Encrypt certificates on demand for the instance's own domain
+  # (gated by the backend), so going public needs only a DNS record — no certs
+  # to request, no config files to edit. See Caddyfile for the routing.
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
 
 volumes:
   pgdata:
   uploads:
   secrets:
+  caddy_data:
+  caddy_config:

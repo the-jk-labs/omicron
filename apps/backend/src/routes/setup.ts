@@ -26,6 +26,16 @@ export const instanceRoutes = new Hono<AppEnv>();
 
 instanceRoutes.get("/", async (c) => c.json(await setup.publicInfo()));
 
+// Caddy on-demand TLS "ask" endpoint. Caddy calls this (over the internal
+// network, before serving TLS) with ?domain=<sni>; a 2xx means "issue a
+// certificate for this host". Kept tight so only this instance's own domain is
+// ever provisioned — see services/instanceSetup.ts for the policy.
+instanceRoutes.get("/tls-check", async (c) => {
+  const domain = c.req.query("domain") ?? "";
+  if (await setup.isTlsDomainAllowed(domain)) return c.text("ok");
+  return c.text("not allowed", 403);
+});
+
 // The first-run setup wizard. Open (no auth) but single-shot: it only works
 // while the instance is unconfigured, so it can never be used to hijack a
 // running instance or mint a second admin.

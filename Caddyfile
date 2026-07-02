@@ -1,0 +1,54 @@
+# Omicron — single public entrypoint with automatic HTTPS.
+#
+# The operator never types their domain into a config file: they point a DNS
+# A/AAAA record at this host and open https://their-domain. Caddy learns the
+# hostname from the request and fetches a Let's Encrypt certificate on demand,
+# gated by the backend's ask endpoint so only this instance's own domain is ever
+# provisioned. Certificates persist in the `caddy_data` volume across upgrades.
+#
+# Local/dev needs nothing extra: http://localhost is served over plain HTTP with
+# no certificate dance, so `docker compose up` works out of the box.
+{
+	# Silence the local admin API; the stack doesn't use it.
+	admin off
+	# Only obtain certificates for hostnames the backend approves, so pointing a
+	# stray domain at this host can't trigger unbounded issuance.
+	on_demand_tls {
+		ask http://backend:8000/api/instance/tls-check
+	}
+}
+
+# Shared routing: ActivityPub + federation discovery are served by the backend
+# at the apex domain; everything else is the SvelteKit app (which itself proxies
+# /api to the backend). `handle` blocks are mutually exclusive and matched in
+# order, so the federation paths win and all other paths fall through.
+(routes) {
+	@federation path /.well-known/* /users/* /inbox /nodeinfo /nodeinfo/*
+	handle @federation {
+		reverse_proxy backend:8000
+	}
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
+
+# Public HTTPS: any hostname, certificate obtained on demand.
+https:// {
+	tls {
+		on_demand
+	}
+	import routes
+}
+
+# Plain HTTP. Localhost is served directly (no certificate for a dev host);
+# every real domain is redirected to HTTPS, where the certificate is obtained on
+# demand. Caddy still answers the ACME challenge ahead of these routes.
+http:// {
+	@local host localhost 127.0.0.1
+	handle @local {
+		import routes
+	}
+	handle {
+		redir https://{host}{uri} permanent
+	}
+}

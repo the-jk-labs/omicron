@@ -79,17 +79,29 @@ until setup completes.
 
 Bringing up a new instance on a fresh domain should feel effortless.
 
-- [ ] **Add Caddy to the compose stack** as the single public entrypoint,
-      reverse-proxying frontend + backend federation paths (`/.well-known`,
-      `/users`, inbox/outbox).
-- [ ] **Automatic Let's Encrypt TLS** — operator provides the domain once (env
-      or wizard) and gets valid HTTPS with zero certbot steps; certs persist in a
-      volume across upgrades.
-- [ ] **Local/dev fallback** — internal TLS or plain HTTP on `localhost` so the
-      no-domain path still works out of the box.
-- [ ] **Document the one manual prerequisite** clearly: an A/AAAA DNS record
-      pointing at the host. This is the irreducible step; everything after is
-      automatic.
+- [x] **Add Caddy to the compose stack** as the single public entrypoint
+      (`caddy:2-alpine`, ports `${HTTP_PORT:-80}`/`${HTTPS_PORT:-443}`). The
+      `Caddyfile` routes federation paths (`/.well-known/*`, `/users/*`,
+      `/inbox`, `/nodeinfo*`) to the backend and everything else to the frontend
+      via mutually-exclusive `handle` blocks.
+- [x] **Automatic Let's Encrypt TLS with no domain in any file** — Caddy
+      on-demand TLS learns the hostname from the request and issues a cert,
+      gated by the backend ask endpoint `GET /api/instance/tls-check`
+      (`isTlsDomainAllowed`: only the saved domain + `www.`, with a pre-setup
+      bootstrap window; never `localhost`). Certs persist in the `caddy_data`
+      volume across upgrades. The domain from the S1 wizard tightens the gate.
+- [x] **Local/dev fallback** — `http://localhost` is served over plain HTTP (no
+      cert dance); real domains on `:80` redirect to HTTPS. `docker compose up`
+      still works with no domain, and the frontend trusts Caddy's
+      `X-Forwarded-Proto`/`-Host`/`-For` so external origins/links are correct.
+- [x] **Document the one manual prerequisite** — README "Going public" section:
+      a single A/AAAA DNS record is the only manual step; HTTPS is automatic.
+- Files: `Caddyfile`, `docker-compose.yml` (caddy service + volumes + frontend
+  proxy headers), `services/instanceSetup.ts` (`isTlsDomainAllowed`),
+  `routes/setup.ts` (`/tls-check`), `.env.example`, `README.md`.
+  (Caveat: the backend session-cookie `secure` flag is still keyed off env
+  `APP_DOMAIN`, so a wizard-only domain change reaches it on restart — same
+  restart boundary noted in S1; hardened in S4 admin settings.)
 
 ## S3 — Automatic noreply email
 
