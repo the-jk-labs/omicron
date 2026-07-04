@@ -146,6 +146,89 @@ deno task db:generate     # writes new SQL into ./drizzle (commit it)
 
 ---
 
+## Backups & restore
+
+All state lives in the named volumes listed above; nothing important is inside a
+container image. There are two coherent strategies — pick one, don't mix them.
+The catch is that `secrets/db_password` is bound to whatever `pgdata` was created
+with, so the database and that password must always travel **together**.
+
+Commands assume the default Compose project name `omicron` (the directory name),
+so volumes are `omicron_pgdata`, `omicron_uploads`, etc. Swap the prefix if you
+run with `-p <name>`. Both methods below are verified end to end (seed → back up
+→ destroy → restore → data intact). Everything works the same under `podman` —
+substitute the command.
+
+### Method A — logical dump (portable, recommended)
+
+Portable across Postgres major versions and safe to run on a live instance. On
+restore the instance generates a **fresh** DB password and session secret (so
+`secrets` is *not* backed up), which means everyone is signed out once — expected
+for a restore/migration.
+
+```bash
+# Back up: SQL dump + the two file volumes that hold real content.
+docker compose exec -T postgres \
+  pg_dump -U omicron -Fc omicron > omicron-db-$(date +%F).dump
+for v in uploads caddy_data; do
+  docker run --rm -v omicron_$v:/v:ro -v "$PWD":/backup alpine:3 \
+    tar czf /backup/omicron-$v-$(date +%F).tgz -C /v .
+done
+```
+
+```bash
+# Restore onto a fresh host (empty volumes):
+docker compose up -d postgres            # regenerates secrets, inits an empty DB
+sleep 5
+docker compose exec -T postgres \
+  pg_restore -U omicron -d omicron --clean --if-exists < omicron-db-YYYY-MM-DD.dump
+for v in uploads caddy_data; do
+  docker run --rm -v omicron_$v:/v -v "$PWD":/backup alpine:3 \
+    sh -c "rm -rf /v/* && tar xzf /backup/omicron-$v-YYYY-MM-DD.tgz -C /v"
+done
+docker compose up -d
+```
+
+Do **not** restore an old `secrets` tarball here — its `db_password` won't match
+the freshly-initialised `pgdata` and the backend won't connect. `caddy_data`
+(TLS certs) is optional; skipping it just re-issues certificates on first
+request.
+
+### Method B — full volume snapshot (simple, version-locked)
+
+Copies every volume as-is, so `pgdata` and its matching `secrets` stay
+consistent and **sessions survive**. Tied to the same Postgres major version, and
+you must stop the stack first so the database files are copied at rest.
+
+```bash
+# Back up: stop, then tar ALL stateful volumes together.
+docker compose stop
+for v in pgdata uploads state secrets caddy_data; do
+  docker run --rm -v omicron_$v:/v:ro -v "$PWD":/backup alpine:3 \
+    tar czf /backup/omicron-$v-$(date +%F).tgz -C /v .
+done
+docker compose start
+```
+
+```bash
+# Restore onto a fresh host (empty volumes), then bring the stack up:
+for v in pgdata uploads state secrets caddy_data; do
+  docker run --rm -v omicron_$v:/v -v "$PWD":/backup alpine:3 \
+    sh -c "tar xzf /backup/omicron-$v-YYYY-MM-DD.tgz -C /v"
+done
+docker compose up -d
+```
+
+Restore the **whole set** or none of it — a partial mix (e.g. new `pgdata` with
+old `secrets`) breaks the password pairing.
+
+> **What each volume holds:** `pgdata` = all database content, `uploads` = user
+> media, `secrets` = generated DB password + bootstrap session secret, `state` =
+> a UI-rotated session secret (overrides the bootstrap one), `caddy_data` = Let's
+> Encrypt certs.
+
+---
+
 ## Configuration (`.env`)
 
 | Variable             | Purpose                                                        |

@@ -203,10 +203,13 @@ Needed for "seamless upgrades" to be a real promise.
 - [ ] Structured logging with levels.
 - [ ] Error tracking hook (config-gated).
 - [ ] Health/readiness split beyond `/healthz` (DB + queue checks).
-- [ ] Backup/restore guidance in docs, covering **all** stateful volumes, not
-      just `pgdata`: `uploads` (media), `state` (app-managed secret), `secrets`
-      (generated DB password + bootstrap session secret), and `caddy_data`
-      (TLS certs). A `pgdata`-only backup silently loses the others.
+- [x] Backup/restore guidance in docs (README "Backups & restore"), covering
+      **all** stateful volumes. Two verified strategies: (A) logical `pg_dump`
+      + `uploads`/`caddy_data`, letting `secrets` regenerate (portable, live-safe,
+      resets sessions); (B) full volume snapshot of all five volumes together
+      (version-locked, keeps sessions). Both round-trip-tested end to end; docs
+      call out the `pgdata`↔`secrets/db_password` pairing so a partial restore
+      can't silently break the backend.
 
 ---
 
