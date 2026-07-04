@@ -39,6 +39,10 @@ SvelteKit · bits-ui · Tiptap · TailwindCSS.
 
 ## Quick start
 
+> New to self-hosting? The **[Self-hosting guide](selfhost.md)** walks the whole
+> path step by step — domain + HTTPS, email, the admin panel, upgrades, and
+> backups — in plain language.
+
 One command, no git needed — fetches the source and brings the stack up:
 
 ```bash
