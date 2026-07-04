@@ -193,10 +193,11 @@ export type InstanceInfo = {
 };
 
 // Web-managed email settings. `EmailInput` is what the wizard/admin form sends
-// (all fields optional; a blank password means "leave unchanged"); the backend
-// never echoes the password back, so `EmailSettings` reports `hasPassword`.
+// (all fields optional; a blank secret means "leave unchanged"); the backend
+// never echoes secrets back, so `EmailSettings` reports `has…` booleans instead.
+export type EmailMode = "console" | "smtp" | "relay" | "direct";
 export type EmailInput = {
-  mode?: "console" | "smtp";
+  mode?: EmailMode;
   from?: string;
   smtp?: {
     host?: string;
@@ -205,9 +206,13 @@ export type EmailInput = {
     password?: string;
     tls?: boolean;
   };
+  relay?: {
+    provider?: "resend";
+    apiKey?: string;
+  };
 };
 export type EmailSettings = {
-  mode: "console" | "smtp";
+  mode: EmailMode;
   from: string;
   smtp: {
     host?: string;
@@ -216,7 +221,24 @@ export type EmailSettings = {
     tls: boolean;
     hasPassword: boolean;
   };
+  relay: { provider: "resend"; hasApiKey: boolean };
+  dkim: { domain?: string; selector: string; hasKey: boolean };
 };
+
+// Path B DNS setup: the records to publish, and a live verification report.
+export type DnsRecord = { host: string; type: "TXT"; value: string };
+export type EmailDnsRecords = { spf: DnsRecord; dkim: DnsRecord; dmarc: DnsRecord };
+export type DnsCheck = { host: string; ok: boolean; expected: string; found: string[] };
+export type EmailDnsReport = {
+  domain: string;
+  mx: DnsCheck;
+  spf: DnsCheck;
+  dkim: DnsCheck;
+  dmarc: DnsCheck;
+  healthy: boolean;
+};
+export type DkimGenerateResult = { domain: string; selector: string; records: EmailDnsRecords };
+export type EmailDnsResult = { records: EmailDnsRecords; report: EmailDnsReport };
 
 // Admin view of the instance identity. `federationEnabled` is boot/env-bound and
 // therefore read-only in the admin UI.

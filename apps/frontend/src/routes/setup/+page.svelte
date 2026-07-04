@@ -31,13 +31,14 @@
   // Email step. `console` is zero-config; `smtp` collects connection details the
   // operator can verify with a live test before finishing — so they never hand-
   // edit SMTP_* env vars.
-  let emailMode = $state<"console" | "smtp">("console");
+  let emailMode = $state<"console" | "smtp" | "relay">("console");
   let smtpFrom = $state("");
   let smtpHost = $state("");
   let smtpPort = $state(587);
   let smtpUsername = $state("");
   let smtpPassword = $state("");
   let smtpTls = $state(false);
+  let relayApiKey = $state("");
 
   let testTo = $state("");
   let testState = $state<"idle" | "sending" | "ok" | "error">("idle");
@@ -50,6 +51,13 @@
   // fields fall back to any env/default on the backend.
   function emailPayload(): EmailInput {
     if (emailMode === "console") return { mode: "console" };
+    if (emailMode === "relay") {
+      return {
+        mode: "relay",
+        from: smtpFrom.trim() || undefined,
+        relay: { provider: "resend", apiKey: relayApiKey || undefined },
+      };
+    }
     return {
       mode: "smtp",
       from: smtpFrom.trim() || undefined,
@@ -205,22 +213,42 @@
           </p>
         </div>
       </RadioGroup.Item>
+      <RadioGroup.Item value="relay" class={radioItem}>
+        <div>
+          <div class="text-sm font-semibold text-foreground">API key (easiest)</div>
+          <p class="mt-0.5 text-xs text-muted-foreground">
+            Paste one API key from a provider (Resend) — no SMTP settings. Test it right here.
+          </p>
+        </div>
+      </RadioGroup.Item>
       <RadioGroup.Item value="smtp" class={radioItem}>
         <div>
-          <div class="text-sm font-semibold text-foreground">Send real email (SMTP)</div>
+          <div class="text-sm font-semibold text-foreground">SMTP server</div>
           <p class="mt-0.5 text-xs text-muted-foreground">
-            Deliver mail to real inboxes via any SMTP server or provider relay (Resend,
-            SendGrid, Mailgun, Postmark, your own server…). Test it right here.
+            Any SMTP server or provider endpoint (SendGrid, Mailgun, your own…). Test it right here.
           </p>
         </div>
       </RadioGroup.Item>
     </RadioGroup.Root>
 
+    {#if emailMode === "relay"}
+      <div class="flex flex-col gap-4 rounded-card border border-border bg-background-alt p-4">
+        <div class="flex flex-col gap-1.5">
+          <Label.Root for="relayFrom" class={labelClass}>From address</Label.Root>
+          <input id="relayFrom" bind:value={smtpFrom} placeholder="Leave blank for noreply@your-domain" class={field} />
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <Label.Root for="relayKey" class={labelClass}>Resend API key</Label.Root>
+          <input id="relayKey" type="password" bind:value={relayApiKey} autocomplete="new-password" placeholder="re_..." class={field} />
+        </div>
+      </div>
+    {/if}
+
     {#if emailMode === "smtp"}
       <div class="flex flex-col gap-4 rounded-card border border-border bg-background-alt p-4">
         <div class="flex flex-col gap-1.5">
           <Label.Root for="smtpFrom" class={labelClass}>From address</Label.Root>
-          <input id="smtpFrom" bind:value={smtpFrom} placeholder="Omicron &lt;no-reply@example.com&gt;" class={field} />
+          <input id="smtpFrom" bind:value={smtpFrom} placeholder="Leave blank for noreply@your-domain" class={field} />
         </div>
         <div class="flex gap-3">
           <div class="flex min-w-0 flex-1 flex-col gap-1.5">

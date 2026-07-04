@@ -46,7 +46,7 @@ export const setupRoutes = new Hono<AppEnv>();
 // Web-managed email settings the wizard collects (mirrors the admin page). All
 // fields optional: `console` needs none; `smtp` fills the connection details.
 const emailInputSchema = z.object({
-  mode: z.enum(["console", "smtp"]).optional(),
+  mode: z.enum(["console", "smtp", "relay", "direct"]).optional(),
   from: z.string().trim().max(200).optional(),
   smtp: z.object({
     host: z.string().trim().max(255).optional(),
@@ -54,6 +54,10 @@ const emailInputSchema = z.object({
     username: z.string().trim().max(255).optional(),
     password: z.string().max(1024).optional(),
     tls: z.boolean().optional(),
+  }).optional(),
+  relay: z.object({
+    provider: z.enum(["resend"]).optional(),
+    apiKey: z.string().max(1024).optional(),
   }).optional(),
 }).optional();
 

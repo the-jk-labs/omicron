@@ -4,13 +4,13 @@
 // (`sendMail`) is stable, so the delivery backend can be swapped in one place,
 // mirroring the queue and rate-limit abstractions.
 //
-// Two transports ship:
-//   - `console` (default): logs the message and any link to stdout. Requires no
-//     configuration, so password reset / verification work out of the box for
-//     local dev and small single-user instances.
-//   - `smtp`: real delivery via any SMTP server (or a provider's SMTP relay).
-//     The client is imported lazily, so nothing SMTP-related loads unless an
-//     instance opts in.
+// Four transports ship:
+//   - `console` (default): logs the message + link to stdout (zero config).
+//   - `smtp`: any SMTP server / provider SMTP endpoint, via our own minimal
+//     client (lib/smtp.ts) so errors are precise and messages can be DKIM-signed.
+//   - `relay`: a provider's HTTP API — one pasted API key (Path A). Resend today.
+//   - `direct`: self-hosted, sent straight to the recipient's MX and DKIM-signed
+//     (Path B); needs the published DNS records and an open port 25.
 //
 // The effective configuration is resolved per-send from the web-managed email
 // settings (DB → env → default; see services/emailSettings.ts), so a change
@@ -19,6 +19,9 @@
 
 import { type EmailConfig, getEmailConfig } from "@/services/emailSettings.ts";
 import { getOrigin } from "@/services/instanceSetup.ts";
+import { sendSmtp } from "@/lib/smtp.ts";
+import { buildMessage, domainOf, extractAddress, serializeMessage } from "@/lib/mime.ts";
+import { signMessage } from "@/services/dkim.ts";
 
 export type EmailMessage = {
   to: string;
@@ -57,50 +60,138 @@ function consoleTransport(cfg: EmailConfig): Transport {
   };
 }
 
-// SMTP delivery via denomailer, loaded lazily so the dependency is only fetched
-// when an instance actually uses SMTP. The specifier is held in a variable so
-// `deno check` doesn't eagerly resolve it (the transport is optional and only
-// needed at runtime).
+// Build the raw message bytes for one recipient, DKIM-signing it when a key is
+// configured for the From domain (so `smtp` and `direct` both authenticate).
+async function buildSigned(cfg: EmailConfig, msg: EmailMessage): Promise<{
+  fromAddress: string;
+  data: Uint8Array;
+}> {
+  const built = buildMessage({
+    from: cfg.from,
+    to: msg.to,
+    subject: msg.subject,
+    text: msg.text,
+    html: msg.html,
+  });
+  let headers = built.headers;
+  const fromDomain = domainOf(built.fromAddress);
+  if (cfg.dkim.privateKey && cfg.dkim.domain && cfg.dkim.domain === fromDomain) {
+    const dkim = await signMessage(built.headers, built.body, {
+      domain: cfg.dkim.domain,
+      selector: cfg.dkim.selector,
+      privateKey: cfg.dkim.privateKey,
+    });
+    const [name, ...rest] = dkim.split(": ");
+    headers = [[name, rest.join(": ")], ...built.headers];
+  }
+  return { fromAddress: built.fromAddress, data: serializeMessage(headers, built.body) };
+}
+
+// Delivery via a configured SMTP server (our own client, TLS required).
 function smtpTransport(cfg: EmailConfig): Transport {
   return {
     async send(msg) {
       if (!cfg.smtp.host) {
         throw new Error("Email mode is SMTP but no SMTP host is configured.");
       }
-      const specifier = "https://deno.land/x/denomailer@1.6.0/mod.ts";
-      // deno-lint-ignore no-explicit-any
-      const { SMTPClient } = (await import(specifier)) as any;
-      const client = new SMTPClient({
-        connection: {
-          hostname: cfg.smtp.host,
-          port: cfg.smtp.port,
-          tls: cfg.smtp.tls,
-          auth: cfg.smtp.username && cfg.smtp.password
-            ? { username: cfg.smtp.username, password: cfg.smtp.password }
-            : undefined,
+      const { fromAddress, data } = await buildSigned(cfg, msg);
+      await sendSmtp({
+        hostname: cfg.smtp.host,
+        port: cfg.smtp.port,
+        implicitTls: cfg.smtp.tls,
+        starttls: cfg.smtp.tls ? "never" : "require",
+        username: cfg.smtp.username,
+        password: cfg.smtp.password,
+        heloName: domainOf(fromAddress) || undefined,
+      }, { from: fromAddress, to: extractAddress(msg.to), data });
+    },
+  };
+}
+
+// Delivery via a provider's HTTP API — the operator pastes one API key.
+function relayTransport(cfg: EmailConfig): Transport {
+  return {
+    async send(msg) {
+      if (!cfg.relay.apiKey) {
+        throw new Error("Email mode is relay but no API key is configured.");
+      }
+      if (cfg.relay.provider !== "resend") {
+        throw new Error(`Unsupported relay provider: ${cfg.relay.provider}`);
+      }
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "authorization": `Bearer ${cfg.relay.apiKey}`,
+          "content-type": "application/json",
         },
-      });
-      try {
-        await client.send({
+        body: JSON.stringify({
           from: cfg.from,
-          to: msg.to,
+          to: [extractAddress(msg.to)],
           subject: msg.subject,
-          content: msg.text,
+          text: msg.text,
           html: msg.html,
-        });
-      } finally {
-        // Best-effort: a failed connection can leave the client half-open, so a
-        // throwing close() must not mask the real send error.
-        try {
-          await client.close();
-        } catch { /* ignore */ }
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`Relay (resend) returned ${res.status}: ${body.slice(0, 300)}`);
       }
     },
   };
 }
 
+// Self-hosted delivery: resolve the recipient domain's MX and hand the
+// DKIM-signed message straight to it (opportunistic STARTTLS). No third party,
+// but deliverability depends on an open outbound port 25 and clean reverse DNS.
+function directTransport(cfg: EmailConfig): Transport {
+  return {
+    async send(msg) {
+      const { fromAddress, data } = await buildSigned(cfg, msg);
+      const domain = domainOf(extractAddress(msg.to));
+      if (!domain) throw new Error(`Invalid recipient address: ${msg.to}`);
+
+      let mx: { preference: number; exchange: string }[];
+      try {
+        mx = await Deno.resolveDns(domain, "MX");
+      } catch (err) {
+        throw new Error(
+          `No MX records for ${domain}: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+      const hosts = mx.sort((a, b) => a.preference - b.preference).map((r) => r.exchange);
+      if (hosts.length === 0) throw new Error(`No MX records for ${domain}`);
+
+      const errors: string[] = [];
+      for (const host of hosts) {
+        try {
+          await sendSmtp({
+            hostname: host,
+            port: 25,
+            implicitTls: false,
+            starttls: "opportunistic",
+            heloName: domainOf(fromAddress) || undefined,
+          }, { from: fromAddress, to: extractAddress(msg.to), data });
+          return; // delivered to the first MX that accepts
+        } catch (err) {
+          errors.push(`${host}: ${err instanceof Error ? err.message : err}`);
+        }
+      }
+      throw new Error(`Direct delivery to ${domain} failed. Tried: ${errors.join("; ")}`);
+    },
+  };
+}
+
 function transportFor(cfg: EmailConfig): Transport {
-  return cfg.mode === "smtp" ? smtpTransport(cfg) : consoleTransport(cfg);
+  switch (cfg.mode) {
+    case "smtp":
+      return smtpTransport(cfg);
+    case "relay":
+      return relayTransport(cfg);
+    case "direct":
+      return directTransport(cfg);
+    default:
+      return consoleTransport(cfg);
+  }
 }
 
 /** Deliver one message through the currently-configured transport. */

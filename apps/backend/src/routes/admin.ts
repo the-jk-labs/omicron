@@ -6,6 +6,8 @@ import * as moderation from "@/services/moderation.ts";
 import * as emailSettings from "@/services/emailSettings.ts";
 import * as setup from "@/services/instanceSetup.ts";
 import { sendTestEmail } from "@/services/email.ts";
+import { dnsRecords } from "@/services/dkim.ts";
+import { checkOutboundPort25, verifyRecords } from "@/services/emailDns.ts";
 import { requireAdmin } from "@/routes/middleware.ts";
 import { adminUserView } from "@/routes/serializers.ts";
 import { badRequest } from "@/lib/http.ts";
@@ -79,7 +81,7 @@ adminRoutes.get("/email", async (c) => {
 });
 
 const emailUpdateSchema = z.object({
-  mode: z.enum(["console", "smtp"]).optional(),
+  mode: z.enum(["console", "smtp", "relay", "direct"]).optional(),
   from: z.string().trim().max(200).optional(),
   smtp: z.object({
     host: z.string().trim().max(255).optional(),
@@ -88,6 +90,11 @@ const emailUpdateSchema = z.object({
     // Blank/omitted = leave the stored password unchanged.
     password: z.string().max(1024).optional(),
     tls: z.boolean().optional(),
+  }).optional(),
+  relay: z.object({
+    provider: z.enum(["resend"]).optional(),
+    // Blank/omitted = leave the stored API key unchanged.
+    apiKey: z.string().max(1024).optional(),
   }).optional(),
 });
 
@@ -101,6 +108,45 @@ adminRoutes.put("/email", async (c) => {
   }
   await emailSettings.setEmailConfig(parsed.data);
   return c.json(await emailSettings.redactedConfig());
+});
+
+// Generate (or rotate, if the domain changed) the DKIM keypair for a sending
+// domain and return the three DNS records the operator must publish. The private
+// key stays on the server; only the public key appears in the records.
+const dkimSchema = z.object({
+  domain: z.string().trim().min(3).max(253),
+});
+
+adminRoutes.post("/email/dkim", async (c) => {
+  requireAdmin(c);
+  const parsed = dkimSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) {
+    throw badRequest(parsed.error.issues[0]?.message ?? "A sending domain is required.");
+  }
+  const domain = parsed.data.domain.toLowerCase();
+  const { selector, publicKey } = await emailSettings.ensureDkimKeys(domain);
+  return c.json({ domain, selector, records: dnsRecords(domain, selector, publicKey) });
+});
+
+// Live-verify that the SPF/DKIM/DMARC records are actually published, so email
+// is only declared healthy once DNS is correct. Uses the stored DKIM identity.
+adminRoutes.get("/email/dns", async (c) => {
+  requireAdmin(c);
+  const cfg = await emailSettings.getEmailConfig();
+  if (!cfg.dkim.domain || !cfg.dkim.publicKey) {
+    throw badRequest("No DKIM key yet — generate one for your sending domain first.");
+  }
+  const report = await verifyRecords(cfg.dkim.domain, cfg.dkim.selector, cfg.dkim.publicKey);
+  return c.json({
+    records: dnsRecords(cfg.dkim.domain, cfg.dkim.selector, cfg.dkim.publicKey),
+    report,
+  });
+});
+
+// Preflight whether this host can send self-hosted (direct) mail at all.
+adminRoutes.get("/email/port25", async (c) => {
+  requireAdmin(c);
+  return c.json(await checkOutboundPort25());
 });
 
 const emailTestSchema = z.object({

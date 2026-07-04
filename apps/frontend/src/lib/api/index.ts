@@ -6,6 +6,8 @@ import type {
   BlockedDomain,
   Comment,
   DashboardSummary,
+  DkimGenerateResult,
+  EmailDnsResult,
   EmailInput,
   EmailSettings,
   InstanceInfo,
@@ -83,6 +85,11 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     adminEmail: () => api.get<EmailSettings>("/admin/email"),
     setAdminEmail: (body: EmailInput) => api.put<EmailSettings>("/admin/email", body),
     testAdminEmail: (to: string) => api.post<{ ok: true }>("/admin/email/test", { to }),
+    // Path B self-host: generate DKIM keys + get DNS records; live-verify them.
+    generateDkim: (domain: string) =>
+      api.post<DkimGenerateResult>("/admin/email/dkim", { domain }),
+    checkEmailDns: () => api.get<EmailDnsResult>("/admin/email/dns"),
+    checkPort25: () => api.get<{ ok: boolean; detail: string }>("/admin/email/port25"),
 
     // admin moderation
     adminUsers: (q?: string) =>

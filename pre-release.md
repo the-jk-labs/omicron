@@ -128,16 +128,34 @@ Goal: `noreply@domain` mail works with the least possible friction.
 - [x] **Correct links.** Outbound email (reset/verify/test) now builds URLs from
       the effective domain (`instanceSetup.getOrigin()`), so a wizard-set domain
       is reflected without a restart.
-- [ ] **Path B — self-host SMTP + guided DNS (deferred).** Bundling a sender that
-      **generates SPF/DKIM/DMARC records and verifies them live** is a larger
-      effort; deferred. Until then, deliverable mail uses an external SMTP relay
-      (the honest caveat above: fresh-IP self-send needs DNS + an open port 25).
-- [ ] **One-key HTTP relay APIs (deferred).** Native HTTP API transports (vs the
-      universal SMTP path) can come later if a true single-field key is wanted.
-- Files: `services/emailSettings.ts`, `services/email.ts` (per-send transport +
-  `sendTestEmail`), `services/instanceSetup.ts` (`getOrigin`, `completeSetup`
-  email), `routes/setup.ts` (`/test-email`), `routes/admin.ts` (email CRUD +
-  test); frontend `routes/setup/+page.svelte`, `lib/api`, `lib/types`.
+- [x] **Path A — one-key HTTP relay.** A `relay` mode sends via a provider's HTTP
+      API (Resend today): the operator pastes a single API key in the wizard or
+      admin page, no SMTP settings. New `relayTransport` in `services/email.ts`;
+      key stored (redacted to `hasApiKey`) in `emailSettings`.
+- [x] **Path B — self-host + guided DNS.** A `direct` mode delivers straight to
+      each recipient's MX, DKIM-signing the message. The admin page **generates an
+      RSA-2048 DKIM keypair** (`services/dkim.ts`; private key never leaves the
+      server), shows the **exact SPF / DKIM / DMARC records**, and **verifies them
+      live** over DNS (`services/emailDns.ts`; `GET /api/admin/email/dns`) before
+      declaring email healthy. DKIM signing (relaxed/relaxed, rsa-sha256) also
+      applies to the `smtp` path.
+- [x] **Own SMTP client.** `lib/smtp.ts` replaces the third-party mailer: precise
+      TLS errors (no misleading "auth over insecure" message), no stray background
+      promise rejections, and it sends the exact bytes we DKIM-sign
+      (`lib/mime.ts`). STARTTLS required for configured servers, opportunistic for
+      MX delivery, implicit TLS for 465.
+- Honest residual caveat (unchanged from the tier intro): `direct` deliverability
+  still depends on an **open outbound port 25** and clean reverse DNS — both
+  host-dependent — so most operators will pick the relay or SMTP path. Only Resend
+  is wired as an HTTP relay so far; more providers can be added behind the same
+  `relay` mode.
+- Files: `services/emailSettings.ts` (relay + dkim config, `ensureDkimKeys`),
+  `services/email.ts` (console/smtp/relay/direct transports + `sendTestEmail`),
+  `services/dkim.ts`, `services/emailDns.ts`, `lib/smtp.ts`, `lib/mime.ts`,
+  `services/instanceSetup.ts` (`getOrigin`), `routes/setup.ts` (`/test-email`,
+  relay schema), `routes/admin.ts` (email CRUD/test + `/email/dkim`, `/email/dns`);
+  frontend `components/AdminEmail.svelte`, `routes/setup/+page.svelte`, `lib/api`,
+  `lib/types`.
 
 ## S4 — Admin settings page (runtime config)
 
