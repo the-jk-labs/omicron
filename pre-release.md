@@ -199,13 +199,25 @@ so no operator ever returns to a config file.
 
 ## S5 — Podman parity & upgrades
 
-- [ ] **Verify the stack on Podman / `podman compose`** (rootless) and document
-      any differences; keep the compose file engine-agnostic.
-- [ ] **Confirm the "toy" upgrade path** — `git pull && docker compose up -d
-      --build` (or `podman`) with auto-migrations and persisted secrets/certs,
-      end to end, losing no data.
-- [ ] **One-liner install** (optional) — a `curl | sh` or single command that
-      fetches the compose file and brings the stack up for non-git users.
+- [x] **Engine-agnostic compose, Podman documented.** The compose file uses only
+      portable constructs (named volumes, standard `depends_on` conditions,
+      file-based secrets via a plain volume — not Docker's `secrets:` primitive),
+      so it runs unchanged under Docker or Podman. The one host-level difference,
+      rootless Podman's inability to bind ports < 1024, is handled by the already
+      parameterised `HTTP_PORT` / `HTTPS_PORT` and documented in the README
+      (publish on high ports, or lower `ip_unprivileged_port_start`).
+- [x] **"Toy" upgrade path confirmed end to end.** Verified in an isolated stack:
+      a second `up -d --build` recreates the containers, migrations re-run
+      **idempotently** ("already up to date"), and a seeded data marker, the
+      generated session secret, and a UI-rotated secret in the `state` volume all
+      survive. Data lives only in named volumes (`pgdata` / `uploads` / `state` /
+      `secrets` / `caddy_data`), documented as a table in the README; only
+      `down -v` removes them.
+- [x] **One-liner install** (`install.sh`) — `curl … | sh` detects the engine
+      (docker/podman compose variants), fetches the source (git clone, or a GitHub
+      tarball when git is absent — needed because the compose builds from source,
+      no prebuilt images yet), warns about rootless Podman low ports, and runs
+      `up -d --build`. Re-running upgrades in place. README Quick start links it.
 
 ---
 

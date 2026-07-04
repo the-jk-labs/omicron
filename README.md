@@ -39,6 +39,14 @@ SvelteKit · bits-ui · Tiptap · TailwindCSS.
 
 ## Quick start
 
+One command, no git needed — fetches the source and brings the stack up:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/the-jk-labs/omicron/main/install.sh | sh
+```
+
+Or clone and run it yourself:
+
 ```bash
 git clone https://github.com/the-jk-labs/omicron.git omicron
 cd omicron
@@ -49,6 +57,27 @@ No config to edit — the session secret and database password are generated
 automatically on first boot. Open <http://localhost> (or
 <http://localhost:5173> for the app directly) and finish the short setup wizard.
 **The first account you create becomes the admin.**
+
+### Docker or Podman
+
+The stack is engine-agnostic — anything that speaks Compose works. The installer
+auto-detects `docker compose`, `docker-compose`, `podman compose`, or
+`podman-compose`. To drive Podman by hand, swap the command:
+
+```bash
+podman compose up -d --build      # or: podman-compose up -d --build
+```
+
+**Rootless Podman** can't bind ports below 1024 by default. Either publish the
+stack on high ports (it's already parameterised):
+
+```bash
+HTTP_PORT=8080 HTTPS_PORT=8443 podman compose up -d --build   # browse http://localhost:8080
+```
+
+or allow low ports once: `sudo sysctl net.ipv4.ip_unprivileged_port_start=80`.
+Everything else (named volumes, generated secrets, on-demand HTTPS) behaves the
+same under either engine.
 
 | Service  | URL                     | Notes                                   |
 | -------- | ----------------------- | --------------------------------------- |
@@ -74,11 +103,23 @@ so upgrades keep them. If ports 80/443 are already used on the host, set
 
 ```bash
 git pull
-docker compose up -d --build
+docker compose up -d --build      # or the equivalent podman command
 ```
 
-Database migrations **run automatically on backend startup**. Your data lives in
-the `pgdata` Postgres volume and is never touched by a rebuild.
+Database migrations **run automatically on backend startup** and are idempotent
+(a no-op when already current). Nothing you care about lives in a container:
+
+| Volume        | Holds                                              |
+| ------------- | -------------------------------------------------- |
+| `pgdata`      | All Postgres data (accounts, posts, follows)       |
+| `uploads`     | User-uploaded media (avatars)                      |
+| `secrets`     | Generated DB password + bootstrap session secret   |
+| `state`       | App-managed state (e.g. a UI-rotated session secret) |
+| `caddy_data`  | Let's Encrypt certificates                          |
+
+A rebuild recreates the containers but never the volumes, so upgrades keep your
+data, secrets, and certificates. (Only `docker compose down -v` deletes volumes —
+don't run that on a live instance.)
 
 ### Migration policy (backward-compatible by rule)
 
