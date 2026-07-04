@@ -90,8 +90,11 @@ services:
       - state:/data/state
       - secrets:/run/secrets:ro
     ports:
-      # Exposed so other fediverse servers can reach /.well-known and /users.
-      - "8000:8000"
+      # Loopback only: Caddy reaches the backend over the compose network and is
+      # the sole public entrypoint (federation, API, TLS all flow through it). This
+      # mapping is just for local debugging — never expose the API on the host's
+      # public interface, which would bypass TLS and the single-entrypoint model.
+      - "127.0.0.1:8000:8000"
 
   frontend:
     build: ./apps/frontend
@@ -110,8 +113,9 @@ services:
       HOST_HEADER: x-forwarded-host
       ADDRESS_HEADER: x-forwarded-for
     ports:
-      # Direct port for local debugging; production traffic goes through Caddy.
-      - "5173:3000"
+      # Loopback only: production traffic goes through Caddy. Exposed on the host
+      # just for local debugging, not on the public interface.
+      - "127.0.0.1:5173:3000"
 
   # Public entrypoint: terminates TLS and reverse-proxies to frontend/backend.
   # Obtains Let's Encrypt certificates on demand for the instance's own domain

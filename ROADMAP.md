@@ -104,13 +104,16 @@ public VPS that puts the **full JSON API and the app on plain HTTP**, bypassing
 TLS, the on-demand-cert flow, and the single-entrypoint model. Cookies/tokens
 sent to `http://host:8000` would travel unencrypted.
 
-- [ ] Bind the debug ports to loopback only (`127.0.0.1:8000:8000`,
-      `127.0.0.1:5173:3000`) or drop them entirely — Caddy already reaches both
-      over the compose network, so nothing functional needs them published.
-- [ ] Fix the stale comment on the backend `ports:` entry (federation reaches
-      `/.well-known` and `/users` through Caddy on 443, not via `:8000`).
-- [ ] Verify in an isolated stack that federation, the wizard, and the API still
-      work end to end with the ports unpublished (all traffic via Caddy).
+- [x] Bind the debug ports to loopback only — `docker-compose.yml` now publishes
+      `127.0.0.1:8000:8000` and `127.0.0.1:5173:3000`, so they're reachable for
+      local debugging but never on the host's public interface. Caddy reaches
+      both over the compose network regardless.
+- [x] Fix the stale comment on the backend `ports:` entry (federation reaches
+      `/.well-known` and `/users` through Caddy, not via a published `:8000`).
+- [x] Verify in an isolated stack that federation, the wizard, and the API still
+      work end to end with the ports fully unpublished — all traffic via Caddy:
+      app root → `303 /setup`, `GET /api/instance` → backend JSON, and (with
+      federation on) `/.well-known/nodeinfo` → `200` from the backend.
 
 ---
 
