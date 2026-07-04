@@ -94,6 +94,24 @@ An open-speech instance needs takedown tools for legal and abuse reasons.
   `0018_blocked_domains`, frontend `routes/admin/`,
   `components/Admin{Users,Reports,Domains}.svelte`.
 
+### 5. Don't expose internal services on the public interface
+
+Caddy is the only intended ingress (it terminates TLS and reverse-proxies
+federation → backend, everything else → frontend, over the internal Docker
+network — see `Caddyfile`). But `docker-compose.yml` also publishes
+`backend :8000` and `frontend :3000→5173` on the host, i.e. `0.0.0.0`. On a
+public VPS that puts the **full JSON API and the app on plain HTTP**, bypassing
+TLS, the on-demand-cert flow, and the single-entrypoint model. Cookies/tokens
+sent to `http://host:8000` would travel unencrypted.
+
+- [ ] Bind the debug ports to loopback only (`127.0.0.1:8000:8000`,
+      `127.0.0.1:5173:3000`) or drop them entirely — Caddy already reaches both
+      over the compose network, so nothing functional needs them published.
+- [ ] Fix the stale comment on the backend `ports:` entry (federation reaches
+      `/.well-known` and `/users` through Caddy on 443, not via `:8000`).
+- [ ] Verify in an isolated stack that federation, the wizard, and the API still
+      work end to end with the ports unpublished (all traffic via Caddy).
+
 ---
 
 ## P1 — Federation correctness
@@ -182,7 +200,10 @@ Needed for "seamless upgrades" to be a real promise.
 - [ ] Structured logging with levels.
 - [ ] Error tracking hook (config-gated).
 - [ ] Health/readiness split beyond `/healthz` (DB + queue checks).
-- [ ] Backup/restore guidance for the `pgdata` volume in docs.
+- [ ] Backup/restore guidance in docs, covering **all** stateful volumes, not
+      just `pgdata`: `uploads` (media), `state` (app-managed secret), `secrets`
+      (generated DB password + bootstrap session secret), and `caddy_data`
+      (TLS certs). A `pgdata`-only backup silently loses the others.
 
 ---
 
@@ -199,6 +220,12 @@ Needed for "seamless upgrades" to be a real promise.
 
 ## Suggested launch gate
 
-**Public launch = all of P0 + items 5 and 7 from P1.**
+**Safe public launch = all of P0 + items 5 and 7 from P1.**
 Everything else can land on a running instance without breaking existing data,
 per the additive migration policy.
+
+**Production-ready operations** is a higher bar than a safe launch and adds, at
+minimum, P2 §8 (a real test suite — the tree currently has **zero** tests, so
+nothing guards against an auth or federation regression) and P2 §10's
+backup/restore guidance. Until those land, treat deployments as early-adopter,
+back them up manually, and pin to a known-good commit.
