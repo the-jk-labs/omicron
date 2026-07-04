@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
-import { config } from "@/config.ts";
+import { federationRunning } from "@/services/federationState.ts";
 import * as remoteProfilesService from "@/services/remoteProfiles.ts";
 import * as relationsService from "@/services/relations.ts";
 import { enrichPosts } from "@/services/engagement.ts";
@@ -16,7 +16,7 @@ import type { AppEnv } from "@/routes/types.ts";
 export const remoteRoutes = new Hono<AppEnv>();
 
 remoteRoutes.use("*", async (_c, next) => {
-  if (!config.FEDERATION_ENABLED) throw notFound("Federation is disabled.");
+  if (!federationRunning()) throw notFound("Federation is disabled.");
   await next();
 });
 

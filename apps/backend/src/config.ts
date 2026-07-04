@@ -26,33 +26,70 @@ function randomHex(bytes = 32): string {
   return Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// The app-writable state file the session secret is generated into and where a
+// web-UI rotation writes. Kept in STATE_DIR (an app-owned writable volume) so
+// rotation works even when SESSION_SECRET_FILE is mounted read-only, as it is in
+// the docker default.
+const STATE_SECRET_PATH = `${STATE_DIR}/session_secret`;
+
 // Resolve the session secret without ever forcing the operator to invent one:
-//   explicit SESSION_SECRET env → SESSION_SECRET_FILE → generate & persist.
+//   explicit SESSION_SECRET env → rotated STATE_DIR file → SESSION_SECRET_FILE →
+//   generate & persist. The rotated STATE_DIR file is preferred over
+//   SESSION_SECRET_FILE so a web-UI rotation sticks even when the bootstrap
+//   secret file is read-only.
 function resolveSessionSecret(): string {
   const fromEnv = Deno.env.get("SESSION_SECRET")?.trim();
   if (fromEnv && fromEnv !== PLACEHOLDER_SECRET) return fromEnv;
+
+  // A prior UI rotation (or a previous auto-generation) persisted here.
+  const rotated = readFileTrimmed(STATE_SECRET_PATH);
+  if (rotated) return rotated;
 
   const fromFile = readFileTrimmed(Deno.env.get("SESSION_SECRET_FILE"));
   if (fromFile) return fromFile;
 
   // Nothing supplied — generate once and persist so sessions survive restarts
   // and upgrades. This is the toy-easy default for local/dev and single-node.
-  const path = `${STATE_DIR}/session_secret`;
-  const existing = readFileTrimmed(path);
-  if (existing) return existing;
-
   const secret = randomHex(32);
   try {
     Deno.mkdirSync(STATE_DIR, { recursive: true });
-    Deno.writeTextFileSync(path, secret, { mode: 0o600 });
-    console.log(`🔑 No SESSION_SECRET set — generated and persisted one at ${path}.`);
+    Deno.writeTextFileSync(STATE_SECRET_PATH, secret, { mode: 0o600 });
+    console.log(`🔑 No SESSION_SECRET set — generated and persisted one at ${STATE_SECRET_PATH}.`);
   } catch (err) {
     console.warn(
-      `⚠️  Could not persist a generated SESSION_SECRET to ${path}: ${err}. ` +
+      `⚠️  Could not persist a generated SESSION_SECRET to ${STATE_SECRET_PATH}: ${err}. ` +
         `Using an ephemeral secret — sessions will not survive a restart.`,
     );
   }
   return secret;
+}
+
+// Whether the session secret is file-managed (the zero-config path: generated and
+// persisted to a file) rather than pinned to a literal `SESSION_SECRET` env
+// value. Only a file-managed secret can be rotated from the web UI; a literal env
+// value must be changed where it's set. A `SESSION_SECRET_FILE` is file-managed —
+// it's the docker default, an auto-generated file in a volume, not a hand-pinned
+// value — so rotation stays available for the common containerised deployment.
+export function sessionSecretManaged(): boolean {
+  const fromEnv = Deno.env.get("SESSION_SECRET")?.trim();
+  return !(fromEnv && fromEnv !== PLACEHOLDER_SECRET);
+}
+
+// Rotate the file-managed session secret by writing a fresh one to the app-owned
+// STATE_DIR file, which boot prefers over SESSION_SECRET_FILE — so this works
+// even when the bootstrap secret is mounted read-only (the docker default). The
+// running process keeps the old secret in memory, so this only takes effect on
+// the next restart, and signs everyone out then. Refuses when the secret is
+// pinned to a literal `SESSION_SECRET` env value, which the UI must gate on too.
+export function rotateSessionSecret(): void {
+  if (!sessionSecretManaged()) {
+    throw new Error(
+      "The session secret is pinned via the SESSION_SECRET env var — " +
+        "rotate it there, not from the web UI.",
+    );
+  }
+  Deno.mkdirSync(STATE_DIR, { recursive: true });
+  Deno.writeTextFileSync(STATE_SECRET_PATH, randomHex(32), { mode: 0o600 });
 }
 
 // Resolve the database URL: explicit DATABASE_URL, or assemble it from

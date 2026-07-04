@@ -11,7 +11,8 @@ import { checkOutboundPort25, verifyRecords } from "@/services/emailDns.ts";
 import { requireAdmin } from "@/routes/middleware.ts";
 import { adminUserView } from "@/routes/serializers.ts";
 import { badRequest } from "@/lib/http.ts";
-import { config } from "@/config.ts";
+import { rotateSessionSecret, sessionSecretManaged } from "@/config.ts";
+import { federationRunning } from "@/services/federationState.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 export const adminRoutes = new Hono<AppEnv>();
@@ -37,26 +38,35 @@ adminRoutes.put("/settings/analytics", async (c) => {
 
 // ── Instance identity (runtime config) ──────────────────────────────────────
 
-// Current app name + public domain (effective values), plus the boot-time
-// federation flag for display. `federationEnabled` is env/restart-controlled, so
-// it's read-only here (see the admin UI note).
-adminRoutes.get("/instance", async (c) => {
-  requireAdmin(c);
-  return c.json({
+// A full snapshot of the runtime instance identity. `federationEnabled` is the
+// *desired* value (applies on restart); `federationRunning` is what this process
+// actually has mounted; `sessionSecretManaged` says whether the secret can be
+// rotated from the UI. The UI surfaces the running-vs-desired gap.
+async function instanceSnapshot() {
+  return {
     appName: await setup.getAppName(),
     appDomain: await setup.getAppDomain(),
-    federationEnabled: config.FEDERATION_ENABLED,
-  });
+    federationEnabled: await setup.getFederationEnabled(),
+    federationRunning: federationRunning(),
+    sessionSecretManaged: sessionSecretManaged(),
+  };
+}
+
+adminRoutes.get("/instance", async (c) => {
+  requireAdmin(c);
+  return c.json(await instanceSnapshot());
 });
 
 const instanceSchema = z.object({
   appName: z.string().trim().min(1, "An instance name is required.").max(100).optional(),
   appDomain: z.string().trim().max(253).optional(),
+  federationEnabled: z.boolean().optional(),
 });
 
-// Update the app name / public domain. A domain change reaches ActivityPub only
-// after a restart (federation identity binds at boot); app-level URLs update at
-// once. The UI surfaces that caveat.
+// Update the app name / public domain / federation toggle. A domain change
+// reaches ActivityPub only after a restart (federation identity binds at boot),
+// as does flipping federation on/off (the Fedify mount and queue handlers bind at
+// boot); app-level name/URLs update at once. The UI surfaces those caveats.
 adminRoutes.put("/instance", async (c) => {
   requireAdmin(c);
   const parsed = instanceSchema.safeParse(await c.req.json().catch(() => null));
@@ -64,11 +74,23 @@ adminRoutes.put("/instance", async (c) => {
     throw badRequest(parsed.error.issues[0]?.message ?? "Invalid instance settings.");
   }
   await setup.setInstanceIdentity(parsed.data);
-  return c.json({
-    appName: await setup.getAppName(),
-    appDomain: await setup.getAppDomain(),
-    federationEnabled: config.FEDERATION_ENABLED,
-  });
+  if (parsed.data.federationEnabled !== undefined) {
+    await setup.setFederationEnabled(parsed.data.federationEnabled);
+  }
+  return c.json(await instanceSnapshot());
+});
+
+// Rotate the auto-managed session secret. Restart-applied and signs everyone out
+// then, so it's a deliberate, separate action (not part of the settings save).
+// Refused when the secret is operator-supplied via env / secret file.
+adminRoutes.post("/instance/rotate-secret", (c) => {
+  requireAdmin(c);
+  try {
+    rotateSessionSecret();
+  } catch (err) {
+    throw badRequest(err instanceof Error ? err.message : "Could not rotate the session secret.");
+  }
+  return c.json({ ok: true });
 });
 
 // ── Email (runtime-configurable delivery) ────────────────────────────────────

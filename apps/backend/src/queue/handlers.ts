@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { config } from "@/config.ts";
+import { federationRunning } from "@/services/federationState.ts";
 import { registerHandler } from "@/queue/queue.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { sendEmailVerification, sendPasswordReset } from "@/services/email.ts";
@@ -9,7 +9,7 @@ import { sendEmailVerification, sendPasswordReset } from "@/services/email.ts";
 
 export function registerJobHandlers() {
   registerHandler("federate_post", async ({ postId, action }) => {
-    if (!config.FEDERATION_ENABLED) return;
+    if (!federationRunning()) return;
     const { deliverPost } = await import("@/federation/deliver.ts");
     await deliverPost(postId, action ?? "create");
   });
@@ -17,25 +17,25 @@ export function registerJobHandlers() {
   // A local post was deleted; tombstone it on remote followers' instances. The
   // row is already gone, so the payload carries the former author id.
   registerHandler("federate_post_delete", async ({ postId, authorId }) => {
-    if (!config.FEDERATION_ENABLED) return;
+    if (!federationRunning()) return;
     const { deliverPostDelete } = await import("@/federation/deliver.ts");
     await deliverPostDelete(postId, authorId);
   });
 
   registerHandler("federate_list_item", async ({ listId, postId, action }) => {
-    if (!config.FEDERATION_ENABLED) return;
+    if (!federationRunning()) return;
     const { deliverListItem } = await import("@/federation/lists.ts");
     await deliverListItem(listId, postId, action);
   });
 
   registerHandler("send_follow", async ({ followerId, targetActor }) => {
-    if (!config.FEDERATION_ENABLED) return;
+    if (!federationRunning()) return;
     const { sendFollow } = await import("@/federation/outbound.ts");
     await sendFollow(followerId, targetActor);
   });
 
   registerHandler("send_unfollow", async ({ followerId, targetActor }) => {
-    if (!config.FEDERATION_ENABLED) return;
+    if (!federationRunning()) return;
     const { sendUnfollow } = await import("@/federation/outbound.ts");
     await sendUnfollow(followerId, targetActor);
   });
@@ -44,7 +44,7 @@ export function registerJobHandlers() {
   // other instances tombstone us) while the key pair still exists, then remove
   // the user — FK cascades wipe their posts, follows, sessions, mutes & blocks.
   registerHandler("delete_actor", async ({ userId }) => {
-    if (config.FEDERATION_ENABLED) {
+    if (federationRunning()) {
       try {
         const { sendActorDelete } = await import("@/federation/outbound.ts");
         await sendActorDelete(userId);

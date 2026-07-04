@@ -81,9 +81,13 @@ services:
       FEDERATION_ENABLED: ${FEDERATION_ENABLED:-false}
       PORT: 8000
       UPLOADS_DIR: /data/uploads
+      # App-owned writable state (e.g. a web-UI-rotated session secret). Kept
+      # separate from the read-only bootstrap `secrets` volume.
+      STATE_DIR: /data/state
     volumes:
       # Persist user-uploaded media (avatars) across restarts/upgrades.
       - uploads:/data/uploads
+      - state:/data/state
       - secrets:/run/secrets:ro
     ports:
       # Exposed so other fediverse servers can reach /.well-known and /users.
@@ -130,6 +134,7 @@ services:
 volumes:
   pgdata:
   uploads:
+  state:
   secrets:
   caddy_data:
   caddy_config:

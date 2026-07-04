@@ -170,15 +170,30 @@ so no operator ever returns to a config file.
 - [x] **Email panel** — a dedicated **Email** tab surfacing the S3 endpoints:
       toggle console/SMTP, edit the connection (password write-only, shown as
       `unchanged`), **save**, and **send a live test** (`POST /api/admin/email/test`).
-- [ ] **Federation toggle (deferred).** `FEDERATION_ENABLED` gates the boot-time
-      Fedify mount plus queue handlers and remote routes, so a live toggle would
-      need consistent re-mounting; left env + restart-controlled and shown
-      read-only for now. A DB-backed, restart-applied flag can come later.
-- [ ] **Secret rotation (deferred).** Regenerating `SESSION_SECRET` from the UI
-      only takes effect on restart (the running process holds it in memory) and
-      signs everyone out — a footgun better done deliberately; deferred.
-- Files: `services/instanceSetup.ts` (`setInstanceIdentity`), `routes/admin.ts`
-  (`/instance` GET/PUT); frontend `components/AdminInstanceSettings.svelte`,
+- [x] **Federation toggle (DB-backed, restart-applied).** The Instance tab now
+      has a federation switch. `FEDERATION_ENABLED` still gates the boot-time
+      Fedify mount, queue handlers, and remote routes — so rather than risk
+      inconsistent live re-mounting, the toggle is persisted
+      (`instance.federationEnabled`, DB → env → default via
+      `getFederationEnabled`/`setFederationEnabled`) and **applied on the next
+      restart**. A single runtime holder (`services/federationState.ts`,
+      `federationRunning()`) is seeded once at boot from the effective value and
+      is the sole source of truth the running code reads (app mount, queue
+      handlers, remote routes, health). The UI shows the running-vs-saved gap and
+      a "restart to apply" note — never a silent, half-applied state.
+- [x] **Secret rotation (deliberate, restart-applied).** The Instance tab can
+      rotate the **auto-managed** session secret (`config.rotateSessionSecret`
+      overwrites the persisted `STATE_DIR/session_secret`, mode 0600). It's gated
+      behind a confirm dialog that spells out the consequence — it takes effect on
+      restart and signs everyone out then. Refused (with an explanatory note) when
+      the secret is operator-supplied via `SESSION_SECRET` / `SESSION_SECRET_FILE`
+      (`config.sessionSecretManaged`), which must be rotated where it's set.
+- Files: `services/instanceSetup.ts` (`setInstanceIdentity`, federation
+  accessors), `services/federationState.ts` (new runtime holder), `config.ts`
+  (`sessionSecretManaged`, `rotateSessionSecret`), `main.ts` (seed at boot),
+  `app.ts` / `queue/handlers.ts` / `routes/remote.ts` / `routes/health.ts`
+  (read `federationRunning()`), `routes/admin.ts` (`/instance` GET/PUT +
+  `/instance/rotate-secret`); frontend `components/AdminInstanceSettings.svelte`,
   `components/AdminEmail.svelte`, `routes/admin/+page.svelte` (Email + Instance
   tabs), `lib/api`, `lib/types`.
 

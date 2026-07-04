@@ -240,12 +240,16 @@ export type EmailDnsReport = {
 export type DkimGenerateResult = { domain: string; selector: string; records: EmailDnsRecords };
 export type EmailDnsResult = { records: EmailDnsRecords; report: EmailDnsReport };
 
-// Admin view of the instance identity. `federationEnabled` is boot/env-bound and
-// therefore read-only in the admin UI.
+// Admin view of the instance identity. `federationEnabled` is the desired value
+// (applies on restart); `federationRunning` is what the process is actually
+// running now; `sessionSecretManaged` says whether the secret can be rotated from
+// the UI (false when pinned via env / secret file).
 export type AdminInstance = {
   appName: string;
   appDomain: string;
   federationEnabled: boolean;
+  federationRunning: boolean;
+  sessionSecretManaged: boolean;
 };
 
 // ── moderation (admin only) ──

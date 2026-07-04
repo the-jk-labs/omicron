@@ -76,10 +76,13 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     setAnalytics: (onInstanceViews: boolean) =>
       api.put<InstanceSettings>("/admin/settings/analytics", { onInstanceViews }),
 
-    // admin instance identity (name + domain; federation shown read-only)
+    // admin instance identity (name + domain + federation toggle, restart-applied)
     adminInstance: () => api.get<AdminInstance>("/admin/instance"),
-    setAdminInstance: (body: { appName?: string; appDomain?: string }) =>
-      api.put<AdminInstance>("/admin/instance", body),
+    setAdminInstance: (
+      body: { appName?: string; appDomain?: string; federationEnabled?: boolean },
+    ) => api.put<AdminInstance>("/admin/instance", body),
+    // Rotate the auto-managed session secret (takes effect on restart, signs out).
+    rotateSessionSecret: () => api.post<{ ok: true }>("/admin/instance/rotate-secret", {}),
 
     // admin email settings (runtime-configurable delivery)
     adminEmail: () => api.get<EmailSettings>("/admin/email"),

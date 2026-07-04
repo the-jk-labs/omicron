@@ -2,6 +2,7 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { config } from "@/config.ts";
+import { federationRunning } from "@/services/federationState.ts";
 import { handleError } from "@/lib/http.ts";
 import { sessionMiddleware } from "@/routes/middleware.ts";
 import { healthRoutes } from "@/routes/health.ts";
@@ -43,7 +44,7 @@ export async function buildApp() {
   // Mount ActivityPub (WebFinger, actor, inbox/outbox) before app routes.
   // Federation paths are delegated to Fedify's fetch handler; everything else
   // falls through to the app's own routes.
-  if (config.FEDERATION_ENABLED) {
+  if (federationRunning()) {
     const { getFederation } = await import("@/federation/mod.ts");
     const fed = getFederation();
     const fedPrefixes = ["/.well-known/", "/users/", "/inbox", "/nodeinfo"];
@@ -93,8 +94,10 @@ export async function buildApp() {
   // Session resolution applies to the JSON API.
   app.use("/api/*", sessionMiddleware);
   // General write throttle, after session resolution so it can key by user.
-  app.use("/api/*", (c, next) =>
-    READ_METHODS.has(c.req.method) ? next() : apiWriteLimiter(c, next));
+  app.use(
+    "/api/*",
+    (c, next) => READ_METHODS.has(c.req.method) ? next() : apiWriteLimiter(c, next),
+  );
   app.route("/api", apiRoutes);
 
   return app;

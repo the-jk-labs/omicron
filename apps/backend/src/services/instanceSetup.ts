@@ -2,6 +2,7 @@
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { type EmailInput, setEmailConfig } from "@/services/emailSettings.ts";
+import { federationRunning } from "@/services/federationState.ts";
 import { config } from "@/config.ts";
 
 // First-run setup state + the wizard-managed instance settings, layered over the
@@ -14,6 +15,7 @@ export const SETUP_KEYS = {
   completed: "setup.completed",
   appName: "instance.appName",
   appDomain: "instance.appDomain",
+  federationEnabled: "instance.federationEnabled",
   emailMode: "email.mode",
 } as const;
 
@@ -39,6 +41,20 @@ export async function getAppName(): Promise<string> {
 export async function getAppDomain(): Promise<string> {
   const fromDb = await settingsRepo.get<string>(SETUP_KEYS.appDomain);
   return fromDb?.trim() || config.APP_DOMAIN;
+}
+
+// Effective (desired) federation state: admin toggle → FEDERATION_ENABLED
+// env/default. This is the value that applies on the next restart; what the
+// process is running *right now* is `federationRunning()`, since the Fedify mount
+// and queue handlers bind at boot (see federationState.ts).
+export async function getFederationEnabled(): Promise<boolean> {
+  const fromDb = await settingsRepo.get<boolean>(SETUP_KEYS.federationEnabled);
+  return typeof fromDb === "boolean" ? fromDb : config.FEDERATION_ENABLED;
+}
+
+// Persist the desired federation state from the admin page. Restart-applied.
+export async function setFederationEnabled(value: boolean): Promise<void> {
+  await settingsRepo.set(SETUP_KEYS.federationEnabled, value);
 }
 
 // Effective email transport mode: wizard → EMAIL_TRANSPORT env/default.
@@ -118,7 +134,7 @@ export async function publicInfo(): Promise<{
     getAppDomain(),
     isSetupComplete(),
   ]);
-  return { name, domain, federationEnabled: config.FEDERATION_ENABLED, setupComplete };
+  return { name, domain, federationEnabled: federationRunning(), setupComplete };
 }
 
 // Persists the wizard's instance settings and marks setup finished. The admin
