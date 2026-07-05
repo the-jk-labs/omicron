@@ -89,13 +89,21 @@ function hit(key: string, windowMs: number, max: number): Promise<HitResult> {
     : Promise.resolve(hitInProcess(key, windowMs, max));
 }
 
-// Resolves the caller's IP. Behind our SvelteKit proxy (the normal path) the
-// real client address arrives in `x-forwarded-for`; direct-to-backend traffic
-// (e.g. the federation inbox) has no such header, so fall back to the actual
-// connection address.
+// Resolves the caller's IP from `x-forwarded-for`, trusting only the value added
+// by the immediate upstream proxy.
+//
+// `x-forwarded-for` is a client-appendable chain: each hop appends the address
+// it saw, so the LEFTMOST entries are whatever the original caller sent and are
+// fully spoofable. Our trusted proxy (Caddy for the direct-to-backend federation
+// paths; the SvelteKit proxy, which *sets* a single value, for the JSON API) is
+// always the last hop, so the RIGHTMOST entry is the only trustworthy one. Using
+// the leftmost would let a peer rotate a forged IP to evade per-IP rate limits.
 export function clientIp(c: Context): string {
   const xff = c.req.header("x-forwarded-for");
-  if (xff) return xff.split(",")[0].trim();
+  if (xff) {
+    const parts = xff.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length > 0) return parts[parts.length - 1];
+  }
   const real = c.req.header("x-real-ip");
   if (real) return real.trim();
   try {

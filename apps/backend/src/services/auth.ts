@@ -2,7 +2,7 @@
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as sessionsRepo from "@/db/repositories/sessions.ts";
 import * as authTokensRepo from "@/db/repositories/authTokens.ts";
-import { hashPassword, verifyPassword } from "@/lib/password.ts";
+import { hashPassword, verifyDummy, verifyPassword } from "@/lib/password.ts";
 import { newSessionToken, sessionExpiry } from "@/lib/session.ts";
 import { hashToken, newToken } from "@/lib/tokens.ts";
 import { badRequest, conflict, forbidden, notFound, unauthorized } from "@/lib/http.ts";
@@ -78,7 +78,13 @@ export async function login(identifier: string, password: string): Promise<{
   const user = id.includes("@")
     ? await usersRepo.findByEmail(id)
     : await usersRepo.findByUsername(id);
-  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+  // Always spend the cost of a bcrypt comparison, even when the account doesn't
+  // exist, so response timing can't distinguish "no such user" from "wrong
+  // password" (account enumeration). Same generic error either way.
+  const ok = user
+    ? await verifyPassword(password, user.passwordHash)
+    : await verifyDummy(password);
+  if (!user || !ok) {
     throw unauthorized("Invalid username or password.");
   }
   // Suspended accounts cannot sign in. Checked after the password so it can't be

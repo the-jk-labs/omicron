@@ -5,6 +5,7 @@ import * as linksRepo from "@/db/repositories/profileLinks.ts";
 import { relationActorLocal } from "@/routes/serializers.ts";
 import { config } from "@/config.ts";
 import { badRequest } from "@/lib/http.ts";
+import { sniffMatches } from "@/services/media.ts";
 import { MAX_PROFILE_TAGS, normalizeTags } from "@/lib/tags.ts";
 import {
   isLinkPlatform,
@@ -135,6 +136,12 @@ export async function setAvatar(
   if (!ext) throw badRequest("Unsupported image type. Use PNG, JPEG, WebP, or GIF.");
   if (bytes.byteLength === 0) throw badRequest("The uploaded file is empty.");
   if (bytes.byteLength > MAX_AVATAR_BYTES) throw badRequest("Image too large (max 2 MB).");
+  // The declared content-type is untrusted; require the bytes to really be the
+  // claimed raster format so an active-content payload can't hide behind an
+  // image extension (see mediaService.sniffMatches).
+  if (!sniffMatches(bytes, ext)) {
+    throw badRequest("The file contents don't match a PNG, JPEG, WebP, or GIF image.");
+  }
 
   await Deno.mkdir(config.UPLOADS_DIR, { recursive: true });
   const filename = `${crypto.randomUUID()}.${ext}`;

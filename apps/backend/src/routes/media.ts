@@ -41,6 +41,10 @@ mediaRoutes.get("/:file", async (c) => {
       headers: {
         "content-type": CONTENT_TYPE[ext] ?? "application/octet-stream",
         "cache-control": "public, max-age=31536000, immutable",
+        // Never let the browser re-interpret a stored file as anything other
+        // than its declared image type (defence in depth alongside upload-time
+        // magic-byte validation).
+        "x-content-type-options": "nosniff",
       },
     });
   } catch {
