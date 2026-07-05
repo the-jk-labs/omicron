@@ -27,6 +27,8 @@
   const isAdmin = $derived(!data.remote && "isAdmin" in profile.user && profile.user.isAdmin);
   // Public reading lists (local profiles only); the owner also sees their private ones.
   const lists = $derived(!data.remote ? data.lists : []);
+  // Profile links exist on local profiles only; remote actors carry none.
+  const profileLinks = $derived(!data.remote && "links" in profile.user ? profile.user.links : []);
 
   let posts = $state<Post[]>(data.page.items);
   let cursor = $state<string | null>(data.page.nextCursor);
@@ -142,10 +144,10 @@
       {/if}
     </div>
     {#if profile.user.bio}<p class="mt-2 max-w-prose whitespace-pre-line text-foreground-alt">{profile.user.bio}</p>{/if}
-    {#if profile.user.links?.length}
+    {#if profileLinks.length}
       <!-- Compact icon-only links; the About tab carries the labelled detail. -->
       <div class="mt-3 flex flex-wrap items-center gap-0.5">
-        {#each profile.user.links as link (link.platform + link.url)}
+        {#each profileLinks as link (link.platform + link.url)}
           {@const meta = platformMeta(link.platform)}
           <a
             href={link.url}

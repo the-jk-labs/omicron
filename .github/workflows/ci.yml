@@ -1,0 +1,64 @@
+# Continuous integration. Runs the checks that already exist as local tasks on
+# every push and PR, so a typecheck, lint, or test regression can't land on
+# `main` and reach self-hosters on their next `git pull && docker compose up`.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch/PR cancels the older, still-running job.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (check · lint · test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check
+        run: deno task check
+      - name: Lint
+        run: deno lint
+      - name: Test
+        run: deno task test
+
+  frontend:
+    name: Frontend (svelte-check)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apps/frontend/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Check
+        run: npm run check
+
+  docker-build:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The compose stack builds both images from source (no prebuilt images
+      # yet), so a broken Dockerfile breaks `install.sh` for everyone. Build both
+      # here to catch it before release.
+      - name: Build backend image
+        run: docker build -t omicron-backend ./apps/backend
+      - name: Build frontend image
+        run: docker build -t omicron-frontend ./apps/frontend

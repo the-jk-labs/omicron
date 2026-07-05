@@ -8,6 +8,7 @@
     "backfill:markdown": "deno run -A scripts/backfill_markdown.ts",
     "backfill:sanitize": "deno run -A scripts/backfill_sanitize.ts",
     "check": "deno check src/main.ts",
+    "test": "deno test -A",
     "fmt": "deno fmt",
     "lint": "deno lint"
   },
@@ -27,6 +28,7 @@
     "bcryptjs": "npm:bcryptjs@^3.0",
     "sanitize-html": "npm:sanitize-html@2.14.0",
     "zod": "npm:zod@^4.0",
+    "@std/assert": "jsr:@std/assert@^1.0",
     "@/": "./src/"
   },
   "nodeModulesDir": "auto",

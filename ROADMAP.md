@@ -189,16 +189,24 @@ Needed for "seamless upgrades" to be a real promise.
 
 ### 8. Tests
 
-- [ ] Unit tests for sanitizer, password, pagination, tag normalization.
+- [x] Unit tests for sanitizer, password, pagination, tag normalization (+ the
+      defederation domain helpers). `deno task test` in `apps/backend`; files are
+      co-located `*_test.ts` under `src/lib/`. The sanitizer suite pins the
+      stored-XSS defenses; the domain suite caught and fixed a real bug (a
+      Mastodon profile URL `https://host/@user` normalized to `null`, so an
+      admin's block silently no-op'd).
 - [ ] Repository/service integration tests against a throwaway Postgres.
 - [ ] Federation tests: inbound Follow/Create/Delete, outbound delivery.
 - [ ] Migration replay test (fresh DB + upgrade path).
 
 ### 9. CI/CD
 
-- [ ] GitHub Actions: `deno task check`, `deno lint`, `npm run check`.
-- [ ] Run the test suite on PRs.
-- [ ] Build the Docker images in CI.
+- [x] GitHub Actions (`.github/workflows/ci.yml`): backend `deno task check` +
+      `deno lint` + `deno task test`, frontend `npm run check`, and a Docker
+      image build of both apps. Runs on every push to `main` and every PR.
+- [x] Run the test suite on PRs (part of the backend job above).
+- [x] Build the Docker images in CI (the `docker-build` job — the compose stack
+      builds from source, so a broken Dockerfile would break `install.sh`).
 - [ ] Optional: publish tagged images.
 
 ### 10. Observability & ops

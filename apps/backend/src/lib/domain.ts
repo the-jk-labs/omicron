@@ -7,15 +7,18 @@
 export function normalizeDomain(input: string): string | null {
   let s = input.trim().toLowerCase();
   if (!s) return null;
-  // `@user@host` or `user@host` -> keep the part after the last `@`.
-  if (s.includes("@")) s = s.slice(s.lastIndexOf("@") + 1);
-  // A full URL -> its host.
+  // A full URL -> its host. Do this BEFORE the `@`-handling below, so a Mastodon
+  // profile URL like `https://host/@user` resolves to `host` instead of being
+  // mistaken for an `@user@host` handle and mangled to `user`.
   if (s.includes("://")) {
     try {
       s = new URL(s).host;
     } catch {
       return null;
     }
+  } else if (s.includes("@")) {
+    // `@user@host` or `user@host` -> keep the part after the last `@`.
+    s = s.slice(s.lastIndexOf("@") + 1);
   }
   // Strip any leftover path and port.
   s = s.split("/")[0].split(":")[0];
