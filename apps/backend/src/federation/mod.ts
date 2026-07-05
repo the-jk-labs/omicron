@@ -6,8 +6,12 @@ import {
   generateCryptoKeyPair,
   importJwk,
   InProcessMessageQueue,
+  type KvStore,
   MemoryKvStore,
+  type MessageQueue,
 } from "@fedify/fedify";
+import { RedisKvStore, RedisMessageQueue } from "@fedify/redis";
+import { getRedis, redisEnabled, redisFactory } from "@/lib/redis.ts";
 import {
   Accept,
   Article,
@@ -64,10 +68,12 @@ export function getFederation(): Federation<ContextData> {
 }
 
 function createFederationInstance(): Federation<ContextData> {
-  // MemoryKvStore + an in-process message queue are fine for a single instance;
-  // both are swappable for a Postgres/Redis backing without touching dispatchers
-  // (the queue is non-durable, so undelivered activities are lost on restart —
-  // acceptable at MVP, revisit with the backend swap).
+  // Backing store selection. Without Redis we use MemoryKvStore + an in-process
+  // queue — fine for a single instance, but non-durable, so undelivered
+  // activities are lost on restart and state can't be shared across processes.
+  // When `REDIS_URL` is set (the docker-compose default) we swap in Redis-backed
+  // equivalents so outbound delivery survives restarts and multiple backends
+  // share one queue. Dispatchers are untouched either way.
   //
   // The queue is what gives outbound delivery Fedify's retry/backoff (exponential,
   // up to 10 attempts over ~12h) instead of a single synchronous best-effort send,
@@ -77,9 +83,19 @@ function createFederationInstance(): Federation<ContextData> {
   // HTTP-Signature-verified within a one-hour timestamp window. Stated here
   // explicitly (`skipSignatureVerification: false`) so the guarantee can't
   // silently drift; never flip this on in production.
+  let kv: KvStore;
+  let queue: MessageQueue;
+  if (redisEnabled()) {
+    kv = new RedisKvStore(getRedis()!);
+    queue = new RedisMessageQueue(redisFactory());
+    console.log("✔ Federation using Redis-backed KV + message queue (durable).");
+  } else {
+    kv = new MemoryKvStore();
+    queue = new InProcessMessageQueue();
+  }
   const f = createFederation<ContextData>({
-    kv: new MemoryKvStore(),
-    queue: new InProcessMessageQueue(),
+    kv,
+    queue,
     skipSignatureVerification: false,
     // Transient delivery failures are retried per the backoff schedule; surface
     // each attempt so operators can see a struggling peer.
@@ -127,10 +143,11 @@ function setupActor(f: Federation<ContextData>) {
         const name = l.platform === "custom" ? (l.label || "Link") : linkLabel(l.platform);
         return new PropertyValue({
           name,
-          value:
-            `<a href="${escapeHtml(l.url)}" target="_blank" rel="nofollow noopener noreferrer me" translate="no">${
-              escapeHtml(linkDisplayText(l.url))
-            }</a>`,
+          value: `<a href="${
+            escapeHtml(l.url)
+          }" target="_blank" rel="nofollow noopener noreferrer me" translate="no">${
+            escapeHtml(linkDisplayText(l.url))
+          }</a>`,
         });
       }),
     ];

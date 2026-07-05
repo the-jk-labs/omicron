@@ -56,11 +56,31 @@ services:
       timeout: 5s
       retries: 10
 
+  # Durable, shared state for the rate limiter, Fedify's KV + message queue, and
+  # the app job queue. Bundled so the container path is durable out of the box
+  # (undelivered federation activities and queued jobs survive a restart) with no
+  # config editing; the backend picks it up via REDIS_URL below. Not published on
+  # the host — only the backend reaches it over the compose network.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Light persistence so the queue survives a restart of Redis itself.
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "no"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   backend:
     build: ./apps/backend
     restart: unless-stopped
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       init-secrets:
         condition: service_completed_successfully
@@ -79,6 +99,9 @@ services:
       SESSION_SECRET_FILE: /run/secrets/session_secret
       APP_DOMAIN: ${APP_DOMAIN:-localhost:5173}
       FEDERATION_ENABLED: ${FEDERATION_ENABLED:-false}
+      # Durable, shared queues + rate limits via the bundled redis service.
+      # Override or blank it out to run the backend against in-process memory.
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       PORT: 8000
       UPLOADS_DIR: /data/uploads
       # App-owned writable state (e.g. a web-UI-rotated session secret). Kept
@@ -140,5 +163,6 @@ volumes:
   uploads:
   state:
   secrets:
+  redis_data:
   caddy_data:
   caddy_config:

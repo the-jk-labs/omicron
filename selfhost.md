@@ -425,6 +425,11 @@ All state lives in named volumes: `pgdata` (database), `uploads` (media),
 secret, if any), and `caddy_data` (TLS certs). A backup must be **self-consistent**:
 the database and the `secrets` password it was created with belong together.
 
+The `redis_data` volume is deliberately **not** in the backups below: it holds
+only transient queue state (pending jobs and in-flight federation deliveries),
+which Redis re-drains after a restart. It's safe to let it start empty on
+restore — no durable content lives there.
+
 There are two verified strategies (both round-trip-tested). Commands assume the
 default project name `omicron`, so volumes are `omicron_pgdata`, etc.
 

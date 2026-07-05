@@ -125,6 +125,15 @@ const schema = z.object({
   PORT: z.coerce.number().int().positive().default(8000),
   UPLOADS_DIR: z.string().min(1).default("./uploads"),
 
+  // Optional Redis. When set, the rate limiter, Fedify's KV + message queue, and
+  // the app job queue are all backed by Redis instead of in-process memory —
+  // making outbound federation delivery and queued jobs survive a restart and
+  // letting multiple backend processes share state. Unset (the local-dev
+  // default) keeps everything in-process. The docker compose stack wires this to
+  // its bundled `redis` service automatically, so the container path is durable
+  // out of the box with no config editing.
+  REDIS_URL: z.string().url().optional(),
+
   // Rate limiting. Disable only when a trusted upstream (CDN/gateway) already
   // enforces limits. The per-limiter maxima below are the request budgets;
   // windows are fixed in code (see routes/auth.ts and app.ts).
@@ -172,6 +181,7 @@ function load() {
     SESSION_SECRET: resolveSessionSecret(),
     PORT: Deno.env.get("PORT"),
     UPLOADS_DIR: Deno.env.get("UPLOADS_DIR"),
+    REDIS_URL: Deno.env.get("REDIS_URL"),
     RATE_LIMIT_ENABLED: Deno.env.get("RATE_LIMIT_ENABLED"),
     RL_LOGIN_MAX: Deno.env.get("RL_LOGIN_MAX"),
     RL_REGISTER_MAX: Deno.env.get("RL_REGISTER_MAX"),

@@ -194,7 +194,7 @@ export async function setEmailConfig(input: EmailInput): Promise<void> {
 export async function ensureDkimKeys(domain: string): Promise<{ selector: string; publicKey: string }> {
   const existingDomain = await settingsRepo.get<string>(EMAIL_KEYS.dkimDomain);
   let publicKey = await settingsRepo.get<string>(EMAIL_KEYS.dkimPublicKey);
-  let selector = (await settingsRepo.get<string>(EMAIL_KEYS.dkimSelector))?.trim() ||
+  const selector = (await settingsRepo.get<string>(EMAIL_KEYS.dkimSelector))?.trim() ||
     DEFAULT_DKIM_SELECTOR;
 
   // (Re)generate when there is no key yet, or the sending domain changed.

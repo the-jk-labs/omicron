@@ -119,6 +119,7 @@ Database migrations **run automatically on backend startup** and are idempotent
 | `uploads`     | User-uploaded media (avatars)                      |
 | `secrets`     | Generated DB password + bootstrap session secret   |
 | `state`       | App-managed state (e.g. a UI-rotated session secret) |
+| `redis_data`  | Queued jobs + pending federation deliveries (Redis) |
 | `caddy_data`  | Let's Encrypt certificates                          |
 
 A rebuild recreates the containers but never the volumes, so upgrades keep your

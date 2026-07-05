@@ -60,7 +60,7 @@ export async function buildApp() {
           if (Number.isFinite(declaredLen) && declaredLen > config.INBOX_MAX_BODY_BYTES) {
             return new Response("Payload Too Large", { status: 413 });
           }
-          const { allowed, retryAfter } = checkRateLimit(c, INBOX_LIMIT);
+          const { allowed, retryAfter } = await checkRateLimit(c, INBOX_LIMIT);
           if (!allowed) {
             return new Response("Too Many Requests", {
               status: 429,

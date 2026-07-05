@@ -173,8 +173,11 @@ Remote edits and deletes are currently ignored, leaving stale/deleted copies
       Fedify's default retry/backoff (exponential, up to 10 attempts over ~12h)
       instead of a single synchronous send. `onOutboxError` logs each failed
       attempt; `setOutboxPermanentFailureHandler` logs dead-letters once Fedify
-      gives up (permanent HTTP failure or circuit-breaker expiry). Queue is
-      in-process/non-durable for now — swap for Redis with the KV backend.
+      gives up (permanent HTTP failure or circuit-breaker expiry). Durable when
+      `REDIS_URL` is set (the docker-compose default): Fedify's KV + message
+      queue run on `@fedify/redis`, so pending deliveries survive a restart and
+      multiple backends share one queue. Without Redis it falls back to the
+      in-process/non-durable queue (fine for local dev / single-node MVP).
 - Files: `federation/mod.ts` (queue + signature/error handlers), `app.ts` +
   `lib/inboxBody.ts` (capped-body inbox guard).
 
@@ -203,6 +206,15 @@ Needed for "seamless upgrades" to be a real promise.
 - [ ] Structured logging with levels.
 - [ ] Error tracking hook (config-gated).
 - [ ] Health/readiness split beyond `/healthz` (DB + queue checks).
+- [x] Durable, shared queues + rate limits via optional Redis (`REDIS_URL`).
+      Backs the rate limiter, Fedify's KV + message queue (`@fedify/redis`), and
+      the app job queue (`queue/queue.ts`, durable list + worker with retry/
+      dead-letter). Queued jobs and pending federation deliveries now survive a
+      restart, and multiple backend processes can share state. In-process memory
+      stays the zero-config default; the docker-compose stack ships a `redis`
+      service and wires `REDIS_URL` automatically. Files: `lib/redis.ts`,
+      `lib/rateLimit.ts`, `federation/mod.ts`, `queue/queue.ts`, `main.ts`,
+      `config.ts`, `docker-compose.yml`.
 - [x] Backup/restore guidance in docs (README "Backups & restore"), covering
       **all** stateful volumes. Two verified strategies: (A) logical `pg_dump`
       + `uploads`/`caddy_data`, letting `secrets` regenerate (portable, live-safe,

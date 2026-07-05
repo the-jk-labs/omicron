@@ -19,6 +19,8 @@
     "hono/deno": "jsr:@hono/hono@4.12.27/deno",
     "@fedify/fedify": "jsr:@fedify/fedify@2.3.1",
     "@fedify/fedify/vocab": "jsr:@fedify/fedify@2.3.1/vocab",
+    "@fedify/redis": "jsr:@fedify/redis@2.3.1",
+    "ioredis": "npm:ioredis@^5.8.2",
     "drizzle-orm": "npm:drizzle-orm@0.45.2",
     "drizzle-kit": "npm:drizzle-kit@0.31.10",
     "postgres": "npm:postgres@^3.4",
