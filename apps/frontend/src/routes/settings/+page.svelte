@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { untrack } from "svelte";
   import { goto, invalidateAll } from "$app/navigation";
   import { Button as ButtonPrimitive, Dialog, Label } from "bits-ui";
   import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
@@ -23,19 +24,21 @@
 
   let { data }: { data: PageData } = $props();
 
-  // Profile form — seeded from the loaded user.
-  let displayName = $state(data.user.displayName);
-  let bio = $state(data.user.bio);
-  let publicEmail = $state(data.user.publicEmail);
-  let profileTags = $state<string[]>(data.user.tags?.map((t) => t.name) ?? []);
-  const initialTags = (data.user.tags?.map((t) => t.name) ?? []).join(",");
+  // Profile form — seeded once from the loaded user; edits live in the form and
+  // are persisted on save, so we intentionally capture the initial value only.
+  const seed = untrack(() => data.user);
+  let displayName = $state(seed.displayName);
+  let bio = $state(seed.bio);
+  let publicEmail = $state(seed.publicEmail);
+  let profileTags = $state<string[]>(seed.tags?.map((t) => t.name) ?? []);
+  const initialTags = (seed.tags?.map((t) => t.name) ?? []).join(",");
   // The editor works in "identifier" form (a handle / username), so seed from
   // the stored canonical URLs and convert back on save. Deep-copied so edits
   // don't mutate the loaded page data.
   const toEditable = (links: ProfileLink[]) =>
     links.map((l) => ({ platform: l.platform, url: urlToIdentifier(l.platform, l.url), label: l.label }));
-  let profileLinks = $state<ProfileLink[]>(toEditable(data.user.links ?? []));
-  const initialLinks = JSON.stringify(toEditable(data.user.links ?? []));
+  let profileLinks = $state<ProfileLink[]>(toEditable(seed.links ?? []));
+  const initialLinks = JSON.stringify(toEditable(seed.links ?? []));
   let nameEl = $state<HTMLInputElement | null>(null);
   let bioEl = $state<HTMLTextAreaElement | null>(null);
 

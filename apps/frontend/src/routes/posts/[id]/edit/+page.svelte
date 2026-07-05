@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import type { Content } from "@tiptap/core";
   import { goto } from "$app/navigation";
   import { endpoints, ApiError } from "$lib/api";
@@ -11,7 +11,8 @@
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
-  const post = data.post;
+  // Seed the editor once from the loaded post; later edits live in the editor.
+  const post = untrack(() => data.post);
 
   // Lazy-load the Tiptap editor so it stays out of the initial bundle.
   type EditorComp = typeof import("$lib/editor/Editor.svelte").default;

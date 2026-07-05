@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { untrack } from "svelte";
   import { goto } from "$app/navigation";
   import { endpoints, ApiError } from "$lib/api";
   import Avatar from "$lib/components/ui/Avatar.svelte";
@@ -23,8 +24,14 @@
     onCountChange?: (delta: number) => void;
   } = $props();
 
-  let comments = $state<Comment[]>(initial.items);
-  let cursor = $state<string | null>(initial.nextCursor);
+  let comments = $state<Comment[]>(untrack(() => initial.items));
+  let cursor = $state<string | null>(untrack(() => initial.nextCursor));
+  // Reset when reused across a client-side navigation to a different post; local
+  // additions/edits mutate `comments`, not the `initial` prop, so they persist.
+  $effect(() => {
+    comments = initial.items;
+    cursor = initial.nextCursor;
+  });
   let draft = $state("");
   let draftEl = $state<HTMLTextAreaElement | null>(null);
   const insertDraftEmoji = (emoji: string) =>

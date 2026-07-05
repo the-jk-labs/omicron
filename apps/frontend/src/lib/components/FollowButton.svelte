@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { untrack } from "svelte";
   import { endpoints } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -13,8 +14,13 @@
     remote?: boolean;
     size?: "default" | "sm" | "xs";
   } = $props();
-  let isFollowing = $state(following);
+  let isFollowing = $state(untrack(() => following));
   let busy = $state(false);
+  // Re-sync when the button is reused across a client-side navigation (e.g. from
+  // one profile page to another); local toggles don't touch the `following` prop.
+  $effect(() => {
+    isFollowing = following;
+  });
 
   async function toggle() {
     busy = true;

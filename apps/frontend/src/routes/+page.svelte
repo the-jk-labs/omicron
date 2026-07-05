@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { Tabs } from "bits-ui";
   import { endpoints } from "$lib/api";
   import { reading } from "$lib/prefs.svelte";
@@ -29,6 +29,12 @@
 
   const api = endpoints();
 
+  // The feed set and its preloaded payload are fixed for the life of this
+  // component instance (a change in sign-in state triggers a full reload), so
+  // read the loaded data once when building them.
+  const personalized = untrack(() => data.personalized);
+  const preload = untrack(() => data.page);
+
   function makeFeed(
     init: Pick<Feed, "value" | "label" | "icon" | "empty" | "fetch"> & { preload?: Page<Post> },
   ): Feed {
@@ -48,7 +54,7 @@
     icon: "sparkles",
     empty: "Your feed is empty — follow some writers to fill it.",
     fetch: api.feed,
-    preload: data.personalized ? data.page : undefined,
+    preload: personalized ? preload : undefined,
   });
 
   const local = makeFeed({
@@ -65,13 +71,13 @@
     icon: "globe",
     empty: "No federated stories yet.",
     fetch: api.globalTimeline,
-    preload: data.personalized ? undefined : data.page,
+    preload: personalized ? undefined : preload,
   });
 
   const feeds = $state<Feed[]>(
-    data.personalized ? [forYou, local, global] : [global, local],
+    personalized ? [forYou, local, global] : [global, local],
   );
-  const defaultTab = data.personalized ? "for-you" : "global";
+  const defaultTab = personalized ? "for-you" : "global";
 
   // Controlled active tab. SSR and the first client render both use `defaultTab`
   // (the preloaded feed) so hydration matches; after mount we honour the user's

@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { untrack } from "svelte";
   import ReadingListCard from "$lib/components/ReadingListCard.svelte";
   import ListFormDialog from "$lib/components/ListFormDialog.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -9,7 +10,11 @@
 
   let { data }: { data: PageData } = $props();
 
-  let lists = $state<ReadingList[]>(data.lists);
+  let lists = $state<ReadingList[]>(untrack(() => data.lists));
+  // Re-sync when the page data reloads; local create/delete mutate `lists`.
+  $effect(() => {
+    lists = data.lists;
+  });
 
   // A freshly created list lands at the top (after the pinned Read later list).
   function onCreated(list: ReadingList) {

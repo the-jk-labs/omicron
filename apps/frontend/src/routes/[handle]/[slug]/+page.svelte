@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { untrack } from "svelte";
   import { Dialog, DropdownMenu, Label, Separator } from "bits-ui";
   import { goto } from "$app/navigation";
   import { endpoints, ApiError } from "$lib/api";
@@ -20,10 +21,17 @@
   const originInstance = $derived(post.author.username.split("@")[1] ?? null);
 
   // Like state is seeded from the SSR payload (viewer-aware) and updated locally.
-  let liked = $state(data.post.liked);
-  let likeCount = $state(data.post.likeCount);
-  let commentCount = $state(data.post.commentCount);
+  let liked = $state(untrack(() => data.post.liked));
+  let likeCount = $state(untrack(() => data.post.likeCount));
+  let commentCount = $state(untrack(() => data.post.commentCount));
   let busy = $state(false);
+  // Re-seed when navigating between posts client-side; local like/comment
+  // actions mutate these without touching `data`, so they aren't undone.
+  $effect(() => {
+    liked = data.post.liked;
+    likeCount = data.post.likeCount;
+    commentCount = data.post.commentCount;
+  });
   let deleting = $state(false);
   let deleteError = $state("");
   let shared = $state(false);

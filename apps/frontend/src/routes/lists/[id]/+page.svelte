@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { untrack } from "svelte";
   import { goto } from "$app/navigation";
   import { endpoints } from "$lib/api";
   import PostCard from "$lib/components/PostCard.svelte";
@@ -12,10 +13,17 @@
 
   let { data }: { data: PageData } = $props();
 
-  let list = $state<ReadingList>(data.list);
-  let posts = $state<Post[]>(data.page.items);
-  let cursor = $state<string | null>(data.page.nextCursor);
+  let list = $state<ReadingList>(untrack(() => data.list));
+  let posts = $state<Post[]>(untrack(() => data.page.items));
+  let cursor = $state<string | null>(untrack(() => data.page.nextCursor));
   let loading = $state(false);
+  // Reset when navigating between lists client-side; "load more" and local
+  // removals mutate `posts`/`list` without changing `data`, so they persist.
+  $effect(() => {
+    list = data.list;
+    posts = data.page.items;
+    cursor = data.page.nextCursor;
+  });
 
   const count = $derived(list.itemCount === 1 ? "1 post" : `${list.itemCount} posts`);
 

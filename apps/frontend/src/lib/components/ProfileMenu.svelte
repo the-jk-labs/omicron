@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { untrack } from "svelte";
   import { DropdownMenu } from "bits-ui";
   import { endpoints } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
@@ -14,9 +15,14 @@
     blocked,
   }: { username: string; remote?: boolean; muted: boolean; blocked: boolean } = $props();
 
-  let isMuted = $state(muted);
-  let isBlocked = $state(blocked);
+  let isMuted = $state(untrack(() => muted));
+  let isBlocked = $state(untrack(() => blocked));
   let busy = $state(false);
+  // Re-sync when reused across a client-side navigation between profiles.
+  $effect(() => {
+    isMuted = muted;
+    isBlocked = blocked;
+  });
 
   async function toggleMute() {
     busy = true;

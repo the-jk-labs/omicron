@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { untrack } from "svelte";
   import { endpoints, ApiError } from "$lib/api";
   import { confirm } from "$lib/components/ui/confirm";
   import Button from "$lib/components/ui/Button.svelte";
@@ -10,10 +11,16 @@
 
   let { data }: { data: PageData } = $props();
 
-  let drafts = $state<Post[]>(data.page.items);
-  let cursor = $state<string | null>(data.page.nextCursor);
+  let drafts = $state<Post[]>(untrack(() => data.page.items));
+  let cursor = $state<string | null>(untrack(() => data.page.nextCursor));
   let loading = $state(false);
   let error = $state("");
+  // Reset when the page data is reloaded (e.g. after invalidation); "load more"
+  // appends to `drafts` without changing `data`, so it isn't undone.
+  $effect(() => {
+    drafts = data.page.items;
+    cursor = data.page.nextCursor;
+  });
 
   async function loadMore() {
     if (!cursor) return;

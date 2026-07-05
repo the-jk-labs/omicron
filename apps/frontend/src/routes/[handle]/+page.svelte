@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { Tabs, Separator } from "bits-ui";
   import { endpoints } from "$lib/api";
   import PostCard from "$lib/components/PostCard.svelte";
@@ -30,9 +30,15 @@
   // Profile links exist on local profiles only; remote actors carry none.
   const profileLinks = $derived(!data.remote && "links" in profile.user ? profile.user.links : []);
 
-  let posts = $state<Post[]>(data.page.items);
-  let cursor = $state<string | null>(data.page.nextCursor);
+  let posts = $state<Post[]>(untrack(() => data.page.items));
+  let cursor = $state<string | null>(untrack(() => data.page.nextCursor));
   let loading = $state(false);
+  // Reset the paginated list when navigating between profiles client-side;
+  // "load more" appends to `posts` without changing `data`, so it isn't undone.
+  $effect(() => {
+    posts = data.page.items;
+    cursor = data.page.nextCursor;
+  });
 
   // The full fediverse address (@user@host). Remote handles already carry the
   // host; for local users the host is the instance we're being served from, so

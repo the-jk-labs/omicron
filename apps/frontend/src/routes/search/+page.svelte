@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { untrack } from "svelte";
   import { Tabs } from "bits-ui";
   import { goto } from "$app/navigation";
   import PostCard from "$lib/components/PostCard.svelte";
@@ -27,7 +28,12 @@
   // only place to type a query. Seed it from the active query and search live
   // as the user types — debounced so we don't refetch on every keystroke.
   // The page's load function owns the actual results.
-  let query = $state(data.query ?? "");
+  let query = $state(untrack(() => data.query ?? ""));
+  // Keep the field in sync when the active query changes via navigation (a link
+  // or Back/Forward); reacts to `data.query` only, so live typing is untouched.
+  $effect(() => {
+    query = data.query ?? "";
+  });
 
   function run(q: string) {
     // replaceState keeps the query out of history so Back doesn't step through

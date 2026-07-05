@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { untrack } from "svelte";
   import { endpoints } from "$lib/api";
   import PostCard from "$lib/components/PostCard.svelte";
   import TagFollowButton from "$lib/components/TagFollowButton.svelte";
@@ -11,9 +12,15 @@
 
   const tag = $derived(data.detail.tag);
 
-  let posts = $state<Post[]>(data.page.items);
-  let cursor = $state<string | null>(data.page.nextCursor);
+  let posts = $state<Post[]>(untrack(() => data.page.items));
+  let cursor = $state<string | null>(untrack(() => data.page.nextCursor));
   let loading = $state(false);
+  // Reset when navigating between tag pages client-side; "load more" appends to
+  // `posts` without changing `data`, so it isn't undone.
+  $effect(() => {
+    posts = data.page.items;
+    cursor = data.page.nextCursor;
+  });
 
   async function loadMore() {
     if (!cursor) return;
