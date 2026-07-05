@@ -125,7 +125,7 @@
 
       <!-- Right rail: discovery (home feed and profile pages only) -->
       <div class={showDiscover ? "hidden xl:block" : "hidden"}>
-        <div class="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto">
+        <div class="sticky top-24">
           <Discover data={data.discover} {appName} />
         </div>
       </div>
