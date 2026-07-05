@@ -75,9 +75,38 @@ You need three things.
 - For **local testing**: any laptop or desktop with Docker works. You will reach
   it at `http://localhost`.
 - For a **public instance**: a small VPS (virtual server) from any provider.
-  A reasonable starting size is **1 vCPU and 1–2 GB RAM**, plus a few GB of disk
-  (more as your content and uploads grow). A single small instance is
-  comfortable on modest hardware.
+
+The whole stack runs as five small containers (backend, frontend, PostgreSQL,
+Redis, Caddy) — everything is bundled, so the only thing you install on the host
+is a container engine.
+
+#### Minimum requirements
+
+| Resource | Local test | Standalone blog | Public federated instance |
+| --- | --- | --- | --- |
+| **CPU** | 1 vCPU | 1 vCPU | 2 vCPU |
+| **RAM** | 1 GB | 1 GB | **2 GB** |
+| **Disk** | 2 GB free | a few GB (grows with uploads) | 5 GB+ (grows with uploads) |
+| **Arch** | amd64 or arm64 | amd64 or arm64 | amd64 or arm64 |
+| **Domain** | not needed | optional | **required** |
+| **Open ports** | none (localhost) | 80 + 443 | **80 + 443, publicly reachable** |
+
+Notes:
+
+- **Architecture** — all base images are multi-arch, so a cheap ARM VPS works as
+  well as x86.
+- **1 GB RAM** is enough for standalone or low-traffic use. Because federation
+  adds inbound delivery and background jobs, treat **2 GB as the real floor for a
+  public federated instance**.
+- **Redis is optional.** It ships in the default stack for durable queues and
+  shared rate limits, but the app also runs entirely in-process without it — drop
+  it to save memory on the smallest boxes (see
+  [Configuration reference](#configuration-reference)).
+- **No managed database, TLS certificate, or secrets to provision** — Postgres,
+  the Let's Encrypt certificate, the session secret, and the database password
+  are all bundled or generated automatically on first boot.
+- **Federation requires public reachability on port 443** so other ActivityPub
+  servers can deliver activities to your inbox.
 
 ### 2. A container engine
 
