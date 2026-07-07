@@ -7,6 +7,7 @@ import { config } from "@/config.ts";
 import { badRequest } from "@/lib/http.ts";
 import { sniffMatches } from "@/services/media.ts";
 import { MAX_PROFILE_TAGS, normalizeTags } from "@/lib/tags.ts";
+import { queue } from "@/queue/queue.ts";
 import {
   isLinkPlatform,
   MAX_LINK_LABEL_LEN,
@@ -105,6 +106,10 @@ export async function updateProfile(
     ? await usersRepo.update(userId, patch)
     : (await usersRepo.findById(userId))!;
 
+  // Any of these fields (name/bio/email/tags/links) surface on the federated
+  // actor, so push it to remote followers who already cached the old one.
+  queue.add("federate_actor_update", { userId });
+
   return {
     user,
     tags: await tagsRepo.tagsForUser(userId),
@@ -147,12 +152,16 @@ export async function setAvatar(
   const filename = `${crypto.randomUUID()}.${ext}`;
   await Deno.writeFile(`${config.UPLOADS_DIR}/${filename}`, bytes);
 
-  return usersRepo.update(userId, { avatarUrl: `/api/uploads/${filename}` });
+  const user = await usersRepo.update(userId, { avatarUrl: `/api/uploads/${filename}` });
+  queue.add("federate_actor_update", { userId });
+  return user;
 }
 
 // Clears the avatar so the profile falls back to initials. The previous file is
 // left on disk (it may still be referenced by federated copies), matching how
 // `setAvatar` doesn't prune the prior image.
-export function removeAvatar(userId: string): Promise<User> {
-  return usersRepo.update(userId, { avatarUrl: null });
+export async function removeAvatar(userId: string): Promise<User> {
+  const user = await usersRepo.update(userId, { avatarUrl: null });
+  queue.add("federate_actor_update", { userId });
+  return user;
 }

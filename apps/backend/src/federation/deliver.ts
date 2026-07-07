@@ -4,6 +4,7 @@ import type { Actor } from "@fedify/fedify/vocab";
 import { Create, Delete, isActor, PUBLIC_COLLECTION, Tombstone, Update } from "@fedify/fedify/vocab";
 import { getFederation } from "@/federation/mod.ts";
 import { buildArticle } from "@/federation/article.ts";
+import { buildPerson } from "@/federation/actor.ts";
 import { origin } from "@/config.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
@@ -68,6 +69,36 @@ export async function deliverPost(
     });
 
   await ctx.sendActivity({ identifier: author.username }, recipients, activity);
+}
+
+// Sends an Update(Person) of a user's own actor to all remote followers'
+// inboxes, so instances that already cached the actor (from a prior fetch or
+// follow) refresh their copy. Without this, a display name/bio/avatar edit
+// only ever changes what our own server returns — remote instances keep
+// showing whatever they fetched the first time until they happen to refetch.
+export async function deliverActorUpdate(userId: string): Promise<void> {
+  const user = await usersRepo.findById(userId);
+  if (!user) return;
+
+  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const recipients = await remoteRecipients(ctx, user.id);
+  if (recipients.length === 0) return;
+
+  const keys = await ctx.getActorKeyPairs(user.username);
+  const tags = await tagsRepo.tagsForUser(user.id);
+  const actorUri = ctx.getActorUri(user.username);
+  const person = await buildPerson(ctx, user.username, user, tags, keys);
+
+  await ctx.sendActivity(
+    { identifier: user.username },
+    recipients,
+    new Update({
+      id: new URL(`/updates/${crypto.randomUUID()}`, actorUri),
+      actor: actorUri,
+      object: person,
+      tos: [PUBLIC_COLLECTION],
+    }),
+  );
 }
 
 // Sends a Delete for a local post that has already been removed from the DB.

@@ -22,6 +22,14 @@ export function registerJobHandlers() {
     await deliverPostDelete(postId, authorId);
   });
 
+  // A user edited their own profile (name/bio/email/links/avatar); push an
+  // Update(Person) so instances that already cached the old actor refresh it.
+  registerHandler("federate_actor_update", async ({ userId }) => {
+    if (!federationRunning()) return;
+    const { deliverActorUpdate } = await import("@/federation/deliver.ts");
+    await deliverActorUpdate(userId);
+  });
+
   registerHandler("federate_list_item", async ({ listId, postId, action }) => {
     if (!federationRunning()) return;
     const { deliverListItem } = await import("@/federation/lists.ts");

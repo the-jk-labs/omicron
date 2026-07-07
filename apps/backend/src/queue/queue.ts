@@ -12,6 +12,7 @@ import { newRedis, redisEnabled } from "@/lib/redis.ts";
 export type JobName =
   | "federate_post"
   | "federate_post_delete"
+  | "federate_actor_update"
   | "federate_list_item"
   | "send_follow"
   | "send_unfollow"
@@ -22,6 +23,7 @@ export type JobName =
 export type JobPayloads = {
   federate_post: { postId: string; action?: "create" | "update" };
   federate_post_delete: { postId: string; authorId: string };
+  federate_actor_update: { userId: string };
   federate_list_item: { listId: string; postId: string; action: "add" | "remove" };
   send_follow: { followerId: string; targetActor: string };
   send_unfollow: { followerId: string; targetActor: string };
