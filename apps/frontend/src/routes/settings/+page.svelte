@@ -54,7 +54,13 @@
   let saved = $state(false);
   let busy = $state(false);
 
+  // Backend's hard cap (services/users.ts) — kept in sync manually, since the
+  // two apps don't share a constants module.
   const MAX_BYTES = 2 * 1024 * 1024;
+  // Sanity cap on the *raw* pick, well above MAX_BYTES: photos this size get
+  // auto-compressed on save, so we only need to guard against decoding
+  // something absurd (e.g. a multi-hundred-MB raw scan) in the browser.
+  const MAX_RAW_BYTES = 25 * 1024 * 1024;
 
   const themeOptions: { value: ThemePreference; label: string; icon: IconName }[] = [
     { value: "light", label: "Light", icon: "sun" },
@@ -115,8 +121,8 @@
       error = "Please choose an image file.";
       return;
     }
-    if (picked.size > MAX_BYTES) {
-      error = "Image too large (max 2 MB).";
+    if (picked.size > MAX_RAW_BYTES) {
+      error = "Image too large. Please choose a file under 25 MB.";
       return;
     }
     error = "";
@@ -131,9 +137,18 @@
     busy = true;
     try {
       if (file) {
-        // Downscale/re-encode to ~256px before upload so avatars aren't shipped
-        // at full photo resolution.
-        const { blob, type } = await prepareImage(file, AVATAR_MAX_DIMENSION);
+        // Downscale/re-encode to ~160px before upload so avatars aren't shipped
+        // at full photo resolution. If it's still over the backend's cap
+        // afterward (only realistic for animated GIFs, which we don't
+        // re-encode), surface a clear error instead of a failed upload.
+        const { blob, type } = await prepareImage(file, AVATAR_MAX_DIMENSION, MAX_BYTES);
+        if (blob.size > MAX_BYTES) {
+          error = type === "image/gif"
+            ? "That GIF is too large (max 2 MB). Try a smaller GIF, or use PNG/JPEG/WebP."
+            : "Image too large (max 2 MB) even after compression. Please choose a different photo.";
+          busy = false;
+          return;
+        }
         await endpoints().uploadAvatar(blob, type);
       }
       // Convert each typed identifier to a canonical URL, skipping blank rows.
@@ -319,7 +334,9 @@
               </Button>
             {/if}
           </div>
-          <p class="text-xs text-muted-foreground">PNG, JPEG, WebP or GIF · max 2 MB</p>
+          <p class="text-xs text-muted-foreground">
+            PNG, JPEG, WebP or GIF · large photos are resized automatically
+          </p>
         </div>
         <input
           bind:this={fileInput}

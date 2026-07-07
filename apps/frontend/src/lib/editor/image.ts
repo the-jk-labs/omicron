@@ -28,24 +28,31 @@ export function isAcceptedImage(file: File): boolean {
 
 export type PreparedImage = { blob: Blob; type: string };
 
+const encodeCanvas = (canvas: HTMLCanvasElement, quality: number) =>
+  new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", quality));
+
 // Resizes and re-encodes `file` for upload. Animated GIFs are passed through
 // untouched (a canvas would flatten them to a single frame). On any failure the
 // original file is returned so the upload can still proceed. `maxDimension`
 // caps the longest edge — pass a smaller value for avatars, which never render
-// large (see AVATAR_MAX_DIMENSION).
+// large (see AVATAR_MAX_DIMENSION). If `maxBytes` is given, quality and then
+// resolution are progressively reduced until the result fits (or we run out of
+// room to shrink), so oversized phone photos "just work" without the caller
+// having to reject them upfront.
 export async function prepareImage(
   file: File,
   maxDimension: number = MAX_DIMENSION,
+  maxBytes?: number,
 ): Promise<PreparedImage> {
   if (file.type === "image/gif") return { blob: file, type: file.type };
 
   try {
     const bitmap = await createImageBitmap(file);
     const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
-    const width = Math.round(bitmap.width * scale);
-    const height = Math.round(bitmap.height * scale);
+    let width = Math.round(bitmap.width * scale);
+    let height = Math.round(bitmap.height * scale);
 
-    const canvas = document.createElement("canvas");
+    let canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext("2d");
@@ -56,9 +63,29 @@ export async function prepareImage(
     ctx.drawImage(bitmap, 0, 0, width, height);
     bitmap.close();
 
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/webp", WEBP_QUALITY)
-    );
+    let blob = await encodeCanvas(canvas, WEBP_QUALITY);
+
+    if (maxBytes) {
+      for (const quality of [0.6, 0.4, 0.2]) {
+        if (blob && blob.size <= maxBytes) break;
+        blob = await encodeCanvas(canvas, quality);
+      }
+      // Quality alone wasn't enough — halve the resolution (drawing from the
+      // existing canvas, so no need to re-decode the source) and try again.
+      while (blob && blob.size > maxBytes && Math.max(width, height) > 48) {
+        width = Math.round(width / 2);
+        height = Math.round(height / 2);
+        const smaller = document.createElement("canvas");
+        smaller.width = width;
+        smaller.height = height;
+        const sctx = smaller.getContext("2d");
+        if (!sctx) break;
+        sctx.drawImage(canvas, 0, 0, width, height);
+        canvas = smaller;
+        blob = await encodeCanvas(canvas, 0.6);
+      }
+    }
+
     // Fall back to the original if WebP encoding is unsupported, or if it somehow
     // came out larger than the source (e.g. an already-tiny image).
     if (!blob || blob.size >= file.size) return { blob: file, type: file.type };
