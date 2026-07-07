@@ -37,12 +37,23 @@ const INBOX_LIMIT = { name: "inbox", windowMs: 60_000, max: config.RL_INBOX_MAX 
 // URI from that request, so left uncorrected every federated URL would be
 // http:// even though the public site is https:// — trust x-forwarded-proto
 // since Caddy (the `routes` block in Caddyfile) is the only hop in front of us.
-function withPublicScheme(req: Request): Request {
+//
+// Returns just the corrected URL string — never touch `req.body` here. The
+// POST path below already reads the body once (readCappedBody); constructing
+// a `new Request(url, req)` from the same `req` a second time would try to
+// read its body stream again and throw "ReadableStream is locked or disturbed".
+function publicSchemeUrl(req: Request): string {
   const proto = req.headers.get("x-forwarded-proto");
   const url = new URL(req.url);
-  if (!proto || url.protocol === `${proto}:`) return req;
-  url.protocol = proto;
-  return new Request(url, req);
+  if (proto) url.protocol = proto;
+  return url.toString();
+}
+
+// GET/HEAD federation requests have no body, so rebuilding the whole Request
+// (to fix the scheme) is safe here.
+function withPublicScheme(req: Request): Request {
+  const fixed = publicSchemeUrl(req);
+  return fixed === req.url ? req : new Request(fixed, req);
 }
 
 // Builds the fully-composed Hono app. Federation is mounted only when enabled,
@@ -87,7 +98,7 @@ export async function buildApp() {
           // digest still verifies against the exact same bytes).
           const body = await readCappedBody(c.req.raw, config.INBOX_MAX_BODY_BYTES);
           if (body === null) return new Response("Payload Too Large", { status: 413 });
-          const buffered = new Request(withPublicScheme(c.req.raw).url, {
+          const buffered = new Request(publicSchemeUrl(c.req.raw), {
             method: "POST",
             headers: c.req.raw.headers,
             // A Uint8Array is a valid runtime BodyInit; the DOM typing omits it.
