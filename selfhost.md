@@ -462,6 +462,24 @@ docker compose up -d --build      # or the equivalent podman command
 - Schema changes are **additive within a version** by policy, so upgrades don't
   break a running instance.
 
+### One-time step when upgrading to the AI-scraper-shield release
+
+This version changes the bundled **Caddyfile** (to open an internal admin API the
+scraper-shield toggle uses). Caddy only reads that file at startup, and a plain
+`up -d` doesn't recreate an unchanged service, so **recreate the containers once**
+on this upgrade:
+
+```bash
+docker compose up -d --build --force-recreate   # or the podman equivalent
+```
+
+This recreates the containers (loading the new Caddyfile and starting the new
+Anubis service) but **never the volumes**, so all data and certificates are
+preserved. If you skip it, nothing breaks — the instance runs normally and
+protection stays off (the default); you just can't switch it on in Admin →
+Security until Caddy has been recreated. After this one release, normal `up -d`
+upgrades resume.
+
 Always take a backup before a major upgrade (next section). Only
 `docker compose down -v` deletes your data volumes — **never run that on a live
 instance you want to keep.**
