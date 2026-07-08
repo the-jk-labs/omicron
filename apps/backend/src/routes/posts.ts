@@ -1,17 +1,28 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
+import { getCookie, setCookie } from "hono/cookie";
 import * as postsService from "@/services/posts.ts";
 import * as likesService from "@/services/likes.ts";
 import * as commentsService from "@/services/comments.ts";
 import * as commentLikesService from "@/services/commentLikes.ts";
 import { enrichPost, enrichPosts } from "@/services/engagement.ts";
 import * as analyticsService from "@/services/analytics.ts";
+import { isBot, readerOptedOut, VIEW_COOKIE, VIEW_COOKIE_TTL_MS } from "@/lib/analytics.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import { barePost, commentView } from "@/routes/serializers.ts";
+import { config } from "@/config.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 export const postRoutes = new Hono<AppEnv>();
+
+const viewCookieOpts = {
+  httpOnly: true,
+  sameSite: "Lax" as const,
+  path: "/",
+  secure: !config.APP_DOMAIN.startsWith("localhost"),
+  maxAge: VIEW_COOKIE_TTL_MS / 1000,
+};
 
 // Timeline (public). `?scope=local` returns only posts from this instance;
 // otherwise the global blog feed across the fediverse.
@@ -58,7 +69,16 @@ postRoutes.get("/:id", async (c) => {
   // privacy-gated inside the service (DNT/GPC, bots, instance opt-out); it must
   // never delay or fail serving the page. Drafts and remote posts are skipped.
   if (row.post.authorId && row.post.status === "published") {
-    analyticsService.recordPostView(row.post.id, c.req.raw.headers).catch(() => {});
+    const headers = c.req.raw.headers;
+    let anonCookie = getCookie(c, VIEW_COOKIE) ?? null;
+    // Only issue the anonymous reader cookie to readers who could actually be
+    // counted — never to an opted-out or bot request, so nothing is set for
+    // traffic we're not going to track anyway.
+    if (!viewer && !anonCookie && !readerOptedOut(headers) && !isBot(headers.get("user-agent") ?? "")) {
+      anonCookie = crypto.randomUUID() + crypto.randomUUID();
+      setCookie(c, VIEW_COOKIE, anonCookie, viewCookieOpts);
+    }
+    analyticsService.recordPostView(row.post.id, headers, viewer?.id ?? null, anonCookie).catch(() => {});
   }
 
   return c.json({ post: await enrichPost(row, viewer?.id ?? null) });

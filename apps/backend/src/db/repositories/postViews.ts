@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { posts, postViews, postViewSeen } from "@/db/schema.ts";
 
@@ -8,9 +8,10 @@ import { posts, postViews, postViewSeen } from "@/db/schema.ts";
 
 export type DayTotals = { day: string; views: number };
 
-// Records one view for (post, day). Called only after markSeen confirms this is
-// the reader's first sighting today, so the counter is distinct-readers-per-day
-// and a refresh never inflates it.
+// Records one view for (post, day). Called only after markSeen confirms this
+// visitor has never been counted for this post before, so the lifetime total
+// is distinct-readers-per-post and a repeat visit — same day or years later —
+// never inflates it.
 export async function recordView(postId: string, day: string) {
   await db
     .insert(postViews)
@@ -21,26 +22,19 @@ export async function recordView(postId: string, day: string) {
     });
 }
 
-// Atomically claims a (day, post, visitorHash). Returns true if this is the
-// first sighting today (→ a unique view), false if already counted. The hash is
-// one-way and the day's salt is discarded at midnight, so it cannot be reversed.
+// Atomically claims a (post, visitorKey). Returns true if this is the
+// reader's first-ever sighting on this post (→ a unique view), false if
+// already counted. visitorKey is a one-way hash — never a raw id or cookie.
 export async function markSeen(
-  day: string,
   postId: string,
-  visitorHash: string,
+  visitorKey: string,
 ): Promise<boolean> {
   const inserted = await db
     .insert(postViewSeen)
-    .values({ day, postId, visitorHash })
+    .values({ postId, visitorKey })
     .onConflictDoNothing()
-    .returning({ day: postViewSeen.day });
+    .returning({ postId: postViewSeen.postId });
   return inserted.length > 0;
-}
-
-// Drops de-duplication rows for days before `day`. They exist only to dedupe
-// within a single day; keeping them would serve no purpose. Called daily.
-export async function pruneSeenBefore(day: string) {
-  await db.delete(postViewSeen).where(lt(postViewSeen.day, day));
 }
 
 // Lifetime view totals per post, for the requested posts only.

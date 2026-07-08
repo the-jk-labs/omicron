@@ -452,10 +452,12 @@ export const instanceSettings = pgTable("instance_settings", {
 
 // ── post views (aggregate, privacy-preserving) ─────────────────────────
 // One row per (post, day) holding a single integer: the number of *distinct*
-// readers that day (deduplicated via post_view_seen). A refresh never inflates
-// it. There is deliberately NO per-visit record, NO IP, NO identifier — a view
-// count can never be reversed into "who read this." Covers only pages served by
-// this instance; federated reads are invisible by design. See ANALYTICS.md.
+// readers first seen that day (deduplicated forever via post_view_seen — once
+// counted, a reader never increments the same post again on any later day
+// either). There is deliberately NO per-visit record, NO IP, NO fingerprint — a
+// view count can never be reversed into "who read this." Covers only pages
+// served by this instance; federated reads are invisible by design. See
+// ANALYTICS.md.
 export const postViews = pgTable("post_views", {
   postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
   day: date("day").notNull(),
@@ -465,18 +467,21 @@ export const postViews = pgTable("post_views", {
   index("post_views_post_idx").on(t.postId),
 ]);
 
-// ── post view de-duplication (ephemeral) ───────────────────────────────
-// Makes a view count one reader once per day without storing who. A visitor is
-// reduced to hash(ip + user-agent + a daily-rotating, in-memory salt); only the
-// hash lands here, only to dedupe within the day. Past-day rows are pruned and
-// the salt is discarded each day (lib/analytics.ts), after which no hash can be
-// linked back to a visitor. See ANALYTICS.md.
+// ── post view de-duplication (permanent, pseudonymous) ──────────────────
+// Makes a view count one reader per post, once, ever — not once per day. The
+// key is a one-way hash, never the raw identifier:
+//   - signed-in readers: hash of their user id, so re-reading a post on any
+//     device or any day never recounts it.
+//   - anonymous readers: hash of a random, first-party cookie value that
+//     carries no IP, user-agent, or fingerprinting signal — it identifies
+//     "the same browser came back," nothing else. A different browser/device
+//     is, by design, a different reader (see lib/analytics.ts).
+// Rows are never pruned: permanence is the point. See ANALYTICS.md.
 export const postViewSeen = pgTable("post_view_seen", {
-  day: date("day").notNull(),
   postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
-  visitorHash: text("visitor_hash").notNull(),
+  visitorKey: text("visitor_key").notNull(),
 }, (t) => [
-  primaryKey({ columns: [t.day, t.postId, t.visitorHash] }),
+  primaryKey({ columns: [t.postId, t.visitorKey] }),
 ]);
 
 export type User = typeof users.$inferSelect;

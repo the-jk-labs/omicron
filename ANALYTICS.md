@@ -65,31 +65,39 @@ Google Analytics).
 
 How a view is counted:
 
-1. A view counts **one reader per post per day**. The stored data is an
-   **aggregate integer** — `(post_id, date, views)` — with **no row representing
-   an individual visit**. Refreshing or re-opening a post the same day does
-   **not** increase the count, so the number can't be inflated by reloading.
-2. **No IP address is stored. No cookie is set. No fingerprint is taken.**
-3. To deduplicate within a day, a visit is reduced to a one-way hash of
-   `IP + User-Agent + a server-side salt that rotates every day`. Only the hash
-   is used, only to recognise a repeat read within that single day, and **the
-   salt is discarded at midnight** — after which no hash can ever be linked back
-   to a visitor. The raw IP is never written to disk.
-4. Known bots and crawlers are filtered out so counts reflect people.
+1. A view counts **one reader per post, ever** — not once per day. The stored
+   total is an **aggregate integer** — `(post_id, date, views)`, bucketed by the
+   day a reader was *first* counted — with **no row representing an individual
+   visit**. Refreshing, re-opening, or coming back next month to the same post
+   never increases the count again, so the number can't be inflated by
+   reloading or by a genuinely returning reader.
+2. **No IP address is stored. No fingerprint is taken.** Signed-in readers are
+   deduplicated by a one-way hash of their account id — nothing new is learned
+   about them beyond what their account already implies. Anonymous readers are
+   deduplicated by a one-way hash of a random, first-party cookie that carries
+   **no IP, user-agent, or fingerprinting signal** — it recognises "the same
+   browser came back," nothing more. A different browser or device is, by
+   design, a different reader; we do not try to link them.
+3. Both kinds of key are one-way hashed with a server-side secret before they
+   ever touch storage. The raw account id, and the raw cookie value, are never
+   written to disk — only the digest is.
+4. Known bots and crawlers are filtered out, and neither a view nor a cookie is
+   issued to them.
 5. Time is bucketed no finer than **one day**. We never expose per-minute or
    per-visit timestamps, which protects low-traffic instances where a precise
    timestamp could hint at identity.
 
-Because identity is never recorded in the first place, an on-instance view count
-**cannot be reversed into "who read this."** There is nothing to subpoena,
-breach, or sell, because the data does not exist.
+An on-instance view count **cannot be reversed into "who read this"**: the
+digest doesn't reverse to the account id or cookie value, and there is no
+per-visit log, IP, or fingerprint sitting alongside it to correlate against.
 
 We count deduplicated readers rather than raw page hits on purpose: with no
-reader accounts (the whole point of the privacy model) a raw hit counter would
-be trivially inflated by refreshing, so the honest, refresh-proof number is
-"distinct readers per day." We make no claim to YouTube-grade fraud detection —
-a determined actor rotating networks can still skew any account-less metric; the
-goal is resistance to casual inflation, not forensic accuracy.
+reader accounts required to read (the whole point of the privacy model), a raw
+hit counter would be trivially inflated by refreshing, so the honest,
+refresh-proof number is "distinct readers per post." We make no claim to
+YouTube-grade fraud detection — a determined actor clearing cookies and
+rotating networks can still inflate an account-less metric; the goal is
+resistance to casual inflation, not forensic accuracy.
 
 ---
 
@@ -111,8 +119,11 @@ view count.
 
 Regardless of operator settings, the stock software does **not**:
 
-- Store reader IP addresses or any persistent reader identifier.
-- Set tracking cookies or use browser fingerprinting.
+- Store reader IP addresses, or use browser fingerprinting.
+- Set a cookie for any purpose other than recognising a returning anonymous
+  reader well enough to avoid double-counting their view of the same post; that
+  cookie holds a random value, never an IP, user-agent, or fingerprint, and is
+  itself only ever stored as a one-way hash on the server.
 - Send any data to third-party analytics, ad networks, or external services.
 - Record per-visit event logs that could be mined later.
 - Build demographic, interest, or behavioural profiles of readers.
@@ -155,7 +166,10 @@ fediverse engagement.
 
 - Aggregate counters are kept as small per-day integers and may be summarised
   into coarser buckets over time. There is no per-visit log to retain or expire.
-- The daily de-duplication salt is **ephemeral** and rotated/discarded every day.
+- De-duplication keys (the hashed account id or hashed anonymous cookie, per
+  post) are kept **permanently**, since permanence is what makes "one view per
+  reader, ever" possible. They still carry no raw IP, user-agent, or per-visit
+  timestamp — only an opaque digest tied to a post id.
 
 ---
 
@@ -182,7 +196,8 @@ For contributors, the implementation follows Omicron's layered architecture:
 | --- | --- | --- | --- |
 | Fediverse likes / boosts / replies / follows | Yes (public activities) | Only the public actor that acted | n/a — public by nature |
 | Federated reach (deliveries sent) | Yes | No | n/a |
-| On-instance views (1 reader/post/day, aggregate) | Yes, if enabled | No | Moderator switch + DNT/GPC |
-| Reader IPs, cookies, fingerprints, profiles | **Never** | — | — |
+| On-instance views (1 reader/post, lifetime, aggregate) | Yes, if enabled | No | Moderator switch + DNT/GPC |
+| Anonymous reader cookie (random value, hashed before storage) | Yes, if enabled | No — one-way hash only | Moderator switch + DNT/GPC |
+| Reader IPs, fingerprints, profiles | **Never** | — | — |
 
 We count what happened. We never track who you are.

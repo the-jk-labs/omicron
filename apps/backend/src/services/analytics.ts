@@ -4,7 +4,7 @@ import * as postsRepo from "@/db/repositories/posts.ts";
 import * as likesRepo from "@/db/repositories/likes.ts";
 import * as commentsRepo from "@/db/repositories/comments.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
-import { clientIp, isBot, readerOptedOut, today, visitorHash } from "@/lib/analytics.ts";
+import { anonVisitorKey, isBot, readerOptedOut, today, userVisitorKey } from "@/lib/analytics.ts";
 import { onInstanceViewsEnabled } from "@/services/settings.ts";
 
 // The writer dashboard's read/write surface. Combines two clearly separated
@@ -14,31 +14,33 @@ import { onInstanceViewsEnabled } from "@/services/settings.ts";
 // Records a view of `postId` from an incoming request, but only when all of the
 // privacy gates pass: the instance has on-instance views enabled, the reader has
 // not signalled DNT/GPC, and the client is not an obvious bot. Stores only
-// aggregate counts — never the IP, user-agent, or any per-visit row. Best-effort
-// and fire-and-forget: a failure here must never affect serving the page.
-export async function recordPostView(postId: string, headers: Headers): Promise<void> {
+// aggregate counts plus a one-way de-dup key — never the IP, user-agent, or any
+// per-visit row. Best-effort and fire-and-forget: a failure here must never
+// affect serving the page.
+//
+// `userId` identifies a signed-in reader (deduped forever by account);
+// `anonCookie` is the random, first-party cookie value the route already
+// issued for an anonymous reader (deduped forever by browser). Exactly one of
+// the two is used per call, favoring the account when signed in.
+export async function recordPostView(
+  postId: string,
+  headers: Headers,
+  userId: string | null,
+  anonCookie: string | null,
+): Promise<void> {
   if (readerOptedOut(headers)) return;
   const userAgent = headers.get("user-agent") ?? "";
   if (isBot(userAgent)) return;
   if (!(await onInstanceViewsEnabled())) return;
 
-  const day = today();
-  pruneStaleSeen(day);
-  const hash = await visitorHash(clientIp(headers), userAgent);
-  // One view per reader per day: a repeat sighting (refresh, re-open) is ignored,
-  // so the count can't be inflated by reloading the page.
-  const firstToday = await postViewsRepo.markSeen(day, postId, hash);
-  if (firstToday) await postViewsRepo.recordView(postId, day);
-}
+  const key = userId ? await userVisitorKey(userId) : anonCookie ? await anonVisitorKey(anonCookie) : null;
+  if (!key) return;
 
-// The de-duplication rows only matter within their own day. Without a scheduler,
-// the first view of each new UTC day drops every earlier day's rows — keeping
-// the table tiny and ensuring stale visitor hashes never linger. Fire-and-forget.
-let lastPrunedDay = "";
-function pruneStaleSeen(day: string): void {
-  if (day === lastPrunedDay) return;
-  lastPrunedDay = day;
-  postViewsRepo.pruneSeenBefore(day).catch(() => {});
+  // One view per reader per post, ever: a repeat read — same day or years
+  // later, from a refresh or a return visit — is ignored, so the count can't
+  // be inflated by reloading or re-reading.
+  const firstEver = await postViewsRepo.markSeen(postId, key);
+  if (firstEver) await postViewsRepo.recordView(postId, today());
 }
 
 export type PostStat = {

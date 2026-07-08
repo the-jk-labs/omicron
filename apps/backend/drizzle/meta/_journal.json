@@ -134,6 +134,13 @@
       "when": 1782815891053,
       "tag": "0018_blocked_domains",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1782815891054,
+      "tag": "0019_permanent_view_dedup",
+      "breakpoints": true
     }
   ]
 }
