@@ -11,7 +11,7 @@
   import Comments from "$lib/components/Comments.svelte";
   import TagList from "$lib/components/TagList.svelte";
   import SaveToListButton from "$lib/components/SaveToListButton.svelte";
-  import { formatDate, readTime } from "$lib/format";
+  import { formatDateTime, readTime } from "$lib/format";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -167,7 +167,7 @@
         {post.author.displayName}
       </Button>
       <div class="flex flex-wrap items-center gap-2 text-muted-foreground">
-        <span>{formatDate(post.createdAt)}</span>
+        <span>{formatDateTime(post.createdAt)}</span>
         <Separator.Root orientation="vertical" class="bg-border shrink-0 data-[orientation=vertical]:h-3 data-[orientation=vertical]:w-px" />
         <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
         {#if post.remote && originInstance}

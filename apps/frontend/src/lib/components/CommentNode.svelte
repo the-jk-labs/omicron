@@ -11,7 +11,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
   import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
-  import { formatDate } from "$lib/format";
+  import { formatDateTime } from "$lib/format";
   import type { Comment, User } from "$lib/types";
   import type { CommentActions, CommentUiState } from "$lib/components/comments";
   import Self from "$lib/components/CommentNode.svelte";
@@ -55,7 +55,7 @@
       <a href={`/@${comment.author.username}`} class="text-foreground font-medium hover:underline">
         {comment.author.displayName}
       </a>
-      <span class="text-muted-foreground text-xs">{formatDate(comment.createdAt)}</span>
+      <span class="text-muted-foreground text-xs">{formatDateTime(comment.createdAt)}</span>
     </div>
     {#if ui.editingId === comment.id}
       <form onsubmit={(e) => actions.submitEdit(e, comment)} class="mt-2">

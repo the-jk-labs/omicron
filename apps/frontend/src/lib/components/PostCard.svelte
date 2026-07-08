@@ -6,7 +6,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import TagList from "$lib/components/TagList.svelte";
   import SaveToListButton from "$lib/components/SaveToListButton.svelte";
-  import { excerpt, formatDate, readTime } from "$lib/format";
+  import { excerpt, formatDateTime, readTime } from "$lib/format";
   import { postPath } from "$lib/links";
   import type { Post } from "$lib/types";
 
@@ -50,7 +50,7 @@
 
   <div class="mt-4 flex items-center gap-3">
     <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
-      <span>{formatDate(post.createdAt)}</span>
+      <span>{formatDateTime(post.createdAt)}</span>
       <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
       <span class="flex items-center gap-1"><Icon name="heart" size={13} /> {post.likeCount}</span>
       <span class="flex items-center gap-1"><Icon name="comment" size={13} /> {post.commentCount}</span>

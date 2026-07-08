@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
-  import { formatDate } from "$lib/format";
+  import { formatDateTime } from "$lib/format";
   import type { DashboardSummary, PostStat } from "$lib/types";
   import type { PageData } from "./$types";
 
@@ -280,7 +280,7 @@
                     {p.title || "Untitled"}
                   </a>
                 </div>
-                <p class="mt-0.5 text-xs text-muted-foreground">{formatDate(p.createdAt)}</p>
+                <p class="mt-0.5 text-xs text-muted-foreground">{formatDateTime(p.createdAt)}</p>
               </td>
               {#if showViews}
                 <td class="px-3 py-3 text-right tabular-nums text-foreground">{fmt(p.views)}</td>

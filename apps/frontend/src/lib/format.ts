@@ -23,3 +23,14 @@ export function formatDate(iso: string): string {
     year: "numeric",
   });
 }
+
+// Date plus 24h hh:mm time, e.g. "Jul 8, 2026, 14:05".
+export function formatDateTime(iso: string): string {
+  const date = new Date(iso);
+  const time = date.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  return `${formatDate(iso)}, ${time}`;
+}
