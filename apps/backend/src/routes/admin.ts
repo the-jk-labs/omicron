@@ -2,6 +2,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import * as settings from "@/services/settings.ts";
+import * as anubis from "@/services/anubisProtection.ts";
 import * as moderation from "@/services/moderation.ts";
 import * as emailSettings from "@/services/emailSettings.ts";
 import * as setup from "@/services/instanceSetup.ts";
@@ -34,6 +35,42 @@ adminRoutes.put("/settings/analytics", async (c) => {
   if (!parsed.success) throw badRequest("Expected { onInstanceViews: boolean }.");
   await settings.setOnInstanceViewsEnabled(parsed.data.onInstanceViews);
   return c.json({ onInstanceViews: parsed.data.onInstanceViews });
+});
+
+// ── Security (AI-scraper shield) ─────────────────────────────────────────────
+
+// Current state of the Anubis proof-of-work wall. `anubisManaged` says whether
+// the live toggle can work here (Caddy admin reachable) — false in a bare dev
+// run, so the UI can explain rather than offer a switch that would error.
+async function securitySnapshot() {
+  return {
+    anubisProtection: await anubis.anubisProtectionEnabled(),
+    anubisManaged: anubis.anubisManaged(),
+  };
+}
+
+adminRoutes.get("/security", async (c) => {
+  requireAdmin(c);
+  return c.json(await securitySnapshot());
+});
+
+const securitySchema = z.object({ anubisProtection: z.boolean() });
+
+// Flip the scraper shield on/off. Applied live via Caddy's admin API (no
+// restart); federation and the API are never routed through it. A failure to
+// reach/reconfigure Caddy is surfaced verbatim and nothing is persisted.
+adminRoutes.put("/security/anubis", async (c) => {
+  requireAdmin(c);
+  const parsed = securitySchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) throw badRequest("Expected { anubisProtection: boolean }.");
+  try {
+    await anubis.setAnubisProtectionEnabled(parsed.data.anubisProtection);
+  } catch (err) {
+    throw badRequest(
+      err instanceof Error ? err.message : "Could not update scraper protection.",
+    );
+  }
+  return c.json(await securitySnapshot());
 });
 
 // ── Instance identity (runtime config) ──────────────────────────────────────

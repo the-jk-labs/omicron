@@ -7,6 +7,7 @@
   import AdminUsers from "$lib/components/AdminUsers.svelte";
   import AdminReports from "$lib/components/AdminReports.svelte";
   import AdminDomains from "$lib/components/AdminDomains.svelte";
+  import AdminSecurity from "$lib/components/AdminSecurity.svelte";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import type { PageData } from "./$types";
 
@@ -17,6 +18,7 @@
     { value: "users", label: "Users", icon: "users" },
     { value: "federation", label: "Federation", icon: "globe" },
     { value: "email", label: "Email", icon: "mail" },
+    { value: "security", label: "Security", icon: "lock" },
     { value: "settings", label: "Instance", icon: "settings" },
   ];
 
@@ -92,6 +94,18 @@
       </p>
       <div class="mt-5">
         <AdminEmail />
+      </div>
+    </section>
+  </Tabs.Content>
+
+  <Tabs.Content value="security" class="mt-6">
+    <section class="rounded-card border border-border bg-background p-6">
+      <h2 class="text-lg font-semibold tracking-tight text-foreground">Security</h2>
+      <p class="mt-1 text-sm text-muted-foreground">
+        Defenses against automated abuse. Toggles apply live — no config files, no restart.
+      </p>
+      <div class="mt-5">
+        <AdminSecurity />
       </div>
     </section>
   </Tabs.Content>

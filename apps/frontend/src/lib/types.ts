@@ -183,6 +183,11 @@ export type DashboardSummary = {
 // Moderator-tunable instance settings (admin only).
 export type InstanceSettings = { onInstanceViews: boolean };
 
+// Security controls. `anubisProtection` is the live state of the AI-scraper
+// proof-of-work wall; `anubisManaged` says whether this deployment can toggle it
+// (Caddy admin reachable) — false in a bare dev run, so the UI explains instead.
+export type SecuritySettings = { anubisProtection: boolean; anubisManaged: boolean };
+
 // Public instance identity (unauthenticated). Drives the app-name chrome and
 // the first-run setup gate.
 export type InstanceInfo = {

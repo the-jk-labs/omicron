@@ -21,6 +21,7 @@ import type {
   RemoteProfile,
   Report,
   SearchResults,
+  SecuritySettings,
   SuggestedUser,
   TagDetail,
   TagWithCount,
@@ -83,6 +84,11 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     ) => api.put<AdminInstance>("/admin/instance", body),
     // Rotate the auto-managed session secret (takes effect on restart, signs out).
     rotateSessionSecret: () => api.post<{ ok: true }>("/admin/instance/rotate-secret", {}),
+
+    // admin security: the AI-scraper shield (Anubis), toggled live via Caddy.
+    adminSecurity: () => api.get<SecuritySettings>("/admin/security"),
+    setAnubisProtection: (enabled: boolean) =>
+      api.put<SecuritySettings>("/admin/security/anubis", { anubisProtection: enabled }),
 
     // admin email settings (runtime-configurable delivery)
     adminEmail: () => api.get<EmailSettings>("/admin/email"),

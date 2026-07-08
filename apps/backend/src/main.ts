@@ -5,6 +5,7 @@ import { buildApp } from "@/app.ts";
 import { getFederationEnabled } from "@/services/instanceSetup.ts";
 import { seedFederationRunning } from "@/services/federationState.ts";
 import { startJobWorker } from "@/queue/queue.ts";
+import { reconcileAnubisInBackground } from "@/services/anubisProtection.ts";
 import { APP_VERSION } from "@/version.ts";
 
 // Entry point: migrate → build app → serve. Stateless; all data in Postgres.
@@ -21,6 +22,10 @@ async function main() {
 
   Deno.serve({ port: config.PORT }, app.fetch);
   console.log(`🚀 Omicron backend v${APP_VERSION} listening on :${config.PORT}`);
+
+  // Re-assert the persisted AI-scraper-shield state onto Caddy once it's up
+  // (Caddy starts after us and boots protection-off). Non-blocking, fail-open.
+  reconcileAnubisInBackground();
 }
 
 await main();

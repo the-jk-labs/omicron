@@ -319,6 +319,27 @@ is editable here, so you never return to a config file. Tabs:
 - **Users** — suspend or reinstate local accounts.
 - **Federation** — defederate (block) a domain, or re-federate it. Blocking
   purges already-cached content from that domain.
+- **Security** — the **AI-scraper shield** (see below).
+
+### AI-scraper protection
+
+Under **Security → AI-scraper protection** you can switch on a lightweight
+proof-of-work challenge ([Anubis](https://anubis.techaro.lol)) for page loads.
+It's **off by default** — leave it off unless AI crawlers are actually hammering
+your instance, because it adds a ~1-second interstitial for every reader
+(including no-JS visitors).
+
+When you flip it on, browser-like traffic to your pages gets challenged; real
+browsers solve it in about a second, most scrapers can't. **Federation and the
+API are never challenged**, so ActivityPub delivery, RSS/feeds, and API clients
+keep working untouched. The toggle applies **live** — no restart, no config
+files: the backend re-routes the app through the bundled challenge service via
+Caddy's internal admin API. Link-preview cards still work (OpenGraph crawlers are
+let through), and per-IP rate limiting stays accurate.
+
+The challenge service always runs but only sits in the request path while the
+toggle is on. Its signing key is in-memory, so a stack restart re-challenges
+readers once — a harmless one-time solve.
 
 ### Rotating the session secret
 

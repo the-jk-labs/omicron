@@ -9,8 +9,11 @@
 # Local/dev needs nothing extra: http://localhost is served over plain HTTP with
 # no certificate dance, so `docker compose up` works out of the box.
 {
-	# Silence the local admin API; the stack doesn't use it.
-	admin off
+	# Admin API on the internal compose network only (never mapped to a host
+	# port). The backend reaches it at http://caddy:2019 to flip the AI-scraper
+	# shield on/off live — reloading this same config with the frontend upstream
+	# swapped for the Anubis sidecar. See services/anubisProtection.ts.
+	admin :2019
 	# Only obtain certificates for hostnames the backend approves, so pointing a
 	# stray domain at this host can't trigger unbounded issuance.
 	on_demand_tls {
@@ -28,6 +31,11 @@
 		reverse_proxy backend:8000
 	}
 	handle {
+		# App (SvelteKit) branch. When the admin enables AI-scraper protection,
+		# the backend reloads this config with this one line changed to
+		# `reverse_proxy anubis:8080` (the Anubis sidecar, which forwards back to
+		# frontend:3000). The exact string is matched in anubisProtection.ts —
+		# keep it on its own line.
 		reverse_proxy frontend:3000
 	}
 }

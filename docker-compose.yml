@@ -107,11 +107,18 @@ services:
       # App-owned writable state (e.g. a web-UI-rotated session secret). Kept
       # separate from the read-only bootstrap `secrets` volume.
       STATE_DIR: /data/state
+      # Caddy's admin API (internal network only) + the Caddyfile it loaded, so
+      # the admin-panel AI-scraper-shield toggle can reload routing at runtime.
+      CADDY_ADMIN_URL: ${CADDY_ADMIN_URL:-http://caddy:2019}
+      CADDYFILE_PATH: /etc/caddy/Caddyfile
     volumes:
       # Persist user-uploaded media (avatars) across restarts/upgrades.
       - uploads:/data/uploads
       - state:/data/state
       - secrets:/run/secrets:ro
+      # Read-only view of the real Caddyfile: the scraper-shield toggle reads it,
+      # swaps one upstream line, and reloads it through Caddy's admin API.
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
     ports:
       # Loopback only: Caddy reaches the backend over the compose network and is
       # the sole public entrypoint (federation, API, TLS all flow through it). This
@@ -144,6 +151,40 @@ services:
       # Loopback only: production traffic goes through Caddy. Exposed on the host
       # just for local debugging, not on the public interface.
       - "127.0.0.1:5173:3000"
+
+  # AI-scraper shield. A proof-of-work challenge that browser-like scrapers
+  # can't pass but real browsers solve in ~1s. It always runs but only sits in
+  # the request path when an admin enables protection (Admin → Security), which
+  # makes Caddy route the app branch here instead of straight to the frontend.
+  # Federation and the API never pass through it. Its signing key is ephemeral,
+  # so a restart re-challenges readers once — a fine trade for zero config.
+  anubis:
+    # Pinned to a specific release so an upgrade is a deliberate bump, never a
+    # silent breaking change on the next pull. Check for newer stable tags at
+    # https://github.com/TecharoHQ/anubis/releases before raising this.
+    image: ghcr.io/techarohq/anubis:v1.25.0
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    environment:
+      BIND: ":8080"
+      TARGET: "http://frontend:3000"
+      METRICS_BIND: ":9090"
+      POLICY_FNAME: "/data/cfg/botPolicy.yaml"
+      # PoW cost. 4 is Anubis's default — light on real browsers.
+      DIFFICULTY: "4"
+      SERVE_ROBOTS_TXT: "true"
+      # Strip the private compose-network hops (Caddy, Anubis) from
+      # X-Forwarded-For so the frontend — one extra hop back — still reads the
+      # real public client IP under XFF_DEPTH=1. Per-IP rate limiting stays
+      # accurate whether or not protection is on. Pinned (also the default).
+      XFF_STRIP_PRIVATE: "true"
+      # Let link-preview crawlers read <meta og:*> without a challenge, so shared
+      # post links still render cards.
+      OG_PASSTHROUGH: "true"
+      OG_EXPIRY_TIME: "24h"
+    volumes:
+      - ./botPolicy.yaml:/data/cfg/botPolicy.yaml:ro
 
   # Public entrypoint: terminates TLS and reverse-proxies to frontend/backend.
   # Obtains Let's Encrypt certificates on demand for the instance's own domain
