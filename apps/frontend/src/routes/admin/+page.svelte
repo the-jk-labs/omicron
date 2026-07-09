@@ -8,6 +8,7 @@
   import AdminReports from "$lib/components/AdminReports.svelte";
   import AdminDomains from "$lib/components/AdminDomains.svelte";
   import AdminSecurity from "$lib/components/AdminSecurity.svelte";
+  import AdminSeo from "$lib/components/AdminSeo.svelte";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import type { PageData } from "./$types";
 
@@ -19,6 +20,7 @@
     { value: "federation", label: "Federation", icon: "globe" },
     { value: "email", label: "Email", icon: "mail" },
     { value: "security", label: "Security", icon: "lock" },
+    { value: "discoverability", label: "Discoverability", icon: "globe" },
     { value: "settings", label: "Instance", icon: "settings" },
   ];
 
@@ -106,6 +108,18 @@
       </p>
       <div class="mt-5">
         <AdminSecurity />
+      </div>
+    </section>
+  </Tabs.Content>
+
+  <Tabs.Content value="discoverability" class="mt-6">
+    <section class="rounded-card border border-border bg-background p-6">
+      <h2 class="text-lg font-semibold tracking-tight text-foreground">Discoverability</h2>
+      <p class="mt-1 text-sm text-muted-foreground">
+        Search-engine indexing, sitemap, and per-engine site verification. Applies live.
+      </p>
+      <div class="mt-5">
+        <AdminSeo />
       </div>
     </section>
   </Tabs.Content>

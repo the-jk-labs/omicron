@@ -68,6 +68,29 @@
   // but a touch wider than the auth forms to fit the stepped layout.
   const isSetup = $derived($page.route.id === "/setup");
   const standalone = $derived(isAuth || isSetup);
+
+  // Search-engine discoverability. Verification tokens become <meta> tags so an
+  // operator can claim the site in each webmaster console; the engine → meta-name
+  // map mirrors services/seo.ts on the backend.
+  const VERIFICATION_META: Record<string, string> = {
+    google: "google-site-verification",
+    bing: "msvalidate.01",
+    yandex: "yandex-verification",
+  };
+  const verificationTags = $derived(
+    Object.entries(data.seo?.verification ?? {})
+      .filter(([engine, token]) => VERIFICATION_META[engine] && token)
+      .map(([engine, token]) => ({ name: VERIFICATION_META[engine], content: token as string })),
+  );
+  // Keep private/write-side routes out of the index even on a public instance,
+  // and honour the admin's global indexing switch. Route prefixes cover nested
+  // paths (e.g. /posts/[id]/edit under compose-like editing).
+  const NOINDEX_PREFIXES = ["/compose", "/drafts", "/dashboard", "/settings", "/admin"];
+  const noindex = $derived(
+    data.seo?.indexingEnabled === false ||
+      standalone ||
+      NOINDEX_PREFIXES.some((p) => ($page.url.pathname ?? "").startsWith(p)),
+  );
 </script>
 
 <svelte:head>
@@ -86,6 +109,13 @@
     <!-- Mastodon link-preview author attribution. -->
     <meta name="fediverse:creator" content={creator} />
     <meta property="article:author" content={creator} />
+  {/if}
+  <!-- Search-engine site verification (admin-configured) -->
+  {#each verificationTags as tag (tag.name)}
+    <meta name={tag.name} content={tag.content} />
+  {/each}
+  {#if noindex}
+    <meta name="robots" content="noindex, nofollow" />
   {/if}
 </svelte:head>
 

@@ -173,7 +173,13 @@ services:
       POLICY_FNAME: "/data/cfg/botPolicy.yaml"
       # PoW cost. 4 is Anubis's default — light on real browsers.
       DIFFICULTY: "4"
-      SERVE_ROBOTS_TXT: "true"
+      # Let the app serve /robots.txt (the botPolicy ALLOWs that path straight
+      # through). The admin Discoverability page is the single source of truth for
+      # robots.txt + the sitemap link, and its indexing toggle must stay
+      # authoritative even with the shield on — so Anubis must NOT shadow the path
+      # with its own generated robots.txt. AI scrapers ignore robots.txt anyway;
+      # the PoW wall, not robots.txt, is what actually holds them back.
+      SERVE_ROBOTS_TXT: "false"
       # Strip the private compose-network hops (Caddy, Anubis) from
       # X-Forwarded-For so the frontend — one extra hop back — still reads the
       # real public client IP under XFF_DEPTH=1. Per-IP rate limiting stays

@@ -188,6 +188,20 @@ export type InstanceSettings = { onInstanceViews: boolean };
 // (Caddy admin reachable) — false in a bare dev run, so the UI explains instead.
 export type SecuritySettings = { anubisProtection: boolean; anubisManaged: boolean };
 
+// Discoverability / SEO. `indexingEnabled` drives robots.txt + a site-wide
+// `noindex`; `verification` holds per-engine site-verification tokens (the meta
+// `content` value only), keyed by engine (google/bing/yandex).
+export type SeoVerification = { google?: string; bing?: string; yandex?: string };
+export type SeoSettings = { indexingEnabled: boolean; verification: SeoVerification };
+
+// One published local post as the sitemap needs it (permalink parts + lastmod).
+export type SitemapEntry = {
+  id: string;
+  title: string | null;
+  authorUsername: string;
+  createdAt: string;
+};
+
 // Public instance identity (unauthenticated). Drives the app-name chrome and
 // the first-run setup gate.
 export type InstanceInfo = {

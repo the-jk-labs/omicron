@@ -10,6 +10,14 @@
 # browser-style User-Agent falls through to Anubis's default ALLOW, so plain
 # HTTP clients and RSS readers are never blocked.
 bots:
+  # Legitimate search-engine crawlers, so the shield never delists this instance
+  # from search. Anubis's bundled list matches each crawler's User-Agent AND
+  # confirms it by reverse-DNS, so an AI scraper faking a "Googlebot" UA is still
+  # challenged. Covers Google, Bing, DuckDuckGo, Apple, Kagi, Marginalia, Mojeek,
+  # Qwant and the Internet Archive. Kept first so a verified crawler wins before
+  # the browser-challenge catch-all below.
+  - import: (data)/crawlers/_allow-good.yaml
+
   - name: api
     path_regex: ^/api/
     action: ALLOW

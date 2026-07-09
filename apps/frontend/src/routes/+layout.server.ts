@@ -23,6 +23,10 @@ export const load: LayoutServerLoad = async ({ fetch, route }) => {
     if (instance.setupComplete && onSetup) redirect(303, "/");
   }
 
+  // Discoverability config drives the <head> verification tags + noindex. Public
+  // and cheap; default to indexable if the backend hiccups.
+  const seoPromise = api.seo().catch(() => ({ indexingEnabled: true, verification: {} }));
+
   const userPromise = api.me().then((r) => r.user).catch(() => null);
   const discoverPromise = DISCOVER_ROUTES.has(route.id ?? "")
     ? Promise.allSettled([api.trendingPosts(), api.suggestedUsers(), api.trendingTags()])
@@ -43,5 +47,7 @@ export const load: LayoutServerLoad = async ({ fetch, route }) => {
     };
   }
 
-  return { user, discover, instance };
+  const seo = await seoPromise;
+
+  return { user, discover, instance, seo };
 };

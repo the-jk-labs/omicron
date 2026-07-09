@@ -22,6 +22,8 @@ import type {
   Report,
   SearchResults,
   SecuritySettings,
+  SeoSettings,
+  SitemapEntry,
   SuggestedUser,
   TagDetail,
   TagWithCount,
@@ -89,6 +91,13 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     adminSecurity: () => api.get<SecuritySettings>("/admin/security"),
     setAnubisProtection: (enabled: boolean) =>
       api.put<SecuritySettings>("/admin/security/anubis", { anubisProtection: enabled }),
+
+    // discoverability / SEO: public read (layout, robots.txt, sitemap.xml) + the
+    // moderator-only write side.
+    seo: () => api.get<SeoSettings>("/seo"),
+    sitemapEntries: () => api.get<SitemapEntry[]>("/seo/sitemap-entries"),
+    adminSeo: () => api.get<SeoSettings>("/admin/seo"),
+    setAdminSeo: (body: Partial<SeoSettings>) => api.put<SeoSettings>("/admin/seo", body),
 
     // admin email settings (runtime-configurable delivery)
     adminEmail: () => api.get<EmailSettings>("/admin/email"),

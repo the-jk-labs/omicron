@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import * as settings from "@/services/settings.ts";
 import * as anubis from "@/services/anubisProtection.ts";
+import * as seo from "@/services/seo.ts";
 import * as moderation from "@/services/moderation.ts";
 import * as emailSettings from "@/services/emailSettings.ts";
 import * as setup from "@/services/instanceSetup.ts";
@@ -71,6 +72,29 @@ adminRoutes.put("/security/anubis", async (c) => {
     );
   }
   return c.json(await securitySnapshot());
+});
+
+// ── Discoverability / SEO ────────────────────────────────────────────────────
+
+// Search-engine indexing toggle + per-engine site-verification tokens. The
+// public /api/seo endpoint (and the app's robots.txt / sitemap.xml / <head>)
+// read the same settings; this is the moderator-only write side.
+adminRoutes.get("/seo", async (c) => {
+  requireAdmin(c);
+  return c.json(await seo.getSeoSettings());
+});
+
+const seoSchema = z.object({
+  indexingEnabled: z.boolean().optional(),
+  verification: z.record(z.string(), z.string()).optional(),
+});
+
+adminRoutes.put("/seo", async (c) => {
+  requireAdmin(c);
+  const parsed = seoSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) throw badRequest("Invalid SEO settings.");
+  await seo.setSeoSettings(parsed.data);
+  return c.json(await seo.getSeoSettings());
 });
 
 // ── Instance identity (runtime config) ──────────────────────────────────────

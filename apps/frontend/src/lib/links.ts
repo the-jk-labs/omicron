@@ -32,7 +32,9 @@ export function slugify(title: string): string {
 }
 
 /** Canonical path for a post, e.g. `/@user/some-title-9e962281`. */
-export function postPath(post: Pick<Post, "id" | "title" | "author">): string {
+export function postPath(
+  post: Pick<Post, "id" | "title"> & { author: { username: string } },
+): string {
   const slug = post.title ? slugify(post.title) : "";
   const id = shortId(post.id);
   const tail = slug ? `${slug}-${id}` : id;

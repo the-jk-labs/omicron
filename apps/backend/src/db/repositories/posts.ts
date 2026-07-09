@@ -116,6 +116,25 @@ export function listAllContent() {
     .from(posts);
 }
 
+// Published, local blog posts for the XML sitemap: just what's needed to build a
+// canonical permalink (author handle + title → slug) and a `<lastmod>`. Drafts
+// (`status != 'published'`) and remote posts are excluded — a sitemap only lists
+// this instance's own public content. Capped at the sitemap spec's 50k-URL limit.
+export function listSitemapEntries() {
+  return db
+    .select({
+      id: posts.id,
+      title: posts.title,
+      authorUsername: users.username,
+      createdAt: posts.createdAt,
+    })
+    .from(posts)
+    .innerJoin(users, eq(posts.authorId, users.id))
+    .where(and(eq(posts.remote, false), eq(posts.status, "published")))
+    .orderBy(desc(posts.createdAt))
+    .limit(50000);
+}
+
 export async function remove(id: string) {
   await db.delete(posts).where(eq(posts.id, id));
 }
