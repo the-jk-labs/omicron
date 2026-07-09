@@ -10,7 +10,11 @@ import { config } from "@/config.ts";
 // browser or device is, by design, a different reader. Long-lived so a view
 // stays deduplicated for as long as the count itself matters.
 export const VIEW_COOKIE = "omicron_reader";
-export const VIEW_COOKIE_TTL_MS = 1000 * 60 * 60 * 24 * 365 * 2; // 2 years
+// 400 days — the longest lifetime browsers honour (RFC 6265bis / the Chrome cap
+// Hono enforces); anything larger makes setCookie throw. This is only a hint for
+// how long a returning reader stays recognised: de-duplication itself is
+// permanent and stored server-side (see post_views), independent of this value.
+export const VIEW_COOKIE_TTL_MS = 1000 * 60 * 60 * 24 * 400; // 400 days
 
 // Today's date as a UTC YYYY-MM-DD bucket. Used only to place a *newly counted*
 // view on the dashboard's views-over-time chart — it has no bearing on
