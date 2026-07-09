@@ -70,8 +70,14 @@ export async function buildApp() {
   // falls through to the app's own routes.
   if (federationRunning()) {
     const { getFederation } = await import("@/federation/mod.ts");
+    const { withAttributionDomains } = await import("@/federation/attribution.ts");
     const fed = getFederation();
     const fedPrefixes = ["/.well-known/", "/users/", "/inbox", "/nodeinfo"];
+    // The bare actor document (`/users/{username}`, no sub-collection) is the
+    // one place we splice in Mastodon's `attributionDomains` so shared articles
+    // render an author byline on the link card. See federation/attribution.ts.
+    const isActorDoc = (method: string, path: string) =>
+      method === "GET" && /^\/users\/[^/]+$/.test(path);
     app.use("*", async (c, next) => {
       const path = new URL(c.req.url).pathname;
       if (fedPrefixes.some((p) => path === p || path.startsWith(p))) {
@@ -106,7 +112,10 @@ export async function buildApp() {
           });
           return await fed.fetch(buffered, { contextData: undefined });
         }
-        return await fed.fetch(withPublicScheme(c.req.raw), { contextData: undefined });
+        const res = await fed.fetch(withPublicScheme(c.req.raw), { contextData: undefined });
+        return isActorDoc(c.req.method, path)
+          ? await withAttributionDomains(res, config.APP_DOMAIN)
+          : res;
       }
       await next();
     });
