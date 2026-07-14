@@ -1,21 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { endpoints } from "$lib/api";
 import { postPath } from "$lib/links";
+import { escapeXml } from "$lib/xml";
 import type { RequestHandler } from "./$types";
 
 // XML sitemap of this instance's published blog posts. Built here (not in the
 // backend) because the canonical permalink logic lives in $lib/links and the
 // absolute URL needs this request's origin. Skipped entirely when indexing is
 // off, so a private instance advertises no content.
-
-function escapeXml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
 
 export const GET: RequestHandler = async ({ fetch, url }) => {
   const api = endpoints(fetch);

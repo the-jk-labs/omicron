@@ -8,6 +8,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import { confirm } from "$lib/components/ui/confirm";
+  import { listPath } from "$lib/links";
   import type { Post, ReadingList } from "$lib/types";
   import type { PageData } from "./$types";
 
@@ -26,6 +27,13 @@
   });
 
   const count = $derived(list.itemCount === 1 ? "1 post" : `${list.itemCount} posts`);
+
+  // A private list's feed 404s for the anonymous reader that would fetch it, so
+  // only offer the button on public lists — and not at all when the admin has
+  // indexing off, since the feed serves nothing then.
+  const showFeed = $derived(
+    list.visibility === "public" && data.seo?.indexingEnabled !== false,
+  );
 
   async function loadMore() {
     if (!cursor) return;
@@ -85,19 +93,32 @@
       </div>
     </div>
 
-    {#if data.isOwner}
+    {#if data.isOwner || showFeed}
       <div class="flex shrink-0 items-center gap-2">
-        <ListFormDialog {list} {onSaved}>
-          {#snippet children(props)}
-            <Button {...props} variant="outline" size="sm">
-              <Icon name="edit" size={15} /> Edit
-            </Button>
-          {/snippet}
-        </ListFormDialog>
-        {#if !list.isReadLater}
-          <Button variant="outline" size="sm" onclick={removeList} aria-label="Delete list">
-            <Icon name="trash" size={15} />
+        {#if showFeed}
+          <Button
+            href={`${listPath(list)}/feed.xml`}
+            variant="outline"
+            size="sm"
+            aria-label="RSS feed"
+            title="RSS feed"
+          >
+            <Icon name="rss" size={15} />
           </Button>
+        {/if}
+        {#if data.isOwner}
+          <ListFormDialog {list} {onSaved}>
+            {#snippet children(props)}
+              <Button {...props} variant="outline" size="sm">
+                <Icon name="edit" size={15} /> Edit
+              </Button>
+            {/snippet}
+          </ListFormDialog>
+          {#if !list.isReadLater}
+            <Button variant="outline" size="sm" onclick={removeList} aria-label="Delete list">
+              <Icon name="trash" size={15} />
+            </Button>
+          {/if}
         {/if}
       </div>
     {/if}

@@ -123,6 +123,19 @@
     <div
       class="col-start-2 row-start-1 flex shrink-0 items-center gap-2 justify-self-end self-center sm:col-start-3"
     >
+      <!-- Subscribing needs no account, so this shows for signed-out visitors
+           too — unlike the follow/edit actions beside it. -->
+      {#if data.seo?.indexingEnabled !== false}
+        <Button
+          href={`/@${profile.user.username}/feed.xml`}
+          variant="outline"
+          size="sm"
+          aria-label="RSS feed"
+          title="RSS feed"
+        >
+          <Icon name="rss" size={15} />
+        </Button>
+      {/if}
       {#if isSelf}
         <Button href="/settings" variant="outline" size="sm">
           <Icon name="edit" size={15} /> Edit profile

@@ -8,7 +8,7 @@
   import MobileNav from "$lib/components/MobileNav.svelte";
   import Discover from "$lib/components/Discover.svelte";
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
-  import type { Post } from "$lib/types";
+  import type { Post, Profile, ReadingList } from "$lib/types";
   import type { LayoutData } from "./$types";
 
   let { data, children }: { data: LayoutData; children: import("svelte").Snippet } = $props();
@@ -47,6 +47,24 @@
   const ogTitle = $derived(post?.title || appName);
   const ogDescription = $derived(post ? excerpt(post.contentHtml) : description);
   const ogType = $derived(post ? "article" : "website");
+
+  // RSS auto-discovery: a reader pointed at a profile or reading-list page finds
+  // the feed from this tag alone. Local profiles only (a remote actor's posts are
+  // syndicated by their own instance) and public lists only (a private list's
+  // feed 404s for the anonymous reader that would fetch it). Skipped when the
+  // admin has indexing off, since the feed serves nothing then.
+  const feedLink = $derived.by(() => {
+    if (data.seo?.indexingEnabled === false) return null;
+    const pageData = $page.data as { remote?: boolean; profile?: Profile; list?: ReadingList };
+    const href = `${$page.url.pathname}/feed.xml`;
+    if ($page.route.id === "/[handle]" && !pageData.remote && pageData.profile) {
+      return { href, title: `${pageData.profile.user.displayName} · ${appName}` };
+    }
+    if ($page.route.id === "/lists/[id]" && pageData.list?.visibility === "public") {
+      return { href, title: `${pageData.list.title} · ${appName}` };
+    }
+    return null;
+  });
 
   // The right discovery rail only belongs on the home feed and profile pages;
   // every other route (post, compose, settings, auth, …) hides it.
@@ -109,6 +127,9 @@
     <!-- Mastodon link-preview author attribution. -->
     <meta name="fediverse:creator" content={creator} />
     <meta property="article:author" content={creator} />
+  {/if}
+  {#if feedLink}
+    <link rel="alternate" type="application/rss+xml" title={feedLink.title} href={feedLink.href} />
   {/if}
   <!-- Search-engine site verification (admin-configured) -->
   {#each verificationTags as tag (tag.name)}
