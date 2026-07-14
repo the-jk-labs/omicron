@@ -10,6 +10,7 @@
   import { platformMeta } from "$lib/profileLinks";
   import FollowButton from "$lib/components/FollowButton.svelte";
   import ProfileMenu from "$lib/components/ProfileMenu.svelte";
+  import RssButton from "$lib/components/RssButton.svelte";
   import FollowListDialog from "$lib/components/FollowListDialog.svelte";
   import TagList from "$lib/components/TagList.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
@@ -126,15 +127,10 @@
       <!-- Subscribing needs no account, so this shows for signed-out visitors
            too — unlike the follow/edit actions beside it. -->
       {#if data.seo?.indexingEnabled !== false}
-        <Button
-          href={`/@${profile.user.username}/feed.xml`}
-          variant="outline"
-          size="sm"
-          aria-label="RSS feed"
-          title="RSS feed"
-        >
-          <Icon name="rss" size={15} />
-        </Button>
+        <RssButton
+          path={`/@${profile.user.username}/feed.xml`}
+          label={`Copy RSS feed link for ${profile.user.displayName}`}
+        />
       {/if}
       {#if isSelf}
         <Button href="/settings" variant="outline" size="sm">

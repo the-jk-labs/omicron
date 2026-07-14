@@ -7,6 +7,7 @@
   import ListFormDialog from "$lib/components/ListFormDialog.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import RssButton from "$lib/components/RssButton.svelte";
   import { confirm } from "$lib/components/ui/confirm";
   import { listPath } from "$lib/links";
   import type { Post, ReadingList } from "$lib/types";
@@ -96,15 +97,7 @@
     {#if data.isOwner || showFeed}
       <div class="flex shrink-0 items-center gap-2">
         {#if showFeed}
-          <Button
-            href={`${listPath(list)}/feed.xml`}
-            variant="outline"
-            size="sm"
-            aria-label="RSS feed"
-            title="RSS feed"
-          >
-            <Icon name="rss" size={15} />
-          </Button>
+          <RssButton path={`${listPath(list)}/feed.xml`} label={`Copy RSS feed link for ${list.title}`} />
         {/if}
         {#if data.isOwner}
           <ListFormDialog {list} {onSaved}>
