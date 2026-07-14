@@ -39,6 +39,13 @@ export function suggested(viewerId: string | null, limit = 5) {
         select followee_id from follows
         where follower_id = ${viewerId} and followee_id is not null
       )`,
+      // Never suggest someone the viewer has blocked, or who has blocked them.
+      sql`${users.id} not in (
+        select target_user_id from blocks
+          where user_id = ${viewerId} and target_user_id is not null
+        union
+        select user_id from blocks where target_user_id = ${viewerId}
+      )`,
     )
     : undefined;
   return db

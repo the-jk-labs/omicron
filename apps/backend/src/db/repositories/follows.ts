@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { and, eq, isNotNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { follows, remoteActors, users } from "@/db/schema.ts";
 
@@ -26,6 +26,18 @@ export async function removeLocal(followerId: string, followeeId: string) {
   await db
     .delete(follows)
     .where(and(eq(follows.followerId, followerId), eq(follows.followeeId, followeeId)));
+}
+
+// Removes any follow edge between two local users in EITHER direction. A block
+// severs the follow relationship both ways (Mastodon/Instagram), so blocking
+// someone you follow — or who follows you — drops both edges at once.
+export async function severLocal(a: string, b: string) {
+  await db.delete(follows).where(
+    or(
+      and(eq(follows.followerId, a), eq(follows.followeeId, b)),
+      and(eq(follows.followerId, b), eq(follows.followeeId, a)),
+    ),
+  );
 }
 
 export async function removeRemoteFollower(followeeId: string, remoteActor: string) {
@@ -113,7 +125,30 @@ export async function localFollowerUsernames(followeeId: string): Promise<string
 }
 
 // Local accounts this user follows (for the "Following" management list).
-export function listLocalFollowing(followerId: string) {
+// Hides local users the viewer has blocked, or who have blocked the viewer,
+// from follower/following lists (blocks are bidirectional locally). Undefined
+// for guests, so `and()` drops it and the list is unfiltered when logged out.
+function notBlockedLocal(viewerId: string | null) {
+  if (!viewerId) return undefined;
+  return sql`${users.id} not in (
+    select target_user_id from blocks
+      where user_id = ${viewerId} and target_user_id is not null
+    union
+    select user_id from blocks where target_user_id = ${viewerId}
+  )`;
+}
+
+// Hides remote actors the viewer has blocked from follower/following lists. A
+// remote actor cannot block a local viewer, so this is one-directional.
+function notBlockedRemote(viewerId: string | null) {
+  if (!viewerId) return undefined;
+  return sql`${remoteActors.id} not in (
+    select target_remote_actor_id from blocks
+      where user_id = ${viewerId} and target_remote_actor_id is not null
+  )`;
+}
+
+export function listLocalFollowing(followerId: string, viewerId: string | null = null) {
   return db
     .select({
       id: users.id,
@@ -123,12 +158,12 @@ export function listLocalFollowing(followerId: string) {
     })
     .from(follows)
     .innerJoin(users, eq(follows.followeeId, users.id))
-    .where(eq(follows.followerId, followerId))
+    .where(and(eq(follows.followerId, followerId), notBlockedLocal(viewerId)))
     .orderBy(follows.createdAt);
 }
 
 // Local accounts that follow this user.
-export function listLocalFollowers(followeeId: string) {
+export function listLocalFollowers(followeeId: string, viewerId: string | null = null) {
   return db
     .select({
       id: users.id,
@@ -138,13 +173,13 @@ export function listLocalFollowers(followeeId: string) {
     })
     .from(follows)
     .innerJoin(users, eq(follows.followerId, users.id))
-    .where(eq(follows.followeeId, followeeId))
+    .where(and(eq(follows.followeeId, followeeId), notBlockedLocal(viewerId)))
     .orderBy(follows.createdAt);
 }
 
 // Remote actors that follow this user — only those we've cached (matched by
 // their actor URI). Uncached inbound followers carry only a URI and are omitted.
-export function listRemoteFollowers(followeeId: string) {
+export function listRemoteFollowers(followeeId: string, viewerId: string | null = null) {
   return db
     .select({
       id: remoteActors.id,
@@ -154,12 +189,12 @@ export function listRemoteFollowers(followeeId: string) {
     })
     .from(follows)
     .innerJoin(remoteActors, eq(follows.remoteActor, remoteActors.apId))
-    .where(eq(follows.followeeId, followeeId))
+    .where(and(eq(follows.followeeId, followeeId), notBlockedRemote(viewerId)))
     .orderBy(follows.createdAt);
 }
 
 // Remote actors this user follows, joined to the cached actor.
-export function listRemoteFollowing(followerId: string) {
+export function listRemoteFollowing(followerId: string, viewerId: string | null = null) {
   return db
     .select({
       id: remoteActors.id,
@@ -169,6 +204,6 @@ export function listRemoteFollowing(followerId: string) {
     })
     .from(follows)
     .innerJoin(remoteActors, eq(follows.remoteFolloweeId, remoteActors.id))
-    .where(eq(follows.followerId, followerId))
+    .where(and(eq(follows.followerId, followerId), notBlockedRemote(viewerId)))
     .orderBy(follows.createdAt);
 }

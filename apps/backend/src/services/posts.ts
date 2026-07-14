@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
+import * as relationsRepo from "@/db/repositories/relations.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import { MAX_TAGS_PER_POST, normalizeTags } from "@/lib/tags.ts";
@@ -64,6 +65,17 @@ export async function getPost(id: string, viewerId: string | null = null) {
   if (row.post.status === "draft" && row.post.authorId !== viewerId) {
     throw notFound("Post not found.");
   }
+  // A block hides the two users' posts from each other everywhere — including a
+  // direct link to a single post (feeds filter separately). Local authors are
+  // bidirectional; remote authors can only be blocked by the local viewer.
+  if (viewerId) {
+    const blocked = row.post.authorId
+      ? await relationsRepo.localBlockExists(viewerId, row.post.authorId)
+      : row.post.remoteActorId
+      ? await relationsRepo.hasRemote("block", viewerId, row.post.remoteActorId)
+      : false;
+    if (blocked) throw notFound("Post not found.");
+  }
   return row;
 }
 
@@ -114,9 +126,7 @@ export async function updatePost(authorId: string, id: string, input: {
 
   // A tags-only edit touches no post columns; skip the update (drizzle rejects
   // an empty SET) and keep the existing row.
-  const post = Object.keys(changes).length > 0
-    ? await postsRepo.update(id, changes)
-    : row.post;
+  const post = Object.keys(changes).length > 0 ? await postsRepo.update(id, changes) : row.post;
 
   // Tags are replaced wholesale when provided; an empty array clears them.
   if (input.tags !== undefined) await tagsRepo.setPostTags(post.id, resolveTags(input.tags));

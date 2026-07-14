@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { Delete, Follow, isActor, PUBLIC_COLLECTION, Undo } from "@fedify/fedify/vocab";
+import { Block, Delete, Follow, isActor, PUBLIC_COLLECTION, Undo } from "@fedify/fedify/vocab";
 import { getFederation } from "@/federation/mod.ts";
 import { origin } from "@/config.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
@@ -39,6 +39,44 @@ export async function sendUnfollow(followerId: string, targetActor: string): Pro
       id: new URL(`#unfollows/${crypto.randomUUID()}`, ctx.getActorUri(user.username)),
       actor: ctx.getActorUri(user.username),
       object: new Follow({ actor: ctx.getActorUri(user.username), object: actor.id }),
+    }),
+  );
+}
+
+// Outbound Block / Undo(Block) to a remote actor URI. Sent when a local user
+// blocks (or unblocks) a remote account, so the actor's instance severs the
+// relationship on its side too — the Mastodon convention.
+
+export async function sendBlock(blockerId: string, targetActor: string): Promise<void> {
+  const user = await usersRepo.findById(blockerId);
+  if (!user) return;
+  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const actor = await ctx.lookupObject(targetActor);
+  if (!isActor(actor)) return;
+  await ctx.sendActivity(
+    { identifier: user.username },
+    actor,
+    new Block({
+      id: new URL(`#blocks/${crypto.randomUUID()}`, ctx.getActorUri(user.username)),
+      actor: ctx.getActorUri(user.username),
+      object: actor.id,
+    }),
+  );
+}
+
+export async function sendUndoBlock(blockerId: string, targetActor: string): Promise<void> {
+  const user = await usersRepo.findById(blockerId);
+  if (!user) return;
+  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const actor = await ctx.lookupObject(targetActor);
+  if (!isActor(actor)) return;
+  await ctx.sendActivity(
+    { identifier: user.username },
+    actor,
+    new Undo({
+      id: new URL(`#unblocks/${crypto.randomUUID()}`, ctx.getActorUri(user.username)),
+      actor: ctx.getActorUri(user.username),
+      object: new Block({ actor: ctx.getActorUri(user.username), object: actor.id }),
     }),
   );
 }

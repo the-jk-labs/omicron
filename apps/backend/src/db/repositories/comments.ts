@@ -49,25 +49,50 @@ function beforeCursor(cursor: Cursor | null) {
   );
 }
 
+// Hides comments whose (always-local) author the viewer has blocked, or who has
+// blocked the viewer — blocks are bidirectional locally. Undefined for guests,
+// so `and()` drops it and comments are unfiltered when logged out.
+function notBlocked(viewerId: string | null) {
+  if (!viewerId) return undefined;
+  return sql`${comments.authorId} not in (
+    select target_user_id from blocks
+      where user_id = ${viewerId} and target_user_id is not null
+    union
+    select user_id from blocks where target_user_id = ${viewerId}
+  )`;
+}
+
 // Top-level comments only (parentId is null), newest first.
-export function listByPost(postId: string, cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
+export function listByPost(
+  postId: string,
+  cursor: Cursor | null,
+  viewerId: string | null,
+  limit = DEFAULT_PAGE_SIZE,
+) {
   return db
     .select({ comment: comments, author: authorColumns })
     .from(comments)
     .innerJoin(users, eq(comments.authorId, users.id))
-    .where(and(eq(comments.postId, postId), isNull(comments.parentId), beforeCursor(cursor)))
+    .where(
+      and(
+        eq(comments.postId, postId),
+        isNull(comments.parentId),
+        notBlocked(viewerId),
+        beforeCursor(cursor),
+      ),
+    )
     .orderBy(desc(comments.createdAt), desc(comments.id))
     .limit(limit + 1);
 }
 
 // All replies for the given parent comments, oldest first.
-export function listReplies(parentIds: string[]) {
+export function listReplies(parentIds: string[], viewerId: string | null) {
   if (parentIds.length === 0) return Promise.resolve([] as CommentWithAuthor[]);
   return db
     .select({ comment: comments, author: authorColumns })
     .from(comments)
     .innerJoin(users, eq(comments.authorId, users.id))
-    .where(inArray(comments.parentId, parentIds))
+    .where(and(inArray(comments.parentId, parentIds), notBlocked(viewerId)))
     .orderBy(asc(comments.createdAt), asc(comments.id));
 }
 

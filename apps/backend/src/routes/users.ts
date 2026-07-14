@@ -84,11 +84,17 @@ userRoutes.get("/:username", async (c) => {
 
 // Public follower / following lists for a profile (local + cached remote).
 userRoutes.get("/:username/followers", async (c) => {
-  return c.json({ items: await followsService.followersOf(c.req.param("username")) });
+  const viewer = c.get("user");
+  return c.json({
+    items: await followsService.followersOf(c.req.param("username"), viewer?.id ?? null),
+  });
 });
 
 userRoutes.get("/:username/following", async (c) => {
-  return c.json({ items: await followsService.followingOf(c.req.param("username")) });
+  const viewer = c.get("user");
+  return c.json({
+    items: await followsService.followingOf(c.req.param("username"), viewer?.id ?? null),
+  });
 });
 
 // A user's posts (public, cursor-paginated). Filtered by the viewer's mutes/blocks.

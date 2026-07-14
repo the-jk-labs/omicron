@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { blocks, mutes, remoteActors, users } from "@/db/schema.ts";
 
@@ -57,6 +57,20 @@ export async function hasRemote(
   const t = table(kind);
   const row = await db.select({ id: t.id }).from(t).where(
     and(eq(t.userId, userId), eq(t.targetRemoteActorId, targetRemoteActorId)),
+  ).limit(1);
+  return row.length > 0;
+}
+
+// True if a block exists between two local users in EITHER direction — the one
+// blocked the other, or was blocked by them. Blocks are bidirectional locally,
+// so this is the single check that hides two users from each other's profile
+// and single-post views (feeds filter separately, in the posts repo).
+export async function localBlockExists(userA: string, userB: string): Promise<boolean> {
+  const row = await db.select({ id: blocks.id }).from(blocks).where(
+    or(
+      and(eq(blocks.userId, userA), eq(blocks.targetUserId, userB)),
+      and(eq(blocks.userId, userB), eq(blocks.targetUserId, userA)),
+    ),
   ).limit(1);
   return row.length > 0;
 }

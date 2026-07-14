@@ -7,7 +7,7 @@ import * as tagsRepo from "@/db/repositories/tags.ts";
 import { fetchOutboxPosts, resolveActor } from "@/federation/remote.ts";
 import { queue } from "@/queue/queue.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
-import { notFound } from "@/lib/http.ts";
+import { forbidden, notFound } from "@/lib/http.ts";
 import type { RemoteActor } from "@/db/schema.ts";
 
 // Read-side federation: resolve `user@host`, cache the actor + their outbox,
@@ -33,17 +33,26 @@ export async function getProfile(handle: string): Promise<RemoteActor> {
 // Profile plus whether `viewerId` follows this remote actor.
 export async function getProfileView(handle: string, viewerId: string | null) {
   const actor = await getProfile(handle);
+  // A blocked remote actor is invisible to the viewer, same as a blocked local
+  // user — the profile reads as not-found. Unblock from Connections settings.
+  if (viewerId && await relationsRepo.hasRemote("block", viewerId, actor.id)) {
+    throw notFound("Remote user not found.");
+  }
   const isFollowing = viewerId ? await followsRepo.isFollowingRemote(viewerId, actor.id) : false;
   const isMuted = viewerId ? await relationsRepo.hasRemote("mute", viewerId, actor.id) : false;
-  const isBlocked = viewerId ? await relationsRepo.hasRemote("block", viewerId, actor.id) : false;
   const tags = await tagsRepo.tagsForRemoteActor(actor.id);
-  return { actor, isFollowing, isMuted, isBlocked, tags };
+  // isBlocked is always false here — a blocked actor 404s above; kept in the
+  // shape so the serializer's block/mute menu state stays uniform with local.
+  return { actor, isFollowing, isMuted, isBlocked: false, tags };
 }
 
 // Follow a remote actor: record the edge, crawl their recent posts so the
 // viewer's feed isn't empty until the first delivery, and send a signed Follow.
 export async function follow(viewerId: string, handle: string): Promise<void> {
   const actor = await getProfile(handle);
+  if (await relationsRepo.hasRemote("block", viewerId, actor.id)) {
+    throw forbidden("You cannot follow an account you have blocked.");
+  }
   await followsRepo.createRemoteFollowing(viewerId, actor.id);
   await fetchOutboxPosts(handle, actor.id);
   queue.add("send_follow", { followerId: viewerId, targetActor: actor.apId });

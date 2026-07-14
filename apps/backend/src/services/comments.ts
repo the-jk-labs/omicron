@@ -2,6 +2,7 @@
 import * as commentsRepo from "@/db/repositories/comments.ts";
 import * as commentLikesRepo from "@/db/repositories/commentLikes.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
+import * as relationsRepo from "@/db/repositories/relations.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import type { CommentWithAuthor } from "@/db/repositories/comments.ts";
@@ -30,7 +31,16 @@ export async function create(
   if (text.length > MAX_LENGTH) {
     throw badRequest(`Comment must be ${MAX_LENGTH} characters or fewer.`);
   }
-  if (!(await postsRepo.findById(postId))) throw notFound("Post not found.");
+  const post = await postsRepo.findById(postId);
+  if (!post) throw notFound("Post not found.");
+  // A block forbids interacting with the other party's content — you can't
+  // comment on a post whose author you've blocked or who has blocked you.
+  const blocked = post.post.authorId
+    ? await relationsRepo.localBlockExists(authorId, post.post.authorId)
+    : post.post.remoteActorId
+    ? await relationsRepo.hasRemote("block", authorId, post.post.remoteActorId)
+    : false;
+  if (blocked) throw forbidden("You cannot comment on this post.");
 
   // Resolve the parent: replies attach to a top-level comment, so replying to a
   // reply re-targets its parent (keeps the thread one level deep).
@@ -76,12 +86,12 @@ export async function list(
   cursor: Cursor | null,
   viewerId: string | null,
 ): Promise<{ items: EnrichedComment[]; nextCursor: string | null }> {
-  const rows = await commentsRepo.listByPost(postId, cursor, DEFAULT_PAGE_SIZE);
+  const rows = await commentsRepo.listByPost(postId, cursor, viewerId, DEFAULT_PAGE_SIZE);
   const hasMore = rows.length > DEFAULT_PAGE_SIZE;
   const tops = hasMore ? rows.slice(0, DEFAULT_PAGE_SIZE) : rows;
   const last = tops.at(-1);
 
-  const replies = await commentsRepo.listReplies(tops.map((r) => r.comment.id));
+  const replies = await commentsRepo.listReplies(tops.map((r) => r.comment.id), viewerId);
 
   // One batched like-stats query covering every comment + reply on this page.
   const allIds = [...tops, ...replies].map((r) => r.comment.id);

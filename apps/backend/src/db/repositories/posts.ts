@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, desc, eq, getTableColumns, gt, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { type NewPost, postTags, posts, remoteActors, tags, users } from "@/db/schema.ts";
+import { type NewPost, posts, postTags, remoteActors, tags, users } from "@/db/schema.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
 
 // Post DB access. Queries fetch `limit + 1` rows so the service can derive a
@@ -240,7 +240,12 @@ export function listTrending(viewerId: string | null, limit = 5, sinceDays = 14)
   )`;
   return selectPosts()
     .where(
-      and(eq(posts.apType, "Article"), isPublished, notHidden(viewerId), gt(posts.createdAt, since)),
+      and(
+        eq(posts.apType, "Article"),
+        isPublished,
+        notHidden(viewerId),
+        gt(posts.createdAt, since),
+      ),
     )
     .orderBy(desc(score), desc(posts.createdAt), desc(posts.id))
     .limit(limit);

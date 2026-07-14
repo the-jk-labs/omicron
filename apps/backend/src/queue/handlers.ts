@@ -48,6 +48,20 @@ export function registerJobHandlers() {
     await sendUnfollow(followerId, targetActor);
   });
 
+  // A local user blocked / unblocked a remote actor; tell the actor's instance
+  // with an ActivityPub Block / Undo(Block) so it drops the relationship too.
+  registerHandler("send_block", async ({ blockerId, targetActor }) => {
+    if (!federationRunning()) return;
+    const { sendBlock } = await import("@/federation/outbound.ts");
+    await sendBlock(blockerId, targetActor);
+  });
+
+  registerHandler("send_unblock", async ({ blockerId, targetActor }) => {
+    if (!federationRunning()) return;
+    const { sendUndoBlock } = await import("@/federation/outbound.ts");
+    await sendUndoBlock(blockerId, targetActor);
+  });
+
   // Account deletion. Broadcast a Delete(actor) to remote followers first (so
   // other instances tombstone us) while the key pair still exists, then remove
   // the user — FK cascades wipe their posts, follows, sessions, mutes & blocks.

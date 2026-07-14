@@ -15,6 +15,7 @@ import { getRedis, redisEnabled, redisFactory } from "@/lib/redis.ts";
 import {
   Accept,
   Article,
+  Block,
   Create,
   Delete,
   Follow,
@@ -32,6 +33,7 @@ import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as listsRepo from "@/db/repositories/readingLists.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
+import * as relationsRepo from "@/db/repositories/relations.ts";
 import { buildArticle } from "@/federation/article.ts";
 import { buildPerson } from "@/federation/actor.ts";
 import { cacheActor } from "@/federation/remote.ts";
@@ -215,6 +217,15 @@ function setupInbox(f: Federation<ContextData>) {
       const follower = await follow.getActor(ctx);
       if (!followee || !isActor(follower) || !follower.id) return;
 
+      // If the local user has blocked this remote actor, ignore the follow —
+      // a blocked account can't re-follow (Mastodon semantics).
+      const cachedFollower = await remoteActorsRepo.findByApId(follower.id.href);
+      if (
+        cachedFollower && await relationsRepo.hasRemote("block", followee.id, cachedFollower.id)
+      ) {
+        return;
+      }
+
       await followsRepo.createRemoteFollower(followee.id, follower.id.href);
       // Auto-accept follows for now.
       await ctx.sendActivity(
@@ -233,6 +244,22 @@ function setupInbox(f: Federation<ContextData>) {
       if (followee && undo.actorId) {
         await followsRepo.removeRemoteFollower(followee.id, undo.actorId.href);
       }
+    })
+    .on(Block, async (ctx, block) => {
+      if (await fromBlockedDomain(block.actorId)) return;
+      // A remote actor blocked one of our local users. Our block edges are
+      // always local-authored, so we don't persist the remote block, but we
+      // mirror Mastodon's core effect: sever the follow relationship both ways.
+      // (Undo(Block) needs no action — nothing was persisted, and a block never
+      // restores a severed follow.)
+      if (!block.objectId || !block.actorId) return;
+      const parsed = ctx.parseUri(block.objectId);
+      if (parsed?.type !== "actor") return;
+      const localUser = await usersRepo.findByUsername(parsed.identifier);
+      if (!localUser) return;
+      await followsRepo.removeRemoteFollower(localUser.id, block.actorId.href);
+      const remoteActor = await remoteActorsRepo.findByApId(block.actorId.href);
+      if (remoteActor) await followsRepo.removeRemoteFollowing(localUser.id, remoteActor.id);
     })
     .on(Accept, async (ctx, accept) => {
       if (await fromBlockedDomain(accept.actorId)) return;

@@ -16,6 +16,8 @@ export type JobName =
   | "federate_list_item"
   | "send_follow"
   | "send_unfollow"
+  | "send_block"
+  | "send_unblock"
   | "delete_actor"
   | "send_password_reset"
   | "send_email_verification";
@@ -27,6 +29,8 @@ export type JobPayloads = {
   federate_list_item: { listId: string; postId: string; action: "add" | "remove" };
   send_follow: { followerId: string; targetActor: string };
   send_unfollow: { followerId: string; targetActor: string };
+  send_block: { blockerId: string; targetActor: string };
+  send_unblock: { blockerId: string; targetActor: string };
   delete_actor: { userId: string };
   send_password_reset: { to: string; token: string };
   send_email_verification: { to: string; token: string };
