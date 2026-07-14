@@ -55,7 +55,9 @@
     busyId = u.id;
     try {
       await endpoints().suspendUser(u.id, suspend);
-      u.suspended = suspend;
+      // Replace the row immutably rather than mutating the loop item in place,
+      // so the badge and button reliably re-render with the new state.
+      users = users.map((x) => (x.id === u.id ? { ...x, suspended: suspend } : x));
     } catch (e) {
       error = e instanceof ApiError ? e.message : "Action failed.";
     } finally {
