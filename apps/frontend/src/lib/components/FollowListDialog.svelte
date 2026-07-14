@@ -35,6 +35,20 @@
   let confirming = $state<Set<string>>(new Set());
   let removing = $state<Set<string>>(new Set());
 
+  // SvelteKit reuses this component instance across profile navigations (same
+  // [handle] route), so the props change but the cached list would not. Reset
+  // the cache whenever the profile or list kind changes, or the next open would
+  // show the previous profile's followers.
+  $effect(() => {
+    username;
+    kind;
+    items = [];
+    loaded = false;
+    loading = false;
+    confirming = new Set();
+    removing = new Set();
+  });
+
   async function removeFollower(actor: RelationActor) {
     if (!confirming.has(actor.id)) {
       confirming = new Set(confirming).add(actor.id);
