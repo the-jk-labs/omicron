@@ -130,7 +130,13 @@ export function listSitemapEntries() {
     })
     .from(posts)
     .innerJoin(users, eq(posts.authorId, users.id))
-    .where(and(eq(posts.remote, false), eq(posts.status, "published")))
+    .where(
+      and(
+        eq(posts.remote, false),
+        eq(posts.status, "published"),
+        sql`${users.suspendedAt} is null`,
+      ),
+    )
     .orderBy(desc(posts.createdAt))
     .limit(50000);
 }
@@ -158,6 +164,12 @@ function beforeCursor(cursor: Cursor | null) {
 // Only published posts surface in public feeds and profiles; drafts are private
 // to their author (see listDraftsByAuthor).
 const isPublished = eq(posts.status, "published");
+
+// A locally-suspended author vanishes from every public listing — feeds,
+// trending, search, tags and their own profile — until an admin reinstates them
+// (nothing is deleted). Remote posts have no local author (`authorId is null`)
+// and are unaffected. Relies on every listing left-joining `users` on authorId.
+const notSuspended = sql`(${posts.authorId} is null or ${users.suspendedAt} is null)`;
 
 // Excludes authors the viewer has muted or blocked, and authors who have blocked
 // the viewer (blocks are bidirectional locally). Returns undefined for guests —
@@ -198,7 +210,13 @@ export function listGlobal(
 ) {
   return selectPosts()
     .where(
-      and(eq(posts.apType, "Article"), isPublished, notHidden(viewerId), beforeCursor(cursor)),
+      and(
+        eq(posts.apType, "Article"),
+        isPublished,
+        notSuspended,
+        notHidden(viewerId),
+        beforeCursor(cursor),
+      ),
     )
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
@@ -216,6 +234,7 @@ export function searchPosts(viewerId: string | null, query: string, limit = DEFA
       and(
         eq(posts.apType, "Article"),
         isPublished,
+        notSuspended,
         notHidden(viewerId),
         sql`${posts.searchVector} @@ ${tsquery}`,
       ),
@@ -243,6 +262,7 @@ export function listTrending(viewerId: string | null, limit = 5, sinceDays = 14)
       and(
         eq(posts.apType, "Article"),
         isPublished,
+        notSuspended,
         notHidden(viewerId),
         gt(posts.createdAt, since),
       ),
@@ -259,7 +279,13 @@ export function listLocal(
 ) {
   return selectPosts()
     .where(
-      and(eq(posts.remote, false), isPublished, notHidden(viewerId), beforeCursor(cursor)),
+      and(
+        eq(posts.remote, false),
+        isPublished,
+        notSuspended,
+        notHidden(viewerId),
+        beforeCursor(cursor),
+      ),
     )
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
@@ -273,7 +299,13 @@ export function listByAuthor(
 ) {
   return selectPosts()
     .where(
-      and(eq(posts.authorId, authorId), isPublished, notHidden(viewerId), beforeCursor(cursor)),
+      and(
+        eq(posts.authorId, authorId),
+        isPublished,
+        notSuspended,
+        notHidden(viewerId),
+        beforeCursor(cursor),
+      ),
     )
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
@@ -341,6 +373,7 @@ export function listByTag(
         eq(tags.slug, slug),
         eq(posts.apType, "Article"),
         isPublished,
+        notSuspended,
         notHidden(viewerId),
         beforeCursor(cursor),
       ),
@@ -378,6 +411,7 @@ export function listFeed(userId: string, cursor: Cursor | null, limit = DEFAULT_
           sql`${posts.remoteActorId} in ${followedRemote}`,
           sql`${posts.id} in ${followedTagPosts}`,
         ),
+        notSuspended,
         notHidden(userId),
         beforeCursor(cursor),
       ),

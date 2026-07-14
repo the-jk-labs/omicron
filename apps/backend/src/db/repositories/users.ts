@@ -22,7 +22,12 @@ export function search(query: string, limit = 10) {
       avatarUrl: users.avatarUrl,
     })
     .from(users)
-    .where(or(ilike(users.username, term), ilike(users.displayName, term)))
+    .where(
+      and(
+        sql`${users.suspendedAt} is null`,
+        or(ilike(users.username, term), ilike(users.displayName, term)),
+      ),
+    )
     .orderBy(users.displayName)
     .limit(limit);
 }
@@ -32,8 +37,11 @@ export function search(query: string, limit = 10) {
 // stay actionable; for a signed-out viewer it's just the most-followed accounts.
 export function suggested(viewerId: string | null, limit = 5) {
   const followerCount = sql<number>`count(${follows.followerId})::int`;
+  // Suspended accounts are never suggested (they can't be followed meaningfully).
+  const notSuspended = sql`${users.suspendedAt} is null`;
   const exclude = viewerId
     ? and(
+      notSuspended,
       ne(users.id, viewerId),
       sql`${users.id} not in (
         select followee_id from follows
@@ -47,7 +55,7 @@ export function suggested(viewerId: string | null, limit = 5) {
         select user_id from blocks where target_user_id = ${viewerId}
       )`,
     )
-    : undefined;
+    : notSuspended;
   return db
     .select({
       id: users.id,
