@@ -1,5 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { Block, Delete, Follow, isActor, PUBLIC_COLLECTION, Undo } from "@fedify/fedify/vocab";
+import {
+  Block,
+  Delete,
+  Follow,
+  isActor,
+  PUBLIC_COLLECTION,
+  Reject,
+  Undo,
+} from "@fedify/fedify/vocab";
 import { getFederation } from "@/federation/mod.ts";
 import { origin } from "@/config.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
@@ -77,6 +85,28 @@ export async function sendUndoBlock(blockerId: string, targetActor: string): Pro
       id: new URL(`#unblocks/${crypto.randomUUID()}`, ctx.getActorUri(user.username)),
       actor: ctx.getActorUri(user.username),
       object: new Block({ actor: ctx.getActorUri(user.username), object: actor.id }),
+    }),
+  );
+}
+
+// Outbound Reject(Follow) to a remote follower's instance. Sent when a local
+// user removes a remote account from their followers ("Remove follower"): we
+// reconstruct the Follow(actor = the remote follower, object = our local actor)
+// and wrap it in a Reject so their instance severs the follow on its side.
+export async function sendRejectFollow(userId: string, targetActor: string): Promise<void> {
+  const user = await usersRepo.findById(userId);
+  if (!user) return;
+  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const actor = await ctx.lookupObject(targetActor);
+  if (!isActor(actor) || !actor.id) return;
+  const actorUri = ctx.getActorUri(user.username);
+  await ctx.sendActivity(
+    { identifier: user.username },
+    actor,
+    new Reject({
+      id: new URL(`#rejects/${crypto.randomUUID()}`, actorUri),
+      actor: actorUri,
+      object: new Follow({ actor: actor.id, object: actorUri }),
     }),
   );
 }

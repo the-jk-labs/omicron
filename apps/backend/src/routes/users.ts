@@ -57,6 +57,15 @@ userRoutes.get("/me/blocked", async (c) => {
   return c.json({ items: await relationsService.listRelation("block", viewer.id) });
 });
 
+// Remove a follower — force someone to stop following you without blocking them
+// (Instagram/Mastodon "Remove follower"). `:identifier` is a local username or a
+// remote user@host handle, as returned by the followers list.
+userRoutes.delete("/me/followers/:identifier", async (c) => {
+  const viewer = requireUser(c);
+  await followsService.removeFollower(viewer.id, c.req.param("identifier"));
+  return c.json({ ok: true });
+});
+
 // "Who to follow" suggestions (public). Registered before "/:username" so the
 // literal "suggested" segment isn't captured as a username.
 userRoutes.get("/suggested", async (c) => {

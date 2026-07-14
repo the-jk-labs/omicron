@@ -62,6 +62,14 @@ export function registerJobHandlers() {
     await sendUndoBlock(blockerId, targetActor);
   });
 
+  // A local user removed a remote follower; send Reject(Follow) so the actor's
+  // instance drops the follow on its side (Mastodon "Remove follower").
+  registerHandler("send_reject_follow", async ({ userId, targetActor }) => {
+    if (!federationRunning()) return;
+    const { sendRejectFollow } = await import("@/federation/outbound.ts");
+    await sendRejectFollow(userId, targetActor);
+  });
+
   // Account deletion. Broadcast a Delete(actor) to remote followers first (so
   // other instances tombstone us) while the key pair still exists, then remove
   // the user — FK cascades wipe their posts, follows, sessions, mutes & blocks.

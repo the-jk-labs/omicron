@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Dialog } from "bits-ui";
+  import { Button, Dialog } from "bits-ui";
   import { endpoints } from "$lib/api";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Icon from "$lib/components/Icon.svelte";
@@ -12,11 +12,18 @@
     username,
     kind,
     title,
+    canRemove = false,
+    onRemoved,
     children,
   }: {
     username: string;
     kind: "followers" | "following";
     title: string;
+    // When true (own followers list), each row gets a "Remove" action that
+    // forcibly drops that follower — Instagram/Mastodon "Remove follower".
+    canRemove?: boolean;
+    // Called after a follower is removed, so the caller can decrement its count.
+    onRemoved?: () => void;
     children: import("svelte").Snippet;
   } = $props();
 
@@ -24,6 +31,27 @@
   let items = $state<RelationActor[]>([]);
   let loaded = $state(false);
   let loading = $state(false);
+  // Follower ids awaiting a second click to confirm removal.
+  let confirming = $state<Set<string>>(new Set());
+  let removing = $state<Set<string>>(new Set());
+
+  async function removeFollower(actor: RelationActor) {
+    if (!confirming.has(actor.id)) {
+      confirming = new Set(confirming).add(actor.id);
+      return;
+    }
+    removing = new Set(removing).add(actor.id);
+    try {
+      await endpoints().removeFollower(actor.username);
+      items = items.filter((a) => a.id !== actor.id);
+      onRemoved?.();
+    } finally {
+      removing.delete(actor.id);
+      removing = new Set(removing);
+      confirming.delete(actor.id);
+      confirming = new Set(confirming);
+    }
+  }
 
   async function onOpenChange(next: boolean) {
     open = next;
@@ -77,11 +105,11 @@
         {:else}
           <ul>
             {#each items as actor (actor.id)}
-              <li>
+              <li class="flex items-center gap-1 rounded-card pr-2 hover:bg-muted">
                 <a
                   href={`/@${actor.username}`}
                   onclick={() => (open = false)}
-                  class="flex items-center gap-3 rounded-card px-3 py-2.5 hover:bg-muted"
+                  class="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5"
                 >
                   <Avatar name={actor.displayName} src={actor.avatarUrl ?? undefined} size={40} />
                   <span class="min-w-0">
@@ -93,6 +121,16 @@
                     </span>
                   </span>
                 </a>
+                {#if canRemove}
+                  <Button.Root
+                    onclick={() => removeFollower(actor)}
+                    disabled={removing.has(actor.id)}
+                    class="rounded-input shrink-0 border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-btn hover:bg-muted disabled:opacity-50 data-[confirm]:border-destructive data-[confirm]:text-destructive focus-visible:outline-none"
+                    data-confirm={confirming.has(actor.id) ? "" : undefined}
+                  >
+                    {confirming.has(actor.id) ? "Confirm" : "Remove"}
+                  </Button.Root>
+                {/if}
               </li>
             {/each}
           </ul>

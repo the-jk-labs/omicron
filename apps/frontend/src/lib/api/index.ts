@@ -254,6 +254,11 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     userFollowing: (username: string) =>
       api.get<{ items: RelationActor[] }>(`/users/${username}/following`),
 
+    // remove one of your own followers (Instagram/Mastodon "Remove follower").
+    // `identifier` is a local username or a remote user@host handle.
+    removeFollower: (identifier: string) =>
+      api.del(`/users/me/followers/${encodeURIComponent(identifier)}`),
+
     // muted / blocked lists for the signed-in user (Settings → Connections)
     muted: () => api.get<{ items: RelationActor[] }>("/users/me/muted"),
     blocked: () => api.get<{ items: RelationActor[] }>("/users/me/blocked"),

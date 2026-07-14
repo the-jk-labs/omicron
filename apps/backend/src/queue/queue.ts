@@ -18,6 +18,7 @@ export type JobName =
   | "send_unfollow"
   | "send_block"
   | "send_unblock"
+  | "send_reject_follow"
   | "delete_actor"
   | "send_password_reset"
   | "send_email_verification";
@@ -31,6 +32,7 @@ export type JobPayloads = {
   send_unfollow: { followerId: string; targetActor: string };
   send_block: { blockerId: string; targetActor: string };
   send_unblock: { blockerId: string; targetActor: string };
+  send_reject_follow: { userId: string; targetActor: string };
   delete_actor: { userId: string };
   send_password_reset: { to: string; token: string };
   send_email_verification: { to: string; token: string };

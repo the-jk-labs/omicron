@@ -24,6 +24,15 @@
   const profile = $derived(data.profile);
   // Self/edit/follow only apply to local profiles; remote browsing is read-only.
   const isSelf = $derived(!data.remote && data.user?.id === profile.user.id);
+  // Followers removed live from the "Remove follower" dialog, so the count on
+  // the page reflects the change without a reload. Reset when the profile
+  // changes (navigation to another handle).
+  let removedFollowers = $state(0);
+  $effect(() => {
+    profile.user.id;
+    removedFollowers = 0;
+  });
+  const followerCount = $derived(profile.counts.followers - removedFollowers);
   const isAdmin = $derived(!data.remote && "isAdmin" in profile.user && profile.user.isAdmin);
   // Public reading lists (local profiles only); the owner also sees their private ones.
   const lists = $derived(!data.remote ? data.lists : []);
@@ -185,10 +194,12 @@
           username={profile.user.username}
           kind="followers"
           title="Followers"
+          canRemove={isSelf}
+          onRemoved={() => removedFollowers++}
         >
           <span class="flex items-center gap-1">
             <Icon name="users" size={15} />
-            <strong class="text-foreground">{profile.counts.followers}</strong> followers
+            <strong class="text-foreground">{followerCount}</strong> followers
           </span>
         </FollowListDialog>
         <FollowListDialog
