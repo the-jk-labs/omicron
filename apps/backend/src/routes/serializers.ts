@@ -2,6 +2,7 @@
 import type { Post, ProfileLink, RemoteActor, User } from "@/db/schema.ts";
 import type { PostWithAuthor } from "@/db/repositories/posts.ts";
 import type { CommentWithAuthor } from "@/db/repositories/comments.ts";
+import type { NotificationRow } from "@/db/repositories/notifications.ts";
 import { htmlToText } from "@/lib/html.ts";
 
 // Minimal API payloads — never leak password hashes, keys, or emails publicly.
@@ -190,6 +191,31 @@ export function commentView(
     likeCount: row.likeStats?.count ?? 0,
     liked: row.likeStats?.liked ?? false,
     replies: (row.replies ?? []).map((r) => commentView(r)),
+  };
+}
+
+// Notification payload for the bell dropdown / notifications page. The actor is
+// coalesced from its local or remote source into the same `{ username, remote }`
+// shape as `postAuthor` so `/@${actor.username}` links resolve either way. A
+// short comment snippet is included for comment/reply/comment-like rows; the
+// post link is the id (the frontend hits /posts/:id, which redirects canonical).
+export function notificationView(row: NotificationRow) {
+  const n = row.notification;
+  const actor = row.actor
+    ? relationActorLocal(row.actor)
+    : row.remoteActor
+    ? relationActorRemote(row.remoteActor)
+    : null;
+  const snippet = row.commentContent ? htmlToText(row.commentContent).slice(0, 140) : null;
+  return {
+    id: n.id,
+    type: n.type as "follow" | "like" | "comment" | "reply" | "comment_like",
+    actor,
+    postId: n.postId,
+    postTitle: row.postTitle,
+    commentSnippet: snippet,
+    read: n.readAt !== null,
+    createdAt: n.createdAt,
   };
 }
 

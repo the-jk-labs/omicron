@@ -78,6 +78,7 @@
     Inbox,
     Gavel,
     Rss,
+    Bell,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -105,6 +106,7 @@
     codeBlock: Code2,
     link: LinkIcon,
     rss: Rss,
+    bell: Bell,
     hr: Minus,
     heading: Heading,
     h1: Heading1,

@@ -12,6 +12,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -484,6 +485,41 @@ export const postViewSeen = pgTable("post_view_seen", {
   primaryKey({ columns: [t.postId, t.visitorKey] }),
 ]);
 
+// ── notifications ──────────────────────────────────────────────────────
+// One row per interaction a local user should be told about: a new follower, a
+// like on their post, a comment/reply, or a like on their comment. The actor
+// who triggered it is either a local user (`actorId`) or a cached remote actor
+// (`remoteActorId`) — the same local-or-remote shape used by `follows`. Today
+// only remote follows are ingested, so remote actors appear only on `follow`
+// rows; the remote columns exist so remote like/reply notifications slot in for
+// free if those inbox listeners are ever added. `readAt` is null until seen.
+export const notifications = pgTable("notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  recipientId: uuid("recipient_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // "follow" | "like" | "comment" | "reply" | "comment_like"
+  type: text("type").notNull(),
+  actorId: uuid("actor_id").references(() => users.id, { onDelete: "cascade" }),
+  remoteActorId: uuid("remote_actor_id").references(() => remoteActors.id, { onDelete: "cascade" }),
+  postId: uuid("post_id").references(() => posts.id, { onDelete: "cascade" }),
+  commentId: uuid("comment_id").references(() => comments.id, { onDelete: "cascade" }),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  // Backs the list + keyset pagination: a recipient's newest first.
+  index("notifications_recipient_created_idx").on(t.recipientId, t.createdAt.desc(), t.id.desc()),
+  // Fast unread count for the bell badge.
+  index("notifications_recipient_unread_idx")
+    .on(t.recipientId)
+    .where(sql`${t.readAt} is null`),
+  // Dedupe: one row per (recipient, type, actor, target). Repeating an action
+  // (re-like after unlike) is idempotent via onConflictDoNothing. NULLS NOT
+  // DISTINCT so rows whose target columns are null (e.g. a follow, which has no
+  // post/comment) still collide instead of every insert being treated as unique.
+  unique("notifications_dedupe_idx")
+    .on(t.recipientId, t.type, t.actorId, t.remoteActorId, t.postId, t.commentId)
+    .nullsNotDistinct(),
+]);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Post = typeof posts.$inferSelect;
@@ -511,6 +547,8 @@ export type InstanceSetting = typeof instanceSettings.$inferSelect;
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
 export type BlockedDomain = typeof blockedDomains.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
 export type PostView = typeof postViews.$inferSelect;
 export type NewReadingList = typeof readingLists.$inferInsert;
 export type ReadingListItem = typeof readingListItems.$inferSelect;

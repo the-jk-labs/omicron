@@ -24,6 +24,21 @@ export function formatDate(iso: string): string {
   });
 }
 
+// Compact relative time, e.g. "now", "5m", "3h", "2d", falling back to an
+// absolute date past a week. Used where space is tight (notification rows).
+export function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const s = Math.max(0, Math.floor(diff / 1000));
+  if (s < 60) return "now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d`;
+  return formatDate(iso);
+}
+
 // Date plus 24h hh:mm time, e.g. "Jul 8, 2026, 14:05".
 export function formatDateTime(iso: string): string {
   const date = new Date(iso);

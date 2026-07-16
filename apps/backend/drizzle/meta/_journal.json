@@ -141,6 +141,13 @@
       "when": 1782815891054,
       "tag": "0019_permanent_view_dedup",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1782815891055,
+      "tag": "0020_notifications",
+      "breakpoints": true
     }
   ]
 }

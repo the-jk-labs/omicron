@@ -2,6 +2,7 @@
 import * as commentLikesRepo from "@/db/repositories/commentLikes.ts";
 import * as commentsRepo from "@/db/repositories/comments.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
+import * as notifications from "@/services/notifications.ts";
 import { forbidden, notFound } from "@/lib/http.ts";
 
 // Business logic for comment likes. Returns fresh stats so the client can
@@ -21,11 +22,26 @@ export async function like(userId: string, commentId: string) {
     throw forbidden("You cannot like this comment.");
   }
   await commentLikesRepo.add(commentId, userId);
+  await notifications.notify({
+    recipientId: comment.authorId,
+    type: "comment_like",
+    actorId: userId,
+    postId: comment.postId,
+    commentId,
+  });
   return statsOf(commentId, userId);
 }
 
 export async function unlike(userId: string, commentId: string) {
-  if (!(await commentsRepo.findById(commentId))) throw notFound("Comment not found.");
+  const comment = await commentsRepo.findById(commentId);
+  if (!comment) throw notFound("Comment not found.");
   await commentLikesRepo.remove(commentId, userId);
+  await notifications.unnotify({
+    recipientId: comment.authorId,
+    type: "comment_like",
+    actorId: userId,
+    postId: comment.postId,
+    commentId,
+  });
   return statsOf(commentId, userId);
 }

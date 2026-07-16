@@ -3,6 +3,7 @@ import * as commentsRepo from "@/db/repositories/comments.ts";
 import * as commentLikesRepo from "@/db/repositories/commentLikes.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
+import * as notifications from "@/services/notifications.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import type { CommentWithAuthor } from "@/db/repositories/comments.ts";
@@ -45,13 +46,46 @@ export async function create(
   // Resolve the parent: replies attach to a top-level comment, so replying to a
   // reply re-targets its parent (keeps the thread one level deep).
   let resolvedParentId: string | null = null;
+  let replyToAuthorId: string | null = null;
   if (parentId) {
     const parent = await commentsRepo.findById(parentId);
     if (!parent || parent.postId !== postId) throw notFound("Parent comment not found.");
     resolvedParentId = parent.parentId ?? parent.id;
+    // Notify whoever's comment was directly replied to (not the re-targeted
+    // top-level parent) — that's the intuitive "someone replied to you".
+    replyToAuthorId = parent.authorId;
   }
 
-  return commentsRepo.create({ postId, authorId, content: text, parentId: resolvedParentId });
+  const comment = await commentsRepo.create({
+    postId,
+    authorId,
+    content: text,
+    parentId: resolvedParentId,
+  });
+
+  // Notify the post's author (local posts only); a reply also notifies the
+  // author of the comment it replies to. notify() drops self-actions, and the
+  // guard avoids a duplicate when the post author is also the replied-to author.
+  if (post.post.authorId) {
+    await notifications.notify({
+      recipientId: post.post.authorId,
+      type: "comment",
+      actorId: authorId,
+      postId,
+      commentId: comment.id,
+    });
+  }
+  if (replyToAuthorId && replyToAuthorId !== post.post.authorId) {
+    await notifications.notify({
+      recipientId: replyToAuthorId,
+      type: "reply",
+      actorId: authorId,
+      postId,
+      commentId: comment.id,
+    });
+  }
+
+  return comment;
 }
 
 // Edits a comment's text. Only the author may edit (admins can delete but not

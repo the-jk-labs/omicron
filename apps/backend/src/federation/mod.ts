@@ -34,6 +34,7 @@ import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as listsRepo from "@/db/repositories/readingLists.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
+import * as notifications from "@/services/notifications.ts";
 import { buildArticle } from "@/federation/article.ts";
 import { buildPerson } from "@/federation/actor.ts";
 import { cacheActor } from "@/federation/remote.ts";
@@ -227,6 +228,14 @@ function setupInbox(f: Federation<ContextData>) {
       }
 
       await followsRepo.createRemoteFollower(followee.id, follower.id.href);
+      // Notify the local user of the new (remote) follower. Cache the actor so
+      // the notification can reference it; best-effort inside notify().
+      const cachedActor = await cacheActor(follower);
+      await notifications.notify({
+        recipientId: followee.id,
+        type: "follow",
+        remoteActorId: cachedActor.id,
+      });
       // Auto-accept follows for now.
       await ctx.sendActivity(
         { identifier: parsed.identifier },

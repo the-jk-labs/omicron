@@ -3,6 +3,7 @@ import * as followsRepo from "@/db/repositories/follows.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
+import * as notifications from "@/services/notifications.ts";
 import { relationActorLocal, relationActorRemote } from "@/routes/serializers.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import { isRemoteHandle } from "@/lib/handles.ts";
@@ -21,12 +22,14 @@ export async function follow(followerId: string, targetUsername: string) {
     throw forbidden("You cannot follow this user.");
   }
   await followsRepo.createLocal(followerId, target.id);
+  await notifications.notify({ recipientId: target.id, type: "follow", actorId: followerId });
 }
 
 export async function unfollow(followerId: string, targetUsername: string) {
   const target = await usersRepo.findByUsername(targetUsername);
   if (!target) throw notFound("User not found.");
   await followsRepo.removeLocal(followerId, target.id);
+  await notifications.unnotify({ recipientId: target.id, type: "follow", actorId: followerId });
 }
 
 // Removes a follower — the "Remove follower" action (Instagram/Mastodon): the

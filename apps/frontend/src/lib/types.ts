@@ -97,6 +97,24 @@ export type Page<T> = {
   nextCursor: string | null;
 };
 
+// An in-app notification (mirrors the backend `notificationView`). `actor` is
+// the local-or-remote user who triggered it, in the same `{ username, remote }`
+// shape as PostAuthor so `/@${actor.username}` links resolve either way; it is
+// null only if the actor was deleted. `postId` targets /posts/:id (canonical
+// redirect); `postTitle`/`commentSnippet` give the row its context.
+export type NotificationType = "follow" | "like" | "comment" | "reply" | "comment_like";
+
+export type Notification = {
+  id: string;
+  type: NotificationType;
+  actor: PostAuthor | null;
+  postId: string | null;
+  postTitle: string | null;
+  commentSnippet: string | null;
+  read: boolean;
+  createdAt: string;
+};
+
 export type Profile = {
   user: User;
   counts: { followers: number; following: number };

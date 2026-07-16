@@ -2,6 +2,7 @@
 import * as likesRepo from "@/db/repositories/likes.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
+import * as notifications from "@/services/notifications.ts";
 import { forbidden, notFound } from "@/lib/http.ts";
 
 // Business logic for likes. Returns the fresh stats so the client can update
@@ -23,11 +24,30 @@ export async function like(userId: string, postId: string) {
     : false;
   if (blocked) throw forbidden("You cannot like this post.");
   await likesRepo.add(postId, userId);
+  // Notify the post's author (local posts only; remote posts have no local
+  // recipient and remote likes aren't federated out from here).
+  if (post.post.authorId) {
+    await notifications.notify({
+      recipientId: post.post.authorId,
+      type: "like",
+      actorId: userId,
+      postId,
+    });
+  }
   return statsOf(postId, userId);
 }
 
 export async function unlike(userId: string, postId: string) {
-  if (!(await postsRepo.findById(postId))) throw notFound("Post not found.");
+  const post = await postsRepo.findById(postId);
+  if (!post) throw notFound("Post not found.");
   await likesRepo.remove(postId, userId);
+  if (post.post.authorId) {
+    await notifications.unnotify({
+      recipientId: post.post.authorId,
+      type: "like",
+      actorId: userId,
+      postId,
+    });
+  }
   return statsOf(postId, userId);
 }

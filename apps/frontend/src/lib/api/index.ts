@@ -12,6 +12,7 @@ import type {
   EmailSettings,
   InstanceInfo,
   InstanceSettings,
+  Notification,
   Page,
   Post,
   Profile,
@@ -130,6 +131,15 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // user-facing report (flag a post or account)
     report: (subjectType: "post" | "user", subjectId: string, reason?: string) =>
       api.post<{ ok: true }>("/reports", { subjectType, subjectId, reason }),
+
+    // notifications
+    notifications: (cursor?: string | null) =>
+      api.get<Page<Notification>>(
+        `/notifications${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+      ),
+    unreadNotificationCount: () => api.get<{ count: number }>("/notifications/unread-count"),
+    markAllNotificationsRead: () => api.post<{ ok: true }>("/notifications/read"),
+    markNotificationRead: (id: string) => api.post<{ ok: true }>(`/notifications/${id}/read`),
 
     // search
     search: (query: string, scope?: "posts" | "people" | "tags") =>
