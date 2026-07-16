@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { untrack } from "svelte";
   import { Dialog, Slider } from "bits-ui";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
@@ -62,10 +63,16 @@
     offset = { x: (VIEWPORT - el.naturalWidth * cs) / 2, y: (VIEWPORT - el.naturalHeight * cs) / 2 };
   }
 
-  // Re-clamp (and thus re-center toward bounds) whenever the zoom changes.
+  // Re-clamp toward the viewport bounds whenever the zoom (or image size)
+  // changes. `offset` is read/written via untrack so this effect depends only on
+  // zoom/displayW/displayH — reading its own output would loop infinitely.
   $effect(() => {
     void zoom;
-    offset = clamp(offset.x, offset.y);
+    void displayW;
+    void displayH;
+    untrack(() => {
+      offset = clamp(offset.x, offset.y);
+    });
   });
 
   // ── drag to pan ──
