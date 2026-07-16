@@ -153,6 +153,7 @@
     trending: TrendingUp,
     lock: Lock,
     plus: Plus,
+    minus: Minus,
     flag: Flag,
     shieldOff: ShieldOff,
     inbox: Inbox,

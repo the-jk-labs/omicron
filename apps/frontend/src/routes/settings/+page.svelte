@@ -12,6 +12,7 @@
   import { AVATAR_MAX_DIMENSION, prepareImage } from "$lib/editor/image";
   import { formatDate } from "$lib/format";
   import Avatar from "$lib/components/ui/Avatar.svelte";
+  import AvatarCropper from "$lib/components/AvatarCropper.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import ConnectionsManager from "$lib/components/ConnectionsManager.svelte";
   import FollowedTagsManager from "$lib/components/FollowedTagsManager.svelte";
@@ -49,6 +50,10 @@
   let file = $state<File | null>(null);
   let previewUrl = $state<string | null>(null);
   let fileInput = $state<HTMLInputElement | null>(null);
+  // The freshly-picked raw photo, shown in the crop dialog before it becomes the
+  // pending `file`. Kept separate so cancelling the crop discards it cleanly.
+  let cropSrc = $state<string | null>(null);
+  let cropOpen = $state(false);
 
   let error = $state("");
   let saved = $state(false);
@@ -94,6 +99,24 @@
     previewUrl = null;
   }
 
+  function clearCropSrc() {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    cropSrc = null;
+  }
+
+  // Receives the square-cropped photo from the dialog and stages it for upload.
+  function onCropped(cropped: File) {
+    clearFile();
+    file = cropped;
+    previewUrl = URL.createObjectURL(cropped);
+    clearCropSrc();
+  }
+
+  // Discard the raw pick when the crop dialog is dismissed without applying.
+  $effect(() => {
+    if (!cropOpen && cropSrc) clearCropSrc();
+  });
+
   // Discards a freshly-picked (unsaved) photo, or removes the saved avatar so the
   // profile reverts to initials.
   async function removePhoto() {
@@ -126,9 +149,12 @@
       return;
     }
     error = "";
-    clearFile();
-    file = picked;
-    previewUrl = URL.createObjectURL(picked);
+    // Open the crop/zoom dialog on the raw pick; onCropped stages the result.
+    clearCropSrc();
+    cropSrc = URL.createObjectURL(picked);
+    cropOpen = true;
+    // Reset the input so re-picking the same file fires change again.
+    (e.target as HTMLInputElement).value = "";
   }
 
   async function save() {
@@ -362,6 +388,7 @@
           class="hidden"
           onchange={onFileChange}
         />
+        <AvatarCropper bind:open={cropOpen} src={cropSrc} onCrop={onCropped} />
       </div>
 
       <!-- Display name -->
