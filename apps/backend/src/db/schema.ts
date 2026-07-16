@@ -41,6 +41,11 @@ export const users = pgTable("users", {
   publicEmail: text("public_email").notNull().default(""),
   avatarUrl: text("avatar_url"),
   isAdmin: boolean("is_admin").notNull().default(false),
+  // Private account (Instagram-style). Public by default: anyone reads the
+  // posts and follows instantly. When private, posts are visible only to
+  // approved followers and following requires approval (see follows.approved);
+  // federated via the actor's `manuallyApprovesFollowers` flag.
+  isPrivate: boolean("is_private").notNull().default(false),
   // When the user confirmed their login email. Null until verified. Only gates
   // sign-in when EMAIL_VERIFICATION_REQUIRED is set (see services/auth.ts).
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
@@ -164,7 +169,15 @@ export const follows = pgTable("follows", {
   remoteFolloweeId: uuid("remote_followee_id").references(() => remoteActors.id, {
     onDelete: "cascade",
   }),
+  // Follow-edge approval. Public accounts approve instantly (default true). For
+  // a private followee the edge starts unapproved (a follow request) until the
+  // owner approves it; for outbound local→remote follows it's false until the
+  // remote instance sends back Accept.
   approved: boolean("approved").notNull().default(true),
+  // For an inbound *remote* follow request, the original Follow activity's URI.
+  // Stored so a later approve can send a correct Accept(Follow) referencing it.
+  // Null for local edges and for auto-accepted public follows.
+  followActivityId: text("follow_activity_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   // Prevent duplicate local follow edges.

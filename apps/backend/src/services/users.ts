@@ -2,6 +2,8 @@
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as linksRepo from "@/db/repositories/profileLinks.ts";
+import * as followsRepo from "@/db/repositories/follows.ts";
+import * as followRequests from "@/services/followRequests.ts";
 import { relationActorLocal } from "@/routes/serializers.ts";
 import { config } from "@/config.ts";
 import { badRequest } from "@/lib/http.ts";
@@ -115,6 +117,25 @@ export async function updateProfile(
     tags: await tagsRepo.tagsForUser(userId),
     links: await linksRepo.listForUser(userId),
   };
+}
+
+// Flips the account between public and private. Going public auto-approves every
+// pending follow request (Instagram behaviour) — sending Accepts to remote
+// requesters and "accepted" notifications to local ones. The privacy change also
+// flips the federated actor's `manuallyApprovesFollowers`, so push an actor
+// update to instances that cached the old flag.
+export async function setPrivacy(userId: string, isPrivate: boolean): Promise<User> {
+  const user = await usersRepo.update(userId, { isPrivate });
+
+  if (!isPrivate) {
+    const pending = await followsRepo.pendingInboundEdges(userId);
+    for (const edge of pending) {
+      await followRequests.approve(userId, edge.id);
+    }
+  }
+
+  queue.add("federate_actor_update", { userId });
+  return user;
 }
 
 // "Who to follow" suggestions for the discovery rail. Each suggestion carries

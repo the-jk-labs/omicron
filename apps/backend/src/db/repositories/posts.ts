@@ -171,6 +171,28 @@ const isPublished = eq(posts.status, "published");
 // and are unaffected. Relies on every listing left-joining `users` on authorId.
 const notSuspended = sql`(${posts.authorId} is null or ${users.suspendedAt} is null)`;
 
+// Gates posts by a *private* local author to approved followers only (plus the
+// author themselves). Public authors and remote posts (authorId null) are
+// unaffected. Relies on every listing left-joining `users` on authorId. Unlike
+// notHidden this can't be dropped for guests — a private author's posts must
+// never show to a logged-out viewer — so it always returns a condition.
+function visibleToViewer(viewerId: string | null) {
+  if (!viewerId) {
+    return sql`(${posts.authorId} is null or ${users.isPrivate} = false)`;
+  }
+  return sql`(
+    ${posts.authorId} is null
+    or ${users.isPrivate} = false
+    or ${posts.authorId} = ${viewerId}
+    or exists (
+      select 1 from follows f
+      where f.followee_id = ${posts.authorId}
+        and f.follower_id = ${viewerId}
+        and f.approved = true
+    )
+  )`;
+}
+
 // Excludes authors the viewer has muted or blocked, and authors who have blocked
 // the viewer (blocks are bidirectional locally). Returns undefined for guests —
 // `and()` drops undefined operands, so feeds are unfiltered when logged out.
@@ -215,6 +237,7 @@ export function listGlobal(
         isPublished,
         notSuspended,
         notHidden(viewerId),
+        visibleToViewer(viewerId),
         beforeCursor(cursor),
       ),
     )
@@ -236,6 +259,7 @@ export function searchPosts(viewerId: string | null, query: string, limit = DEFA
         isPublished,
         notSuspended,
         notHidden(viewerId),
+        visibleToViewer(viewerId),
         sql`${posts.searchVector} @@ ${tsquery}`,
       ),
     )
@@ -264,6 +288,7 @@ export function listTrending(viewerId: string | null, limit = 5, sinceDays = 14)
         isPublished,
         notSuspended,
         notHidden(viewerId),
+        visibleToViewer(viewerId),
         gt(posts.createdAt, since),
       ),
     )
@@ -284,6 +309,7 @@ export function listLocal(
         isPublished,
         notSuspended,
         notHidden(viewerId),
+        visibleToViewer(viewerId),
         beforeCursor(cursor),
       ),
     )
@@ -304,6 +330,7 @@ export function listByAuthor(
         isPublished,
         notSuspended,
         notHidden(viewerId),
+        visibleToViewer(viewerId),
         beforeCursor(cursor),
       ),
     )
@@ -350,6 +377,7 @@ export function listByRemoteActor(
         eq(posts.remoteActorId, remoteActorId),
         eq(posts.apType, "Article"),
         notHidden(viewerId),
+        visibleToViewer(viewerId),
         beforeCursor(cursor),
       ),
     )
@@ -375,6 +403,7 @@ export function listByTag(
         isPublished,
         notSuspended,
         notHidden(viewerId),
+        visibleToViewer(viewerId),
         beforeCursor(cursor),
       ),
     )
@@ -387,13 +416,15 @@ export function listByTag(
 // the remote actors this user follows (delivered to our inbox, or crawled when
 // first followed); followed tags pull in any matching published Article.
 export function listFeed(userId: string, cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
+  // Only *approved* follows contribute posts: a pending request to a private
+  // account must not leak that account's posts into the requester's feed.
   const followedLocal = sql`(
     select followee_id from follows
-    where follower_id = ${userId} and followee_id is not null
+    where follower_id = ${userId} and followee_id is not null and approved = true
   )`;
   const followedRemote = sql`(
     select remote_followee_id from follows
-    where follower_id = ${userId} and remote_followee_id is not null
+    where follower_id = ${userId} and remote_followee_id is not null and approved = true
   )`;
   const followedTagPosts = sql`(
     select pt.post_id from post_tags pt

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import {
+  Accept,
   Block,
   Delete,
   Follow,
@@ -107,6 +108,37 @@ export async function sendRejectFollow(userId: string, targetActor: string): Pro
       id: new URL(`#rejects/${crypto.randomUUID()}`, actorUri),
       actor: actorUri,
       object: new Follow({ actor: actor.id, object: actorUri }),
+    }),
+  );
+}
+
+// Outbound Accept(Follow) to a remote follower's instance. Sent when a private
+// local user approves a pending remote follow request: we reconstruct the
+// original Follow(actor = the remote follower, object = our local actor) —
+// reusing the stored activity id when we have it — and wrap it in an Accept so
+// their instance confirms the follow on its side.
+export async function sendAcceptFollow(
+  userId: string,
+  targetActor: string,
+  followActivityId: string | null = null,
+): Promise<void> {
+  const user = await usersRepo.findById(userId);
+  if (!user) return;
+  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const actor = await ctx.lookupObject(targetActor);
+  if (!isActor(actor) || !actor.id) return;
+  const actorUri = ctx.getActorUri(user.username);
+  await ctx.sendActivity(
+    { identifier: user.username },
+    actor,
+    new Accept({
+      id: new URL(`#accepts/${crypto.randomUUID()}`, actorUri),
+      actor: actorUri,
+      object: new Follow({
+        id: followActivityId ? new URL(followActivityId) : undefined,
+        actor: actor.id,
+        object: actorUri,
+      }),
     }),
   );
 }

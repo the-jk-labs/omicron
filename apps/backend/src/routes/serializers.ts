@@ -24,6 +24,7 @@ export function publicUser(u: User, tags: TagSummary[] = [], links: LinkSummary[
     publicEmail: u.publicEmail,
     avatarUrl: u.avatarUrl,
     isAdmin: u.isAdmin,
+    isPrivate: u.isPrivate,
     createdAt: u.createdAt,
     tags,
     links,
@@ -209,7 +210,14 @@ export function notificationView(row: NotificationRow) {
   const snippet = row.commentContent ? htmlToText(row.commentContent).slice(0, 140) : null;
   return {
     id: n.id,
-    type: n.type as "follow" | "like" | "comment" | "reply" | "comment_like",
+    type: n.type as
+      | "follow"
+      | "follow_request"
+      | "follow_accepted"
+      | "like"
+      | "comment"
+      | "reply"
+      | "comment_like",
     actor,
     postId: n.postId,
     postTitle: row.postTitle,

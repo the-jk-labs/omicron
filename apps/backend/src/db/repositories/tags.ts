@@ -1,14 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import {
-  postTags,
-  posts,
-  remoteActorTags,
-  tagFollows,
-  tags,
-  userTags,
-} from "@/db/schema.ts";
+import { posts, postTags, remoteActorTags, tagFollows, tags, userTags } from "@/db/schema.ts";
 
 // Tag DB access. Callers pass already-normalized slugs (see lib/tags.ts); the
 // stored `name` mirrors the slug so display and matching stay consistent.
@@ -68,7 +61,9 @@ export async function postCount(tagId: string): Promise<number> {
     .select({ count: sql<number>`count(*)::int` })
     .from(postTags)
     .innerJoin(posts, eq(posts.id, postTags.postId))
-    .where(and(eq(postTags.tagId, tagId), eq(posts.status, "published"), eq(posts.apType, "Article")));
+    .where(
+      and(eq(postTags.tagId, tagId), eq(posts.status, "published"), eq(posts.apType, "Article")),
+    );
   return row?.count ?? 0;
 }
 
@@ -110,7 +105,9 @@ export function trending(limit: number, sinceDays = 14): Promise<TagWithCount[]>
     .from(tags)
     .innerJoin(postTags, eq(postTags.tagId, tags.id))
     .innerJoin(posts, eq(posts.id, postTags.postId))
-    .where(and(eq(posts.status, "published"), eq(posts.apType, "Article"), gt(posts.createdAt, since)))
+    .where(
+      and(eq(posts.status, "published"), eq(posts.apType, "Article"), gt(posts.createdAt, since)),
+    )
     .groupBy(tags.id)
     .orderBy(desc(sql`count(${postTags.postId})`))
     .limit(limit) as Promise<TagWithCount[]>;
@@ -123,7 +120,9 @@ export async function follow(userId: string, tagId: string): Promise<void> {
 }
 
 export async function unfollow(userId: string, tagId: string): Promise<void> {
-  await db.delete(tagFollows).where(and(eq(tagFollows.userId, userId), eq(tagFollows.tagId, tagId)));
+  await db.delete(tagFollows).where(
+    and(eq(tagFollows.userId, userId), eq(tagFollows.tagId, tagId)),
+  );
 }
 
 export async function isFollowing(userId: string, tagId: string): Promise<boolean> {

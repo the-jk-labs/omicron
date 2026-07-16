@@ -2,7 +2,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { goto, invalidateAll } from "$app/navigation";
-  import { Button as ButtonPrimitive, Dialog, Label } from "bits-ui";
+  import { Button as ButtonPrimitive, Dialog, Label, Switch } from "bits-ui";
   import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
   import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
   import { endpoints, ApiError } from "$lib/api";
@@ -190,6 +190,23 @@
     await endpoints().logout();
     await invalidateAll();
     goto("/");
+  }
+
+  // Private account toggle. Optimistic: flip the switch immediately, revert on
+  // error. Going public server-side auto-approves any pending follow requests.
+  let isPrivate = $state(untrack(() => data.user.isPrivate));
+  let privacyBusy = $state(false);
+  async function togglePrivacy(next: boolean) {
+    privacyBusy = true;
+    isPrivate = next;
+    try {
+      await endpoints().setPrivacy(next);
+      await invalidateAll();
+    } catch {
+      isPrivate = !next;
+    } finally {
+      privacyBusy = false;
+    }
   }
 
   // Resend email verification for an unverified account.
@@ -491,6 +508,35 @@
           </ButtonPrimitive.Root>
         {/each}
       </div>
+    </div>
+  </section>
+
+  <!-- Privacy -->
+  <section class="rounded-card border border-border bg-background p-6">
+    <h2 class="text-lg font-semibold tracking-tight text-foreground">Privacy</h2>
+    <p class="mt-1 text-sm text-muted-foreground">Control who can see your stories.</p>
+
+    <div class="mt-4 flex items-center justify-between gap-4">
+      <div class="min-w-0">
+        <Label.Root for="private-account" class="text-sm font-medium text-foreground">
+          Private account
+        </Label.Root>
+        <p class="mt-0.5 text-xs text-muted-foreground">
+          When on, only followers you approve can see your stories, and new followers must send a
+          request. Turning it off approves everyone waiting.
+        </p>
+      </div>
+      <Switch.Root
+        id="private-account"
+        checked={isPrivate}
+        onCheckedChange={togglePrivacy}
+        disabled={privacyBusy}
+        class="focus-visible:ring-foreground focus-visible:ring-offset-background data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset peer inline-flex h-[36px] min-h-[36px] w-[60px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <Switch.Thumb
+          class="bg-background data-[state=unchecked]:shadow-mini pointer-events-none block size-[30px] shrink-0 rounded-full transition-transform data-[state=checked]:translate-x-6 data-[state=unchecked]:translate-x-0"
+        />
+      </Switch.Root>
     </div>
   </section>
 

@@ -25,7 +25,13 @@ export async function replaceForUser(
     await tx.delete(profileLinks).where(eq(profileLinks.userId, userId));
     if (links.length > 0) {
       await tx.insert(profileLinks).values(
-        links.map((l, i) => ({ userId, platform: l.platform, url: l.url, label: l.label, position: i })),
+        links.map((l, i) => ({
+          userId,
+          platform: l.platform,
+          url: l.url,
+          label: l.label,
+          position: i,
+        })),
       );
     }
     return await tx

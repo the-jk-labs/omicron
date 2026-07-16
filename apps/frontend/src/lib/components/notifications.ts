@@ -9,6 +9,10 @@ export function notificationAction(type: Notification["type"]): string {
   switch (type) {
     case "follow":
       return "started following you";
+    case "follow_request":
+      return "requested to follow you";
+    case "follow_accepted":
+      return "accepted your follow request";
     case "like":
       return "liked your post";
     case "comment":
@@ -24,7 +28,10 @@ export function notificationAction(type: Notification["type"]): string {
 export function notificationIcon(type: Notification["type"]): IconName {
   switch (type) {
     case "follow":
+    case "follow_accepted":
       return "follow";
+    case "follow_request":
+      return "lock";
     case "like":
     case "comment_like":
       return "heart";
@@ -38,6 +45,11 @@ export function notificationIcon(type: Notification["type"]): IconName {
 // Where clicking the row goes: a follow points at the actor's profile; every
 // other type points at the target post (/posts/:id redirects to canonical).
 export function notificationHref(n: Notification): string | null {
-  if (n.type === "follow") return n.actor ? `/@${n.actor.username}` : null;
+  // A follow request points at your inbox to approve/reject; the others point at
+  // the actor's profile (follow / accepted) or the target post.
+  if (n.type === "follow_request") return "/follow-requests";
+  if (n.type === "follow" || n.type === "follow_accepted") {
+    return n.actor ? `/@${n.actor.username}` : null;
+  }
   return n.postId ? `/posts/${n.postId}` : null;
 }

@@ -10,6 +10,9 @@ export type User = {
   publicEmail: string;
   avatarUrl: string | null;
   isAdmin: boolean;
+  // Private account (Instagram-style): posts are visible only to approved
+  // followers and following requires approval. Public by default.
+  isPrivate: boolean;
   createdAt: string;
   tags: Tag[];
   links: ProfileLink[];
@@ -102,7 +105,14 @@ export type Page<T> = {
 // shape as PostAuthor so `/@${actor.username}` links resolve either way; it is
 // null only if the actor was deleted. `postId` targets /posts/:id (canonical
 // redirect); `postTitle`/`commentSnippet` give the row its context.
-export type NotificationType = "follow" | "like" | "comment" | "reply" | "comment_like";
+export type NotificationType =
+  | "follow"
+  | "follow_request"
+  | "follow_accepted"
+  | "like"
+  | "comment"
+  | "reply"
+  | "comment_like";
 
 export type Notification = {
   id: string;
@@ -115,12 +125,27 @@ export type Notification = {
   createdAt: string;
 };
 
+// The viewer's follow relationship to a profile: not following, a pending
+// request (private account awaiting approval), or an approved follow.
+export type FollowState = "none" | "requested" | "following";
+
 export type Profile = {
   user: User;
   counts: { followers: number; following: number };
+  followState: FollowState;
   isFollowing: boolean;
   isMuted: boolean;
   isBlocked: boolean;
+  // A private profile the viewer can't see into (not the owner, not an approved
+  // follower): header + counts render, but posts and follower lists are hidden.
+  locked: boolean;
+};
+
+// A pending follow request shown on the /follow-requests page.
+export type FollowRequest = {
+  requestId: string;
+  actor: RelationActor;
+  createdAt: string;
 };
 
 // A remote actor's profile, shaped like the local profile response so the

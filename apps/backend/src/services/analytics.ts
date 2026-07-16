@@ -33,7 +33,11 @@ export async function recordPostView(
   if (isBot(userAgent)) return;
   if (!(await onInstanceViewsEnabled())) return;
 
-  const key = userId ? await userVisitorKey(userId) : anonCookie ? await anonVisitorKey(anonCookie) : null;
+  const key = userId
+    ? await userVisitorKey(userId)
+    : anonCookie
+    ? await anonVisitorKey(anonCookie)
+    : null;
   if (!key) return;
 
   // One view per reader per post, ever: a repeat read — same day or years

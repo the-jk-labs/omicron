@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
 import * as followsService from "@/services/follows.ts";
+import * as followRequestsService from "@/services/followRequests.ts";
 import * as postsService from "@/services/posts.ts";
 import * as usersService from "@/services/users.ts";
 import * as relationsService from "@/services/relations.ts";
@@ -28,6 +29,33 @@ userRoutes.patch("/me", async (c) => {
     links: body.links,
   });
   return c.json({ user: publicUser(user, tags, links.map(profileLinkView)) });
+});
+
+// Toggle the signed-in user's private/public account state. Going public
+// auto-approves pending follow requests (handled in the service).
+userRoutes.patch("/me/privacy", async (c) => {
+  const viewer = requireUser(c);
+  const body = await c.req.json();
+  const user = await usersService.setPrivacy(viewer.id, body.isPrivate === true);
+  return c.json({ user: publicUser(user) });
+});
+
+// Pending follow requests to the signed-in (private) user, and approve/reject.
+userRoutes.get("/me/follow-requests", async (c) => {
+  const viewer = requireUser(c);
+  return c.json({ items: await followRequestsService.list(viewer.id) });
+});
+
+userRoutes.post("/me/follow-requests/:id/approve", async (c) => {
+  const viewer = requireUser(c);
+  await followRequestsService.approve(viewer.id, c.req.param("id"));
+  return c.json({ ok: true });
+});
+
+userRoutes.post("/me/follow-requests/:id/reject", async (c) => {
+  const viewer = requireUser(c);
+  await followRequestsService.reject(viewer.id, c.req.param("id"));
+  return c.json({ ok: true });
 });
 
 // Upload a new avatar (raw image body; content-type identifies the format).
@@ -76,18 +104,22 @@ userRoutes.get("/suggested", async (c) => {
 // Public profile + the viewer's follow/mute/block state.
 userRoutes.get("/:username", async (c) => {
   const viewer = c.get("user");
-  const { user, counts, isFollowing, isMuted, isBlocked } = await followsService.profile(
-    c.req.param("username"),
-    viewer?.id ?? null,
-  );
+  const { user, counts, followState, isFollowing, isMuted, isBlocked, locked } =
+    await followsService
+      .profile(
+        c.req.param("username"),
+        viewer?.id ?? null,
+      );
   const tags = await tagsRepo.tagsForUser(user.id);
   const links = await usersService.profileLinks(user.id);
   return c.json({
     user: publicUser(user, tags, links.map(profileLinkView)),
     counts,
+    followState,
     isFollowing,
     isMuted,
     isBlocked,
+    locked,
   });
 });
 
@@ -123,8 +155,8 @@ userRoutes.get("/:username/posts", async (c) => {
 // Follow / unfollow (auth required).
 userRoutes.post("/:username/follow", async (c) => {
   const viewer = requireUser(c);
-  await followsService.follow(viewer.id, c.req.param("username"));
-  return c.json({ ok: true }, 201);
+  const { state } = await followsService.follow(viewer.id, c.req.param("username"));
+  return c.json({ ok: true, state }, 201);
 });
 
 userRoutes.delete("/:username/follow", async (c) => {

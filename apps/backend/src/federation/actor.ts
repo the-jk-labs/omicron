@@ -59,6 +59,10 @@ export async function buildPerson(
     inbox: ctx.getInboxUri(identifier),
     outbox: ctx.getOutboxUri(identifier),
     followers: ctx.getFollowersUri(identifier),
+    // Private accounts vet followers: remote instances show a "request to
+    // follow" (locked) actor and withhold the auto-follow, matching the local
+    // approval flow. Public accounts advertise instant follows (false).
+    manuallyApprovesFollowers: user.isPrivate,
     endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
     url: ctx.getActorUri(identifier),
     icon: user.avatarUrl ? new Image({ url: new URL(user.avatarUrl, origin) }) : undefined,

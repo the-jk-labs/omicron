@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Context } from "@fedify/fedify";
 import type { Actor } from "@fedify/fedify/vocab";
-import { Create, Delete, isActor, PUBLIC_COLLECTION, Tombstone, Update } from "@fedify/fedify/vocab";
+import {
+  Create,
+  Delete,
+  isActor,
+  PUBLIC_COLLECTION,
+  Tombstone,
+  Update,
+} from "@fedify/fedify/vocab";
 import { getFederation } from "@/federation/mod.ts";
 import { buildArticle } from "@/federation/article.ts";
 import { buildPerson } from "@/federation/actor.ts";
@@ -53,19 +60,24 @@ export async function deliverPost(
   const actorUri = ctx.getActorUri(author.username);
   const article = buildArticle(ctx, author.username, row.post, tags);
 
+  // A private author's posts are followers-only: address the followers
+  // collection, not the public one, so receiving instances keep them off public
+  // timelines. (Delivery already targets only approved remote followers.)
+  const audience = author.isPrivate ? ctx.getFollowersUri(author.username) : PUBLIC_COLLECTION;
+
   const activity = action === "update"
     // Update needs a fresh, unique activity id each time; the object id is stable.
     ? new Update({
       id: new URL(`/posts/${row.post.id}/updates/${crypto.randomUUID()}`, actorUri),
       actor: actorUri,
       object: article,
-      tos: [PUBLIC_COLLECTION],
+      tos: [audience],
     })
     : new Create({
       id: new URL(`/posts/${row.post.id}/activity`, actorUri),
       actor: actorUri,
       object: article,
-      tos: [PUBLIC_COLLECTION],
+      tos: [audience],
     });
 
   await ctx.sendActivity({ identifier: author.username }, recipients, activity);

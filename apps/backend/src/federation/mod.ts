@@ -227,16 +227,35 @@ function setupInbox(f: Federation<ContextData>) {
         return;
       }
 
-      await followsRepo.createRemoteFollower(followee.id, follower.id.href);
-      // Notify the local user of the new (remote) follower. Cache the actor so
-      // the notification can reference it; best-effort inside notify().
+      // Cache the actor so the notification can reference it; best-effort.
       const cachedActor = await cacheActor(follower);
+
+      if (followee.isPrivate) {
+        // Private account: hold the follow as an unapproved request (storing the
+        // Follow activity id so a later approve can Accept it) and notify the
+        // owner. Do NOT auto-Accept — the owner approves/rejects (see
+        // services/followRequests.ts), which sends the Accept/Reject.
+        await followsRepo.createRemoteFollower(
+          followee.id,
+          follower.id.href,
+          false,
+          follow.id?.href ?? null,
+        );
+        await notifications.notify({
+          recipientId: followee.id,
+          type: "follow_request",
+          remoteActorId: cachedActor.id,
+        });
+        return;
+      }
+
+      // Public account: accept instantly and notify the new follower.
+      await followsRepo.createRemoteFollower(followee.id, follower.id.href);
       await notifications.notify({
         recipientId: followee.id,
         type: "follow",
         remoteActorId: cachedActor.id,
       });
-      // Auto-accept follows for now.
       await ctx.sendActivity(
         { identifier: parsed.identifier },
         follower,
@@ -369,6 +388,9 @@ function setupOutbox(f: Federation<ContextData>) {
   f.setOutboxDispatcher("/users/{identifier}/outbox", async (ctx, identifier) => {
     const user = await usersRepo.findByUsername(identifier);
     if (!user) return null;
+    // A private account's posts are followers-only; the public outbox must not
+    // enumerate them to anyone who fetches it. Serve an empty collection.
+    if (user.isPrivate) return { items: [] };
     const rows: postsRepo.PostWithAuthor[] = await postsRepo.listByAuthor(user.id, null, null, 20);
     const page = rows.slice(0, 20);
     const tagsByPost = await tagsRepo.tagsForPosts(page.map(({ post }) => post.id));

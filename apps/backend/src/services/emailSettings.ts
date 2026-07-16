@@ -191,7 +191,9 @@ export async function setEmailConfig(input: EmailInput): Promise<void> {
 // Ensure a DKIM keypair exists for `domain` (generating one on first use) and
 // record the domain/selector. Returns the public key for the DNS record. The
 // private key never leaves the server.
-export async function ensureDkimKeys(domain: string): Promise<{ selector: string; publicKey: string }> {
+export async function ensureDkimKeys(
+  domain: string,
+): Promise<{ selector: string; publicKey: string }> {
   const existingDomain = await settingsRepo.get<string>(EMAIL_KEYS.dkimDomain);
   let publicKey = await settingsRepo.get<string>(EMAIL_KEYS.dkimPublicKey);
   const selector = (await settingsRepo.get<string>(EMAIL_KEYS.dkimSelector))?.trim() ||

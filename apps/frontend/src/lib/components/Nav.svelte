@@ -209,6 +209,11 @@
               <DropdownMenu.Item onSelect={() => goto(`/@${user.username}`)} class={itemClass}>
                 <Icon name="user" size={18} /> Profile
               </DropdownMenu.Item>
+              {#if user.isPrivate}
+                <DropdownMenu.Item onSelect={() => goto("/follow-requests")} class={itemClass}>
+                  <Icon name="lock" size={18} /> Follow requests
+                </DropdownMenu.Item>
+              {/if}
               <DropdownMenu.Item onSelect={() => goto("/compose")} class={itemClass}>
                 <Icon name="compose" size={18} /> Write a story
               </DropdownMenu.Item>

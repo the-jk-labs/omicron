@@ -2,6 +2,8 @@
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
+import * as usersRepo from "@/db/repositories/users.ts";
+import * as followsRepo from "@/db/repositories/follows.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import { MAX_TAGS_PER_POST, normalizeTags } from "@/lib/tags.ts";
@@ -75,6 +77,16 @@ export async function getPost(id: string, viewerId: string | null = null) {
       ? await relationsRepo.hasRemote("block", viewerId, row.post.remoteActorId)
       : false;
     if (blocked) throw notFound("Post not found.");
+  }
+  // Private accounts: a post by a private local author is visible only to the
+  // author and their approved followers. Feeds/profile enforce this in SQL
+  // (visibleToViewer); a direct permalink is gated here.
+  if (row.post.authorId && row.post.authorId !== viewerId) {
+    const author = await usersRepo.findById(row.post.authorId);
+    if (author?.isPrivate) {
+      const allowed = viewerId ? await followsRepo.isFollowing(viewerId, row.post.authorId) : false;
+      if (!allowed) throw notFound("Post not found.");
+    }
   }
   return row;
 }

@@ -12,7 +12,14 @@ import { queue } from "@/queue/queue.ts";
 // Business logic for the follow system. Remote actors (federation) are handled
 // elsewhere; this covers local user → local user follows.
 
-export async function follow(followerId: string, targetUsername: string) {
+// Follow (or request to follow) a local user. Public accounts approve instantly
+// and the follower gets a "follow" notification; private accounts hold the edge
+// unapproved (a follow request) and the owner gets a "follow_request" they must
+// approve. Returns the resulting state so the caller can reflect it in the UI.
+export async function follow(
+  followerId: string,
+  targetUsername: string,
+): Promise<{ state: "requested" | "following" }> {
   const target = await usersRepo.findByUsername(targetUsername);
   if (!target) throw notFound("User not found.");
   if (target.id === followerId) throw badRequest("You cannot follow yourself.");
@@ -21,15 +28,37 @@ export async function follow(followerId: string, targetUsername: string) {
   if (await relationsRepo.localBlockExists(followerId, target.id)) {
     throw forbidden("You cannot follow this user.");
   }
-  await followsRepo.createLocal(followerId, target.id);
+  // An existing edge (already following, or already requested) is left as-is so
+  // a repeat click doesn't churn state or re-notify.
+  const existing = await followsRepo.followState(followerId, target.id);
+  if (existing !== "none") return { state: existing };
+
+  if (target.isPrivate) {
+    await followsRepo.createLocal(followerId, target.id, false);
+    await notifications.notify({
+      recipientId: target.id,
+      type: "follow_request",
+      actorId: followerId,
+    });
+    return { state: "requested" };
+  }
+  await followsRepo.createLocal(followerId, target.id, true);
   await notifications.notify({ recipientId: target.id, type: "follow", actorId: followerId });
+  return { state: "following" };
 }
 
+// Unfollow, or cancel a pending follow request. Removes the edge either way and
+// clears whichever notification it produced (follow or follow_request).
 export async function unfollow(followerId: string, targetUsername: string) {
   const target = await usersRepo.findByUsername(targetUsername);
   if (!target) throw notFound("User not found.");
   await followsRepo.removeLocal(followerId, target.id);
   await notifications.unnotify({ recipientId: target.id, type: "follow", actorId: followerId });
+  await notifications.unnotify({
+    recipientId: target.id,
+    type: "follow_request",
+    actorId: followerId,
+  });
 }
 
 // Removes a follower — the "Remove follower" action (Instagram/Mastodon): the
@@ -65,10 +94,26 @@ export async function profile(username: string, viewerId: string | null) {
     throw notFound("User not found.");
   }
   const counts = await followsRepo.counts(user.id);
-  const isFollowing = viewerId ? await followsRepo.isFollowing(viewerId, user.id) : false;
+  const state = viewerId && viewerId !== user.id
+    ? await followsRepo.followState(viewerId, user.id)
+    : "none";
+  const isFollowing = state === "following";
   const isMuted = viewerId ? await relationsRepo.hasLocal("mute", viewerId, user.id) : false;
   const isBlocked = viewerId ? await relationsRepo.hasLocal("block", viewerId, user.id) : false;
-  return { user, counts, isFollowing, isMuted, isBlocked };
+  // A private profile is "locked" for everyone except its owner and approved
+  // followers: the header + counts still render, but posts and the
+  // follower/following lists are withheld (see followersOf/followingOf).
+  const isSelf = viewerId === user.id;
+  const locked = user.isPrivate && !isSelf && state !== "following";
+  return { user, counts, followState: state, isFollowing, isMuted, isBlocked, locked };
+}
+
+// Whether `viewerId` may see a user's posts / follower lists — the owner or an
+// approved follower of a private account, or anyone for a public account.
+async function canViewPrivate(user: { id: string; isPrivate: boolean }, viewerId: string | null) {
+  if (!user.isPrivate) return true;
+  if (viewerId === user.id) return true;
+  return viewerId ? await followsRepo.isFollowing(viewerId, user.id) : false;
 }
 
 // Public follower / following lists for a user's profile (local + cached remote
@@ -76,6 +121,8 @@ export async function profile(username: string, viewerId: string | null) {
 export async function followersOf(username: string, viewerId: string | null = null) {
   const user = await usersRepo.findByUsername(username);
   if (!user) throw notFound("User not found.");
+  // A locked private profile hides its follower list from non-followers.
+  if (!await canViewPrivate(user, viewerId)) return [];
   const [local, remote] = await Promise.all([
     followsRepo.listLocalFollowers(user.id, viewerId),
     followsRepo.listRemoteFollowers(user.id, viewerId),
@@ -86,6 +133,8 @@ export async function followersOf(username: string, viewerId: string | null = nu
 export async function followingOf(username: string, viewerId: string | null = null) {
   const user = await usersRepo.findByUsername(username);
   if (!user) throw notFound("User not found.");
+  // A locked private profile hides its following list from non-followers.
+  if (!await canViewPrivate(user, viewerId)) return [];
   const [local, remote] = await Promise.all([
     followsRepo.listLocalFollowing(user.id, viewerId),
     followsRepo.listRemoteFollowing(user.id, viewerId),

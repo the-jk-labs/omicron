@@ -10,6 +10,7 @@ import type {
   EmailDnsResult,
   EmailInput,
   EmailSettings,
+  FollowRequest,
   InstanceInfo,
   InstanceSettings,
   Notification,
@@ -249,8 +250,18 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.get<Page<Post>>(
         `/users/${username}/posts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
       ),
-    follow: (username: string) => api.post(`/users/${username}/follow`),
+    follow: (username: string) =>
+      api.post<{ ok: true; state: "requested" | "following" }>(`/users/${username}/follow`),
     unfollow: (username: string) => api.del(`/users/${username}/follow`),
+
+    // private-account controls: privacy toggle + the follow-request inbox
+    setPrivacy: (isPrivate: boolean) =>
+      api.patch<{ user: User }>("/users/me/privacy", { isPrivate }),
+    followRequests: () => api.get<{ items: FollowRequest[] }>("/users/me/follow-requests"),
+    approveFollowRequest: (id: string) =>
+      api.post<{ ok: true }>(`/users/me/follow-requests/${id}/approve`),
+    rejectFollowRequest: (id: string) =>
+      api.post<{ ok: true }>(`/users/me/follow-requests/${id}/reject`),
 
     // mute / block local users (auth required)
     mute: (username: string) => api.post(`/users/${username}/mute`),

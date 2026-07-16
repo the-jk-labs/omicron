@@ -25,6 +25,10 @@
   const profile = $derived(data.profile);
   // Self/edit/follow only apply to local profiles; remote browsing is read-only.
   const isSelf = $derived(!data.remote && data.user?.id === profile.user.id);
+  // A private local profile the viewer can't see into: header + counts render,
+  // but posts, reading lists and the follower/following member lists are hidden
+  // behind a "This account is private" notice (Instagram-style).
+  const locked = $derived(!data.remote && data.profile.locked);
   // Followers removed live from the "Remove follower" dialog, so the count on
   // the page reflects the change without a reload. Reset when the profile
   // changes (navigation to another handle).
@@ -137,7 +141,11 @@
           <Icon name="edit" size={15} /> Edit profile
         </Button>
       {:else if data.user}
-        <FollowButton username={data.profile.user.username} following={data.profile.isFollowing} />
+        <FollowButton
+          username={data.profile.user.username}
+          following={data.profile.isFollowing}
+          followState={data.profile.followState}
+        />
         <ProfileMenu
           username={data.profile.user.username}
           muted={data.profile.isMuted}
@@ -198,6 +206,13 @@
         <span>
           <strong class="text-foreground">{profile.counts.following}</strong> following
         </span>
+      {:else if locked}
+        <!-- Private profile: counts show, but the member lists stay hidden. -->
+        <span class="flex items-center gap-1">
+          <Icon name="users" size={15} />
+          <strong class="text-foreground">{followerCount}</strong> followers
+        </span>
+        <span><strong class="text-foreground">{profile.counts.following}</strong> following</span>
       {:else}
         <FollowListDialog
           username={profile.user.username}
@@ -229,7 +244,7 @@
       value="stories"
       class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center border-b border-transparent py-3"
     >Stories</Tabs.Trigger>
-    {#if !data.remote}
+    {#if !data.remote && !locked}
       <Tabs.Trigger
         value="lists"
         class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center border-b border-transparent py-3"
@@ -242,7 +257,19 @@
   </Tabs.List>
 
   <Tabs.Content value="stories" class="select-none pt-3">
-    {#if posts.length === 0}
+    {#if locked}
+      <div class="rounded-card border border-border bg-background-alt px-6 py-12 text-center">
+        <div
+          class="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground"
+        >
+          <Icon name="lock" size={22} />
+        </div>
+        <p class="font-semibold text-foreground">This account is private</p>
+        <p class="mt-1 text-sm text-muted-foreground">
+          Follow {profile.user.displayName} to see their stories.
+        </p>
+      </div>
+    {:else if posts.length === 0}
       <p class="py-10 text-center text-muted-foreground">No stories yet.</p>
     {:else}
       {#each posts as post (post.id)}

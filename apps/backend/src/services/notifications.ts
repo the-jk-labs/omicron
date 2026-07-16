@@ -8,7 +8,14 @@ import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.t
 // federation inbox call. Both are best-effort: a notification failure must never
 // break the underlying like/follow/comment write, so they swallow errors.
 
-export type NotificationType = "follow" | "like" | "comment" | "reply" | "comment_like";
+export type NotificationType =
+  | "follow"
+  | "follow_request"
+  | "follow_accepted"
+  | "like"
+  | "comment"
+  | "reply"
+  | "comment_like";
 
 type NotifyParams = {
   recipientId: string;

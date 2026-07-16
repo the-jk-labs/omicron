@@ -81,9 +81,7 @@ export async function login(identifier: string, password: string): Promise<{
   // Always spend the cost of a bcrypt comparison, even when the account doesn't
   // exist, so response timing can't distinguish "no such user" from "wrong
   // password" (account enumeration). Same generic error either way.
-  const ok = user
-    ? await verifyPassword(password, user.passwordHash)
-    : await verifyDummy(password);
+  const ok = user ? await verifyPassword(password, user.passwordHash) : await verifyDummy(password);
   if (!user || !ok) {
     throw unauthorized("Invalid username or password.");
   }

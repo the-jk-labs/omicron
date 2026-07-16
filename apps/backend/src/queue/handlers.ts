@@ -70,6 +70,14 @@ export function registerJobHandlers() {
     await sendRejectFollow(userId, targetActor);
   });
 
+  // A private local user approved a pending remote follow request; send
+  // Accept(Follow) so the requester's instance confirms the follow.
+  registerHandler("send_accept_follow", async ({ userId, targetActor, followActivityId }) => {
+    if (!federationRunning()) return;
+    const { sendAcceptFollow } = await import("@/federation/outbound.ts");
+    await sendAcceptFollow(userId, targetActor, followActivityId);
+  });
+
   // Account deletion. Broadcast a Delete(actor) to remote followers first (so
   // other instances tombstone us) while the key pair still exists, then remove
   // the user — FK cascades wipe their posts, follows, sessions, mutes & blocks.

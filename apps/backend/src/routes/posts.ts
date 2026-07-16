@@ -74,11 +74,15 @@ postRoutes.get("/:id", async (c) => {
     // Only issue the anonymous reader cookie to readers who could actually be
     // counted — never to an opted-out or bot request, so nothing is set for
     // traffic we're not going to track anyway.
-    if (!viewer && !anonCookie && !readerOptedOut(headers) && !isBot(headers.get("user-agent") ?? "")) {
+    if (
+      !viewer && !anonCookie && !readerOptedOut(headers) && !isBot(headers.get("user-agent") ?? "")
+    ) {
       anonCookie = crypto.randomUUID() + crypto.randomUUID();
       setCookie(c, VIEW_COOKIE, anonCookie, viewCookieOpts);
     }
-    analyticsService.recordPostView(row.post.id, headers, viewer?.id ?? null, anonCookie).catch(() => {});
+    analyticsService.recordPostView(row.post.id, headers, viewer?.id ?? null, anonCookie).catch(
+      () => {},
+    );
   }
 
   return c.json({ post: await enrichPost(row, viewer?.id ?? null) });
