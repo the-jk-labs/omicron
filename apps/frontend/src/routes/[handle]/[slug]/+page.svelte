@@ -34,6 +34,7 @@
   });
   let deleting = $state(false);
   let deleteError = $state("");
+  let unpublishing = $state(false);
   let shared = $state(false);
 
   // Authoring controls: edit is author-only; delete is author or admin. Neither
@@ -120,6 +121,28 @@
     }
   }
 
+  // Revert a published post to a draft: it leaves public feeds and any remote
+  // copies are tombstoned. The author edits it from Drafts.
+  async function unpublishPost() {
+    if (unpublishing) return;
+    const ok = await confirm({
+      title: "Move to drafts",
+      description:
+        "Unpublish this article? It will be hidden from readers and moved to your drafts. You can publish it again later.",
+      confirmText: "Move to drafts",
+    });
+    if (!ok) return;
+    unpublishing = true;
+    deleteError = "";
+    try {
+      await endpoints().updatePost(post.id, { status: "draft" });
+      goto("/drafts");
+    } catch (err) {
+      deleteError = err instanceof ApiError ? err.message : "Failed to unpublish.";
+      unpublishing = false;
+    }
+  }
+
   async function toggleLike() {
     if (!data.user) {
       goto("/login");
@@ -197,6 +220,11 @@
           {#if canEdit}
             <DropdownMenu.Item onSelect={() => goto(`/posts/${post.id}/edit`)} class={itemClass}>
               <Icon name="edit" size={18} /> Edit
+            </DropdownMenu.Item>
+          {/if}
+          {#if canEdit && post.status === "published"}
+            <DropdownMenu.Item onSelect={unpublishPost} class={itemClass}>
+              <Icon name="draft" size={18} /> Move to drafts
             </DropdownMenu.Item>
           {/if}
           {#if canReport}

@@ -149,6 +149,10 @@ export async function updatePost(authorId: string, id: string, input: {
   if (post.status === "published") {
     const action = row.post.status === "published" ? "update" : "create";
     queue.add("federate_post", { postId: post.id, action });
+  } else if (row.post.status === "published" && post.authorId) {
+    // Unpublishing (published → draft) makes the post private again; tombstone
+    // the copies already delivered to remote followers.
+    queue.add("federate_post_delete", { postId: post.id, authorId: post.authorId });
   }
   return post;
 }
