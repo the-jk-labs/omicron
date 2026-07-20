@@ -61,7 +61,7 @@
     value: "local",
     label: "Local",
     icon: "users",
-    empty: "No stories on this instance yet.",
+    empty: "No articles on this instance yet.",
     fetch: api.localTimeline,
   });
 
@@ -69,7 +69,7 @@
     value: "global",
     label: "Global",
     icon: "globe",
-    empty: "No federated stories yet.",
+    empty: "No federated articles yet.",
     fetch: api.globalTimeline,
     preload: personalized ? undefined : preload,
   });
@@ -125,7 +125,7 @@
   <!-- Logged-out hero, Medium style. -->
   <section class="mb-10 pb-10">
     <h1 class="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-      Human stories &amp; ideas
+      Human articles &amp; ideas
     </h1>
     <p class="mt-3 max-w-prose text-lg text-muted-foreground">
       A place to read, write, and connect across the fediverse. Follow writers on any
@@ -145,7 +145,7 @@
     <div class="py-10 text-center text-muted-foreground">
       <p>{feed.empty}</p>
       <div class="mt-4 flex justify-center">
-        <Button href="/compose" variant="outline"><Icon name="compose" size={16} /> Write a story</Button>
+        <Button href="/compose" variant="outline"><Icon name="compose" size={16} /> Write an article</Button>
       </div>
     </div>
   {:else}

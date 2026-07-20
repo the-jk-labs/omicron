@@ -13,15 +13,15 @@
   const posts = $derived(data.results.posts);
   const people = $derived(data.results.people);
   const tags = $derived(data.results.tags);
-  // Open whichever tab has matches; default to Stories, then Tags, then People.
+  // Open whichever tab has matches; default to Articles, then Tags, then People.
   const defaultTab = $derived(
     posts.length > 0
-      ? "stories"
+      ? "articles"
       : tags.length > 0
         ? "tags"
         : people.length > 0
           ? "people"
-          : "stories",
+          : "articles",
   );
 
   // The nav's search pill is hidden below `sm`, so on mobile this page is the
@@ -73,7 +73,7 @@
       bind:value={query}
       type="search"
       placeholder="Search"
-      aria-label="Search stories and people"
+      aria-label="Search articles and people"
       autofocus={!data.query}
       class="placeholder:text-muted-foreground w-full bg-transparent text-[15px] outline-none"
     />
@@ -83,7 +83,7 @@
 {#if !data.query}
   <div class="py-20 text-center">
     <Icon name="search" size={32} class="text-muted-foreground mx-auto" />
-    <p class="text-muted-foreground mt-3 text-sm">Search stories and people across the fediverse.</p>
+    <p class="text-muted-foreground mt-3 text-sm">Search articles and people across the fediverse.</p>
   </div>
 {:else}
   <header class="mb-4">
@@ -96,10 +96,10 @@
     <Tabs.Root value={defaultTab} class="w-full">
       <Tabs.List class="mb-2 flex items-center gap-6 text-sm font-medium">
         <Tabs.Trigger
-          value="stories"
+          value="articles"
           class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center gap-1.5 border-b border-transparent py-3"
         >
-          <Icon name="read" size={16} /> Stories
+          <Icon name="read" size={16} /> Articles
           <span class="text-muted-foreground text-xs">{posts.length}</span>
         </Tabs.Trigger>
         <Tabs.Trigger
@@ -118,9 +118,9 @@
         </Tabs.Trigger>
       </Tabs.List>
 
-      <Tabs.Content value="stories" class="pt-3">
+      <Tabs.Content value="articles" class="pt-3">
         {#if posts.length === 0}
-          <p class="text-muted-foreground py-10 text-center">No stories match “{data.query}”.</p>
+          <p class="text-muted-foreground py-10 text-center">No articles match “{data.query}”.</p>
         {:else}
           {#each posts as post (post.id)}
             <PostCard {post} />
@@ -150,7 +150,7 @@
                     </span>
                     <span class="text-muted-foreground block truncate text-xs">
                       {tag.postCount}
-                      {tag.postCount === 1 ? "story" : "stories"}
+                      {tag.postCount === 1 ? "article" : "articles"}
                     </span>
                   </span>
                 </a>

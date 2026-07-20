@@ -9,7 +9,7 @@
   let {
     tags = $bindable([]),
     max = MAX_TAGS_PER_POST,
-    hint = `Up to ${max} tags help readers discover your story.`,
+    hint = `Up to ${max} tags help readers discover your article.`,
   }: { tags?: string[]; max?: number; hint?: string } = $props();
 
   let draft = $state("");

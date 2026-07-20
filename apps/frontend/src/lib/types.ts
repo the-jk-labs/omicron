@@ -184,7 +184,7 @@ export type RelationActor = {
 // the Follow button work unchanged.
 export type SuggestedUser = RelationActor & { followerCount: number };
 
-// Site-search payload: matching stories, people and tags. People reuse the
+// Site-search payload: matching articles, people and tags. People reuse the
 // `RelationActor` shape so `/@${username}` links resolve local or remote.
 export type SearchResults = {
   posts: Post[];

@@ -19,7 +19,7 @@
   // extension, so passing stored HTML as a string would show the tags verbatim.
   let {
     onUpdate,
-    placeholder = "Tell your story…",
+    placeholder = "Write your article…",
     content,
   }: {
     onUpdate: (html: string, json: unknown) => void;
@@ -150,7 +150,7 @@
       element,
       // Placeholder is per-instance (it needs the `placeholder` prop), so it's
       // appended to the shared base extensions here. The first line shows the
-      // story prompt; every other empty line (e.g. below an image) shows a
+      // article prompt; every other empty line (e.g. below an image) shows a
       // generic hint, so there's always a visible caret target.
       extensions: [
         ...extensions,

@@ -541,7 +541,7 @@
   <!-- Privacy -->
   <section class="rounded-card border border-border bg-background p-6">
     <h2 class="text-lg font-semibold tracking-tight text-foreground">Privacy</h2>
-    <p class="mt-1 text-sm text-muted-foreground">Control who can see your stories.</p>
+    <p class="mt-1 text-sm text-muted-foreground">Control who can see your articles.</p>
 
     <div class="mt-4 flex items-center justify-between gap-4">
       <div class="min-w-0">
@@ -549,7 +549,7 @@
           Private account
         </Label.Root>
         <p class="mt-0.5 text-xs text-muted-foreground">
-          When on, only followers you approve can see your stories, and new followers must send a
+          When on, only followers you approve can see your articles, and new followers must send a
           request. Turning it off approves everyone waiting.
         </p>
       </div>
@@ -571,7 +571,7 @@
   <section class="rounded-card border border-border bg-background p-6">
     <h2 class="text-lg font-semibold tracking-tight text-foreground">Followed tags</h2>
     <p class="mt-1 text-sm text-muted-foreground">
-      Stories tagged with these show up in your “For you” feed. Open any tag to follow it.
+      Articles tagged with these show up in your “For you” feed. Open any tag to follow it.
     </p>
 
     <div class="mt-4">

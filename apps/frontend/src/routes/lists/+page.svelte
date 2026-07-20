@@ -39,7 +39,7 @@
 
 {#if lists.length === 0}
   <p class="py-16 text-center text-muted-foreground">
-    You don't have any lists yet. Create one to start saving stories.
+    You don't have any lists yet. Create one to start saving articles.
   </p>
 {:else}
   <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

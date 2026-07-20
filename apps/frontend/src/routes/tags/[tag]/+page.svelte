@@ -43,7 +43,7 @@
     <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
       <span>
         <strong class="text-foreground">{data.detail.postCount}</strong>
-        {data.detail.postCount === 1 ? "story" : "stories"}
+        {data.detail.postCount === 1 ? "article" : "articles"}
       </span>
       <span>
         <strong class="text-foreground">{data.detail.followerCount}</strong>
@@ -60,7 +60,7 @@
 </header>
 
 {#if posts.length === 0}
-  <p class="py-16 text-center text-muted-foreground">No stories tagged #{tag.name} yet.</p>
+  <p class="py-16 text-center text-muted-foreground">No articles tagged #{tag.name} yet.</p>
 {:else}
   {#each posts as post (post.id)}
     <PostCard {post} />

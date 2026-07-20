@@ -34,7 +34,7 @@ export const GET: RequestHandler = async ({ fetch, params, url }) => {
 
   const body = renderRssFeed({
     title: `${author.displayName} · ${appName}`,
-    description: author.bio || `Stories by @${author.username} on ${appName}`,
+    description: author.bio || `Articles by @${author.username} on ${appName}`,
     link: `${url.origin}/@${author.username}`,
     feedUrl: url.href,
     items: posts.map((post) => postFeedItem(post, url.origin)),

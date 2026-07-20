@@ -28,7 +28,7 @@
       bind:value={query}
       type="search"
       placeholder="Search"
-      aria-label="Search stories and people"
+      aria-label="Search articles and people"
       class="placeholder:text-muted-foreground w-40 bg-transparent text-sm outline-none md:w-48 lg:w-64"
     />
   </div>

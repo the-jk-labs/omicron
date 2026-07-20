@@ -124,7 +124,7 @@
 {#if summary.posts.length === 0}
   <div class="rounded-card border border-border bg-background-alt px-6 py-12 text-center">
     <p class="text-muted-foreground">
-      Publish a story and its stats will show up here.
+      Publish an article and its stats will show up here.
     </p>
   </div>
 {:else}

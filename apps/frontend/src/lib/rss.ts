@@ -95,7 +95,7 @@ export type FeedItem = {
 /**
  * One feed item for a post: opening section, then the link back to the site.
  * Remote posts keep an on-instance link (`/@user@host/…` resolves here), so a
- * list feed mixing local and federated stories reads consistently.
+ * list feed mixing local and federated articles reads consistently.
  */
 export function postFeedItem(post: Post, origin: string): FeedItem {
   const link = `${origin}${postPath(post)}`;
@@ -106,7 +106,7 @@ export function postFeedItem(post: Post, origin: string): FeedItem {
     pubDate: post.createdAt,
     creator: post.author.displayName || post.author.username,
     categories: post.tags.map((t) => t.name),
-    descriptionHtml: `${opening}\n<p><a href="${link}">Read the full story</a></p>`,
+    descriptionHtml: `${opening}\n<p><a href="${link}">Read the full article</a></p>`,
   };
 }
 

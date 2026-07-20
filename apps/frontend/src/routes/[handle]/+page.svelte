@@ -238,12 +238,12 @@
   </div>
 </header>
 
-<Tabs.Root value="stories" class="w-full">
+<Tabs.Root value="articles" class="w-full">
   <Tabs.List class="mb-2 flex items-center gap-6 text-sm font-medium">
     <Tabs.Trigger
-      value="stories"
+      value="articles"
       class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center border-b border-transparent py-3"
-    >Stories</Tabs.Trigger>
+    >Articles</Tabs.Trigger>
     {#if !data.remote && !locked}
       <Tabs.Trigger
         value="lists"
@@ -256,7 +256,7 @@
     >About</Tabs.Trigger>
   </Tabs.List>
 
-  <Tabs.Content value="stories" class="select-none pt-3">
+  <Tabs.Content value="articles" class="select-none pt-3">
     {#if locked}
       <div class="rounded-card border border-border bg-background-alt px-6 py-12 text-center">
         <div
@@ -266,11 +266,11 @@
         </div>
         <p class="font-semibold text-foreground">This account is private</p>
         <p class="mt-1 text-sm text-muted-foreground">
-          Follow {profile.user.displayName} to see their stories.
+          Follow {profile.user.displayName} to see their articles.
         </p>
       </div>
     {:else if posts.length === 0}
-      <p class="py-10 text-center text-muted-foreground">No stories yet.</p>
+      <p class="py-10 text-center text-muted-foreground">No articles yet.</p>
     {:else}
       {#each posts as post (post.id)}
         <PostCard {post} />

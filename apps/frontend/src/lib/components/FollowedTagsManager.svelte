@@ -58,7 +58,7 @@
             <span class="block truncate text-sm font-medium text-foreground">#{tag.name}</span>
             <span class="block truncate text-xs text-muted-foreground">
               {tag.postCount}
-              {tag.postCount === 1 ? "story" : "stories"}
+              {tag.postCount === 1 ? "article" : "articles"}
             </span>
           </span>
         </a>

@@ -55,7 +55,7 @@
   async function removeList() {
     const ok = await confirm({
       title: "Delete list",
-      description: `Delete "${list.title}"? This can't be undone. Your saved stories aren't deleted.`,
+      description: `Delete "${list.title}"? This can't be undone. Your saved articles aren't deleted.`,
       confirmText: "Delete",
       destructive: true,
     });
@@ -120,7 +120,7 @@
 
 {#if posts.length === 0}
   <p class="py-16 text-center text-muted-foreground">
-    {data.isOwner ? "No stories saved yet. Use the bookmark on any story to add it here." : "This list is empty."}
+    {data.isOwner ? "No articles saved yet. Use the bookmark on any article to add it here." : "This list is empty."}
   </p>
 {:else}
   {#each posts as post (post.id)}
