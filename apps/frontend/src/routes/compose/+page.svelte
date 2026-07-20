@@ -8,6 +8,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import TagInput from "$lib/components/TagInput.svelte";
+  import LanguageSelect from "$lib/components/LanguageSelect.svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -27,6 +28,7 @@
   let postId = $state<string | null>(draft?.id ?? null);
   let title = $state(draft?.title ?? "");
   let tags = $state<string[]>(draft?.tags?.map((t) => t.name) ?? []);
+  let language = $state<string | null>(draft?.language ?? null);
   let html = $state(draft?.contentHtml ?? "");
   let json = $state<unknown>(draft?.contentJson ?? null);
   let error = $state("");
@@ -46,8 +48,9 @@
   // The tag input mutates `tags` directly; mark touched when it diverges from
   // the draft's original tags.
   const initialTags = (draft?.tags?.map((t) => t.name) ?? []).join(",");
+  const initialLanguage = draft?.language ?? null;
   $effect(() => {
-    if (tags.join(",") !== initialTags) touched = true;
+    if (tags.join(",") !== initialTags || language !== initialLanguage) touched = true;
   });
 
   // There's unsaved work worth keeping if the author has edited and there's
@@ -84,7 +87,7 @@
     if (status === "published") busy = true;
     else savingDraft = true;
     try {
-      const body = { title: title.trim(), contentHtml: html, contentJson: json, status, tags };
+      const body = { title: title.trim(), contentHtml: html, contentJson: json, status, language, tags };
       if (postId) {
         await endpoints().updatePost(postId, body);
       } else {
@@ -158,8 +161,11 @@
   class="mb-6 w-full border-none bg-transparent text-3xl font-bold tracking-tight text-foreground placeholder:text-muted-foreground focus:outline-none sm:text-4xl"
 />
 
-<div class="mb-6">
-  <TagInput bind:tags />
+<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start">
+  <div class="min-w-0 flex-1">
+    <TagInput bind:tags />
+  </div>
+  <LanguageSelect bind:value={language} />
 </div>
 
 {#if EditorComponent}

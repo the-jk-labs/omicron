@@ -12,6 +12,7 @@
   import TagList from "$lib/components/TagList.svelte";
   import SaveToListButton from "$lib/components/SaveToListButton.svelte";
   import { formatDateTime, readTime } from "$lib/format";
+  import { languageLabel } from "$lib/languages";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -196,6 +197,10 @@
         {#if post.remote && originInstance}
           <Separator.Root orientation="vertical" class="bg-border shrink-0 data-[orientation=vertical]:h-3 data-[orientation=vertical]:w-px" />
           <span class="flex items-center gap-1"><Icon name="globe" size={13} /> {originInstance}</span>
+        {/if}
+        {#if post.language}
+          <Separator.Root orientation="vertical" class="bg-border shrink-0 data-[orientation=vertical]:h-3 data-[orientation=vertical]:w-px" />
+          <span class="flex items-center gap-1"><Icon name="languages" size={13} /> {languageLabel(post.language)}</span>
         {/if}
       </div>
     </div>

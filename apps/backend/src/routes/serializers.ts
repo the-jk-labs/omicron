@@ -96,6 +96,7 @@ export function postWithAuthor(
     contentJson: row.post.contentJson,
     remote: row.post.remote,
     status: row.post.status,
+    language: row.post.language,
     createdAt: row.post.createdAt,
     author: postAuthor(row),
     tags,
@@ -233,6 +234,7 @@ export function barePost(p: Omit<Post, "searchVector">) {
     title: p.title,
     contentHtml: p.contentHtml,
     status: p.status,
+    language: p.language,
     createdAt: p.createdAt,
   };
 }

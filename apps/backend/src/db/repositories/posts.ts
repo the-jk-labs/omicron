@@ -1,8 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, desc, eq, getTableColumns, gt, lt, or, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  getTableColumns,
+  gt,
+  inArray,
+  isNull,
+  lt,
+  notInArray,
+  or,
+  sql,
+} from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { type NewPost, posts, postTags, remoteActors, tags, users } from "@/db/schema.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
+import type { LanguageFilter } from "@/lib/languages.ts";
 
 // Post DB access. Queries fetch `limit + 1` rows so the service can derive a
 // next-cursor without a second round-trip.
@@ -51,6 +64,7 @@ export async function upsertRemotePost(data: {
   title: string | null;
   contentHtml: string;
   apType: string;
+  language?: string | null;
   createdAt?: Date;
 }) {
   const [row] = await db
@@ -61,12 +75,13 @@ export async function upsertRemotePost(data: {
       title: data.title,
       contentHtml: data.contentHtml,
       apType: data.apType,
+      language: data.language ?? null,
       remote: true,
       ...(data.createdAt ? { createdAt: data.createdAt } : {}),
     })
     .onConflictDoUpdate({
       target: posts.apId,
-      set: { title: data.title, contentHtml: data.contentHtml },
+      set: { title: data.title, contentHtml: data.contentHtml, language: data.language ?? null },
     })
     .returning();
   return row;
@@ -220,6 +235,18 @@ function notHidden(viewerId: string | null) {
   );
 }
 
+// The reader's per-language feed filter. Posts with no declared language are
+// "unknown" and are never filtered out (so the existing corpus and any untagged
+// federated posts always remain visible); only posts whose language is known and
+// matches (show) / doesn't match (hide) the reader's chosen set are affected.
+// Returns undefined (no-op) when the filter is off, so `and()` drops it.
+function languageFilter(filter: LanguageFilter | null | undefined) {
+  if (!filter || filter.langs.length === 0) return undefined;
+  return filter.mode === "hide"
+    ? or(isNull(posts.language), notInArray(posts.language, filter.langs))
+    : or(isNull(posts.language), inArray(posts.language, filter.langs));
+}
+
 // Global (federated) feed: blog-type content across the whole fediverse,
 // local + remote. Filtered to "Article" so microblog Notes (Mastodon,
 // Pixelfed, …) are excluded. Remote posts here are ones already cached on this
@@ -229,6 +256,7 @@ export function listGlobal(
   viewerId: string | null,
   cursor: Cursor | null,
   limit = DEFAULT_PAGE_SIZE,
+  langFilter: LanguageFilter | null = null,
 ) {
   return selectPosts()
     .where(
@@ -238,6 +266,7 @@ export function listGlobal(
         notSuspended,
         notHidden(viewerId),
         visibleToViewer(viewerId),
+        languageFilter(langFilter),
         beforeCursor(cursor),
       ),
     )
@@ -301,6 +330,7 @@ export function listLocal(
   viewerId: string | null,
   cursor: Cursor | null,
   limit = DEFAULT_PAGE_SIZE,
+  langFilter: LanguageFilter | null = null,
 ) {
   return selectPosts()
     .where(
@@ -310,6 +340,7 @@ export function listLocal(
         notSuspended,
         notHidden(viewerId),
         visibleToViewer(viewerId),
+        languageFilter(langFilter),
         beforeCursor(cursor),
       ),
     )

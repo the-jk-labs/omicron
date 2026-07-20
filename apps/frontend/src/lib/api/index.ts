@@ -34,6 +34,28 @@ import type {
 
 type LikeState = { likeCount: number; liked: boolean };
 
+// The reader's feed language filter, forwarded to the timeline endpoints as
+// query params (see prefs.svelte.ts `feedLangQuery`).
+export type LangFilter = { langMode: "show" | "hide"; langs: string };
+
+// Builds the `?scope=&cursor=&langMode=&langs=` query string for the public
+// timelines, omitting whatever isn't set.
+function timelineQuery(
+  cursor?: string | null,
+  langFilter?: LangFilter | null,
+  scope?: "local",
+): string {
+  const params = new URLSearchParams();
+  if (scope) params.set("scope", scope);
+  if (cursor) params.set("cursor", cursor);
+  if (langFilter && langFilter.langs) {
+    params.set("langMode", langFilter.langMode);
+    params.set("langs", langFilter.langs);
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
 export { ApiError } from "./client";
 
 // Typed endpoint helpers. Pass a `fetch` from a load function for SSR; omit it
@@ -165,20 +187,20 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // feed + posts
     feed: (cursor?: string | null) =>
       api.get<Page<Post>>(`/feed${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
-    globalTimeline: (cursor?: string | null) =>
-      api.get<Page<Post>>(`/posts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
-    localTimeline: (cursor?: string | null) =>
-      api.get<Page<Post>>(`/posts?scope=local${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`),
+    globalTimeline: (cursor?: string | null, langFilter?: LangFilter | null) =>
+      api.get<Page<Post>>(`/posts${timelineQuery(cursor, langFilter)}`),
+    localTimeline: (cursor?: string | null, langFilter?: LangFilter | null) =>
+      api.get<Page<Post>>(`/posts${timelineQuery(cursor, langFilter, "local")}`),
     trendingPosts: () => api.get<{ items: Post[] }>("/posts/trending"),
     post: (id: string) => api.get<{ post: Post }>(`/posts/${id}`),
     drafts: (cursor?: string | null) =>
       api.get<Page<Post>>(`/posts/drafts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
     createPost: (
-      body: { title?: string; contentHtml: string; contentJson?: unknown; status?: "draft" | "published"; tags?: string[] },
+      body: { title?: string; contentHtml: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; tags?: string[] },
     ) => api.post<{ post: { id: string } }>("/posts", body),
     updatePost: (
       id: string,
-      body: { title?: string; contentHtml?: string; contentJson?: unknown; status?: "draft" | "published"; tags?: string[] },
+      body: { title?: string; contentHtml?: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; tags?: string[] },
     ) => api.patch<{ post: { id: string } }>(`/posts/${id}`, body),
     deletePost: (id: string) => api.del<{ ok: true }>(`/posts/${id}`),
 

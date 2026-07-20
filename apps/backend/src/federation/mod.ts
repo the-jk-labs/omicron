@@ -35,7 +35,7 @@ import * as listsRepo from "@/db/repositories/readingLists.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
 import * as notifications from "@/services/notifications.ts";
-import { buildArticle } from "@/federation/article.ts";
+import { articleLanguage, buildArticle } from "@/federation/article.ts";
 import { buildPerson } from "@/federation/actor.ts";
 import { cacheActor } from "@/federation/remote.ts";
 import { origin } from "@/config.ts";
@@ -326,6 +326,7 @@ function setupInbox(f: Federation<ContextData>) {
         // sanitize before it ever touches the database.
         contentHtml: sanitizePostHtml(object.content?.toString()),
         apType: "Article",
+        language: articleLanguage(object),
         createdAt: object.published ? new Date(object.published.epochMilliseconds) : undefined,
       });
 
@@ -354,6 +355,7 @@ function setupInbox(f: Federation<ContextData>) {
         // Remote HTML is untrusted and rendered with {@html} — sanitize on edit
         // exactly as on create.
         contentHtml: sanitizePostHtml(object.content?.toString()),
+        language: articleLanguage(object),
       });
 
       const tagNames: string[] = [];

@@ -2,6 +2,7 @@
 import type { DocumentLoader } from "@fedify/fedify";
 import { type Actor, Article, Create, Hashtag, isActor } from "@fedify/fedify/vocab";
 import { getFederation } from "@/federation/mod.ts";
+import { articleLanguage } from "@/federation/article.ts";
 import { origin } from "@/config.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
@@ -122,6 +123,7 @@ export async function fetchOutboxPosts(handle: string, remoteActorId: string): P
         // before store (same as the inbox Create path).
         contentHtml: sanitizePostHtml(text(obj.content)),
         apType: "Article",
+        language: articleLanguage(obj),
         createdAt: obj.published ? new Date(obj.published.epochMilliseconds) : undefined,
       });
       count++;

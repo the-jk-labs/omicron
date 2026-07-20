@@ -9,6 +9,7 @@ import { enrichPost, enrichPosts } from "@/services/engagement.ts";
 import * as analyticsService from "@/services/analytics.ts";
 import { isBot, readerOptedOut, VIEW_COOKIE, VIEW_COOKIE_TTL_MS } from "@/lib/analytics.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
+import { parseLanguageFilter } from "@/lib/languages.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import { barePost, commentView } from "@/routes/serializers.ts";
 import { config } from "@/config.ts";
@@ -29,9 +30,11 @@ const viewCookieOpts = {
 postRoutes.get("/", async (c) => {
   const viewer = c.get("user");
   const cursor = decodeCursor(c.req.query("cursor"));
+  // Optional reader-supplied language filter (`?langMode=show|hide&langs=en,tr`).
+  const langFilter = parseLanguageFilter(c.req.query("langMode"), c.req.query("langs"));
   const { items, nextCursor } = c.req.query("scope") === "local"
-    ? await postsService.localTimeline(cursor, viewer?.id ?? null)
-    : await postsService.globalTimeline(cursor, viewer?.id ?? null);
+    ? await postsService.localTimeline(cursor, viewer?.id ?? null, langFilter)
+    : await postsService.globalTimeline(cursor, viewer?.id ?? null, langFilter);
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
 });
 

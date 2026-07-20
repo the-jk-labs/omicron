@@ -136,6 +136,11 @@ export const posts = pgTable("posts", {
   // never surfaced in any public feed or profile) until published. Remote posts
   // are always `published`. Existing rows default to `published` on migration.
   status: text("status").notNull().default("published"),
+  // BCP-47 primary language subtag the author wrote this post in (e.g. "en",
+  // "tr"), lowercased, or null when unspecified. Drives the reader's per-language
+  // feed filter and federates as the Article content's language tag. Remote posts
+  // inherit the language declared on the incoming Article (null if none).
+  language: text("language"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   // Precomputed full-text search document: title (weight A) + tag-stripped body
   // (weight B). STORED + GIN-indexed, so search is an index lookup instead of a

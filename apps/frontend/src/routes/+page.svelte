@@ -57,12 +57,15 @@
     preload: personalized ? preload : undefined,
   });
 
+  // Local & global honour the reader's language filter (read live at call time,
+  // so a preference change is picked up on the next fetch). "For you" is left
+  // unfiltered — following an author is an explicit choice.
   const local = makeFeed({
     value: "local",
     label: "Local",
     icon: "users",
     empty: "No articles on this instance yet.",
-    fetch: api.localTimeline,
+    fetch: (c) => api.localTimeline(c, reading.feedLangQuery()),
   });
 
   const global = makeFeed({
@@ -70,7 +73,7 @@
     label: "Global",
     icon: "globe",
     empty: "No federated articles yet.",
-    fetch: api.globalTimeline,
+    fetch: (c) => api.globalTimeline(c, reading.feedLangQuery()),
     preload: personalized ? undefined : preload,
   });
 
@@ -90,7 +93,22 @@
       activeTab = pref;
       ensureLoaded(pref);
     }
+    // The SSR-preloaded feed (Global for guests) is fetched without the reader's
+    // language filter — localStorage isn't readable on the server. If a filter
+    // is set, refetch the active feed client-side so it applies immediately.
+    if (reading.feedLangQuery() && activeTab !== "for-you") refetch(activeTab);
   });
+
+  // Discards a feed's cached page and reloads it (used when the language filter
+  // must be re-applied to an already-loaded feed).
+  function refetch(value: string) {
+    const feed = feeds.find((f) => f.value === value);
+    if (!feed) return;
+    feed.loaded = false;
+    feed.items = [];
+    feed.cursor = null;
+    ensureLoaded(value);
+  }
 
   async function loadMore(feed: Feed) {
     if (feed.loading || !feed.cursor) return;

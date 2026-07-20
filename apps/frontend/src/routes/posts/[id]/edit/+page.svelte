@@ -7,6 +7,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import TagInput from "$lib/components/TagInput.svelte";
+  import LanguageSelect from "$lib/components/LanguageSelect.svelte";
   import { postPath } from "$lib/links";
   import type { PageData } from "./$types";
 
@@ -23,6 +24,7 @@
 
   let title = $state(post.title ?? "");
   let tags = $state<string[]>(post.tags?.map((t) => t.name) ?? []);
+  let language = $state<string | null>(post.language ?? null);
   let html = $state(post.contentHtml);
   let json = $state<unknown>(post.contentJson ?? null);
   let error = $state("");
@@ -49,6 +51,7 @@
         title: title.trim(),
         contentHtml: html,
         contentJson: json,
+        language,
         tags,
       });
       // Title may have changed, so navigate to the freshly-built canonical path.
@@ -80,8 +83,11 @@
   class="mb-6 w-full border-none bg-transparent text-3xl font-bold tracking-tight text-foreground placeholder:text-muted-foreground focus:outline-none sm:text-4xl"
 />
 
-<div class="mb-6">
-  <TagInput bind:tags />
+<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start">
+  <div class="min-w-0 flex-1">
+    <TagInput bind:tags />
+  </div>
+  <LanguageSelect bind:value={language} />
 </div>
 
 {#if EditorComponent}

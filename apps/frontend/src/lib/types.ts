@@ -47,6 +47,9 @@ export type Post = {
   contentJson?: unknown;
   remote: boolean;
   status?: "draft" | "published";
+  // BCP-47 primary language subtag (e.g. "en", "tr"), or null/undefined when the
+  // author didn't specify one.
+  language?: string | null;
   createdAt: string;
   author: PostAuthor;
   tags: Tag[];

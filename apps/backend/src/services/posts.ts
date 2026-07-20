@@ -7,6 +7,7 @@ import * as followsRepo from "@/db/repositories/follows.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import { MAX_TAGS_PER_POST, normalizeTags } from "@/lib/tags.ts";
+import { type LanguageFilter, normalizeLanguage } from "@/lib/languages.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
 import { queue } from "@/queue/queue.ts";
 
@@ -26,6 +27,7 @@ export async function createPost(authorId: string, input: {
   contentHtml: string;
   contentJson?: unknown;
   status?: string;
+  language?: string | null;
   tags?: string[];
 }) {
   const status = input.status === "draft" ? "draft" : "published";
@@ -48,6 +50,7 @@ export async function createPost(authorId: string, input: {
     contentHtml: html,
     contentJson: input.contentJson ?? null,
     status,
+    language: normalizeLanguage(input.language),
   });
 
   if (tags !== undefined) await tagsRepo.setPostTags(post.id, tags);
@@ -103,6 +106,7 @@ export async function updatePost(authorId: string, id: string, input: {
   contentHtml?: string;
   contentJson?: unknown;
   status?: string;
+  language?: string | null;
   tags?: string[];
 }) {
   const row = await postsRepo.findById(id);
@@ -134,6 +138,7 @@ export async function updatePost(authorId: string, id: string, input: {
     ...(input.title !== undefined ? { title: title || null } : {}),
     ...(html ? { contentHtml: html, contentJson: input.contentJson ?? null } : {}),
     ...(input.status !== undefined ? { status } : {}),
+    ...(input.language !== undefined ? { language: normalizeLanguage(input.language) } : {}),
   };
 
   // A tags-only edit touches no post columns; skip the update (drizzle rejects
@@ -204,13 +209,21 @@ export async function listByAuthor(
   return pageOf(rows, DEFAULT_PAGE_SIZE);
 }
 
-export async function globalTimeline(cursor: Cursor | null, viewerId: string | null = null) {
-  const rows = await postsRepo.listGlobal(viewerId, cursor, DEFAULT_PAGE_SIZE);
+export async function globalTimeline(
+  cursor: Cursor | null,
+  viewerId: string | null = null,
+  langFilter: LanguageFilter | null = null,
+) {
+  const rows = await postsRepo.listGlobal(viewerId, cursor, DEFAULT_PAGE_SIZE, langFilter);
   return pageOf(rows, DEFAULT_PAGE_SIZE);
 }
 
-export async function localTimeline(cursor: Cursor | null, viewerId: string | null = null) {
-  const rows = await postsRepo.listLocal(viewerId, cursor, DEFAULT_PAGE_SIZE);
+export async function localTimeline(
+  cursor: Cursor | null,
+  viewerId: string | null = null,
+  langFilter: LanguageFilter | null = null,
+) {
+  const rows = await postsRepo.listLocal(viewerId, cursor, DEFAULT_PAGE_SIZE, langFilter);
   return pageOf(rows, DEFAULT_PAGE_SIZE);
 }
 

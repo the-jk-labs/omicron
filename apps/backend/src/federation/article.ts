@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Context } from "@fedify/fedify";
-import { Article, Hashtag, PUBLIC_COLLECTION } from "@fedify/fedify/vocab";
+import { Article, Hashtag, LanguageString, PUBLIC_COLLECTION } from "@fedify/fedify/vocab";
 import { origin } from "@/config.ts";
 import type { Post } from "@/db/schema.ts";
 import type { TagSummary } from "@/db/repositories/tags.ts";
+import { normalizeLanguage } from "@/lib/languages.ts";
 
 // Builds the ActivityPub Article for a local post. Omicron is a long-form
 // blogging platform, so posts federate as Articles (not microblog Notes) and
@@ -22,7 +23,9 @@ export function buildArticle(
     id: new URL(`/posts/${post.id}`, ctx.getActorUri(identifier)),
     attribution: ctx.getActorUri(identifier),
     name: post.title ?? undefined,
-    content: post.contentHtml,
+    // When the author declared a language, tag the content with it (rdf:langString)
+    // so remote instances can language-filter it; otherwise send a plain string.
+    content: post.language ? new LanguageString(post.contentHtml, post.language) : post.contentHtml,
     to: PUBLIC_COLLECTION,
     cc: ctx.getFollowersUri(identifier),
     url: new URL(`/posts/${post.id}`, ctx.getActorUri(identifier)),
@@ -30,4 +33,11 @@ export function buildArticle(
       new Hashtag({ name: `#${t.name}`, href: new URL(`/tags/${t.slug}`, origin) })
     ),
   });
+}
+
+// Extracts the language a remote Article's content is tagged with (rdf:langString),
+// normalized to a bare primary subtag, or null when it carries no language tag.
+export function articleLanguage(article: Article): string | null {
+  const content = article.content;
+  return content instanceof LanguageString ? normalizeLanguage(content.locale.language) : null;
 }
