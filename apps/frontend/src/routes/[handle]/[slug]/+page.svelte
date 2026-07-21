@@ -33,6 +33,60 @@
     likeCount = data.post.likeCount;
     commentCount = data.post.commentCount;
   });
+  // Enhance server-rendered code blocks with a copy-to-clipboard button. The
+  // content is injected via {@html}, so we reach into the DOM after each render.
+  let contentEl = $state<HTMLElement>();
+  const COPY_SVG =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
+  const CHECK_SVG =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+
+  $effect(() => {
+    // Re-run whenever the rendered article changes.
+    void post.contentHtml;
+    const root = contentEl;
+    if (!root) return;
+
+    const cleanups: Array<() => void> = [];
+    for (const pre of Array.from(root.querySelectorAll("pre"))) {
+      if (pre.querySelector(":scope > .code-copy")) continue;
+      pre.classList.add("code-block");
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "code-copy";
+      btn.setAttribute("aria-label", "Copy code");
+      btn.innerHTML = COPY_SVG;
+
+      let resetTimer: ReturnType<typeof setTimeout> | undefined;
+      const onClick = async () => {
+        const code = pre.querySelector("code")?.textContent ?? pre.textContent ?? "";
+        try {
+          await navigator.clipboard.writeText(code);
+          btn.innerHTML = CHECK_SVG;
+          btn.classList.add("copied");
+          clearTimeout(resetTimer);
+          resetTimer = setTimeout(() => {
+            btn.innerHTML = COPY_SVG;
+            btn.classList.remove("copied");
+          }, 1600);
+        } catch {
+          /* Clipboard unavailable (e.g. insecure context) — ignore. */
+        }
+      };
+      btn.addEventListener("click", onClick);
+      pre.appendChild(btn);
+
+      cleanups.push(() => {
+        clearTimeout(resetTimer);
+        btn.removeEventListener("click", onClick);
+        btn.remove();
+      });
+    }
+
+    return () => cleanups.forEach((fn) => fn());
+  });
+
   let deleting = $state(false);
   let deleteError = $state("");
   let unpublishing = $state(false);
@@ -248,7 +302,7 @@
   </div>
 
   <!-- Content is server-rendered HTML produced by the Tiptap editor. -->
-  <div class="prose-omicron">
+  <div class="prose-omicron" bind:this={contentEl}>
     {@html post.contentHtml}
   </div>
 

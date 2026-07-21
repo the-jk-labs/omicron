@@ -176,6 +176,20 @@ html {
 .prose-omicron pre code {
   @apply bg-transparent p-0 text-inherit;
 }
+/* Copy button injected into rendered code blocks (see slug +page.svelte). */
+.prose-omicron pre.code-block {
+  @apply relative;
+}
+.prose-omicron pre.code-block .code-copy {
+  @apply absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-button border border-border bg-background text-muted-foreground opacity-0 shadow-btn transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+}
+.prose-omicron pre.code-block:hover .code-copy,
+.prose-omicron pre.code-block .code-copy:focus-visible {
+  @apply opacity-100;
+}
+.prose-omicron pre.code-block .code-copy.copied {
+  @apply text-foreground opacity-100;
+}
 
 /* Tiptap editor surface */
 .tiptap {
