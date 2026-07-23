@@ -26,6 +26,12 @@
 # /api to the backend). `handle` blocks are mutually exclusive and matched in
 # order, so the federation paths win and all other paths fall through.
 (routes) {
+	# Security hardening applied to every response: stop browsers from MIME
+	# sniffing and trust the declared Content-Type instead.
+	header {
+		X-Content-Type-Options nosniff
+	}
+
 	@federation path /.well-known/* /users/* /inbox /nodeinfo /nodeinfo/*
 	handle @federation {
 		reverse_proxy backend:8000
