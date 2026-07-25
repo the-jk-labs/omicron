@@ -18,6 +18,25 @@ bots:
   # the browser-challenge catch-all below.
   - import: (data)/crawlers/_allow-good.yaml
 
+  # The bundled list above covers each engine's main indexing crawler, but every
+  # engine also runs first-party fetchers under their own User-Agents that it
+  # does not name — Google's URL-inspection and discovery fetchers, Bing's
+  # preview renderer, the AdsBot family. Those hit article pages too, and
+  # without this they fall through to the browser challenge below and receive an
+  # interstitial carrying `<meta name="robots" content="noindex,nofollow">` —
+  # which is what actually keeps posts out of the index.
+  #
+  # Unlike the bundled rules this matches on User-Agent alone, with no
+  # reverse-DNS confirmation, so a scraper that sets one of these strings gets
+  # through. That is the deliberate trade: these names are narrow and specific
+  # (no generic browser UA is allowed here), and a searchable instance is worth
+  # more than shielding against a scraper willing to impersonate Googlebot.
+  # Remove this block if you would rather be unindexed than impersonated.
+  - name: search-engine-fetchers
+    user_agent_regex: >-
+      Google-InspectionTool|GoogleOther|Storebot-Google|AdsBot-Google|Google-Site-Verification|BingPreview|MicrosoftPreview|SeznamBot|Yeti|Sogou|Baiduspider
+    action: ALLOW
+
   - name: api
     path_regex: ^/api/
     action: ALLOW

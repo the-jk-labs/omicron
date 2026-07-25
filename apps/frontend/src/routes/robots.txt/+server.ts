@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { endpoints } from "$lib/api";
+import { canonicalOrigin, instanceDomain } from "$lib/canonical";
 import type { RequestHandler } from "./$types";
 
 // Served from the app origin so it governs the same host as the pages. When the
@@ -13,6 +14,9 @@ const DISALLOW = ["/compose", "/drafts", "/dashboard", "/settings", "/admin", "/
 
 export const GET: RequestHandler = async ({ fetch, url }) => {
   const { indexingEnabled } = await endpoints(fetch).seo().catch(() => ({ indexingEnabled: true }));
+  // Point at the canonical host's sitemap even when robots.txt was fetched via
+  // an alias, so both copies submit the same one URL set.
+  const origin = canonicalOrigin(await instanceDomain(fetch)) ?? url.origin;
 
   const body = indexingEnabled
     ? [
@@ -20,7 +24,7 @@ export const GET: RequestHandler = async ({ fetch, url }) => {
       "Allow: /",
       ...DISALLOW.map((p) => `Disallow: ${p}`),
       "",
-      `Sitemap: ${url.origin}/sitemap.xml`,
+      `Sitemap: ${origin}/sitemap.xml`,
       "",
     ].join("\n")
     : ["User-agent: *", "Disallow: /", ""].join("\n");

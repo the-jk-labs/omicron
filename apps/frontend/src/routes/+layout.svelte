@@ -7,6 +7,7 @@
   import SideNav from "$lib/components/SideNav.svelte";
   import MobileNav from "$lib/components/MobileNav.svelte";
   import Discover from "$lib/components/Discover.svelte";
+  import { canonicalOrigin } from "$lib/canonical";
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
   import type { Post, Profile, ReadingList } from "$lib/types";
   import type { LayoutData } from "./$types";
@@ -20,7 +21,16 @@
   const appName = $derived(data.instance?.name || env.PUBLIC_APP_NAME || "Omicron");
   const description =
     "A place to read, write, and connect — powered by ActivityPub. No lock-in, fully self-hostable.";
-  const ogImage = $derived(`${$page.url.origin}/og-image.png`);
+  // Every absolute URL we publish — the canonical link, og:url, the share image
+  // — is built on the instance's configured origin rather than the hostname this
+  // request happened to arrive on, so an article has one address wherever it is
+  // read from. Falls back to the request origin when no domain is configured
+  // (a fresh local instance), which is then the only origin there is.
+  const origin = $derived(canonicalOrigin(data.instance?.domain) ?? $page.url.origin);
+  // Query strings are tracking noise, never a distinct page here, so the
+  // canonical URL is the path alone.
+  const canonical = $derived(`${origin}${$page.url.pathname}`);
+  const ogImage = $derived(`${origin}/og-image.png`);
 
   // On a post page we emit article-specific Open Graph + the Mastodon
   // `fediverse:creator` tag, so shares render an author-attributed link card
@@ -112,12 +122,13 @@
 </script>
 
 <svelte:head>
+  <link rel="canonical" href={canonical} />
   <meta name="description" content={ogDescription} />
   <meta property="og:site_name" content={appName} />
   <meta property="og:title" content={ogTitle} />
   <meta property="og:description" content={ogDescription} />
   <meta property="og:type" content={ogType} />
-  <meta property="og:url" content={$page.url.href} />
+  <meta property="og:url" content={canonical} />
   <meta property="og:image" content={ogImage} />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content={ogTitle} />
