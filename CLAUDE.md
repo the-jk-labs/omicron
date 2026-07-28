@@ -100,3 +100,31 @@ and existing markup.
 These are ported from the Bits UI docs theme
 (`docs/src/lib/styles/app.css` in `huntabyte/bits-ui`). Keep them in sync with
 the docs; do not invent new design tokens.
+
+---
+
+## 📚 Keeping the documentation site in sync
+
+The user-facing documentation lives in a **separate repository**:
+`the-jk-labs/omicron-docs` (Astro + Bits UI, default branch `master`, checked
+out locally at `../omicron-docs`). Never add documentation-site code to this
+repo.
+
+After any change that alters what a user or an instance admin sees or does,
+**say so and offer to update omicron-docs** — as a separate suggestion, not a
+silent edit, and never as part of the same commit. What counts:
+
+- New, renamed, or removed environment variables (`.env.example`)
+- API routes added, removed, or changed in shape
+- Setup, deployment, upgrade, or backup steps
+- Federation behaviour visible to other instances
+- Any UI flow the docs walk through step by step
+- Defaults, limits, or anything the docs state as a concrete value
+
+Refactors, internal renames, tests, and styling that changes no documented
+behaviour need no docs change — do not suggest one.
+
+When updating omicron-docs: `.mdx` under `src/content/docs/`, and register any
+new page in `src/lib/nav.ts` (the single source of truth for the sidebar,
+mobile nav, and pager). Verify facts against the source here rather than from
+memory. That repo's own `CLAUDE.md` has its full rules.
