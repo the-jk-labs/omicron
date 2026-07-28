@@ -112,37 +112,80 @@
   let uploading = $state(false);
   let uploadError = $state("");
 
-  async function onImagePick(e: Event) {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = ""; // allow re-picking the same file later
-    if (!file) return;
-    if (!isAcceptedImage(file)) {
+  // Uploads images and inserts them at `pos` (defaults to the current cursor).
+  // Shared by the toolbar picker, clipboard paste, and drag-and-drop.
+  async function uploadImages(files: File[], pos?: number) {
+    const images = files.filter(isAcceptedImage);
+    if (!images.length) {
       uploadError = "Unsupported image type. Use PNG, JPEG, WebP, or GIF.";
       return;
     }
     uploadError = "";
     uploading = true;
+    // Insertion walks forward as images land, so pasting several files keeps
+    // their original order instead of stacking them in reverse.
+    let at = pos;
     try {
-      const { blob, type } = await prepareImage(file);
-      const { url } = await endpoints().uploadImage(blob, type);
-      // Insert the image together with a trailing paragraph, then move the cursor
-      // into that fresh line and scroll it into view so the author can keep
-      // writing immediately — just like a normal editor.
-      editor
-        .chain()
-        .insertContent([
+      for (const file of images) {
+        const { blob, type } = await prepareImage(file);
+        const { url } = await endpoints().uploadImage(blob, type);
+        // Insert the image together with a trailing paragraph so the author can
+        // keep writing immediately — just like a normal editor.
+        const content = [
           { type: "image", attrs: { src: url } },
           { type: "paragraph" },
-        ])
-        .focus("end")
-        .scrollIntoView()
-        .run();
+        ];
+        const chain = editor.chain();
+        if (at === undefined) chain.insertContent(content).focus("end");
+        else {
+          // The image node is 1 wide and the empty paragraph 2, so the caret
+          // lands at `at + 2` and the next image goes after both.
+          chain.insertContentAt(at, content).focus(at + 2);
+          at += 3;
+        }
+        chain.scrollIntoView().run();
+      }
     } catch (err) {
       uploadError = err instanceof ApiError ? err.message : "Failed to upload image.";
     } finally {
       uploading = false;
     }
+  }
+
+  function onImagePick(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    input.value = ""; // allow re-picking the same file later
+    if (files.length) void uploadImages(files);
+  }
+
+  // Screenshots and copied images arrive as clipboard *files*, which ProseMirror
+  // drops on the floor by default — so paste never worked. Intercept them and run
+  // them through the normal upload path. Doing this even when the clipboard also
+  // carries HTML means an image copied off a web page is rehosted here rather
+  // than hotlinked from wherever it came from.
+  function imageFilesFrom(data: DataTransfer | null): File[] {
+    if (!data) return [];
+    return Array.from(data.files).filter((file) => file.type.startsWith("image/"));
+  }
+
+  function handlePaste(_view: Editor["view"], event: ClipboardEvent): boolean {
+    const files = imageFilesFrom(event.clipboardData);
+    if (!files.length) return false;
+    event.preventDefault();
+    void uploadImages(files);
+    return true;
+  }
+
+  function handleDrop(view: Editor["view"], event: DragEvent, _slice: unknown, moved: boolean): boolean {
+    if (moved) return false; // an internal node drag, not an external file
+    const files = imageFilesFrom(event.dataTransfer);
+    if (!files.length) return false;
+    event.preventDefault();
+    // Drop where the pointer is, not where the cursor happens to be.
+    const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
+    void uploadImages(files, pos);
+    return true;
   }
 
   onMount(() => {
@@ -159,7 +202,11 @@
         }),
       ],
       content,
-      editorProps: { attributes: { class: "tiptap prose-omicron" } },
+      editorProps: {
+        attributes: { class: "tiptap prose-omicron" },
+        handlePaste,
+        handleDrop,
+      },
       onUpdate: ({ editor }) => onUpdate(editor.getHTML(), editor.getJSON()),
       onTransaction: ({ editor }) => refreshActive(editor),
     });
