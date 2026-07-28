@@ -78,6 +78,7 @@
     ShieldOff,
     Inbox,
     Gavel,
+    Table,
     Rss,
     Bell,
   } from "@lucide/svelte";
@@ -160,6 +161,7 @@
     shieldOff: ShieldOff,
     inbox: Inbox,
     gavel: Gavel,
+    table: Table,
   } as const;
 
   export type IconName = keyof typeof icons;

@@ -7,6 +7,7 @@ import * as followRequests from "@/services/followRequests.ts";
 import { relationActorLocal } from "@/routes/serializers.ts";
 import { config } from "@/config.ts";
 import { badRequest } from "@/lib/http.ts";
+import { renderMarkdown } from "@/lib/markdown.ts";
 import { sniffMatches } from "@/services/media.ts";
 import { MAX_PROFILE_TAGS, normalizeTags } from "@/lib/tags.ts";
 import { queue } from "@/queue/queue.ts";
@@ -20,6 +21,10 @@ import type { ProfileLink, User } from "@/db/schema.ts";
 
 // Business logic for editing one's own profile. Routes stay HTTP-only and call
 // into here; all disk + DB access is funnelled through the repository / services.
+
+// Upper bound on the profile's custom Markdown section. Generous enough for a
+// long, richly formatted page, small enough that it can't be used as storage.
+export const MAX_CUSTOM_SECTION_LEN = 20_000;
 
 // Image types we accept for avatars, mapped to the file extension we persist.
 export const AVATAR_TYPES: Record<string, string> = {
@@ -59,11 +64,18 @@ export async function updateProfile(
     displayName?: string;
     bio?: string;
     publicEmail?: string;
+    customSection?: string;
     tags?: string[];
     links?: ProfileLinkInput[];
   },
 ): Promise<{ user: User; tags: tagsRepo.TagSummary[]; links: ProfileLink[] }> {
-  const patch: { displayName?: string; bio?: string; publicEmail?: string } = {};
+  const patch: {
+    displayName?: string;
+    bio?: string;
+    publicEmail?: string;
+    customSection?: string;
+    customSectionHtml?: string;
+  } = {};
 
   if (input.displayName !== undefined) {
     const displayName = input.displayName.trim();
@@ -90,6 +102,21 @@ export async function updateProfile(
     patch.publicEmail = publicEmail;
   }
 
+  if (input.customSection !== undefined) {
+    const source = input.customSection.trim();
+    if (source.length > MAX_CUSTOM_SECTION_LEN) {
+      throw badRequest(
+        `Custom section must be ${
+          MAX_CUSTOM_SECTION_LEN.toLocaleString("en-US")
+        } characters or fewer.`,
+      );
+    }
+    // Render + sanitize once, here, so the reader is only ever handed HTML that
+    // has already been through the allowlist (see lib/markdown.ts).
+    patch.customSection = source;
+    patch.customSectionHtml = renderMarkdown(source);
+  }
+
   if (input.tags !== undefined) {
     const slugs = normalizeTags(input.tags);
     if (slugs.length > MAX_PROFILE_TAGS) {
@@ -109,7 +136,9 @@ export async function updateProfile(
     : (await usersRepo.findById(userId))!;
 
   // Any of these fields (name/bio/email/tags/links) surface on the federated
-  // actor, so push it to remote followers who already cached the old one.
+  // actor, so push it to remote followers who already cached the old one. The
+  // custom section is deliberately not part of the actor: it's a rich page that
+  // has no ActivityPub equivalent, so it stays on the profile we serve.
   queue.add("federate_actor_update", { userId });
 
   return {

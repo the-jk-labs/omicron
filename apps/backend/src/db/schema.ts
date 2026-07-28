@@ -39,6 +39,13 @@ export const users = pgTable("users", {
   // Optional contact address the user chooses to show on their public profile.
   // Distinct from `email` (the private login address); empty means "not shown".
   publicEmail: text("public_email").notNull().default(""),
+  // Free-form Markdown section shown at the top of the profile's About tab —
+  // a GitHub-README-style space the author lays out however they like.
+  // `customSection` is the Markdown they wrote (the editable source of truth);
+  // `customSectionHtml` is the rendered + sanitized HTML we serve, so readers
+  // never pay to re-render and the sanitizer runs exactly once, on write.
+  customSection: text("custom_section").notNull().default(""),
+  customSectionHtml: text("custom_section_html").notNull().default(""),
   avatarUrl: text("avatar_url"),
   isAdmin: boolean("is_admin").notNull().default(false),
   // Private account (Instagram-style). Public by default: anyone reads the

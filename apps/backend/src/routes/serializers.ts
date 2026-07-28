@@ -15,13 +15,29 @@ export function profileLinkView(l: ProfileLink): LinkSummary {
   return { platform: l.platform, url: l.url, label: l.label };
 }
 
-export function publicUser(u: User, tags: TagSummary[] = [], links: LinkSummary[] = []) {
+// `locked` marks a private profile the viewer may not see into (see
+// followsService.profile). The header — name, bio, counts, links — still renders
+// so a stranger can decide whether to request a follow, but anything with the
+// weight of a post is withheld. The custom section is one of those: it's a whole
+// page the author controls, not a one-line bio, so it stays behind the lock
+// alongside their posts and follower lists.
+export function publicUser(
+  u: User,
+  tags: TagSummary[] = [],
+  links: LinkSummary[] = [],
+  { locked = false }: { locked?: boolean } = {},
+) {
   return {
     id: u.id,
     username: u.username,
     displayName: u.displayName,
     bio: u.bio,
     publicEmail: u.publicEmail,
+    // Rendered + sanitized on write (see services/users.ts); the reader drops it
+    // straight into the About tab. `customSection` is the Markdown source, sent
+    // so the owner's editor can reload exactly what they typed.
+    customSection: locked ? "" : u.customSection,
+    customSectionHtml: locked ? "" : u.customSectionHtml,
     avatarUrl: u.avatarUrl,
     isAdmin: u.isAdmin,
     isPrivate: u.isPrivate,

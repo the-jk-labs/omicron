@@ -252,11 +252,16 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
         displayName?: string;
         bio?: string;
         publicEmail?: string;
+        customSection?: string;
         tags?: string[];
         links?: { platform: string; url: string; label: string }[];
       },
     ) =>
       api.patch<{ user: User }>("/users/me", body),
+    // Renders the profile's custom Markdown section through the same path as
+    // saving, so the editor's preview is exactly what will be stored.
+    previewCustomSection: (customSection: string) =>
+      api.post<{ html: string }>("/users/me/custom-section/preview", { customSection }),
     // The blob is downscaled/re-encoded client-side (see prepareImage).
     uploadAvatar: (blob: Blob, contentType: string) =>
       api.postRaw<{ user: User }>("/users/me/avatar", blob, contentType),

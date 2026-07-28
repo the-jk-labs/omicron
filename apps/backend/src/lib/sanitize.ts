@@ -47,6 +47,14 @@ const ALLOWED_TAGS = [
   "pre",
   "code",
   "span",
+  // Layout + disclosure elements. Authors reach for these in the profile's
+  // custom Markdown section (see lib/markdown.ts) to centre a banner or fold a
+  // long list away, the way a GitHub README does. All four are inert: they carry
+  // no script surface, and `style` stays banned, so the blast radius is layout.
+  "div",
+  "details",
+  "summary",
+  "kbd",
   "figure",
   "figcaption",
   "table",
@@ -70,7 +78,13 @@ const CONFIG: sanitizeHtml.IOptions = {
     // `rel`/`target` are re-set by transformTags below; they must be allowed
     // here or the attribute filter would strip them straight back off.
     a: ["href", "name", "rel", "target"],
-    img: ["src", "alt", "title", "width", "height", "class"],
+    img: ["src", "alt", "title", "width", "height", "class", "align"],
+    // Presentational alignment only — the one bit of layout control we grant
+    // without opening up `style`.
+    div: ["align"],
+    p: ["align"],
+    // Collapsible sections may start expanded.
+    details: ["open"],
     // Syntax-highlighted code blocks carry `language-*` / `hljs` classes.
     code: ["class"],
     pre: ["class"],

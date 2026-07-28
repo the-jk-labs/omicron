@@ -11,7 +11,9 @@ import { enrichPosts } from "@/services/engagement.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import { profileLinkView, publicUser } from "@/routes/serializers.ts";
-import { notFound } from "@/lib/http.ts";
+import { badRequest, notFound } from "@/lib/http.ts";
+import { renderMarkdown } from "@/lib/markdown.ts";
+import { MAX_CUSTOM_SECTION_LEN } from "@/services/users.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 export const userRoutes = new Hono<AppEnv>();
@@ -25,10 +27,28 @@ userRoutes.patch("/me", async (c) => {
     displayName: body.displayName,
     bio: body.bio,
     publicEmail: body.publicEmail,
+    customSection: body.customSection,
     tags: body.tags,
     links: body.links,
   });
   return c.json({ user: publicUser(user, tags, links.map(profileLinkView)) });
+});
+
+// Live preview for the profile's custom Markdown section. Goes through the very
+// same render + sanitize path as saving, so what the editor shows is exactly
+// what will be stored — no second Markdown implementation in the frontend.
+userRoutes.post("/me/custom-section/preview", async (c) => {
+  requireUser(c);
+  const body = await c.req.json();
+  const source = typeof body.customSection === "string" ? body.customSection : "";
+  if (source.length > MAX_CUSTOM_SECTION_LEN) {
+    throw badRequest(
+      `Custom section must be ${
+        MAX_CUSTOM_SECTION_LEN.toLocaleString("en-US")
+      } characters or fewer.`,
+    );
+  }
+  return c.json({ html: renderMarkdown(source) });
 });
 
 // Toggle the signed-in user's private/public account state. Going public
@@ -113,7 +133,7 @@ userRoutes.get("/:username", async (c) => {
   const tags = await tagsRepo.tagsForUser(user.id);
   const links = await usersService.profileLinks(user.id);
   return c.json({
-    user: publicUser(user, tags, links.map(profileLinkView)),
+    user: publicUser(user, tags, links.map(profileLinkView), { locked }),
     counts,
     followState,
     isFollowing,

@@ -162,6 +162,13 @@
       "when": 1782815891057,
       "tag": "0022_post_language",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1782815891058,
+      "tag": "0023_profile_custom_section",
+      "breakpoints": true
     }
   ]
 }

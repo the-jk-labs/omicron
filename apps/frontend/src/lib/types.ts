@@ -8,6 +8,11 @@ export type User = {
   bio: string;
   // Optional contact email the user shows on their profile; "" when unset.
   publicEmail: string;
+  // Free-form Markdown block shown at the top of the profile's About tab.
+  // `customSection` is the source the owner edits; `customSectionHtml` is the
+  // rendered, server-sanitized HTML to display. Both "" when unset.
+  customSection: string;
+  customSectionHtml: string;
   avatarUrl: string | null;
   isAdmin: boolean;
   // Private account (Instagram-style): posts are visible only to approved

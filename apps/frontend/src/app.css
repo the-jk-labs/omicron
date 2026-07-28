@@ -176,6 +176,76 @@ html {
 .prose-omicron pre code {
   @apply bg-transparent p-0 text-inherit;
 }
+/* Tables, collapsible sections and keyboard keys. Reachable from any Markdown
+   source (the profile's custom section) and from remote Articles, both of which
+   the sanitizer allows these tags through. */
+.prose-omicron table {
+  @apply my-6 w-full border-collapse text-[0.95em];
+}
+.prose-omicron th,
+.prose-omicron td {
+  @apply border border-border px-3 py-2 text-left align-top;
+}
+.prose-omicron th {
+  @apply bg-muted font-sans text-sm font-semibold text-foreground;
+}
+/* Wide tables scroll inside the column instead of stretching the page. */
+.prose-omicron table {
+  @apply block overflow-x-auto sm:table;
+}
+.prose-omicron details {
+  @apply my-5 rounded-card border border-border bg-background px-4 py-3;
+}
+.prose-omicron summary {
+  @apply cursor-pointer font-sans text-base font-medium text-foreground marker:text-muted-foreground;
+}
+.prose-omicron kbd {
+  @apply rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground;
+}
+.prose-omicron div[align="center"] {
+  @apply text-center;
+}
+.prose-omicron div[align="right"] {
+  @apply text-right;
+}
+/* Centred blocks shouldn't have their images pushed around by `mx-auto`. */
+.prose-omicron div[align] img {
+  @apply inline-block;
+}
+
+/* Compact variant for prose shown outside a full article — the profile's custom
+   section. Same elements, tightened to sans-ish reading size so it sits inside a
+   card without dwarfing the surrounding UI. */
+.prose-compact {
+  @apply text-[1rem] leading-[1.7] sm:text-[1.0625rem] sm:leading-[1.75];
+}
+.prose-compact > :first-child {
+  @apply mt-0;
+}
+.prose-compact > :last-child {
+  @apply mb-0;
+}
+.prose-compact h1 {
+  @apply mt-6 mb-3 text-2xl;
+}
+.prose-compact h2 {
+  @apply mt-6 mb-2 text-xl;
+}
+.prose-compact h3 {
+  @apply mt-5 mb-2 text-lg;
+}
+.prose-compact p,
+.prose-compact ul,
+.prose-compact ol {
+  @apply my-3;
+}
+.prose-compact img {
+  @apply my-4;
+}
+.prose-compact hr {
+  @apply my-6;
+}
+
 /* Copy button injected into rendered code blocks (see slug +page.svelte). */
 .prose-omicron pre.code-block {
   @apply relative;

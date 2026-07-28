@@ -19,6 +19,7 @@
   import FollowedTagsManager from "$lib/components/FollowedTagsManager.svelte";
   import TagInput from "$lib/components/TagInput.svelte";
   import ProfileLinksEditor from "$lib/components/ProfileLinksEditor.svelte";
+  import CustomSectionEditor from "$lib/components/CustomSectionEditor.svelte";
   import { identifierToUrl, platformMeta, urlToIdentifier } from "$lib/profileLinks";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import type { ProfileLink } from "$lib/types";
@@ -32,6 +33,10 @@
   let displayName = $state(seed.displayName);
   let bio = $state(seed.bio);
   let publicEmail = $state(seed.publicEmail);
+  let customSection = $state(seed.customSection ?? "");
+  // Mirrors the backend's cap (services/users.ts) — the two apps don't share a
+  // constants module, so this is kept in sync by hand.
+  const MAX_CUSTOM_SECTION_LEN = 20_000;
   let profileTags = $state<string[]>(seed.tags?.map((t) => t.name) ?? []);
   const initialTags = (seed.tags?.map((t) => t.name) ?? []).join(",");
   // The editor works in "identifier" form (a handle / username), so seed from
@@ -102,6 +107,7 @@
     displayName !== data.user.displayName ||
       bio !== data.user.bio ||
       publicEmail !== data.user.publicEmail ||
+      customSection !== (data.user.customSection ?? "") ||
       file !== null ||
       profileTags.join(",") !== initialTags ||
       JSON.stringify(profileLinks) !== initialLinks,
@@ -217,7 +223,14 @@
         }
         links.push({ platform: l.platform, url, label: l.label.trim() });
       }
-      await endpoints().updateProfile({ displayName, bio, publicEmail, tags: profileTags, links });
+      await endpoints().updateProfile({
+        displayName,
+        bio,
+        publicEmail,
+        customSection,
+        tags: profileTags,
+        links,
+      });
       await invalidateAll();
       clearFile();
       saved = true;
@@ -479,6 +492,18 @@
       <div class="flex flex-col gap-1.5">
         <Label.Root class={labelClass}>Links</Label.Root>
         <ProfileLinksEditor bind:links={profileLinks} />
+      </div>
+
+      <!-- Custom section -->
+      <div class="flex flex-col gap-1.5">
+        <Label.Root class={labelClass}>Custom section</Label.Root>
+        <p class="text-xs text-muted-foreground">
+          A free-form space at the top of your profile's About tab — write it in Markdown and lay
+          it out however you like. Leave it empty to hide the section.
+        </p>
+        <div class="mt-1">
+          <CustomSectionEditor bind:value={customSection} maxLength={MAX_CUSTOM_SECTION_LEN} />
+        </div>
       </div>
 
       {#if error}<p class="text-sm text-destructive">{error}</p>{/if}

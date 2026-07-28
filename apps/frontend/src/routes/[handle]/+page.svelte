@@ -43,6 +43,12 @@
   const lists = $derived(!data.remote ? data.lists : []);
   // Profile links exist on local profiles only; remote actors carry none.
   const profileLinks = $derived(!data.remote && "links" in profile.user ? profile.user.links : []);
+  // The custom About section, rendered from Markdown and sanitized on the
+  // backend. Local profiles only — it has no ActivityPub equivalent, so remote
+  // actors never carry one.
+  const customSectionHtml = $derived(
+    !data.remote && "customSectionHtml" in profile.user ? profile.user.customSectionHtml : "",
+  );
 
   let posts = $state<Post[]>(untrack(() => data.page.items));
   let cursor = $state<string | null>(untrack(() => data.page.nextCursor));
@@ -302,6 +308,17 @@
   {/if}
 
   <Tabs.Content value="about" class="pt-3">
+    <!-- The author's own free-form section leads the tab. Already rendered from
+         Markdown and sanitized server-side (see backend lib/markdown.ts), so it
+         is safe to drop straight in. -->
+    {#if !data.remote && customSectionHtml}
+      <div
+        class="prose-omicron prose-compact mb-3 max-w-prose rounded-card border border-border bg-background-alt px-5 py-4"
+      >
+        {@html customSectionHtml}
+      </div>
+    {/if}
+
     {#if !data.remote && data.profile.user.links.length > 0}
       <div class="mb-3 max-w-prose">
         <ProfileLinksCard links={data.profile.user.links} />
@@ -378,12 +395,20 @@
       {/if}
     </dl>
 
-    {#if isSelf && !profile.user.bio}
+    {#if isSelf && (!profile.user.bio || !customSectionHtml)}
       <div class="mt-3 max-w-prose">
         <Separator.Root class="bg-border my-3 h-px" />
-        <p class="text-sm text-muted-foreground">
-          Your profile has no bio yet — add one from Edit profile to tell people who you are.
-        </p>
+        {#if !profile.user.bio}
+          <p class="text-sm text-muted-foreground">
+            Your profile has no bio yet — add one from Edit profile to tell people who you are.
+          </p>
+        {/if}
+        {#if !customSectionHtml}
+          <p class="text-sm text-muted-foreground">
+            Add a custom section from Edit profile to put anything you like — in Markdown — at the
+            top of this tab.
+          </p>
+        {/if}
       </div>
     {/if}
   </Tabs.Content>
