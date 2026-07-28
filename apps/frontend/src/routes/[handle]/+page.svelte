@@ -312,8 +312,11 @@
          Markdown and sanitized server-side (see backend lib/markdown.ts), so it
          is safe to drop straight in. -->
     {#if !data.remote && customSectionHtml}
+      <!-- Full column width, not the `max-w-prose` reading measure the rest of
+           the tab uses: this is a layout surface the author controls (badges,
+           tables, ASCII art), and the narrower measure forced it to scroll. -->
       <div
-        class="prose-omicron prose-compact mb-3 max-w-prose rounded-card border border-border bg-background-alt px-5 py-4"
+        class="prose-omicron prose-compact mb-3 w-full min-w-0 rounded-card border border-border bg-background-alt px-5 py-4"
       >
         {@html customSectionHtml}
       </div>
@@ -395,20 +398,12 @@
       {/if}
     </dl>
 
-    {#if isSelf && (!profile.user.bio || !customSectionHtml)}
+    {#if isSelf && !profile.user.bio}
       <div class="mt-3 max-w-prose">
         <Separator.Root class="bg-border my-3 h-px" />
-        {#if !profile.user.bio}
-          <p class="text-sm text-muted-foreground">
-            Your profile has no bio yet — add one from Edit profile to tell people who you are.
-          </p>
-        {/if}
-        {#if !customSectionHtml}
-          <p class="text-sm text-muted-foreground">
-            Add a custom section from Edit profile to put anything you like — in Markdown — at the
-            top of this tab.
-          </p>
-        {/if}
+        <p class="text-sm text-muted-foreground">
+          Your profile has no bio yet — add one from Edit profile to tell people who you are.
+        </p>
       </div>
     {/if}
   </Tabs.Content>

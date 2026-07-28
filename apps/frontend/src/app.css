@@ -239,8 +239,28 @@ html {
 .prose-compact ol {
   @apply my-3;
 }
+/* Images flow inline here, unlike in an article. A custom section is full of
+   badges and icons that belong on one line next to each other; the article rule
+   (`block` + `mx-auto`) would break every one onto its own centred row. Authors
+   who want a centred banner wrap it in `<div align="center">`. */
 .prose-compact img {
-  @apply my-4;
+  @apply my-0 inline-block align-middle;
+}
+/* An image alone in its own paragraph is a deliberate standalone image, so it
+   keeps the article treatment. */
+.prose-compact p > img:only-child,
+.prose-compact p > a:only-child > img:only-child {
+  @apply my-4 block;
+}
+/* Preformatted blocks wrap instead of scrolling. A custom section is typically
+   a banner of ASCII art plus a long prose line or two, and no font size fits a
+   90-column sentence in this column — but art lines are short, so wrapping
+   reflows only the overlong lines and leaves the art intact. `break-word` keeps
+   an unbreakable token (a long URL) from poking out. */
+.prose-compact pre {
+  @apply my-4 overflow-x-hidden p-3 text-xs leading-snug;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 .prose-compact hr {
   @apply my-6;
