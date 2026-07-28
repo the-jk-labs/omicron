@@ -202,7 +202,7 @@ Needed for "seamless upgrades" to be a real promise.
 ### 9. CI/CD
 
 - [x] GitHub Actions (`.github/workflows/ci.yml`): backend `deno task check` +
-      `deno lint` + `deno task test`, frontend `npm run check`, and a Docker
+      `deno lint` + `deno task test`, frontend `pnpm check`, and a Docker
       image build of both apps. Runs on every push to `main` and every PR.
 - [x] Run the test suite on PRs (part of the backend job above).
 - [x] Build the Docker images in CI (the `docker-build` job — the compose stack

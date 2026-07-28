@@ -40,15 +40,19 @@ jobs:
         working-directory: apps/frontend
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          # Version comes from package.json's "packageManager" field.
+          package_json_file: apps/frontend/package.json
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: apps/frontend/package-lock.json
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/frontend/pnpm-lock.yaml
       - name: Install
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Check
-        run: npm run check
+        run: pnpm run check
 
   docker-build:
     name: Docker images build

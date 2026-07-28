@@ -302,10 +302,12 @@ retries.
 ```bash
 # Postgres must be running and DATABASE_URL set.
 cd apps/backend && deno task dev      # http://localhost:8000
-cd apps/frontend && npm install && npm run dev   # http://localhost:5173
+cd apps/frontend && pnpm install && pnpm dev   # http://localhost:5173
 ```
 
-Useful checks: `deno task check && deno lint` (backend), `npm run check` (frontend).
+The frontend uses [pnpm](https://pnpm.io) (`corepack enable` installs the pinned
+version). Useful checks: `deno task check && deno lint` (backend),
+`pnpm check` (frontend).
 
 ---
 

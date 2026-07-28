@@ -1,0 +1,8 @@
+# Keep the host's tree out of the build context: the image installs its own
+# node_modules with pnpm, and `COPY . .` would otherwise clobber it.
+node_modules
+.svelte-kit
+build
+.env
+.env.*
+*.log
