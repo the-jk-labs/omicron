@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
-import Image from "@tiptap/extension-image";
 import { Markdown } from "tiptap-markdown";
+import { ResizableImage } from "./resizable-image";
 import type { Extensions } from "@tiptap/core";
 
 // Editor extensions live here so the feature set is configured in one place.
@@ -23,9 +23,10 @@ export const extensions: Extensions = [
     autolink: true,
     HTMLAttributes: { rel: "noopener noreferrer nofollow", target: "_blank" },
   }),
-  // Inline images uploaded by the author. Base64 is disabled, so only the
-  // same-origin URLs we serve get inserted and post HTML stays small and portable.
-  Image.configure({
+  // Inline images uploaded by the author, resizable by dragging a corner (see
+  // resizable-image.ts). Base64 is disabled, so only the same-origin URLs we
+  // serve get inserted and post HTML stays small and portable.
+  ResizableImage.configure({
     allowBase64: false,
     HTMLAttributes: { class: "rounded-card mx-auto my-6 max-w-full" },
   }),

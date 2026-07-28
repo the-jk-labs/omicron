@@ -195,6 +195,48 @@ html {
 .tiptap {
   @apply min-h-[320px] outline-none;
 }
+/* Resizable images (see editor/resizable-image.ts). The wrapper spans the
+   reading column and centres the frame; the frame hugs the image and carries the
+   width, so the corner handles sit exactly on the image's corners. */
+.tiptap .img-resizer {
+  @apply my-6 flex justify-center;
+}
+.tiptap .img-resizer-frame {
+  @apply relative inline-block max-w-full;
+}
+.tiptap .img-resizer img {
+  @apply my-0 w-full;
+}
+.tiptap .img-resize-handle {
+  @apply absolute z-10 h-3 w-3 rounded-sm border border-background bg-foreground opacity-0 transition-opacity;
+}
+/* Handles appear on hover and stay put while the node is selected or dragging,
+   so the grip doesn't vanish when the pointer leaves the image mid-resize. */
+.tiptap .img-resizer:hover .img-resize-handle,
+.tiptap .img-resizer.is-selected .img-resize-handle,
+.tiptap .img-resizer.is-resizing .img-resize-handle {
+  @apply opacity-100;
+}
+.tiptap .img-resizer.is-selected .img-resizer-frame {
+  @apply outline outline-2 outline-offset-2 outline-foreground/40;
+}
+/* Text selection would otherwise flicker across the page during a drag. */
+.tiptap .img-resizer.is-resizing {
+  @apply select-none;
+}
+.tiptap .img-resize-handle-nw {
+  @apply -left-1.5 -top-1.5 cursor-nwse-resize;
+}
+.tiptap .img-resize-handle-ne {
+  @apply -right-1.5 -top-1.5 cursor-nesw-resize;
+}
+.tiptap .img-resize-handle-sw {
+  @apply -bottom-1.5 -left-1.5 cursor-nesw-resize;
+}
+.tiptap .img-resize-handle-se {
+  @apply -bottom-1.5 -right-1.5 cursor-nwse-resize;
+}
+
 /* Placeholder on the current empty line (Tiptap adds `is-empty` to the node with
    the cursor), so an empty paragraph — including the one below an image — shows a
    hint and a visible caret target. */
