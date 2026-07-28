@@ -252,15 +252,13 @@ html {
 .prose-compact p > a:only-child > img:only-child {
   @apply my-4 block;
 }
-/* Preformatted blocks wrap instead of scrolling. A custom section is typically
-   a banner of ASCII art plus a long prose line or two, and no font size fits a
-   90-column sentence in this column — but art lines are short, so wrapping
-   reflows only the overlong lines and leaves the art intact. `break-word` keeps
-   an unbreakable token (a long URL) from poking out. */
+/* Preformatted blocks keep their line breaks exactly as authored — wrapping
+   would mangle ASCII art. Content authored against a wider canvas is scaled down
+   to fit by the `fitPre` action (see lib/actions/fitPre.ts); this rule is the
+   no-JS fallback, where an over-wide block scrolls rather than being clipped. */
 .prose-compact pre {
-  @apply my-4 overflow-x-hidden p-3 text-xs leading-snug;
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
+  @apply my-4 overflow-x-auto p-3 text-xs leading-snug;
+  white-space: pre;
 }
 .prose-compact hr {
   @apply my-6;

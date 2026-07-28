@@ -17,6 +17,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import { formatDate } from "$lib/format";
+  import { fitPre } from "$lib/actions/fitPre";
   import type { Post } from "$lib/types";
   import type { PageData } from "./$types";
 
@@ -316,6 +317,7 @@
            the tab uses: this is a layout surface the author controls (badges,
            tables, ASCII art), and the narrower measure forced it to scroll. -->
       <div
+        use:fitPre
         class="prose-omicron prose-compact mb-3 w-full min-w-0 rounded-card border border-border bg-background-alt px-5 py-4"
       >
         {@html customSectionHtml}
