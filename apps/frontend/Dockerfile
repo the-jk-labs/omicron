@@ -1,5 +1,5 @@
 # Frontend: SvelteKit (adapter-node). Multi-stage for a small runtime image.
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 # Corepack pins pnpm to the version in package.json's "packageManager" field.
 RUN corepack enable
@@ -8,7 +8,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm run build
 
-FROM node:22-alpine
+FROM node:24-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/build ./build

@@ -46,7 +46,9 @@ jobs:
           package_json_file: apps/frontend/package.json
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # Keep in step with apps/frontend/Dockerfile, so CI checks the same
+          # Node major that the runtime image ships.
+          node-version: 24
           cache: pnpm
           cache-dependency-path: apps/frontend/pnpm-lock.yaml
       - name: Install
