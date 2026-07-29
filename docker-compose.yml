@@ -62,7 +62,15 @@ services:
   # config editing; the backend picks it up via REDIS_URL below. Not published on
   # the host — only the backend reaches it over the compose network.
   redis:
-    image: redis:7-alpine
+    # Redis 8 rather than 7: 7.4 is RSALv2/SSPLv1 only, neither of which is open
+    # source, so the bundled container path shipped a non-free component. Redis 8
+    # restores AGPLv3 as a licensing option, matching this project's own licence.
+    #
+    # Upgrading in place is safe — Redis 8 reads the RDB that 7.4 wrote. Rolling
+    # BACK is not: 7.4 cannot read Redis 8's RDB (format v14) and exits on start.
+    # To return to 7.x, delete the `redis_data` volume; only queued jobs and
+    # undelivered activities live here, never user content.
+    image: redis:8-alpine
     restart: unless-stopped
     # Light persistence so the queue survives a restart of Redis itself.
     command: ["redis-server", "--save", "60", "1", "--appendonly", "no"]
