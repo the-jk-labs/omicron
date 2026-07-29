@@ -21,7 +21,7 @@ jobs:
       run:
         working-directory: apps/backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
@@ -39,12 +39,12 @@ jobs:
       run:
         working-directory: apps/frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           # Version comes from package.json's "packageManager" field.
           package_json_file: apps/frontend/package.json
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           # Keep in step with apps/frontend/Dockerfile, so CI checks the same
           # Node major that the runtime image ships.
@@ -60,7 +60,7 @@ jobs:
     name: Docker images build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # The compose stack builds both images from source (no prebuilt images
       # yet), so a broken Dockerfile breaks `install.sh` for everyone. Build both
       # here to catch it before release.
