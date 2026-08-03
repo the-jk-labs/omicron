@@ -7,6 +7,11 @@
 // We keep unicode letters, digits and underscores (so non-Latin hashtags work,
 // matching Mastodon), lowercase everything, strip a leading `#`, and drop any
 // other punctuation/whitespace. Returns "" for anything that normalizes empty.
+//
+// Language names that end in a symbol are spelled out first, so they survive
+// that strip instead of collapsing onto the wrong tag: `c++` would otherwise
+// become `c`, and `c#`/`f#` would become `c`/`f`. Only a symbol attached to a
+// word is spelled out, so a bare `+` still normalizes away.
 
 export const MAX_TAG_LENGTH = 50;
 export const MAX_TAGS_PER_POST = 5;
@@ -17,6 +22,9 @@ export function normalizeTag(raw: string): string {
     .normalize("NFKC")
     .toLowerCase()
     .replace(/^#+/, "")
+    // `c++` → `cpp`, `notepad++` → `notepadpp`, `c#` → `csharp`.
+    .replace(/(?<=[\p{L}\p{M}\p{N}_])\++/gu, (run) => "p".repeat(run.length))
+    .replace(/(?<=[\p{L}\p{M}\p{N}_])#/gu, "sharp")
     // Keep unicode letters/marks/numbers and underscore; drop everything else
     // (spaces, punctuation, emoji). `u` flag enables the \p{...} classes.
     .replace(/[^\p{L}\p{M}\p{N}_]+/gu, "")
