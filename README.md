@@ -57,23 +57,23 @@ To go public, point an `A`/`AAAA` record at the host and open
 `https://your-domain` — the bundled Caddy fetches a Let's Encrypt certificate on
 demand.
 
-Full walkthrough: **[docs.omicron.blog/quick-start](https://docs.omicron.blog/quick-start)**
+Full walkthrough: **[docs.omicron.blog/quick-start](https://docs.omicron.blog/quick-start/)**
 
 ## Documentation
 
 Everything lives at **[docs.omicron.blog](https://docs.omicron.blog)**:
 
-- [Self-hosting](https://docs.omicron.blog/self-hosting/installation) — install,
+- [Self-hosting](https://docs.omicron.blog/self-hosting/installation/) — install,
   domain and HTTPS, email, admin panel, Podman, upgrades, backups,
   troubleshooting
-- [Using Omicron](https://docs.omicron.blog/using/writing) — writing, profiles,
+- [Using Omicron](https://docs.omicron.blog/using/writing/) — writing, profiles,
   reading, lists, moderation, writer dashboard
-- [Federation](https://docs.omicron.blog/federation/overview) — how it works,
+- [Federation](https://docs.omicron.blog/federation/overview/) — how it works,
   endpoints, delivery, compatibility
-- [Development](https://docs.omicron.blog/development/architecture) —
+- [Development](https://docs.omicron.blog/development/architecture/) —
   architecture, local setup, backend and frontend guides, migrations,
   contributing
-- [Reference](https://docs.omicron.blog/reference/environment) — environment
+- [Reference](https://docs.omicron.blog/reference/environment/) — environment
   variables, HTTP and admin APIs, rate limits
 
 ## Development
@@ -84,7 +84,7 @@ cd apps/backend && deno task dev              # http://localhost:8000
 cd apps/frontend && pnpm install && pnpm dev  # http://localhost:5173
 ```
 
-See the [local setup guide](https://docs.omicron.blog/development/local-setup)
+See the [local setup guide](https://docs.omicron.blog/development/local-setup/)
 for the full picture.
 
 ## Security
