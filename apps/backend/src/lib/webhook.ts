@@ -99,15 +99,25 @@ const httpUrl = z
   .max(2000)
   .refine((u) => /^https?:\/\/\S+$/i.test(u), "must be an absolute http(s) URL");
 
+// Every field is optional at the schema level, because a delivery addressing a
+// post that already exists is a partial update: send `status` alone to unpublish
+// it, `title` alone after a retitle, and everything left out keeps the value it
+// has. Only a *first* delivery — one that creates the post — needs a title and a
+// body, which `requireCreateFields` enforces once the service knows which it is.
+//
+// A field sent as `null` is an explicit clear, distinct from leaving it out:
+// `banner: null` drops the cover, `description: null` returns the summary to the
+// one derived from the body.
 export const contentSchema = z.object({
-  title: z.string().trim().min(1, "is required").max(300),
-  body: z.string().min(1, "is required"),
-  description: z.string().trim().max(500).optional(),
-  banner: httpUrl.optional(),
+  title: z.string().trim().min(1, "must not be empty").max(300).optional(),
+  body: z.string().min(1, "must not be empty").optional(),
+  description: z.string().trim().max(500).nullish(),
+  banner: httpUrl.nullish(),
   // The external system's stable key for this document. Optional: without it we
   // fall back to the title's slug, which means a retitle publishes a new post.
   // Senders that have a document id should send it — it is the only way an
-  // edited title updates the existing post in place.
+  // edited title updates the existing post in place, and the only way to address
+  // a post at all without resending its title.
   slug: z.string().trim().min(1).max(200).optional(),
   // Passthroughs onto the ordinary post fields, so an ingested post is a
   // first-class one rather than a stripped-down import.
@@ -135,6 +145,26 @@ export function parseContent(body: unknown): ContentPayload {
 }
 
 /**
+ * The fields a payload must carry when there is no post behind its key yet.
+ *
+ * A partial update borrows the absent fields from the row it is updating; a
+ * create has nothing to borrow from, so `title` and `body` become required at
+ * exactly that moment. Raised as the same 400 the schema would have, naming the
+ * field, so a sender that has simply forgotten one reads the same error whether
+ * it sent a bad value or none at all.
+ */
+export function requireCreateFields(payload: ContentPayload): void {
+  for (const field of ["title", "body"] as const) {
+    if (!payload[field]) {
+      throw badRequest(
+        `\`${field}\` is required: no post exists under this key yet, so this ` +
+          `request creates one rather than updating one.`,
+      );
+    }
+  }
+}
+
+/**
  * Derive a short preview from a rendered post body — used when the sender
  * supplies no `description`. Flattening the *rendered* HTML rather than
  * stripping Markdown by hand means every syntax markdown-it understands is
@@ -156,12 +186,15 @@ export function summarize(contentHtml: string, limit = SUMMARY_LENGTH): string {
  * from the title. Slugs are ASCII-only, so a title written entirely in a
  * non-Latin script derives to nothing — that has to be an error rather than an
  * empty key, which the unique index would let exactly one post hold.
+ *
+ * A partial update may carry no title at all, in which case `slug` is the only
+ * thing naming the post and is therefore required.
  */
 export function externalKey(payload: Pick<ContentPayload, "slug" | "title">): string {
-  const key = payload.slug?.trim() || slugify(payload.title);
+  const key = payload.slug?.trim() || (payload.title ? slugify(payload.title) : "");
   if (!key) {
     throw badRequest(
-      "`slug` is required: no key could be derived from this title.",
+      "`slug` is required: no key could be derived from this payload.",
     );
   }
   return key;

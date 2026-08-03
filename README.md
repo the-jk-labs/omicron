@@ -118,6 +118,19 @@ scoped to you, so they never collide with another writer's. The token also
 travels as `Authorization: Bearer <token>`. An unknown credential gets `401`
 and an invalid payload `400` naming the field.
 
+Updates are partial: send only what changed, and everything you leave out keeps
+its current value. Once the post exists, `slug` alone identifies it, so `title`
+and `body` are needed only on the first send.
+
+```bash
+# Unpublish, without resending the article.
+-d '{"slug": "eu-payments", "status": "draft"}'
+# Retitle it.
+-d '{"slug": "eu-payments", "title": "Europe ditches the card networks"}'
+# Drop the cover — `null` clears a field, leaving it out preserves it.
+-d '{"slug": "eu-payments", "banner": null}'
+```
+
 Operators can also set an instance-wide `WEBHOOK_SECRET` (see
 [.env.example](.env.example)) for publishing without a user token — a migration
 script, say. Full reference:

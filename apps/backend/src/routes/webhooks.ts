@@ -37,6 +37,12 @@ const ingestLimiter = rateLimit({
  * already published under that key (`slug`, or the title's slug when none is
  * sent). 400 names the offending field; 401 means the credential is unknown.
  *
+ * An update is partial: it writes only the fields it carries, so
+ * `{ "slug": "doc-42", "status": "draft" }` unpublishes a post without
+ * resending its body, and `null` clears a field rather than leaving it. `title`
+ * and `body` are required only on the delivery that creates the post — after
+ * that, `slug` alone identifies it.
+ *
  * Errors never carry the credential: the service compares it without ever
  * putting it in a message, and `handleError` (app.ts) is the only thing that
  * logs, so a 500 records the failure and not the token.

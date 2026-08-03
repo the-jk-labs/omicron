@@ -55,6 +55,13 @@ export type Post = {
   // BCP-47 primary language subtag (e.g. "en", "tr"), or null/undefined when the
   // author didn't specify one.
   language?: string | null;
+  // Short plain-text preview, set by an ingesting CMS (`description` on the
+  // content webhook) or derived from the body on ingest. Null for posts written
+  // in the editor, whose preview the card derives itself.
+  summary?: string | null;
+  // Absolute http(s) URL of the banner image, hosted by whoever sent it. Null
+  // unless the post carries one.
+  coverUrl?: string | null;
   createdAt: string;
   author: PostAuthor;
   tags: Tag[];

@@ -7,6 +7,7 @@ import {
   looksLikeToken,
   parseContent,
   presentedSecret,
+  requireCreateFields,
   secretMatches,
   summarize,
   SUMMARY_LENGTH,
@@ -112,14 +113,51 @@ Deno.test("parseContent: accepts the minimal payload", () => {
   assertEquals(out.banner, undefined);
 });
 
-Deno.test("parseContent: rejects a missing or empty required field", () => {
-  for (const body of [{ body: "x" }, { title: "x" }, { title: "  ", body: "x" }, {}, null]) {
+Deno.test("parseContent: rejects a present-but-empty field", () => {
+  // Absent is legal — that is a partial update. Present and empty is a mistake.
+  for (const body of [{ title: "  ", body: "x" }, { ...valid, body: "" }, null, 7]) {
     assertThrows(() => parseContent(body), HttpError);
   }
   // The error names the offending field so the sender can fix it.
-  const err = assertThrows(() => parseContent({ body: "x" }), HttpError);
+  const err = assertThrows(() => parseContent({ title: "   " }), HttpError);
   assertStringIncludes(err.message, "title");
   assertEquals(err.status, 400);
+});
+
+Deno.test("parseContent: accepts a partial update carrying one field", () => {
+  // The shape a CMS sends when only the status moved: no title, no body.
+  assertEquals(parseContent({ slug: "doc-42", status: "draft" }).status, "draft");
+  assertEquals(parseContent({ slug: "doc-42", title: "Renamed" }).title, "Renamed");
+  // …and the empty payload, which addresses nothing and is caught by
+  // `externalKey` rather than the schema.
+  assertEquals(parseContent({}).title, undefined);
+});
+
+Deno.test("parseContent: keeps an explicit null distinct from an absent field", () => {
+  // `null` clears the stored value; leaving the key out preserves it. The two
+  // must survive parsing as different things or the service cannot tell them
+  // apart.
+  const cleared = parseContent({ slug: "doc-42", banner: null, description: null });
+  assertEquals(cleared.banner, null);
+  assertEquals(cleared.description, null);
+
+  const absent = parseContent({ slug: "doc-42" });
+  assertEquals(absent.banner, undefined);
+  assertEquals(absent.description, undefined);
+});
+
+Deno.test("requireCreateFields: demanded on a create, waived on an update", () => {
+  // A first delivery has no row to merge into, so it must carry both.
+  for (const payload of [{ body: "x" }, { title: "x" }, {}]) {
+    const err = assertThrows(() => requireCreateFields(parseContent(payload)), HttpError);
+    assertEquals(err.status, 400);
+  }
+  assertStringIncludes(
+    assertThrows(() => requireCreateFields(parseContent({ body: "x" })), HttpError).message,
+    "title",
+  );
+  // A full payload passes; an update never reaches this check at all.
+  requireCreateFields(parseContent(valid));
 });
 
 Deno.test("parseContent: rejects a banner that is not an absolute http(s) URL", () => {
@@ -184,6 +222,15 @@ Deno.test("externalKey: demands an explicit slug when the title derives to nothi
   assertStringIncludes(err.message, "slug");
   // …and is satisfied once the sender supplies one.
   assertEquals(externalKey({ title: "日本語", slug: "doc-7" }), "doc-7");
+});
+
+Deno.test("externalKey: a titleless partial update is addressed by its slug alone", () => {
+  assertEquals(externalKey({ title: undefined, slug: "doc-42" }), "doc-42");
+  // With neither, nothing names the post — that has to be a 400, not a write
+  // against an empty key.
+  const err = assertThrows(() => externalKey({ title: undefined, slug: undefined }), HttpError);
+  assertEquals(err.status, 400);
+  assertStringIncludes(err.message, "slug");
 });
 
 // ── Storage safety ──────────────────────────────────────────────────────────
