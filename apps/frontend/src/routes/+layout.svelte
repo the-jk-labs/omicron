@@ -55,8 +55,20 @@
       : null,
   );
   const ogTitle = $derived(post?.title || appName);
-  const ogDescription = $derived(post ? excerpt(post.contentHtml) : description);
+  // An ingested post carries the sender's own `description`; prefer it over a
+  // clipped body, which is only ever a stand-in for one.
+  const ogDescription = $derived(
+    post ? post.summary?.trim() || excerpt(post.contentHtml) : description,
+  );
   const ogType = $derived(post ? "article" : "website");
+  // A post's banner becomes its share image, falling back to the instance's
+  // brand image. The URL is on whatever host sent it, so it is published only
+  // when absolute — a relative one would resolve against the scraper, not us.
+  // (The ingest schema already enforces this; the check costs nothing and keeps
+  // the guarantee local to where it matters.)
+  const shareImage = $derived(
+    post?.coverUrl && /^https?:\/\//i.test(post.coverUrl) ? post.coverUrl : ogImage,
+  );
 
   // RSS auto-discovery: a reader pointed at a profile or reading-list page finds
   // the feed from this tag alone. Local profiles only (a remote actor's posts are
@@ -129,11 +141,11 @@
   <meta property="og:description" content={ogDescription} />
   <meta property="og:type" content={ogType} />
   <meta property="og:url" content={canonical} />
-  <meta property="og:image" content={ogImage} />
+  <meta property="og:image" content={shareImage} />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content={ogTitle} />
   <meta name="twitter:description" content={ogDescription} />
-  <meta name="twitter:image" content={ogImage} />
+  <meta name="twitter:image" content={shareImage} />
   {#if post && creator}
     <!-- Mastodon link-preview author attribution. -->
     <meta name="fediverse:creator" content={creator} />
