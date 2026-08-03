@@ -13,8 +13,19 @@
   let { post }: { post: Post } = $props();
 
   const signedIn = $derived(!!page.data.user);
-  const summary = $derived(excerpt(post.contentHtml));
+  // An ingested post carries its own preview (the CMS's `description`); anything
+  // written in the editor has none, so fall back to clipping the body.
+  const summary = $derived(post.summary?.trim() || excerpt(post.contentHtml));
   const minutes = $derived(readTime(post.contentHtml));
+
+  // The cover is a URL on someone else's host, so a dead link is an ordinary
+  // outcome rather than a bug. Drop the image on error instead of leaving a
+  // broken-image glyph in the card.
+  let coverFailed = $state(false);
+  $effect(() => {
+    void post.coverUrl;
+    coverFailed = false;
+  });
   // Remote authors carry a `user@host` handle; surface the origin instance
   // (the host) rather than a generic "Federated" label.
   const originInstance = $derived(post.author.username.split("@")[1] ?? null);
@@ -34,14 +45,28 @@
   </div>
 
   <Button href={postPath(post)} variant="plain" class="group block w-full text-left">
-    {#if post.title}
-      <h2 class="text-xl font-bold leading-snug text-foreground group-hover:text-foreground-alt sm:text-2xl">
-        {post.title}
-      </h2>
-    {/if}
-    {#if summary}
-      <p class="mt-1.5 line-clamp-3 text-muted-foreground">{summary}</p>
-    {/if}
+    <div class="flex items-start gap-4">
+      <div class="min-w-0 flex-1">
+        {#if post.title}
+          <h2 class="text-xl font-bold leading-snug text-foreground group-hover:text-foreground-alt sm:text-2xl">
+            {post.title}
+          </h2>
+        {/if}
+        {#if summary}
+          <p class="mt-1.5 line-clamp-3 text-muted-foreground">{summary}</p>
+        {/if}
+      </div>
+      {#if post.coverUrl && !coverFailed}
+        <!-- Decorative: the title beside it already names the post. -->
+        <img
+          src={post.coverUrl}
+          alt=""
+          loading="lazy"
+          onerror={() => (coverFailed = true)}
+          class="mt-1 h-20 w-28 shrink-0 rounded-card border border-border object-cover sm:h-24 sm:w-36"
+        />
+      {/if}
+    </div>
   </Button>
 
   {#if post.tags?.length}

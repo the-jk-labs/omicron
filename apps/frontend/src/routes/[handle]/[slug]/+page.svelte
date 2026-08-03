@@ -18,6 +18,16 @@
   let { data }: { data: PageData } = $props();
   const post = $derived(data.post);
   const minutes = $derived(readTime(post.contentHtml));
+  // The CMS's `description` on an ingested post, shown as a lede under the
+  // headline. Editor-written posts have none and simply skip it — unlike the
+  // card, an open article needs no clipped stand-in for a body it is showing.
+  const summary = $derived(post.summary?.trim() || "");
+  // A cover lives on whoever sent it; drop it rather than render a broken image.
+  let coverFailed = $state(false);
+  $effect(() => {
+    void post.coverUrl;
+    coverFailed = false;
+  });
   // Origin instance (host) parsed from a remote author's `user@host` handle.
   const originInstance = $derived(post.author.username.split("@")[1] ?? null);
 
@@ -235,7 +245,11 @@
   {/if}
 
   {#if post.title}
-    <h1 class="mb-6 text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl">{post.title}</h1>
+    <h1 class="mb-4 text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl">{post.title}</h1>
+  {/if}
+
+  {#if summary}
+    <p class="mb-6 text-lg leading-relaxed text-muted-foreground">{summary}</p>
   {/if}
 
   <div class="flex items-center gap-3 pb-8">
@@ -300,6 +314,16 @@
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
   </div>
+
+  {#if post.coverUrl && !coverFailed}
+    <!-- Decorative: the headline above it already names the post. -->
+    <img
+      src={post.coverUrl}
+      alt=""
+      onerror={() => (coverFailed = true)}
+      class="mb-8 max-h-[28rem] w-full rounded-card border border-border object-cover"
+    />
+  {/if}
 
   <!-- Content is server-rendered HTML produced by the Tiptap editor. -->
   <div class="prose-omicron" bind:this={contentEl}>
