@@ -2,11 +2,15 @@
 import { assert, assertEquals, assertStringIncludes, assertThrows } from "@std/assert";
 import {
   externalKey,
+  generateToken,
+  hashToken,
+  looksLikeToken,
   parseContent,
   presentedSecret,
   secretMatches,
   summarize,
   SUMMARY_LENGTH,
+  TOKEN_PREFIX,
 } from "@/lib/webhook.ts";
 import { renderMarkdown } from "@/lib/markdown.ts";
 import { HttpError } from "@/lib/http.ts";
@@ -57,6 +61,44 @@ Deno.test("presentedSecret: null when no credential is offered", () => {
   assertEquals(presentedSecret(new Headers()), null);
   assertEquals(presentedSecret(new Headers({ authorization: "Basic abc" })), null);
   assertEquals(presentedSecret(new Headers({ "x-webhook-secret": "   " })), null);
+});
+
+// ── Per-user tokens ─────────────────────────────────────────────────────────
+
+Deno.test("generateToken: prefixed, and unique across mints", () => {
+  const a = generateToken();
+  const b = generateToken();
+  assert(a.startsWith(TOKEN_PREFIX), `missing prefix: ${a}`);
+  assertEquals(a === b, false);
+  // 32 random bytes as hex, after the prefix.
+  assertEquals(a.length, TOKEN_PREFIX.length + 64);
+  assert(/^[0-9a-f]{64}$/.test(a.slice(TOKEN_PREFIX.length)), "body is not 64 hex chars");
+});
+
+Deno.test("looksLikeToken: separates user tokens from the instance secret", () => {
+  assertEquals(looksLikeToken(generateToken()), true);
+  // A WEBHOOK_SECRET is an operator-chosen string with no prefix; it must not be
+  // mistaken for a token, or it would be looked up in the tokens table and fail.
+  assertEquals(looksLikeToken("a-long-instance-wide-secret-value"), false);
+  assertEquals(looksLikeToken(""), false);
+});
+
+Deno.test("hashToken: stable, and never returns the token itself", async () => {
+  const token = generateToken();
+  const hash = await hashToken(token);
+  assertEquals(await hashToken(token), hash); // deterministic — the lookup key
+  assertEquals(hash.includes(token), false);
+  assertEquals(hash, hash.toLowerCase());
+  assertEquals(hash.length, 64); // SHA-256, hex
+  // A different token must not collide.
+  assertEquals(await hashToken(generateToken()) === hash, false);
+});
+
+Deno.test("hashToken: a one-character difference changes the whole hash", async () => {
+  const token = generateToken();
+  const a = await hashToken(token);
+  const b = await hashToken(token.slice(0, -1) + (token.endsWith("a") ? "b" : "a"));
+  assertEquals(a === b, false);
 });
 
 // ── Payload validation ──────────────────────────────────────────────────────

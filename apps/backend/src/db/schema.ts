@@ -179,9 +179,10 @@ export const posts = pgTable("posts", {
   index("posts_author_status_created_idx").on(t.authorId, t.status, t.createdAt.desc()),
   index("posts_remote_actor_created_idx").on(t.remoteActorId, t.createdAt.desc()),
   uniqueIndex("posts_ap_id_idx").on(t.apId),
-  // One post per external key. NULLs are distinct in a Postgres unique index,
-  // so this constrains ingested rows only.
-  uniqueIndex("posts_external_id_idx").on(t.externalId),
+  // One post per external key *per author* — each writer's tokens address their
+  // own posts, so two of them can both publish a "hello-world" slug. NULLs are
+  // distinct in a Postgres unique index, so this constrains ingested rows only.
+  uniqueIndex("posts_author_external_idx").on(t.authorId, t.externalId),
 ]);
 
 // ── follows ────────────────────────────────────────────────────────────
@@ -447,6 +448,29 @@ export const authTokens = pgTable("auth_tokens", {
   index("auth_tokens_user_purpose_idx").on(t.userId, t.purpose),
 ]);
 
+// ── webhook tokens ─────────────────────────────────────────────────────
+// Per-user publishing credentials for the content webhook. One row is one
+// token a writer minted for one external system, so revoking a leaked Sanity
+// token doesn't disturb their publish script. Like auth_tokens, only the
+// SHA-256 hash is stored — the plaintext is shown once, at mint time, and is
+// unrecoverable afterwards. These never expire: an integration that publishes
+// for years shouldn't break on a timer. Revocation is explicit, and
+// `revoked_at` retires a token without deleting the row so `last_used_at`
+// stays legible when working out what a leaked token did.
+export const webhookTokens = pgTable("webhook_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // The owner's own name for it ("Sanity", "build hook") — display only.
+  label: text("label").notNull(),
+  tokenHash: text("token_hash").notNull(),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("webhook_tokens_hash_idx").on(t.tokenHash),
+  index("webhook_tokens_user_created_idx").on(t.userId, t.createdAt),
+]);
+
 // ── reports (moderation queue) ─────────────────────────────────────────
 // User-submitted flags against a post or an account, worked through the admin
 // moderation queue. `subject_type` says which of `post_id` / `user_id` is set.
@@ -577,6 +601,7 @@ export type CommentLike = typeof commentLikes.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type AuthToken = typeof authTokens.$inferSelect;
 export type NewAuthToken = typeof authTokens.$inferInsert;
+export type WebhookToken = typeof webhookTokens.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
 export type NewTag = typeof tags.$inferInsert;
 export type PostTag = typeof postTags.$inferSelect;

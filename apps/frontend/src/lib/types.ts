@@ -63,6 +63,16 @@ export type Post = {
   commentCount: number;
 };
 
+// A publishing token for the content webhook, as shown on the owner's Settings
+// page. The token itself is never in this payload — it is returned exactly once,
+// by the mint call, and only its hash is stored.
+export type WebhookToken = {
+  id: string;
+  label: string;
+  lastUsedAt: string | null;
+  createdAt: string;
+};
+
 // A tag's detail payload, powering the tag page header.
 export type TagDetail = {
   tag: Tag;

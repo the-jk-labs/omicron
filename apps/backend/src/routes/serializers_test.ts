@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { assertEquals } from "@std/assert";
-import { publicUser } from "@/routes/serializers.ts";
-import type { User } from "@/db/schema.ts";
+import { publicUser, webhookTokenView } from "@/routes/serializers.ts";
+import type { User, WebhookToken } from "@/db/schema.ts";
 
 // The serializers decide what leaves the server. These tests pin the parts that
 // are privacy decisions rather than plumbing.
@@ -45,4 +45,23 @@ Deno.test("publicUser: serves the custom section when not locked", () => {
   const out = publicUser(user);
   assertEquals(out.customSection, "# Secret plans");
   assertEquals(out.customSectionHtml, "<h1>Secret plans</h1>");
+});
+
+Deno.test("webhookTokenView: never returns the token hash", () => {
+  const out = webhookTokenView({
+    id: "t1",
+    userId: "u1",
+    label: "Sanity",
+    tokenHash: "b1946ac92492d2347c6235b4d2611184",
+    lastUsedAt: null,
+    revokedAt: null,
+    createdAt: new Date(),
+  } as WebhookToken) as Record<string, unknown>;
+
+  // The hash is the credential's only stored form. It is useless to its owner
+  // and dangerous everywhere else, so it must not appear on any surface.
+  assertEquals("tokenHash" in out, false);
+  // The owning account is implied by the session; echoing it back is noise.
+  assertEquals("userId" in out, false);
+  assertEquals(out.label, "Sanity");
 });

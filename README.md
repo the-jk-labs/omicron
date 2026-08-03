@@ -89,15 +89,16 @@ for the full picture.
 
 ## Publishing from an external CMS
 
-Set `WEBHOOK_SECRET` (see [.env.example](.env.example)) and an external system —
-Sanity, Contentful, a static-site build hook — can publish straight into your
-instance. The post is created by your account and federates like anything you
-write in the editor.
+Any writer can publish into their own blog from an external system — Sanity,
+Contentful, a static-site build hook, a script. Mint a token under **Settings →
+Integrations**, give it to that system, and the posts it sends are published
+under your name and federate like anything you write in the editor. Revoke the
+token any time to cut it off.
 
 ```bash
 curl -X POST https://your-domain/api/webhooks/content \
   -H "Content-Type: application/json" \
-  -H "X-Webhook-Secret: $WEBHOOK_SECRET" \
+  -H "X-Webhook-Secret: $OMICRON_TOKEN" \
   -d '{
     "title": "Europe is ditching Visa and Mastercard",
     "body": "## The short version\n\nIt is a **huge** step.",
@@ -111,11 +112,16 @@ curl -X POST https://your-domain/api/webhooks/content \
 
 Only `title` and `body` (Markdown) are required. `description` defaults to the
 first ~150 characters of the body; `slug` defaults to the title's slug and is
-what makes re-sends idempotent — POST the same `slug` again and the existing
-post is updated (`200`, `"created": false`) instead of duplicated. The secret
-also travels as `Authorization: Bearer <token>`. A wrong token gets `401`, an
-invalid payload `400` naming the field, and an instance with no
-`WEBHOOK_SECRET` set answers `503`.
+what makes re-sends idempotent — POST the same `slug` again and your existing
+post is updated (`200`, `"created": false`) instead of duplicated. Slugs are
+scoped to you, so they never collide with another writer's. The token also
+travels as `Authorization: Bearer <token>`. An unknown credential gets `401`
+and an invalid payload `400` naming the field.
+
+Operators can also set an instance-wide `WEBHOOK_SECRET` (see
+[.env.example](.env.example)) for publishing without a user token — a migration
+script, say. Full reference:
+**[docs.omicron.blog/reference/content-webhook](https://docs.omicron.blog/reference/content-webhook/)**
 
 ## Security
 

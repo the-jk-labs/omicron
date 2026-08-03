@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Post, ProfileLink, RemoteActor, User } from "@/db/schema.ts";
+import type { Post, ProfileLink, RemoteActor, User, WebhookToken } from "@/db/schema.ts";
 import type { PostWithAuthor } from "@/db/repositories/posts.ts";
 import type { CommentWithAuthor } from "@/db/repositories/comments.ts";
 import type { NotificationRow } from "@/db/repositories/notifications.ts";
@@ -245,6 +245,18 @@ export function notificationView(row: NotificationRow) {
     commentSnippet: snippet,
     read: n.readAt !== null,
     createdAt: n.createdAt,
+  };
+}
+
+// Webhook-token payload for the owner's Settings page. The stored value is a
+// SHA-256 hash and must never leave the server — not even to its owner, who saw
+// the plaintext once at mint time and cannot be shown it again.
+export function webhookTokenView(t: WebhookToken) {
+  return {
+    id: t.id,
+    label: t.label,
+    lastUsedAt: t.lastUsedAt,
+    createdAt: t.createdAt,
   };
 }
 

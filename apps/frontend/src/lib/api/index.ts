@@ -30,6 +30,7 @@ import type {
   TagDetail,
   TagWithCount,
   User,
+  WebhookToken,
 } from "$lib/types";
 
 type LikeState = { likeCount: number; liked: boolean };
@@ -183,6 +184,14 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.del<{ ok: true }>(`/tags/${encodeURIComponent(slug)}/follow`),
     trendingTags: () => api.get<{ tags: TagWithCount[] }>("/tags"),
     followedTags: () => api.get<{ tags: TagWithCount[] }>("/tags/following"),
+
+    // publishing tokens for the content webhook (Settings -> Integrations).
+    // `createWebhookToken` returns the plaintext token once and never again.
+    webhookTokens: () => api.get<{ tokens: WebhookToken[] }>("/webhooks/tokens"),
+    createWebhookToken: (label: string) =>
+      api.post<{ token: string; tokenInfo: WebhookToken }>("/webhooks/tokens", { label }),
+    revokeWebhookToken: (id: string) =>
+      api.del<{ ok: true }>(`/webhooks/tokens/${encodeURIComponent(id)}`),
 
     // feed + posts
     feed: (cursor?: string | null) =>

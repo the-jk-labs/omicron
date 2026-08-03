@@ -39,6 +39,42 @@ export async function secretMatches(
   return diff === 0;
 }
 
+// ── Per-user tokens ─────────────────────────────────────────────────────────
+
+// Marks a credential as an Omicron webhook token. The prefix is not a security
+// measure — it lets a person (and a secret scanner) recognise a leaked string
+// on sight, and lets us tell a user token apart from the instance-wide
+// WEBHOOK_SECRET without a database round-trip.
+export const TOKEN_PREFIX = "omi_wh_";
+
+/** True if a presented credential is shaped like a per-user token. */
+export function looksLikeToken(presented: string): boolean {
+  return presented.startsWith(TOKEN_PREFIX);
+}
+
+/**
+ * Mint a new token: the prefix plus 32 bytes of CSPRNG entropy in hex. Returned
+ * in plaintext exactly once — only `hashToken` of it is ever stored.
+ */
+export function generateToken(): string {
+  const buf = new Uint8Array(32);
+  crypto.getRandomValues(buf);
+  return TOKEN_PREFIX + Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * SHA-256 of a token, hex-encoded — the only form that reaches the database.
+ *
+ * A plain hash rather than a password KDF is right here: unlike a password,
+ * this is 256 bits of uniform randomness we generated, so there is no dictionary
+ * to attack and nothing for a slow KDF to buy. It also keeps the lookup a
+ * single indexed probe instead of a scan over every row.
+ */
+export async function hashToken(token: string): Promise<string> {
+  const digest = await sha256(token);
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 /**
  * Pulls the caller's secret out of either accepted header —
  * `X-Webhook-Secret: <token>` or `Authorization: Bearer <token>` — returning

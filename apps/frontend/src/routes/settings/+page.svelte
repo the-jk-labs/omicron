@@ -17,6 +17,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import ConnectionsManager from "$lib/components/ConnectionsManager.svelte";
   import FollowedTagsManager from "$lib/components/FollowedTagsManager.svelte";
+  import WebhookTokensManager from "$lib/components/WebhookTokensManager.svelte";
   import TagInput from "$lib/components/TagInput.svelte";
   import ProfileLinksEditor from "$lib/components/ProfileLinksEditor.svelte";
   import CustomSectionEditor from "$lib/components/CustomSectionEditor.svelte";
@@ -714,6 +715,20 @@
 
     <div class="mt-4">
       <ConnectionsManager />
+    </div>
+  </section>
+
+  <!-- Integrations -->
+  <section class="rounded-card border border-border bg-background p-6">
+    <h2 class="text-lg font-semibold tracking-tight text-foreground">Integrations</h2>
+    <p class="mt-1 max-w-prose text-sm text-muted-foreground">
+      Publish to this blog from an external system — a CMS like Sanity, a build hook, or a script.
+      Create a token, give it to that system, and posts it sends are published as you and federate
+      like anything you write here. Revoke a token any time to cut it off.
+    </p>
+
+    <div class="mt-4">
+      <WebhookTokensManager />
     </div>
   </section>
 

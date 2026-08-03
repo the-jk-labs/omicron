@@ -2,13 +2,16 @@
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
+import * as tokensRepo from "@/db/repositories/webhookTokens.ts";
 import { resolveTags } from "@/services/posts.ts";
-import { badRequest, conflict, HttpError, unauthorized } from "@/lib/http.ts";
+import { badRequest, conflict, forbidden, HttpError, unauthorized } from "@/lib/http.ts";
 import { renderMarkdown } from "@/lib/markdown.ts";
 import { normalizeLanguage } from "@/lib/languages.ts";
 import {
   type ContentPayload,
   externalKey,
+  hashToken,
+  looksLikeToken,
   presentedSecret,
   secretMatches,
   summarize,
@@ -38,28 +41,59 @@ import type { User } from "@/db/schema.ts";
 // config and DB imports so they can be unit-tested without either.
 
 /**
- * Authenticates an ingestion request. Throws 503 when no secret is configured
- * (the endpoint is off, not open) and 401 when the presented token is wrong.
+ * Authenticates an ingestion request and resolves who the post will be by.
  *
- * Neither the configured secret nor the presented one ever reaches the thrown
- * message, so nothing sensitive escapes through the error response or through
- * `handleError`'s log.
+ * Two kinds of credential are accepted, in this order:
+ *
+ *   1. A **per-user token** (`omi_wh_…`), minted by a writer in Settings. The
+ *      post is published as that writer — the path an ordinary user has.
+ *   2. The instance-wide **`WEBHOOK_SECRET`**, an operator-level fallback that
+ *      publishes as `WEBHOOK_AUTHOR` (or the oldest account).
+ *
+ * With neither minted nor configured, every credential fails the same way: a
+ * flat 401. There is no state in which an absent or empty secret is accepted.
+ *
+ * Nothing sensitive reaches a thrown message, so neither the error response nor
+ * `handleError`'s log can leak a credential.
  */
-export async function authenticate(headers: Headers): Promise<void> {
+export async function authenticate(headers: Headers): Promise<User> {
+  const presented = presentedSecret(headers);
+  if (!presented) throw unauthorized("Invalid webhook credentials.");
+
+  // The prefix tells the two kinds apart without a database round-trip, so an
+  // instance-secret request never costs a token lookup, or the other way about.
+  if (looksLikeToken(presented)) return await authorForToken(presented);
+
   const expected = config.WEBHOOK_SECRET;
-  if (!expected) {
-    throw new HttpError(503, "Content ingestion is not configured on this instance.");
-  }
-  if (!await secretMatches(presentedSecret(headers), expected)) {
+  if (!expected || !await secretMatches(presented, expected)) {
     throw unauthorized("Invalid webhook credentials.");
   }
+  return await configuredAuthor();
 }
 
-// Resolves the local account ingested posts are attributed to. `WEBHOOK_AUTHOR`
-// pins it by username; otherwise the oldest account (the admin the setup wizard
+// Resolves a per-user token to its owner. The lookup is by hash, so the
+// plaintext is never compared and a revoked token simply fails to match.
+async function authorForToken(presented: string): Promise<User> {
+  const row = await tokensRepo.findLive(await hashToken(presented));
+  if (!row) throw unauthorized("Invalid webhook credentials.");
+
+  const user = await usersRepo.findById(row.userId);
+  // Deleting an account cascades its tokens away, so a missing user is only
+  // reachable in a race. Treat it as a bad credential, not a server error.
+  if (!user) throw unauthorized("Invalid webhook credentials.");
+  if (user.suspendedAt) throw forbidden("This account is suspended.");
+
+  // Best-effort: the owner reads this to spot a token they forgot about, so it
+  // must never delay or fail a publish.
+  tokensRepo.touchLastUsed(row.id).catch(() => {});
+  return user;
+}
+
+// The account the instance-wide secret publishes as. `WEBHOOK_AUTHOR` pins it
+// by username; otherwise the oldest account (the admin the setup wizard
 // creates) owns them, so a single-author instance configures nothing but the
 // secret.
-async function resolveAuthor(): Promise<User> {
+async function configuredAuthor(): Promise<User> {
   const username = config.WEBHOOK_AUTHOR;
   const user = username ? await usersRepo.findByUsername(username) : await usersRepo.firstUser();
   if (!user) {
@@ -96,8 +130,10 @@ export type IngestResult = {
  * leaves ingested posts indistinguishable from editor-written ones downstream:
  * search, RSS, federation and the reader need no second code path.
  */
-export async function ingestContent(payload: ContentPayload): Promise<IngestResult> {
-  const author = await resolveAuthor();
+export async function ingestContent(
+  payload: ContentPayload,
+  author: User,
+): Promise<IngestResult> {
   const externalId = externalKey(payload);
 
   const contentHtml = renderMarkdown(payload.body).trim();
@@ -121,11 +157,13 @@ export async function ingestContent(payload: ContentPayload): Promise<IngestResu
   // at-least-once, so a duplicate must not race into a unique violation), but
   // the ownership check and the create-vs-update answer both need to know what
   // was there before it.
-  const existing = await postsRepo.findByExternalId(externalId);
+  // The lookup is already scoped to this author, so another writer's identical
+  // slug is invisible here and cannot be addressed, let alone overwritten.
+  const existing = await postsRepo.findByExternalId(author.id, externalId);
 
-  // An external key can only ever address the post it created. A remote post
-  // could never carry one, but guard the invariant rather than trust it.
-  if (existing && (existing.remote || existing.authorId !== author.id)) {
+  // A remote post could never carry an external key, but guard the invariant
+  // rather than trust it.
+  if (existing?.remote) {
     throw conflict("That slug belongs to a post this webhook does not own.");
   }
 
