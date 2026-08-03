@@ -59,8 +59,15 @@
 
     const cleanups: Array<() => void> = [];
     for (const pre of Array.from(root.querySelectorAll("pre"))) {
-      if (pre.querySelector(":scope > .code-copy")) continue;
-      pre.classList.add("code-block");
+      // A block whose fence declared a filename is wrapped in a captioned
+      // figure (see lib/highlight.ts); its button belongs in that caption,
+      // beside the name. Everything else hosts the button itself.
+      const caption = pre.parentElement?.classList.contains("code-figure")
+        ? pre.parentElement.querySelector(":scope > .code-title")
+        : null;
+      const host = caption ?? pre;
+      if (host.querySelector(":scope > .code-copy")) continue;
+      if (!caption) pre.classList.add("code-block");
 
       const btn = document.createElement("button");
       btn.type = "button";
@@ -85,7 +92,7 @@
         }
       };
       btn.addEventListener("click", onClick);
-      pre.appendChild(btn);
+      host.appendChild(btn);
 
       cleanups.push(() => {
         clearTimeout(resetTimer);

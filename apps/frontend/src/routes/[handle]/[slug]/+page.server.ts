@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { error, redirect } from "@sveltejs/kit";
 import { endpoints, ApiError } from "$lib/api";
+import { highlightCodeBlocks } from "$lib/highlight";
 import { postIdFromSlug, postPath } from "$lib/links";
 import type { PageServerLoad } from "./$types";
 
@@ -18,6 +19,12 @@ export const load: PageServerLoad = async ({ fetch, params, url }) => {
     // by the full id.
     const { post } = await api.post(id);
     const comments = await api.comments(post.id);
+    // Highlighting is a read-time concern (see lib/highlight.ts): the stored
+    // body stays the author's, and this decorates the copy on its way to the
+    // reader. `post` is this request's own deserialized response, so writing to
+    // it changes nothing but what this page renders. Only this page renders a
+    // full body, so only this load pays for the work.
+    post.contentHtml = highlightCodeBlocks(post.contentHtml);
     data = { post, comments };
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) error(404, "Post not found");

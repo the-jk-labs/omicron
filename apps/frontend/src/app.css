@@ -89,6 +89,13 @@ html {
   --contrast: 0 0% 0%;
 }
 
+/* Scrollbar thumb. Its own tokens rather than `--muted-foreground`, which
+   already carries an alpha of its own and so cannot take a second one. */
+:root {
+  --scrollbar-thumb: 0 0% 9% / 0.25;
+  --scrollbar-thumb-hover: 0 0% 9% / 0.45;
+}
+
 /* Dark theme tokens (ported verbatim from the docs `.dark`). Activated by the
    `dark` class on <html> — see the no-FOUC script in app.html and lib/theme. */
 .dark {
@@ -112,6 +119,60 @@ html {
   --tertiary: 61.3 100% 82.2%;
   --line: 0 0% 9.02%;
   --contrast: 0 0% 100%;
+  --scrollbar-thumb: 0 0% 100% / 0.22;
+  --scrollbar-thumb-hover: 0 0% 100% / 0.4;
+}
+
+/* Scrollbars
+   ---------------------------------------------------------------------------
+   One thin, rounded, arrowless bar everywhere something scrolls: the page, a
+   code block, a dialog, the emoji picker.
+
+   Two mechanisms, because no single one is understood everywhere:
+
+     * `::-webkit-scrollbar` (Chrome, Edge, Safari) takes the whole design —
+       thickness, rounded ends, and the inset, which comes from drawing the
+       thumb inside a transparent border via `background-clip: content-box`.
+     * `scrollbar-width` / `scrollbar-color` is the standard pair and all
+       Firefox has. It can say "thin" and name a colour, but expresses neither
+       radius nor inset — so Firefox lands close to this, not identical to it.
+
+   The `@supports not selector(::-webkit-scrollbar)` guard is what stops the two
+   from fighting. Chrome 121+ understands the standard properties as well, and
+   when given both it ignores the `::-webkit-` rules entirely — which would cost
+   every browser but Firefox the rounded thumb. Applying the standard pair only
+   where the pseudo-element is unsupported leaves each engine with the best it
+   can manage.
+
+   Both are zero-specificity, so `.no-scrollbar` (above) still wins wherever a
+   component deliberately hides its bar. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--scrollbar-thumb));
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--scrollbar-thumb-hover));
+}
+/* Some platforms still draw stepper arrows at the ends; this removes them. */
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--scrollbar-thumb)) transparent;
+  }
 }
 
 /* Rendered post content (the HTML produced by Tiptap). Medium-like serif
@@ -264,19 +325,138 @@ html {
   @apply my-6;
 }
 
-/* Copy button injected into rendered code blocks (see slug +page.svelte). */
+/* A fence that declared a filename (```ts title="…") is wrapped in a captioned
+   figure when the post is read — see lib/highlight.ts. The caption is a sibling
+   of the block rather than something inside it, so it stays put while wide code
+   scrolls underneath. */
+.prose-omicron .code-figure {
+  @apply my-6 overflow-hidden rounded-lg border border-border;
+}
+.prose-omicron .code-figure pre {
+  @apply my-0 rounded-none;
+}
+.prose-omicron .code-title {
+  @apply relative border-b border-border bg-muted py-2.5 pl-4 pr-12 font-mono text-xs text-muted-foreground;
+}
+
+/* Copy button injected into rendered code blocks (see slug +page.svelte). It
+   hosts in the caption when there is one and in the block's own corner
+   otherwise, so the two only differ in where they sit vertically. */
 .prose-omicron pre.code-block {
   @apply relative;
 }
+.prose-omicron .code-copy {
+  @apply absolute right-2 inline-flex h-8 w-8 items-center justify-center rounded-button border border-border bg-background text-muted-foreground opacity-0 shadow-btn transition-opacity hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+}
 .prose-omicron pre.code-block .code-copy {
-  @apply absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-button border border-border bg-background text-muted-foreground opacity-0 shadow-btn transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  @apply top-2;
+}
+.prose-omicron .code-title .code-copy {
+  @apply top-1/2 -translate-y-1/2;
 }
 .prose-omicron pre.code-block:hover .code-copy,
-.prose-omicron pre.code-block .code-copy:focus-visible {
+.prose-omicron .code-figure:hover .code-copy,
+.prose-omicron .code-copy:focus-visible {
   @apply opacity-100;
 }
-.prose-omicron pre.code-block .code-copy.copied {
+.prose-omicron .code-copy.copied {
   @apply text-foreground opacity-100;
+}
+
+/* Syntax highlighting.
+   ---------------------------------------------------------------------------
+   Markup comes from highlight.js, applied server-side when a post is read (see
+   lib/highlight.ts). These are the one place in the app that does not draw from
+   the Bits UI theme tokens: the tokens carry no notion of "this run of text is
+   a string literal", and six flat hues are exactly what a reader needs to skim
+   code. They are declared here as their own variables so the palette stays in
+   one place and light/dark stay in step, rather than as colours sprinkled
+   through the rules below.
+
+   Deliberately restrained: six hues, no backgrounds, no bold. The block already
+   sits on `bg-muted`, and code that blinks in eight colours is harder to read
+   than code in none. */
+:root {
+  --hl-comment: 215 14% 47%;
+  --hl-keyword: 356 76% 47%;
+  --hl-string: 213 82% 27%;
+  --hl-name: 265 68% 59%;
+  --hl-literal: 212 92% 35%;
+  --hl-type: 137 69% 24%;
+}
+.dark {
+  --hl-comment: 213 8% 62%;
+  --hl-keyword: 5 100% 72%;
+  --hl-string: 208 100% 82%;
+  --hl-name: 268 100% 83%;
+  --hl-literal: 208 100% 74%;
+  --hl-type: 138 74% 73%;
+}
+
+/* Comments and anything quoted out of the flow of the program. */
+.prose-omicron .hljs-comment,
+.prose-omicron .hljs-quote {
+  color: hsl(var(--hl-comment));
+  font-style: italic;
+}
+/* Language keywords and the selectors/tags that behave like them. */
+.prose-omicron .hljs-keyword,
+.prose-omicron .hljs-selector-tag,
+.prose-omicron .hljs-subst,
+.prose-omicron .hljs-doctag,
+.prose-omicron .hljs-formula {
+  color: hsl(var(--hl-keyword));
+}
+/* String-ish literals, including regexes and added lines in a diff. */
+.prose-omicron .hljs-string,
+.prose-omicron .hljs-regexp,
+.prose-omicron .hljs-char,
+.prose-omicron .hljs-addition,
+.prose-omicron .hljs-meta .hljs-string {
+  color: hsl(var(--hl-string));
+}
+/* Things being named or declared — functions, classes, headings, sections.
+   highlight.js marks these with a pair of classes (`hljs-title function_`), so
+   the base class is what to select on. */
+.prose-omicron .hljs-title,
+.prose-omicron .hljs-section,
+.prose-omicron .hljs-selector-id,
+.prose-omicron .hljs-selector-class {
+  color: hsl(var(--hl-name));
+}
+/* Values: numbers, booleans, symbols, template placeholders, links. */
+.prose-omicron .hljs-number,
+.prose-omicron .hljs-literal,
+.prose-omicron .hljs-symbol,
+.prose-omicron .hljs-bullet,
+.prose-omicron .hljs-link,
+.prose-omicron .hljs-variable,
+.prose-omicron .hljs-template-variable,
+.prose-omicron .hljs-attr,
+.prose-omicron .hljs-attribute {
+  color: hsl(var(--hl-literal));
+}
+/* Types, built-ins, and the tags/params around them. */
+.prose-omicron .hljs-type,
+.prose-omicron .hljs-built_in,
+.prose-omicron .hljs-class .hljs-title,
+.prose-omicron .hljs-tag,
+.prose-omicron .hljs-name,
+.prose-omicron .hljs-params,
+.prose-omicron .hljs-meta,
+.prose-omicron .hljs-selector-attr,
+.prose-omicron .hljs-selector-pseudo {
+  color: hsl(var(--hl-type));
+}
+/* Removed lines in a diff read as a warning, so they borrow the theme's. */
+.prose-omicron .hljs-deletion {
+  @apply text-destructive;
+}
+.prose-omicron .hljs-emphasis {
+  font-style: italic;
+}
+.prose-omicron .hljs-strong {
+  font-weight: 600;
 }
 
 /* Tiptap editor surface */
