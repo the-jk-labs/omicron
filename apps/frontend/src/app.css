@@ -336,7 +336,44 @@ html {
   @apply my-0 rounded-none;
 }
 .prose-omicron .code-title {
-  @apply relative border-b border-border bg-muted py-2.5 pl-4 pr-12 font-mono text-xs text-muted-foreground;
+  @apply relative flex items-center gap-2 border-b border-border bg-muted py-2.5 pl-4 pr-12 font-mono text-xs text-muted-foreground;
+}
+.prose-omicron .code-name {
+  @apply truncate;
+}
+
+/* The file-type chip (see lib/fileIcons.ts). Its tone is one of eight, picked
+   from the filename's extension; the letters are what actually identify the
+   language, so the colour is kept to a tint and never carries meaning alone. */
+.prose-omicron .code-icon {
+  @apply inline-flex h-[18px] shrink-0 items-center justify-center rounded-[4px] px-1 font-sans text-[9px] font-semibold uppercase leading-none tracking-wide;
+  min-width: 18px;
+  background-color: hsl(var(--file-tone) / 0.14);
+  color: hsl(var(--file-tone));
+}
+.prose-omicron .code-icon[data-tone="blue"] {
+  --file-tone: var(--file-blue);
+}
+.prose-omicron .code-icon[data-tone="amber"] {
+  --file-tone: var(--file-amber);
+}
+.prose-omicron .code-icon[data-tone="green"] {
+  --file-tone: var(--file-green);
+}
+.prose-omicron .code-icon[data-tone="orange"] {
+  --file-tone: var(--file-orange);
+}
+.prose-omicron .code-icon[data-tone="purple"] {
+  --file-tone: var(--file-purple);
+}
+.prose-omicron .code-icon[data-tone="red"] {
+  --file-tone: var(--file-red);
+}
+.prose-omicron .code-icon[data-tone="cyan"] {
+  --file-tone: var(--file-cyan);
+}
+.prose-omicron .code-icon[data-tone="slate"] {
+  --file-tone: var(--file-slate);
 }
 
 /* Copy button injected into rendered code blocks (see slug +page.svelte). It
@@ -376,6 +413,31 @@ html {
    Deliberately restrained: six hues, no backgrounds, no bold. The block already
    sits on `bg-muted`, and code that blinks in eight colours is harder to read
    than code in none. */
+/* Tones for the file-type chip, on the same footing as the syntax palette: the
+   theme tokens have no notion of "this is a Rust file", and a chip that is
+   `muted` on every block tells the reader nothing. Eight hues, each used at a
+   0.14 tint behind the letters. */
+:root {
+  --file-blue: 213 90% 45%;
+  --file-amber: 38 92% 40%;
+  --file-green: 142 60% 32%;
+  --file-orange: 21 88% 45%;
+  --file-purple: 265 68% 55%;
+  --file-red: 356 76% 47%;
+  --file-cyan: 190 90% 32%;
+  --file-slate: 215 14% 42%;
+}
+.dark {
+  --file-blue: 213 95% 70%;
+  --file-amber: 40 95% 62%;
+  --file-green: 142 60% 60%;
+  --file-orange: 22 95% 66%;
+  --file-purple: 265 90% 78%;
+  --file-red: 5 95% 71%;
+  --file-cyan: 189 90% 62%;
+  --file-slate: 213 10% 65%;
+}
+
 :root {
   --hl-comment: 215 14% 47%;
   --hl-keyword: 356 76% 47%;

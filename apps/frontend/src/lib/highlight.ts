@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import hljs from "highlight.js/lib/common";
+import { fileIcon } from "$lib/fileIcons";
 
 // Syntax highlighting for rendered post bodies.
 //
@@ -76,7 +77,7 @@ export function highlightCodeBlocks(html: string): string {
     // Still caption an empty or unhighlightable block — the filename is the
     // author's, and it should show whether or not the highlighter had anything
     // to say about the contents.
-    if (!source.trim()) return withTitle(block, title);
+    if (!source.trim()) return withTitle(block, title, declared);
 
     let language: string | undefined;
     let value: string;
@@ -89,14 +90,16 @@ export function highlightCodeBlocks(html: string): string {
         language = declared;
       } else {
         const auto = hljs.highlightAuto(source);
-        if (!auto.language || auto.relevance < MIN_AUTO_RELEVANCE) return withTitle(block, title);
+        if (!auto.language || auto.relevance < MIN_AUTO_RELEVANCE) {
+          return withTitle(block, title, declared);
+        }
         value = auto.value;
         language = auto.language;
       }
     } catch {
       // Never let a highlighter bug cost someone their article: fall back to
       // the block exactly as it was stored.
-      return withTitle(block, title);
+      return withTitle(block, title, declared);
     }
 
     // `class` and `data-title` are the only attributes the sanitizer allows on
@@ -104,7 +107,7 @@ export function highlightCodeBlocks(html: string): string {
     // nothing an author put there. The title moves into the caption, which is
     // why it does not stay on the `<pre>`.
     const pre = `<pre><code class="hljs language-${language}">${value}</code></pre>`;
-    return withTitle(pre, title);
+    return withTitle(pre, title, language);
   });
 }
 
@@ -115,10 +118,20 @@ export function highlightCodeBlocks(html: string): string {
  * horizontally, and a pseudo-element inside it would scroll away with the code
  * and stop short of the full width. As a sibling it stays put.
  *
+ * The caption leads with a monogram chip for the file type (lib/fileIcons.ts),
+ * taken from the filename's extension or, failing that, the fence's language.
+ *
  * `title` arrives HTML-escaped (it was read straight out of the attribute), so
  * it is interpolated as-is — escaping it twice would show `&amp;` to the reader.
+ * The chip's label comes from the same string but is built from a strict
+ * character class, so nothing unescaped can ride in on it.
  */
-function withTitle(pre: string, title: string | null): string {
+function withTitle(pre: string, title: string | null, language?: string | null): string {
   if (!title) return pre;
-  return `<figure class="code-figure"><figcaption class="code-title">${title}</figcaption>${pre}</figure>`;
+  const icon = fileIcon(title, language);
+  const chip = icon
+    ? `<span class="code-icon" data-tone="${icon.tone}">${icon.label}</span>`
+    : "";
+  return `<figure class="code-figure"><figcaption class="code-title">${chip}` +
+    `<span class="code-name">${title}</span></figcaption>${pre}</figure>`;
 }
