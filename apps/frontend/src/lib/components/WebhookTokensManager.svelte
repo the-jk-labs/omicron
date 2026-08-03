@@ -26,8 +26,10 @@
   let freshToken = $state<string | null>(null);
   let copied = $state(false);
 
+  // Height is pinned rather than derived from padding, so the input and the
+  // Create button beside it are the same 40px — `Button size="default"` is h-10.
   const field =
-    "rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground";
+    "h-10 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground";
 
   async function load() {
     loading = true;
@@ -131,7 +133,13 @@
       onkeydown={(e) => e.key === "Enter" && create()}
     />
   </div>
-  <Button variant="outline" size="sm" disabled={!label.trim() || creating} onclick={create}>
+  <Button
+    variant="outline"
+    size="default"
+    class="shrink-0"
+    disabled={!label.trim() || creating}
+    onclick={create}
+  >
     <Icon name="plus" size={15} />
     {creating ? "Creating…" : "Create"}
   </Button>

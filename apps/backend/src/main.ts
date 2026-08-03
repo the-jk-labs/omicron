@@ -20,8 +20,13 @@ async function main() {
   // Handlers are registered inside buildApp(), so start the worker after it.
   startJobWorker();
 
-  Deno.serve({ port: config.PORT }, app.fetch);
-  console.log(`✔ Omicron backend v${APP_VERSION} listening on :${config.PORT}`);
+  // `onListen` overrides Deno's own "Listening on http://0.0.0.0:8000/" banner,
+  // which otherwise prints alongside ours and announces the same thing twice —
+  // once with a localhost URL that is meaningless inside a container.
+  Deno.serve({
+    port: config.PORT,
+    onListen: () => console.log(`✔ Omicron backend v${APP_VERSION} listening on :${config.PORT}`),
+  }, app.fetch);
 
   // Re-assert the persisted AI-scraper-shield state onto Caddy once it's up
   // (Caddy starts after us and boots protection-off). Non-blocking, fail-open.
