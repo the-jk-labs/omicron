@@ -87,7 +87,10 @@ const CONFIG: sanitizeHtml.IOptions = {
     details: ["open"],
     // Syntax-highlighted code blocks carry `language-*` / `hljs` classes.
     code: ["class"],
-    pre: ["class"],
+    // `data-title` is the optional filename on a fence (see lib/markdown.ts).
+    // Inert by construction: a data attribute the reader renders as a caption,
+    // with no behaviour attached and its value escaped on the way out.
+    pre: ["class", "data-title"],
     span: ["class"],
     // Table cell alignment/spanning is structural, not stylistic.
     th: ["colspan", "rowspan", "scope"],
