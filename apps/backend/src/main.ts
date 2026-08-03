@@ -21,7 +21,7 @@ async function main() {
   startJobWorker();
 
   Deno.serve({ port: config.PORT }, app.fetch);
-  console.log(`🚀 Omicron backend v${APP_VERSION} listening on :${config.PORT}`);
+  console.log(`✔ Omicron backend v${APP_VERSION} listening on :${config.PORT}`);
 
   // Re-assert the persisted AI-scraper-shield state onto Caddy once it's up
   // (Caddy starts after us and boots protection-off). Non-blocking, fail-open.

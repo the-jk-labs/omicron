@@ -107,6 +107,6 @@ export function reconcileAnubisInBackground(): void {
         await new Promise((r) => setTimeout(r, 2000));
       }
     }
-    console.warn("⚠️  Could not sync Anubis protection to Caddy after startup retries.");
+    console.warn("! Could not sync Anubis protection to Caddy after startup retries.");
   })();
 }

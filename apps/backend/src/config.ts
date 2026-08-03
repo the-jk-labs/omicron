@@ -54,10 +54,10 @@ function resolveSessionSecret(): string {
   try {
     Deno.mkdirSync(STATE_DIR, { recursive: true });
     Deno.writeTextFileSync(STATE_SECRET_PATH, secret, { mode: 0o600 });
-    console.log(`🔑 No SESSION_SECRET set — generated and persisted one at ${STATE_SECRET_PATH}.`);
+    console.log(`✔ No SESSION_SECRET set — generated and persisted one at ${STATE_SECRET_PATH}.`);
   } catch (err) {
     console.warn(
-      `⚠️  Could not persist a generated SESSION_SECRET to ${STATE_SECRET_PATH}: ${err}. ` +
+      `! Could not persist a generated SESSION_SECRET to ${STATE_SECRET_PATH}: ${err}. ` +
         `Using an ephemeral secret — sessions will not survive a restart.`,
     );
   }
@@ -217,7 +217,7 @@ function load() {
   });
 
   if (!parsed.success) {
-    console.error("❌ Invalid environment configuration:");
+    console.error("✖ Invalid environment configuration:");
     console.error(parsed.error.flatten().fieldErrors);
     if (parsed.error.flatten().fieldErrors.DATABASE_URL) {
       console.error(
