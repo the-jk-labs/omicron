@@ -160,3 +160,64 @@ Deno.test("markdown: empty and whitespace-only input render as empty", () => {
   assertEquals(renderMarkdown(null), "");
   assertEquals(renderMarkdown(undefined), "");
 });
+
+Deno.test("markdown: inline and display maths render as MathML", () => {
+  const inline = renderMarkdown("Einstein wrote $E = mc^2$ once.");
+  assertStringIncludes(inline, "<math");
+  assertStringIncludes(inline, "<msup><mi>c</mi><mn>2</mn></msup>");
+  assertEquals(inline.includes("$"), false);
+
+  const block = renderMarkdown("$$\\frac{a}{b}$$");
+  assertStringIncludes(block, 'class="katex-block"');
+  assertStringIncludes(block, '<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">');
+  assertStringIncludes(block, "<mfrac>");
+});
+
+Deno.test("markdown: maths survives the sanitizer with its layout attributes", () => {
+  // MathML reaches the reader through `sanitizePostHtml` like everything else,
+  // so the tags and the presentational attributes must both be on the allowlist
+  // — a stripped `display` or `fence` is a formula rendered wrong.
+  const out = renderMarkdown("$$\\left( \\sum_{i=1}^{n} x_i \\right)$$");
+  assertStringIncludes(out, "<munderover>");
+  assertStringIncludes(out, 'fence="true"');
+  assertStringIncludes(out, 'display="block"');
+});
+
+Deno.test("markdown: maths cannot smuggle script through MathML", () => {
+  const out = renderMarkdown(
+    '<math><mtext onclick="alert(1)">x</mtext></math>\n\n' +
+      '<math><maction actiontype="statusline">y</maction></math>',
+  );
+  assertEquals(/onclick/i.test(out), false);
+  assertEquals(/maction/i.test(out), false);
+  assertStringIncludes(out, "<mtext>x</mtext>");
+});
+
+Deno.test("markdown: a price is not a formula", () => {
+  for (const source of ["It costs $5 and shipping is $6.", "Tiers: $10, $20, $30."]) {
+    assertEquals(renderMarkdown(source).includes("<math"), false);
+  }
+});
+
+Deno.test("markdown: an unparseable formula degrades to its source", () => {
+  const out = renderMarkdown("broken $\\frac{1$");
+  assertStringIncludes(out, "katex-error");
+  assertEquals(out.includes("<math"), false);
+});
+
+Deno.test("markdown: underscores inside a formula are not emphasis", () => {
+  // Two `_` in one line is markdown emphasis everywhere except inside maths,
+  // where they are subscripts. The maths rule runs first, which is what keeps
+  // `\Sigma_{ss} … k_{B}` out of an <em>.
+  const out = renderMarkdown("$\\Sigma_{ss} \\ge k_{B}$");
+  assertEquals(out.includes("<em>"), false);
+  assertStringIncludes(out, "<msub>");
+});
+
+Deno.test("markdown: tables render with their alignment intact", () => {
+  const out = renderMarkdown("| a | b |\n| :-- | --: |\n| 1 | 2 |");
+  assertStringIncludes(out, "<table>");
+  assertStringIncludes(out, "<thead>");
+  assertStringIncludes(out, "<td");
+  assertEquals(out.includes("|"), false);
+});

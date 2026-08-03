@@ -78,3 +78,23 @@ Deno.test("sanitize: null/undefined/empty become empty string", () => {
   assertEquals(sanitizePostHtml(undefined), "");
   assertEquals(sanitizePostHtml(""), "");
 });
+
+Deno.test("sanitize: keeps a MathML formula whole", () => {
+  // A remote Article's maths arrives as MathML, same as ours (lib/markdown.ts).
+  // Structure and layout attributes both have to survive — a dropped <mfrac> is
+  // a formula that reads as its own numerator.
+  const math = '<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">' +
+    "<mfrac><mi>a</mi><msub><mi>b</mi><mn>2</mn></msub></mfrac>" +
+    '<mo stretchy="false">)</mo></math>';
+  assertEquals(sanitizePostHtml(math), math);
+});
+
+Deno.test("sanitize: MathML is not a way in for script", () => {
+  const out = sanitizePostHtml(
+    '<math><mtext onmouseover="alert(1)" href="javascript:alert(1)">x</mtext>' +
+      '<maction actiontype="statusline">y</maction>' +
+      "<mi><script>alert(1)</script></mi></math>",
+  );
+  assertEquals(/onmouseover|javascript:|maction|<script/i.test(out), false);
+  assertStringIncludes(out, "<mtext>x</mtext>");
+});

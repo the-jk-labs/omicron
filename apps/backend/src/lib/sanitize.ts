@@ -72,8 +72,87 @@ const ALLOWED_TAGS = [
   "dd",
 ];
 
+// MathML, as produced by KaTeX from `$…$` maths (see lib/markdown.ts) and as
+// carried by remote Articles. Presentation elements only: every one of these
+// draws a glyph, a fraction bar or a grid and has no script surface. `maction`
+// — the one MathML element with behaviour attached — is deliberately absent.
+const MATHML_TAGS = [
+  "math",
+  "semantics",
+  "annotation",
+  "mrow",
+  "mi",
+  "mn",
+  "mo",
+  "ms",
+  "mtext",
+  "mspace",
+  "mfrac",
+  "msqrt",
+  "mroot",
+  "msub",
+  "msup",
+  "msubsup",
+  "munder",
+  "mover",
+  "munderover",
+  "mmultiscripts",
+  "mprescripts",
+  "none",
+  "mstyle",
+  "mpadded",
+  "mphantom",
+  "menclose",
+  "merror",
+  "mtable",
+  "mtr",
+  "mtd",
+  "mlabeledtr",
+];
+
+// Attributes MathML uses to say how a formula is laid out — spacing, stretchy
+// brackets, alignment of a matrix. Presentational, inert, and identical on every
+// element that accepts them, so the whole set is granted to the whole vocabulary
+// rather than spelled out element by element.
+const MATHML_ATTRIBUTES = [
+  "accent",
+  "accentunder",
+  "columnalign",
+  "columnlines",
+  "columnspacing",
+  "columnspan",
+  "depth",
+  "display",
+  "displaystyle",
+  "encoding",
+  "fence",
+  "form",
+  "height",
+  "largeop",
+  "linethickness",
+  "lspace",
+  "mathsize",
+  "mathvariant",
+  "maxsize",
+  "minsize",
+  "movablelimits",
+  "notation",
+  "rowalign",
+  "rowlines",
+  "rowspacing",
+  "rowspan",
+  "rspace",
+  "scriptlevel",
+  "separator",
+  "stretchy",
+  "symmetric",
+  "voffset",
+  "width",
+  "xmlns",
+];
+
 const CONFIG: sanitizeHtml.IOptions = {
-  allowedTags: ALLOWED_TAGS,
+  allowedTags: [...ALLOWED_TAGS, ...MATHML_TAGS],
   allowedAttributes: {
     // `rel`/`target` are re-set by transformTags below; they must be allowed
     // here or the attribute filter would strip them straight back off.
@@ -82,7 +161,9 @@ const CONFIG: sanitizeHtml.IOptions = {
     // Presentational alignment only — the one bit of layout control we grant
     // without opening up `style`.
     div: ["align"],
-    p: ["align"],
+    // `class` on a paragraph is only ever `katex-block`, the wrapper KaTeX puts
+    // around a `$$…$$` formula; `allowedClasses` below is what holds it to that.
+    p: ["align", "class"],
     // Collapsible sections may start expanded.
     details: ["open"],
     // Syntax-highlighted code blocks carry `language-*` / `hljs` classes.
@@ -97,6 +178,7 @@ const CONFIG: sanitizeHtml.IOptions = {
     td: ["colspan", "rowspan"],
     col: ["span"],
     colgroup: ["span"],
+    ...Object.fromEntries(MATHML_TAGS.map((tag) => [tag, MATHML_ATTRIBUTES])),
   },
   // Only safe URL schemes. Note: no `data:` — it enables data-URI payloads
   // (e.g. SVG scripts) and bloats stored HTML; local images are same-origin URLs.
@@ -111,7 +193,9 @@ const CONFIG: sanitizeHtml.IOptions = {
   allowedClasses: {
     code: ["language-*", "hljs", "hljs-*"],
     pre: ["language-*", "hljs", "hljs-*"],
-    span: ["hljs-*"],
+    // `katex` wraps a formula; `katex-error` marks one KaTeX could not parse.
+    span: ["hljs-*", "katex", "katex-error"],
+    p: ["katex-block"],
     // The exact utility classes our Tiptap Image node emits, so locally authored
     // images keep their centering/rounding. Any other class is dropped.
     img: ["rounded-card", "mx-auto", "my-6", "max-w-full"],

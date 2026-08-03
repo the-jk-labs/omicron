@@ -16,6 +16,13 @@
 import MarkdownIt from "markdown-it";
 // @ts-types="npm:@types/markdown-it@^14/lib/token.d.mts"
 import type Token from "markdown-it/lib/token.mjs";
+// CommonJS, so the plugin arrives as the module's `exports` object rather than
+// the function itself.
+import katexModule from "@vscode/markdown-it-katex";
+type Plugin = (md: MarkdownIt, options?: Record<string, unknown>) => void;
+const katex = (katexModule as unknown as { default?: Plugin }).default ??
+  (katexModule as unknown as Plugin);
+
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
 
 const md = new MarkdownIt({
@@ -23,6 +30,27 @@ const md = new MarkdownIt({
   linkify: true, // bare URLs become links
   breaks: true, // a single newline is a line break, matching the post editor
   typographer: false, // leave the author's punctuation exactly as typed
+});
+
+// TeX maths, `$inline$` and `$$display$$`, rendered here rather than in the
+// browser: the reader ships no maths engine and a remote instance rendering our
+// Article gets finished markup too.
+//
+// Output is **MathML**, not KaTeX's usual HTML. MathML is native in every
+// current browser, needs no stylesheet, and — the reason it matters here —
+// carries no inline `style`, so the formula survives `sanitizePostHtml` intact
+// instead of arriving as a heap of unstyled spans.
+//
+// The rule runs during inline parsing, ahead of emphasis, which is what keeps
+// `\Sigma_{\mathrm{ss}} … k_{\mathrm{B}}` from having its two underscores paired
+// into an `<em>`. Delimiters must hug their content (`$x$`, never `$ x$`) and a
+// digit may not follow the closer, so prices — "$5 and $6" — stay prices.
+md.use(katex, {
+  output: "mathml",
+  // A malformed formula renders as the offending source in an error span rather
+  // than taking down the whole render. Nothing an author types can 500 a post.
+  throwOnError: false,
+  strict: false,
 });
 
 // GitHub-style task lists. markdown-it has no rule for them, and rendering real

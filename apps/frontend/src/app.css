@@ -263,6 +263,20 @@ html {
 .prose-omicron kbd {
   @apply rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground;
 }
+/* Maths. The backend renders `$…$` to MathML (see backend lib/markdown.ts), so
+   the browser draws the formula itself — there is no stylesheet to load, only a
+   place to put it. A display formula gets its own centred line and scrolls
+   inside the column rather than widening the page. */
+.prose-omicron p.katex-block {
+  @apply my-6 overflow-x-auto overflow-y-hidden text-center;
+}
+.prose-omicron math {
+  @apply font-serif;
+}
+/* A formula KaTeX could not parse: shown as the source the author typed. */
+.prose-omicron .katex-error {
+  @apply font-mono text-[0.9em] text-destructive;
+}
 .prose-omicron div[align="center"] {
   @apply text-center;
 }
