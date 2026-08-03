@@ -115,7 +115,7 @@ function resolveDatabaseUrl(): string | undefined {
 const schema = z.object({
   DATABASE_URL: z.string().url(),
   // Optional at boot: defaults to localhost so the app is reachable before the
-  // setup wizard sets the real public domain (see pre-release.md S1).
+  // setup wizard sets the real public domain.
   APP_DOMAIN: z.string().min(1).default("localhost:5173"),
   FEDERATION_ENABLED: z
     .string()

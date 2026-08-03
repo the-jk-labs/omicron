@@ -59,7 +59,7 @@ export async function setFederationEnabled(value: boolean): Promise<void> {
 
 // Effective email transport mode: wizard → EMAIL_TRANSPORT env/default.
 // The wizard stores the operator's choice here; the concrete transport wiring
-// (SMTP creds / relay) is configured in a later step (see pre-release.md S3).
+// (SMTP creds / relay) is configured in a later step of the wizard.
 export async function getEmailMode(): Promise<string> {
   const fromDb = await settingsRepo.get<string>(SETUP_KEYS.emailMode);
   return fromDb?.trim() || config.EMAIL_TRANSPORT;
