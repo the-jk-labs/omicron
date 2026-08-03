@@ -14,6 +14,13 @@ import { handler } from "./build/handler.js";
 const compress = compression();
 const port = Number(process.env.PORT) || 3000;
 
+// A floating promise rejected inside a component (e.g. an eager fetch during
+// SSR) would otherwise be fatal to the process, taking every request down with
+// it — a whole-instance outage caused by one page. Log and keep serving.
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason);
+});
+
 http
   .createServer((req, res) => {
     compress(req, res, () => {

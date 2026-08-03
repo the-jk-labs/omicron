@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { onMount } from "svelte";
   import { Tabs } from "bits-ui";
   import { endpoints } from "$lib/api";
   import Avatar from "$lib/components/ui/Avatar.svelte";
@@ -60,6 +61,8 @@
       const res = await p.load();
       p.items = res.items;
       p.loaded = true;
+    } catch {
+      // Nothing to show but the empty state; switching tabs back retries.
     } finally {
       p.loading = false;
     }
@@ -75,8 +78,11 @@
     }
   }
 
-  // Load the first tab immediately.
-  ensureLoaded("muted");
+  // Load the first tab as soon as we're in the browser — the API client uses
+  // relative URLs, which SvelteKit forbids during SSR.
+  onMount(() => {
+    ensureLoaded("muted");
+  });
 </script>
 
 <Tabs.Root value="muted" onValueChange={ensureLoaded} class="w-full">

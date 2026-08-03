@@ -2,6 +2,7 @@
 <!-- Lists the tags the signed-in user follows, with an unfollow action per row.
      Following a tag happens from its tag page; this is the management surface. -->
 <script lang="ts">
+  import { onMount } from "svelte";
   import { endpoints } from "$lib/api";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
@@ -20,6 +21,8 @@
       const res = await api.followedTags();
       tags = res.tags;
       loaded = true;
+    } catch {
+      // Nothing to show but the empty state; a reload retries.
     } finally {
       loading = false;
     }
@@ -35,7 +38,11 @@
     }
   }
 
-  load();
+  // Browser-only: the API client uses relative URLs, which SvelteKit forbids
+  // during SSR.
+  onMount(() => {
+    load();
+  });
 </script>
 
 {#if loading && !loaded}

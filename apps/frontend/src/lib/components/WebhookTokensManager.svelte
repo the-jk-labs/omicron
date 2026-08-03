@@ -5,6 +5,7 @@
      the freshly-minted value is held in local state and surfaced once, with a
      copy button, until the user dismisses it. -->
 <script lang="ts">
+  import { onMount } from "svelte";
   import { Label } from "bits-ui";
   import { ApiError, endpoints } from "$lib/api";
   import Button from "$lib/components/ui/Button.svelte";
@@ -93,7 +94,11 @@
     }
   }
 
-  load();
+  // Browser-only: the API client uses relative URLs, which SvelteKit forbids
+  // during SSR.
+  onMount(() => {
+    load();
+  });
 </script>
 
 {#if freshToken}
