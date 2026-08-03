@@ -21,6 +21,21 @@ Deno.test("normalizeTag: keeps unicode letters and digits and underscore", () =>
   assertEquals(normalizeTag("web_3"), "web_3");
 });
 
+Deno.test("normalizeTag: spells out a symbol that is part of the name", () => {
+  // Without this these collapse onto `c`/`f` — a different, unrelated tag.
+  assertEquals(normalizeTag("c++"), "cpp");
+  assertEquals(normalizeTag("#C++"), "cpp");
+  assertEquals(normalizeTag("notepad++"), "notepadpp");
+  assertEquals(normalizeTag("c#"), "csharp");
+  assertEquals(normalizeTag("F#"), "fsharp");
+});
+
+Deno.test("normalizeTag: a detached symbol still normalizes away", () => {
+  assertEquals(normalizeTag("+"), "");
+  assertEquals(normalizeTag("+rust"), "rust");
+  assertEquals(normalizeTag("go + rust"), "gorust");
+});
+
 Deno.test("normalizeTag: caps length", () => {
   assertEquals(normalizeTag("a".repeat(80)).length, MAX_TAG_LENGTH);
 });

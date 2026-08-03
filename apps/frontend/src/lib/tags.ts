@@ -12,6 +12,9 @@ export function normalizeTag(raw: string): string {
     .normalize("NFKC")
     .toLowerCase()
     .replace(/^#+/, "")
+    // `c++` → `cpp`, `c#` → `csharp`; see the backend copy for why.
+    .replace(/(?<=[\p{L}\p{M}\p{N}_])\++/gu, (run) => "p".repeat(run.length))
+    .replace(/(?<=[\p{L}\p{M}\p{N}_])#/gu, "sharp")
     .replace(/[^\p{L}\p{M}\p{N}_]+/gu, "")
     .slice(0, MAX_TAG_LENGTH);
 }
