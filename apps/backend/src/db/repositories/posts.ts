@@ -107,6 +107,29 @@ export function findByApId(apId: string) {
   return db.query.posts.findFirst({ where: eq(posts.apId, apId) });
 }
 
+// Looks up a machine-ingested post by the external system's stable key (see
+// services/webhooks.ts). Only ever matches locally-authored ingested rows —
+// `external_id` is null everywhere else.
+export function findByExternalId(externalId: string) {
+  return db.query.posts.findFirst({ where: eq(posts.externalId, externalId) });
+}
+
+// Writes a machine-ingested post, keyed by the external system's stable key.
+// An upsert rather than an insert-or-update pair because webhook delivery is
+// at-least-once: two concurrent re-deliveries of the same document would
+// otherwise both miss the lookup and race into a unique violation. `authorId`
+// and `externalId` identify the row and are left alone on conflict; everything
+// else the caller passes is refreshed.
+export async function upsertByExternalId(data: NewPost & { externalId: string }) {
+  const { externalId: _externalId, authorId: _authorId, ...mutable } = data;
+  const [row] = await db
+    .insert(posts)
+    .values(data)
+    .onConflictDoUpdate({ target: posts.externalId, set: mutable })
+    .returning();
+  return row;
+}
+
 export async function update(id: string, data: Partial<NewPost>) {
   const [row] = await db.update(posts).set(data).where(eq(posts.id, id)).returning();
   return row;

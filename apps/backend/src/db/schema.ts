@@ -148,6 +148,19 @@ export const posts = pgTable("posts", {
   // feed filter and federates as the Article content's language tag. Remote posts
   // inherit the language declared on the incoming Article (null if none).
   language: text("language"),
+  // Short plain-text preview of the post. Supplied by an ingesting CMS, or
+  // derived from the body on ingest. Federates as the Article `summary` (what
+  // Mastodon shows above a long-form link). Null for human-authored posts,
+  // whose preview the reader derives from the body at render time.
+  summary: text("summary"),
+  // Absolute http(s) URL of the post's banner image, hosted by whoever sent it.
+  // Federates as the Article `image`. Null unless the post carries one.
+  coverUrl: text("cover_url"),
+  // Stable key from the external system that ingested this post (see
+  // services/webhooks.ts) — a CMS slug or document id. Present only on
+  // machine-ingested posts, and what makes re-delivery of the same content
+  // update the existing post instead of publishing a duplicate.
+  externalId: text("external_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   // Precomputed full-text search document: title (weight A) + tag-stripped body
   // (weight B). STORED + GIN-indexed, so search is an index lookup instead of a
@@ -166,6 +179,9 @@ export const posts = pgTable("posts", {
   index("posts_author_status_created_idx").on(t.authorId, t.status, t.createdAt.desc()),
   index("posts_remote_actor_created_idx").on(t.remoteActorId, t.createdAt.desc()),
   uniqueIndex("posts_ap_id_idx").on(t.apId),
+  // One post per external key. NULLs are distinct in a Postgres unique index,
+  // so this constrains ingested rows only.
+  uniqueIndex("posts_external_id_idx").on(t.externalId),
 ]);
 
 // ── follows ────────────────────────────────────────────────────────────

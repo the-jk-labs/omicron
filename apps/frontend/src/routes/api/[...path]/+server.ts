@@ -53,6 +53,13 @@ const proxy: RequestHandler = async ({ request, params, url, getClientAddress })
       "expires",
       "vary",
       "content-disposition",
+      // Throttling feedback. Machine callers (the content webhook, scripted API
+      // clients) need these to back off correctly — without them a 429 arrives
+      // with no indication of when to retry.
+      "retry-after",
+      "ratelimit-limit",
+      "ratelimit-remaining",
+      "ratelimit-reset",
     ]
   ) {
     const v = res.headers.get(h);

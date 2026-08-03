@@ -87,6 +87,36 @@ cd apps/frontend && pnpm install && pnpm dev  # http://localhost:5173
 See the [local setup guide](https://docs.omicron.blog/development/local-setup/)
 for the full picture.
 
+## Publishing from an external CMS
+
+Set `WEBHOOK_SECRET` (see [.env.example](.env.example)) and an external system —
+Sanity, Contentful, a static-site build hook — can publish straight into your
+instance. The post is created by your account and federates like anything you
+write in the editor.
+
+```bash
+curl -X POST https://your-domain/api/webhooks/content \
+  -H "Content-Type: application/json" \
+  -H "X-Webhook-Secret: $WEBHOOK_SECRET" \
+  -d '{
+    "title": "Europe is ditching Visa and Mastercard",
+    "body": "## The short version\n\nIt is a **huge** step.",
+    "description": "Why the EU payments shift matters.",
+    "banner": "https://cdn.example.com/covers/eu-payments.jpg",
+    "slug": "eu-payments",
+    "tags": ["fintech", "europe"]
+  }'
+# → 201 {"id":"…","slug":"eu-payments","status":"published","created":true}
+```
+
+Only `title` and `body` (Markdown) are required. `description` defaults to the
+first ~150 characters of the body; `slug` defaults to the title's slug and is
+what makes re-sends idempotent — POST the same `slug` again and the existing
+post is updated (`200`, `"created": false`) instead of duplicated. The secret
+also travels as `Authorization: Bearer <token>`. A wrong token gets `401`, an
+invalid payload `400` naming the field, and an instance with no
+`WEBHOOK_SECRET` set answers `503`.
+
 ## Security
 
 Report vulnerabilities privately — see [SECURITY.md](SECURITY.md).

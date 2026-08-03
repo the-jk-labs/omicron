@@ -113,6 +113,10 @@ export function postWithAuthor(
     remote: row.post.remote,
     status: row.post.status,
     language: row.post.language,
+    // Present only on ingested posts (see services/webhooks.ts); null for
+    // anything written in the editor, whose preview the reader derives itself.
+    summary: row.post.summary,
+    coverUrl: row.post.coverUrl,
     createdAt: row.post.createdAt,
     author: postAuthor(row),
     tags,
@@ -251,6 +255,8 @@ export function barePost(p: Omit<Post, "searchVector">) {
     contentHtml: p.contentHtml,
     status: p.status,
     language: p.language,
+    summary: p.summary,
+    coverUrl: p.coverUrl,
     createdAt: p.createdAt,
   };
 }

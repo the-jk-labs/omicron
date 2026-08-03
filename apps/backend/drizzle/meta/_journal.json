@@ -169,6 +169,13 @@
       "when": 1782815891058,
       "tag": "0023_profile_custom_section",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1782815891059,
+      "tag": "0024_post_ingest_fields",
+      "breakpoints": true
     }
   ]
 }

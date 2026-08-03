@@ -14,7 +14,9 @@ import { queue } from "@/queue/queue.ts";
 // Business logic for posts. Creating a local post enqueues federation delivery.
 
 // Normalizes and validates author-supplied tags, capping the count per post.
-function resolveTags(raw: string[]): string[] {
+// Exported so every write path that accepts tags — the editor here, ingested
+// content in services/webhooks.ts — enforces the same cap.
+export function resolveTags(raw: string[]): string[] {
   const slugs = normalizeTags(raw);
   if (slugs.length > MAX_TAGS_PER_POST) {
     throw badRequest(`A post can have at most ${MAX_TAGS_PER_POST} tags.`);

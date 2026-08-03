@@ -145,8 +145,22 @@ const schema = z.object({
   RL_REGISTER_MAX: z.coerce.number().int().positive().default(5),
   RL_API_WRITE_MAX: z.coerce.number().int().positive().default(120),
   RL_INBOX_MAX: z.coerce.number().int().positive().default(300),
+  RL_WEBHOOK_MAX: z.coerce.number().int().positive().default(30),
   // Reject federation inbox POSTs whose declared body exceeds this many bytes.
   INBOX_MAX_BODY_BYTES: z.coerce.number().int().positive().default(1_000_000),
+
+  // Content ingestion webhook (POST /api/webhooks/content). Unset — the default
+  // — means the endpoint is disabled entirely and answers 503; there is no
+  // "empty secret" state in which it would accept anything. Set it to a long
+  // random string to let a CMS publish into this instance.
+  WEBHOOK_SECRET: z.string().min(16).optional(),
+  // Which local account ingested posts are published as. Defaults to the oldest
+  // account on the instance (the admin created by the setup wizard), so the
+  // common single-author instance needs nothing but the secret.
+  WEBHOOK_AUTHOR: z.string().min(1).optional(),
+  // Hard cap on an ingested Markdown body, so a runaway CMS export can't push an
+  // unbounded string through the Markdown renderer and into a row.
+  WEBHOOK_MAX_BODY_BYTES: z.coerce.number().int().positive().default(512_000),
 
   // Email. Transactional mail (password reset, verification). The default
   // `console` transport just logs the message + link to stdout, so the whole
@@ -187,7 +201,11 @@ function load() {
     RL_REGISTER_MAX: Deno.env.get("RL_REGISTER_MAX"),
     RL_API_WRITE_MAX: Deno.env.get("RL_API_WRITE_MAX"),
     RL_INBOX_MAX: Deno.env.get("RL_INBOX_MAX"),
+    RL_WEBHOOK_MAX: Deno.env.get("RL_WEBHOOK_MAX"),
     INBOX_MAX_BODY_BYTES: Deno.env.get("INBOX_MAX_BODY_BYTES"),
+    WEBHOOK_SECRET: Deno.env.get("WEBHOOK_SECRET")?.trim() || undefined,
+    WEBHOOK_AUTHOR: Deno.env.get("WEBHOOK_AUTHOR")?.trim() || undefined,
+    WEBHOOK_MAX_BODY_BYTES: Deno.env.get("WEBHOOK_MAX_BODY_BYTES"),
     EMAIL_TRANSPORT: Deno.env.get("EMAIL_TRANSPORT"),
     EMAIL_FROM: Deno.env.get("EMAIL_FROM"),
     SMTP_HOST: Deno.env.get("SMTP_HOST"),
