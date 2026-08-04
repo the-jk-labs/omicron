@@ -210,13 +210,15 @@ const REFUSED_TAGS = [
 ];
 
 /**
- * Every tag this sanitizer has an opinion about — kept, swallowed whole, or
- * refused — lowercased. Exported so the Markdown renderer can tell real markup
- * from an author's `<Widget />`, which is none of the three and which it shows
- * as typed rather than dropping. See lib/markdown.ts.
+ * The tags this sanitizer keeps — the markup it will actually render — lowercased.
+ * Exported so the Markdown renderer can tell markup it should parse from
+ * everything else: an author's `<Widget />`, or a tag the sanitizer refuses like
+ * `<iframe>`, both of which it shows as the text that was typed rather than
+ * parsing (and, for a refused tag, rather than letting the parser swallow the
+ * rest of the document). See lib/markdown.ts.
  */
-export const KNOWN_POST_TAGS: ReadonlySet<string> = new Set(
-  [...ALLOWED_TAGS, ...MATHML_TAGS, ...NON_TEXT_TAGS, ...REFUSED_TAGS].map((t) => t.toLowerCase()),
+export const RENDERABLE_POST_TAGS: ReadonlySet<string> = new Set(
+  [...ALLOWED_TAGS, ...MATHML_TAGS].map((t) => t.toLowerCase()),
 );
 
 const CONFIG: sanitizeHtml.IOptions = {

@@ -57,12 +57,33 @@ Deno.test("markdown: a component name in prose survives as text", () => {
   assertStringIncludes(out, `username="you"`);
 });
 
-Deno.test("markdown: real markup is still markup, whatever its case", () => {
-  // Capitalised HTML is legacy-valid and stays a tag; a capitalised element the
-  // sanitizer drops on purpose is still dropped, not shown.
+Deno.test("markdown: renderable markup stays markup, whatever its case", () => {
+  // A tag on the sanitizer's allowlist still renders — capitalised HTML is
+  // legacy-valid and stays a tag.
   assertStringIncludes(renderMarkdown("<BR>after"), "<br />");
-  assertEquals(renderMarkdown(`<IFRAME src="https://x"></IFRAME>`).includes("IFRAME"), false);
-  assertEquals(renderMarkdown("<SCRIPT>alert(1)</SCRIPT>").includes("alert"), false);
+  assertStringIncludes(renderMarkdown("<TABLE><TR><TD>x</TD></TR></TABLE>"), "<table>");
+});
+
+Deno.test("markdown: a refused tag is shown as inert text, not live markup", () => {
+  // A tag the sanitizer refuses reaches the reader as the text that was typed —
+  // visible but escaped — instead of being parsed. What must never appear is a
+  // live element, whatever the case it was written in.
+  const iframe = renderMarkdown("Embed it in the <iframe> tag.");
+  assertStringIncludes(iframe, "&lt;iframe&gt;");
+  assertEquals(iframe.includes("<iframe"), false);
+
+  const script = renderMarkdown("<SCRIPT>alert(1)</SCRIPT>");
+  assertStringIncludes(script, "&lt;SCRIPT&gt;");
+  assertEquals(script.toLowerCase().includes("<script"), false);
+});
+
+Deno.test("markdown: a refused tag in prose does not eat the rest of the post", () => {
+  // The bug this guards: a bare `<iframe>` is a raw-text element, so left in the
+  // stream it makes the sanitizer's parser swallow everything after it. Escaped
+  // to text first, the sentence around it survives untouched.
+  const out = renderMarkdown("Show it in the <iframe> tag, and **this** must survive.");
+  assertStringIncludes(out, "&lt;iframe&gt;");
+  assertStringIncludes(out, "<strong>this</strong> must survive");
 });
 
 Deno.test("markdown: character escapes render as the characters they name", () => {
@@ -81,11 +102,12 @@ Deno.test("markdown: keeps the layout HTML a custom section needs", () => {
   assertStringIncludes(out, "<summary>More</summary>");
 });
 
-Deno.test("markdown: strips script tags embedded in the source", () => {
+Deno.test("markdown: a script tag in the source cannot become live markup", () => {
   const out = renderMarkdown("hello\n\n<script>alert('xss')</script>\n");
   assertStringIncludes(out, "hello");
+  // Shown as inert, escaped text — never a live element the browser would run.
+  assertStringIncludes(out, "&lt;script&gt;");
   assertEquals(out.includes("<script"), false);
-  assertEquals(out.includes("alert"), false);
 });
 
 Deno.test("markdown: strips event handlers and javascript: URLs", () => {
@@ -218,7 +240,10 @@ Deno.test("markdown: maths cannot smuggle script through MathML", () => {
       '<math><maction actiontype="statusline">y</maction></math>',
   );
   assertEquals(/onclick/i.test(out), false);
-  assertEquals(/maction/i.test(out), false);
+  // `<maction>` is the one MathML element with behaviour attached. It never
+  // survives as a live element — either stripped or, refused here, downgraded to
+  // inert escaped text.
+  assertEquals(/<maction/i.test(out), false);
   assertStringIncludes(out, "<mtext>x</mtext>");
 });
 
