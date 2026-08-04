@@ -593,6 +593,17 @@ html {
 /* Placeholder on the current empty line (Tiptap adds `is-empty` to the node with
    the cursor), so an empty paragraph — including the one below an image — shows a
    hint and a visible caret target. */
+/* A code block's filename, while it is being written. The reader gets a proper
+   captioned figure (lib/highlight.ts); the editor has only the bare <pre> that
+   Tiptap draws, so the name is shown inside it — stuck to the left edge, so it
+   stays put when wide code scrolls under it rather than sliding out of view.
+   The language is not shown here: it is on the toolbar button instead, since a
+   class on the <code> child is not something CSS can read. */
+.tiptap pre[data-title]::before {
+  content: attr(data-title);
+  @apply sticky left-0 mb-3 block border-b border-border pb-2 font-mono text-xs text-muted-foreground;
+}
+
 .tiptap .is-empty::before {
   content: attr(data-placeholder);
   @apply pointer-events-none float-left h-0 text-muted-foreground;

@@ -3,12 +3,13 @@
   import { onDestroy, onMount } from "svelte";
   import { type Content, Editor } from "@tiptap/core";
   import Placeholder from "@tiptap/extension-placeholder";
-  import { Dialog, DropdownMenu, Label, Toolbar } from "bits-ui";
+  import { Dialog, DropdownMenu, Label, Select, Toolbar } from "bits-ui";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
   import { endpoints, ApiError } from "$lib/api";
   import { isAcceptedImage, prepareImage } from "./image";
   import { extensions } from "./extensions";
+  import { CODE_LANGUAGES, codeLanguageLabel } from "$lib/codeLanguages";
 
   // Isolated Tiptap integration. The parent receives content via `onUpdate`.
   // This component is lazy-loaded (dynamic import) so Tiptap stays out of the
@@ -68,6 +69,13 @@
       codeBlock: ed.isActive("codeBlock"),
       link: ed.isActive("link"),
     };
+    // What the block under the cursor is currently labelled as, so the toolbar
+    // can say so rather than making the author open the dialog to find out.
+    const attrs = active.codeBlock ? ed.getAttributes("codeBlock") : {};
+    codeMeta = {
+      language: typeof attrs.language === "string" ? attrs.language : "",
+      title: typeof attrs.title === "string" ? attrs.title : "",
+    };
   }
 
   // Set an explicit heading level from the dropdown, or return to normal text.
@@ -76,6 +84,42 @@
   }
   function setParagraph() {
     editor.chain().focus().setParagraph().run();
+  }
+
+  // Code block language + filename. The control only appears while the cursor is
+  // inside a code block, since that is the only time it means anything; it opens
+  // with whatever the block already carries, so it edits as well as sets.
+  let codeOpen = $state(false);
+  let codeLanguage = $state("");
+  let codeTitle = $state("");
+  let codeMeta = $state({ language: "", title: "" });
+  const codeButtonLabel = $derived(
+    codeMeta.language ? codeLanguageLabel(codeMeta.language) : "Language",
+  );
+  // Matches MAX_TITLE in the backend's Markdown renderer, which caps the same
+  // field on a fence — so neither way of writing a post can store a longer one.
+  const MAX_CODE_TITLE = 120;
+  const selectedLanguageLabel = $derived(
+    CODE_LANGUAGES.find((l) => l.value === codeLanguage)?.label ?? "Auto-detect",
+  );
+
+  function openCodeSettings() {
+    const attrs = editor.getAttributes("codeBlock");
+    codeLanguage = typeof attrs.language === "string" ? attrs.language : "";
+    codeTitle = typeof attrs.title === "string" ? attrs.title : "";
+    codeOpen = true;
+  }
+
+  function applyCodeSettings(e: SubmitEvent) {
+    e.preventDefault();
+    const title = codeTitle.trim();
+    editor.chain().focus().updateAttributes("codeBlock", {
+      // Null rather than "" for both: an unset attribute is what the reader and
+      // the sanitizer expect, and what a Markdown fence produces.
+      language: codeLanguage || null,
+      title: title || null,
+    }).run();
+    codeOpen = false;
   }
 
   // Link insertion uses a Bits UI dialog (not window.prompt). Toggling an active
@@ -297,6 +341,21 @@
       </Toolbar.Button>
     {/each}
 
+    <!-- Only while the cursor is in a code block: naming a language or a file
+         is meaningless anywhere else, and a permanently disabled button would
+         say less than an absent one. -->
+    {#if active.codeBlock}
+      <Toolbar.Button
+        onclick={openCodeSettings}
+        aria-label="Code block language and filename"
+        title="Language and filename"
+        class={`${headingTrigger} text-foreground/60 max-w-[11rem] text-sm`}
+      >
+        <Icon name="settings" size={16} class="shrink-0" />
+        <span class="truncate">{codeButtonLabel}</span>
+      </Toolbar.Button>
+    {/if}
+
     <!-- Emoji picker. The web component is lazy-loaded on first open (see
          EmojiPicker.svelte), so it stays out of the editor's initial work. -->
     <EmojiTrigger onPick={insertEmoji} class={`${btn} text-foreground/60`} />
@@ -321,6 +380,102 @@
 
   <div bind:this={element}></div>
 </div>
+
+<Dialog.Root bind:open={codeOpen}>
+  <Dialog.Portal>
+    <Dialog.Overlay
+      class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+    />
+    <Dialog.Content
+      class="rounded-card bg-background shadow-popover fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 border border-border p-6 sm:max-w-[420px]"
+    >
+      <Dialog.Title class="text-foreground text-lg font-semibold tracking-tight">
+        Code block
+      </Dialog.Title>
+      <Dialog.Description class="text-muted-foreground mt-1 text-sm">
+        The language colours the code. The filename shows above it, with the
+        language's mark.
+      </Dialog.Description>
+      <form onsubmit={applyCodeSettings} class="mt-4 flex flex-col gap-4">
+        <div class="flex flex-col gap-1.5">
+          <Label.Root for="code-language" class="text-sm font-medium leading-none">
+            Language
+          </Label.Root>
+          <Select.Root type="single" bind:value={codeLanguage}>
+            <Select.Trigger
+              id="code-language"
+              class="rounded-input border-border-input bg-background shadow-btn inline-flex h-10 w-full items-center justify-between gap-2 border px-3 text-sm outline-none transition-colors focus:border-foreground"
+            >
+              <span class="truncate">{selectedLanguageLabel}</span>
+              <Icon name="chevronDown" size={15} class="text-muted-foreground shrink-0" />
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Content
+                class="border-muted bg-background shadow-popover rounded-card z-50 max-h-72 w-[--bits-select-anchor-width] overflow-y-auto border p-1"
+                sideOffset={6}
+              >
+                <Select.Viewport>
+                  <Select.Item
+                    value=""
+                    label="Auto-detect"
+                    class="rounded-button data-[highlighted]:bg-muted flex h-9 w-full select-none items-center gap-2 px-2 text-sm outline-none"
+                  >
+                    {#snippet children({ selected: isSel })}
+                      <span class="text-muted-foreground truncate">Auto-detect</span>
+                      {#if isSel}
+                        <Icon name="check" size={15} class="text-foreground ml-auto shrink-0" />
+                      {/if}
+                    {/snippet}
+                  </Select.Item>
+                  {#each CODE_LANGUAGES as lang (lang.value)}
+                    <Select.Item
+                      value={lang.value}
+                      label={lang.label}
+                      class="rounded-button data-[highlighted]:bg-muted flex h-9 w-full select-none items-center gap-2 px-2 text-sm outline-none"
+                    >
+                      {#snippet children({ selected: isSel })}
+                        <span class="truncate">{lang.label}</span>
+                        {#if isSel}
+                          <Icon name="check" size={15} class="text-foreground ml-auto shrink-0" />
+                        {/if}
+                      {/snippet}
+                    </Select.Item>
+                  {/each}
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
+          </Select.Root>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <Label.Root for="code-title" class="text-sm font-medium leading-none">
+            Filename <span class="text-muted-foreground font-normal">(optional)</span>
+          </Label.Root>
+          <input
+            id="code-title"
+            bind:value={codeTitle}
+            type="text"
+            maxlength={MAX_CODE_TITLE}
+            placeholder="src/main.ts"
+            class="rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
+          />
+        </div>
+        <div class="flex justify-end gap-2">
+          <Dialog.Close
+            class="text-foreground hover:bg-muted inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium active:scale-[0.98]"
+          >
+            Cancel
+          </Dialog.Close>
+          <button
+            type="submit"
+            class="rounded-input bg-dark text-background shadow-mini hover:bg-dark/95 inline-flex h-10 items-center justify-center px-5 text-sm font-semibold active:scale-[0.98]"
+          >
+            Save
+          </button>
+        </div>
+      </form>
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
 
 <Dialog.Root bind:open={linkOpen}>
   <Dialog.Portal>

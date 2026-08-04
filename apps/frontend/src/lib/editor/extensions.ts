@@ -3,6 +3,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import { Markdown } from "tiptap-markdown";
 import { ResizableImage } from "./resizable-image";
+import { CodeBlockTitle } from "./code-block";
 import type { Extensions } from "@tiptap/core";
 
 // Editor extensions live here so the feature set is configured in one place.
@@ -30,6 +31,9 @@ export const extensions: Extensions = [
     allowBase64: false,
     HTMLAttributes: { class: "rounded-card mx-auto my-6 max-w-full" },
   }),
+  // Lets a code block carry a filename, the way a Markdown fence's `title=`
+  // does. The language is already StarterKit's; see ./code-block.ts.
+  CodeBlockTitle,
   Markdown.configure({
     html: false, // don't trust raw HTML embedded in Markdown
     linkify: true, // turn bare URLs into links

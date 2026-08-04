@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import hljs from "highlight.js/lib/common";
 import { type FileIcon, fileIcon } from "$lib/fileIcons";
+import { codeLanguageLabel } from "$lib/codeLanguages";
 
 // Syntax highlighting for rendered post bodies.
 //
@@ -107,12 +108,18 @@ export function highlightCodeBlocks(html: string): string {
     // nothing an author put there. The title moves into the caption, which is
     // why it does not stay on the `<pre>`.
     const pre = `<pre><code class="hljs language-${language}">${value}</code></pre>`;
-    return withTitle(pre, title, language);
+    return withTitle(pre, title, declared);
   });
 }
 
 /**
- * Wrap a code block in a captioned figure when the fence declared a filename.
+ * Wrap a code block in a captioned figure when its author said what it is.
+ *
+ * Either half is enough. A filename is captioned with the filename; a block
+ * that only declares a language is captioned with the language's name, which is
+ * otherwise invisible to a reader — the whole point of declaring it. Only
+ * `declared` counts, never a detected language: captioning a guess would put
+ * "Perl" over someone's config file with all the confidence of a fact.
  *
  * A caption rather than a `::before` on the `<pre>`: the block scrolls
  * horizontally, and a pseudo-element inside it would scroll away with the code
@@ -120,7 +127,7 @@ export function highlightCodeBlocks(html: string): string {
  *
  * The caption leads with a chip for the file type (lib/fileIcons.ts) — the
  * language's own mark where one is published, its letters otherwise — taken
- * from the filename's extension or, failing that, the fence's language.
+ * from the filename's extension or, failing that, the language.
  *
  * `title` arrives HTML-escaped (it was read straight out of the attribute), so
  * it is interpolated as-is — escaping it twice would show `&amp;` to the reader.
@@ -128,12 +135,15 @@ export function highlightCodeBlocks(html: string): string {
  * character class, so nothing unescaped can ride in on it, and the path data is
  * ours rather than the author's.
  */
-function withTitle(pre: string, title: string | null, language?: string | null): string {
-  if (!title) return pre;
-  const icon = fileIcon(title, language);
+function withTitle(pre: string, title: string | null, declared?: string | null): string {
+  // The language name is built from our own table, never from the block, so it
+  // needs no escaping of its own.
+  const name = title ?? (declared ? codeLanguageLabel(declared) : "");
+  if (!name) return pre;
+  const icon = fileIcon(title, declared);
   const chip = icon ? `<span class="code-icon" data-tone="${icon.tone}">${glyph(icon)}</span>` : "";
   return `<figure class="code-figure"><figcaption class="code-title">${chip}` +
-    `<span class="code-name">${title}</span></figcaption>${pre}</figure>`;
+    `<span class="code-name">${name}</span></figcaption>${pre}</figure>`;
 }
 
 /**
