@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import hljs from "highlight.js/lib/common";
-import { fileIcon } from "$lib/fileIcons";
+import { type FileIcon, fileIcon } from "$lib/fileIcons";
 
 // Syntax highlighting for rendered post bodies.
 //
@@ -118,20 +118,35 @@ export function highlightCodeBlocks(html: string): string {
  * horizontally, and a pseudo-element inside it would scroll away with the code
  * and stop short of the full width. As a sibling it stays put.
  *
- * The caption leads with a monogram chip for the file type (lib/fileIcons.ts),
- * taken from the filename's extension or, failing that, the fence's language.
+ * The caption leads with a chip for the file type (lib/fileIcons.ts) — the
+ * language's own mark where one is published, its letters otherwise — taken
+ * from the filename's extension or, failing that, the fence's language.
  *
  * `title` arrives HTML-escaped (it was read straight out of the attribute), so
  * it is interpolated as-is — escaping it twice would show `&amp;` to the reader.
  * The chip's label comes from the same string but is built from a strict
- * character class, so nothing unescaped can ride in on it.
+ * character class, so nothing unescaped can ride in on it, and the path data is
+ * ours rather than the author's.
  */
 function withTitle(pre: string, title: string | null, language?: string | null): string {
   if (!title) return pre;
   const icon = fileIcon(title, language);
-  const chip = icon
-    ? `<span class="code-icon" data-tone="${icon.tone}">${icon.label}</span>`
-    : "";
+  const chip = icon ? `<span class="code-icon" data-tone="${icon.tone}">${glyph(icon)}</span>` : "";
   return `<figure class="code-figure"><figcaption class="code-title">${chip}` +
     `<span class="code-name">${title}</span></figcaption>${pre}</figure>`;
+}
+
+/**
+ * What goes inside the chip: the language's mark, or its letters when no mark
+ * is published for it.
+ *
+ * The mark is labelled rather than hidden — beside a title like "The reducer",
+ * which names no language, the chip is the only thing that says which one this
+ * is. `fill` is set on the element so the logo takes the chip's tone through
+ * `currentColor` even where the stylesheet has not loaded.
+ */
+function glyph(icon: FileIcon): string {
+  if (!icon.path) return icon.label;
+  return `<svg viewBox="0 0 24 24" fill="currentColor" role="img" ` +
+    `aria-label="${icon.label}"><path d="${icon.path}"/></svg>`;
 }

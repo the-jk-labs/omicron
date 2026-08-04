@@ -2,16 +2,27 @@
 
 // The badge shown next to a code block's filename (```ts title="@/lib/name.ts").
 //
-// A monogram chip rather than a set of vendor logos: logos would mean shipping
-// ~40 SVGs, each one somebody's trademark with its own licence, and they would
-// still miss whatever language the next author reaches for. A two-letter chip
-// covers every extension there is, reads at 9px, and costs no bytes.
+// Two kinds of badge, in one shape. The languages a reader recognises on sight
+// get their real mark — the TypeScript square, the Python coils, the Go gopher
+// — from lib/brandIcons.ts. Everything else keeps the lettered chip: there is
+// no logo for a `.env` or a `.diff`, and no vendor set covers whatever the next
+// author reaches for, so the letters remain the floor rather than an absence.
 //
-// The tone is a hint, not an identity — languages that share a family share a
-// colour. What tells the reader which language it is, is the letters.
+// Both are drawn in the same tinted box, in the chip's tone rather than the
+// brand's own colour. At 18px a two-tone mark is mud, and one palette keeps a
+// caption from turning into a row of clashing stickers. The tone is a family
+// hint, not an identity: what names the language is the mark, or the letters.
+//
+// This runs server-side (lib/highlight.ts, called from the post's load), so the
+// path data never reaches a browser — only the one logo a block actually uses.
 
-/** A resolved badge: what it says, and which palette entry paints it. */
-export type FileIcon = { label: string; tone: Tone };
+import { BRAND_ICONS } from "$lib/brandIcons";
+
+/**
+ * A resolved badge: which palette entry paints it, what it says, and — when the
+ * language has a published mark — the path data to draw instead of the letters.
+ */
+export type FileIcon = { label: string; tone: Tone; path?: string };
 
 export type Tone =
   | "blue"
@@ -81,6 +92,19 @@ const TONES: Record<string, Tone> = {
   graphql: "red",
   gql: "red",
   proto: "cyan",
+  clj: "green",
+  cljs: "green",
+  jl: "purple",
+  nim: "amber",
+  cr: "slate",
+  ml: "orange",
+  mli: "orange",
+  f90: "purple",
+  f95: "purple",
+  sol: "slate",
+  tf: "purple",
+  tfvars: "purple",
+  prisma: "cyan",
 
   // Shells and config
   sh: "green",
@@ -101,6 +125,80 @@ const TONES: Record<string, Tone> = {
   xml: "orange",
   diff: "green",
   patch: "green",
+};
+
+// Extension → the Simple Icons slug of the language's mark. An extension absent
+// here, or present with no matching entry in BRAND_ICONS, falls through to the
+// lettered chip — which is where C#, Java and PowerShell land, their owners
+// having asked to be removed from that set.
+const BRANDS: Record<string, string> = {
+  ts: "typescript",
+  mts: "typescript",
+  cts: "typescript",
+  // A `.tsx`/`.jsx` file is a component, and the atom says so more directly
+  // than the language square does.
+  tsx: "react",
+  jsx: "react",
+  js: "javascript",
+  mjs: "javascript",
+  cjs: "javascript",
+  html: "html5",
+  htm: "html5",
+  svelte: "svelte",
+  vue: "vuedotjs",
+  astro: "astro",
+  css: "css",
+  scss: "sass",
+  sass: "sass",
+  less: "less",
+  c: "c",
+  h: "c",
+  cpp: "cplusplus",
+  cc: "cplusplus",
+  cxx: "cplusplus",
+  hpp: "cplusplus",
+  rs: "rust",
+  go: "go",
+  zig: "zig",
+  swift: "swift",
+  py: "python",
+  rb: "ruby",
+  php: "php",
+  kt: "kotlin",
+  kts: "kotlin",
+  scala: "scala",
+  ex: "elixir",
+  exs: "elixir",
+  erl: "erlang",
+  hs: "haskell",
+  lua: "lua",
+  dart: "dart",
+  r: "r",
+  pl: "perl",
+  clj: "clojure",
+  cljs: "clojure",
+  jl: "julia",
+  nim: "nim",
+  cr: "crystal",
+  ml: "ocaml",
+  mli: "ocaml",
+  f90: "fortran",
+  f95: "fortran",
+  sol: "solidity",
+  tf: "terraform",
+  tfvars: "terraform",
+  prisma: "prisma",
+  graphql: "graphql",
+  gql: "graphql",
+  sh: "gnubash",
+  bash: "gnubash",
+  zsh: "gnubash",
+  fish: "gnubash",
+  yml: "yaml",
+  yaml: "yaml",
+  toml: "toml",
+  md: "markdown",
+  mdx: "markdown",
 };
 
 // Where the extension is not what a reader would call the thing, or is too long
@@ -125,13 +223,13 @@ const LABELS: Record<string, string> = {
 
 // Files people name without an extension, or whose extension is the whole name.
 const FILENAMES: Record<string, FileIcon> = {
-  dockerfile: { label: "DKR", tone: "cyan" },
+  dockerfile: { label: "DKR", tone: "cyan", path: BRAND_ICONS.docker },
   makefile: { label: "MK", tone: "slate" },
-  rakefile: { label: "RB", tone: "red" },
-  gemfile: { label: "RB", tone: "red" },
+  rakefile: { label: "RB", tone: "red", path: BRAND_ICONS.ruby },
+  gemfile: { label: "RB", tone: "red", path: BRAND_ICONS.ruby },
   procfile: { label: "CFG", tone: "slate" },
-  ".gitignore": { label: "GIT", tone: "orange" },
-  ".gitattributes": { label: "GIT", tone: "orange" },
+  ".gitignore": { label: "GIT", tone: "orange", path: BRAND_ICONS.git },
+  ".gitattributes": { label: "GIT", tone: "orange", path: BRAND_ICONS.git },
   ".env": { label: "ENV", tone: "amber" },
   ".npmrc": { label: "CFG", tone: "slate" },
   ".editorconfig": { label: "CFG", tone: "slate" },
@@ -178,7 +276,17 @@ const BARE_NAME = /^\.?[a-z0-9_+#-]{1,40}$/;
 function chip(extension: string): FileIcon | null {
   const tone = TONES[extension];
   if (!tone) return null;
-  return { label: LABELS[extension] ?? extension.toUpperCase().slice(0, MAX_LABEL), tone };
+  return withLogo({
+    label: LABELS[extension] ?? extension.toUpperCase().slice(0, MAX_LABEL),
+    tone,
+  }, extension);
+}
+
+// The label is kept even when a logo is found: it is what the mark is labelled
+// as for a screen reader, and what shows if the path is ever missing.
+function withLogo(icon: FileIcon, extension: string): FileIcon {
+  const path = BRAND_ICONS[BRANDS[extension] ?? ""];
+  return path ? { ...icon, path } : icon;
 }
 
 /**

@@ -365,6 +365,15 @@ html {
   background-color: hsl(var(--file-tone) / 0.14);
   color: hsl(var(--file-tone));
 }
+/* A logo needs no letter-spacing to sit straight, and looks wrong in a box wider
+   than it is tall — so the chip goes square around it. `currentColor` is already
+   the tone, which is what tints the mark. */
+.prose-omicron .code-icon:has(> svg) {
+  @apply w-[18px] px-0;
+}
+.prose-omicron .code-icon > svg {
+  @apply h-[11px] w-[11px];
+}
 .prose-omicron .code-icon[data-tone="blue"] {
   --file-tone: var(--file-blue);
 }
