@@ -6,6 +6,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import { timeAgo } from "$lib/format";
+  import { timeZone } from "$lib/timezone";
   import type { FollowRequest } from "$lib/types";
   import type { PageData } from "./$types";
 
@@ -57,7 +58,7 @@
             {req.actor.displayName}
           </a>
           <p class="truncate text-xs text-muted-foreground">
-            @{req.actor.username} · {timeAgo(req.createdAt)}
+            @{req.actor.username} · {timeAgo(req.createdAt, $timeZone)}
           </p>
         </div>
         <div class="flex shrink-0 items-center gap-2">

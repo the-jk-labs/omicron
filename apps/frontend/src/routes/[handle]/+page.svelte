@@ -17,6 +17,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import { formatDate } from "$lib/format";
+  import { timeZone } from "$lib/timezone";
   import { fitPre } from "$lib/actions/fitPre";
   import type { Post } from "$lib/types";
   import type { PageData } from "./$types";
@@ -368,7 +369,7 @@
           <dt class="flex items-center gap-2 text-sm text-muted-foreground">
             <Icon name="calendar" size={15} /> Joined
           </dt>
-          <dd class="text-sm text-foreground">{formatDate(data.profile.user.createdAt)}</dd>
+          <dd class="text-sm text-foreground">{formatDate(data.profile.user.createdAt, $timeZone)}</dd>
         </div>
 
         {#if isAdmin}

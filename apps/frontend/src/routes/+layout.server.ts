@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { redirect } from "@sveltejs/kit";
 import { endpoints } from "$lib/api";
+import { TZ_COOKIE, validTimeZone } from "$lib/timezone";
 import type { LayoutServerLoad } from "./$types";
 
 // The discovery rail only renders on the home feed and profile pages (see
@@ -10,8 +11,13 @@ const DISCOVER_ROUTES = new Set(["/", "/[handle]"]);
 // Resolves the current user once for every page (used by the nav + guards) and,
 // on the routes that show it, the discovery rail — server-side, in parallel, so
 // the rail renders with the page instead of popping in after client hydration.
-export const load: LayoutServerLoad = async ({ fetch, route }) => {
+export const load: LayoutServerLoad = async ({ cookies, fetch, route }) => {
   const api = endpoints(fetch);
+
+  // The reader's own timezone, parked in a cookie by the browser on their last
+  // visit, so dates render server-side in the zone they'll still be in after
+  // hydration instead of flipping from UTC. See $lib/timezone.
+  const timeZone = validTimeZone(cookies.get(TZ_COOKIE));
 
   // First-run gate: until the instance is set up, every route is redirected to
   // the wizard; once set up, the wizard route redirects back into the app. If
@@ -49,5 +55,5 @@ export const load: LayoutServerLoad = async ({ fetch, route }) => {
 
   const seo = await seoPromise;
 
-  return { user, discover, instance, seo };
+  return { user, discover, instance, seo, timeZone };
 };

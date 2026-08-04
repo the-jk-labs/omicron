@@ -6,6 +6,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import { formatDate } from "$lib/format";
+  import { timeZone } from "$lib/timezone";
   import type { BlockedDomain } from "$lib/types";
 
   let domains = $state<BlockedDomain[]>([]);
@@ -121,7 +122,7 @@
             <div class="min-w-0 flex-1">
               <p class="truncate font-medium text-foreground">{d.domain}</p>
               <p class="truncate text-xs text-muted-foreground">
-                {d.reason ? d.reason : "No reason given"} · {formatDate(d.createdAt)}
+                {d.reason ? d.reason : "No reason given"} · {formatDate(d.createdAt, $timeZone)}
               </p>
             </div>
             <Button variant="outline" size="sm" disabled={busyDomain === d.domain} onclick={() => unblock(d)}>

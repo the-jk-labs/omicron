@@ -6,6 +6,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import { timeAgo } from "$lib/format";
+  import { timeZone } from "$lib/timezone";
   import { notifications as bell } from "$lib/notifications.svelte";
   import {
     notificationAction,
@@ -91,7 +92,7 @@
             {:else if n.commentSnippet}
               <p class="text-muted-foreground truncate text-sm">{n.commentSnippet}</p>
             {/if}
-            <span class="text-muted-foreground mt-0.5 block text-xs">{timeAgo(n.createdAt)}</span>
+            <span class="text-muted-foreground mt-0.5 block text-xs">{timeAgo(n.createdAt, $timeZone)}</span>
           </div>
         </Button>
       </li>

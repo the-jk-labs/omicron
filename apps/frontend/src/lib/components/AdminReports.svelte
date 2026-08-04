@@ -6,6 +6,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import { formatDate } from "$lib/format";
+  import { timeZone } from "$lib/timezone";
   import type { Report } from "$lib/types";
 
   let reports = $state<Report[]>([]);
@@ -153,7 +154,7 @@
             {:else}
               <span class="font-medium text-muted-foreground">{subjectLabel(r)}</span>
             {/if}
-            <span class="ml-auto text-xs text-muted-foreground">{formatDate(r.createdAt)}</span>
+            <span class="ml-auto text-xs text-muted-foreground">{formatDate(r.createdAt, $timeZone)}</span>
           </div>
 
           {#if r.reason}

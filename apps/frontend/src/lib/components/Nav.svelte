@@ -19,6 +19,7 @@
     notificationIcon,
   } from "$lib/components/notifications";
   import { timeAgo } from "$lib/format";
+  import { timeZone } from "$lib/timezone";
 
   // `minimal` strips the nav down to logo + theme toggle for standalone pages
   // (auth screens), which carry their own focused layout. `appName` comes from
@@ -167,7 +168,7 @@
                         {:else if n.commentSnippet}
                           <p class="text-muted-foreground truncate text-xs">{n.commentSnippet}</p>
                         {/if}
-                        <p class="text-muted-foreground mt-0.5 text-xs">{timeAgo(n.createdAt)}</p>
+                        <p class="text-muted-foreground mt-0.5 text-xs">{timeAgo(n.createdAt, $timeZone)}</p>
                       </div>
                     </DropdownMenu.Item>
                   {/each}

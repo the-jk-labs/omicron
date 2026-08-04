@@ -8,6 +8,8 @@ declare global {
     }
     interface PageData {
       user?: User | null;
+      // The reader's IANA timezone, from their cookie — see $lib/timezone.
+      timeZone?: string | null;
     }
   }
 }

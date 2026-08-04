@@ -8,11 +8,20 @@
   import MobileNav from "$lib/components/MobileNav.svelte";
   import Discover from "$lib/components/Discover.svelte";
   import { canonicalOrigin } from "$lib/canonical";
+  import { rememberTimeZone } from "$lib/timezone";
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
   import type { Post, Profile, ReadingList } from "$lib/types";
   import type { LayoutData } from "./$types";
 
   let { data, children }: { data: LayoutData; children: import("svelte").Snippet } = $props();
+
+  // Hand the reader's timezone to the server for the *next* render, and switch
+  // this one over to it now that we're past hydration. On every visit but the
+  // very first the cookie is already there and this changes nothing on screen —
+  // which is the point: no timestamp flipping hours after the page paints.
+  $effect(() => {
+    rememberTimeZone();
+  });
 
   // Site-wide social-share defaults. Pages may set their own <title>; these
   // provide the brand image/description used in link previews everywhere. The

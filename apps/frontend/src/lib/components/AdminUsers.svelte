@@ -6,6 +6,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import { formatDate } from "$lib/format";
+  import { timeZone } from "$lib/timezone";
   import type { AdminUser } from "$lib/types";
 
   // The signed-in admin's own id, so the row for self can hide the suspend
@@ -107,7 +108,7 @@
               {/if}
             </div>
             <p class="truncate text-xs text-muted-foreground">
-              @{u.username} · {u.email} · joined {formatDate(u.createdAt)}
+              @{u.username} · {u.email} · joined {formatDate(u.createdAt, $timeZone)}
             </p>
           </div>
           {#if u.id !== selfId && !u.isAdmin}

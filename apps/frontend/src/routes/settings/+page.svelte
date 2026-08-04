@@ -12,6 +12,7 @@
   import { MAX_PROFILE_TAGS } from "$lib/tags";
   import { AVATAR_MAX_DIMENSION, prepareImage } from "$lib/editor/image";
   import { formatDate } from "$lib/format";
+  import { timeZone } from "$lib/timezone";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import AvatarCropper from "$lib/components/AvatarCropper.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -790,7 +791,7 @@
       </div>
       <div class="flex items-center justify-between gap-4">
         <dt class="text-muted-foreground">Joined</dt>
-        <dd class="font-medium text-foreground">{formatDate(data.user.createdAt)}</dd>
+        <dd class="font-medium text-foreground">{formatDate(data.user.createdAt, $timeZone)}</dd>
       </div>
     </dl>
 

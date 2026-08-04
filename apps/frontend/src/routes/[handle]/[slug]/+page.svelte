@@ -12,6 +12,7 @@
   import TagList from "$lib/components/TagList.svelte";
   import SaveToListButton from "$lib/components/SaveToListButton.svelte";
   import { formatDateTime, readTime } from "$lib/format";
+  import { timeZone } from "$lib/timezone";
   import { languageLabel } from "$lib/languages";
   import type { PageData } from "./$types";
 
@@ -258,7 +259,7 @@
         {post.author.displayName}
       </Button>
       <div class="flex flex-wrap items-center gap-2 text-muted-foreground">
-        <span>{formatDateTime(post.createdAt)}</span>
+        <span>{formatDateTime(post.createdAt, $timeZone)}</span>
         <Separator.Root orientation="vertical" class="bg-border shrink-0 data-[orientation=vertical]:h-3 data-[orientation=vertical]:w-px" />
         <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
         {#if post.remote && originInstance}

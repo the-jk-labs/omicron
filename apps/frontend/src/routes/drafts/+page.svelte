@@ -6,6 +6,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import { excerpt, formatDateTime } from "$lib/format";
+  import { timeZone } from "$lib/timezone";
   import type { Post } from "$lib/types";
   import type { PageData } from "./$types";
 
@@ -79,7 +80,7 @@
             <p class="mt-1.5 line-clamp-2 text-muted-foreground">{excerpt(draft.contentHtml)}</p>
           {/if}
           <span class="mt-3 block text-xs text-muted-foreground">
-            Last edited {formatDateTime(draft.createdAt)}
+            Last edited {formatDateTime(draft.createdAt, $timeZone)}
           </span>
         </Button>
         <div class="flex shrink-0 items-center gap-2 self-center">

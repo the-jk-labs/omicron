@@ -12,6 +12,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import { confirm } from "$lib/components/ui/confirm";
   import { formatDate } from "$lib/format";
+  import { timeZone } from "$lib/timezone";
   import type { WebhookToken } from "$lib/types";
 
   const api = endpoints();
@@ -174,8 +175,8 @@
             <span class="block truncate text-sm font-medium text-foreground">{token.label}</span>
             <span class="block truncate text-xs text-muted-foreground">
               {token.lastUsedAt
-                ? `Last used ${formatDate(token.lastUsedAt)}`
-                : "Never used"} · Created {formatDate(token.createdAt)}
+                ? `Last used ${formatDate(token.lastUsedAt, $timeZone)}`
+                : "Never used"} · Created {formatDate(token.createdAt, $timeZone)}
             </span>
           </span>
         </span>
