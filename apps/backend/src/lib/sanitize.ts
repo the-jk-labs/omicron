@@ -155,7 +155,6 @@ const MATHML_ATTRIBUTES = [
 // never leaks into the rendered output.
 const NON_TEXT_TAGS = ["script", "style", "textarea", "option", "noscript"];
 
-
 /**
  * The tags this sanitizer keeps — the markup it will actually render — lowercased.
  * Exported so the Markdown renderer can tell markup it should parse from
