@@ -29,9 +29,23 @@ const INLINE = /\$([^$\n]+?)\$/g;
  * Does this look like TeX rather than money? A formula worth rendering carries a
  * command, a script or a group; "it costs $5 and $6" carries none of them, and
  * anything that reached storage as plain prose stays prose.
+ *
+ * A bare symbol — `$d$`, `$n$` — has none of those marks either, so it is let
+ * through on a second test: one short word, no spaces, and a letter in it. A
+ * price is several words ("$5 and $6") or no letters at all, and fails both.
  */
 function looksLikeTex(source: string): boolean {
-  return /[\\^_{}]/.test(source);
+  return /[\\^_{}]/.test(source) || /^[A-Za-z][A-Za-z0-9]{0,3}$/.test(source);
+}
+
+/**
+ * Markdown ate the backslash in `\{` and `\}` before the post was stored, which
+ * leaves `\left\{ … \right\}` as `\left{ … \right}` — and `\right}` is not a
+ * formula KaTeX can parse at all. Since neither spelling means anything on its
+ * own, putting the escape back can only turn an error into a formula.
+ */
+function repairDelimiters(tex: string): string {
+  return tex.replace(/\\(left|right|middle)([{}])/g, "\\$1\\$2");
 }
 
 /** The tags Markdown made out of the formula's underscores, put back. */
@@ -59,7 +73,9 @@ function decodeEntities(text: string): string {
 
 /** The TeX as the author typed it, recovered from what Markdown left behind. */
 function recoverTex(html: string): string | null {
-  const tex = decodeEntities(restoreNewlines(restoreUnderscores(html))).trim();
+  const tex = repairDelimiters(
+    decodeEntities(restoreNewlines(restoreUnderscores(html))).trim(),
+  );
   // Any tag still standing is something we cannot account for — a link, an
   // image, a stray span. Rendering it would destroy content, so we decline.
   if (!tex || /<[a-z/]/i.test(tex) || !looksLikeTex(tex)) return null;
@@ -85,7 +101,38 @@ function renderRun(html: string): string {
     const tex = recoverTex(inner);
     return tex ? render(tex, false) : whole;
   });
-  return out;
+  // A failure alone in its paragraph was a `$$…$$` block; anything else sat in a
+  // sentence. Retrying in the wrong mode would render it at the wrong size.
+  out = out.replace(
+    /<p>\s*<span class="katex-error">[^<]*<\/span>\s*<\/p>/g,
+    (paragraph) => retryErrors(paragraph, true),
+  );
+  return retryErrors(out, false);
+}
+
+/** A formula an earlier run could not parse, kept as the source it was given. */
+const ERROR_SPAN = /<span class="katex-error">([^<]*)<\/span>/g;
+
+/**
+ * Give the failures another go. An earlier run of this backfill stored what it
+ * could not parse as a `katex-error` span — no `$` left to find it by — so a
+ * later, better-informed run has to reach for those spans by name. A formula
+ * that still will not parse keeps its span and waits for the next improvement.
+ */
+function retryErrors(html: string, displayMode: boolean): string {
+  return html.replace(ERROR_SPAN, (whole, inner: string) => {
+    const tex = repairDelimiters(decodeEntities(inner).trim());
+    try {
+      return katex.renderToString(tex, {
+        output: "mathml",
+        displayMode,
+        throwOnError: true,
+        strict: false,
+      });
+    } catch {
+      return whole;
+    }
+  });
 }
 
 /**
@@ -101,7 +148,8 @@ function markDisplayParagraphs(html: string): string {
 }
 
 export function upgradeLegacyMath(html: string): string {
-  if (!html.includes("$")) return html;
+  // Nothing left to typeset and nothing left to retry.
+  if (!html.includes("$") && !html.includes("katex-error")) return html;
 
   let out = "";
   let cursor = 0;

@@ -85,3 +85,33 @@ Deno.test("legacy maths: the rendered formula is sanitized like anything stored"
   assertStringIncludes(out, "<math");
   assertEquals(/<script/i.test(out), false);
 });
+
+Deno.test("legacy maths: a lone symbol is a formula, a price is not", () => {
+  const out = upgradeLegacyMath("<p>dimension $d$, and it costs $5 and $6.</p>");
+  assertEquals(annotation(out), "d");
+  assertStringIncludes(out, "costs $5 and $6.");
+});
+
+Deno.test("legacy maths: an escape Markdown ate is put back", () => {
+  // `\left\{ … \right\}` reached storage as `\left{ … \right}`, which KaTeX
+  // cannot parse at all — so restoring the backslash can only help.
+  const out = upgradeLegacyMath("<p>$$\\left{ x \\right}$$</p>");
+  assertEquals(annotation(out), "\\left\\{ x \\right\\}");
+  assertEquals(out.includes("katex-error"), false);
+});
+
+Deno.test("legacy maths: an earlier run's failures are retried", () => {
+  // The first pass stored what it could not parse as a katex-error span. There
+  // is no `$` left to find those by, so they are reached for by name.
+  const out = upgradeLegacyMath(
+    '<p><span class="katex-error">\\left{ x \\right}</span></p>',
+  );
+  assertStringIncludes(out, '<p class="katex-block">');
+  assertStringIncludes(out, "<math");
+  assertEquals(out.includes("katex-error"), false);
+});
+
+Deno.test("legacy maths: a formula that still will not parse keeps its span", () => {
+  const html = '<p><span class="katex-error">\\hopeless{</span></p>';
+  assertEquals(upgradeLegacyMath(html), html);
+});
