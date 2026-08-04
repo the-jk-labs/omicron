@@ -250,6 +250,17 @@ html {
 .prose-omicron th {
   @apply bg-muted font-sans text-sm font-semibold text-foreground;
 }
+/* A cell written in the editor holds a paragraph, not bare text (ProseMirror
+   tables are block content), and a paragraph's own margins inside a cell would
+   push every row apart. Consecutive paragraphs in one cell keep a gap. */
+.prose-omicron th > p,
+.prose-omicron td > p {
+  @apply my-0;
+}
+.prose-omicron th > p + p,
+.prose-omicron td > p + p {
+  @apply mt-2;
+}
 /* Wide tables scroll inside the column instead of stretching the page. */
 .prose-omicron table {
   @apply block overflow-x-auto sm:table;
@@ -593,6 +604,23 @@ html {
 /* Placeholder on the current empty line (Tiptap adds `is-empty` to the node with
    the cursor), so an empty paragraph — including the one below an image — shows a
    hint and a visible caret target. */
+/* Tables, while they are being edited. The cells themselves are already styled
+   by the reader's own rules (the editor carries `prose-omicron` too), so all
+   that is left is the editing affordance: which cells the selection covers.
+   ProseMirror marks those `.selectedCell` and expects the highlight drawn as an
+   overlay, since a background would hide the cell's own. */
+.tiptap table {
+  @apply table-fixed;
+}
+.tiptap th,
+.tiptap td {
+  @apply relative;
+}
+.tiptap .selectedCell::after {
+  content: "";
+  @apply pointer-events-none absolute inset-0 z-10 bg-foreground/10;
+}
+
 /* A code block's filename, while it is being written. The reader gets a proper
    captioned figure (lib/highlight.ts); the editor has only the bare <pre> that
    Tiptap draws, so the name is shown inside it — stuck to the left edge, so it

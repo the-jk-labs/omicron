@@ -49,6 +49,7 @@
     quote: false,
     codeBlock: false,
     link: false,
+    table: false,
   });
 
   // Tiptap v3 emits the first `onTransaction` synchronously *inside* the
@@ -68,6 +69,7 @@
       quote: ed.isActive("blockquote"),
       codeBlock: ed.isActive("codeBlock"),
       link: ed.isActive("link"),
+      table: ed.isActive("table"),
     };
     // What the block under the cursor is currently labelled as, so the toolbar
     // can say so rather than making the author open the dialog to find out.
@@ -121,6 +123,49 @@
     }).run();
     codeOpen = false;
   }
+
+  // Tables. Inserting one is a plain toolbar button; everything else — rows,
+  // columns, merging, deleting — only exists while the cursor is in a table, so
+  // it lives in a dropdown that appears alongside it, the way the code block's
+  // control does.
+  function insertTable() {
+    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+  }
+
+  type TableAction = { label: string; icon: IconName; run: () => void; divider?: boolean };
+  const tableActions: TableAction[] = [
+    { label: "Row above", icon: "plus", run: () => editor.chain().focus().addRowBefore().run() },
+    { label: "Row below", icon: "plus", run: () => editor.chain().focus().addRowAfter().run() },
+    {
+      label: "Column left",
+      icon: "plus",
+      divider: true,
+      run: () => editor.chain().focus().addColumnBefore().run(),
+    },
+    {
+      label: "Column right",
+      icon: "plus",
+      run: () => editor.chain().focus().addColumnAfter().run(),
+    },
+    {
+      label: "Toggle header row",
+      icon: "table",
+      divider: true,
+      run: () => editor.chain().focus().toggleHeaderRow().run(),
+    },
+    // Only does anything across a multi-cell selection; Tiptap no-ops otherwise
+    // rather than erroring, so it needs no guard of its own.
+    { label: "Merge cells", icon: "table", run: () => editor.chain().focus().mergeCells().run() },
+    { label: "Split cell", icon: "table", run: () => editor.chain().focus().splitCell().run() },
+    {
+      label: "Delete row",
+      icon: "trash",
+      divider: true,
+      run: () => editor.chain().focus().deleteRow().run(),
+    },
+    { label: "Delete column", icon: "trash", run: () => editor.chain().focus().deleteColumn().run() },
+    { label: "Delete table", icon: "trash", run: () => editor.chain().focus().deleteTable().run() },
+  ];
 
   // Link insertion uses a Bits UI dialog (not window.prompt). Toggling an active
   // link removes it; otherwise the dialog collects a URL for the selection.
@@ -279,7 +324,8 @@
     { key: "orderedList", icon: "orderedList", label: "Numbered list", run: () => editor.chain().focus().toggleOrderedList().run() },
     { key: "quote", icon: "quote", label: "Quote", run: () => editor.chain().focus().toggleBlockquote().run() },
     { key: "codeBlock", icon: "codeBlock", label: "Code block", run: () => editor.chain().focus().toggleCodeBlock().run() },
-    { icon: "image", label: "Image", divider: true, run: () => imageInput?.click() },
+    { icon: "table", label: "Table", divider: true, run: insertTable },
+    { icon: "image", label: "Image", run: () => imageInput?.click() },
     { icon: "hr", label: "Divider", run: () => editor.chain().focus().setHorizontalRule().run() },
   ];
 
@@ -354,6 +400,39 @@
         <Icon name="settings" size={16} class="shrink-0" />
         <span class="truncate">{codeButtonLabel}</span>
       </Toolbar.Button>
+    {/if}
+
+    <!-- Row/column editing, for as long as the cursor is in a table. Same rule
+         as the code block control: shown where it applies, absent elsewhere. -->
+    {#if active.table}
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger
+          class={`${headingTrigger} text-foreground/60 text-sm`}
+          aria-label="Edit table"
+          title="Edit table"
+        >
+          <Icon name="table" size={16} class="shrink-0" />
+          <span>Table</span>
+          <Icon name="chevronDown" size={14} />
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            sideOffset={8}
+            align="start"
+            class="border-muted bg-background shadow-popover z-30 w-[200px] rounded-xl px-1 py-1.5 focus-visible:outline-none border"
+          >
+            {#each tableActions as action (action.label)}
+              {#if action.divider}
+                <DropdownMenu.Separator class="bg-border -mx-1 my-1 h-px" />
+              {/if}
+              <DropdownMenu.Item onSelect={action.run} class={itemClass}>
+                <Icon name={action.icon} size={16} />
+                {action.label}
+              </DropdownMenu.Item>
+            {/each}
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
     {/if}
 
     <!-- Emoji picker. The web component is lazy-loaded on first open (see

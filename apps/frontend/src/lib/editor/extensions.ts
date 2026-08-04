@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
+import { TableKit } from "@tiptap/extension-table";
 import { Markdown } from "tiptap-markdown";
 import { ResizableImage } from "./resizable-image";
 import { CodeBlockTitle } from "./code-block";
@@ -34,6 +35,17 @@ export const extensions: Extensions = [
   // Lets a code block carry a filename, the way a Markdown fence's `title=`
   // does. The language is already StarterKit's; see ./code-block.ts.
   CodeBlockTitle,
+  // Tables. The tags and the colspan/rowspan/scope attributes are already
+  // through the backend sanitizer, so what the editor emits stores and
+  // federates as-is.
+  //
+  // Not resizable, and no wrapper div. Both would only mislead: column widths
+  // ride on inline `style`, which the sanitizer strips, and the reader lays
+  // tables out full-width and automatic — so a column dragged narrower here
+  // would publish exactly as wide as before.
+  TableKit.configure({
+    table: { resizable: false, renderWrapper: false },
+  }),
   Markdown.configure({
     html: false, // don't trust raw HTML embedded in Markdown
     linkify: true, // turn bare URLs into links
