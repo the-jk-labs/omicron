@@ -64,7 +64,10 @@ function capLength(html: string): string {
     if (stripHtml(slice).length > MAX_TEXT_CHARS) break;
     if (balanced(slice)) cut = end;
   }
-  return cut ? html.slice(0, cut) : `<p>${excerpt(html, MAX_TEXT_CHARS)}</p>`;
+  // The fallback is plain text going back into markup, so it is re-escaped:
+  // `excerpt` decodes entities on the way out, and an ampersand or angle
+  // bracket handed straight to a `<p>` would be markup again.
+  return cut ? html.slice(0, cut) : `<p>${escapeXml(excerpt(html, MAX_TEXT_CHARS))}</p>`;
 }
 
 /** The article's opening section: up to its first heading, length-capped. */

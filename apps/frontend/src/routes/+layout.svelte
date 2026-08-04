@@ -8,6 +8,7 @@
   import MobileNav from "$lib/components/MobileNav.svelte";
   import Discover from "$lib/components/Discover.svelte";
   import { canonicalOrigin } from "$lib/canonical";
+  import { excerpt } from "$lib/format";
   import { rememberTimeZone } from "$lib/timezone";
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
   import type { Post, Profile, ReadingList } from "$lib/types";
@@ -50,10 +51,9 @@
       ? ($page.data as { post?: Post }).post
       : undefined,
   );
-  function excerpt(html: string): string {
-    const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-    return text.length > 200 ? `${text.slice(0, 199).trimEnd()}…` : text;
-  }
+  // Shared with the feed cards, so a link preview and the card describe a post
+  // the same way — decoded entities included.
+  const ogExcerpt = (html: string) => excerpt(html, 199);
   // A local author's handle resolves against this instance; a remote author's
   // `username` is already a `user@host` handle.
   const creator = $derived(
@@ -67,7 +67,7 @@
   // An ingested post carries the sender's own `description`; prefer it over a
   // clipped body, which is only ever a stand-in for one.
   const ogDescription = $derived(
-    post ? post.summary?.trim() || excerpt(post.contentHtml) : description,
+    post ? post.summary?.trim() || ogExcerpt(post.contentHtml) : description,
   );
   const ogType = $derived(post ? "article" : "website");
   // A post's banner becomes its share image, falling back to the instance's

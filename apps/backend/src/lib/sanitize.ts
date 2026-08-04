@@ -151,6 +151,74 @@ const MATHML_ATTRIBUTES = [
   "xmlns",
 ];
 
+// Tags whose *contents* go too, not just the tag — so stray script/style text
+// never leaks into the rendered output.
+const NON_TEXT_TAGS = ["script", "style", "textarea", "option", "noscript"];
+
+// Real elements this sanitizer refuses: scripting and embedding surfaces, the
+// document skeleton, interactive controls, and the one MathML element with
+// behaviour attached. Naming them changes nothing about what is stripped — the
+// allowlist above already drops everything it does not list — but it records
+// that they are recognised markup rather than something an author invented, so
+// the Markdown renderer keeps dropping them instead of showing them as text.
+const REFUSED_TAGS = [
+  "iframe",
+  "frame",
+  "frameset",
+  "object",
+  "embed",
+  "applet",
+  "param",
+  "portal",
+  "fencedframe",
+  "form",
+  "input",
+  "button",
+  "select",
+  "optgroup",
+  "datalist",
+  "label",
+  "fieldset",
+  "legend",
+  "output",
+  "meter",
+  "progress",
+  "svg",
+  "canvas",
+  "video",
+  "audio",
+  "source",
+  "track",
+  "picture",
+  "map",
+  "area",
+  "html",
+  "head",
+  "body",
+  "base",
+  "link",
+  "meta",
+  "title",
+  "template",
+  "slot",
+  "dialog",
+  "menu",
+  "marquee",
+  "font",
+  "center",
+  "maction",
+];
+
+/**
+ * Every tag this sanitizer has an opinion about — kept, swallowed whole, or
+ * refused — lowercased. Exported so the Markdown renderer can tell real markup
+ * from an author's `<Widget />`, which is none of the three and which it shows
+ * as typed rather than dropping. See lib/markdown.ts.
+ */
+export const KNOWN_POST_TAGS: ReadonlySet<string> = new Set(
+  [...ALLOWED_TAGS, ...MATHML_TAGS, ...NON_TEXT_TAGS, ...REFUSED_TAGS].map((t) => t.toLowerCase()),
+);
+
 const CONFIG: sanitizeHtml.IOptions = {
   allowedTags: [...ALLOWED_TAGS, ...MATHML_TAGS],
   allowedAttributes: {
@@ -208,9 +276,7 @@ const CONFIG: sanitizeHtml.IOptions = {
       target: "_blank",
     }),
   },
-  // Drop the *contents* of these, not just the tags, so stray script/style text
-  // never leaks into the rendered output.
-  nonTextTags: ["script", "style", "textarea", "option", "noscript"],
+  nonTextTags: NON_TEXT_TAGS,
 };
 
 /**

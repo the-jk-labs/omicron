@@ -1,8 +1,34 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Small presentation helpers shared across feed/profile/post views.
 
+// Turning markup back into text means undoing its escaping too. A body holding
+// `5 &lt; 7` or `it&#39;s` is displaying those characters, not those entities —
+// leaving them encoded put the raw `&lt;` in front of the reader, in every card
+// excerpt and every link preview. The set is small on purpose: these five plus
+// numeric escapes are what an HTML serializer emits, and anything else is left
+// as written rather than guessed at.
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+};
+
+function decodeEntities(text: string): string {
+  return text.replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (match, body: string) => {
+    const lower = body.toLowerCase();
+    if (lower[0] !== "#") return NAMED_ENTITIES[lower] ?? match;
+    const code = lower[1] === "x" ? parseInt(lower.slice(2), 16) : parseInt(lower.slice(1), 10);
+    // A code point outside Unicode would throw; leave the escape as written.
+    return code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match;
+  });
+}
+
+/** Markup to the plain text it renders as — tags dropped, entities decoded. */
 export function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return decodeEntities(html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
 }
 
 export function excerpt(html: string, len = 180): string {

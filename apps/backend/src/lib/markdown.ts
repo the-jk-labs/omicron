@@ -23,14 +23,21 @@ type Plugin = (md: MarkdownIt, options?: Record<string, unknown>) => void;
 const katex = (katexModule as unknown as { default?: Plugin }).default ??
   (katexModule as unknown as Plugin);
 
-import { sanitizePostHtml } from "@/lib/sanitize.ts";
+import { KNOWN_POST_TAGS, sanitizePostHtml } from "@/lib/sanitize.ts";
 
 const md = new MarkdownIt({
   html: true,
-  linkify: true, // bare URLs become links
+  linkify: true, // URLs written with a scheme become links — see below
   breaks: true, // a single newline is a line break, matching the post editor
   typographer: false, // leave the author's punctuation exactly as typed
 });
+
+// Only URLs the author spelled out in full — `https://kofe.al` — are linked.
+// markdown-it's default "fuzzy" matching also links anything shaped like a
+// hostname, which is far too eager for prose: a sentence naming a product
+// ("your kofe.al username") turned the name into a link, and a guessed
+// `http://` one at that. A writer who wants a link types one.
+md.linkify.set({ fuzzyLink: false, fuzzyIP: false });
 
 // TeX maths, `$inline$` and `$$display$$`, rendered here rather than in the
 // browser: the reader ships no maths engine and a remote instance rendering our
@@ -193,6 +200,43 @@ export function fenceTitle(info: string): string | null {
   const value = (match?.[2] ?? match?.[3] ?? "").trim();
   return value ? value.slice(0, MAX_TITLE) : null;
 }
+
+// A component name written in prose is shown, not swallowed.
+//
+// `html: true` means a `<` in the source opens a tag, so an author writing
+// about a widget — `<KofeAl username="you" />` — lost it twice over: markdown-it
+// passed it through as markup, and the sanitizer, having no such tag on its
+// allowlist, dropped it. The sentence lost the very thing it was about, and
+// silently.
+//
+// The tell is the capital letter. Every component convention — JSX, Svelte, Vue
+// — capitalises, and HTML elements are written lowercase, so a capitalised name
+// the sanitizer has never heard of is prose about a component rather than
+// markup. Those have their angle brackets escaped and reach the reader as
+// typed. Everything else is untouched: `<table>` and `<details>` still render,
+// and `<script>`, `<iframe>` and friends are still dropped by the sanitizer,
+// whatever case they are written in.
+//
+// Only `<` and `>` are escaped. An `&apos;` or `&amp;` sitting in the same run
+// is left alone, since escaping it would print the entity instead of the
+// character it names.
+const TAG_NAME = /^<\/?\s*([a-zA-Z][a-zA-Z0-9:._-]*)/;
+
+function componentName(raw: string): boolean {
+  // No tag name at all is a comment, a doctype or a CDATA section — markup the
+  // sanitizer already strips and no author is trying to show.
+  const name = TAG_NAME.exec(raw)?.[1];
+  if (!name || name === name.toLowerCase()) return false;
+  return !KNOWN_POST_TAGS.has(name.toLowerCase());
+}
+
+function renderRawHtml(raw: string): string {
+  if (!componentName(raw)) return raw;
+  return raw.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+md.renderer.rules.html_inline = (tokens, idx) => renderRawHtml(tokens[idx].content);
+md.renderer.rules.html_block = (tokens, idx) => renderRawHtml(tokens[idx].content);
 
 const defaultFence = md.renderer.rules.fence!;
 md.renderer.rules.fence = (tokens, idx, options, env, self) => {

@@ -37,10 +37,39 @@ Deno.test("markdown: task lists become inert Unicode boxes", () => {
   assertEquals(out.includes("<input"), false);
 });
 
-Deno.test("markdown: bare URLs are linkified and hardened", () => {
+Deno.test("markdown: URLs written with a scheme are linkified and hardened", () => {
   const out = renderMarkdown("see https://example.com for more");
   assertStringIncludes(out, `href="https://example.com"`);
   assertStringIncludes(out, `rel="noopener noreferrer nofollow"`);
+});
+
+Deno.test("markdown: a hostname mentioned in prose is not a link", () => {
+  for (const source of ["your kofe.al username", "**kofe.al/@username**", "see www.kofe.al"]) {
+    assertEquals(renderMarkdown(source).includes("<a "), false);
+  }
+});
+
+Deno.test("markdown: a component name in prose survives as text", () => {
+  const out = renderMarkdown(`Use <KofeAl username="you" isHoverable /> in your page.`);
+  assertStringIncludes(out, "&lt;KofeAl");
+  assertStringIncludes(out, "/&gt;");
+  // The attribute is part of the text now, not markup for the sanitizer to eat.
+  assertStringIncludes(out, `username="you"`);
+});
+
+Deno.test("markdown: real markup is still markup, whatever its case", () => {
+  // Capitalised HTML is legacy-valid and stays a tag; a capitalised element the
+  // sanitizer drops on purpose is still dropped, not shown.
+  assertStringIncludes(renderMarkdown("<BR>after"), "<br />");
+  assertEquals(renderMarkdown(`<IFRAME src="https://x"></IFRAME>`).includes("IFRAME"), false);
+  assertEquals(renderMarkdown("<SCRIPT>alert(1)</SCRIPT>").includes("alert"), false);
+});
+
+Deno.test("markdown: character escapes render as the characters they name", () => {
+  const out = renderMarkdown("It&apos;s 5 &lt; 7 &amp; done");
+  assertStringIncludes(out, "It's");
+  assertStringIncludes(out, "5 &lt; 7");
+  assertEquals(out.includes("&amp;apos;"), false);
 });
 
 Deno.test("markdown: keeps the layout HTML a custom section needs", () => {
