@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-## 🧠 Project Overview
+## Project Overview
 
 This is a **federated blogging platform** (Medium-like, ActivityPub-powered).
 
@@ -15,7 +15,7 @@ Core goals:
 
 ---
 
-## ⚙️ Tech Stack
+## Tech Stack
 
 ### Backend
 - Deno
@@ -33,7 +33,7 @@ Core goals:
 
 ---
 
-## 🏗️ Architecture Rules (STRICT)
+## Architecture Rules (STRICT)
 
 ### 1. Layered Architecture
 
@@ -61,7 +61,7 @@ db.select().from(posts)
 
 ---
 
-## 🎨 Frontend UI Styling (STRICT)
+## Frontend UI Styling (STRICT)
 
 **Every element must look like the Bits UI docs** (<https://bits-ui.com/docs/>).
 This is the single source of truth for the UI's appearance — always, for all new
@@ -131,7 +131,7 @@ memory. That repo's own `CLAUDE.md` has its full rules.
 
 ---
 
-## 🔀 Git workflow (STRICT)
+## Git workflow (STRICT)
 
 **Never push directly to the default branch.** Every change — a one-line typo
 fix included — goes through a pull request. Same rule in `omicron-docs`.
