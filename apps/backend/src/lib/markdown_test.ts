@@ -161,6 +161,46 @@ Deno.test("markdown: code keeps its asterisks", () => {
   assertStringIncludes(renderMarkdown("```\n**not bold **\n```"), "**not bold **");
 });
 
+// ── The footnote star inside bold ───────────────────────────────────────────
+
+Deno.test("markdown: a footnote star inside bold stays where it was typed", () => {
+  // CommonMark closes the `**` opener against the single `*`, which turns the
+  // bold into nested italics and drops the star at the end of the sentence:
+  // `<em><em>zero</em> server cost,</em>*`.
+  const out = renderMarkdown("It also means **zero* server cost,** the server just returns.");
+  assertStringIncludes(out, "<strong>zero* server cost,</strong>");
+  assertEquals(out.includes("<em>"), false);
+});
+
+Deno.test("markdown: an escaped star renders the same as a bare one", () => {
+  // The escaped form is what an author writes; the bare one is what survives a
+  // CMS. Both are the same sentence, so both must read the same.
+  const escaped = renderMarkdown(String.raw`**zero\* server cost,**`);
+  assertEquals(escaped, renderMarkdown("**zero* server cost,**"));
+  assertStringIncludes(escaped, "<strong>zero* server cost,</strong>");
+});
+
+Deno.test("markdown: genuine italics inside bold still nest", () => {
+  // The single closer has a single opener to pair with here, so nothing is
+  // reinterpreted — this is the case the rule must not break.
+  assertStringIncludes(renderMarkdown("**a *b* c**"), "<strong>a <em>b</em> c</strong>");
+  // And the same with the two closers written as one `***` run.
+  assertStringIncludes(renderMarkdown("**a *b***"), "<strong>a <em>b</em></strong>");
+  assertStringIncludes(renderMarkdown("*a **b** c*"), "<em>a <strong>b</strong> c</em>");
+});
+
+Deno.test("markdown: an ordinary star outside bold is untouched", () => {
+  assertStringIncludes(renderMarkdown("**bold** and a star* here"), "and a star* here");
+  assertStringIncludes(renderMarkdown("2 * 3 * 4"), "2 * 3 * 4");
+  assertStringIncludes(renderMarkdown("*italic* alone"), "<em>italic</em> alone");
+});
+
+Deno.test("markdown: the star is repaired inside a link's own inline run", () => {
+  // Link content carries its own delimiter list, which the rule has to walk too.
+  const out = renderMarkdown("[**zero* cost**](https://kofe.al)");
+  assertStringIncludes(out, "<strong>zero* cost</strong>");
+});
+
 // ── Fence titles ────────────────────────────────────────────────────────────
 
 Deno.test("markdown: a fence carries its optional filename", () => {

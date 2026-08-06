@@ -179,6 +179,65 @@ md.core.ruler.push("omicron_loose_strong", (state) => {
   }
 });
 
+// A lone `*` written inside a bold span — the footnote star, `**zero* server
+// cost,**` — is a literal asterisk to everyone but the parser.
+//
+// CommonMark pairs delimiters greedily and does not care that the opener is a
+// `**` run: the single `*` closes against half of it, the other half then closes
+// against the trailing `**`, and the reader gets `<em><em>zero</em> server
+// cost,</em>*`. Bold became italic and the star moved from the word it marked to
+// the end of the sentence. Escaping it (`zero\*`) renders correctly, but a body
+// arriving over the content webhook has usually been through a CMS or an
+// HTML-to-Markdown step that dropped the backslash, and the author never sees
+// the source we are handed.
+//
+// So a `*` run of length one that can only close is not allowed to break into a
+// longer opening run: it stays text, and the `**` pair closes with each other as
+// written. The scan tracks the same open/close stack the parser will, which is
+// what keeps genuine nesting intact — in `**a *b* c**` the single closer has a
+// single opener to pair with, and in `**a *b***` the closing run is three long,
+// so neither is touched.
+//
+// It runs before `balance_pairs`, the rule that does the matching, because
+// afterwards the wrong pairing is already tokens.
+
+/** The `*` codepoint, as markdown-it stores a delimiter's marker. */
+const ASTERISK = 0x2a;
+
+/** One entry of markdown-it's delimiter list; `length` is its whole run's. */
+type Delimiter = { marker: number; length: number; open: boolean; close: boolean };
+
+function keepLiteralStars(delimiters: Delimiter[]): void {
+  // Openers still waiting for their closer, innermost last.
+  const open: Delimiter[] = [];
+
+  for (const d of delimiters) {
+    if (d.marker !== ASTERISK) continue; // `_` and `~~` pair among themselves
+
+    if (d.close) {
+      const opener = open[open.length - 1];
+      // The footnote star: one asterisk, usable only as a closer, and the
+      // nearest thing to close is a `**`/`***` run it would have to split.
+      if (!d.open && d.length === 1 && opener && opener.length > 1) {
+        d.open = false;
+        d.close = false;
+        continue; // the opener stays open, for the closer the author wrote
+      }
+      if (opener) open.pop();
+    }
+    if (d.open) open.push(d);
+  }
+}
+
+md.inline.ruler2.before("balance_pairs", "omicron_literal_star", (state) => {
+  keepLiteralStars(state.delimiters as unknown as Delimiter[]);
+  // Inline content nested in a link or an image carries its own list.
+  for (const meta of state.tokens_meta) {
+    if (meta?.delimiters) keepLiteralStars(meta.delimiters as unknown as Delimiter[]);
+  }
+  return false;
+});
+
 // Optional filename on a fence, the way docs sites spell it:
 //
 //     ```ts title="@/lib/name.ts"
