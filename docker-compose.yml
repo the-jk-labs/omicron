@@ -16,8 +16,10 @@
 # volume and secrets in the `secrets` volume, so upgrades never lose content.
 
 services:
-  # Generates any missing secrets once, then exits. Both postgres and backend
-  # depend on it completing, so the files always exist before they start.
+  # Generates any missing secrets once, then exits. Postgres, the backend and
+  # Anubis depend on it completing, so the files always exist before they start.
+  # Each is 32 random bytes as 64 hex characters — which is also exactly the
+  # Ed25519 seed length Anubis wants for anubis_ed25519_key.
   init-secrets:
     image: alpine:3
     command:
@@ -25,7 +27,7 @@ services:
       - -c
       - |
         set -e
-        for name in db_password session_secret; do
+        for name in db_password session_secret anubis_ed25519_key; do
           f="/secrets/$$name"
           if [ ! -s "$$f" ]; then
             head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' > "$$f"
@@ -33,6 +35,11 @@ services:
             echo "generated $$name"
           fi
         done
+        # Anubis runs unprivileged (uid 1000) from a distroless image and cannot
+        # read a root-owned 0600 file, so hand it ownership of its own key —
+        # only that one, and every boot rather than only at generation, so an
+        # instance upgrading into this also gets fixed.
+        chown 1000 /secrets/anubis_ed25519_key
     volumes:
       - secrets:/secrets
 
@@ -164,8 +171,9 @@ services:
   # can't pass but real browsers solve in ~1s. It always runs but only sits in
   # the request path when an admin enables protection (Admin → Security), which
   # makes Caddy route the app branch here instead of straight to the frontend.
-  # Federation and the API never pass through it. Its signing key is ephemeral,
-  # so a restart re-challenges readers once — a fine trade for zero config.
+  # Federation and the API never pass through it. Its signing key is generated
+  # once into the `secrets` volume, so restarts and upgrades don't re-challenge
+  # readers who have already solved a proof of work.
   anubis:
     # Pinned to a specific release so an upgrade is a deliberate bump, never a
     # silent breaking change on the next pull. Check for newer stable tags at
@@ -173,10 +181,18 @@ services:
     image: ghcr.io/techarohq/anubis:v1.26.2
     restart: unless-stopped
     depends_on:
-      - frontend
+      init-secrets:
+        condition: service_completed_successfully
+      frontend:
+        condition: service_started
     environment:
       BIND: ":8080"
       TARGET: "http://frontend:3000"
+      # Sign challenge cookies with a key that persists across restarts. Without
+      # it Anubis generates a random key at boot, so every `docker compose up`
+      # (including a routine upgrade) silently invalidates every visitor's proof
+      # of work and walls the whole readership behind a fresh challenge.
+      ED25519_PRIVATE_KEY_HEX_FILE: /run/secrets/anubis_ed25519_key
       METRICS_BIND: ":9090"
       POLICY_FNAME: "/data/cfg/botPolicy.yaml"
       # PoW cost. 4 is Anubis's default — light on real browsers.
@@ -199,6 +215,7 @@ services:
       OG_EXPIRY_TIME: "24h"
     volumes:
       - ./botPolicy.yaml:/data/cfg/botPolicy.yaml:ro
+      - secrets:/run/secrets:ro
 
   # Public entrypoint: terminates TLS and reverse-proxies to frontend/backend.
   # Obtains Let's Encrypt certificates on demand for the instance's own domain
