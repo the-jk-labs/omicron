@@ -22,20 +22,34 @@ const CODE = /<(pre|code)\b[\s\S]*?<\/\1>/gi;
 
 /** `$$…$$` first, so its delimiters are never read as two inline formulas. */
 const DISPLAY = /\$\$([\s\S]+?)\$\$/g;
-/** Inline maths stays within one line, the way every `$…$` dialect has it. */
-const INLINE = /\$([^$\n]+?)\$/g;
+/**
+ * Inline maths stays within one line, the way every `$…$` dialect has it, and
+ * the delimiters must hug their content (`$x$`, never `$ x$`) with no digit
+ * after the closer — the same rule the live renderer uses (see lib/markdown.ts),
+ * and the one that keeps "it costs $5 and $6" a pair of prices.
+ */
+const INLINE = /\$(?!\s)([^$\n]+?)(?<!\s)\$(?!\d)/g;
+
+/**
+ * A bare quantity — `$d$`, `$1/2$`, `$0.4999993$` — carries no command, script
+ * or group, yet it is still a formula an author typed. What it does have is
+ * shape: a single unspaced run of symbols, digits and the operators between
+ * them. Prose that happened to fall between two dollar signs has spaces in it
+ * and fails here.
+ */
+const BARE = /^[A-Za-z0-9]+(?:[./+\-*=][A-Za-z0-9]+)*$/;
 
 /**
  * Does this look like TeX rather than money? A formula worth rendering carries a
- * command, a script or a group; "it costs $5 and $6" carries none of them, and
- * anything that reached storage as plain prose stays prose.
+ * command, a script or a group, or else is a bare quantity; "it costs $5 and $6"
+ * is neither, and anything that reached storage as plain prose stays prose.
  *
- * A bare symbol — `$d$`, `$n$` — has none of those marks either, so it is let
- * through on a second test: one short word, no spaces, and a letter in it. A
- * price is several words ("$5 and $6") or no letters at all, and fails both.
+ * This is the second of two guards. The first is INLINE itself, which already
+ * refuses the delimiter spacing prices are written with — so what reaches here
+ * is a candidate, not a certainty.
  */
 function looksLikeTex(source: string): boolean {
-  return /[\\^_{}]/.test(source) || /^[A-Za-z][A-Za-z0-9]{0,3}$/.test(source);
+  return /[\\^_{}]/.test(source) || BARE.test(source);
 }
 
 /**

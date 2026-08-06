@@ -92,6 +92,28 @@ Deno.test("legacy maths: a lone symbol is a formula, a price is not", () => {
   assertStringIncludes(out, "costs $5 and $6.");
 });
 
+Deno.test("legacy maths: a bare quantity is a formula too", () => {
+  // The paragraph that prompted this: every one of these stayed literal, so a
+  // rendered post was still speckled with dollar signs.
+  const out = upgradeLegacyMath(
+    "<p>approaches $1/2$ asymptotically (reaching $0.4999993$ at extreme " +
+      "parameters), from $0.05055$ to $0.00341$).</p>",
+  );
+  assertEquals(out.includes("$"), false);
+  assertStringIncludes(out, "<math");
+});
+
+Deno.test("legacy maths: prices sharing a paragraph with a formula stay prices", () => {
+  const html = "<p>Seats are $10 or $20, and shipping is $5 and $6.</p>";
+  assertEquals(upgradeLegacyMath(html), html);
+});
+
+Deno.test("legacy maths: a price the closer does not lead with a digit", () => {
+  // "$5 and $x" hugs no better than "$5 and $6": the closer sits after a space.
+  const html = "<p>It costs $5 and up to $twelve.</p>";
+  assertEquals(upgradeLegacyMath(html), html);
+});
+
 Deno.test("legacy maths: an escape Markdown ate is put back", () => {
   // `\left\{ … \right\}` reached storage as `\left{ … \right}`, which KaTeX
   // cannot parse at all — so restoring the backslash can only help.
