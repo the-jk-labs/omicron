@@ -3,11 +3,19 @@
    font's unicode-range and renders with `font-display: swap`. */
 @import "@fontsource-variable/inter/index.css";
 
+/* Self-hosted Source Sans 3 (variable), used only for rendered post content
+   (`.prose-omicron`, see below) — the interface stays on Inter. The italic
+   file is imported as well so emphasis in a post uses the real italic cuts
+   instead of a browser-synthesised oblique. Same unicode-range subsetting and
+   `font-display: swap` as Inter. */
+@import "@fontsource-variable/source-sans-3/index.css";
+@import "@fontsource-variable/source-sans-3/wght-italic.css";
+
 /* Twemoji as a self-hosted COLR colour font (CC-BY 4.0, from
    `twemoji-colr-font`; the .woff2 lives in static/fonts). Scoped with
    `unicode-range` to emoji codepoints only, so Latin/CJK text still renders
-   with Inter/Georgia and the browser fetches this font lazily — only when an
-   emoji actually appears. Listing "Twemoji" first in the sans/serif stacks
+   with Inter/Source Sans 3 and the browser fetches this font lazily — only when
+   an emoji actually appears. Listing "Twemoji" first in each font stack
    (tailwind.config.ts) then makes every user see the same Twemoji artwork
    regardless of their OS, while the document keeps plain Unicode emoji
    (federation-friendly, selectable, copyable). ZWJ (200D), the emoji variation
@@ -175,10 +183,12 @@ html {
   }
 }
 
-/* Rendered post content (the HTML produced by Tiptap). Medium-like serif
-   reading column — generous size, relaxed leading. Extend as the editor grows. */
+/* Rendered post content (the HTML produced by Tiptap). Its own reading face —
+   Source Sans 3, not the interface's Inter — at a generous size with relaxed
+   leading. Code, keys and maths keep their own faces below. Extend as the
+   editor grows. */
 .prose-omicron {
-  @apply font-serif text-[1.125rem] leading-[1.75] text-foreground sm:text-[1.25rem] sm:leading-[1.8];
+  @apply font-content text-[1.125rem] leading-[1.75] text-foreground sm:text-[1.25rem] sm:leading-[1.8];
 }
 /* Media never overflows the reading column on narrow screens. */
 .prose-omicron img,
@@ -186,22 +196,22 @@ html {
   @apply mx-auto my-6 h-auto max-w-full rounded-card;
 }
 .prose-omicron h1 {
-  @apply mt-10 mb-4 font-sans text-3xl font-bold tracking-tight text-foreground;
+  @apply mt-10 mb-4 font-content text-3xl font-bold tracking-tight text-foreground;
 }
 .prose-omicron h2 {
-  @apply mt-8 mb-3 font-sans text-2xl font-bold tracking-tight text-foreground;
+  @apply mt-8 mb-3 font-content text-2xl font-bold tracking-tight text-foreground;
 }
 .prose-omicron h3 {
-  @apply mt-7 mb-2 font-sans text-xl font-bold tracking-tight text-foreground;
+  @apply mt-7 mb-2 font-content text-xl font-bold tracking-tight text-foreground;
 }
 .prose-omicron h4 {
-  @apply mt-6 mb-2 font-sans text-lg font-semibold tracking-tight text-foreground;
+  @apply mt-6 mb-2 font-content text-lg font-semibold tracking-tight text-foreground;
 }
 .prose-omicron h5 {
-  @apply mt-6 mb-2 font-sans text-base font-semibold tracking-tight text-foreground;
+  @apply mt-6 mb-2 font-content text-base font-semibold tracking-tight text-foreground;
 }
 .prose-omicron h6 {
-  @apply mt-6 mb-2 font-sans text-sm font-semibold uppercase tracking-wide text-muted-foreground;
+  @apply mt-6 mb-2 font-content text-sm font-semibold uppercase tracking-wide text-muted-foreground;
 }
 .prose-omicron p {
   @apply my-5;
@@ -248,7 +258,7 @@ html {
   @apply border border-border px-3 py-2 text-left align-top;
 }
 .prose-omicron th {
-  @apply bg-muted font-sans text-sm font-semibold text-foreground;
+  @apply bg-muted font-content text-sm font-semibold text-foreground;
 }
 /* A cell written in the editor holds a paragraph, not bare text (ProseMirror
    tables are block content), and a paragraph's own margins inside a cell would
@@ -269,7 +279,7 @@ html {
   @apply my-5 rounded-card border border-border bg-background px-4 py-3;
 }
 .prose-omicron summary {
-  @apply cursor-pointer font-sans text-base font-medium text-foreground marker:text-muted-foreground;
+  @apply cursor-pointer font-content text-base font-medium text-foreground marker:text-muted-foreground;
 }
 .prose-omicron kbd {
   @apply rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground;
