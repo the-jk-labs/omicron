@@ -32,6 +32,16 @@
 		X-Content-Type-Options nosniff
 	}
 
+	# Anubis reads the client IP from X-Real-IP and refuses the request outright
+	# ("[misconfiguration] X-Real-Ip header is not set") when it can't determine
+	# one — Caddy sends X-Forwarded-For but never X-Real-IP. The fallback to XFF
+	# is not enough here: XFF_STRIP_PRIVATE drops private hops, so any client on
+	# a private network (localhost, LAN, a CGNAT/VPN edge, a Docker bridge in dev)
+	# leaves Anubis with an empty XFF and every request 500s. Setting it here —
+	# unconditionally, from the connection's real peer, so a client can't spoof
+	# it — is also what Anubis's install docs ask a reverse proxy to do.
+	request_header X-Real-IP {remote_host}
+
 	@federation path /.well-known/* /users/* /inbox /nodeinfo /nodeinfo/*
 	handle @federation {
 		reverse_proxy backend:8000
