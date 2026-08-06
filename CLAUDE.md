@@ -128,3 +128,46 @@ When updating omicron-docs: `.mdx` under `src/content/docs/`, and register any
 new page in `src/lib/nav.ts` (the single source of truth for the sidebar,
 mobile nav, and pager). Verify facts against the source here rather than from
 memory. That repo's own `CLAUDE.md` has its full rules.
+
+---
+
+## 🔀 Git workflow (STRICT)
+
+**Never push directly to the default branch.** Every change — a one-line typo
+fix included — goes through a pull request. Same rule in `omicron-docs`.
+
+```
+git checkout -b fix/short-kebab-description
+```
+
+Prefixes: `fix/`, `feat/`, `docs/`, `refactor/`, `chore/`.
+
+### Commits
+
+One logical change per commit, with a conventional-commit subject
+(`fix(anubis): …`, `docs: …`). Split a branch into several commits when the
+change has genuinely separable parts — each one should be revertable on its own
+and leave the repo working. The body explains **why**, not what the diff already
+shows.
+
+Never credit an AI assistant as author, co-author, or contributor. No
+`Co-Authored-By` trailers, no "generated with" footers, in commits or PRs.
+
+### Pull request descriptions
+
+Write them for someone who has not seen the bug. A good one covers:
+
+- **The symptom** — what a user or operator actually observes.
+- **The root cause** — the mechanism, with the evidence that pins it down
+  (the failing line, the log message, the header). Not a guess dressed as fact.
+- **The fix** — and why this fix rather than an obvious alternative.
+- **What was verified** — the checks actually run, and honestly, what was not.
+- **Deploy notes** — anything that will not take effect from a plain
+  `docker compose up -d`, such as a `Caddyfile` change needing
+  `--force-recreate`.
+
+State uncertainty plainly. A PR that says which part is unproven is worth more
+than one that sounds confident and is wrong.
+
+Keep it proportionate: a typo fix needs a sentence, not a template. Length is
+not the goal — a reviewer being able to check the reasoning is.
