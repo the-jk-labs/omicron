@@ -193,6 +193,18 @@ services:
       # (including a routine upgrade) silently invalidates every visitor's proof
       # of work and walls the whole readership behind a fresh challenge.
       ED25519_PRIVATE_KEY_HEX_FILE: /run/secrets/anubis_ed25519_key
+      # Hostnames a solved challenge may bounce back to. Left empty Anubis will
+      # redirect to whatever domain the `redir` parameter names — an open
+      # redirect worth closing on a public instance.
+      #
+      # Not derived from APP_DOMAIN, deliberately: this instance answers on every
+      # hostname pointed at it (apex, `www.`, a bare IP) and only canonicalises
+      # later, in the app — which sits *behind* Anubis. Narrowing this to the one
+      # canonical domain would let a visitor who arrived on any other hostname
+      # solve the challenge and then be refused the redirect. So it stays opt-in,
+      # and the operator lists every hostname they actually serve. See
+      # ANUBIS_REDIRECT_DOMAINS in .env.example.
+      REDIRECT_DOMAINS: ${ANUBIS_REDIRECT_DOMAINS:-}
       METRICS_BIND: ":9090"
       POLICY_FNAME: "/data/cfg/botPolicy.yaml"
       # PoW cost. 4 is Anubis's default — light on real browsers.
