@@ -32,6 +32,45 @@
 		X-Content-Type-Options nosniff
 	}
 
+	# Anubis reads the client IP from X-Real-IP and refuses the request outright
+	# ("[misconfiguration] X-Real-Ip header is not set") when it can't determine
+	# one — Caddy sends X-Forwarded-For but never X-Real-IP. The fallback to XFF
+	# is not enough here: XFF_STRIP_PRIVATE drops private hops, so any client on
+	# a private network (localhost, LAN, a CGNAT/VPN edge, a Docker bridge in dev)
+	# leaves Anubis with an empty XFF and every request 500s. Setting it here —
+	# unconditionally, from the connection's real peer, so a client can't spoof
+	# it — is also what Anubis's install docs ask a reverse proxy to do.
+	request_header X-Real-IP {remote_host}
+
+	# Anubis's challenge page is a race waiting to happen, and these two files are
+	# the trigger. The page loads its script as `<script async type="module">`, so
+	# it runs the moment it is *available* rather than after the document is
+	# parsed — but the `#progress` element it dereferences is declared ~3 KB
+	# further down the HTML. Anubis serves both this script and its locale JSON
+	# with `Cache-Control: public, max-age=31536000` and no ETag, so from the
+	# second visit onwards both resolve straight out of disk cache with no network
+	# delay, the script wins the race, `getElementById("progress")` returns null,
+	# and the TypeError lands outside the page's own try/catch: the visitor is
+	# stuck on "Calculating… Difficulty: 4," forever. (Anubis's built-in reload
+	# watchdog can't help — the script had already set `window.__anubisBooted`
+	# before it threw.) Pressing reload revalidates the subresources, which is
+	# exactly why a refresh "fixes" it.
+	#
+	# Forcing revalidation on just these two puts a round trip back in front of
+	# the script, so the parser always reaches `#progress` first. Anubis sends no
+	# validator, so this costs a full re-fetch (~11 KB) — but only on challenge
+	# pages, and only while the shield is on. Everything else Anubis serves (CSS,
+	# mascot images, the PoW worker) keeps its long cache lifetime.
+	#
+	# Upstream bug, not ours: drop this block once Anubis ships the script as
+	# deferred or moves `#progress` above it.
+	#
+	# `>` defers the set until the response is being written. Without it this runs
+	# before the proxy and Anubis's own header is *added* alongside ours, leaving
+	# the response with two conflicting Cache-Control values.
+	@anubis_boot path /.within.website/x/cmd/anubis/static/js/main.mjs /.within.website/x/cmd/anubis/static/locales/*
+	header @anubis_boot >Cache-Control "no-cache"
+
 	@federation path /.well-known/* /users/* /inbox /nodeinfo /nodeinfo/*
 	handle @federation {
 		reverse_proxy backend:8000
