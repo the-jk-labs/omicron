@@ -58,7 +58,17 @@ export default {
         // glyphs — text still renders with Inter/Georgia. This gives consistent
         // Twemoji artwork across every OS without touching stored content.
         sans: ["Twemoji", "Inter Variable", "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-        // Medium-like reading typography for rendered post content.
+        // Reading typography for rendered post content (`.prose-omicron`).
+        content: [
+          "Twemoji",
+          "Source Sans 3 Variable",
+          "Source Sans 3",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+        ],
+        // Kept for maths (MathML renders best with a serif) and anything else
+        // that asks for a serif explicitly.
         serif: ["Twemoji", "Georgia", "Cambria", "Times New Roman", "serif"],
       },
     },
