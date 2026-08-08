@@ -14,6 +14,14 @@ import Image from "@tiptap/extension-image";
 // Height is never stored: the image keeps its own aspect ratio (`h-auto` in
 // app.css), so dragging a corner scales both edges together.
 
+// Alt text is edited through a dialog owned by Editor.svelte rather than a
+// browser prompt, so it looks like the rest of the app. The node view is plain
+// DOM and cannot open a Svelte component itself, so it raises this event and
+// the editor component listens for it. `detail.pos` identifies which image, so
+// the answer can be written straight back with a transaction.
+export const EDIT_ALT_EVENT = "omicron:edit-image-alt";
+export type EditAltDetail = { pos: number; alt: string };
+
 // Never let an image shrink to something unclickable, and never past the column.
 const MIN_PERCENT = 10;
 const MAX_PERCENT = 100;
@@ -51,6 +59,20 @@ export const ResizableImage = Image.extend({
 
       // Mirrors the node's attributes onto the DOM. Called on creation and on
       // every `update`, so an undo of a resize snaps the frame back.
+      // Alt-text control. An image with no description is invisible to a screen
+      // reader and mute to a search engine, and until now the editor offered no
+      // way to give it one — the attribute existed on the node and nothing
+      // could ever set it. The button doubles as the indicator: it reads "Alt"
+      // and is marked incomplete while the description is empty, so the gap is
+      // visible while writing rather than discovered by someone who cannot see
+      // the picture.
+      const altButton = document.createElement("button");
+      altButton.type = "button";
+      altButton.className = "img-alt-button";
+      altButton.draggable = false;
+      altButton.addEventListener("dragstart", (event) => event.preventDefault());
+      frame.appendChild(altButton);
+
       let current = node;
       function render() {
         img.src = current.attrs.src ?? "";
@@ -58,8 +80,36 @@ export const ResizableImage = Image.extend({
         if (current.attrs.title) img.title = current.attrs.title;
         else img.removeAttribute("title");
         frame.style.width = (current.attrs.width as string | null) ?? "100%";
+
+        const alt = (current.attrs.alt as string | null)?.trim() ?? "";
+        altButton.textContent = "Alt";
+        altButton.dataset.missing = alt ? "false" : "true";
+        altButton.title = alt ? `Alt text: ${alt}` : "Add alt text";
+        altButton.setAttribute(
+          "aria-label",
+          alt ? `Edit alt text: ${alt}` : "Add alt text for this image",
+        );
       }
       render();
+
+      altButton.addEventListener("pointerdown", (event) => {
+        // Stop ProseMirror turning the press into a node drag or selection.
+        event.preventDefault();
+        event.stopPropagation();
+      });
+      altButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!editor.isEditable) return;
+        const pos = typeof getPos === "function" ? getPos() : null;
+        if (pos === null || pos === undefined) return;
+        editor.view.dom.dispatchEvent(
+          new CustomEvent<EditAltDetail>(EDIT_ALT_EVENT, {
+            bubbles: true,
+            detail: { pos, alt: (current.attrs.alt as string | null) ?? "" },
+          }),
+        );
+      });
 
       // Live width during a drag, committed to the document on pointer-up.
       let dragging: { startX: number; startWidth: number; columnWidth: number; grow: number } | null = null;

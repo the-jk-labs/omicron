@@ -8,6 +8,7 @@
   import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
   import { endpoints, ApiError } from "$lib/api";
   import { isAcceptedImage, prepareImage } from "./image";
+  import { EDIT_ALT_EVENT, type EditAltDetail } from "./resizable-image";
   import { extensions } from "./extensions";
   import { CODE_LANGUAGES, codeLanguageLabel } from "$lib/codeLanguages";
 
@@ -188,6 +189,44 @@
     linkOpen = false;
   }
 
+  // Alt text for an image, collected the same way a link URL is. The node view
+  // is plain DOM (see resizable-image.ts) and cannot open a Svelte component,
+  // so its "Alt" button raises an event carrying the image's position and the
+  // description it already has; this owns the dialog and writes the answer back.
+  let altOpen = $state(false);
+  let altText = $state("");
+  let altPos: number | null = null;
+
+  function openAltDialog(event: Event) {
+    const { pos, alt } = (event as CustomEvent<EditAltDetail>).detail;
+    altPos = pos;
+    altText = alt;
+    altOpen = true;
+  }
+
+  function applyAlt(e: SubmitEvent) {
+    e.preventDefault();
+    altOpen = false;
+    if (altPos === null) return;
+    const node = editor.state.doc.nodeAt(altPos);
+    // The document can move under an open dialog — an undo, or a collaborator's
+    // edit in some future version. Writing to a position that is no longer this
+    // image would relabel the wrong one, so confirm before committing.
+    if (node?.type.name === "image") {
+      editor.view.dispatch(
+        editor.view.state.tr.setNodeMarkup(altPos, undefined, {
+          ...node.attrs,
+          // An empty description is stored as null rather than "", which is how
+          // the node view tells "not described yet" from "deliberately
+          // decorative" — and `alt=""` is the correct markup for the latter.
+          alt: altText.trim() || null,
+        }),
+      );
+    }
+    altPos = null;
+    editor.commands.focus();
+  }
+
   // Emoji picker: inserts the picked Unicode emoji at the cursor. Emoji are
   // stored as plain Unicode (not images) and rendered as Twemoji by the
   // unicode-range font, so federated/exported content stays text.
@@ -300,9 +339,15 @@
       onTransaction: ({ editor }) => refreshActive(editor),
     });
     refreshActive();
+    // The alt-text button lives inside a node view, so its event surfaces on
+    // the editor's own DOM rather than anywhere Svelte can bind to directly.
+    editor.view.dom.addEventListener(EDIT_ALT_EVENT, openAltDialog);
   });
 
-  onDestroy(() => editor?.destroy());
+  onDestroy(() => {
+    editor?.view.dom.removeEventListener(EDIT_ALT_EVENT, openAltDialog);
+    editor?.destroy();
+  });
 
   // `key` (when present) is the active-state flag that highlights the button;
   // `divider` inserts a separator before the button. One-shot actions like the
@@ -535,6 +580,54 @@
             type="text"
             maxlength={MAX_CODE_TITLE}
             placeholder="src/main.ts"
+            class="rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
+          />
+        </div>
+        <div class="flex justify-end gap-2">
+          <Dialog.Close
+            class="text-foreground hover:bg-muted inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium active:scale-[0.98]"
+          >
+            Cancel
+          </Dialog.Close>
+          <button
+            type="submit"
+            class="rounded-input bg-dark text-background shadow-mini hover:bg-dark/95 inline-flex h-10 items-center justify-center px-5 text-sm font-semibold active:scale-[0.98]"
+          >
+            Save
+          </button>
+        </div>
+      </form>
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
+
+<Dialog.Root bind:open={altOpen}>
+  <Dialog.Portal>
+    <Dialog.Overlay
+      class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+    />
+    <Dialog.Content
+      class="rounded-card bg-background shadow-popover fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 border border-border p-6 sm:max-w-[420px]"
+    >
+      <Dialog.Title class="text-foreground text-lg font-semibold tracking-tight">
+        Describe this image
+      </Dialog.Title>
+      <Dialog.Description class="text-muted-foreground mt-1 text-sm">
+        Read aloud to people using a screen reader, and shown if the image fails to
+        load. Leave it empty if the image is purely decorative.
+      </Dialog.Description>
+      <form onsubmit={applyAlt} class="mt-4 flex flex-col gap-4">
+        <div class="flex flex-col gap-1.5">
+          <Label.Root for="image-alt" class="text-sm font-medium leading-none">
+            Alt text
+          </Label.Root>
+          <!-- svelte-ignore a11y_autofocus -->
+          <input
+            id="image-alt"
+            bind:value={altText}
+            type="text"
+            placeholder="A rabbit peering out of its burrow"
+            autofocus
             class="rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
           />
         </div>
