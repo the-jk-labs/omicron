@@ -134,7 +134,20 @@
   // Keep private/write-side routes out of the index even on a public instance,
   // and honour the admin's global indexing switch. Route prefixes cover nested
   // paths (e.g. /posts/[id]/edit under compose-like editing).
-  const NOINDEX_PREFIXES = ["/compose", "/drafts", "/dashboard", "/settings", "/admin"];
+  // Kept in step with the DISALLOW list in routes/robots.txt. The two overlap
+  // on purpose and cover different failures: robots.txt stops a well-behaved
+  // crawler spending fetches here at all, while this catches one that ignores
+  // it, or that arrived from an external link rather than by crawling us.
+  const NOINDEX_PREFIXES = [
+    "/compose",
+    "/drafts",
+    "/dashboard",
+    "/settings",
+    "/admin",
+    "/search",
+    "/notifications",
+    "/follow-requests",
+  ];
   const noindex = $derived(
     data.seo?.indexingEnabled === false ||
       standalone ||
