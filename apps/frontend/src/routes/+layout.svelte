@@ -140,10 +140,43 @@
       standalone ||
       NOINDEX_PREFIXES.some((p) => ($page.url.pathname ?? "").startsWith(p)),
   );
+
+  // Pages that render content this instance caches but did not publish: a
+  // federated post, and the cached profile of the remote author who wrote it.
+  // Both reproduce another instance's words at a URL on our domain, so each one
+  // is a duplicate of a page that already exists elsewhere.
+  //
+  // That has to stay out of the index, and not only because a duplicate ranks
+  // badly on its own. An instance federating well holds far more remote posts
+  // than local ones, so left indexable the *majority* of what a search engine
+  // sees here is text it has already found at its source — the signature of a
+  // scraper site, and a judgement that lands on the whole domain rather than
+  // just the copies. The instance's own writers pay for it.
+  //
+  // `follow`, not `nofollow`: these pages link on to local posts and profiles
+  // that do belong in the index, and dropping the copy shouldn't drop the trail
+  // to them. The sitemap already lists local posts only (backend
+  // repositories/posts.ts listSitemapEntries), so this closes the other half —
+  // what a crawler reaches by following links from the feed.
+  const federated = $derived(
+    ($page.route.id === "/[handle]/[slug]" && post?.remote === true) ||
+      ($page.route.id === "/[handle]" && ($page.data as { remote?: boolean }).remote === true),
+  );
+
+  const robots = $derived(
+    noindex ? "noindex, nofollow" : federated ? "noindex, follow" : null,
+  );
 </script>
 
 <svelte:head>
-  <link rel="canonical" href={canonical} />
+  <!-- Omitted on a federated copy: a canonical tag is this page asserting it is
+       the original, which for someone else's article is simply false. The
+       `noindex` below is the instruction that matters, and Google treats a
+       canonical alongside it as a contradiction to resolve rather than a hint
+       to follow. -->
+  {#if !federated}
+    <link rel="canonical" href={canonical} />
+  {/if}
   <meta name="description" content={ogDescription} />
   <meta property="og:site_name" content={appName} />
   <meta property="og:title" content={ogTitle} />
@@ -167,8 +200,8 @@
   {#each verificationTags as tag (tag.name)}
     <meta name={tag.name} content={tag.content} />
   {/each}
-  {#if noindex}
-    <meta name="robots" content="noindex, nofollow" />
+  {#if robots}
+    <meta name="robots" content={robots} />
   {/if}
 </svelte:head>
 
