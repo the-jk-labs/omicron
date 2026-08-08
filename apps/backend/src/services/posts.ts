@@ -83,7 +83,10 @@ export async function createPost(authorId: string, input: {
   if (tags !== undefined) await tagsRepo.setPostTags(post.id, tags);
 
   // Only published posts fan out to remote followers; drafts stay private.
-  if (status === "published") queue.add("federate_post", { postId: post.id });
+  if (status === "published") {
+    queue.add("federate_post", { postId: post.id });
+    queue.add("indexnow_submit", { postId: post.id });
+  }
   return post;
 }
 
@@ -209,6 +212,9 @@ export async function updatePost(authorId: string, id: string, input: {
   if (post.status === "published") {
     const action = row.post.status === "published" ? "update" : "create";
     queue.add("federate_post", { postId: post.id, action });
+    // Resubmit on edit as well as on publish: an engine holding the old copy is
+    // exactly the case IndexNow exists to shorten.
+    queue.add("indexnow_submit", { postId: post.id });
   } else if (row.post.status === "published" && post.authorId) {
     // Unpublishing (published → draft) makes the post private again; tombstone
     // the copies already delivered to remote followers.

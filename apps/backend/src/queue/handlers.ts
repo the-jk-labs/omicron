@@ -14,6 +14,14 @@ export function registerJobHandlers() {
     await deliverPost(postId, action ?? "create");
   });
 
+  // Tell IndexNow-participating engines a post appeared or changed. Queued
+  // rather than awaited inline so a slow third party never delays a publish,
+  // and no-ops unless an admin enabled it (see services/indexNow.ts).
+  registerHandler("indexnow_submit", async ({ postId }) => {
+    const { submitPost } = await import("@/services/indexNow.ts");
+    await submitPost(postId);
+  });
+
   // A local post was deleted; tombstone it on remote followers' instances. The
   // row is already gone, so the payload carries the former author id.
   registerHandler("federate_post_delete", async ({ postId, authorId }) => {

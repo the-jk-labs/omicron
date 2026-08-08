@@ -121,6 +121,9 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // discoverability / SEO: public read (layout, robots.txt, sitemap.xml) + the
     // moderator-only write side.
     seo: () => api.get<SeoSettings>("/seo"),
+    // Yes/no check backing the IndexNow key file; never returns the key.
+    verifyIndexNowKey: (key: string) =>
+      api.get<{ ok: boolean }>(`/seo/indexnow-key/${encodeURIComponent(key)}`),
     sitemapEntries: () => api.get<SitemapContents>("/seo/sitemap-entries"),
     sitemapPosts: (page: number) => api.get<SitemapEntry[]>(`/seo/sitemap-posts?page=${page}`),
     adminSeo: () => api.get<SeoSettings>("/admin/seo"),
