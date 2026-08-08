@@ -280,11 +280,15 @@ export type SitemapProfile = { username: string; lastPostAt: string };
 export type SitemapTag = { slug: string; lastPostAt: string };
 export type SitemapList = { id: string; title: string; lastItemAt: string };
 
+// The index pages plus a count of posts. Posts are not inlined: they are the
+// only kind that can exceed the sitemap spec's 50,000-URL file limit, so they
+// are fetched a page at a time from /seo/sitemap-posts instead.
 export type SitemapContents = {
-  posts: SitemapEntry[];
   profiles: SitemapProfile[];
   tags: SitemapTag[];
   lists: SitemapList[];
+  postCount: number;
+  postsPerPage: number;
 };
 
 // Public instance identity (unauthenticated). Drives the app-name chrome and

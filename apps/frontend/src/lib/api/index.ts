@@ -26,6 +26,7 @@ import type {
   SecuritySettings,
   SeoSettings,
   SitemapContents,
+  SitemapEntry,
   SuggestedUser,
   TagDetail,
   TagWithCount,
@@ -121,6 +122,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // moderator-only write side.
     seo: () => api.get<SeoSettings>("/seo"),
     sitemapEntries: () => api.get<SitemapContents>("/seo/sitemap-entries"),
+    sitemapPosts: (page: number) => api.get<SitemapEntry[]>(`/seo/sitemap-posts?page=${page}`),
     adminSeo: () => api.get<SeoSettings>("/admin/seo"),
     setAdminSeo: (body: Partial<SeoSettings>) => api.put<SeoSettings>("/admin/seo", body),
 

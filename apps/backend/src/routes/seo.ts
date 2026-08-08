@@ -18,20 +18,35 @@ seoRoutes.get("/", async (c) => {
   return c.json(await seo.getSeoSettings());
 });
 
-// Everything this instance publishes that belongs in the sitemap, in the raw
-// form the frontend needs to build URLs (it owns the permalink logic; see
-// $lib/links). Four kinds, because four kinds of page here are worth finding:
-// the posts, their authors' profiles, the tag indexes, and public reading
-// lists. Each carries its own lastmod.
+// The instance's index pages — author profiles, tag indexes, public reading
+// lists — plus how many posts there are. Each list is bounded well under the
+// sitemap spec's 50k-per-file limit, so they ship together in one response;
+// posts are the only kind that can outgrow a file, and they are paged
+// separately below.
 //
-// Fetched together and in parallel: the sitemap is one document, so four
-// sequential round-trips would only make it slower to build.
+// Fetched in parallel: this backs a single document, so three sequential
+// round-trips would only make it slower to build.
 seoRoutes.get("/sitemap-entries", async (c) => {
-  const [posts, profiles, tags, lists] = await Promise.all([
-    postsRepo.listSitemapEntries(),
+  const [profiles, tags, lists, postCount] = await Promise.all([
     postsRepo.listSitemapProfiles(),
     tagsRepo.listSitemapTags(),
     listsRepo.listSitemapLists(),
+    postsRepo.countSitemapEntries(),
   ]);
-  return c.json({ posts, profiles, tags, lists });
+  return c.json({
+    profiles,
+    tags,
+    lists,
+    postCount,
+    postsPerPage: postsRepo.SITEMAP_PAGE_SIZE,
+  });
+});
+
+// One page of published local posts. `page` is 1-based; anything unparseable
+// is page 1 rather than an error, since this is a public crawler-facing surface
+// and a bad page number should not produce a broken sitemap.
+seoRoutes.get("/sitemap-posts", async (c) => {
+  const page = Number.parseInt(c.req.query("page") ?? "1", 10);
+  const entries = await postsRepo.listSitemapEntries(Number.isFinite(page) ? page : 1);
+  return c.json(entries);
 });

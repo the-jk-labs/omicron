@@ -181,7 +181,20 @@ export function listAllContent() {
 //
 // `updatedAt`, not `createdAt`, is the lastmod: an edited post has to look
 // changed or an engine keeps serving the copy it already has.
-export function listSitemapEntries() {
+// The sitemap spec caps one file at 50,000 URLs, so the app splits posts across
+// numbered files and this serves one of them. Ordered by created_at DESC and
+// then id, because an unstable order would shuffle posts between files on every
+// fetch and each file would look wholly rewritten to a crawler.
+export const SITEMAP_PAGE_SIZE = 40000;
+
+const publishedLocally = () =>
+  and(
+    eq(posts.remote, false),
+    eq(posts.status, "published"),
+    sql`${users.suspendedAt} is null`,
+  );
+
+export function listSitemapEntries(page = 1) {
   return db
     .select({
       id: posts.id,
@@ -192,15 +205,19 @@ export function listSitemapEntries() {
     })
     .from(posts)
     .innerJoin(users, eq(posts.authorId, users.id))
-    .where(
-      and(
-        eq(posts.remote, false),
-        eq(posts.status, "published"),
-        sql`${users.suspendedAt} is null`,
-      ),
-    )
-    .orderBy(desc(posts.createdAt))
-    .limit(50000);
+    .where(publishedLocally())
+    .orderBy(desc(posts.createdAt), desc(posts.id))
+    .limit(SITEMAP_PAGE_SIZE)
+    .offset((Math.max(1, page) - 1) * SITEMAP_PAGE_SIZE);
+}
+
+export async function countSitemapEntries(): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(posts)
+    .innerJoin(users, eq(posts.authorId, users.id))
+    .where(publishedLocally());
+  return row?.n ?? 0;
 }
 
 // Local authors with at least one published post, for the sitemap. A profile is
