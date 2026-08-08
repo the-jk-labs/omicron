@@ -121,6 +121,25 @@ export async function getPost(id: string, viewerId: string | null = null) {
   return row;
 }
 
+// Posts to offer at the end of an article. Tag overlap first; when a post
+// shares tags with nothing (or carries none), the newest posts stand in, so the
+// reader is never left at a dead end. Deduplicated by id because the fallback
+// is only topped up when the related set comes back short.
+export async function relatedPosts(postId: string, limit = 4) {
+  const related = await postsRepo.listRelated(postId, limit);
+  if (related.length >= limit) return related;
+
+  const seen = new Set(related.map((r) => r.post.id));
+  const filler = await postsRepo.listRecentExcluding(postId, limit + related.length);
+  for (const row of filler) {
+    if (related.length >= limit) break;
+    if (seen.has(row.post.id)) continue;
+    seen.add(row.post.id);
+    related.push(row);
+  }
+  return related;
+}
+
 export async function listDrafts(authorId: string, cursor: Cursor | null) {
   const rows = await postsRepo.listDraftsByAuthor(authorId, cursor, DEFAULT_PAGE_SIZE);
   return pageOf(rows, DEFAULT_PAGE_SIZE);

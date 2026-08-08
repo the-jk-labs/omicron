@@ -91,6 +91,15 @@ postRoutes.get("/:id", async (c) => {
   return c.json({ post: await enrichPost(row, viewer?.id ?? null) });
 });
 
+// Posts to read next (public). Sits under the article and is what stops a post
+// page being a dead end for readers and crawlers alike.
+postRoutes.get("/:id/related", async (c) => {
+  const viewer = c.get("user");
+  const row = await postsService.getPost(c.req.param("id"), viewer?.id ?? null);
+  const items = await postsService.relatedPosts(row.post.id);
+  return c.json({ items: await enrichPosts(items, viewer?.id ?? null) });
+});
+
 // Edit a post (auth required; author only, local posts only).
 postRoutes.patch("/:id", async (c) => {
   const user = requireUser(c);

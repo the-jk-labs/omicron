@@ -211,6 +211,79 @@ export function listSitemapEntries(page = 1) {
     .offset((Math.max(1, page) - 1) * SITEMAP_PAGE_SIZE);
 }
 
+// Posts related to `postId`, most-related first.
+//
+// A post page used to be a dead end: nothing linked onward from an article
+// except its author's profile. That costs three separate things — a crawler
+// reaches fewer pages, ranking weight collects on individual articles instead
+// of circulating, and a reader who finishes a piece has nowhere to go but away.
+//
+// Relatedness is the number of tags in common, then recency. That is a crude
+// measure and deliberately so: it uses the index that already exists, it is
+// explainable to the author who chose those tags, and it degrades to "recent
+// posts by anyone" rather than to nothing when a post shares no tags — an empty
+// section would leave the dead end exactly as it was.
+export function listRelated(postId: string, limit = 4) {
+  const shared = db
+    .select({
+      id: posts.id,
+      overlap: sql<number>`count(*)::int`.as("overlap"),
+    })
+    .from(postTags)
+    .innerJoin(posts, eq(posts.id, postTags.postId))
+    .where(
+      and(
+        // The tags of the post being read.
+        inArray(
+          postTags.tagId,
+          db.select({ id: postTags.tagId }).from(postTags).where(eq(postTags.postId, postId)),
+        ),
+        sql`${posts.id} <> ${postId}`,
+        eq(posts.status, "published"),
+        // Local posts only. A federated copy is served here as `noindex` (it
+        // reproduces an article published elsewhere), so linking to one adds
+        // nothing to crawl depth and sends a reader to a page we have asked
+        // search engines to ignore. The rail exists to lead further into this
+        // instance's own archive.
+        eq(posts.remote, false),
+      ),
+    )
+    .groupBy(posts.id)
+    .as("shared");
+
+  return selectPosts()
+    .innerJoin(shared, eq(shared.id, posts.id))
+    // A private author's posts are visible only to approved followers; a
+    // suggestion rail has no viewer context to check that against, so they are
+    // left out entirely rather than teased and then 404'd.
+    .where(
+      and(
+        sql`${users.isPrivate} = false`,
+        sql`${users.suspendedAt} is null`,
+      ),
+    )
+    .orderBy(desc(shared.overlap), desc(posts.createdAt))
+    .limit(limit);
+}
+
+// Fallback for a post whose tags nobody else uses (or which has none): the
+// newest published posts, minus the one being read. Keeps the section from
+// disappearing exactly on the posts that most need a way onward.
+export function listRecentExcluding(postId: string, limit = 4) {
+  return selectPosts()
+    .where(
+      and(
+        sql`${posts.id} <> ${postId}`,
+        eq(posts.status, "published"),
+        eq(posts.remote, false),
+        sql`${users.isPrivate} = false`,
+        sql`${users.suspendedAt} is null`,
+      ),
+    )
+    .orderBy(desc(posts.createdAt))
+    .limit(limit);
+}
+
 export async function countSitemapEntries(): Promise<number> {
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })

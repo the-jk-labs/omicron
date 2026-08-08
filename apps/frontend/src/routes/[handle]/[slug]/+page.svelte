@@ -10,6 +10,7 @@
   import { confirm } from "$lib/components/ui/confirm";
   import Comments from "$lib/components/Comments.svelte";
   import TagList from "$lib/components/TagList.svelte";
+  import PostCard from "$lib/components/PostCard.svelte";
   import SaveToListButton from "$lib/components/SaveToListButton.svelte";
   import { formatDateTime, readTime } from "$lib/format";
   import { timeZone } from "$lib/timezone";
@@ -376,6 +377,21 @@
     </div>
   </div>
 </article>
+
+{#if data.related?.length}
+  <!-- Where to go next. A post page linked onward to nothing but its author,
+       which left readers with only the back button and left crawlers unable to
+       reach the rest of the archive from an article. Real <a> links, rendered
+       server-side, so both audiences follow the same ones. -->
+  <section aria-labelledby="read-next" class="mt-12 border-t border-border pt-8">
+    <h2 id="read-next" class="text-foreground mb-4 text-lg font-bold tracking-tight">
+      Read next
+    </h2>
+    {#each data.related as related (related.id)}
+      <PostCard post={related} />
+    {/each}
+  </section>
+{/if}
 
 <div id="responses" class="mt-12">
   <Comments

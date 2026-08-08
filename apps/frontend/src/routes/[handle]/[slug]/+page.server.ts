@@ -19,14 +19,20 @@ export const load: PageServerLoad = async ({ fetch, locals, params, url }) => {
     // Resolve the post first (id may be a short prefix), then load its comments
     // by the full id.
     const { post } = await api.post(id);
-    const comments = await api.comments(post.id);
+    // Comments and the read-next rail are independent of each other, so they go
+    // out together. A failure in the rail must not cost the reader the article,
+    // so it degrades to an empty list rather than propagating.
+    const [comments, related] = await Promise.all([
+      api.comments(post.id),
+      api.relatedPosts(post.id).then((r) => r.items).catch(() => []),
+    ]);
     // Highlighting is a read-time concern (see lib/highlight.ts): the stored
     // body stays the author's, and this decorates the copy on its way to the
     // reader. `post` is this request's own deserialized response, so writing to
     // it changes nothing but what this page renders. Only this page renders a
     // full body, so only this load pays for the work.
     post.contentHtml = deferBodyImages(highlightCodeBlocks(post.contentHtml));
-    data = { post, comments };
+    data = { post, comments, related };
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) error(404, "Post not found");
     throw err;

@@ -214,6 +214,8 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       body: { title?: string; contentHtml?: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; summary?: string | null; tags?: string[] },
     ) => api.patch<{ post: { id: string } }>(`/posts/${id}`, body),
     deletePost: (id: string) => api.del<{ ok: true }>(`/posts/${id}`),
+    // Posts to read next, shown under an article (see relatedPosts service).
+    relatedPosts: (id: string) => api.get<{ items: Post[] }>(`/posts/${id}/related`),
 
     // likes + comments
     likePost: (id: string) => api.post<LikeState>(`/posts/${id}/like`),
