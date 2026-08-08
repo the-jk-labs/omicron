@@ -103,8 +103,14 @@ export function blogPostingLd(
     mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
     url: canonical,
     datePublished: post.createdAt,
-    // No dateModified: posts carry no updated_at column, and inventing one
-    // (reusing datePublished) would assert an edit history we cannot vouch for.
+    // Only when it differs from publication: `dateModified` equal to
+    // `datePublished` on every article is noise, and on a post nobody has
+    // edited it would be asserting an edit that never happened. Absent on a
+    // post ingested before the column existed, which is correct — we do not
+    // know when it last changed.
+    dateModified: post.updatedAt && post.updatedAt !== post.createdAt
+      ? post.updatedAt
+      : undefined,
     inLanguage: language(post.language),
     image: absolute(image),
     keywords: post.tags?.length ? post.tags.map((t) => t.name).join(", ") : undefined,
@@ -115,6 +121,41 @@ export function blogPostingLd(
     },
     publisher: publisher(site),
   });
+}
+
+/**
+ * The trail from the site root to a post: instance → author → article.
+ *
+ * Search results render this in place of the raw URL, so a reader sees who
+ * wrote a piece before deciding to click rather than a slug ending in eight hex
+ * characters. Returned as a second document rather than nested in the
+ * BlogPosting because a breadcrumb describes the *page's position*, not the
+ * article — and the two are emitted as an array so a page can carry both.
+ */
+export function breadcrumbLd(
+  post: Post,
+  { canonical, site }: { canonical: string; site: SiteContext },
+) {
+  const crumbs = [
+    { name: site.appName, item: site.origin },
+    { name: post.author.displayName, item: `${site.origin}/@${post.author.username}` },
+    // The last crumb is the page itself: named, but with no `item`, which is
+    // schema.org's way of saying "you are here" rather than offering a link to
+    // where the reader already is.
+    { name: post.title ?? "Post", item: undefined },
+  ];
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((c, i) =>
+      compact({
+        "@type": "ListItem",
+        position: i + 1,
+        name: c.name,
+        item: c.item ?? (i === crumbs.length - 1 ? canonical : undefined),
+      })
+    ),
+  };
 }
 
 /** A local author's profile page. */

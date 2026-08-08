@@ -63,6 +63,10 @@ export type Post = {
   // unless the post carries one.
   coverUrl?: string | null;
   createdAt: string;
+  // When the post's own content last changed (body, title, tags, cover,
+  // language) — not engagement. Drives `dateModified` in the page's structured
+  // data. Equal to `createdAt` for a post nobody has edited.
+  updatedAt?: string;
   author: PostAuthor;
   tags: Tag[];
   likeCount: number;
@@ -262,12 +266,33 @@ export type SecuritySettings = { anubisProtection: boolean; anubisManaged: boole
 export type SeoVerification = { google?: string; bing?: string; yandex?: string };
 export type SeoSettings = { indexingEnabled: boolean; verification: SeoVerification };
 
-// One published local post as the sitemap needs it (permalink parts + lastmod).
+// Everything the instance publishes that belongs in the sitemap, in the raw
+// form /sitemap.xml needs to build URLs from (the permalink logic lives in
+// $lib/links, frontend-side, so the backend sends parts rather than URLs).
+//
+// Each carries its own lastmod: a post's own edit time, and for the index
+// pages the newest thing they list — which is when the page actually changed.
 export type SitemapEntry = {
   id: string;
   title: string | null;
   authorUsername: string;
   createdAt: string;
+  updatedAt: string;
+};
+
+export type SitemapProfile = { username: string; lastPostAt: string };
+export type SitemapTag = { slug: string; lastPostAt: string };
+export type SitemapList = { id: string; title: string; lastItemAt: string };
+
+// The index pages plus a count of posts. Posts are not inlined: they are the
+// only kind that can exceed the sitemap spec's 50,000-URL file limit, so they
+// are fetched a page at a time from /seo/sitemap-posts instead.
+export type SitemapContents = {
+  profiles: SitemapProfile[];
+  tags: SitemapTag[];
+  lists: SitemapList[];
+  postCount: number;
+  postsPerPage: number;
 };
 
 // Public instance identity (unauthenticated). Drives the app-name chrome and

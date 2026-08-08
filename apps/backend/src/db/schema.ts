@@ -162,6 +162,13 @@ export const posts = pgTable("posts", {
   // update the existing post instead of publishing a duplicate.
   externalId: text("external_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // Last time the post's own content changed — the body, title, tags, cover or
+  // language, not a like or a comment. Drives `<lastmod>` in the sitemap, which
+  // is how a search engine learns an article is worth re-reading; without it an
+  // edited post keeps its publish date forever and the stale copy stays in
+  // results until a crawler happens back. Backfilled to created_at, so an
+  // untouched post reports the truth rather than the migration date.
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   // Precomputed full-text search document: title (weight A) + tag-stripped body
   // (weight B). STORED + GIN-indexed, so search is an index lookup instead of a
   // per-row recompute. Always database-generated; excluded from feed selects

@@ -2,6 +2,8 @@
 import { Hono } from "hono";
 import * as seo from "@/services/seo.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
+import * as listsRepo from "@/db/repositories/readingLists.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 // Public, read-only discoverability surface. The SvelteKit app reads these to
@@ -16,9 +18,35 @@ seoRoutes.get("/", async (c) => {
   return c.json(await seo.getSeoSettings());
 });
 
-// Published local posts for the sitemap: id + title + author handle (to build
-// the canonical permalink frontend-side) + createdAt (for <lastmod>).
+// The instance's index pages — author profiles, tag indexes, public reading
+// lists — plus how many posts there are. Each list is bounded well under the
+// sitemap spec's 50k-per-file limit, so they ship together in one response;
+// posts are the only kind that can outgrow a file, and they are paged
+// separately below.
+//
+// Fetched in parallel: this backs a single document, so three sequential
+// round-trips would only make it slower to build.
 seoRoutes.get("/sitemap-entries", async (c) => {
-  const entries = await postsRepo.listSitemapEntries();
+  const [profiles, tags, lists, postCount] = await Promise.all([
+    postsRepo.listSitemapProfiles(),
+    tagsRepo.listSitemapTags(),
+    listsRepo.listSitemapLists(),
+    postsRepo.countSitemapEntries(),
+  ]);
+  return c.json({
+    profiles,
+    tags,
+    lists,
+    postCount,
+    postsPerPage: postsRepo.SITEMAP_PAGE_SIZE,
+  });
+});
+
+// One page of published local posts. `page` is 1-based; anything unparseable
+// is page 1 rather than an error, since this is a public crawler-facing surface
+// and a bad page number should not produce a broken sitemap.
+seoRoutes.get("/sitemap-posts", async (c) => {
+  const page = Number.parseInt(c.req.query("page") ?? "1", 10);
+  const entries = await postsRepo.listSitemapEntries(Number.isFinite(page) ? page : 1);
   return c.json(entries);
 });

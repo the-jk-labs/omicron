@@ -145,10 +145,17 @@ export async function updatePost(authorId: string, id: string, input: {
 
   // A tags-only edit touches no post columns; skip the update (drizzle rejects
   // an empty SET) and keep the existing row.
-  const post = Object.keys(changes).length > 0 ? await postsRepo.update(id, changes) : row.post;
+  const touchedColumns = Object.keys(changes).length > 0;
+  const post = touchedColumns ? await postsRepo.update(id, changes) : row.post;
 
   // Tags are replaced wholesale when provided; an empty array clears them.
-  if (input.tags !== undefined) await tagsRepo.setPostTags(post.id, resolveTags(input.tags));
+  if (input.tags !== undefined) {
+    await tagsRepo.setPostTags(post.id, resolveTags(input.tags));
+    // A tags-only edit writes to the join table alone, so it never reached
+    // `update()` above and `updated_at` would still read as the publish date —
+    // leaving the sitemap claiming nothing had changed. Stamp it here instead.
+    if (!touchedColumns) await postsRepo.touch(post.id);
+  }
 
   // Federate only published posts. Publishing a draft (draft → published) fans
   // out for the first time as a Create; edits to an already-published post

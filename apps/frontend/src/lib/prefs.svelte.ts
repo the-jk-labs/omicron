@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { browser } from "$app/environment";
+import { LANGUAGES } from "$lib/languages";
 
 // Client-side reading preferences, persisted in localStorage. These are personal
 // view settings (not account data), so they live in the browser, not the server.
@@ -13,6 +14,7 @@ export type FeedLangMode = "show" | "hide";
 const FEED_KEY = "default-feed";
 const LANG_MODE_KEY = "feed-lang-mode";
 const LANGS_KEY = "feed-langs";
+const COMPOSE_LANG_KEY = "compose-lang";
 
 function initialFeed(): FeedTab | null {
   if (!browser) return null;
@@ -36,6 +38,29 @@ function initialLangs(): string[] {
   } catch {
     return [];
   }
+}
+
+// The language to preselect when composing: whatever the author chose last,
+// falling back to the language their browser is set to.
+//
+// The field is optional, and left to itself it stays empty — which is how most
+// posts ended up declaring nothing, so the page served them as English whatever
+// they were actually written in and search engines offered them to the wrong
+// readers. An author writing in Azerbaijani is overwhelmingly likely to do so
+// again, and their browser already says as much on the very first post, so
+// neither guess needs them to think about it.
+//
+// Only ever a default. It preselects the control; the author can change or
+// clear it, and doing so is what teaches the next one.
+function initialComposeLang(): string | null {
+  if (!browser) return null;
+  const saved = localStorage.getItem(COMPOSE_LANG_KEY);
+  if (saved) return saved;
+  // `navigator.language` is a full locale ("az-AZ", "pt-BR"); posts are tagged
+  // with the primary subtag alone, which is what the backend stores and
+  // federates.
+  const nav = navigator.language?.split("-")[0]?.toLowerCase();
+  return nav && LANGUAGES.some((l) => l.code === nav) ? nav : null;
 }
 
 class ReadingPrefs {
@@ -70,6 +95,17 @@ class ReadingPrefs {
 
   private persistLangs() {
     if (browser) localStorage.setItem(LANGS_KEY, JSON.stringify(this.feedLangs));
+  }
+
+  /** Language to preselect in the composer; null when nothing is known. */
+  composeLang = $state<string | null>(initialComposeLang());
+
+  /** Remember the language an author actually published in. */
+  setComposeLang(code: string | null) {
+    this.composeLang = code;
+    if (!browser) return;
+    if (code) localStorage.setItem(COMPOSE_LANG_KEY, code);
+    else localStorage.removeItem(COMPOSE_LANG_KEY);
   }
 
   /** The active filter as API query params, or null when the filter is off. */

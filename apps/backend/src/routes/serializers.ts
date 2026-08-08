@@ -118,6 +118,10 @@ export function postWithAuthor(
     summary: row.post.summary,
     coverUrl: row.post.coverUrl,
     createdAt: row.post.createdAt,
+    // When the content itself last changed. The reader's `dateModified` in the
+    // page's structured data, so an edited article is re-read rather than left
+    // in search results as its first draft.
+    updatedAt: row.post.updatedAt,
     author: postAuthor(row),
     tags,
     likeCount: engagement?.likeCount ?? 0,

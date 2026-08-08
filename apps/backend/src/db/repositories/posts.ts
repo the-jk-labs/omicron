@@ -134,9 +134,25 @@ export async function upsertByExternalId(data: NewPost & { externalId: string; a
   return row;
 }
 
+// Every content write stamps `updated_at` here rather than at each call site,
+// so a new caller cannot forget and silently leave the sitemap advertising a
+// stale `<lastmod>`. All three callers (editor, webhook ingest, federated
+// Update) change the post's own content, which is exactly what the column
+// means — engagement never routes through here.
 export async function update(id: string, data: Partial<NewPost>) {
-  const [row] = await db.update(posts).set(data).where(eq(posts.id, id)).returning();
+  const [row] = await db
+    .update(posts)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(posts.id, id))
+    .returning();
   return row;
+}
+
+// Bump `updated_at` without changing a column. Needed because replacing a
+// post's tags touches only the join table, so an edit that changes nothing but
+// the tags never reaches `update()` above — and its subject really did change.
+export async function touch(id: string) {
+  await db.update(posts).set({ updatedAt: new Date() }).where(eq(posts.id, id));
 }
 
 // All locally-authored posts (id + raw HTML). Used by maintenance scripts such
@@ -162,25 +178,70 @@ export function listAllContent() {
 // canonical permalink (author handle + title → slug) and a `<lastmod>`. Drafts
 // (`status != 'published'`) and remote posts are excluded — a sitemap only lists
 // this instance's own public content. Capped at the sitemap spec's 50k-URL limit.
-export function listSitemapEntries() {
+//
+// `updatedAt`, not `createdAt`, is the lastmod: an edited post has to look
+// changed or an engine keeps serving the copy it already has.
+// The sitemap spec caps one file at 50,000 URLs, so the app splits posts across
+// numbered files and this serves one of them. Ordered by created_at DESC and
+// then id, because an unstable order would shuffle posts between files on every
+// fetch and each file would look wholly rewritten to a crawler.
+export const SITEMAP_PAGE_SIZE = 40000;
+
+const publishedLocally = () =>
+  and(
+    eq(posts.remote, false),
+    eq(posts.status, "published"),
+    sql`${users.suspendedAt} is null`,
+  );
+
+export function listSitemapEntries(page = 1) {
   return db
     .select({
       id: posts.id,
       title: posts.title,
       authorUsername: users.username,
       createdAt: posts.createdAt,
+      updatedAt: posts.updatedAt,
     })
     .from(posts)
     .innerJoin(users, eq(posts.authorId, users.id))
-    .where(
-      and(
-        eq(posts.remote, false),
-        eq(posts.status, "published"),
-        sql`${users.suspendedAt} is null`,
-      ),
+    .where(publishedLocally())
+    .orderBy(desc(posts.createdAt), desc(posts.id))
+    .limit(SITEMAP_PAGE_SIZE)
+    .offset((Math.max(1, page) - 1) * SITEMAP_PAGE_SIZE);
+}
+
+export async function countSitemapEntries(): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(posts)
+    .innerJoin(users, eq(posts.authorId, users.id))
+    .where(publishedLocally());
+  return row?.n ?? 0;
+}
+
+// Local authors with at least one published post, for the sitemap. A profile is
+// a real page — bio, links, the author's archive — and was reachable only by a
+// crawler following a byline. `lastmod` is their newest post, since that is what
+// actually changes the page.
+//
+// Excluded: suspended accounts, private accounts (their posts are only visible
+// to approved followers, so the page is empty to a crawler), and anyone with
+// nothing published, whose profile would be a thin page.
+export function listSitemapProfiles() {
+  return db
+    .select({
+      username: users.username,
+      lastPostAt: sql<Date>`max(${posts.createdAt})`.as("last_post_at"),
+    })
+    .from(users)
+    .innerJoin(
+      posts,
+      and(eq(posts.authorId, users.id), eq(posts.status, "published"), eq(posts.remote, false)),
     )
-    .orderBy(desc(posts.createdAt))
-    .limit(50000);
+    .where(and(sql`${users.suspendedAt} is null`, eq(users.isPrivate, false)))
+    .groupBy(users.username)
+    .limit(10000);
 }
 
 export async function remove(id: string) {

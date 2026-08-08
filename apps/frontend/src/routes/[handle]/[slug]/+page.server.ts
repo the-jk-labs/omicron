@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { error, redirect } from "@sveltejs/kit";
 import { endpoints, ApiError } from "$lib/api";
+import { deferBodyImages } from "$lib/bodyImages";
 import { highlightCodeBlocks } from "$lib/highlight";
 import { postIdFromSlug, postPath } from "$lib/links";
 import type { PageServerLoad } from "./$types";
@@ -24,7 +25,7 @@ export const load: PageServerLoad = async ({ fetch, locals, params, url }) => {
     // reader. `post` is this request's own deserialized response, so writing to
     // it changes nothing but what this page renders. Only this page renders a
     // full body, so only this load pays for the work.
-    post.contentHtml = highlightCodeBlocks(post.contentHtml);
+    post.contentHtml = deferBodyImages(highlightCodeBlocks(post.contentHtml));
     data = { post, comments };
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) error(404, "Post not found");

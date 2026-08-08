@@ -88,6 +88,28 @@ export async function remove(id: string): Promise<void> {
   await db.delete(readingLists).where(eq(readingLists.id, id));
 }
 
+// Public reading lists for the XML sitemap: a curated collection is a page a
+// reader would want to find, and it already has its own feed. `lastmod` is the
+// newest item, since adding a post is what changes the page.
+//
+// Public and non-empty only. The read-later list is excluded whatever its
+// visibility: it is a personal queue that happens to be stored like a list, not
+// something published for an audience.
+export function listSitemapLists(): Promise<{ id: string; title: string; lastItemAt: Date }[]> {
+  return db
+    .select({
+      id: readingLists.id,
+      title: readingLists.title,
+      lastItemAt: sql<Date>`max(${readingListItems.createdAt})`,
+    })
+    .from(readingLists)
+    .innerJoin(readingListItems, eq(readingListItems.listId, readingLists.id))
+    .innerJoin(users, and(eq(users.id, readingLists.userId), sql`${users.suspendedAt} is null`))
+    .where(and(eq(readingLists.visibility, "public"), eq(readingLists.isReadLater, false)))
+    .groupBy(readingLists.id)
+    .limit(10000) as Promise<{ id: string; title: string; lastItemAt: Date }[]>;
+}
+
 // ── items ──────────────────────────────────────────────────────────────
 
 export async function addItem(listId: string, postId: string): Promise<void> {

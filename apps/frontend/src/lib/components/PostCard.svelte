@@ -59,10 +59,17 @@
       </div>
       {#if post.coverUrl && !coverFailed}
         <!-- Decorative: the title beside it already names the post. -->
+        <!-- The CSS box is already fixed, so this thumbnail cannot shift the
+             layout; `width`/`height` are set anyway so the space is reserved
+             even before the stylesheet applies. `decoding="async"` keeps a
+             long feed of these off the main thread. -->
         <img
           src={post.coverUrl}
           alt=""
+          width="144"
+          height="96"
           loading="lazy"
+          decoding="async"
           onerror={() => (coverFailed = true)}
           class="mt-1 h-20 w-28 shrink-0 rounded-card border border-border object-cover sm:h-24 sm:w-36"
         />
