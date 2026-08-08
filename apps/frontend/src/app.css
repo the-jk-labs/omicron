@@ -598,6 +598,31 @@ html {
 .tiptap .img-resizer.is-resizing {
   @apply select-none;
 }
+/* Alt-text control, bottom-left so it never sits under a resize handle. It
+   follows the handles' visibility rule — present on hover or while selected —
+   except when the description is still missing, where it stays visible so the
+   omission is noticed while writing rather than after publishing. */
+.tiptap .img-alt-button {
+  @apply absolute bottom-2 left-2 z-10 rounded-input border border-background/40 bg-dark/75 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-background opacity-0 transition-opacity;
+}
+.tiptap .img-resizer:hover .img-alt-button,
+.tiptap .img-resizer.is-selected .img-alt-button,
+.tiptap .img-alt-button[data-missing="true"] {
+  @apply opacity-100;
+}
+.tiptap .img-alt-button[data-missing="true"] {
+  @apply bg-destructive/85 border-destructive/40;
+}
+.tiptap .img-alt-button:hover {
+  @apply bg-dark;
+}
+.tiptap .img-alt-button[data-missing="true"]:hover {
+  @apply bg-destructive;
+}
+/* A drag shouldn't leave the badge hovering over a moving image. */
+.tiptap .img-resizer.is-resizing .img-alt-button {
+  @apply opacity-0;
+}
 .tiptap .img-resize-handle-nw {
   @apply -left-1.5 -top-1.5 cursor-nwse-resize;
 }
