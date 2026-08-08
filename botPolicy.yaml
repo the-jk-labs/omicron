@@ -37,6 +37,32 @@ bots:
       Google-InspectionTool|GoogleOther|Storebot-Google|AdsBot-Google|Google-Site-Verification|BingPreview|MicrosoftPreview|SeznamBot|Yeti|Sogou|Baiduspider
     action: ALLOW
 
+  # Link-preview fetchers. When someone shares a post to Mastodon, Discord,
+  # Bluesky, LinkedIn or Facebook, that service fetches the page to build the
+  # card — reading the Open Graph tags the app emits in <head>. None of them run
+  # JavaScript, so a proof-of-work interstitial is not something they can solve:
+  # they render the challenge page's own title and no image, and the share goes
+  # out looking broken.
+  #
+  # Whether one was challenged before this rule was pure accident of spelling.
+  # The catch-all below challenges any User-Agent containing "Mozilla", and
+  # these services disagree about whether to include it: `facebookexternalhit`
+  # sends both a bare form and `Mozilla/5.0 (compatible; facebookexternalhit)`,
+  # Discord and LinkedIn always include it, Slack and WhatsApp never do. The
+  # ones without it were reaching the app only by falling through to Anubis's
+  # default ALLOW. Naming them all makes the behaviour deliberate and stops a
+  # vendor's UA-string revision from silently breaking previews.
+  #
+  # Same trade as search-engine-fetchers above: User-Agent alone, no reverse-DNS
+  # confirmation, so a scraper sending one of these strings gets through. These
+  # are narrow tokens (no generic browser UA matches), and the cost of being
+  # wrong is one more scraper, against the certainty of every shared link
+  # rendering blank.
+  - name: social-preview
+    user_agent_regex: >-
+      facebookexternalhit|facebookcatalog|Twitterbot|Discordbot|Slackbot|LinkedInBot|WhatsApp|TelegramBot|Cardyb|redditbot|SkypeUriPreview|Iframely|Embedly|Mastodon/|Pleroma|Akkoma|Misskey
+    action: ALLOW
+
   - name: api
     path_regex: ^/api/
     action: ALLOW
