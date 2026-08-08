@@ -8,6 +8,7 @@
   import MobileNav from "$lib/components/MobileNav.svelte";
   import Discover from "$lib/components/Discover.svelte";
   import { canonicalOrigin } from "$lib/canonical";
+  import { blogPostingLd, profilePageLd, serializeJsonLd, webSiteLd } from "$lib/seo";
   import { excerpt } from "$lib/format";
   import { rememberTimeZone } from "$lib/timezone";
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
@@ -179,6 +180,33 @@
   const robots = $derived(
     noindex ? "noindex, nofollow" : federated ? "noindex, follow" : null,
   );
+
+  // Schema.org description of what this page is (see $lib/seo). Built here for
+  // the same reason the Open Graph block is: one head, so a child route can't
+  // emit a second, conflicting copy.
+  //
+  // Skipped entirely on anything already marked noindex — a federated copy, a
+  // private route, an instance with indexing switched off. Describing a page in
+  // machine-readable detail and then asking for it not to be indexed are
+  // contradictory instructions, and the first is wasted work regardless.
+  const jsonLd = $derived.by(() => {
+    if (robots) return null;
+    const site = { origin, appName, instance: data.instance };
+    if (post) {
+      return blogPostingLd(post, {
+        canonical,
+        description: ogDescription,
+        image: shareImage,
+        site,
+      });
+    }
+    const pageData = $page.data as { remote?: boolean; profile?: Profile };
+    if ($page.route.id === "/[handle]" && !pageData.remote && pageData.profile) {
+      return profilePageLd(pageData.profile, { canonical, site });
+    }
+    if ($page.route.id === "/") return webSiteLd({ description, site });
+    return null;
+  });
 </script>
 
 <svelte:head>
@@ -215,6 +243,14 @@
   {/each}
   {#if robots}
     <meta name="robots" content={robots} />
+  {/if}
+  {#if jsonLd}
+    <!-- A `application/ld+json` block is data, not code: the browser never runs
+         it, so `script-src 'self'` (svelte.config.js) does not apply and it
+         needs no nonce. Its contents are escaped in $lib/seo — a post title can
+         come from another instance and must not be able to close this tag. -->
+    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+    {@html `<script type="application/ld+json">${serializeJsonLd(jsonLd)}</script>`}
   {/if}
 </svelte:head>
 
