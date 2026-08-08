@@ -5,6 +5,7 @@
   import { endpoints, ApiError } from "$lib/api";
   import Button from "$lib/components/ui/Button.svelte";
   import logo from "$lib/assets/omicron.svg";
+  import PageTitle from "$lib/components/PageTitle.svelte";
 
   let username = $state("");
   let email = $state("");
@@ -33,7 +34,7 @@
   }
 </script>
 
-<svelte:head><title>Create account · Omicron</title></svelte:head>
+<PageTitle text="Create account" />
 
 <div class="mb-8 text-center">
   <div class="mb-4 flex justify-center"><img src={logo} alt="" class="h-12 w-auto" /></div>

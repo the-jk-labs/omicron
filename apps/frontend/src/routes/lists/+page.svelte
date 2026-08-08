@@ -5,6 +5,7 @@
   import ListFormDialog from "$lib/components/ListFormDialog.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { ReadingList } from "$lib/types";
   import type { PageData } from "./$types";
 
@@ -24,7 +25,7 @@
   }
 </script>
 
-<svelte:head><title>Your lists · Omicron</title></svelte:head>
+<PageTitle text="Your lists" />
 
 <div class="mb-6 flex items-center justify-between gap-3">
   <h1 class="text-2xl font-bold tracking-tight text-foreground">Your lists</h1>

@@ -5,6 +5,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import logo from "$lib/assets/omicron.svg";
+  import PageTitle from "$lib/components/PageTitle.svelte";
 
   let identifier = $state("");
   let error = $state("");
@@ -30,7 +31,7 @@
   }
 </script>
 
-<svelte:head><title>Reset password · Omicron</title></svelte:head>
+<PageTitle text="Reset password" />
 
 {#if sent}
   <div class="flex flex-col items-center text-center">

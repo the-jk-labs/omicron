@@ -24,6 +24,7 @@
   import CustomSectionEditor from "$lib/components/CustomSectionEditor.svelte";
   import { identifierToUrl, platformMeta, urlToIdentifier } from "$lib/profileLinks";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { ProfileLink } from "$lib/types";
   import type { PageData } from "./$types";
 
@@ -356,7 +357,7 @@
   const labelClass = "text-sm font-medium leading-none";
 </script>
 
-<svelte:head><title>Settings · Omicron</title></svelte:head>
+<PageTitle text="Settings" />
 
 <header class="mb-6 pb-2">
   <h1 class="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">

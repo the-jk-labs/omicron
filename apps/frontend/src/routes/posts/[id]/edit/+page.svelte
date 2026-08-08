@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { onMount, untrack } from "svelte";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { Content } from "@tiptap/core";
   import { goto } from "$app/navigation";
   import { endpoints, ApiError } from "$lib/api";
@@ -63,7 +64,7 @@
   }
 </script>
 
-<svelte:head><title>Edit · Omicron</title></svelte:head>
+<PageTitle text="Edit" />
 
 <div class="mb-8 flex items-center justify-between">
   <p class="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">

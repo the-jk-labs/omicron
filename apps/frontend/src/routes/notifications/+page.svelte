@@ -13,6 +13,7 @@
     notificationHref,
     notificationIcon,
   } from "$lib/components/notifications";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { Notification } from "$lib/types";
   import type { PageData } from "./$types";
 
@@ -49,7 +50,7 @@
   }
 </script>
 
-<svelte:head><title>Notifications · Omicron</title></svelte:head>
+<PageTitle text="Notifications" />
 
 <header class="mb-6 pb-2">
   <h1 class="text-foreground flex items-center gap-2 text-2xl font-bold tracking-tight">

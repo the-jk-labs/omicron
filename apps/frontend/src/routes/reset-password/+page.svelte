@@ -6,6 +6,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import logo from "$lib/assets/omicron.svg";
+  import PageTitle from "$lib/components/PageTitle.svelte";
 
   const token = $derived($page.url.searchParams.get("token") ?? "");
 
@@ -42,7 +43,7 @@
   }
 </script>
 
-<svelte:head><title>Set a new password · Omicron</title></svelte:head>
+<PageTitle text="Set a new password" />
 
 {#if done}
   <div class="flex flex-col items-center text-center">

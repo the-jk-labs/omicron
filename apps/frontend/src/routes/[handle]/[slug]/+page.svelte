@@ -14,6 +14,7 @@
   import { formatDateTime, readTime } from "$lib/format";
   import { timeZone } from "$lib/timezone";
   import { languageLabel } from "$lib/languages";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -239,7 +240,7 @@
   }
 </script>
 
-<svelte:head><title>{post.title ?? "Post"} · Omicron</title></svelte:head>
+<PageTitle text={post.title ?? "Post"} />
 
 <article>
   {#if deleteError}

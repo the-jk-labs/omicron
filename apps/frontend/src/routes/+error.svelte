@@ -3,6 +3,7 @@
   import { page } from "$app/stores";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import PageTitle from "$lib/components/PageTitle.svelte";
 
   // Shared error screen for every status SvelteKit throws our way. 404 is the
   // common case and gets bespoke copy; anything else falls back to a generic
@@ -18,7 +19,7 @@
   );
 </script>
 
-<svelte:head><title>{status} · {heading}</title></svelte:head>
+<PageTitle text={`${status} · ${heading}`} />
 
 <section
   class="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-16 text-center"
