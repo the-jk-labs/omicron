@@ -7,6 +7,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import logo from "$lib/assets/omicron.svg";
+  import PageTitle from "$lib/components/PageTitle.svelte";
 
   // With a token in the URL we verify immediately; without one we offer to
   // (re)send a verification email.
@@ -50,7 +51,7 @@
   }
 </script>
 
-<svelte:head><title>Verify email · Omicron</title></svelte:head>
+<PageTitle text="Verify email" />
 
 {#if view === "verifying"}
   <div class="flex flex-col items-center text-center">

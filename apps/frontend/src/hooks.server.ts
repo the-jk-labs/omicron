@@ -26,13 +26,45 @@ async function canonicalRedirect(event: Parameters<Handle>[0]["event"]): Promise
   return new Response(null, { status: 308, headers: { location: target } });
 }
 
+// `<html lang>` for this response. app.html carries a `%omicron.lang%`
+// placeholder; a page that knows the language of its main content parks the
+// subtag on `locals` during load, and this substitutes it on the way out.
+//
+// Getting it right matters more here than on a single-language site: a post is
+// tagged with the language its author wrote it in and federates that way, but
+// every page was served as `lang="en"` regardless. A search engine takes the
+// declaration over its own guess, so a Turkish post was being offered to
+// English searchers and withheld from Turkish ones — the language field was
+// collected, stored and federated, then discarded at the last step.
+//
+// The value reaches us from a federated post, i.e. from another instance, and
+// is about to be interpolated into an HTML attribute. Anything that is not
+// plainly a BCP-47 tag is dropped rather than escaped: the shape is narrow
+// enough to state exactly, so there is no reason to accept anything else.
+const BCP47 = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;
+const DEFAULT_LANG = "en";
+// Global, so every occurrence goes. A string pattern would replace only the
+// first one, which is silent and wrong the moment the token appears twice —
+// the page then ships a literal `%omicron.lang%` as its language.
+const LANG_PLACEHOLDER = /%omicron\.lang%/g;
+
+function pageLang(locals: App.Locals): string {
+  const tag = locals.lang?.trim();
+  return tag && BCP47.test(tag) ? tag : DEFAULT_LANG;
+}
+
 // Security response headers applied to every response (pages, API proxy, and
 // proxied media alike). The Content-Security-Policy itself is configured in
 // svelte.config.js (`kit.csp`) so SvelteKit can nonce its own inline scripts;
 // the headers below are the ones it doesn't manage.
 export const handle: Handle = async ({ event, resolve }) => {
   const redirectResponse = await canonicalRedirect(event);
-  const response = redirectResponse ?? await resolve(event);
+  const response = redirectResponse ??
+    // Load runs inside resolve(), so `locals.lang` is already set by the time
+    // the rendered chunks come back through the transform.
+    await resolve(event, {
+      transformPageChunk: ({ html }) => html.replace(LANG_PLACEHOLDER, pageLang(event.locals)),
+    });
 
   // Never MIME-sniff a response into a more dangerous type. Belt-and-suspenders
   // for /api/uploads (which is proxied through here, so the backend's own header

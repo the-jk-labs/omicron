@@ -19,6 +19,7 @@
   import { formatDate } from "$lib/format";
   import { timeZone } from "$lib/timezone";
   import { fitPre } from "$lib/actions/fitPre";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { Post } from "$lib/types";
   import type { PageData } from "./$types";
 
@@ -102,7 +103,7 @@
   }
 </script>
 
-<svelte:head><title>{profile.user.displayName} · Omicron</title></svelte:head>
+<PageTitle text={profile.user.displayName} />
 
 <!-- Responsive grid. Mobile (app-style): avatar + action on the top row, identity
      stacked full-width below. Desktop (sm+): the original three-column row —

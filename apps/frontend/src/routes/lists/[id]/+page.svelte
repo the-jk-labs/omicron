@@ -10,6 +10,7 @@
   import RssButton from "$lib/components/RssButton.svelte";
   import { confirm } from "$lib/components/ui/confirm";
   import { listPath } from "$lib/links";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { Post, ReadingList } from "$lib/types";
   import type { PageData } from "./$types";
 
@@ -65,7 +66,7 @@
   }
 </script>
 
-<svelte:head><title>{list.title} · Omicron</title></svelte:head>
+<PageTitle text={list.title} />
 
 <header class="mb-8 border-b border-border pb-6">
   <a

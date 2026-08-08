@@ -10,6 +10,7 @@
   import AdminSecurity from "$lib/components/AdminSecurity.svelte";
   import AdminSeo from "$lib/components/AdminSeo.svelte";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -28,7 +29,7 @@
     "data-[state=active]:bg-background data-[state=active]:shadow-mini text-muted-foreground data-[state=active]:text-foreground inline-flex h-9 items-center gap-1.5 rounded-button px-4 text-sm font-medium";
 </script>
 
-<svelte:head><title>Admin · Omicron</title></svelte:head>
+<PageTitle text="Admin" />
 
 <header class="mb-6 pb-2">
   <h1 class="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">

@@ -7,6 +7,7 @@
   import PostCard from "$lib/components/PostCard.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { Page, Post } from "$lib/types";
   import type { PageData } from "./$types";
 
@@ -137,7 +138,7 @@
   }
 </script>
 
-<svelte:head><title>Omicron</title></svelte:head>
+<PageTitle />
 
 {#if !data.personalized}
   <!-- Logged-out hero, Medium style. -->

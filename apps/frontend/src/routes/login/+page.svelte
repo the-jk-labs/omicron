@@ -5,6 +5,7 @@
   import { endpoints, ApiError } from "$lib/api";
   import Button from "$lib/components/ui/Button.svelte";
   import logo from "$lib/assets/omicron.svg";
+  import PageTitle from "$lib/components/PageTitle.svelte";
 
   let identifier = $state("");
   let password = $state("");
@@ -31,7 +32,7 @@
   }
 </script>
 
-<svelte:head><title>Sign in · Omicron</title></svelte:head>
+<PageTitle text="Sign in" />
 
 <div class="mb-8 text-center">
   <div class="mb-4 flex justify-center"><img src={logo} alt="" class="h-12 w-auto" /></div>

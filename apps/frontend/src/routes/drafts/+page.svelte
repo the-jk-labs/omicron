@@ -7,6 +7,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import { excerpt, formatDateTime } from "$lib/format";
   import { timeZone } from "$lib/timezone";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { Post } from "$lib/types";
   import type { PageData } from "./$types";
 
@@ -52,7 +53,7 @@
   }
 </script>
 
-<svelte:head><title>Drafts · Omicron</title></svelte:head>
+<PageTitle text="Drafts" />
 
 <header class="mb-6 pb-2">
   <h1 class="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">

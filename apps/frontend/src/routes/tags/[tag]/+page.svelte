@@ -5,6 +5,7 @@
   import PostCard from "$lib/components/PostCard.svelte";
   import TagFollowButton from "$lib/components/TagFollowButton.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { Post } from "$lib/types";
   import type { PageData } from "./$types";
 
@@ -35,7 +36,7 @@
   }
 </script>
 
-<svelte:head><title>#{tag.name} · Omicron</title></svelte:head>
+<PageTitle text={`#${tag.name}`} />
 
 <header class="mb-8 flex items-start justify-between gap-4 pb-2">
   <div class="min-w-0">

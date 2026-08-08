@@ -6,6 +6,7 @@
   import PostCard from "$lib/components/PostCard.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -57,9 +58,7 @@
   });
 </script>
 
-<svelte:head>
-  <title>{data.query ? `Search · ${data.query}` : "Search"} · Omicron</title>
-</svelte:head>
+<PageTitle text={data.query ? `Search · ${data.query}` : "Search"} />
 
 <!-- Mobile-only search field (nav pill is hidden below `sm`). Autofocuses on
      the empty state so tapping search in the nav lands ready to type. -->

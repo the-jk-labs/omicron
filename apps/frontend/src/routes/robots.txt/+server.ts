@@ -10,7 +10,37 @@ import type { RequestHandler } from "./$types";
 
 // Authed or write-side surfaces that should never be indexed even when the site
 // is public. These mirror the private routes the layout marks `noindex`.
-const DISALLOW = ["/compose", "/drafts", "/dashboard", "/settings", "/admin", "/api/"];
+//
+// `/search` is here for a different reason than the rest. It is public and
+// harmless to a reader, but every distinct `?q=` is a distinct URL, so a
+// crawler that finds one search link can generate them without end — each
+// returning a near-empty page of results. That burns the crawl budget the
+// instance's actual articles need and fills the index with thin pages, which
+// is a site-wide quality signal. The auth screens below are already `noindex`
+// via the layout's `standalone` check; naming them here stops crawlers
+// spending fetches to discover that.
+//
+// `/lists` is deliberately absent: a robots.txt path is a prefix, so it would
+// also cover `/lists/<public-list>`, which is shareable curated content with
+// its own feed and belongs in the index. The bare index page behind it needs a
+// session anyway.
+const DISALLOW = [
+  "/compose",
+  "/drafts",
+  "/dashboard",
+  "/settings",
+  "/admin",
+  "/api/",
+  "/search",
+  "/notifications",
+  "/follow-requests",
+  "/login",
+  "/register",
+  "/verify-email",
+  "/reset-password",
+  "/forgot-password",
+  "/setup",
+];
 
 export const GET: RequestHandler = async ({ fetch, url }) => {
   const { indexingEnabled } = await endpoints(fetch).seo().catch(() => ({ indexingEnabled: true }));
