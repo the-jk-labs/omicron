@@ -25,7 +25,7 @@ import type {
   SearchResults,
   SecuritySettings,
   SeoSettings,
-  SitemapEntry,
+  SitemapContents,
   SuggestedUser,
   TagDetail,
   TagWithCount,
@@ -120,7 +120,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // discoverability / SEO: public read (layout, robots.txt, sitemap.xml) + the
     // moderator-only write side.
     seo: () => api.get<SeoSettings>("/seo"),
-    sitemapEntries: () => api.get<SitemapEntry[]>("/seo/sitemap-entries"),
+    sitemapEntries: () => api.get<SitemapContents>("/seo/sitemap-entries"),
     adminSeo: () => api.get<SeoSettings>("/admin/seo"),
     setAdminSeo: (body: Partial<SeoSettings>) => api.put<SeoSettings>("/admin/seo", body),
 

@@ -113,6 +113,30 @@ export function trending(limit: number, sinceDays = 14): Promise<TagWithCount[]>
     .limit(limit) as Promise<TagWithCount[]>;
 }
 
+// Tag pages for the XML sitemap: the slug, plus the newest post carrying it as
+// a `<lastmod>` (a tag page changes when something is tagged, not when the tag
+// row was written).
+//
+// Only tags on published posts, and only tags carrying more than one — a tag
+// used exactly once is a page that lists a single link, adding nothing an
+// engine cannot get from the post itself, and a sitemap full of those is how
+// thin pages accumulate. The threshold is a judgement, not a standard; two is
+// the smallest number at which the page is genuinely an index of something.
+export function listSitemapTags(): Promise<{ slug: string; lastPostAt: Date }[]> {
+  return db
+    .select({
+      slug: tags.slug,
+      lastPostAt: sql<Date>`max(${posts.createdAt})`,
+    })
+    .from(tags)
+    .innerJoin(postTags, eq(postTags.tagId, tags.id))
+    .innerJoin(posts, eq(posts.id, postTags.postId))
+    .where(and(eq(posts.status, "published"), eq(posts.remote, false)))
+    .groupBy(tags.id)
+    .having(sql`count(${postTags.postId}) > 1`)
+    .limit(10000) as Promise<{ slug: string; lastPostAt: Date }[]>;
+}
+
 // ── tag follows ──────────────────────────────────────────────────────────
 
 export async function follow(userId: string, tagId: string): Promise<void> {

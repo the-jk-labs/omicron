@@ -262,12 +262,29 @@ export type SecuritySettings = { anubisProtection: boolean; anubisManaged: boole
 export type SeoVerification = { google?: string; bing?: string; yandex?: string };
 export type SeoSettings = { indexingEnabled: boolean; verification: SeoVerification };
 
-// One published local post as the sitemap needs it (permalink parts + lastmod).
+// Everything the instance publishes that belongs in the sitemap, in the raw
+// form /sitemap.xml needs to build URLs from (the permalink logic lives in
+// $lib/links, frontend-side, so the backend sends parts rather than URLs).
+//
+// Each carries its own lastmod: a post's own edit time, and for the index
+// pages the newest thing they list — which is when the page actually changed.
 export type SitemapEntry = {
   id: string;
   title: string | null;
   authorUsername: string;
   createdAt: string;
+  updatedAt: string;
+};
+
+export type SitemapProfile = { username: string; lastPostAt: string };
+export type SitemapTag = { slug: string; lastPostAt: string };
+export type SitemapList = { id: string; title: string; lastItemAt: string };
+
+export type SitemapContents = {
+  posts: SitemapEntry[];
+  profiles: SitemapProfile[];
+  tags: SitemapTag[];
+  lists: SitemapList[];
 };
 
 // Public instance identity (unauthenticated). Drives the app-name chrome and

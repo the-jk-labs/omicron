@@ -134,9 +134,25 @@ export async function upsertByExternalId(data: NewPost & { externalId: string; a
   return row;
 }
 
+// Every content write stamps `updated_at` here rather than at each call site,
+// so a new caller cannot forget and silently leave the sitemap advertising a
+// stale `<lastmod>`. All three callers (editor, webhook ingest, federated
+// Update) change the post's own content, which is exactly what the column
+// means — engagement never routes through here.
 export async function update(id: string, data: Partial<NewPost>) {
-  const [row] = await db.update(posts).set(data).where(eq(posts.id, id)).returning();
+  const [row] = await db
+    .update(posts)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(posts.id, id))
+    .returning();
   return row;
+}
+
+// Bump `updated_at` without changing a column. Needed because replacing a
+// post's tags touches only the join table, so an edit that changes nothing but
+// the tags never reaches `update()` above — and its subject really did change.
+export async function touch(id: string) {
+  await db.update(posts).set({ updatedAt: new Date() }).where(eq(posts.id, id));
 }
 
 // All locally-authored posts (id + raw HTML). Used by maintenance scripts such
@@ -162,6 +178,9 @@ export function listAllContent() {
 // canonical permalink (author handle + title → slug) and a `<lastmod>`. Drafts
 // (`status != 'published'`) and remote posts are excluded — a sitemap only lists
 // this instance's own public content. Capped at the sitemap spec's 50k-URL limit.
+//
+// `updatedAt`, not `createdAt`, is the lastmod: an edited post has to look
+// changed or an engine keeps serving the copy it already has.
 export function listSitemapEntries() {
   return db
     .select({
@@ -169,6 +188,7 @@ export function listSitemapEntries() {
       title: posts.title,
       authorUsername: users.username,
       createdAt: posts.createdAt,
+      updatedAt: posts.updatedAt,
     })
     .from(posts)
     .innerJoin(users, eq(posts.authorId, users.id))
@@ -181,6 +201,30 @@ export function listSitemapEntries() {
     )
     .orderBy(desc(posts.createdAt))
     .limit(50000);
+}
+
+// Local authors with at least one published post, for the sitemap. A profile is
+// a real page — bio, links, the author's archive — and was reachable only by a
+// crawler following a byline. `lastmod` is their newest post, since that is what
+// actually changes the page.
+//
+// Excluded: suspended accounts, private accounts (their posts are only visible
+// to approved followers, so the page is empty to a crawler), and anyone with
+// nothing published, whose profile would be a thin page.
+export function listSitemapProfiles() {
+  return db
+    .select({
+      username: users.username,
+      lastPostAt: sql<Date>`max(${posts.createdAt})`.as("last_post_at"),
+    })
+    .from(users)
+    .innerJoin(
+      posts,
+      and(eq(posts.authorId, users.id), eq(posts.status, "published"), eq(posts.remote, false)),
+    )
+    .where(and(sql`${users.suspendedAt} is null`, eq(users.isPrivate, false)))
+    .groupBy(users.username)
+    .limit(10000);
 }
 
 export async function remove(id: string) {

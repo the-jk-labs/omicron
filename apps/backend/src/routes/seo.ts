@@ -2,6 +2,8 @@
 import { Hono } from "hono";
 import * as seo from "@/services/seo.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
+import * as listsRepo from "@/db/repositories/readingLists.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 // Public, read-only discoverability surface. The SvelteKit app reads these to
@@ -16,9 +18,20 @@ seoRoutes.get("/", async (c) => {
   return c.json(await seo.getSeoSettings());
 });
 
-// Published local posts for the sitemap: id + title + author handle (to build
-// the canonical permalink frontend-side) + createdAt (for <lastmod>).
+// Everything this instance publishes that belongs in the sitemap, in the raw
+// form the frontend needs to build URLs (it owns the permalink logic; see
+// $lib/links). Four kinds, because four kinds of page here are worth finding:
+// the posts, their authors' profiles, the tag indexes, and public reading
+// lists. Each carries its own lastmod.
+//
+// Fetched together and in parallel: the sitemap is one document, so four
+// sequential round-trips would only make it slower to build.
 seoRoutes.get("/sitemap-entries", async (c) => {
-  const entries = await postsRepo.listSitemapEntries();
-  return c.json(entries);
+  const [posts, profiles, tags, lists] = await Promise.all([
+    postsRepo.listSitemapEntries(),
+    postsRepo.listSitemapProfiles(),
+    tagsRepo.listSitemapTags(),
+    listsRepo.listSitemapLists(),
+  ]);
+  return c.json({ posts, profiles, tags, lists });
 });
