@@ -10,6 +10,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import TagInput from "$lib/components/TagInput.svelte";
   import LanguageSelect from "$lib/components/LanguageSelect.svelte";
+  import { reading } from "$lib/prefs.svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -29,7 +30,10 @@
   let postId = $state<string | null>(draft?.id ?? null);
   let title = $state(draft?.title ?? "");
   let tags = $state<string[]>(draft?.tags?.map((t) => t.name) ?? []);
-  let language = $state<string | null>(draft?.language ?? null);
+  // A reopened draft keeps whatever it was saved with — including a
+  // deliberate blank. Only a genuinely new post takes the remembered default,
+  // so revisiting a draft never silently relabels it.
+  let language = $state<string | null>(draft ? draft.language ?? null : reading.composeLang);
   let html = $state(draft?.contentHtml ?? "");
   let json = $state<unknown>(draft?.contentJson ?? null);
   let error = $state("");
@@ -49,7 +53,11 @@
   // The tag input mutates `tags` directly; mark touched when it diverges from
   // the draft's original tags.
   const initialTags = (draft?.tags?.map((t) => t.name) ?? []).join(",");
-  const initialLanguage = draft?.language ?? null;
+  // Must mirror `language`'s initial value, not the draft's — a new post now
+  // starts at the remembered default, and comparing that against null would
+  // mark the page dirty the instant it opened, so simply looking at the
+  // composer and leaving would raise the unsaved-changes prompt.
+  const initialLanguage = draft ? draft.language ?? null : reading.composeLang;
   $effect(() => {
     if (tags.join(",") !== initialTags || language !== initialLanguage) touched = true;
   });
@@ -95,6 +103,9 @@
         const { post } = await endpoints().createPost(body);
         postId = post.id;
       }
+      // Remember what they actually published in, so the next post starts
+      // here instead of empty.
+      if (status === "published") reading.setComposeLang(language);
       goto(status === "published" ? `/posts/${postId}` : "/drafts");
     } catch (err) {
       bypass = false;
