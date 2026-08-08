@@ -8,7 +8,7 @@ import type { PageServerLoad } from "./$types";
 // Blog post at /@username/<slug>-<uuid>. The trailing UUID is authoritative;
 // the slug and handle are cosmetic and redirect to the canonical path when they
 // drift (e.g. after a rename or a hand-typed link).
-export const load: PageServerLoad = async ({ fetch, params, url }) => {
+export const load: PageServerLoad = async ({ fetch, locals, params, url }) => {
   const id = postIdFromSlug(params.slug);
   if (!id) error(404, "Post not found");
 
@@ -33,6 +33,10 @@ export const load: PageServerLoad = async ({ fetch, params, url }) => {
 
   const canonical = postPath(data.post);
   if (decodeURIComponent(url.pathname) !== canonical) redirect(308, canonical);
+
+  // The body is the page here, so the author's declared language is the page's
+  // language. hooks.server.ts validates the tag and writes it into <html lang>.
+  locals.lang = data.post.language ?? null;
 
   return data;
 };
