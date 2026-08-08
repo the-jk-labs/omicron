@@ -8,7 +8,13 @@
   import MobileNav from "$lib/components/MobileNav.svelte";
   import Discover from "$lib/components/Discover.svelte";
   import { canonicalOrigin } from "$lib/canonical";
-  import { blogPostingLd, profilePageLd, serializeJsonLd, webSiteLd } from "$lib/seo";
+  import {
+    blogPostingLd,
+    breadcrumbLd,
+    profilePageLd,
+    serializeJsonLd,
+    webSiteLd,
+  } from "$lib/seo";
   import { excerpt } from "$lib/format";
   import { rememberTimeZone } from "$lib/timezone";
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
@@ -193,12 +199,18 @@
     if (robots) return null;
     const site = { origin, appName, instance: data.instance };
     if (post) {
-      return blogPostingLd(post, {
-        canonical,
-        description: ogDescription,
-        image: shareImage,
-        site,
-      });
+      // Two documents: what the article is, and where the page sits. Emitted
+      // as an array, which is how JSON-LD carries more than one subject in a
+      // single block.
+      return [
+        blogPostingLd(post, {
+          canonical,
+          description: ogDescription,
+          image: shareImage,
+          site,
+        }),
+        breadcrumbLd(post, { canonical, site }),
+      ];
     }
     const pageData = $page.data as { remote?: boolean; profile?: Profile };
     if ($page.route.id === "/[handle]" && !pageData.remote && pageData.profile) {
@@ -229,11 +241,24 @@
   <meta name="twitter:title" content={ogTitle} />
   <meta name="twitter:description" content={ogDescription} />
   <meta name="twitter:image" content={shareImage} />
-  {#if post && creator}
-    <!-- Mastodon link-preview author attribution. -->
-    <meta name="fediverse:creator" content={creator} />
-    <meta property="article:author" content={creator} />
+  {#if post}
+    <!-- Article facts for consumers that read Open Graph rather than the
+         JSON-LD below: the fediverse (Mastodon shows the author line from
+         these), and the several link-preview services that never parse
+         schema.org. Duplicated on purpose — the two vocabularies have
+         different audiences. -->
+    <meta property="article:published_time" content={post.createdAt} />
+    {#each post.tags ?? [] as tag (tag.slug)}
+      <meta property="article:tag" content={tag.name} />
+    {/each}
+    {#if creator}
+      <!-- Mastodon link-preview author attribution. -->
+      <meta name="fediverse:creator" content={creator} />
+      <meta property="article:author" content={creator} />
+    {/if}
   {/if}
+  <!-- Screen readers reach a shared link through the card, not the page. -->
+  <meta property="og:image:alt" content={post?.title ?? appName} />
   {#if feedLink}
     <link rel="alternate" type="application/rss+xml" title={feedLink.title} href={feedLink.href} />
   {/if}

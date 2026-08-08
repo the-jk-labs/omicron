@@ -63,6 +63,10 @@ export type Post = {
   // unless the post carries one.
   coverUrl?: string | null;
   createdAt: string;
+  // When the post's own content last changed (body, title, tags, cover,
+  // language) — not engagement. Drives `dateModified` in the page's structured
+  // data. Equal to `createdAt` for a post nobody has edited.
+  updatedAt?: string;
   author: PostAuthor;
   tags: Tag[];
   likeCount: number;
