@@ -9,9 +9,32 @@ import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import { MAX_TAGS_PER_POST, normalizeTags } from "@/lib/tags.ts";
 import { type LanguageFilter, normalizeLanguage } from "@/lib/languages.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
+import { SUMMARY_LENGTH as MAX_SUMMARY } from "@/lib/webhook.ts";
 import { queue } from "@/queue/queue.ts";
 
 // Business logic for posts. Creating a local post enqueues federation delivery.
+
+// The author's own one-line description of a post.
+//
+// This is what a search engine prints under the title in results, and what a
+// link preview shows — the sentence that decides whether anyone clicks. Until
+// now only the ingest webhook could set it, so a post written in the editor
+// fell back to a mechanical truncation of its opening paragraph, frequently
+// cut mid-clause.
+//
+// Capped at the same length the ingest path derives to, so both routes into the
+// database agree and neither can store a "description" long enough to be
+// clipped by every engine that shows it. Empty is stored as null, which is the
+// reader's signal to fall back to the derived excerpt.
+export function normalizeSummary(raw: string | null | undefined): string | null {
+  if (raw === null || raw === undefined) return null;
+  const text = raw.replace(/\s+/g, " ").trim();
+  if (!text) return null;
+  if (text.length > MAX_SUMMARY) {
+    throw badRequest(`A description can be at most ${MAX_SUMMARY} characters.`);
+  }
+  return text;
+}
 
 // Normalizes and validates author-supplied tags, capping the count per post.
 // Exported so every write path that accepts tags — the editor here, ingested
@@ -30,6 +53,7 @@ export async function createPost(authorId: string, input: {
   contentJson?: unknown;
   status?: string;
   language?: string | null;
+  summary?: string | null;
   tags?: string[];
 }) {
   const status = input.status === "draft" ? "draft" : "published";
@@ -53,6 +77,7 @@ export async function createPost(authorId: string, input: {
     contentJson: input.contentJson ?? null,
     status,
     language: normalizeLanguage(input.language),
+    summary: normalizeSummary(input.summary),
   });
 
   if (tags !== undefined) await tagsRepo.setPostTags(post.id, tags);
@@ -109,6 +134,7 @@ export async function updatePost(authorId: string, id: string, input: {
   contentJson?: unknown;
   status?: string;
   language?: string | null;
+  summary?: string | null;
   tags?: string[];
 }) {
   const row = await postsRepo.findById(id);
@@ -141,6 +167,7 @@ export async function updatePost(authorId: string, id: string, input: {
     ...(html ? { contentHtml: html, contentJson: input.contentJson ?? null } : {}),
     ...(input.status !== undefined ? { status } : {}),
     ...(input.language !== undefined ? { language: normalizeLanguage(input.language) } : {}),
+    ...(input.summary !== undefined ? { summary: normalizeSummary(input.summary) } : {}),
   };
 
   // A tags-only edit touches no post columns; skip the update (drizzle rejects
