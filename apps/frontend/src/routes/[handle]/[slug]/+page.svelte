@@ -317,13 +317,33 @@
   </div>
 
   {#if post.coverUrl && !coverFailed}
-    <!-- Decorative: the headline above it already names the post. -->
-    <img
-      src={post.coverUrl}
-      alt=""
-      onerror={() => (coverFailed = true)}
-      class="mb-8 max-h-[28rem] w-full rounded-card border border-border object-cover"
-    />
+    <!-- The cover is almost always this page's largest element, so it is what
+         the browser (and Google's Core Web Vitals) times the load by.
+
+         The wrapper carries a fixed aspect ratio because we never learn the
+         image's real dimensions — it is hosted by whoever sent it, and no width
+         or height is stored. Without a reserved box the article below it jumps
+         down the moment the image arrives, which is exactly the layout shift
+         CLS measures. Reserving the space costs nothing and holds the text
+         still.
+
+         `fetchpriority="high"` because it is above the fold and lazy by
+         default in the browser's estimation; `decoding="async"` keeps decode
+         off the main thread. Deliberately not `loading="lazy"` — that would
+         delay the very element being timed. -->
+    <div
+      class="mb-8 aspect-[16/9] max-h-[28rem] w-full overflow-hidden rounded-card border border-border"
+    >
+      <!-- Decorative: the headline above it already names the post. -->
+      <img
+        src={post.coverUrl}
+        alt=""
+        fetchpriority="high"
+        decoding="async"
+        onerror={() => (coverFailed = true)}
+        class="h-full w-full object-cover"
+      />
+    </div>
   {/if}
 
   <!-- Content is server-rendered HTML produced by the Tiptap editor. -->
