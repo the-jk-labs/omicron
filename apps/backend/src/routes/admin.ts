@@ -4,6 +4,7 @@ import { z } from "zod";
 import * as settings from "@/services/settings.ts";
 import * as anubis from "@/services/anubisProtection.ts";
 import * as seo from "@/services/seo.ts";
+import * as unsplash from "@/services/unsplash.ts";
 import * as moderation from "@/services/moderation.ts";
 import * as emailSettings from "@/services/emailSettings.ts";
 import * as setup from "@/services/instanceSetup.ts";
@@ -96,6 +97,28 @@ adminRoutes.put("/seo", async (c) => {
   if (!parsed.success) throw badRequest("Invalid SEO settings.");
   await seo.setSeoSettings(parsed.data);
   return c.json(await seo.getSeoSettings());
+});
+
+// ── Media (Unsplash banner picker) ──────────────────────────────────────────
+
+// The access key that turns the editor's Unsplash tab on. Only ever reported as
+// configured-or-not: an admin who wants to check the key reads it from their
+// Unsplash dashboard, and echoing a stored credential back over the API is how
+// one ends up in a browser cache or a screenshot.
+adminRoutes.get("/unsplash", async (c) => {
+  requireAdmin(c);
+  return c.json({ configured: await unsplash.configured() });
+});
+
+// A blank (or omitted) key clears it, which is how the feature is turned off.
+const unsplashSchema = z.object({ accessKey: z.string().trim().max(200).nullish() });
+
+adminRoutes.put("/unsplash", async (c) => {
+  requireAdmin(c);
+  const parsed = unsplashSchema.safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) throw badRequest("Expected { accessKey: string | null }.");
+  await unsplash.setAccessKey(parsed.data.accessKey ?? null);
+  return c.json({ configured: await unsplash.configured() });
 });
 
 // ── Instance identity (runtime config) ──────────────────────────────────────

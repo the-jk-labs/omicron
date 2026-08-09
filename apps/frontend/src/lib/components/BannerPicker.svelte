@@ -3,8 +3,10 @@
   import { endpoints, ApiError } from "$lib/api";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import StockPhotoPicker from "$lib/components/StockPhotoPicker.svelte";
   import { firstBodyImage } from "$lib/cover";
   import { isAcceptedImage, prepareImage } from "$lib/editor/image";
+  import type { CoverCredit, StockPhoto } from "$lib/types";
 
   // The post's banner: what a reader sees at the top of the article, what a
   // link preview (Open Graph) shows when the post is shared, and what a remote
@@ -18,10 +20,12 @@
   // opening picture, not the one that happened to be first when they published.
   let {
     coverUrl = $bindable(null),
+    coverCredit = $bindable(null),
     contentHtml = "",
     onChange,
   }: {
     coverUrl?: string | null;
+    coverCredit?: CoverCredit | null;
     /** Live editor output, for the fallback preview. */
     contentHtml?: string;
     /** Called on any change, so the page can mark itself dirty. */
@@ -29,22 +33,23 @@
   } = $props();
 
   let fileInput = $state<HTMLInputElement | null>(null);
+  let photosOpen = $state(false);
   let uploading = $state(false);
   let error = $state("");
 
   const fallback = $derived(coverUrl ? null : firstBodyImage(contentHtml));
   const preview = $derived(coverUrl ?? fallback);
 
-  function set(url: string | null) {
+  function set(url: string | null, credit: CoverCredit | null) {
     coverUrl = url;
+    coverCredit = credit;
     onChange?.();
   }
 
   async function onFile(e: Event) {
-    const input = e.target as HTMLInputElement;
-    const file = input.files?.[0];
+    const file = (e.target as HTMLInputElement).files?.[0];
     // Reset the input so re-picking the same file fires `change` again.
-    input.value = "";
+    (e.target as HTMLInputElement).value = "";
     if (!file) return;
     if (!isAcceptedImage(file)) {
       error = "Unsupported image type. Use PNG, JPEG, WebP, or GIF.";
@@ -55,12 +60,19 @@
     try {
       const { blob, type } = await prepareImage(file);
       const { url } = await endpoints().uploadImage(blob, type);
-      set(url);
+      // An upload is the author's own image: nobody to credit, so any credit
+      // left over from a previously chosen stock photo goes with it.
+      set(url, null);
     } catch (err) {
       error = err instanceof ApiError ? err.message : "Failed to upload the banner.";
     } finally {
       uploading = false;
     }
+  }
+
+  function onPhotoPick(photo: StockPhoto) {
+    error = "";
+    set(photo.bannerUrl, photo.credit);
   }
 </script>
 
@@ -93,15 +105,36 @@
       </div>
     {/if}
 
+    {#if coverCredit}
+      <p class="mt-2 text-xs text-muted-foreground">
+        Photo by
+        <a href={coverCredit.nameUrl} target="_blank" rel="noopener noreferrer nofollow" class="hover:text-foreground underline">
+          {coverCredit.name}
+        </a>
+        on
+        <a href={coverCredit.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" class="hover:text-foreground underline">
+          {coverCredit.source}
+        </a>{#if coverCredit.license && coverCredit.licenseUrl}
+          ·
+          <a href={coverCredit.licenseUrl} target="_blank" rel="noopener noreferrer nofollow" class="hover:text-foreground underline">
+            {coverCredit.license}
+          </a>
+        {/if}
+      </p>
+    {/if}
+
     <div class="mt-3 flex flex-wrap items-center gap-2">
       <Button variant="outline" size="sm" onclick={() => fileInput?.click()} disabled={uploading}>
         <Icon name="image" size={15} />
         {uploading ? "Uploading…" : "Upload"}
       </Button>
+      <Button variant="outline" size="sm" onclick={() => (photosOpen = true)} disabled={uploading}>
+        <Icon name="search" size={15} /> Free photos
+      </Button>
       {#if coverUrl}
         <!-- Removes the *choice*, not the banner: the body's first image takes
              over again, which the preview above updates to show. -->
-        <Button variant="ghost" size="sm" onclick={() => set(null)} disabled={uploading}>
+        <Button variant="ghost" size="sm" onclick={() => set(null, null)} disabled={uploading}>
           <Icon name="close" size={15} /> Remove
         </Button>
       {/if}
@@ -118,3 +151,5 @@
     class="hidden"
   />
 </div>
+
+<StockPhotoPicker bind:open={photosOpen} onPick={onPhotoPick} />

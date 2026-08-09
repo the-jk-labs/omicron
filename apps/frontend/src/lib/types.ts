@@ -45,6 +45,21 @@ export type PostAuthor = {
 export type Tag = { slug: string; name: string };
 export type TagWithCount = Tag & { postCount: number };
 
+// Attribution for a post's banner image, as one line under the banner: the
+// photographer, where the photo came from, and — for a Creative Commons image
+// — the licence it carries. Null for an uploaded banner, which needs none.
+// Mirrors the backend's CoverCredit (lib/cover.ts).
+export type CoverCredit = {
+  name: string;
+  nameUrl: string;
+  source: string;
+  sourceUrl: string;
+  // Absent for Unsplash, which serves photos under its own licence rather than
+  // a named public one, so there is nothing to link a reader to.
+  license?: string;
+  licenseUrl?: string;
+};
+
 export type Post = {
   id: string;
   title: string | null;
@@ -59,8 +74,8 @@ export type Post = {
   // content webhook) or derived from the body on ingest. Null for posts written
   // in the editor, whose preview the card derives itself.
   summary?: string | null;
-  // The banner the author explicitly chose — an uploaded `/api/uploads/…` path
-  // or a CMS's own URL. Null when they chose none, which is
+  // The banner the author explicitly chose — an uploaded `/api/uploads/…` path,
+  // a stock photo, or a CMS's own URL. Null when they chose none, which is
   // what the editor seeds its picker from: only an explicit choice is one.
   coverUrl?: string | null;
   // The banner to actually show: `coverUrl`, or the first image in the body
@@ -68,6 +83,9 @@ export type Post = {
   // page, the cards, the share tags and the federated Article all agree on
   // one answer. Every reader surface should use this, never `coverUrl`.
   bannerUrl?: string | null;
+  // Who to credit for the banner — present on a photo picked from a stock
+  // provider, whose terms require it, and null otherwise.
+  coverCredit?: CoverCredit | null;
   createdAt: string;
   // When the post's own content last changed (body, title, tags, cover,
   // language) — not engagement. Drives `dateModified` in the page's structured
@@ -279,6 +297,24 @@ export type SeoSettings = {
   indexNowEnabled: boolean;
   // Present only on the admin payload — the public /seo endpoint withholds it.
   indexNowKey?: string | null;
+};
+
+// Free-photo search for the editor's banner picker. Openverse needs no
+// credentials and is always available; Unsplash appears only when an operator
+// has configured a key, which never reaches the browser — searches are proxied
+// through /api/photos either way.
+export type PhotoProvider = "openverse" | "unsplash";
+
+export type StockPhoto = {
+  id: string;
+  alt: string;
+  thumbUrl: string;
+  bannerUrl: string;
+  credit: CoverCredit;
+  // Passed back to /photos/use when this photo is chosen, for providers that
+  // ask to be told (Unsplash's download count). Null when the provider asks for
+  // nothing; opaque to us either way.
+  useToken: string | null;
 };
 
 // Everything the instance publishes that belongs in the sitemap, in the raw

@@ -9,6 +9,7 @@
   import AdminDomains from "$lib/components/AdminDomains.svelte";
   import AdminSecurity from "$lib/components/AdminSecurity.svelte";
   import AdminSeo from "$lib/components/AdminSeo.svelte";
+  import AdminUnsplash from "$lib/components/AdminUnsplash.svelte";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import type { PageData } from "./$types";
@@ -22,6 +23,7 @@
     { value: "email", label: "Email", icon: "mail" },
     { value: "security", label: "Security", icon: "lock" },
     { value: "discoverability", label: "Discoverability", icon: "globe" },
+    { value: "media", label: "Media", icon: "image" },
     { value: "settings", label: "Instance", icon: "settings" },
   ];
 
@@ -121,6 +123,19 @@
       </p>
       <div class="mt-5">
         <AdminSeo />
+      </div>
+    </section>
+  </Tabs.Content>
+
+  <Tabs.Content value="media" class="mt-6">
+    <section class="rounded-card border border-border bg-background p-6">
+      <h2 class="text-lg font-semibold tracking-tight text-foreground">Photo search</h2>
+      <p class="mt-1 text-sm text-muted-foreground">
+        Writers can already search free, openly-licensed photos for a post banner — Openverse
+        needs no setup. Add an Unsplash key here to offer their library as a second source.
+      </p>
+      <div class="mt-5">
+        <AdminUnsplash />
       </div>
     </section>
   </Tabs.Content>

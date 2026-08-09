@@ -15,6 +15,7 @@ import { reportRoutes } from "@/routes/reports.ts";
 import { notificationRoutes } from "@/routes/notifications.ts";
 import { instanceRoutes, setupRoutes } from "@/routes/setup.ts";
 import { seoRoutes } from "@/routes/seo.ts";
+import { photoRoutes } from "@/routes/photos.ts";
 import { webhookRoutes } from "@/routes/webhooks.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
@@ -37,4 +38,5 @@ apiRoutes.route("/notifications", notificationRoutes);
 apiRoutes.route("/instance", instanceRoutes);
 apiRoutes.route("/setup", setupRoutes);
 apiRoutes.route("/seo", seoRoutes);
+apiRoutes.route("/photos", photoRoutes);
 apiRoutes.route("/webhooks", webhookRoutes);

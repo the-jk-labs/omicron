@@ -84,3 +84,90 @@ export function normalizeCoverUrl(raw: string | null | undefined): string | null
   if (UPLOAD_PATH.test(url) || ABSOLUTE_HTTP.test(url)) return url;
   throw badRequest("A banner must be an uploaded image or an absolute http(s) URL.");
 }
+
+/**
+ * Attribution for a banner taken from a stock provider.
+ *
+ * One shape covers every provider, because every provider's terms ask for the
+ * same three things in some combination: who made the photo, where it came
+ * from, and what licence it carries.
+ *
+ *   name / nameUrl      the photographer, and a link to them
+ *   source / sourceUrl  where the photo lives ("Unsplash", "Flickr", …)
+ *   license/licenseUrl  the Creative Commons licence, when there is one —
+ *                       absent for Unsplash, which serves photos under its own
+ *                       licence rather than a named public one
+ *
+ * Rendered as a single line under the banner (see the post page).
+ */
+export type CoverCredit = {
+  name: string;
+  nameUrl: string;
+  source: string;
+  sourceUrl: string;
+  license?: string;
+  licenseUrl?: string;
+};
+
+const MAX_CREDIT_TEXT = 120;
+
+function creditText(value: unknown, field: string): string {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (text.length > MAX_CREDIT_TEXT) throw badRequest(`The banner credit's ${field} is too long.`);
+  return text;
+}
+
+function creditUrl(value: unknown, field: string): string {
+  const url = typeof value === "string" ? value.trim() : "";
+  if (!url) return "";
+  if (url.length > MAX_URL_LENGTH || !ABSOLUTE_HTTP.test(url)) {
+    throw badRequest(`The banner credit's ${field} must be an absolute http(s) URL.`);
+  }
+  return url;
+}
+
+/**
+ * Validate the attribution that rides along with a banner.
+ *
+ * The four required parts arrive together or not at all: a name with nowhere to
+ * link is not a credit anyone can follow, and a link with nothing labelling it
+ * credits no one. Every URL is absolute http(s) for the same reason the cover's
+ * is — each becomes an `href` on the post page.
+ *
+ * The licence is optional but paired: a licence name with no link tells a
+ * reader which terms apply without letting them read them, which is exactly
+ * what a Creative Commons attribution is required to provide.
+ */
+export function normalizeCoverCredit(
+  raw: Partial<Record<keyof CoverCredit, unknown>> | null | undefined,
+): CoverCredit | null {
+  if (raw === null || raw === undefined) return null;
+
+  const name = creditText(raw.name, "name");
+  const source = creditText(raw.source, "source");
+  const nameUrl = creditUrl(raw.nameUrl, "creator link");
+  const sourceUrl = creditUrl(raw.sourceUrl, "source link");
+  const license = creditText(raw.license, "licence");
+  const licenseUrl = creditUrl(raw.licenseUrl, "licence link");
+
+  // Nothing supplied at all is "no credit", not a malformed one — an uploaded
+  // banner takes this path.
+  if (!name && !nameUrl && !source && !sourceUrl && !license && !licenseUrl) return null;
+
+  if (!name || !nameUrl || !source || !sourceUrl) {
+    throw badRequest(
+      "A banner credit needs a creator and a source, each with a link.",
+    );
+  }
+  if (Boolean(license) !== Boolean(licenseUrl)) {
+    throw badRequest("A banner credit's licence needs both a name and a link.");
+  }
+
+  return {
+    name,
+    nameUrl,
+    source,
+    sourceUrl,
+    ...(license ? { license, licenseUrl } : {}),
+  };
+}

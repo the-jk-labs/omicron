@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { assertEquals, assertThrows } from "@std/assert";
-import { absoluteBanner, bannerOf, firstBodyImage, normalizeCoverUrl } from "@/lib/cover.ts";
+import {
+  absoluteBanner,
+  bannerOf,
+  firstBodyImage,
+  normalizeCoverCredit,
+  normalizeCoverUrl,
+} from "@/lib/cover.ts";
 
 // A banner is rendered as an image `src`, published as an Open Graph tag and
 // federated as the Article `image` — three places an unvalidated URL would be
@@ -77,4 +83,59 @@ Deno.test("normalizeCoverUrl: rejects anything that isn't one of the two shapes"
   ) {
     assertThrows(() => normalizeCoverUrl(bad), Error);
   }
+});
+
+Deno.test("normalizeCoverCredit: keeps a complete credit, drops an empty one", () => {
+  assertEquals(
+    normalizeCoverCredit({
+      name: " Ada Lovelace ",
+      nameUrl: "https://unsplash.com/@ada",
+      source: "Unsplash",
+      sourceUrl: "https://unsplash.com/photos/abc",
+    }),
+    {
+      name: "Ada Lovelace",
+      nameUrl: "https://unsplash.com/@ada",
+      source: "Unsplash",
+      sourceUrl: "https://unsplash.com/photos/abc",
+    },
+  );
+  assertEquals(normalizeCoverCredit(null), null);
+  assertEquals(normalizeCoverCredit({}), null);
+});
+
+Deno.test("normalizeCoverCredit: carries a Creative Commons licence through", () => {
+  assertEquals(
+    normalizeCoverCredit({
+      name: "Marufish",
+      nameUrl: "https://www.flickr.com/photos/8819274@N04",
+      source: "Flickr",
+      sourceUrl: "https://www.flickr.com/photos/8819274@N04/8344491578",
+      license: "CC BY-SA 2.0",
+      licenseUrl: "https://creativecommons.org/licenses/by-sa/2.0/",
+    })?.license,
+    "CC BY-SA 2.0",
+  );
+});
+
+Deno.test("normalizeCoverCredit: a partial credit is an error, not a partial credit", () => {
+  const full = {
+    name: "Ada",
+    nameUrl: "https://unsplash.com/@ada",
+    source: "Unsplash",
+    sourceUrl: "https://unsplash.com/photos/abc",
+  };
+  // Each required part missing in turn.
+  for (const key of ["name", "nameUrl", "source", "sourceUrl"] as const) {
+    assertThrows(() => normalizeCoverCredit({ ...full, [key]: "" }), Error, "creator and a source");
+  }
+  // A licence without somewhere to read it states terms it cannot show.
+  assertThrows(
+    () => normalizeCoverCredit({ ...full, license: "CC BY 2.0" }),
+    Error,
+    "licence needs both",
+  );
+  // Every link is an href on the post page, so none of them may be a script URL.
+  assertThrows(() => normalizeCoverCredit({ ...full, nameUrl: "javascript:alert(1)" }), Error);
+  assertThrows(() => normalizeCoverCredit({ ...full, sourceUrl: "/relative" }), Error);
 });

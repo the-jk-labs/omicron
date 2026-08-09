@@ -123,6 +123,7 @@ export function postWithAuthor(
     // surface reads the second.
     coverUrl: row.post.coverUrl,
     bannerUrl: bannerOf(row.post),
+    coverCredit: row.post.coverCredit ?? null,
     createdAt: row.post.createdAt,
     // When the content itself last changed. The reader's `dateModified` in the
     // page's structured data, so an edited article is re-read rather than left
@@ -280,6 +281,7 @@ export function barePost(p: Omit<Post, "searchVector">) {
     summary: p.summary,
     coverUrl: p.coverUrl,
     bannerUrl: bannerOf(p),
+    coverCredit: p.coverCredit ?? null,
     createdAt: p.createdAt,
   };
 }

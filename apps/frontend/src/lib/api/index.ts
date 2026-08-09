@@ -5,6 +5,7 @@ import type {
   AdminUser,
   BlockedDomain,
   Comment,
+  CoverCredit,
   DashboardSummary,
   DkimGenerateResult,
   EmailDnsResult,
@@ -30,6 +31,8 @@ import type {
   SuggestedUser,
   TagDetail,
   TagWithCount,
+  PhotoProvider,
+  StockPhoto,
   User,
   WebhookToken,
 } from "$lib/types";
@@ -128,6 +131,10 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     sitemapPosts: (page: number) => api.get<SitemapEntry[]>(`/seo/sitemap-posts?page=${page}`),
     adminSeo: () => api.get<SeoSettings>("/admin/seo"),
     setAdminSeo: (body: Partial<SeoSettings>) => api.put<SeoSettings>("/admin/seo", body),
+    // The Unsplash access key. Never read back — only whether one is set.
+    adminUnsplash: () => api.get<{ configured: boolean }>("/admin/unsplash"),
+    setAdminUnsplash: (accessKey: string | null) =>
+      api.put<{ configured: boolean }>("/admin/unsplash", { accessKey }),
 
     // admin email settings (runtime-configurable delivery)
     adminEmail: () => api.get<EmailSettings>("/admin/email"),
@@ -210,11 +217,11 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     drafts: (cursor?: string | null) =>
       api.get<Page<Post>>(`/posts/drafts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
     createPost: (
-      body: { title?: string; contentHtml: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; summary?: string | null; coverUrl?: string | null; tags?: string[] },
+      body: { title?: string; contentHtml: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; summary?: string | null; coverUrl?: string | null; coverCredit?: CoverCredit | null; tags?: string[] },
     ) => api.post<{ post: { id: string } }>("/posts", body),
     updatePost: (
       id: string,
-      body: { title?: string; contentHtml?: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; summary?: string | null; coverUrl?: string | null; tags?: string[] },
+      body: { title?: string; contentHtml?: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; summary?: string | null; coverUrl?: string | null; coverCredit?: CoverCredit | null; tags?: string[] },
     ) => api.patch<{ post: { id: string } }>(`/posts/${id}`, body),
     deletePost: (id: string) => api.del<{ ok: true }>(`/posts/${id}`),
     // Posts to read next, shown under an article (see relatedPosts service).
@@ -286,6 +293,17 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     uploadImage: (blob: Blob, contentType: string) =>
       api.postRaw<{ url: string }>("/uploads", blob, contentType),
 
+    // Free-photo search for the banner picker. `photoProviders` says which
+    // tabs to offer — never empty, since Openverse needs no configuration.
+    photoProviders: () => api.get<{ providers: PhotoProvider[] }>("/photos/providers"),
+    searchPhotos: (provider: PhotoProvider, q: string, page = 1) =>
+      api.get<{ items: StockPhoto[] }>(
+        `/photos/search?provider=${provider}&q=${encodeURIComponent(q)}&page=${page}`,
+      ),
+    // Tells a provider one of its photos was used — required by Unsplash's API
+    // terms so a photographer's download count reflects reality.
+    recordPhotoUse: (provider: PhotoProvider, token: string) =>
+      api.post<{ ok: true }>("/photos/use", { provider, token }),
 
     // users + follows
     suggestedUsers: () => api.get<{ items: SuggestedUser[] }>("/users/suggested"),

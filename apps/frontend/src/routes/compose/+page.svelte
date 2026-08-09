@@ -17,6 +17,7 @@
   // same column on the ingest path — so neither way of writing a post can
   // store a description the other would reject.
   const MAX_SUMMARY = 150;
+  import type { CoverCredit } from "$lib/types";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -49,6 +50,7 @@
   // a draft saved without one is not silently committed to whatever image
   // happened to be first at the time.
   let coverUrl = $state<string | null>(draft?.coverUrl ?? null);
+  let coverCredit = $state<CoverCredit | null>(draft?.coverCredit ?? null);
   let html = $state(draft?.contentHtml ?? "");
   let json = $state<unknown>(draft?.contentJson ?? null);
   let error = $state("");
@@ -124,6 +126,7 @@
         // rather than showing an empty description.
         summary: summary.trim() || null,
         coverUrl,
+        coverCredit,
         tags,
       };
       if (postId) {
@@ -228,7 +231,12 @@
   <LanguageSelect bind:value={language} />
 </div>
 
-<BannerPicker bind:coverUrl contentHtml={html} onChange={() => (touched = true)} />
+<BannerPicker
+  bind:coverUrl
+  bind:coverCredit
+  contentHtml={html}
+  onChange={() => (touched = true)}
+/>
 
 {#if EditorComponent}
   <EditorComponent {onUpdate} content={(draft?.contentJson as Content) ?? draft?.contentHtml} />

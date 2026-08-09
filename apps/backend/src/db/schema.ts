@@ -16,6 +16,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { CoverCredit } from "@/lib/cover.ts";
 
 // Postgres full-text search vector. Drizzle has no native `tsvector` type, so we
 // declare a minimal custom type purely so the column and its GIN index live in
@@ -156,10 +157,16 @@ export const posts = pgTable("posts", {
   // The post's banner image: the author's explicit choice, and null when they
   // made none — in which case the first image in the body stands in wherever a
   // banner is shown (see lib/cover.ts). Either an absolute http(s) URL (an
-  // ingested post's own) or a root-relative
+  // ingested post's, or a photo picked from Unsplash) or a root-relative
   // `/api/uploads/…` path for one uploaded here. Federates as the Article
   // `image`, and is the post's Open Graph share image.
   coverUrl: text("cover_url"),
+  // Attribution for the banner: the photographer, the page the photo came from
+  // and, for a Creative Commons image, its licence — see lib/cover.ts for the
+  // shape. Required by the terms the stock providers serve photos under, and
+  // null for an uploaded banner, which needs none. Written as a unit with
+  // `cover_url`, so a row never holds a credit for a banner it no longer shows.
+  coverCredit: jsonb("cover_credit").$type<CoverCredit>(),
   // Stable key from the external system that ingested this post (see
   // services/webhooks.ts) — a CMS slug or document id. Present only on
   // machine-ingested posts, and what makes re-delivery of the same content

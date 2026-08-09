@@ -9,7 +9,7 @@ import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import { MAX_TAGS_PER_POST, normalizeTags } from "@/lib/tags.ts";
 import { type LanguageFilter, normalizeLanguage } from "@/lib/languages.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
-import { normalizeCoverUrl } from "@/lib/cover.ts";
+import { normalizeCoverCredit, normalizeCoverUrl } from "@/lib/cover.ts";
 import { SUMMARY_LENGTH as MAX_SUMMARY } from "@/lib/webhook.ts";
 import { queue } from "@/queue/queue.ts";
 
@@ -37,6 +37,21 @@ export function normalizeSummary(raw: string | null | undefined): string | null 
   return text;
 }
 
+// The banner columns for a write, from what the author chose in the editor.
+//
+// The credit belongs to the image, so the two always move together: clearing
+// the banner clears the credit, and replacing an Unsplash photo with an upload
+// (which needs no attribution) drops the photographer's name with it. Sending
+// one without the other could otherwise leave a post crediting someone for a
+// picture it no longer shows.
+function coverFields(
+  coverUrl: string | null | undefined,
+  coverCredit: Record<string, unknown> | null | undefined,
+) {
+  const url = normalizeCoverUrl(coverUrl);
+  return { coverUrl: url, coverCredit: url ? normalizeCoverCredit(coverCredit) : null };
+}
+
 // Normalizes and validates author-supplied tags, capping the count per post.
 // Exported so every write path that accepts tags — the editor here, ingested
 // content in services/webhooks.ts — enforces the same cap.
@@ -56,6 +71,7 @@ export async function createPost(authorId: string, input: {
   language?: string | null;
   summary?: string | null;
   coverUrl?: string | null;
+  coverCredit?: Record<string, unknown> | null;
   tags?: string[];
 }) {
   const status = input.status === "draft" ? "draft" : "published";
@@ -80,7 +96,7 @@ export async function createPost(authorId: string, input: {
     status,
     language: normalizeLanguage(input.language),
     summary: normalizeSummary(input.summary),
-    coverUrl: normalizeCoverUrl(input.coverUrl),
+    ...coverFields(input.coverUrl, input.coverCredit),
   });
 
   if (tags !== undefined) await tagsRepo.setPostTags(post.id, tags);
@@ -161,6 +177,7 @@ export async function updatePost(authorId: string, id: string, input: {
   language?: string | null;
   summary?: string | null;
   coverUrl?: string | null;
+  coverCredit?: Record<string, unknown> | null;
   tags?: string[];
 }) {
   const row = await postsRepo.findById(id);
@@ -194,7 +211,10 @@ export async function updatePost(authorId: string, id: string, input: {
     ...(input.status !== undefined ? { status } : {}),
     ...(input.language !== undefined ? { language: normalizeLanguage(input.language) } : {}),
     ...(input.summary !== undefined ? { summary: normalizeSummary(input.summary) } : {}),
-    ...(input.coverUrl !== undefined ? { coverUrl: normalizeCoverUrl(input.coverUrl) } : {}),
+    // `coverUrl` present is the whole banner decision, credit included — an
+    // editor that sends the field always sends both, and one that sends
+    // neither (the ingest webhook's partial updates) leaves the row alone.
+    ...(input.coverUrl !== undefined ? coverFields(input.coverUrl, input.coverCredit) : {}),
   };
 
   // A tags-only edit touches no post columns; skip the update (drizzle rejects
