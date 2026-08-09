@@ -32,6 +32,8 @@
     "@types/markdown-it": "npm:@types/markdown-it@14.1.2",
     "@vscode/markdown-it-katex": "npm:@vscode/markdown-it-katex@1.1.2",
     "katex": "npm:katex@0.16.47",
+    "@imagemagick/magick-wasm": "npm:@imagemagick/magick-wasm@0.0.35",
+    "@imagemagick/magick-wasm/magick.wasm": "npm:@imagemagick/magick-wasm@0.0.35/magick.wasm",
     "zod": "npm:zod@^4.0",
     "@std/assert": "jsr:@std/assert@^1.0",
     "@/": "./src/"

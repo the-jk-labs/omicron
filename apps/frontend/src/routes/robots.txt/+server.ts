@@ -24,6 +24,20 @@ import type { RequestHandler } from "./$types";
 // also cover `/lists/<public-list>`, which is shareable curated content with
 // its own feed and belongs in the index. The bare index page behind it needs a
 // session anyway.
+// Carved out of the `/api/` disallow below, and load-bearing for link previews.
+//
+// A robots.txt path is a prefix, so `Disallow: /api/` covered `/api/uploads/`
+// too — the one place under `/api/` that is not an endpoint but a file: every
+// image an author uploads, avatars included. A post's share image is one of
+// them, and the crawlers that build link cards (Facebook's, and WhatsApp's with
+// it) check robots.txt before fetching an `og:image`. So a banner uploaded here
+// was declared off-limits to the very fetchers it exists for, and the card came
+// out blank however correct the tag was.
+//
+// Listed before the disallows because that is the order the spec resolves ties
+// in for crawlers that don't implement longest-match.
+const ALLOW = ["/api/uploads/"];
+
 const DISALLOW = [
   "/compose",
   "/drafts",
@@ -52,6 +66,7 @@ export const GET: RequestHandler = async ({ fetch, url }) => {
     ? [
       "User-agent: *",
       "Allow: /",
+      ...ALLOW.map((p) => `Allow: ${p}`),
       ...DISALLOW.map((p) => `Disallow: ${p}`),
       "",
       `Sitemap: ${origin}/sitemap.xml`,

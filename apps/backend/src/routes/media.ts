@@ -4,6 +4,7 @@ import { config } from "@/config.ts";
 import { notFound } from "@/lib/http.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import * as mediaService from "@/services/media.ts";
+import * as shareImageService from "@/services/shareImage.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 // Serves and accepts user-uploaded media (avatars, post images) on local disk.
@@ -28,6 +29,40 @@ const CONTENT_TYPE: Record<string, string> = {
   webp: "image/webp",
   gif: "image/gif",
 };
+
+// The JPEG share image for an upload (see lib/shareImage.ts for why one
+// exists at all). Registered before "/:file" so "og" isn't captured as a
+// filename. Public and unauthenticated by necessity — the caller is a link
+// preview scraper, which has no session and follows no login.
+mediaRoutes.get("/og/:file", async (c) => {
+  const file = c.req.param("file");
+  // The share URL is always `<uuid>.jpg`; the stored source may be any format.
+  const id = /^([a-zA-Z0-9-]+)\.jpg$/.exec(file)?.[1];
+  if (!id) throw notFound("File not found.");
+
+  let jpeg: Uint8Array | null;
+  try {
+    jpeg = await shareImageService.shareJpeg(id);
+  } catch (err) {
+    // A share image is a nicety; an image the encoder chokes on must not be a
+    // 500 in a scraper's face. Log it and let the platform fall back to the
+    // instance's brand image.
+    console.warn(`Share image failed for ${id}: ${err instanceof Error ? err.message : err}`);
+    throw notFound("File not found.");
+  }
+  if (!jpeg) throw notFound("File not found.");
+
+  // A Uint8Array is a valid runtime BodyInit; the DOM typing (this project
+  // compiles with `lib: dom`) omits it — same cast as the inbox in app.ts.
+  return new Response(jpeg as BodyInit, {
+    headers: {
+      "content-type": "image/jpeg",
+      // Derived from an immutable upload, so it can be cached as hard as one.
+      "cache-control": "public, max-age=31536000, immutable",
+      "x-content-type-options": "nosniff",
+    },
+  });
+});
 
 mediaRoutes.get("/:file", async (c) => {
   const file = c.req.param("file");

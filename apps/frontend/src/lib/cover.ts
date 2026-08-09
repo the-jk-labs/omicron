@@ -29,7 +29,7 @@ export function firstBodyImage(html: string): string | null {
 
 // A path served by this instance's own uploads route — the only relative form
 // that is ours to resolve. Mirrors the backend's UPLOAD_PATH (lib/cover.ts).
-const UPLOAD_PATH = /^\/api\/uploads\/[A-Za-z0-9-]+\.(?:png|jpe?g|webp|gif)$/;
+const UPLOAD_PATH = /^\/api\/uploads\/([A-Za-z0-9-]+)\.(?:png|jpe?g|webp|gif)$/;
 
 /**
  * A banner URL in the absolute form an Open Graph scraper needs.
@@ -50,7 +50,14 @@ export function absoluteBanner(
   origin: string,
 ): string | undefined {
   if (!url) return undefined;
-  if (UPLOAD_PATH.test(url)) return `${origin}${url}`;
+  // An upload is published as its JPEG derivative rather than the stored file.
+  // Everything uploaded here is WebP (the browser re-encodes before sending),
+  // and WhatsApp's handling of a WebP `og:image` is unreliable — it shows no
+  // image at all, while Telegram renders the same tag fine. The backend serves
+  // a cached JPEG copy at this path purely for scrapers; the page itself goes
+  // on using the WebP. See backend lib/shareImage.ts.
+  const uploadId = url.match(UPLOAD_PATH)?.[1];
+  if (uploadId) return `${origin}/api/uploads/og/${uploadId}.jpg`;
   if (!/^https?:\/\//i.test(url)) return undefined;
   try {
     return new URL(url).href;
