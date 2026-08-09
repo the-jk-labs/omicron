@@ -10,6 +10,7 @@ export type Language = { code: string; name: string; native: string };
 
 export const LANGUAGES: Language[] = [
   { code: "ar", name: "Arabic", native: "العربية" },
+  { code: "az", name: "Azerbaijani", native: "Azərbaycan dili" },
   { code: "bn", name: "Bengali", native: "বাংলা" },
   { code: "bg", name: "Bulgarian", native: "Български" },
   { code: "ca", name: "Catalan", native: "Català" },
