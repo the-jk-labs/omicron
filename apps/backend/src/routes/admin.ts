@@ -87,6 +87,7 @@ adminRoutes.get("/seo", async (c) => {
 const seoSchema = z.object({
   indexingEnabled: z.boolean().optional(),
   verification: z.record(z.string(), z.string()).optional(),
+  indexNowEnabled: z.boolean().optional(),
 });
 
 adminRoutes.put("/seo", async (c) => {

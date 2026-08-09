@@ -264,7 +264,16 @@ export type SecuritySettings = { anubisProtection: boolean; anubisManaged: boole
 // `noindex`; `verification` holds per-engine site-verification tokens (the meta
 // `content` value only), keyed by engine (google/bing/yandex).
 export type SeoVerification = { google?: string; bing?: string; yandex?: string };
-export type SeoSettings = { indexingEnabled: boolean; verification: SeoVerification };
+export type SeoSettings = {
+  indexingEnabled: boolean;
+  verification: SeoVerification;
+  // IndexNow: push new and edited post URLs to participating engines (Bing,
+  // Yandex, Seznam — not Google) instead of waiting to be crawled. Off unless
+  // an admin turns it on, since it sends this instance's URLs to third parties.
+  indexNowEnabled: boolean;
+  // Present only on the admin payload — the public /seo endpoint withholds it.
+  indexNowKey?: string | null;
+};
 
 // Everything the instance publishes that belongs in the sitemap, in the raw
 // form /sitemap.xml needs to build URLs from (the permalink logic lives in

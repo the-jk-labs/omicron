@@ -11,6 +11,7 @@ import { newRedis, redisEnabled } from "@/lib/redis.ts";
 
 export type JobName =
   | "federate_post"
+  | "indexnow_submit"
   | "federate_post_delete"
   | "federate_actor_update"
   | "federate_list_item"
@@ -26,6 +27,7 @@ export type JobName =
 
 export type JobPayloads = {
   federate_post: { postId: string; action?: "create" | "update" };
+  indexnow_submit: { postId: string };
   federate_post_delete: { postId: string; authorId: string };
   federate_actor_update: { userId: string };
   federate_list_item: { listId: string; postId: string; action: "add" | "remove" };

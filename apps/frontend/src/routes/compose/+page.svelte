@@ -11,6 +11,11 @@
   import TagInput from "$lib/components/TagInput.svelte";
   import LanguageSelect from "$lib/components/LanguageSelect.svelte";
   import { reading } from "$lib/prefs.svelte";
+
+  // Matches SUMMARY_LENGTH in the backend (lib/webhook.ts), which caps the
+  // same column on the ingest path — so neither way of writing a post can
+  // store a description the other would reject.
+  const MAX_SUMMARY = 150;
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -34,6 +39,10 @@
   // deliberate blank. Only a genuinely new post takes the remembered default,
   // so revisiting a draft never silently relabels it.
   let language = $state<string | null>(draft ? draft.language ?? null : reading.composeLang);
+  // The one-line description search engines print under the title, and link
+  // previews show. Left empty it falls back to a truncation of the opening
+  // paragraph — which is what every post used to get, often cut mid-clause.
+  let summary = $state(draft?.summary ?? "");
   let html = $state(draft?.contentHtml ?? "");
   let json = $state<unknown>(draft?.contentJson ?? null);
   let error = $state("");
@@ -58,8 +67,10 @@
   // mark the page dirty the instant it opened, so simply looking at the
   // composer and leaving would raise the unsaved-changes prompt.
   const initialLanguage = draft ? draft.language ?? null : reading.composeLang;
+  const initialSummary = draft?.summary ?? "";
   $effect(() => {
     if (tags.join(",") !== initialTags || language !== initialLanguage) touched = true;
+    if (summary !== initialSummary) touched = true;
   });
 
   // There's unsaved work worth keeping if the author has edited and there's
@@ -96,7 +107,17 @@
     if (status === "published") busy = true;
     else savingDraft = true;
     try {
-      const body = { title: title.trim(), contentHtml: html, contentJson: json, status, language, tags };
+      const body = {
+        title: title.trim(),
+        contentHtml: html,
+        contentJson: json,
+        status,
+        language,
+        // Null, not "", so the reader falls back to the derived excerpt
+        // rather than showing an empty description.
+        summary: summary.trim() || null,
+        tags,
+      };
       if (postId) {
         await endpoints().updatePost(postId, body);
       } else {
@@ -172,6 +193,25 @@
   oninput={() => (touched = true)}
   class="mb-6 w-full border-none bg-transparent text-3xl font-bold tracking-tight text-foreground placeholder:text-muted-foreground focus:outline-none sm:text-4xl"
 />
+
+<div class="mb-6">
+  <label for="post-summary" class="text-muted-foreground mb-1.5 block text-xs font-medium">
+    Description — shown in search results and link previews. Optional; the opening
+    lines are used when it's blank.
+  </label>
+  <div class="flex items-center gap-3">
+    <input
+      id="post-summary"
+      bind:value={summary}
+      maxlength={MAX_SUMMARY}
+      placeholder="One sentence on what this post is about"
+      class="rounded-input border border-input bg-background shadow-btn min-w-0 flex-1 px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
+    />
+    <span class="text-muted-foreground shrink-0 text-xs tabular-nums">
+      {summary.length}/{MAX_SUMMARY}
+    </span>
+  </div>
+</div>
 
 <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start">
   <div class="min-w-0 flex-1">

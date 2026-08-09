@@ -10,6 +10,11 @@
   // site-verification tokens rendered as <meta> tags in the app's <head>.
   let indexingEnabled = $state(true);
   let verification = $state<SeoVerification>({});
+  // IndexNow. Off by default: enabling it makes this instance send its post URLs
+  // to third-party search engines on every publish, which is the operator's call
+  // to make rather than a default to inherit.
+  let indexNowEnabled = $state(false);
+  let indexNowKey = $state<string | null>(null);
   let loading = $state(true);
   let saving = $state(false);
   let error = $state("");
@@ -45,6 +50,8 @@
   function apply(s: SeoSettings) {
     indexingEnabled = s.indexingEnabled;
     verification = { ...s.verification };
+    indexNowEnabled = s.indexNowEnabled;
+    indexNowKey = s.indexNowKey ?? null;
   }
 
   $effect(() => {
@@ -60,7 +67,7 @@
     error = "";
     saved = false;
     try {
-      apply(await endpoints().setAdminSeo({ indexingEnabled, verification }));
+      apply(await endpoints().setAdminSeo({ indexingEnabled, verification, indexNowEnabled }));
       saved = true;
     } catch (e) {
       error = e instanceof ApiError ? e.message : "Failed to save.";
@@ -89,6 +96,47 @@
       id="seo-indexing"
       bind:checked={indexingEnabled}
       disabled={loading || saving}
+      class="peer inline-flex h-[36px] min-h-[36px] w-[60px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset"
+    >
+      <Switch.Thumb
+        class="pointer-events-none block size-[30px] shrink-0 rounded-full bg-background transition-transform data-[state=checked]:translate-x-[24px] data-[state=unchecked]:translate-x-0 data-[state=unchecked]:shadow-mini"
+      />
+    </Switch.Root>
+  </div>
+
+  <!-- IndexNow -->
+  <div class="flex items-start justify-between gap-4 border-t border-border pt-5">
+    <div class="flex flex-col gap-1">
+      <Label.Root for="seo-indexnow" class="text-sm font-medium text-foreground">
+        Notify search engines instantly (IndexNow)
+      </Label.Root>
+      <p class="max-w-prose text-sm text-muted-foreground">
+        Tells participating engines the moment a post is published or edited, instead of
+        waiting for them to crawl. Supported by Bing, Yandex, Seznam and Naver, which share
+        submissions between them; <strong class="text-foreground-alt">Google does not
+        participate</strong> and is unaffected.
+      </p>
+      <p class="max-w-prose text-sm text-muted-foreground">
+        Off by default because it sends this instance's post URLs to those companies' servers
+        on every publish. Nothing else is sent, and only public posts by public accounts —
+        never drafts, private accounts, or posts from other instances.
+      </p>
+      {#if indexNowEnabled && indexNowKey}
+        <p class="text-xs text-muted-foreground">
+          Verified with a key file at
+          <a
+            href={`/indexnow-${indexNowKey}.txt`}
+            target="_blank"
+            rel="noreferrer"
+            class="text-foreground underline underline-offset-2"
+          >/indexnow-{indexNowKey}.txt</a>, generated when you first switched this on.
+        </p>
+      {/if}
+    </div>
+    <Switch.Root
+      id="seo-indexnow"
+      bind:checked={indexNowEnabled}
+      disabled={loading || saving || !indexingEnabled}
       class="peer inline-flex h-[36px] min-h-[36px] w-[60px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset"
     >
       <Switch.Thumb

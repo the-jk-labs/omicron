@@ -14,8 +14,24 @@ export const seoRoutes = new Hono<AppEnv>();
 
 // Indexing flag + verification tokens. Public by design: the tokens are meant to
 // appear in the page's HTML anyway.
+//
+// The IndexNow key is withheld. It is what authorises submissions for this
+// host, and while IndexNow treats it as semi-public — the engines fetch it from
+// a file on the domain — handing it to every caller would let anyone submit
+// this instance's URLs at will. The app never needs it; only the key-file route
+// does, and that confirms a guess rather than being told (see below).
 seoRoutes.get("/", async (c) => {
-  return c.json(await seo.getSeoSettings());
+  const { indexNowKey: _withheld, ...settings } = await seo.getSeoSettings();
+  return c.json(settings);
+});
+
+// Confirms whether `key` is this instance's IndexNow key, so the app can serve
+// the key file the engines fetch to verify domain ownership. Answers only yes
+// or no, so a caller learns nothing it did not already have to supply.
+seoRoutes.get("/indexnow-key/:key", async (c) => {
+  const { indexNowEnabled, indexNowKey } = await seo.getSeoSettings();
+  const ok = indexNowEnabled && !!indexNowKey && c.req.param("key") === indexNowKey;
+  return c.json({ ok });
 });
 
 // The instance's index pages — author profiles, tag indexes, public reading

@@ -121,6 +121,9 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // discoverability / SEO: public read (layout, robots.txt, sitemap.xml) + the
     // moderator-only write side.
     seo: () => api.get<SeoSettings>("/seo"),
+    // Yes/no check backing the IndexNow key file; never returns the key.
+    verifyIndexNowKey: (key: string) =>
+      api.get<{ ok: boolean }>(`/seo/indexnow-key/${encodeURIComponent(key)}`),
     sitemapEntries: () => api.get<SitemapContents>("/seo/sitemap-entries"),
     sitemapPosts: (page: number) => api.get<SitemapEntry[]>(`/seo/sitemap-posts?page=${page}`),
     adminSeo: () => api.get<SeoSettings>("/admin/seo"),
@@ -207,13 +210,15 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     drafts: (cursor?: string | null) =>
       api.get<Page<Post>>(`/posts/drafts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
     createPost: (
-      body: { title?: string; contentHtml: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; tags?: string[] },
+      body: { title?: string; contentHtml: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; summary?: string | null; tags?: string[] },
     ) => api.post<{ post: { id: string } }>("/posts", body),
     updatePost: (
       id: string,
-      body: { title?: string; contentHtml?: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; tags?: string[] },
+      body: { title?: string; contentHtml?: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; summary?: string | null; tags?: string[] },
     ) => api.patch<{ post: { id: string } }>(`/posts/${id}`, body),
     deletePost: (id: string) => api.del<{ ok: true }>(`/posts/${id}`),
+    // Posts to read next, shown under an article (see relatedPosts service).
+    relatedPosts: (id: string) => api.get<{ items: Post[] }>(`/posts/${id}/related`),
 
     // likes + comments
     likePost: (id: string) => api.post<LikeState>(`/posts/${id}/like`),

@@ -9,9 +9,32 @@ import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import { MAX_TAGS_PER_POST, normalizeTags } from "@/lib/tags.ts";
 import { type LanguageFilter, normalizeLanguage } from "@/lib/languages.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
+import { SUMMARY_LENGTH as MAX_SUMMARY } from "@/lib/webhook.ts";
 import { queue } from "@/queue/queue.ts";
 
 // Business logic for posts. Creating a local post enqueues federation delivery.
+
+// The author's own one-line description of a post.
+//
+// This is what a search engine prints under the title in results, and what a
+// link preview shows — the sentence that decides whether anyone clicks. Until
+// now only the ingest webhook could set it, so a post written in the editor
+// fell back to a mechanical truncation of its opening paragraph, frequently
+// cut mid-clause.
+//
+// Capped at the same length the ingest path derives to, so both routes into the
+// database agree and neither can store a "description" long enough to be
+// clipped by every engine that shows it. Empty is stored as null, which is the
+// reader's signal to fall back to the derived excerpt.
+export function normalizeSummary(raw: string | null | undefined): string | null {
+  if (raw === null || raw === undefined) return null;
+  const text = raw.replace(/\s+/g, " ").trim();
+  if (!text) return null;
+  if (text.length > MAX_SUMMARY) {
+    throw badRequest(`A description can be at most ${MAX_SUMMARY} characters.`);
+  }
+  return text;
+}
 
 // Normalizes and validates author-supplied tags, capping the count per post.
 // Exported so every write path that accepts tags — the editor here, ingested
@@ -30,6 +53,7 @@ export async function createPost(authorId: string, input: {
   contentJson?: unknown;
   status?: string;
   language?: string | null;
+  summary?: string | null;
   tags?: string[];
 }) {
   const status = input.status === "draft" ? "draft" : "published";
@@ -53,12 +77,16 @@ export async function createPost(authorId: string, input: {
     contentJson: input.contentJson ?? null,
     status,
     language: normalizeLanguage(input.language),
+    summary: normalizeSummary(input.summary),
   });
 
   if (tags !== undefined) await tagsRepo.setPostTags(post.id, tags);
 
   // Only published posts fan out to remote followers; drafts stay private.
-  if (status === "published") queue.add("federate_post", { postId: post.id });
+  if (status === "published") {
+    queue.add("federate_post", { postId: post.id });
+    queue.add("indexnow_submit", { postId: post.id });
+  }
   return post;
 }
 
@@ -96,6 +124,25 @@ export async function getPost(id: string, viewerId: string | null = null) {
   return row;
 }
 
+// Posts to offer at the end of an article. Tag overlap first; when a post
+// shares tags with nothing (or carries none), the newest posts stand in, so the
+// reader is never left at a dead end. Deduplicated by id because the fallback
+// is only topped up when the related set comes back short.
+export async function relatedPosts(postId: string, limit = 4) {
+  const related = await postsRepo.listRelated(postId, limit);
+  if (related.length >= limit) return related;
+
+  const seen = new Set(related.map((r) => r.post.id));
+  const filler = await postsRepo.listRecentExcluding(postId, limit + related.length);
+  for (const row of filler) {
+    if (related.length >= limit) break;
+    if (seen.has(row.post.id)) continue;
+    seen.add(row.post.id);
+    related.push(row);
+  }
+  return related;
+}
+
 export async function listDrafts(authorId: string, cursor: Cursor | null) {
   const rows = await postsRepo.listDraftsByAuthor(authorId, cursor, DEFAULT_PAGE_SIZE);
   return pageOf(rows, DEFAULT_PAGE_SIZE);
@@ -109,6 +156,7 @@ export async function updatePost(authorId: string, id: string, input: {
   contentJson?: unknown;
   status?: string;
   language?: string | null;
+  summary?: string | null;
   tags?: string[];
 }) {
   const row = await postsRepo.findById(id);
@@ -141,6 +189,7 @@ export async function updatePost(authorId: string, id: string, input: {
     ...(html ? { contentHtml: html, contentJson: input.contentJson ?? null } : {}),
     ...(input.status !== undefined ? { status } : {}),
     ...(input.language !== undefined ? { language: normalizeLanguage(input.language) } : {}),
+    ...(input.summary !== undefined ? { summary: normalizeSummary(input.summary) } : {}),
   };
 
   // A tags-only edit touches no post columns; skip the update (drizzle rejects
@@ -163,6 +212,9 @@ export async function updatePost(authorId: string, id: string, input: {
   if (post.status === "published") {
     const action = row.post.status === "published" ? "update" : "create";
     queue.add("federate_post", { postId: post.id, action });
+    // Resubmit on edit as well as on publish: an engine holding the old copy is
+    // exactly the case IndexNow exists to shorten.
+    queue.add("indexnow_submit", { postId: post.id });
   } else if (row.post.status === "published" && post.authorId) {
     // Unpublishing (published → draft) makes the post private again; tombstone
     // the copies already delivered to remote followers.
