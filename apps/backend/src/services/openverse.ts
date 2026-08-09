@@ -33,6 +33,14 @@ const USER_AGENT = `Omicron/${APP_VERSION} (+https://github.com/the-jk-labs/omic
 // a writer would otherwise be offered and quietly breach by publishing.
 const LICENSE_FILTER = "commercial,modification";
 
+// Openverse indexes SVGs and WebPs alongside photographs, and a banner becomes
+// this post's Open Graph share image. WhatsApp shows nothing at all for a WebP
+// and no scraper renders SVG, so restricting the search is simpler and more
+// reliable than transcoding someone else's file: an uploaded banner gets a JPEG
+// derivative from us (lib/shareImage.ts), but a remote one is hotlinked as-is
+// and has to be a safe format to begin with.
+const EXTENSION_FILTER = "jpg,jpeg,png";
+
 /** Human-readable licence name, e.g. "CC BY-SA 2.0" or "Public domain". */
 function licenseLabel(code: string, version: string): string {
   const slug = code.toUpperCase();
@@ -111,6 +119,7 @@ export async function search(query: string, page = 1): Promise<StockPhoto[]> {
     page: String(page),
     page_size: String(PER_PAGE),
     license_type: LICENSE_FILTER,
+    extension: EXTENSION_FILTER,
     // Openverse flags what its providers marked as sensitive; a banner picker
     // in a writing tool should not surface it.
     mature: "false",
