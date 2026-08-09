@@ -59,9 +59,15 @@ export type Post = {
   // content webhook) or derived from the body on ingest. Null for posts written
   // in the editor, whose preview the card derives itself.
   summary?: string | null;
-  // Absolute http(s) URL of the banner image, hosted by whoever sent it. Null
-  // unless the post carries one.
+  // The banner the author explicitly chose — an uploaded `/api/uploads/…` path
+  // or a CMS's own URL. Null when they chose none, which is
+  // what the editor seeds its picker from: only an explicit choice is one.
   coverUrl?: string | null;
+  // The banner to actually show: `coverUrl`, or the first image in the body
+  // standing in for it. Resolved server-side (backend lib/cover.ts) so the
+  // page, the cards, the share tags and the federated Article all agree on
+  // one answer. Every reader surface should use this, never `coverUrl`.
+  bannerUrl?: string | null;
   createdAt: string;
   // When the post's own content last changed (body, title, tags, cover,
   // language) — not engagement. Drives `dateModified` in the page's structured

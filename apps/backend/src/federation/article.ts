@@ -5,13 +5,19 @@ import { origin } from "@/config.ts";
 import type { Post } from "@/db/schema.ts";
 import type { TagSummary } from "@/db/repositories/tags.ts";
 import { normalizeLanguage } from "@/lib/languages.ts";
+import { absoluteBanner, bannerOf } from "@/lib/cover.ts";
 
-// A cover is stored as an absolute URL the sender hosts; anything unparseable
-// is dropped rather than federated as a broken attachment.
+// The post's banner as an ActivityPub Image.
+//
+// A banner uploaded here is stored root-relative (`/api/uploads/…`), which a
+// receiving instance would resolve against its own host, so it is absolutized
+// against ours first. Anything still unparseable is dropped rather than
+// federated as a broken attachment.
 function coverImage(url: string | null): Image | undefined {
-  if (!url) return undefined;
+  const absolute = absoluteBanner(url, origin);
+  if (!absolute) return undefined;
   try {
-    return new Image({ url: new URL(url) });
+    return new Image({ url: new URL(absolute) });
   } catch {
     return undefined;
   }
@@ -25,8 +31,11 @@ function coverImage(url: string | null): Image | undefined {
 // page. A `summary` (short preview) and `image` (banner) ride along when the
 // post carries them — both are what a receiving instance renders in a link
 // card, so a post ingested with a description and a banner looks the same on
-// Mastodon as it does here. Accepts a post without the internal `search_vector`
-// column, which timeline selects omit.
+// Mastodon as it does here. The banner is the resolved one — the author's
+// chosen cover, or the body's first image standing in for it (lib/cover.ts) —
+// so a post that never had a cover set still federates with a picture. Accepts
+// a post without the internal `search_vector` column, which timeline selects
+// omit.
 export function buildArticle(
   ctx: Context<unknown>,
   identifier: string,
@@ -38,7 +47,7 @@ export function buildArticle(
     attribution: ctx.getActorUri(identifier),
     name: post.title ?? undefined,
     summary: post.summary ?? undefined,
-    image: coverImage(post.coverUrl),
+    image: coverImage(bannerOf(post)),
     // When the author declared a language, tag the content with it (rdf:langString)
     // so remote instances can language-filter it; otherwise send a plain string.
     content: post.language ? new LanguageString(post.contentHtml, post.language) : post.contentHtml,

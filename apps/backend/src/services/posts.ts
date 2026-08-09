@@ -9,6 +9,7 @@ import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import { MAX_TAGS_PER_POST, normalizeTags } from "@/lib/tags.ts";
 import { type LanguageFilter, normalizeLanguage } from "@/lib/languages.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
+import { normalizeCoverUrl } from "@/lib/cover.ts";
 import { SUMMARY_LENGTH as MAX_SUMMARY } from "@/lib/webhook.ts";
 import { queue } from "@/queue/queue.ts";
 
@@ -54,6 +55,7 @@ export async function createPost(authorId: string, input: {
   status?: string;
   language?: string | null;
   summary?: string | null;
+  coverUrl?: string | null;
   tags?: string[];
 }) {
   const status = input.status === "draft" ? "draft" : "published";
@@ -78,6 +80,7 @@ export async function createPost(authorId: string, input: {
     status,
     language: normalizeLanguage(input.language),
     summary: normalizeSummary(input.summary),
+    coverUrl: normalizeCoverUrl(input.coverUrl),
   });
 
   if (tags !== undefined) await tagsRepo.setPostTags(post.id, tags);
@@ -157,6 +160,7 @@ export async function updatePost(authorId: string, id: string, input: {
   status?: string;
   language?: string | null;
   summary?: string | null;
+  coverUrl?: string | null;
   tags?: string[];
 }) {
   const row = await postsRepo.findById(id);
@@ -190,6 +194,7 @@ export async function updatePost(authorId: string, id: string, input: {
     ...(input.status !== undefined ? { status } : {}),
     ...(input.language !== undefined ? { language: normalizeLanguage(input.language) } : {}),
     ...(input.summary !== undefined ? { summary: normalizeSummary(input.summary) } : {}),
+    ...(input.coverUrl !== undefined ? { coverUrl: normalizeCoverUrl(input.coverUrl) } : {}),
   };
 
   // A tags-only edit touches no post columns; skip the update (drizzle rejects

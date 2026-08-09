@@ -210,11 +210,11 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     drafts: (cursor?: string | null) =>
       api.get<Page<Post>>(`/posts/drafts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
     createPost: (
-      body: { title?: string; contentHtml: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; summary?: string | null; tags?: string[] },
+      body: { title?: string; contentHtml: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; summary?: string | null; coverUrl?: string | null; tags?: string[] },
     ) => api.post<{ post: { id: string } }>("/posts", body),
     updatePost: (
       id: string,
-      body: { title?: string; contentHtml?: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; summary?: string | null; tags?: string[] },
+      body: { title?: string; contentHtml?: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; summary?: string | null; coverUrl?: string | null; tags?: string[] },
     ) => api.patch<{ post: { id: string } }>(`/posts/${id}`, body),
     deletePost: (id: string) => api.del<{ ok: true }>(`/posts/${id}`),
     // Posts to read next, shown under an article (see relatedPosts service).
@@ -285,6 +285,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // Post-body image upload. The blob is already resized/compressed client-side.
     uploadImage: (blob: Blob, contentType: string) =>
       api.postRaw<{ url: string }>("/uploads", blob, contentType),
+
 
     // users + follows
     suggestedUsers: () => api.get<{ items: SuggestedUser[] }>("/users/suggested"),

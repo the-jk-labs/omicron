@@ -153,8 +153,12 @@ export const posts = pgTable("posts", {
   // Mastodon shows above a long-form link). Null for human-authored posts,
   // whose preview the reader derives from the body at render time.
   summary: text("summary"),
-  // Absolute http(s) URL of the post's banner image, hosted by whoever sent it.
-  // Federates as the Article `image`. Null unless the post carries one.
+  // The post's banner image: the author's explicit choice, and null when they
+  // made none — in which case the first image in the body stands in wherever a
+  // banner is shown (see lib/cover.ts). Either an absolute http(s) URL (an
+  // ingested post's own) or a root-relative
+  // `/api/uploads/…` path for one uploaded here. Federates as the Article
+  // `image`, and is the post's Open Graph share image.
   coverUrl: text("cover_url"),
   // Stable key from the external system that ingested this post (see
   // services/webhooks.ts) — a CMS slug or document id. Present only on

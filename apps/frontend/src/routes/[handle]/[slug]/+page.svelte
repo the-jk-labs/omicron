@@ -24,7 +24,7 @@
   // A cover lives on whoever sent it; drop it rather than render a broken image.
   let coverFailed = $state(false);
   $effect(() => {
-    void post.coverUrl;
+    void post.bannerUrl;
     coverFailed = false;
   });
   // Origin instance (host) parsed from a remote author's `user@host` handle.
@@ -317,7 +317,7 @@
     </DropdownMenu.Root>
   </div>
 
-  {#if post.coverUrl && !coverFailed}
+  {#if post.bannerUrl && !coverFailed}
     <!-- The cover is almost always this page's largest element, so it is what
          the browser (and Google's Core Web Vitals) times the load by.
 
@@ -337,7 +337,7 @@
     >
       <!-- Decorative: the headline above it already names the post. -->
       <img
-        src={post.coverUrl}
+        src={post.bannerUrl}
         alt=""
         fetchpriority="high"
         decoding="async"

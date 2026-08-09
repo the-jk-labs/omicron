@@ -8,6 +8,7 @@
   import MobileNav from "$lib/components/MobileNav.svelte";
   import Discover from "$lib/components/Discover.svelte";
   import { canonicalOrigin } from "$lib/canonical";
+  import { absoluteBanner } from "$lib/cover";
   import {
     blogPostingLd,
     breadcrumbLd,
@@ -78,13 +79,15 @@
   );
   const ogType = $derived(post ? "article" : "website");
   // A post's banner becomes its share image, falling back to the instance's
-  // brand image. The URL is on whatever host sent it, so it is published only
-  // when absolute — a relative one would resolve against the scraper, not us.
-  // (The ingest schema already enforces this; the check costs nothing and keeps
-  // the guarantee local to where it matters.)
-  const shareImage = $derived(
-    post?.coverUrl && /^https?:\/\//i.test(post.coverUrl) ? post.coverUrl : ogImage,
-  );
+  // brand image. `bannerUrl` rather than `coverUrl`, so a post whose banner is
+  // simply its first picture still gets a picture on the link card instead of
+  // the generic brand tile.
+  //
+  // Resolved against the canonical origin because a banner uploaded here is
+  // stored root-relative (`/api/uploads/…`) and a scraper would resolve that
+  // against itself. An unparseable URL falls back rather than emitting a broken
+  // og:image.
+  const shareImage = $derived(absoluteBanner(post?.bannerUrl, origin) ?? ogImage);
 
   // RSS auto-discovery: a reader pointed at a profile or reading-list page finds
   // the feed from this tag alone. Local profiles only (a remote actor's posts are

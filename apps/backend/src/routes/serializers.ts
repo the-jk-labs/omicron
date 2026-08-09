@@ -4,6 +4,7 @@ import type { PostWithAuthor } from "@/db/repositories/posts.ts";
 import type { CommentWithAuthor } from "@/db/repositories/comments.ts";
 import type { NotificationRow } from "@/db/repositories/notifications.ts";
 import { htmlToText } from "@/lib/html.ts";
+import { bannerOf } from "@/lib/cover.ts";
 
 // Minimal API payloads — never leak password hashes, keys, or emails publicly.
 
@@ -116,7 +117,12 @@ export function postWithAuthor(
     // Present only on ingested posts (see services/webhooks.ts); null for
     // anything written in the editor, whose preview the reader derives itself.
     summary: row.post.summary,
+    // The author's explicit banner choice (null when they made none) and what
+    // to actually display — see lib/cover.ts. The editor reads the first, so
+    // reopening a post never turns a fallback into a choice; every reader
+    // surface reads the second.
     coverUrl: row.post.coverUrl,
+    bannerUrl: bannerOf(row.post),
     createdAt: row.post.createdAt,
     // When the content itself last changed. The reader's `dateModified` in the
     // page's structured data, so an edited article is re-read rather than left
@@ -273,6 +279,7 @@ export function barePost(p: Omit<Post, "searchVector">) {
     language: p.language,
     summary: p.summary,
     coverUrl: p.coverUrl,
+    bannerUrl: bannerOf(p),
     createdAt: p.createdAt,
   };
 }

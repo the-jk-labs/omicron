@@ -12,6 +12,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import TagInput from "$lib/components/TagInput.svelte";
   import LanguageSelect from "$lib/components/LanguageSelect.svelte";
+  import BannerPicker from "$lib/components/BannerPicker.svelte";
   import { postPath } from "$lib/links";
   import type { PageData } from "./$types";
 
@@ -33,6 +34,10 @@
   // would leave it untouched, but an author who cleared it here must have the
   // clearing saved, and one who never touches it must not lose what they wrote.
   let summary = $state(post.summary ?? "");
+  // Seeded from the *chosen* banner, never the resolved one — a post that has
+  // been showing its first body image must not have that turned into an
+  // explicit choice just because someone opened the editor.
+  let coverUrl = $state<string | null>(post.coverUrl ?? null);
   let html = $state(post.contentHtml);
   let json = $state<unknown>(post.contentJson ?? null);
   let error = $state("");
@@ -61,6 +66,7 @@
         contentJson: json,
         language,
         summary: summary.trim() || null,
+        coverUrl,
         tags,
       });
       // Title may have changed, so navigate to the freshly-built canonical path.
@@ -117,6 +123,8 @@
   </div>
   <LanguageSelect bind:value={language} />
 </div>
+
+<BannerPicker bind:coverUrl contentHtml={html} />
 
 {#if EditorComponent}
   <EditorComponent {onUpdate} content={(post.contentJson as Content) ?? post.contentHtml} />
