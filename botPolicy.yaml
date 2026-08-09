@@ -79,6 +79,28 @@ bots:
     path_regex: ^/robots\.txt$
     action: ALLOW
 
+  # The IndexNow key file, for the same reason robots.txt is exempt above.
+  #
+  # When the instance submits a URL, the receiving engine fetches this file and
+  # checks the contents match the key that came with the submission — that is
+  # the whole of how it knows the sender owns the domain. A challenge page in
+  # its place fails the check, and every submission is then rejected with
+  # nothing to show for it: no error reaches the operator, the posts simply
+  # never arrive.
+  #
+  # A verified crawler already gets through on the bundled list above, but the
+  # verification fetch does not necessarily come from one — several engines
+  # receive IndexNow submissions and each fetches the file itself, some with a
+  # browser-shaped User-Agent that the catch-all would challenge.
+  #
+  # Nothing is given away by exempting it. The file is a single line containing
+  # a key that is public by design, served only when IndexNow is switched on and
+  # only for the one correct filename; every other name 404s (see the route in
+  # the app).
+  - name: indexnow-key
+    path_regex: ^/indexnow-[0-9a-fA-F]+\.txt$
+    action: ALLOW
+
   # Everything else that looks like a browser gets the challenge.
   - name: browser-challenge
     user_agent_regex: Mozilla|Opera
