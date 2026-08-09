@@ -1,0 +1,21 @@
+-- Attribution for a post's banner image. Additive and idempotent.
+--
+-- `posts.cover_url` has existed since the ingest webhook (0024), but only a CMS
+-- could set it. The editor can now choose a banner too, including a free photo
+-- searched from a stock provider — and those come with conditions. A Creative
+-- Commons image has to carry its creator, the work it came from and the licence
+-- it is under; Unsplash's API terms require the photographer and Unsplash both
+-- be credited with links.
+--
+-- One jsonb column rather than a column per part, because the parts differ by
+-- provider: a CC photo needs a licence, an Unsplash one does not, and a future
+-- provider will want something neither has. Splitting them into text columns
+-- would mean a migration every time that shape moved, and five mostly-null
+-- columns on a table read by every timeline query. Nothing here is ever
+-- filtered or joined on — it is rendered as one line under the banner — so
+-- there is nothing an indexed column would buy.
+--
+-- Null for an uploaded banner or one derived from the body, which need no
+-- attribution. Written as a unit with `cover_url` (see services/posts.ts), so a
+-- row can never carry a credit belonging to a banner it no longer shows.
+ALTER TABLE "posts" ADD COLUMN IF NOT EXISTS "cover_credit" jsonb;

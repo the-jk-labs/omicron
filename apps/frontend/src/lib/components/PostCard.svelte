@@ -19,12 +19,12 @@
   const summary = $derived(post.summary?.trim() || excerpt(post.contentHtml));
   const minutes = $derived(readTime(post.contentHtml));
 
-  // The cover is a URL on someone else's host, so a dead link is an ordinary
-  // outcome rather than a bug. Drop the image on error instead of leaving a
+  // The banner may be a URL on someone else's host, so a dead link is an
+  // ordinary outcome rather than a bug. Drop the image on error instead of leaving a
   // broken-image glyph in the card.
   let coverFailed = $state(false);
   $effect(() => {
-    void post.coverUrl;
+    void post.bannerUrl;
     coverFailed = false;
   });
   // Remote authors carry a `user@host` handle; surface the origin instance
@@ -57,14 +57,14 @@
           <p class="mt-1.5 line-clamp-3 text-muted-foreground">{summary}</p>
         {/if}
       </div>
-      {#if post.coverUrl && !coverFailed}
+      {#if post.bannerUrl && !coverFailed}
         <!-- Decorative: the title beside it already names the post. -->
         <!-- The CSS box is already fixed, so this thumbnail cannot shift the
              layout; `width`/`height` are set anyway so the space is reserved
              even before the stylesheet applies. `decoding="async"` keeps a
              long feed of these off the main thread. -->
         <img
-          src={post.coverUrl}
+          src={post.bannerUrl}
           alt=""
           width="144"
           height="96"

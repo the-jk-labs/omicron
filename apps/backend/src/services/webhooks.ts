@@ -178,7 +178,14 @@ export async function ingestContent(
     fields.contentJson = null;
   }
   if (payload.title !== undefined) fields.title = payload.title;
-  if (payload.banner !== undefined) fields.coverUrl = payload.banner;
+  if (payload.banner !== undefined) {
+    fields.coverUrl = payload.banner;
+    // The credit belongs to the image, so it goes when the image does. A CMS
+    // never sends one, but a post whose banner was picked from a stock provider
+    // in the editor and later replaced from the CMS would otherwise keep
+    // crediting a photographer for a picture it no longer shows.
+    fields.coverCredit = null;
+  }
   if (payload.language !== undefined) fields.language = normalizeLanguage(payload.language);
   if (payload.status !== undefined) fields.status = payload.status;
   else if (!existing) fields.status = "published";

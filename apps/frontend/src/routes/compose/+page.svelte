@@ -10,12 +10,14 @@
   import Icon from "$lib/components/Icon.svelte";
   import TagInput from "$lib/components/TagInput.svelte";
   import LanguageSelect from "$lib/components/LanguageSelect.svelte";
+  import BannerPicker from "$lib/components/BannerPicker.svelte";
   import { reading } from "$lib/prefs.svelte";
 
   // Matches SUMMARY_LENGTH in the backend (lib/webhook.ts), which caps the
   // same column on the ingest path — so neither way of writing a post can
   // store a description the other would reject.
   const MAX_SUMMARY = 150;
+  import type { CoverCredit } from "$lib/types";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -43,6 +45,12 @@
   // previews show. Left empty it falls back to a truncation of the opening
   // paragraph — which is what every post used to get, often cut mid-clause.
   let summary = $state(draft?.summary ?? "");
+  // The banner the author picked, if any. Null means "use the first image in
+  // the post", which the picker previews and the server resolves on read — so
+  // a draft saved without one is not silently committed to whatever image
+  // happened to be first at the time.
+  let coverUrl = $state<string | null>(draft?.coverUrl ?? null);
+  let coverCredit = $state<CoverCredit | null>(draft?.coverCredit ?? null);
   let html = $state(draft?.contentHtml ?? "");
   let json = $state<unknown>(draft?.contentJson ?? null);
   let error = $state("");
@@ -80,6 +88,7 @@
     return (
       title.trim().length > 0 ||
       tags.length > 0 ||
+      coverUrl !== null ||
       (html.trim().length > 0 && html !== "<p></p>")
     );
   }
@@ -116,6 +125,8 @@
         // Null, not "", so the reader falls back to the derived excerpt
         // rather than showing an empty description.
         summary: summary.trim() || null,
+        coverUrl,
+        coverCredit,
         tags,
       };
       if (postId) {
@@ -219,6 +230,13 @@
   </div>
   <LanguageSelect bind:value={language} />
 </div>
+
+<BannerPicker
+  bind:coverUrl
+  bind:coverCredit
+  contentHtml={html}
+  onChange={() => (touched = true)}
+/>
 
 {#if EditorComponent}
   <EditorComponent {onUpdate} content={(draft?.contentJson as Content) ?? draft?.contentHtml} />

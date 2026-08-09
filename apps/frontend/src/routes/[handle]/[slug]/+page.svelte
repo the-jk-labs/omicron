@@ -24,7 +24,7 @@
   // A cover lives on whoever sent it; drop it rather than render a broken image.
   let coverFailed = $state(false);
   $effect(() => {
-    void post.coverUrl;
+    void post.bannerUrl;
     coverFailed = false;
   });
   // Origin instance (host) parsed from a remote author's `user@host` handle.
@@ -317,7 +317,7 @@
     </DropdownMenu.Root>
   </div>
 
-  {#if post.coverUrl && !coverFailed}
+  {#if post.bannerUrl && !coverFailed}
     <!-- The cover is almost always this page's largest element, so it is what
          the browser (and Google's Core Web Vitals) times the load by.
 
@@ -337,7 +337,7 @@
     >
       <!-- Decorative: the headline above it already names the post. -->
       <img
-        src={post.coverUrl}
+        src={post.bannerUrl}
         alt=""
         fetchpriority="high"
         decoding="async"
@@ -345,6 +345,43 @@
         class="h-full w-full object-cover"
       />
     </div>
+    {#if post.coverCredit}
+      <!-- Attribution for the banner. The licences these photos are offered
+           under require the creator, the source and (for Creative Commons) the
+           licence itself to be named with links wherever the photo appears —
+           which is why the credit is stored on the post rather than guessed at
+           from the image URL. -->
+      <p class="-mt-6 mb-8 text-xs text-muted-foreground">
+        Photo by
+        <a
+          href={post.coverCredit.nameUrl}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          class="hover:text-foreground underline"
+        >
+          {post.coverCredit.name}
+        </a>
+        on
+        <a
+          href={post.coverCredit.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          class="hover:text-foreground underline"
+        >
+          {post.coverCredit.source}
+        </a>{#if post.coverCredit.license && post.coverCredit.licenseUrl}
+          ·
+          <a
+            href={post.coverCredit.licenseUrl}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            class="hover:text-foreground underline"
+          >
+            {post.coverCredit.license}
+          </a>
+        {/if}
+      </p>
+    {/if}
   {/if}
 
   <!-- Content is server-rendered HTML produced by the Tiptap editor. -->
