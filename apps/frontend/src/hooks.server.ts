@@ -66,6 +66,20 @@ export const handle: Handle = async ({ event, resolve }) => {
       transformPageChunk: ({ html }) => html.replace(LANG_PLACEHOLDER, pageLang(event.locals)),
     });
 
+  // State the encoding in the header, not only in the document.
+  //
+  // SvelteKit sends a bare `text/html`, which leaves `<meta charset>` as the
+  // only declaration — and that is a declaration a *parser* honours, several
+  // kilobytes into the document. A link-preview fetcher reading only the head,
+  // or anything that trusts the header over the markup, is left guessing, and
+  // its guess is Latin-1. On an instance writing Azerbaijani, Turkish or Greek
+  // that turns a title into mojibake in the share card while the page itself
+  // renders perfectly. Set once, here, where every HTML response passes.
+  const contentType = response.headers.get("content-type");
+  if (contentType?.startsWith("text/html") && !contentType.includes("charset")) {
+    response.headers.set("Content-Type", `${contentType}; charset=utf-8`);
+  }
+
   // Never MIME-sniff a response into a more dangerous type. Belt-and-suspenders
   // for /api/uploads (which is proxied through here, so the backend's own header
   // would otherwise be dropped by the proxy's header allowlist).
