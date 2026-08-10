@@ -11,6 +11,7 @@
   import { EDIT_ALT_EVENT, type EditAltDetail } from "./resizable-image";
   import { extensions } from "./extensions";
   import { CODE_LANGUAGES, codeLanguageLabel } from "$lib/codeLanguages";
+  import { countWords, readTimeFromWords } from "$lib/format";
 
   // Isolated Tiptap integration. The parent receives content via `onUpdate`.
   // This component is lazy-loaded (dynamic import) so Tiptap stays out of the
@@ -31,6 +32,27 @@
 
   let element: HTMLDivElement;
   let editor: Editor;
+
+  // The status line every desktop editor has: how much is there, and how long
+  // it will take to read. Recomputed from the document itself rather than from
+  // the serialized HTML, so markup never inflates the count.
+  //
+  // Only on a document change, never on a bare cursor move — `onTransaction`
+  // fires for every arrow key, and walking the whole document that often buys
+  // nothing that changes on screen.
+  let stats = $state({ characters: 0, words: 0, minutes: 0 });
+
+  function refreshStats(ed: Editor) {
+    // One newline per block, so paragraphs are counted as separated rather than
+    // running the last word of one into the first of the next.
+    const text = ed.getText({ blockSeparator: "\n" });
+    const words = countWords(text);
+    stats = { characters: text.length, words, minutes: readTimeFromWords(words) };
+  }
+
+  const LOCALE = "en-US";
+  const count = (n: number, one: string) =>
+    `${n.toLocaleString(LOCALE)} ${n === 1 ? one : one + "s"}`;
 
   // Heading levels offered in the text-style dropdown.
   const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const;
@@ -335,10 +357,16 @@
         handlePaste,
         handleDrop,
       },
-      onUpdate: ({ editor }) => onUpdate(editor.getHTML(), editor.getJSON()),
+      onUpdate: ({ editor }) => {
+        onUpdate(editor.getHTML(), editor.getJSON());
+        refreshStats(editor);
+      },
       onTransaction: ({ editor }) => refreshActive(editor),
     });
     refreshActive();
+    // A reopened draft arrives with its body already in place, so the counter
+    // has to start from that rather than from zero.
+    refreshStats(editor);
     // The alt-text button lives inside a node view, so its event surfaces on
     // the editor's own DOM rather than anywhere Svelte can bind to directly.
     editor.view.dom.addEventListener(EDIT_ALT_EVENT, openAltDialog);
@@ -503,6 +531,17 @@
   {/if}
 
   <div bind:this={element}></div>
+
+  <!-- Bottom right, out of the way: read when wanted, ignored otherwise. -->
+  <p class="text-muted-foreground mt-2 flex justify-end gap-2 text-xs tabular-nums">
+    <span>{count(stats.characters, "character")}</span>
+    <span aria-hidden="true">·</span>
+    <span>{count(stats.words, "word")}</span>
+    {#if stats.words > 0}
+      <span aria-hidden="true">·</span>
+      <span>{stats.minutes} min read</span>
+    {/if}
+  </p>
 </div>
 
 <Dialog.Root bind:open={codeOpen}>
