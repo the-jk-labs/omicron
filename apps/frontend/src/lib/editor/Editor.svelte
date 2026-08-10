@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import { type Content, Editor } from "@tiptap/core";
+  import { type Content, Editor, generateJSON } from "@tiptap/core";
   import Placeholder from "@tiptap/extension-placeholder";
   import { Dialog, DropdownMenu, Label, Select, Toolbar } from "bits-ui";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
@@ -17,9 +17,9 @@
   // This component is lazy-loaded (dynamic import) so Tiptap stays out of the
   // initial bundle — see /compose.
   //
-  // `content` should be Tiptap's native JSON (ProseMirror doc) when rehydrating
-  // an existing post — a plain string is parsed as Markdown by the markdown
-  // extension, so passing stored HTML as a string would show the tags verbatim.
+  // `content` is Tiptap's native JSON (ProseMirror doc) when the post has one,
+  // and the post's stored HTML otherwise. Both rehydrate the same document —
+  // see `initialContent` below for why a string needs converting first.
   let {
     onUpdate,
     placeholder = "Write your article…",
@@ -44,10 +44,15 @@
 
   function refreshStats(ed: Editor) {
     // One newline per block, so paragraphs are counted as separated rather than
-    // running the last word of one into the first of the next.
+    // running the last word of one into the first of the next. Those newlines
+    // are the counter's own doing, not the author's, so they are dropped again
+    // before counting characters — a document nested in lists or table cells
+    // carries a separator per level and would otherwise report characters
+    // nobody typed.
     const text = ed.getText({ blockSeparator: "\n" });
     const words = countWords(text);
-    stats = { characters: text.length, words, minutes: readTimeFromWords(words) };
+    const characters = text.replace(/\n/g, "").length;
+    stats = { characters, words, minutes: readTimeFromWords(words) };
   }
 
   const LOCALE = "en-US";
@@ -338,7 +343,22 @@
     return true;
   }
 
+  // A post's body is stored as HTML, and only posts written here also have the
+  // ProseMirror JSON. Everything ingested through the content webhook has
+  // `contentJson` null (services/webhooks.ts sets it so explicitly), so opening
+  // one for editing hands Tiptap a string — and tiptap-markdown replaces the
+  // initial-content parse with its own, running that string through markdown-it.
+  // Configured with `html: false`, as it must be for pasted Markdown we do not
+  // trust, markdown-it escapes the tags: the author was shown `<p>alpha</p>` as
+  // literal text, and saving stored that escaped text as the post.
+  //
+  // Parsing it as the HTML it actually is fixes both halves. Typed and pasted
+  // Markdown is untouched — that goes through input rules and the clipboard
+  // handler, not through here.
   onMount(() => {
+    const initialContent = typeof content === "string"
+      ? (generateJSON(content, extensions) as Content)
+      : content;
     editor = new Editor({
       element,
       // Placeholder is per-instance (it needs the `placeholder` prop), so it's
@@ -351,7 +371,7 @@
           placeholder: ({ pos }) => (pos === 0 ? placeholder : "Write something…"),
         }),
       ],
-      content,
+      content: initialContent,
       editorProps: {
         attributes: { class: "tiptap prose-omicron" },
         handlePaste,
