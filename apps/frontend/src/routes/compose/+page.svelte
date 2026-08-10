@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { onDestroy, onMount, untrack } from "svelte";
+  import { onMount, untrack } from "svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import type { Content } from "@tiptap/core";
   import { beforeNavigate, goto } from "$app/navigation";
@@ -152,10 +152,14 @@
       e.returnValue = "";
     }
   }
+  // Registered on mount and torn down by its own cleanup: `window` does not
+  // exist while this component renders on the server, and Svelte runs onDestroy
+  // there too — so reaching for it from onDestroy threw during SSR and the page
+  // never rendered at all.
   onMount(() => {
     window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
   });
-  onDestroy(() => window.removeEventListener("beforeunload", onBeforeUnload));
 
   // Leaving via an in-app link (a nav tab, etc.) with unsaved content: hold the
   // navigation and offer to save the work as a draft first.
