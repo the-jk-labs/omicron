@@ -35,6 +35,13 @@
   // and article text shows through underneath it. Measuring the gap and pushing
   // the bar down by it re-pins it to what the reader actually sees.
   //
+  // Gecko-gated, and it has to be. Blink re-pins fixed elements to the visual
+  // viewport bottom itself, at composite time — so the same offset applied there
+  // pushes the bar a toolbar-height *below* the screen and it slides out of view
+  // on every scroll. Script cannot tell the two apart: `getBoundingClientRect()`
+  // reports identical layout-viewport coordinates in both engines, because Blink's
+  // correction never touches layout. Sniffing the engine is the only signal left.
+  //
   // Clamped at zero on purpose: when the on-screen keyboard shrinks the visual
   // viewport this would otherwise lift the bar up over the keyboard, which is a
   // different behaviour change than the one being fixed here.
@@ -42,7 +49,7 @@
 
   $effect(() => {
     const vv = window.visualViewport;
-    if (!vv) return;
+    if (!vv || !navigator.userAgent.includes("Gecko/")) return;
 
     const measure = () => {
       const layoutHeight = document.documentElement.clientHeight;
