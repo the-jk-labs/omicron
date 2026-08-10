@@ -4,6 +4,9 @@
   SideNav rail is hidden. Carries just the few most-switched destinations to
   stay uncrowded on phones; the rest (Drafts, Settings, …) live in the avatar
   menu in the top bar. Signed-in only — guests navigate via the top bar.
+
+  Retracts on scroll-down and returns on scroll-up, so a long post gets the whole
+  screen while the reader is moving through it.
 -->
 <script lang="ts">
   import { page } from "$app/state";
@@ -64,11 +67,48 @@
       vv.removeEventListener("scroll", measure);
     };
   });
+
+  // Retract on scroll-down, return on scroll-up. Driven by scroll direction
+  // rather than by the browser's own toolbar, which no engine exposes and which
+  // Blink and Gecko drive on different rules — reading it would make the bar
+  // behave differently per browser, which is exactly what this replaces.
+  let hiddenByScroll = $state(false);
+
+  // Below this much travel a gesture is thumb-jitter, not a direction change;
+  // reacting to it makes the bar flicker mid-scroll.
+  const DIRECTION_THRESHOLD = 6;
+  // Within this far from the top the bar always shows: at the head of a feed
+  // there is nothing to read past, and hiding it there just costs a scroll-up.
+  const ALWAYS_VISIBLE_ZONE = 80;
+
+  $effect(() => {
+    let lastY = window.scrollY;
+
+    const onScroll = () => {
+      const y = window.scrollY;
+      const delta = y - lastY;
+      // Leave `lastY` alone below the threshold so slow travel still accumulates
+      // into a direction change instead of being swallowed frame by frame.
+      if (Math.abs(delta) < DIRECTION_THRESHOLD) return;
+      hiddenByScroll = y > ALWAYS_VISIBLE_ZONE && delta > 0;
+      lastY = y;
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  });
+
+  // A retracted bar is off-screen but still in the tab order, so keyboard focus
+  // can land on a tab nobody can see. Bring it back when that happens.
+  function reveal() {
+    hiddenByScroll = false;
+  }
 </script>
 
 <nav
-  class="border-border bg-background/95 fixed inset-x-0 bottom-0 z-30 flex border-t pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
-  style={overhang ? `transform: translateY(${overhang}px)` : undefined}
+  class="border-border bg-background/95 fixed inset-x-0 bottom-0 z-30 flex border-t pb-[env(safe-area-inset-bottom)] backdrop-blur transition-transform duration-200 ease-out motion-reduce:transition-none lg:hidden"
+  style={`transform: translateY(${overhang}px)${hiddenByScroll ? " translateY(100%)" : ""}`}
+  onfocusin={reveal}
   aria-label="Primary"
 >
   {#each items as item (item.href)}
