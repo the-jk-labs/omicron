@@ -44,10 +44,15 @@
 
   function refreshStats(ed: Editor) {
     // One newline per block, so paragraphs are counted as separated rather than
-    // running the last word of one into the first of the next.
+    // running the last word of one into the first of the next. Those newlines
+    // are the counter's own doing, not the author's, so they are dropped again
+    // before counting characters — a document nested in lists or table cells
+    // carries a separator per level and would otherwise report characters
+    // nobody typed.
     const text = ed.getText({ blockSeparator: "\n" });
     const words = countWords(text);
-    stats = { characters: text.length, words, minutes: readTimeFromWords(words) };
+    const characters = text.replace(/\n/g, "").length;
+    stats = { characters, words, minutes: readTimeFromWords(words) };
   }
 
   const LOCALE = "en-US";
