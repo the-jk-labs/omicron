@@ -18,10 +18,37 @@ function shortId(id: string): string {
   return id.slice(0, 8);
 }
 
+/**
+ * Letters that carry no ASCII decomposition, so NFKD leaves them intact and the
+ * `[^a-z0-9]` sweep below would otherwise turn each one into a dash — a title
+ * written in Azerbaijani came out as `s-rz-nisl-r` instead of `sozunuslar`.
+ *
+ * Mirrors apps/backend/src/lib/slug.ts, which is what the ingest webhook derives
+ * its key with; keep the two identical. See that file for why non-Latin scripts
+ * are absent.
+ */
+const TRANSLITERATIONS: Record<string, string> = {
+  "ə": "e",
+  "ı": "i",
+  "ø": "o",
+  "đ": "d",
+  "ð": "d",
+  "ħ": "h",
+  "ŋ": "n",
+  "ł": "l",
+  "ß": "ss",
+  "æ": "ae",
+  "œ": "oe",
+  "þ": "th",
+};
+
+const TRANSLITERATE_RE = new RegExp(`[${Object.keys(TRANSLITERATIONS).join("")}]`, "g");
+
 /** Kebab-case an arbitrary title; ASCII-only, matching Medium-style slugs. */
 export function slugify(title: string): string {
   return title
     .toLowerCase()
+    .replace(TRANSLITERATE_RE, (ch) => TRANSLITERATIONS[ch])
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "") // strip accents
     .replace(/['\u2019`]/g, "") // drop apostrophes so "it's" \u2192 "its"
