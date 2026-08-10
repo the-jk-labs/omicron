@@ -197,6 +197,13 @@
       "when": 1786209507620,
       "tag": "0027_post_cover_credit",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1786209507621,
+      "tag": "0028_post_slugs",
+      "breakpoints": true
     }
   ]
 }

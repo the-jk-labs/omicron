@@ -11,6 +11,7 @@ import { type LanguageFilter, normalizeLanguage } from "@/lib/languages.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
 import { normalizeCoverCredit, normalizeCoverUrl } from "@/lib/cover.ts";
 import { SUMMARY_LENGTH as MAX_SUMMARY } from "@/lib/webhook.ts";
+import { syncSlug } from "@/services/postSlugs.ts";
 import { queue } from "@/queue/queue.ts";
 
 // Business logic for posts. Creating a local post enqueues federation delivery.
@@ -101,6 +102,11 @@ export async function createPost(authorId: string, input: {
 
   if (tags !== undefined) await tagsRepo.setPostTags(post.id, tags);
 
+  // The permalink's readable half, allocated from the title (see
+  // services/postSlugs.ts). An untitled draft gets none and is addressed by its
+  // short id until it is titled.
+  post.slug = await syncSlug(post);
+
   // Only published posts fan out to remote followers; drafts stay private.
   if (status === "published") {
     queue.add("federate_post", { postId: post.id });
@@ -115,13 +121,61 @@ export async function getPost(id: string, viewerId: string | null = null) {
   if (!/^[0-9a-f-]{8,}$/i.test(id)) throw notFound("Post not found.");
   const row = await postsRepo.findById(id);
   if (!row) throw notFound("Post not found.");
+  return assertVisible(row, viewerId);
+}
+
+// A trailing short id in a `[slug]` route param — what a permalink shared
+// before readable slugs existed carries (`some-title-9e962281`), and what an
+// untitled or remote post's URL is made of on its own. The leading dash is
+// optional so both forms match.
+const TRAILING_SHORT_ID = /(?:^|-)([0-9a-f]{8,})$/i;
+
+/**
+ * Resolve `/@username/<slug>` to a post, in the order a reader's link can mean
+ * things:
+ *
+ *   1. the author's live slug — the canonical URL, one indexed lookup;
+ *   2. a slug the post has been moved off (`post_slug_history`), so a link
+ *      shared before a retitle still arrives;
+ *   3. a trailing short id, which is what every permalink looked like before
+ *      slugs and what remote and untitled posts still use.
+ *
+ * The live slug is tried first so a post whose title genuinely slugifies to
+ * something ending in hex is reachable at its own address rather than being
+ * read as an id. The caller compares what it got back against the canonical
+ * path and redirects when they differ, which is what turns (2) and (3) into
+ * permanent redirects to the current URL.
+ */
+export async function getPostBySlug(
+  username: string,
+  slug: string,
+  viewerId: string | null = null,
+) {
+  const bySlug = await postsRepo.findByAuthorSlug(username, slug);
+  if (bySlug) return assertVisible(bySlug, viewerId);
+
+  const retiredId = await postsRepo.findIdByHistorySlug(username, slug);
+  if (retiredId) {
+    const row = await postsRepo.findById(retiredId);
+    if (row) return assertVisible(row, viewerId);
+  }
+
+  const shortId = slug.match(TRAILING_SHORT_ID)?.[1];
+  if (shortId) return getPost(shortId.toLowerCase(), viewerId);
+
+  throw notFound("Post not found.");
+}
+
+// Who may read a single post. Feeds filter in SQL (visibleToViewer); a direct
+// permalink is gated here, whichever way the reader addressed it.
+async function assertVisible(row: postsRepo.PostWithAuthor, viewerId: string | null) {
   // Drafts are private to their author — anyone else gets a plain not-found.
   if (row.post.status === "draft" && row.post.authorId !== viewerId) {
     throw notFound("Post not found.");
   }
   // A block hides the two users' posts from each other everywhere — including a
-  // direct link to a single post (feeds filter separately). Local authors are
-  // bidirectional; remote authors can only be blocked by the local viewer.
+  // direct link to a single post. Local authors are bidirectional; remote
+  // authors can only be blocked by the local viewer.
   if (viewerId) {
     const blocked = row.post.authorId
       ? await relationsRepo.localBlockExists(viewerId, row.post.authorId)
@@ -221,6 +275,11 @@ export async function updatePost(authorId: string, id: string, input: {
   // an empty SET) and keep the existing row.
   const touchedColumns = Object.keys(changes).length > 0;
   const post = touchedColumns ? await postsRepo.update(id, changes) : row.post;
+
+  // A retitle moves the post to a new slug and leaves the old one redirecting,
+  // so a link shared under the previous title still lands here. Only worth a
+  // query when the title actually changed.
+  if (post.title !== row.post.title) post.slug = await syncSlug(post);
 
   // Tags are replaced wholesale when provided; an empty array clears them.
   if (input.tags !== undefined) {

@@ -12,8 +12,17 @@ import {
   or,
   sql,
 } from "drizzle-orm";
+import { union } from "drizzle-orm/pg-core";
 import { db } from "@/db/client.ts";
-import { type NewPost, posts, postTags, remoteActors, tags, users } from "@/db/schema.ts";
+import {
+  type NewPost,
+  posts,
+  postSlugHistory,
+  postTags,
+  remoteActors,
+  tags,
+  users,
+} from "@/db/schema.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
 import type { LanguageFilter } from "@/lib/languages.ts";
 
@@ -101,6 +110,103 @@ export function findById(id: string) {
     .orderBy(posts.createdAt)
     .limit(1)
     .then((r: unknown[]) => (r[0] ?? null) as PostWithAuthor | null);
+}
+
+// One author's post by its live slug — the lookup behind every canonical
+// `/@author/<slug>` read, served by `posts_author_slug_idx`. Local posts only:
+// `slug` is null on everything remote.
+export function findByAuthorSlug(username: string, slug: string) {
+  return selectPosts()
+    .where(and(eq(users.username, username), eq(posts.slug, slug)))
+    .limit(1)
+    .then((r: unknown[]) => (r[0] ?? null) as PostWithAuthor | null);
+}
+
+// The post a retired slug used to address, so a link shared before a retitle
+// still resolves (the caller redirects it to the current URL).
+export function findIdByHistorySlug(username: string, slug: string) {
+  return db
+    .select({ postId: postSlugHistory.postId })
+    .from(postSlugHistory)
+    .innerJoin(users, eq(postSlugHistory.authorId, users.id))
+    .where(and(eq(users.username, username), eq(postSlugHistory.slug, slug)))
+    .limit(1)
+    .then((r) => r[0]?.postId ?? null);
+}
+
+// Every slug this author has that is `base` or `base-<n>`, live or retired —
+// what slug allocation picks the first free suffix from (services/postSlugs.ts).
+// A post's own slugs are excluded so re-saving a post can keep the slug it
+// already holds instead of stepping to `-2`.
+export async function slugsLike(authorId: string, base: string, excludePostId?: string) {
+  const pattern = `${base}-%`;
+  const live = db
+    .select({ slug: sql<string>`${posts.slug}`.as("slug") })
+    .from(posts)
+    .where(
+      and(
+        eq(posts.authorId, authorId),
+        or(eq(posts.slug, base), sql`${posts.slug} like ${pattern}`),
+        excludePostId ? sql`${posts.id} <> ${excludePostId}` : undefined,
+      ),
+    );
+  const retired = db
+    .select({ slug: sql<string>`${postSlugHistory.slug}`.as("slug") })
+    .from(postSlugHistory)
+    .where(
+      and(
+        eq(postSlugHistory.authorId, authorId),
+        or(eq(postSlugHistory.slug, base), sql`${postSlugHistory.slug} like ${pattern}`),
+        excludePostId ? sql`${postSlugHistory.postId} <> ${excludePostId}` : undefined,
+      ),
+    );
+  const rows = await union(live, retired);
+  return new Set(rows.map((r) => r.slug));
+}
+
+// Moves a post onto `slug`, as one transaction so a reader can never find the
+// post at neither address: the slug it is leaving is filed in the history table
+// (which is what keeps already-shared links alive) and any history row that
+// held the incoming slug for this same post is dropped — a post retitled back
+// to an earlier name reclaims its old URL rather than colliding with itself.
+export async function setSlug(postId: string, authorId: string, slug: string) {
+  await db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({ slug: posts.slug })
+      .from(posts)
+      .where(eq(posts.id, postId));
+    if (current?.slug === slug) return;
+    await tx
+      .delete(postSlugHistory)
+      .where(and(eq(postSlugHistory.authorId, authorId), eq(postSlugHistory.slug, slug)));
+    await tx.update(posts).set({ slug }).where(eq(posts.id, postId));
+    if (current?.slug) {
+      await tx
+        .insert(postSlugHistory)
+        .values({ postId, authorId, slug: current.slug })
+        .onConflictDoNothing();
+    }
+  });
+}
+
+// Local, titled posts still without a slug, oldest first — what the boot
+// backfill works through (services/postSlugs.ts). Oldest first so that when two
+// posts share a title the one published first takes the bare slug, which is the
+// order a reader would expect and is stable across re-runs.
+export function listWithoutSlug(limit: number) {
+  return db
+    .select({ id: posts.id, authorId: posts.authorId, title: posts.title })
+    .from(posts)
+    .where(
+      and(
+        eq(posts.remote, false),
+        isNull(posts.slug),
+        sql`${posts.authorId} is not null`,
+        sql`${posts.title} is not null`,
+      ),
+    )
+    .orderBy(posts.createdAt, posts.id)
+    .limit(limit);
 }
 
 export function findByApId(apId: string) {
@@ -199,6 +305,7 @@ export function listSitemapEntries(page = 1) {
     .select({
       id: posts.id,
       title: posts.title,
+      slug: posts.slug,
       authorUsername: users.username,
       createdAt: posts.createdAt,
       updatedAt: posts.updatedAt,

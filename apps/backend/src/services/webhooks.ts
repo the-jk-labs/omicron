@@ -18,6 +18,7 @@ import {
   summarize,
 } from "@/lib/webhook.ts";
 import { queue } from "@/queue/queue.ts";
+import { syncSlug } from "@/services/postSlugs.ts";
 import { config } from "@/config.ts";
 import type { NewPost, User } from "@/db/schema.ts";
 
@@ -221,6 +222,11 @@ export async function ingestContent(
 
   // Only reachable when the post was deleted between the lookup and the write.
   if (!post) throw conflict("That post was removed while this update was in flight.");
+
+  // Ingested posts get the same readable permalink as ones written here, from
+  // the same title. `externalId` is the CMS's key for its own document and
+  // never appears in a URL.
+  if (post.title !== existing?.title || !post.slug) post.slug = await syncSlug(post);
 
   // Tags are replaced wholesale when the payload carries the field; omitting it
   // leaves whatever the post already has, and `[]` clears them.

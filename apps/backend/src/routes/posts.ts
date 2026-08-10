@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import * as postsService from "@/services/posts.ts";
 import * as likesService from "@/services/likes.ts";
@@ -63,31 +63,50 @@ postRoutes.get("/trending", async (c) => {
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null) });
 });
 
+// Count an on-instance view of a local published post. Fire-and-forget and
+// privacy-gated inside the service (DNT/GPC, bots, instance opt-out); it must
+// never delay or fail serving the page. Drafts and remote posts are skipped.
+// Shared by both ways of addressing a post, so a reader arriving by permalink
+// counts the same as one arriving by id.
+function countView(c: Context<AppEnv>, row: { post: { id: string } }) {
+  const viewer = c.get("user");
+  const headers = c.req.raw.headers;
+  let anonCookie = getCookie(c, VIEW_COOKIE) ?? null;
+  // Only issue the anonymous reader cookie to readers who could actually be
+  // counted — never to an opted-out or bot request, so nothing is set for
+  // traffic we're not going to track anyway.
+  if (
+    !viewer && !anonCookie && !readerOptedOut(headers) && !isBot(headers.get("user-agent") ?? "")
+  ) {
+    anonCookie = crypto.randomUUID() + crypto.randomUUID();
+    setCookie(c, VIEW_COOKIE, anonCookie, viewCookieOpts);
+  }
+  analyticsService.recordPostView(row.post.id, headers, viewer?.id ?? null, anonCookie).catch(
+    () => {},
+  );
+}
+
+// A post by its permalink, `/@username/<slug>` (public). Resolves the live
+// slug, then a retired one, then a trailing short id, so every permalink this
+// instance has ever issued still lands on the right post — see
+// postsService.getPostBySlug. Registered before "/:id" so "by" is not read as
+// a post id.
+postRoutes.get("/by/:username/:slug", async (c) => {
+  const viewer = c.get("user");
+  const row = await postsService.getPostBySlug(
+    c.req.param("username"),
+    c.req.param("slug"),
+    viewer?.id ?? null,
+  );
+  if (row.post.authorId && row.post.status === "published") countView(c, row);
+  return c.json({ post: await enrichPost(row, viewer?.id ?? null) });
+});
+
 // Single post (public). Drafts are visible only to their author.
 postRoutes.get("/:id", async (c) => {
   const viewer = c.get("user");
   const row = await postsService.getPost(c.req.param("id"), viewer?.id ?? null);
-
-  // Count an on-instance view of a local published post. Fire-and-forget and
-  // privacy-gated inside the service (DNT/GPC, bots, instance opt-out); it must
-  // never delay or fail serving the page. Drafts and remote posts are skipped.
-  if (row.post.authorId && row.post.status === "published") {
-    const headers = c.req.raw.headers;
-    let anonCookie = getCookie(c, VIEW_COOKIE) ?? null;
-    // Only issue the anonymous reader cookie to readers who could actually be
-    // counted — never to an opted-out or bot request, so nothing is set for
-    // traffic we're not going to track anyway.
-    if (
-      !viewer && !anonCookie && !readerOptedOut(headers) && !isBot(headers.get("user-agent") ?? "")
-    ) {
-      anonCookie = crypto.randomUUID() + crypto.randomUUID();
-      setCookie(c, VIEW_COOKIE, anonCookie, viewCookieOpts);
-    }
-    analyticsService.recordPostView(row.post.id, headers, viewer?.id ?? null, anonCookie).catch(
-      () => {},
-    );
-  }
-
+  if (row.post.authorId && row.post.status === "published") countView(c, row);
   return c.json({ post: await enrichPost(row, viewer?.id ?? null) });
 });
 
