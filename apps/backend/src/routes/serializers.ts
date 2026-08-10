@@ -109,6 +109,9 @@ export function postWithAuthor(
   return {
     id: row.post.id,
     title: row.post.title,
+    // The readable half of the permalink, `/@author/<slug>` (lib/slug.ts). Null
+    // on remote and untitled posts, which the frontend addresses by short id.
+    slug: row.post.slug,
     contentHtml: row.post.contentHtml,
     contentJson: row.post.contentJson,
     remote: row.post.remote,
@@ -275,6 +278,7 @@ export function barePost(p: Omit<Post, "searchVector">) {
   return {
     id: p.id,
     title: p.title,
+    slug: p.slug,
     contentHtml: p.contentHtml,
     status: p.status,
     language: p.language,

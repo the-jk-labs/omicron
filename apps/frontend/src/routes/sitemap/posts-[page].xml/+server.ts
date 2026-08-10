@@ -34,7 +34,7 @@ export const GET: RequestHandler = async ({ fetch, params, url }) => {
   for (const e of entries) {
     const path = postPath({
       id: e.id,
-      title: e.title,
+      slug: e.slug,
       author: { username: e.authorUsername },
     });
     // The post's own edit time, so a rewritten article asks to be re-read

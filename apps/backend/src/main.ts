@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { config } from "@/config.ts";
 import { runMigrations } from "@/db/migrate.ts";
+import { backfillSlugs } from "@/services/postSlugs.ts";
 import { buildApp } from "@/app.ts";
 import { getFederationEnabled } from "@/services/instanceSetup.ts";
 import { seedFederationRunning } from "@/services/federationState.ts";
@@ -11,6 +12,10 @@ import { APP_VERSION } from "@/version.ts";
 // Entry point: migrate → build app → serve. Stateless; all data in Postgres.
 async function main() {
   await runMigrations();
+  // Posts written before permalinks were readable have no slug yet, and one
+  // cannot be derived in SQL — see services/postSlugs.ts. Idempotent, and a
+  // single indexed query once every post has one.
+  await backfillSlugs();
   // Resolve the effective federation state (admin toggle → env → default) before
   // the app binds its ActivityPub routes; the value is fixed for this process.
   seedFederationRunning(await getFederationEnabled());

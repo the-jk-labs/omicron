@@ -214,15 +214,24 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.get<Page<Post>>(`/posts${timelineQuery(cursor, langFilter, "local")}`),
     trendingPosts: () => api.get<{ items: Post[] }>("/posts/trending"),
     post: (id: string) => api.get<{ post: Post }>(`/posts/${id}`),
+    // A post by its permalink. The backend resolves the author's live slug, a
+    // slug the post has been moved off, or a trailing short id from a
+    // pre-slug link — so every permalink ever issued arrives here.
+    postBySlug: (username: string, slug: string) =>
+      api.get<{ post: Post }>(
+        `/posts/by/${encodeURIComponent(username)}/${encodeURIComponent(slug)}`,
+      ),
     drafts: (cursor?: string | null) =>
       api.get<Page<Post>>(`/posts/drafts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
     createPost: (
       body: { title?: string; contentHtml: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; summary?: string | null; coverUrl?: string | null; coverCredit?: CoverCredit | null; tags?: string[] },
-    ) => api.post<{ post: { id: string } }>("/posts", body),
+    ) => api.post<{ post: { id: string; slug: string | null } }>("/posts", body),
     updatePost: (
       id: string,
       body: { title?: string; contentHtml?: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; summary?: string | null; coverUrl?: string | null; coverCredit?: CoverCredit | null; tags?: string[] },
-    ) => api.patch<{ post: { id: string } }>(`/posts/${id}`, body),
+      // `slug` comes back because a retitle changes it, and the editor has to
+      // navigate to the post's new address.
+    ) => api.patch<{ post: { id: string; slug: string | null } }>(`/posts/${id}`, body),
     deletePost: (id: string) => api.del<{ ok: true }>(`/posts/${id}`),
     // Posts to read next, shown under an article (see relatedPosts service).
     relatedPosts: (id: string) => api.get<{ items: Post[] }>(`/posts/${id}/related`),

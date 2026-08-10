@@ -2,7 +2,6 @@
 import { config } from "@/config.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
-import { slugify } from "@/lib/slug.ts";
 import { getSeoSettings } from "@/services/seo.ts";
 
 // IndexNow: tell participating search engines that a URL changed, instead of
@@ -28,10 +27,14 @@ const ENDPOINT = "https://api.indexnow.org/IndexNow";
 const TIMEOUT_MS = 5000;
 
 /** Canonical public path for a post — mirrors the frontend's `postPath`. */
-export function postPath(post: { id: string; title: string | null }, username: string): string {
-  const slug = post.title ? slugify(post.title) : "";
-  const shortId = post.id.slice(0, 8);
-  return `/@${username}/${slug ? `${slug}-${shortId}` : shortId}`;
+export function postPath(
+  post: { id: string; title: string | null; slug: string | null },
+  username: string,
+): string {
+  // The stored slug is the post's address; a post without one (untitled, or not
+  // yet reached by the boot backfill) is addressed by its short id, as every
+  // post was before slugs existed.
+  return `/@${username}/${post.slug ?? post.id.slice(0, 8)}`;
 }
 
 /** Where the engines fetch the key from to confirm we own this host. */

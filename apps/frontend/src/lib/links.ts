@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Canonical, title-based URLs for posts — e.g.
-//   /@burk/europe-is-ditching-visa-and-mastercard-and-its-a-huge-step-9e962281
-// The trailing token is the first block of the post UUID (8 hex chars); the
-// backend resolves it by prefix. The slug is cosmetic and regenerated from the
-// title, so renaming a post is safe and stale slugs still redirect to canonical.
+//   /@burk/europe-is-ditching-visa-and-mastercard-and-its-a-huge-step
+// The slug is the post's address: the backend stores it (unique per author) and
+// resolves it directly. Retitling a post mints a new slug and keeps the old one
+// redirecting, so links already shared stay good, and permalinks issued before
+// slugs existed — `<slug>-9e962281`, the first block of the post's UUID — still
+// resolve by that trailing id and 308 to the current URL.
+//
+// A post with no slug (remote, or untitled) is addressed by that short id alone.
 
 import type { Post, ReadingList } from "$lib/types";
 
@@ -23,9 +27,8 @@ function shortId(id: string): string {
  * `[^a-z0-9]` sweep below would otherwise turn each one into a dash — a title
  * written in Azerbaijani came out as `s-rz-nisl-r` instead of `sozunuslar`.
  *
- * Mirrors apps/backend/src/lib/slug.ts, which is what the ingest webhook derives
- * its key with; keep the two identical. See that file for why non-Latin scripts
- * are absent.
+ * Mirrors apps/backend/src/lib/slug.ts, which is what actually stores the slug;
+ * keep the two identical. See that file for why non-Latin scripts are absent.
  */
 const TRANSLITERATIONS: Record<string, string> = {
   "ə": "e",
@@ -51,27 +54,26 @@ export function slugify(title: string): string {
     .replace(TRANSLITERATE_RE, (ch) => TRANSLITERATIONS[ch])
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "") // strip accents
-    .replace(/['\u2019`]/g, "") // drop apostrophes so "it's" \u2192 "its"
+    .replace(/['\u2019`]/g, "") // drop apostrophes so "it's" → "its"
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80)
     .replace(/-+$/g, "");
 }
 
-/** Canonical path for a post, e.g. `/@user/some-title-9e962281`. */
+/** Canonical path for a post, e.g. `/@user/some-title`. */
 export function postPath(
-  post: Pick<Post, "id" | "title"> & { author: { username: string } },
+  post: Pick<Post, "id" | "slug"> & { author: { username: string } },
 ): string {
-  const slug = post.title ? slugify(post.title) : "";
-  const id = shortId(post.id);
-  const tail = slug ? `${slug}-${id}` : id;
-  return `/@${post.author.username}/${tail}`;
+  // The slug is the server's, not a local re-derivation: it is what disambiguates
+  // two posts with the same title, and what an already-shared link redirects to.
+  return `/@${post.author.username}/${post.slug || shortId(post.id)}`;
 }
 
 /**
  * Resolve the post id from a `[slug]` route param. Prefers a full UUID (legacy
  * permalinks), then falls back to the trailing short id. Returns null if neither
- * is present.
+ * is present — a slug-addressed post, which only the backend can resolve.
  */
 export function postIdFromSlug(slug: string): string | null {
   const full = slug.match(FULL_UUID)?.[0];

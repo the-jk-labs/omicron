@@ -132,6 +132,13 @@ export const posts = pgTable("posts", {
   authorId: uuid("author_id").references(() => users.id, { onDelete: "cascade" }),
   remoteActorId: uuid("remote_actor_id").references(() => remoteActors.id, { onDelete: "cascade" }),
   title: text("title"),
+  // The post's share of its canonical URL: `/@author/<slug>`, derived from the
+  // title (see lib/slug.ts) and unique within the author. Null for a remote
+  // post (addressed by its origin's URL) and for an untitled draft (nothing to
+  // derive one from), both of which fall back to the post's short id. A retitle
+  // mints a new slug and files the old one in `post_slug_history`, so links
+  // already shared keep resolving.
+  slug: text("slug"),
   contentHtml: text("content_html").notNull(),
   contentJson: jsonb("content_json"),
   apId: text("ap_id"),
@@ -201,6 +208,30 @@ export const posts = pgTable("posts", {
   // own posts, so two of them can both publish a "hello-world" slug. NULLs are
   // distinct in a Postgres unique index, so this constrains ingested rows only.
   uniqueIndex("posts_author_external_idx").on(t.authorId, t.externalId),
+  // One live slug per author, and the lookup behind every `/@author/<slug>`
+  // read. NULLs are distinct in Postgres, so remote and untitled rows are
+  // unconstrained.
+  uniqueIndex("posts_author_slug_idx").on(t.authorId, t.slug),
+]);
+
+// ── post slug history ──────────────────────────────────────────────────
+// Slugs a post used to live at. Renaming a published post changes its URL, and
+// the old one has already been shared somewhere this instance cannot edit — a
+// tweet, a newsletter, someone's bookmarks. Each superseded slug is kept here
+// so that address keeps working, 308-redirecting to wherever the post is now.
+//
+// Unique per author for the same reason `posts.slug` is: a retired slug must
+// not be handed to a new post, or an old link would silently land on different
+// writing. Allocation checks both tables (see services/postSlugs.ts).
+export const postSlugHistory = pgTable("post_slug_history", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  authorId: uuid("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  slug: text("slug").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("post_slug_history_author_slug_idx").on(t.authorId, t.slug),
+  index("post_slug_history_post_idx").on(t.postId),
 ]);
 
 // ── follows ────────────────────────────────────────────────────────────

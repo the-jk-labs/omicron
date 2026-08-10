@@ -62,7 +62,7 @@
     error = "";
     busy = true;
     try {
-      await endpoints().updatePost(post.id, {
+      const { post: saved } = await endpoints().updatePost(post.id, {
         title: title.trim(),
         contentHtml: html,
         contentJson: json,
@@ -72,8 +72,9 @@
         coverCredit,
         tags,
       });
-      // Title may have changed, so navigate to the freshly-built canonical path.
-      goto(postPath({ ...post, title: title.trim() }));
+      // A retitle moves the post to a new slug, so navigate to the one the
+      // save came back with rather than to the address it had on open.
+      goto(postPath({ ...post, slug: saved.slug }));
     } catch (err) {
       error = err instanceof ApiError ? err.message : "Failed to save.";
       busy = false;

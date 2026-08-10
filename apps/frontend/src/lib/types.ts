@@ -63,6 +63,11 @@ export type CoverCredit = {
 export type Post = {
   id: string;
   title: string | null;
+  // The readable half of the permalink: `/@author/<slug>`, allocated server-side
+  // from the title and unique within the author. Null on a remote post (its
+  // origin owns the URL) and on an untitled draft, both of which are addressed
+  // by the post's short id instead. Build links with `postPath`, never by hand.
+  slug?: string | null;
   contentHtml: string;
   contentJson?: unknown;
   remote: boolean;
@@ -326,6 +331,7 @@ export type StockPhoto = {
 export type SitemapEntry = {
   id: string;
   title: string | null;
+  slug: string | null;
   authorUsername: string;
   createdAt: string;
   updatedAt: string;
