@@ -38,7 +38,17 @@ export function excerpt(html: string, len = 180): string {
 
 // Rough Medium-style read time (~200 words/min, floored at 1).
 export function readTime(html: string): number {
-  const words = stripHtml(html).split(/\s+/).filter(Boolean).length;
+  return readTimeFromWords(countWords(stripHtml(html)));
+}
+
+export function countWords(text: string): number {
+  return text.split(/\s+/).filter(Boolean).length;
+}
+
+// Split out so the editor's live counter and the reader's badge cannot drift:
+// the editor has the words already and would otherwise re-derive them from its
+// own HTML with a second, subtly different rule.
+export function readTimeFromWords(words: number): number {
   return Math.max(1, Math.round(words / 200));
 }
 
