@@ -2,9 +2,6 @@
 <script lang="ts">
   import { onMount, untrack } from "svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
-
-  // Matches SUMMARY_LENGTH in the backend (lib/webhook.ts).
-  const MAX_SUMMARY = 150;
   import type { Content } from "@tiptap/core";
   import { goto } from "$app/navigation";
   import { endpoints, ApiError } from "$lib/api";
@@ -13,6 +10,7 @@
   import TagInput from "$lib/components/TagInput.svelte";
   import LanguageSelect from "$lib/components/LanguageSelect.svelte";
   import BannerPicker from "$lib/components/BannerPicker.svelte";
+  import SummaryField from "$lib/components/SummaryField.svelte";
   import { postPath } from "$lib/links";
   import type { CoverCredit } from "$lib/types";
   import type { PageData } from "./$types";
@@ -102,24 +100,7 @@
   class="mb-6 w-full border-none bg-transparent text-3xl font-bold tracking-tight text-foreground placeholder:text-muted-foreground focus:outline-none sm:text-4xl"
 />
 
-<div class="mb-6">
-  <label for="post-summary" class="text-muted-foreground mb-1.5 block text-xs font-medium">
-    Description — shown in search results and link previews. Optional; the opening
-    lines are used when it's blank.
-  </label>
-  <div class="flex items-center gap-3">
-    <input
-      id="post-summary"
-      bind:value={summary}
-      maxlength={MAX_SUMMARY}
-      placeholder="One sentence on what this post is about"
-      class="rounded-input border border-input bg-background shadow-btn min-w-0 flex-1 px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
-    />
-    <span class="text-muted-foreground shrink-0 text-xs tabular-nums">
-      {summary.length}/{MAX_SUMMARY}
-    </span>
-  </div>
-</div>
+<SummaryField bind:summary />
 
 <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start">
   <div class="min-w-0 flex-1">
