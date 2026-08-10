@@ -6,6 +6,7 @@
   box at a time across the whole tree); `actions` carries the handlers.
 -->
 <script lang="ts">
+  import { autoGrow } from "$lib/actions/autoGrow.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
@@ -64,6 +65,7 @@
           <textarea
             bind:this={editEl}
             bind:value={ui.editDraft}
+            use:autoGrow={() => ui.editDraft}
             rows={2}
             maxlength={2000}
             placeholder="Edit your comment…"
@@ -150,6 +152,7 @@
             <textarea
               bind:this={replyEl}
               bind:value={ui.replyDraft}
+              use:autoGrow={() => ui.replyDraft}
               rows={2}
               maxlength={2000}
               placeholder={`Reply to ${comment.author.displayName}…`}

@@ -3,6 +3,7 @@
   import { untrack } from "svelte";
   import { goto } from "$app/navigation";
   import { endpoints, ApiError } from "$lib/api";
+  import { autoGrow } from "$lib/actions/autoGrow.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
@@ -258,6 +259,7 @@
           <textarea
             bind:this={draftEl}
             bind:value={draft}
+            use:autoGrow={() => draft}
             rows={2}
             maxlength={2000}
             placeholder="What are your thoughts?"
