@@ -81,6 +81,7 @@
     Table,
     Rss,
     Bell,
+    TriangleAlert,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -162,6 +163,7 @@
     inbox: Inbox,
     gavel: Gavel,
     table: Table,
+    alert: TriangleAlert,
   } as const;
 
   export type IconName = keyof typeof icons;
