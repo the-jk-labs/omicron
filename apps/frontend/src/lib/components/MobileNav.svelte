@@ -27,10 +27,41 @@
     const path = page.url.pathname;
     return href === "/" ? path === "/" : path.startsWith(href);
   }
+
+  // Firefox on Android retracts its browser toolbar on scroll-down but keeps the
+  // *layout* viewport at its original, shorter height; only the *visual* viewport
+  // grows into the strip the toolbar vacated. `bottom: 0` resolves against the
+  // layout viewport, so the bar parks a toolbar-height above the real bottom edge
+  // and article text shows through underneath it. Measuring the gap and pushing
+  // the bar down by it re-pins it to what the reader actually sees.
+  //
+  // Clamped at zero on purpose: when the on-screen keyboard shrinks the visual
+  // viewport this would otherwise lift the bar up over the keyboard, which is a
+  // different behaviour change than the one being fixed here.
+  let overhang = $state(0);
+
+  $effect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const measure = () => {
+      const layoutHeight = document.documentElement.clientHeight;
+      overhang = Math.max(0, vv.offsetTop + vv.height - layoutHeight);
+    };
+
+    measure();
+    vv.addEventListener("resize", measure);
+    vv.addEventListener("scroll", measure);
+    return () => {
+      vv.removeEventListener("resize", measure);
+      vv.removeEventListener("scroll", measure);
+    };
+  });
 </script>
 
 <nav
   class="border-border bg-background/95 fixed inset-x-0 bottom-0 z-30 flex border-t pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+  style={overhang ? `transform: translateY(${overhang}px)` : undefined}
   aria-label="Primary"
 >
   {#each items as item (item.href)}
