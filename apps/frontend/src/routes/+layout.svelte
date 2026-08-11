@@ -3,22 +3,16 @@
   import "../app.css";
   import { page } from "$app/stores";
   import { env } from "$env/dynamic/public";
+  import { canonicalOrigin } from "$lib/canonical";
+  import Discover from "$lib/components/Discover.svelte";
+  import MobileNav from "$lib/components/MobileNav.svelte";
   import Nav from "$lib/components/Nav.svelte";
   import SideNav from "$lib/components/SideNav.svelte";
-  import MobileNav from "$lib/components/MobileNav.svelte";
-  import Discover from "$lib/components/Discover.svelte";
-  import { canonicalOrigin } from "$lib/canonical";
-  import { absoluteBanner } from "$lib/cover";
-  import {
-    blogPostingLd,
-    breadcrumbLd,
-    profilePageLd,
-    serializeJsonLd,
-    webSiteLd,
-  } from "$lib/seo";
-  import { excerpt } from "$lib/format";
-  import { rememberTimeZone } from "$lib/timezone";
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
+  import { absoluteBanner } from "$lib/cover";
+  import { excerpt } from "$lib/format";
+  import { blogPostingLd, breadcrumbLd, profilePageLd, serializeJsonLd, webSiteLd } from "$lib/seo";
+  import { rememberTimeZone } from "$lib/timezone";
   import type { Post, Profile, ReadingList } from "$lib/types";
   import type { LayoutData } from "./$types";
 
@@ -37,8 +31,7 @@
   // name comes from the instance settings (wizard/admin), falling back to the
   // build-time env and then the default.
   const appName = $derived(data.instance?.name || env.PUBLIC_APP_NAME || "Omicron");
-  const description =
-    "A place to read, write, and connect — powered by ActivityPub. No lock-in, fully self-hostable.";
+  const description = "A place to read, write, and connect — powered by ActivityPub. No lock-in, fully self-hostable.";
   // Every absolute URL we publish — the canonical link, og:url, the share image
   // — is built on the instance's configured origin rather than the hostname this
   // request happened to arrive on, so an article has one address wherever it is
@@ -54,29 +47,19 @@
   // `fediverse:creator` tag, so shares render an author-attributed link card
   // ("More from <author>"). Driven from `page.data` here (one head block) to
   // avoid duplicate <meta> from a child <svelte:head>.
-  const post = $derived(
-    $page.route.id === "/[handle]/[slug]"
-      ? ($page.data as { post?: Post }).post
-      : undefined,
-  );
+  const post = $derived($page.route.id === "/[handle]/[slug]" ? ($page.data as { post?: Post }).post : undefined);
   // Shared with the feed cards, so a link preview and the card describe a post
   // the same way — decoded entities included.
   const ogExcerpt = (html: string) => excerpt(html, 199);
   // A local author's handle resolves against this instance; a remote author's
   // `username` is already a `user@host` handle.
   const creator = $derived(
-    post
-      ? post.author.remote
-        ? `@${post.author.username}`
-        : `@${post.author.username}@${$page.url.host}`
-      : null,
+    post ? (post.author.remote ? `@${post.author.username}` : `@${post.author.username}@${$page.url.host}`) : null,
   );
   const ogTitle = $derived(post?.title || appName);
   // An ingested post carries the sender's own `description`; prefer it over a
   // clipped body, which is only ever a stand-in for one.
-  const ogDescription = $derived(
-    post ? post.summary?.trim() || ogExcerpt(post.contentHtml) : description,
-  );
+  const ogDescription = $derived(post ? post.summary?.trim() || ogExcerpt(post.contentHtml) : description);
   const ogType = $derived(post ? "article" : "website");
   // A post's banner becomes its share image, falling back to the instance's
   // brand image. `bannerUrl` rather than `coverUrl`, so a post whose banner is
@@ -109,19 +92,11 @@
 
   // The right discovery rail only belongs on the home feed and profile pages;
   // every other route (post, compose, settings, auth, …) hides it.
-  const showDiscover = $derived(
-    $page.route.id === "/" || $page.route.id === "/[handle]",
-  );
+  const showDiscover = $derived($page.route.id === "/" || $page.route.id === "/[handle]");
 
   // Auth screens stand alone: no side rails, just the form centered in the
   // viewport. The shared chrome (rails, grid) only applies to in-app routes.
-  const AUTH_ROUTES = new Set([
-    "/login",
-    "/register",
-    "/forgot-password",
-    "/reset-password",
-    "/verify-email",
-  ]);
+  const AUTH_ROUTES = new Set(["/login", "/register", "/forgot-password", "/reset-password", "/verify-email"]);
   const isAuth = $derived(AUTH_ROUTES.has($page.route.id ?? ""));
   // The first-run wizard is also a standalone screen (logo-only nav, no rails),
   // but a touch wider than the auth forms to fit the stepped layout.
@@ -186,9 +161,7 @@
       ($page.route.id === "/[handle]" && ($page.data as { remote?: boolean }).remote === true),
   );
 
-  const robots = $derived(
-    noindex ? "noindex, nofollow" : federated ? "noindex, follow" : null,
-  );
+  const robots = $derived(noindex ? "noindex, nofollow" : federated ? "noindex, follow" : null);
 
   // Schema.org description of what this page is (see $lib/seo). Built here for
   // the same reason the Open Graph block is: one head, so a child route can't

@@ -20,16 +20,14 @@
 </script>
 
 <form onsubmit={submit} role="search">
-  <div
-    class="bg-muted/60 focus-within:bg-muted flex h-10 items-center gap-2.5 rounded-full px-3.5 transition-colors"
-  >
-    <Icon name="search" size={16} class="text-muted-foreground shrink-0" />
+  <div class="flex h-10 items-center gap-2.5 rounded-full bg-muted/60 px-3.5 transition-colors focus-within:bg-muted">
+    <Icon name="search" size={16} class="shrink-0 text-muted-foreground" />
     <input
       bind:value={query}
       type="search"
       placeholder="Search"
       aria-label="Search articles and people"
-      class="placeholder:text-muted-foreground w-40 bg-transparent text-sm outline-none md:w-48 lg:w-64"
+      class="w-40 bg-transparent text-sm outline-none placeholder:text-muted-foreground md:w-48 lg:w-64"
     />
   </div>
 </form>

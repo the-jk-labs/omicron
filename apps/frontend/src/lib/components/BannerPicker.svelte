@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { endpoints, ApiError } from "$lib/api";
-  import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import StockPhotoPicker from "$lib/components/StockPhotoPicker.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
   import { firstBodyImage } from "$lib/cover";
   import { isAcceptedImage, prepareImage } from "$lib/editor/image";
   import type { CoverCredit, StockPhoto } from "$lib/types";
@@ -77,20 +77,20 @@
 </script>
 
 <div class="mb-6">
-  <p class="text-muted-foreground mb-1.5 text-xs font-medium">
-    Banner — shown at the top of the post and in link previews. Optional; the first image in
-    your post is used when you don't pick one.
+  <p class="mb-1.5 text-xs font-medium text-muted-foreground">
+    Banner — shown at the top of the post and in link previews. Optional; the first image in your post is used when you
+    don't pick one.
   </p>
 
   <div class="rounded-card border border-border bg-background-alt p-3">
     {#if preview}
-      <div class="rounded-card border border-border relative aspect-[16/9] max-h-64 w-full overflow-hidden">
+      <div class="relative aspect-[16/9] max-h-64 w-full overflow-hidden rounded-card border border-border">
         <!-- Decorative here: this is a control, and the banner is labelled by
              the text above it. -->
         <img src={preview} alt="" class="h-full w-full object-cover" />
         {#if fallback}
           <span
-            class="rounded-button bg-dark/80 absolute bottom-2 left-2 px-2 py-1 text-xs font-medium text-background"
+            class="absolute bottom-2 left-2 rounded-button bg-dark/80 px-2 py-1 text-xs font-medium text-background"
           >
             From your post
           </span>
@@ -98,7 +98,7 @@
       </div>
     {:else}
       <div
-        class="rounded-card border border-dashed border-border flex aspect-[16/9] max-h-64 w-full flex-col items-center justify-center gap-1.5 text-muted-foreground"
+        class="flex aspect-[16/9] max-h-64 w-full flex-col items-center justify-center gap-1.5 rounded-card border border-dashed border-border text-muted-foreground"
       >
         <Icon name="image" size={22} />
         <span class="text-sm">No banner yet</span>
@@ -108,15 +108,30 @@
     {#if coverCredit}
       <p class="mt-2 text-xs text-muted-foreground">
         Photo by
-        <a href={coverCredit.nameUrl} target="_blank" rel="noopener noreferrer nofollow" class="hover:text-foreground underline">
+        <a
+          href={coverCredit.nameUrl}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          class="underline hover:text-foreground"
+        >
           {coverCredit.name}
         </a>
         on
-        <a href={coverCredit.sourceUrl} target="_blank" rel="noopener noreferrer nofollow" class="hover:text-foreground underline">
+        <a
+          href={coverCredit.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          class="underline hover:text-foreground"
+        >
           {coverCredit.source}
         </a>{#if coverCredit.license && coverCredit.licenseUrl}
           ·
-          <a href={coverCredit.licenseUrl} target="_blank" rel="noopener noreferrer nofollow" class="hover:text-foreground underline">
+          <a
+            href={coverCredit.licenseUrl}
+            target="_blank"
+            rel="noopener noreferrer nofollow"
+            class="underline hover:text-foreground"
+          >
             {coverCredit.license}
           </a>
         {/if}

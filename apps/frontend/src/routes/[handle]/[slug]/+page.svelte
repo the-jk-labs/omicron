@@ -1,21 +1,21 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { untrack } from "svelte";
-  import { Dialog, DropdownMenu, Label, Separator } from "bits-ui";
   import { goto } from "$app/navigation";
   import { endpoints, ApiError } from "$lib/api";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/Icon.svelte";
-  import { confirm } from "$lib/components/ui/confirm";
   import Comments from "$lib/components/Comments.svelte";
-  import TagList from "$lib/components/TagList.svelte";
+  import Icon from "$lib/components/Icon.svelte";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import PostCard from "$lib/components/PostCard.svelte";
   import SaveToListButton from "$lib/components/SaveToListButton.svelte";
+  import TagList from "$lib/components/TagList.svelte";
+  import Avatar from "$lib/components/ui/Avatar.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import { confirm } from "$lib/components/ui/confirm";
   import { formatDateTime, readTime } from "$lib/format";
-  import { timeZone } from "$lib/timezone";
   import { languageLabel } from "$lib/languages";
-  import PageTitle from "$lib/components/PageTitle.svelte";
+  import { timeZone } from "$lib/timezone";
+  import { Dialog, DropdownMenu, Label, Separator } from "bits-ui";
+  import { untrack } from "svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -111,9 +111,7 @@
   // Authoring controls: edit is author-only; delete is author or admin. Neither
   // applies to federated posts owned by a remote instance.
   const canEdit = $derived(!!data.user && !post.remote && data.user.id === post.author.id);
-  const canManage = $derived(
-    !!data.user && !post.remote && (data.user.id === post.author.id || data.user.isAdmin),
-  );
+  const canManage = $derived(!!data.user && !post.remote && (data.user.id === post.author.id || data.user.isAdmin));
   // Any signed-in reader can report a post that isn't their own (local or remote).
   const canReport = $derived(!!data.user && data.user.id !== post.author.id);
 
@@ -226,9 +224,7 @@
     liked = !liked;
     likeCount += liked ? 1 : -1;
     try {
-      const res = wasLiked
-        ? await endpoints().unlikePost(post.id)
-        : await endpoints().likePost(post.id);
+      const res = wasLiked ? await endpoints().unlikePost(post.id) : await endpoints().likePost(post.id);
       liked = res.liked;
       likeCount = res.likeCount;
     } catch {
@@ -262,22 +258,32 @@
       </Button>
       <div class="flex flex-wrap items-center gap-2 text-muted-foreground">
         <span>{formatDateTime(post.createdAt, $timeZone)}</span>
-        <Separator.Root orientation="vertical" class="bg-border shrink-0 data-[orientation=vertical]:h-3 data-[orientation=vertical]:w-px" />
+        <Separator.Root
+          orientation="vertical"
+          class="shrink-0 bg-border data-[orientation=vertical]:h-3 data-[orientation=vertical]:w-px"
+        />
         <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
         {#if post.remote && originInstance}
-          <Separator.Root orientation="vertical" class="bg-border shrink-0 data-[orientation=vertical]:h-3 data-[orientation=vertical]:w-px" />
+          <Separator.Root
+            orientation="vertical"
+            class="shrink-0 bg-border data-[orientation=vertical]:h-3 data-[orientation=vertical]:w-px"
+          />
           <span class="flex items-center gap-1"><Icon name="globe" size={13} /> {originInstance}</span>
         {/if}
         {#if post.language}
-          <Separator.Root orientation="vertical" class="bg-border shrink-0 data-[orientation=vertical]:h-3 data-[orientation=vertical]:w-px" />
-          <span class="flex items-center gap-1"><Icon name="languages" size={13} /> {languageLabel(post.language)}</span>
+          <Separator.Root
+            orientation="vertical"
+            class="shrink-0 bg-border data-[orientation=vertical]:h-3 data-[orientation=vertical]:w-px"
+          />
+          <span class="flex items-center gap-1"><Icon name="languages" size={13} /> {languageLabel(post.language)}</span
+          >
         {/if}
       </div>
     </div>
 
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
-        class="border-input text-muted-foreground shadow-btn hover:bg-muted hover:text-foreground ml-auto inline-flex size-9 items-center justify-center rounded-full border active:scale-[0.98]"
+        class="ml-auto inline-flex size-9 items-center justify-center rounded-full border border-input text-muted-foreground shadow-btn hover:bg-muted hover:text-foreground active:scale-[0.98]"
         aria-label="Post options"
       >
         <Icon name="more" size={18} />
@@ -286,7 +292,7 @@
         <DropdownMenu.Content
           sideOffset={8}
           align="end"
-          class="border-muted bg-background shadow-popover z-30 w-[180px] rounded-xl border px-1 py-1.5 focus-visible:outline-none"
+          class="z-30 w-[180px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-none"
         >
           <DropdownMenu.Item onSelect={sharePost} class={itemClass}>
             <Icon name={shared ? "check" : "share"} size={18} />
@@ -332,9 +338,7 @@
          default in the browser's estimation; `decoding="async"` keeps decode
          off the main thread. Deliberately not `loading="lazy"` — that would
          delay the very element being timed. -->
-    <div
-      class="mb-8 aspect-[16/9] max-h-[28rem] w-full overflow-hidden rounded-card border border-border"
-    >
+    <div class="mb-8 aspect-[16/9] max-h-[28rem] w-full overflow-hidden rounded-card border border-border">
       <!-- Decorative: the headline above it already names the post. -->
       <img
         src={post.bannerUrl}
@@ -357,7 +361,7 @@
           href={post.coverCredit.nameUrl}
           target="_blank"
           rel="noopener noreferrer nofollow"
-          class="hover:text-foreground underline"
+          class="underline hover:text-foreground"
         >
           {post.coverCredit.name}
         </a>
@@ -366,7 +370,7 @@
           href={post.coverCredit.sourceUrl}
           target="_blank"
           rel="noopener noreferrer nofollow"
-          class="hover:text-foreground underline"
+          class="underline hover:text-foreground"
         >
           {post.coverCredit.source}
         </a>{#if post.coverCredit.license && post.coverCredit.licenseUrl}
@@ -375,7 +379,7 @@
             href={post.coverCredit.licenseUrl}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            class="hover:text-foreground underline"
+            class="underline hover:text-foreground"
           >
             {post.coverCredit.license}
           </a>
@@ -405,7 +409,10 @@
       <Icon name="heart" size={18} class={liked ? "fill-current" : ""} />
       <span class="tabular-nums">{likeCount}</span>
     </Button>
-    <a href="#responses" class="text-muted-foreground hover:bg-muted inline-flex h-10 items-center gap-1.5 rounded-input px-4 text-sm font-medium">
+    <a
+      href="#responses"
+      class="inline-flex h-10 items-center gap-1.5 rounded-input px-4 text-sm font-medium text-muted-foreground hover:bg-muted"
+    >
       <Icon name="comment" size={18} />
       <span class="tabular-nums">{commentCount}</span>
     </a>
@@ -421,9 +428,7 @@
        reach the rest of the archive from an article. Real <a> links, rendered
        server-side, so both audiences follow the same ones. -->
   <section aria-labelledby="read-next" class="mt-12 border-t border-border pt-8">
-    <h2 id="read-next" class="text-foreground mb-4 text-lg font-bold tracking-tight">
-      Read next
-    </h2>
+    <h2 id="read-next" class="mb-4 text-lg font-bold tracking-tight text-foreground">Read next</h2>
     {#each data.related as related (related.id)}
       <PostCard post={related} />
     {/each}
@@ -442,13 +447,13 @@
 <Dialog.Root bind:open={reportOpen} onOpenChange={onReportOpenChange}>
   <Dialog.Portal>
     <Dialog.Overlay
-      class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+      class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="rounded-card bg-background shadow-popover fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 border border-border p-6 sm:max-w-[440px]"
+      class="fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[440px]"
     >
-      <Dialog.Title class="text-foreground text-lg font-semibold tracking-tight">Report post</Dialog.Title>
-      <Dialog.Description class="text-muted-foreground mt-1 text-sm">
+      <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Report post</Dialog.Title>
+      <Dialog.Description class="mt-1 text-sm text-muted-foreground">
         Flag this post for a moderator to review. Tell us what's wrong (optional).
       </Dialog.Description>
 
@@ -465,19 +470,20 @@
             rows={3}
             maxlength={1000}
             placeholder="e.g. spam, harassment, illegal content"
-            class="rounded-input border border-input bg-background shadow-btn resize-none px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
+            class="resize-none rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-none placeholder:text-muted-foreground focus:border-foreground"
           ></textarea>
-          {#if reportError}<p class="text-destructive text-sm">{reportError}</p>{/if}
+          {#if reportError}<p class="text-sm text-destructive">{reportError}</p>{/if}
         </div>
 
         <div class="mt-6 flex justify-end gap-2">
           <Dialog.Close
-            class="text-foreground hover:bg-muted inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium active:scale-[0.98]"
+            class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
           >
             Cancel
           </Dialog.Close>
           <Button variant="destructive" disabled={reportBusy} onclick={submitReport}>
-            <Icon name="flag" size={15} /> {reportBusy ? "Submitting…" : "Submit report"}
+            <Icon name="flag" size={15} />
+            {reportBusy ? "Submitting…" : "Submit report"}
           </Button>
         </div>
       {/if}

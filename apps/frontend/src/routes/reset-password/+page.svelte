@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { page } from "$app/stores";
-  import { Label } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
-  import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/Icon.svelte";
   import logo from "$lib/assets/omicron.svg";
+  import Icon from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import { Label } from "bits-ui";
 
   const token = $derived($page.url.searchParams.get("token") ?? "");
 
@@ -52,8 +52,7 @@
     </div>
     <h1 class="text-2xl font-bold tracking-tight text-foreground">Password updated</h1>
     <p class="mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
-      Your password has been changed and you've been signed out everywhere. Sign in with your new
-      password.
+      Your password has been changed and you've been signed out everywhere. Sign in with your new password.
     </p>
     <Button href="/login" variant="solid" class="mt-6 h-11 w-full">Sign in</Button>
   </div>
@@ -66,9 +65,7 @@
     <p class="mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
       This reset link is missing its token. Request a fresh one and try again.
     </p>
-    <Button href="/forgot-password" variant="solid" class="mt-6 h-11 w-full">
-      Request a new link
-    </Button>
+    <Button href="/forgot-password" variant="solid" class="mt-6 h-11 w-full">Request a new link</Button>
   </div>
 {:else}
   <div class="mb-8 text-center">
@@ -80,7 +77,14 @@
   <form onsubmit={submit} class="flex flex-col gap-4">
     <div class="flex flex-col gap-1.5">
       <Label.Root for="password" class={labelClass}>New password</Label.Root>
-      <input id="password" type="password" bind:value={password} autocomplete="new-password" placeholder="min 8 characters" class={field} />
+      <input
+        id="password"
+        type="password"
+        bind:value={password}
+        autocomplete="new-password"
+        placeholder="min 8 characters"
+        class={field}
+      />
     </div>
     <div class="flex flex-col gap-1.5">
       <Label.Root for="confirm" class={labelClass}>Confirm password</Label.Root>

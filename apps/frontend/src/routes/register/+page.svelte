@@ -1,11 +1,11 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { goto, invalidateAll } from "$app/navigation";
-  import { Label } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
-  import Button from "$lib/components/ui/Button.svelte";
   import logo from "$lib/assets/omicron.svg";
   import PageTitle from "$lib/components/PageTitle.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import { Label } from "bits-ui";
 
   let username = $state("");
   let email = $state("");
@@ -57,7 +57,14 @@
   </div>
   <div class="flex flex-col gap-1.5">
     <Label.Root for="password" class={labelClass}>Password</Label.Root>
-    <input id="password" type="password" bind:value={password} autocomplete="new-password" placeholder="min 8 characters" class={field} />
+    <input
+      id="password"
+      type="password"
+      bind:value={password}
+      autocomplete="new-password"
+      placeholder="min 8 characters"
+      class={field}
+    />
   </div>
   {#if error}<p class="text-sm text-destructive">{error}</p>{/if}
   <Button type="submit" disabled={busy} variant="solid" class="mt-1 h-11">

@@ -1,18 +1,18 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { onMount, untrack } from "svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import type { Content } from "@tiptap/core";
   import { goto } from "$app/navigation";
   import { endpoints, ApiError } from "$lib/api";
-  import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/Icon.svelte";
-  import TagInput from "$lib/components/TagInput.svelte";
-  import LanguageSelect from "$lib/components/LanguageSelect.svelte";
   import BannerPicker from "$lib/components/BannerPicker.svelte";
+  import Icon from "$lib/components/Icon.svelte";
+  import LanguageSelect from "$lib/components/LanguageSelect.svelte";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import SummaryField from "$lib/components/SummaryField.svelte";
+  import TagInput from "$lib/components/TagInput.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
   import { postPath } from "$lib/links";
   import type { CoverCredit } from "$lib/types";
+  import type { Content } from "@tiptap/core";
+  import { onMount, untrack } from "svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();

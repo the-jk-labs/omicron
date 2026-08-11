@@ -1,17 +1,17 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { untrack } from "svelte";
   import { goto } from "$app/navigation";
   import { endpoints } from "$lib/api";
-  import PostCard from "$lib/components/PostCard.svelte";
-  import ListFormDialog from "$lib/components/ListFormDialog.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import ListFormDialog from "$lib/components/ListFormDialog.svelte";
+  import PageTitle from "$lib/components/PageTitle.svelte";
+  import PostCard from "$lib/components/PostCard.svelte";
   import RssButton from "$lib/components/RssButton.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
   import { confirm } from "$lib/components/ui/confirm";
   import { listPath } from "$lib/links";
-  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { Post, ReadingList } from "$lib/types";
+  import { untrack } from "svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -33,9 +33,7 @@
   // A private list's feed 404s for the anonymous reader that would fetch it, so
   // only offer the button on public lists — and not at all when the admin has
   // indexing off, since the feed serves nothing then.
-  const showFeed = $derived(
-    list.visibility === "public" && data.seo?.indexingEnabled !== false,
-  );
+  const showFeed = $derived(list.visibility === "public" && data.seo?.indexingEnabled !== false);
 
   async function loadMore() {
     if (!cursor) return;
@@ -90,7 +88,10 @@
           {list.visibility === "private" ? "Private" : "Public"}
         </span>
         {#if !data.isOwner}
-          <span>by <a href={`/@${data.owner.username}`} class="text-foreground hover:underline">{data.owner.displayName}</a></span>
+          <span
+            >by <a href={`/@${data.owner.username}`} class="text-foreground hover:underline">{data.owner.displayName}</a
+            ></span
+          >
         {/if}
       </div>
     </div>

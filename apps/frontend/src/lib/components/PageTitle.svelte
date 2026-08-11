@@ -25,9 +25,7 @@
   let { text }: { text?: string | null } = $props();
 
   const appName = $derived(
-    ($page.data as { instance?: InstanceInfo | null }).instance?.name ||
-      env.PUBLIC_APP_NAME ||
-      "Omicron",
+    ($page.data as { instance?: InstanceInfo | null }).instance?.name || env.PUBLIC_APP_NAME || "Omicron",
   );
 </script>
 

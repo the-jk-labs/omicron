@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Dialog, Tabs } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
-  import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
   import type { PhotoProvider, StockPhoto } from "$lib/types";
+  import { Dialog, Tabs } from "bits-ui";
 
   // Search for a free, properly-licensed banner photo.
   //
@@ -81,7 +81,9 @@
   // whether or not a third-party counter answers.
   function pick(photo: StockPhoto) {
     if (photo.useToken) {
-      endpoints().recordPhotoUse(provider, photo.useToken).catch(() => {});
+      endpoints()
+        .recordPhotoUse(provider, photo.useToken)
+        .catch(() => {});
     }
     onPick(photo);
     open = false;
@@ -102,19 +104,14 @@
 <Dialog.Root bind:open {onOpenChange}>
   <Dialog.Portal>
     <Dialog.Overlay
-      class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+      class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="rounded-card bg-background shadow-popover fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 flex-col border border-border sm:max-w-[720px]"
+      class="fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card border border-border bg-background shadow-popover sm:max-w-[720px]"
     >
       <div class="flex items-center justify-between border-b border-border px-5 py-4">
-        <Dialog.Title class="text-foreground text-base font-semibold tracking-tight">
-          Choose a photo
-        </Dialog.Title>
-        <Dialog.Close
-          class="text-muted-foreground hover:text-foreground focus-visible:outline-none"
-          aria-label="Close"
-        >
+        <Dialog.Title class="text-base font-semibold tracking-tight text-foreground">Choose a photo</Dialog.Title>
+        <Dialog.Close class="text-muted-foreground hover:text-foreground focus-visible:outline-none" aria-label="Close">
           <Icon name="close" size={18} />
         </Dialog.Close>
       </div>
@@ -132,7 +129,7 @@
               {#each providers as p (p)}
                 <Tabs.Trigger
                   value={p}
-                  class="data-[state=active]:bg-background data-[state=active]:shadow-mini text-muted-foreground data-[state=active]:text-foreground inline-flex h-8 items-center rounded-button px-3 text-sm font-medium"
+                  class="inline-flex h-8 items-center rounded-button px-3 text-sm font-medium text-muted-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-mini"
                 >
                   {LABELS[p]}
                 </Tabs.Trigger>
@@ -146,7 +143,7 @@
             bind:value={query}
             placeholder="Search free photos — mountains, desk, coffee…"
             aria-label="Search photos"
-            class="rounded-input border border-input bg-background shadow-btn h-10 min-w-0 flex-1 px-3.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground"
+            class="h-10 min-w-0 flex-1 rounded-input border border-input bg-background px-3.5 text-sm shadow-btn outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground"
           />
           <Button type="submit" variant="solid" size="sm" disabled={searching || !query.trim()}>
             {searching ? "Searching…" : "Search"}
@@ -166,7 +163,7 @@
                 <button
                   type="button"
                   onclick={() => pick(photo)}
-                  class="rounded-card border border-border focus-visible:ring-foreground group aspect-[4/3] overflow-hidden focus-visible:outline-none focus-visible:ring-2"
+                  class="group aspect-[4/3] overflow-hidden rounded-card border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
                 >
                   <img
                     src={photo.thumbUrl}
@@ -199,8 +196,8 @@
           <p class="text-sm text-muted-foreground">No photos matched that search.</p>
         {:else}
           <p class="text-sm text-muted-foreground">
-            Search for a photo you're free to publish. The creator and licence are credited under
-            your banner automatically.
+            Search for a photo you're free to publish. The creator and licence are credited under your banner
+            automatically.
           </p>
         {/if}
       </div>

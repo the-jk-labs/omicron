@@ -1,14 +1,14 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { page } from "$app/state";
+  import Icon from "$lib/components/Icon.svelte";
+  import SaveToListButton from "$lib/components/SaveToListButton.svelte";
+  import TagList from "$lib/components/TagList.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/Icon.svelte";
-  import TagList from "$lib/components/TagList.svelte";
-  import SaveToListButton from "$lib/components/SaveToListButton.svelte";
   import { excerpt, formatDateTime, readTime } from "$lib/format";
-  import { timeZone } from "$lib/timezone";
   import { postPath } from "$lib/links";
+  import { timeZone } from "$lib/timezone";
   import type { Post } from "$lib/types";
 
   let { post }: { post: Post } = $props();
@@ -40,7 +40,8 @@
     </Button>
     {#if post.remote && originInstance}
       <span class="flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-        <Icon name="globe" size={12} /> {originInstance}
+        <Icon name="globe" size={12} />
+        {originInstance}
       </span>
     {/if}
   </div>

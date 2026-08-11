@@ -5,15 +5,15 @@
      the freshly-minted value is held in local state and surfaced once, with a
      copy button, until the user dismisses it. -->
 <script lang="ts">
-  import { onMount } from "svelte";
-  import { Label } from "bits-ui";
   import { ApiError, endpoints } from "$lib/api";
-  import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
   import { confirm } from "$lib/components/ui/confirm";
   import { formatDate } from "$lib/format";
   import { timeZone } from "$lib/timezone";
   import type { WebhookToken } from "$lib/types";
+  import { Label } from "bits-ui";
+  import { onMount } from "svelte";
 
   const api = endpoints();
 
@@ -106,8 +106,8 @@
   <div class="rounded-card border border-foreground/30 bg-muted p-4">
     <p class="text-sm font-semibold text-foreground">Copy your token now</p>
     <p class="mt-1 text-sm text-muted-foreground">
-      This is the only time it is shown. It is stored hashed, so it cannot be displayed again — if
-      you lose it, revoke this token and create another.
+      This is the only time it is shown. It is stored hashed, so it cannot be displayed again — if you lose it, revoke
+      this token and create another.
     </p>
     <div class="mt-3 flex items-center gap-2">
       <code
@@ -127,9 +127,7 @@
 
 <div class="mt-4 flex flex-col gap-1.5 sm:flex-row sm:items-end sm:gap-2">
   <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-    <Label.Root for="tokenLabel" class="text-sm font-medium leading-none">
-      New token
-    </Label.Root>
+    <Label.Root for="tokenLabel" class="text-sm font-medium leading-none">New token</Label.Root>
     <input
       id="tokenLabel"
       bind:value={label}
@@ -139,13 +137,7 @@
       onkeydown={(e) => e.key === "Enter" && create()}
     />
   </div>
-  <Button
-    variant="outline"
-    size="default"
-    class="shrink-0"
-    disabled={!label.trim() || creating}
-    onclick={create}
-  >
+  <Button variant="outline" size="default" class="shrink-0" disabled={!label.trim() || creating} onclick={create}>
     <Icon name="plus" size={15} />
     {creating ? "Creating…" : "Create"}
   </Button>
@@ -166,26 +158,20 @@
     {#each tokens as token (token.id)}
       <li class="flex items-center justify-between gap-3 py-3">
         <span class="flex min-w-0 items-center gap-3">
-          <span
-            class="bg-muted text-foreground-alt flex size-10 shrink-0 items-center justify-center rounded-full"
-          >
+          <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground-alt">
             <Icon name="lock" size={18} />
           </span>
           <span class="min-w-0">
             <span class="block truncate text-sm font-medium text-foreground">{token.label}</span>
             <span class="block truncate text-xs text-muted-foreground">
-              {token.lastUsedAt
-                ? `Last used ${formatDate(token.lastUsedAt, $timeZone)}`
-                : "Never used"} · Created {formatDate(token.createdAt, $timeZone)}
+              {token.lastUsedAt ? `Last used ${formatDate(token.lastUsedAt, $timeZone)}` : "Never used"} · Created {formatDate(
+                token.createdAt,
+                $timeZone,
+              )}
             </span>
           </span>
         </span>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={busy === token.id}
-          onclick={() => revoke(token)}
-        >
+        <Button variant="outline" size="sm" disabled={busy === token.id} onclick={() => revoke(token)}>
           {busy === token.id ? "…" : "Revoke"}
         </Button>
       </li>

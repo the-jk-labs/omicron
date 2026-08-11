@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { untrack } from "svelte";
   import { endpoints } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import { untrack } from "svelte";
 
   let { slug, following }: { slug: string; following: boolean } = $props();
   let isFollowing = $state(untrack(() => following));

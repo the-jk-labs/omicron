@@ -7,16 +7,16 @@
 -->
 <script lang="ts">
   import { autoGrow } from "$lib/actions/autoGrow.svelte";
+  import Self from "$lib/components/CommentNode.svelte";
+  import type { CommentActions, CommentUiState } from "$lib/components/comments";
+  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/Icon.svelte";
-  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
   import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
   import { formatDateTime } from "$lib/format";
   import { timeZone } from "$lib/timezone";
   import type { Comment, User } from "$lib/types";
-  import type { CommentActions, CommentUiState } from "$lib/components/comments";
-  import Self from "$lib/components/CommentNode.svelte";
 
   let {
     comment,
@@ -47,17 +47,13 @@
 </script>
 
 <li class="flex gap-3">
-  <Avatar
-    name={comment.author.displayName}
-    src={comment.author.avatarUrl ?? undefined}
-    size={isReply ? 28 : 36}
-  />
+  <Avatar name={comment.author.displayName} src={comment.author.avatarUrl ?? undefined} size={isReply ? 28 : 36} />
   <div class="min-w-0 flex-1">
     <div class="flex items-center gap-2 text-sm">
-      <a href={`/@${comment.author.username}`} class="text-foreground font-medium hover:underline">
+      <a href={`/@${comment.author.username}`} class="font-medium text-foreground hover:underline">
         {comment.author.displayName}
       </a>
-      <span class="text-muted-foreground text-xs">{formatDateTime(comment.createdAt, $timeZone)}</span>
+      <span class="text-xs text-muted-foreground">{formatDateTime(comment.createdAt, $timeZone)}</span>
     </div>
     {#if ui.editingId === comment.id}
       <form onsubmit={(e) => actions.submitEdit(e, comment)} class="mt-2">
@@ -69,26 +65,19 @@
             rows={2}
             maxlength={2000}
             placeholder="Edit your comment…"
-            class={`${field} pr-11`}
-          ></textarea>
-          <EmojiTrigger
-            onPick={insertEditEmoji}
-            align="end"
-            class={`${emojiOverlayBtn} bottom-2 right-1.5`}
-          />
+            class={`${field} pr-11`}></textarea>
+          <EmojiTrigger onPick={insertEditEmoji} align="end" class={`${emojiOverlayBtn} bottom-2 right-1.5`} />
         </div>
-        {#if ui.editError}<p class="text-destructive mt-1.5 text-sm">{ui.editError}</p>{/if}
+        {#if ui.editError}<p class="mt-1.5 text-sm text-destructive">{ui.editError}</p>{/if}
         <div class="mt-2 flex justify-end gap-2">
-          <Button type="button" variant="ghost" size="sm" onclick={() => (ui.editingId = null)}>
-            Cancel
-          </Button>
+          <Button type="button" variant="ghost" size="sm" onclick={() => (ui.editingId = null)}>Cancel</Button>
           <Button type="submit" variant="solid" size="sm" disabled={ui.editBusy || !ui.editDraft.trim()}>
             {ui.editBusy ? "Saving…" : "Save"}
           </Button>
         </div>
       </form>
     {:else}
-      <p class="text-foreground-alt mt-1 whitespace-pre-wrap break-words text-sm">{comment.content}</p>
+      <p class="mt-1 whitespace-pre-wrap break-words text-sm text-foreground-alt">{comment.content}</p>
     {/if}
 
     <!-- Actions (negative margin offsets the buttons' padding so the heart
@@ -156,19 +145,12 @@
               rows={2}
               maxlength={2000}
               placeholder={`Reply to ${comment.author.displayName}…`}
-              class={`${field} pr-11`}
-            ></textarea>
-            <EmojiTrigger
-              onPick={insertReplyEmoji}
-              align="end"
-              class={`${emojiOverlayBtn} bottom-2 right-1.5`}
-            />
+              class={`${field} pr-11`}></textarea>
+            <EmojiTrigger onPick={insertReplyEmoji} align="end" class={`${emojiOverlayBtn} bottom-2 right-1.5`} />
           </div>
-          {#if ui.replyError}<p class="text-destructive mt-1.5 text-sm">{ui.replyError}</p>{/if}
+          {#if ui.replyError}<p class="mt-1.5 text-sm text-destructive">{ui.replyError}</p>{/if}
           <div class="mt-2 flex justify-end gap-2">
-            <Button type="button" variant="ghost" size="sm" onclick={() => (ui.replyingTo = null)}>
-              Cancel
-            </Button>
+            <Button type="button" variant="ghost" size="sm" onclick={() => (ui.replyingTo = null)}>Cancel</Button>
             <Button type="submit" variant="solid" size="sm" disabled={ui.replyBusy || !ui.replyDraft.trim()}>
               {ui.replyBusy ? "Posting…" : "Reply"}
             </Button>
@@ -182,10 +164,16 @@
       <Button
         onclick={() => actions.toggleThread(comment.id)}
         variant="ghost"
-        class="text-accent hover:text-accent -ml-2 mt-2 h-8 gap-1.5 px-2 text-xs font-semibold"
+        class="-ml-2 mt-2 h-8 gap-1.5 px-2 text-xs font-semibold text-accent hover:text-accent"
       >
-        <Icon name="chevronDown" size={15} class={`transition-transform ${ui.expanded.has(comment.id) ? "rotate-180" : ""}`} />
-        {ui.expanded.has(comment.id) ? "Hide" : `${comment.replies.length} ${comment.replies.length === 1 ? "reply" : "replies"}`}
+        <Icon
+          name="chevronDown"
+          size={15}
+          class={`transition-transform ${ui.expanded.has(comment.id) ? "rotate-180" : ""}`}
+        />
+        {ui.expanded.has(comment.id)
+          ? "Hide"
+          : `${comment.replies.length} ${comment.replies.length === 1 ? "reply" : "replies"}`}
       </Button>
       {#if ui.expanded.has(comment.id)}
         <ul class="mt-4 flex flex-col gap-4 border-l border-border pl-4">

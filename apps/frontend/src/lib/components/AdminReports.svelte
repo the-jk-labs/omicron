@@ -1,13 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Tabs } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
-  import { confirm } from "$lib/components/ui/confirm";
-  import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import { confirm } from "$lib/components/ui/confirm";
   import { formatDate } from "$lib/format";
   import { timeZone } from "$lib/timezone";
   import type { Report } from "$lib/types";
+  import { Tabs } from "bits-ui";
 
   let reports = $state<Report[]>([]);
   let openCount = $state(0);
@@ -143,7 +143,9 @@
       {#each reports as r (r.id)}
         <li class="rounded-card border border-border bg-background p-4">
           <div class="flex flex-wrap items-center gap-2 text-sm">
-            <span class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+            <span
+              class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground"
+            >
               <Icon name={r.subjectType === "post" ? "draft" : "user"} size={12} />
               {r.subjectType === "post" ? "Post" : "Account"}
             </span>

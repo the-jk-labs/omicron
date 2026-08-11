@@ -1,14 +1,14 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { onMount, untrack } from "svelte";
-  import { Tabs } from "bits-ui";
   import { endpoints } from "$lib/api";
-  import { reading } from "$lib/prefs.svelte";
-  import PostCard from "$lib/components/PostCard.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
+  import PostCard from "$lib/components/PostCard.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import { reading } from "$lib/prefs.svelte";
   import type { Page, Post } from "$lib/types";
+  import { Tabs } from "bits-ui";
+  import { onMount, untrack } from "svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -36,9 +36,7 @@
   const personalized = untrack(() => data.personalized);
   const preload = untrack(() => data.page);
 
-  function makeFeed(
-    init: Pick<Feed, "value" | "label" | "icon" | "empty" | "fetch"> & { preload?: Page<Post> },
-  ): Feed {
+  function makeFeed(init: Pick<Feed, "value" | "label" | "icon" | "empty" | "fetch"> & { preload?: Page<Post> }): Feed {
     return {
       ...init,
       items: init.preload?.items ?? [],
@@ -78,9 +76,7 @@
     preload: personalized ? undefined : preload,
   });
 
-  const feeds = $state<Feed[]>(
-    personalized ? [forYou, local, global] : [global, local],
-  );
+  const feeds = $state<Feed[]>(personalized ? [forYou, local, global] : [global, local]);
   const defaultTab = personalized ? "for-you" : "global";
 
   // Controlled active tab. SSR and the first client render both use `defaultTab`
@@ -143,12 +139,10 @@
 {#if !data.personalized}
   <!-- Logged-out hero, Medium style. -->
   <section class="mb-10 pb-10">
-    <h1 class="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-      Human articles &amp; ideas
-    </h1>
+    <h1 class="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">Human articles &amp; ideas</h1>
     <p class="mt-3 max-w-prose text-lg text-muted-foreground">
-      A place to read, write, and connect across the fediverse. Follow writers on any
-      ActivityPub server and build your own feed.
+      A place to read, write, and connect across the fediverse. Follow writers on any ActivityPub server and build your
+      own feed.
     </p>
     <div class="mt-6 flex gap-2">
       <Button href="/register" variant="solid">Start writing</Button>
@@ -186,9 +180,10 @@
     {#each feeds as feed (feed.value)}
       <Tabs.Trigger
         value={feed.value}
-        class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center gap-1.5 border-b border-transparent py-3"
+        class="-mb-px inline-flex items-center gap-1.5 border-b border-transparent py-3 text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground"
       >
-        <Icon name={feed.icon} size={16} /> {feed.label}
+        <Icon name={feed.icon} size={16} />
+        {feed.label}
       </Tabs.Trigger>
     {/each}
   </Tabs.List>

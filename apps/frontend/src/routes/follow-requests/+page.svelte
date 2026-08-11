@@ -1,14 +1,14 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { untrack } from "svelte";
   import { endpoints } from "$lib/api";
+  import Icon from "$lib/components/Icon.svelte";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/Icon.svelte";
   import { timeAgo } from "$lib/format";
   import { timeZone } from "$lib/timezone";
-  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { FollowRequest } from "$lib/types";
+  import { untrack } from "svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -55,7 +55,10 @@
           <Avatar name={req.actor.displayName} src={req.actor.avatarUrl ?? undefined} size={40} />
         </a>
         <div class="min-w-0 flex-1">
-          <a href={`/@${req.actor.username}`} class="block truncate text-sm font-semibold text-foreground hover:underline">
+          <a
+            href={`/@${req.actor.username}`}
+            class="block truncate text-sm font-semibold text-foreground hover:underline"
+          >
             {req.actor.displayName}
           </a>
           <p class="truncate text-xs text-muted-foreground">
@@ -63,20 +66,10 @@
           </p>
         </div>
         <div class="flex shrink-0 items-center gap-2">
-          <Button
-            size="sm"
-            variant="solid"
-            disabled={busy[req.requestId]}
-            onclick={() => act(req, true)}
-          >
+          <Button size="sm" variant="solid" disabled={busy[req.requestId]} onclick={() => act(req, true)}>
             <Icon name="check" size={15} /> Approve
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busy[req.requestId]}
-            onclick={() => act(req, false)}
-          >
+          <Button size="sm" variant="outline" disabled={busy[req.requestId]} onclick={() => act(req, false)}>
             <Icon name="close" size={15} /> Reject
           </Button>
         </div>

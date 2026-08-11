@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Label, Switch } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
   import Button from "$lib/components/ui/Button.svelte";
   import type { SeoSettings, SeoVerification } from "$lib/types";
+  import { Label, Switch } from "bits-ui";
 
   // Discoverability controls (services/seo.ts). Two things: the master indexing
   // switch (drives robots.txt + a site-wide noindex) and per-engine
@@ -86,10 +86,10 @@
       </Label.Root>
       <p class="max-w-prose text-sm text-muted-foreground">
         When on, this instance serves a permissive <code class="text-foreground-alt">robots.txt</code>
-        and a <code class="text-foreground-alt">sitemap.xml</code> of published posts, so search
-        engines can find and list your content. Turn it off to keep the instance out of search
-        results entirely (emits <code class="text-foreground-alt">noindex</code> everywhere). Private
-        areas — settings, drafts, the dashboard, admin — are never indexed either way.
+        and a <code class="text-foreground-alt">sitemap.xml</code> of published posts, so search engines can find and
+        list your content. Turn it off to keep the instance out of search results entirely (emits
+        <code class="text-foreground-alt">noindex</code> everywhere). Private areas — settings, drafts, the dashboard, admin
+        — are never indexed either way.
       </p>
     </div>
     <Switch.Root
@@ -111,15 +111,15 @@
         Notify search engines instantly (IndexNow)
       </Label.Root>
       <p class="max-w-prose text-sm text-muted-foreground">
-        Tells participating engines the moment a post is published or edited, instead of
-        waiting for them to crawl. Supported by Bing, Yandex, Seznam and Naver, which share
-        submissions between them; <strong class="text-foreground-alt">Google does not
-        participate</strong> and is unaffected.
+        Tells participating engines the moment a post is published or edited, instead of waiting for them to crawl.
+        Supported by Bing, Yandex, Seznam and Naver, which share submissions between them; <strong
+          class="text-foreground-alt">Google does not participate</strong
+        > and is unaffected.
       </p>
       <p class="max-w-prose text-sm text-muted-foreground">
-        Off by default because it sends this instance's post URLs to those companies' servers
-        on every publish. Nothing else is sent, and only public posts by public accounts —
-        never drafts, private accounts, or posts from other instances.
+        Off by default because it sends this instance's post URLs to those companies' servers on every publish. Nothing
+        else is sent, and only public posts by public accounts — never drafts, private accounts, or posts from other
+        instances.
       </p>
       {#if indexNowEnabled && indexNowKey}
         <p class="text-xs text-muted-foreground">
@@ -128,8 +128,8 @@
             href={`/indexnow-${indexNowKey}.txt`}
             target="_blank"
             rel="noreferrer"
-            class="text-foreground underline underline-offset-2"
-          >/indexnow-{indexNowKey}.txt</a>, generated when you first switched this on.
+            class="text-foreground underline underline-offset-2">/indexnow-{indexNowKey}.txt</a
+          >, generated when you first switched this on.
         </p>
       {/if}
     </div>
@@ -150,10 +150,10 @@
     <div>
       <h3 class="text-sm font-semibold text-foreground">Search-engine verification</h3>
       <p class="mt-0.5 max-w-prose text-sm text-muted-foreground">
-        Paste the verification token from each search console to claim this site. We add the
-        matching <code class="text-foreground-alt">&lt;meta&gt;</code> tag to every page's head — pick
-        the “HTML meta tag” method in the console, then copy just the token. For a site behind the
-        AI-scraper shield, the console's DNS/CNAME method is the most reliable and needs nothing here.
+        Paste the verification token from each search console to claim this site. We add the matching <code
+          class="text-foreground-alt">&lt;meta&gt;</code
+        > tag to every page's head — pick the “HTML meta tag” method in the console, then copy just the token. For a site
+        behind the AI-scraper shield, the console's DNS/CNAME method is the most reliable and needs nothing here.
       </p>
     </div>
 
@@ -170,7 +170,12 @@
         />
         <p class="text-xs text-muted-foreground">
           {engine.hint}
-          <a href={engine.consoleUrl} target="_blank" rel="noreferrer noopener" class="text-foreground underline underline-offset-2">
+          <a
+            href={engine.consoleUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            class="text-foreground underline underline-offset-2"
+          >
             Open console
           </a>
         </p>
@@ -183,8 +188,18 @@
       {saving ? "Saving…" : "Save changes"}
     </Button>
     {#if saved}<span class="text-sm text-muted-foreground">Saved.</span>{/if}
-    <a href="/robots.txt" target="_blank" rel="noreferrer" class="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground">robots.txt</a>
-    <a href="/sitemap.xml" target="_blank" rel="noreferrer" class="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground">sitemap.xml</a>
+    <a
+      href="/robots.txt"
+      target="_blank"
+      rel="noreferrer"
+      class="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground">robots.txt</a
+    >
+    <a
+      href="/sitemap.xml"
+      target="_blank"
+      rel="noreferrer"
+      class="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground">sitemap.xml</a
+    >
   </div>
   {#if error}<p class="text-sm text-destructive">{error}</p>{/if}
 </div>

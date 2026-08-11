@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Tabs, Toolbar } from "bits-ui";
-  import Icon, { type IconName } from "$lib/components/Icon.svelte";
-  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
-  import { endpoints, ApiError } from "$lib/api";
   import { fitPre } from "$lib/actions/fitPre";
+  import { endpoints, ApiError } from "$lib/api";
+  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
+  import Icon, { type IconName } from "$lib/components/Icon.svelte";
+  import { Tabs, Toolbar } from "bits-ui";
 
   // Markdown editor for the profile's custom section — a GitHub-README-style
   // block the author lays out however they like.
@@ -18,10 +18,7 @@
   // sanitize path used on save (see lib/markdown.ts). That keeps one Markdown
   // implementation in the codebase and guarantees the preview can't promise
   // markup the sanitizer will later strip.
-  let {
-    value = $bindable(""),
-    maxLength,
-  }: { value?: string; maxLength: number } = $props();
+  let { value = $bindable(""), maxLength }: { value?: string; maxLength: number } = $props();
 
   let textarea = $state<HTMLTextAreaElement | null>(null);
   let tab = $state("write");
@@ -172,22 +169,17 @@
 
   <Tabs.Content value="write" class="flex flex-col gap-2 focus-visible:outline-none">
     <Toolbar.Root
-      class="rounded-10px border-border bg-background-alt shadow-mini no-scrollbar flex w-full items-center gap-0.5 overflow-x-auto border px-2 py-1"
+      class="no-scrollbar flex w-full items-center gap-0.5 overflow-x-auto rounded-10px border border-border bg-background-alt px-2 py-1 shadow-mini"
     >
       {#each tools as tool (tool.label)}
         {#if tool.divider}
-          <span class="bg-border mx-1 h-5 w-px shrink-0" aria-hidden="true"></span>
+          <span class="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true"></span>
         {/if}
-        <Toolbar.Button
-          onclick={tool.run}
-          aria-label={tool.label}
-          title={tool.label}
-          class={btn}
-        >
+        <Toolbar.Button onclick={tool.run} aria-label={tool.label} title={tool.label} class={btn}>
           <Icon name={tool.icon} size={16} />
         </Toolbar.Button>
       {/each}
-      <span class="bg-border mx-1 h-5 w-px shrink-0" aria-hidden="true"></span>
+      <span class="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true"></span>
       <EmojiTrigger onPick={insertEmoji} align="end" class={btn} />
     </Toolbar.Root>
 
@@ -198,13 +190,13 @@
       maxlength={maxLength}
       spellcheck="false"
       placeholder={"# Hi, I'm …\n\nWrite anything here — headings, lists, tables, images, links.\nMarkdown and simple HTML both work."}
-      class="rounded-input border border-input bg-background shadow-btn w-full resize-y px-3.5 py-2.5 font-mono text-sm leading-relaxed outline-none placeholder:text-muted-foreground focus:border-foreground"
+      class="w-full resize-y rounded-input border border-input bg-background px-3.5 py-2.5 font-mono text-sm leading-relaxed shadow-btn outline-none placeholder:text-muted-foreground focus:border-foreground"
     ></textarea>
   </Tabs.Content>
 
   <Tabs.Content
     value="preview"
-    class="rounded-card border border-border bg-background-alt min-h-[220px] px-5 py-4 focus-visible:outline-none"
+    class="min-h-[220px] rounded-card border border-border bg-background-alt px-5 py-4 focus-visible:outline-none"
   >
     {#if previewLoading}
       <p class="flex items-center gap-2 text-sm text-muted-foreground">

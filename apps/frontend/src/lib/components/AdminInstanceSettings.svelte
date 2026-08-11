@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Dialog, Label, Switch } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
-  import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
   import type { AdminInstance } from "$lib/types";
+  import { Dialog, Label, Switch } from "bits-ui";
 
   // Runtime instance identity: app name + public domain + the federation toggle,
   // all editable after setup so an operator never returns to a config file. The
@@ -90,13 +90,7 @@
 <div class="flex flex-col gap-4">
   <div class="flex flex-col gap-1.5">
     <Label.Root for="admin-appName" class={labelClass}>Instance name</Label.Root>
-    <input
-      id="admin-appName"
-      bind:value={appName}
-      disabled={loading}
-      placeholder="My Blog"
-      class={field}
-    />
+    <input id="admin-appName" bind:value={appName} disabled={loading} placeholder="My Blog" class={field} />
     <p class="text-xs text-muted-foreground">The name shown across the site.</p>
   </div>
 
@@ -110,19 +104,17 @@
       class={field}
     />
     <p class="text-xs text-muted-foreground">
-      Used for links in email and share cards. A change applies to app URLs at once, but reaches
-      ActivityPub only after a restart (federation identity binds at boot).
+      Used for links in email and share cards. A change applies to app URLs at once, but reaches ActivityPub only after
+      a restart (federation identity binds at boot).
     </p>
   </div>
 
-  <div
-    class="flex items-start justify-between gap-3 rounded-card border border-border bg-background-alt px-3.5 py-3"
-  >
+  <div class="flex items-start justify-between gap-3 rounded-card border border-border bg-background-alt px-3.5 py-3">
     <div class="flex flex-col gap-0.5">
       <Label.Root for="admin-federation" class={labelClass}>Federation (ActivityPub)</Label.Root>
       <p class="text-xs text-muted-foreground">
-        Publish and receive posts across the fediverse. Turning this off runs the instance as a
-        standalone blog. Applies on the next restart.
+        Publish and receive posts across the fediverse. Turning this off runs the instance as a standalone blog. Applies
+        on the next restart.
         {#if federationRestartPending}
           <span class="text-foreground"
             >Saved as {federationEnabled ? "on" : "off"} — restart to apply (currently {federationRunning
@@ -158,9 +150,8 @@
     <span class={labelClass}>Session secret</span>
     {#if sessionSecretManaged}
       <p class="text-xs text-muted-foreground">
-        Rotating the secret invalidates every signed-in session. It takes effect on the next
-        restart, so everyone (including you) is signed out then. Only do this if you suspect the
-        secret was exposed.
+        Rotating the secret invalidates every signed-in session. It takes effect on the next restart, so everyone
+        (including you) is signed out then. Only do this if you suspect the secret was exposed.
       </p>
       {#if rotated}
         <p class="text-sm text-foreground">
@@ -177,23 +168,26 @@
           </Dialog.Trigger>
           <Dialog.Portal>
             <Dialog.Overlay
-              class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+              class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
             />
             <Dialog.Content
-              class="rounded-card bg-background shadow-popover fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 border border-border sm:max-w-[440px]"
+              class="fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background shadow-popover sm:max-w-[440px]"
             >
               <div class="flex items-center justify-between border-b border-border px-5 py-4">
-                <Dialog.Title class="text-foreground text-base font-semibold tracking-tight">
+                <Dialog.Title class="text-base font-semibold tracking-tight text-foreground">
                   Rotate session secret?
                 </Dialog.Title>
-                <Dialog.Close class="text-muted-foreground hover:text-foreground focus-visible:outline-none" aria-label="Close">
+                <Dialog.Close
+                  class="text-muted-foreground hover:text-foreground focus-visible:outline-none"
+                  aria-label="Close"
+                >
                   <Icon name="close" size={18} />
                 </Dialog.Close>
               </div>
               <div class="flex flex-col gap-4 px-5 py-5">
                 <p class="text-sm text-muted-foreground">
-                  This stages a new secret. On the next restart every session ends and everyone —
-                  you included — is signed out. It cannot be undone.
+                  This stages a new secret. On the next restart every session ends and everyone — you included — is
+                  signed out. It cannot be undone.
                 </p>
                 {#if rotateError}<p class="text-sm text-destructive">{rotateError}</p>{/if}
                 <div class="flex justify-end gap-2">
@@ -202,13 +196,7 @@
                       <Button {...props} type="button" variant="outline" size="sm">Cancel</Button>
                     {/snippet}
                   </Dialog.Close>
-                  <Button
-                    type="button"
-                    variant="solid"
-                    size="sm"
-                    disabled={rotating}
-                    onclick={rotate}
-                  >
+                  <Button type="button" variant="solid" size="sm" disabled={rotating} onclick={rotate}>
                     {rotating ? "Rotating…" : "Rotate secret"}
                   </Button>
                 </div>

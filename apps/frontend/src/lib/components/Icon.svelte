@@ -170,11 +170,7 @@
 </script>
 
 <script lang="ts">
-  let {
-    name,
-    size = 20,
-    class: className = "",
-  }: { name: IconName; size?: number; class?: string } = $props();
+  let { name, size = 20, class: className = "" }: { name: IconName; size?: number; class?: string } = $props();
 
   const Cmp = $derived(icons[name]);
 </script>

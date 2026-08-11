@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { untrack } from "svelte";
-  import ReadingListCard from "$lib/components/ReadingListCard.svelte";
-  import ListFormDialog from "$lib/components/ListFormDialog.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import ListFormDialog from "$lib/components/ListFormDialog.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
+  import ReadingListCard from "$lib/components/ReadingListCard.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
   import type { ReadingList } from "$lib/types";
+  import { untrack } from "svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();

@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Label } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
   import Button from "$lib/components/ui/Button.svelte";
+  import { Label } from "bits-ui";
 
   // The Unsplash access key, which adds Unsplash as a second source in the
   // editor's banner picker. Optional, and optional by necessity: Unsplash
@@ -38,9 +38,7 @@
     try {
       configured = (await endpoints().setAdminUnsplash(key)).configured;
       accessKey = "";
-      saved = key
-        ? "Unsplash added to the banner picker."
-        : "Unsplash removed. Openverse is still available.";
+      saved = key ? "Unsplash added to the banner picker." : "Unsplash removed. Openverse is still available.";
     } catch (e) {
       error = e instanceof ApiError ? e.message : "Failed to save.";
     } finally {
@@ -52,18 +50,17 @@
 <div class="flex flex-col gap-4">
   <p class="max-w-prose text-sm text-muted-foreground">
     Photo search already works with no setup: the banner picker searches
-    <strong class="text-foreground">Openverse</strong>, which needs no account. Adding a key here
-    puts <strong class="text-foreground">Unsplash</strong> beside it as a second tab. Either way
-    the creator is credited under the banner automatically, as both providers' terms require.
-    Create a free app at
+    <strong class="text-foreground">Openverse</strong>, which needs no account. Adding a key here puts
+    <strong class="text-foreground">Unsplash</strong>
+    beside it as a second tab. Either way the creator is credited under the banner automatically, as both providers'
+    terms require. Create a free app at
     <a
       href="https://unsplash.com/oauth/applications"
       target="_blank"
       rel="noopener noreferrer"
       class="text-foreground underline">unsplash.com/oauth/applications</a
     >
-    and paste its <em>Access Key</em> below. Their demo tier allows 50 searches an hour across the
-    whole instance.
+    and paste its <em>Access Key</em> below. Their demo tier allows 50 searches an hour across the whole instance.
   </p>
 
   {#if loading}
@@ -79,9 +76,7 @@
     </p>
 
     <div class="flex flex-col gap-1.5">
-      <Label.Root for="unsplash-key" class="text-sm font-medium leading-none text-foreground">
-        Access key
-      </Label.Root>
+      <Label.Root for="unsplash-key" class="text-sm font-medium leading-none text-foreground">Access key</Label.Root>
       <input
         id="unsplash-key"
         bind:value={accessKey}
@@ -100,9 +95,7 @@
         {saving ? "Saving…" : "Save key"}
       </Button>
       {#if configured}
-        <Button variant="outline" size="sm" disabled={saving} onclick={() => save(null)}>
-          Remove key
-        </Button>
+        <Button variant="outline" size="sm" disabled={saving} onclick={() => save(null)}>Remove key</Button>
       {/if}
     </div>
   {/if}

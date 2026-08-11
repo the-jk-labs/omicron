@@ -13,7 +13,7 @@
       <li>
         <a
           href={`/tags/${tag.slug}`}
-          class="bg-muted text-foreground-alt hover:bg-dark-10 hover:text-foreground inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-colors"
+          class="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium text-foreground-alt transition-colors hover:bg-dark-10 hover:text-foreground"
         >
           #{tag.name}
         </a>

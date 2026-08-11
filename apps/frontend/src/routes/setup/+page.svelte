@@ -2,20 +2,18 @@
 <script lang="ts">
   import { goto, invalidateAll } from "$app/navigation";
   import { page } from "$app/state";
-  import { Checkbox, Label, RadioGroup } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
-  import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/Icon.svelte";
   import logo from "$lib/assets/omicron.svg";
+  import Icon from "$lib/components/Icon.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
   import type { EmailInput, InstanceInfo } from "$lib/types";
+  import { Checkbox, Label, RadioGroup } from "bits-ui";
 
   // The public domain the layout gate resolved. Prefill it (unless it's the bare
   // localhost dev default) so an operator on a real domain confirms rather than
   // retypes.
   const instance = page.data.instance as InstanceInfo | null;
-  const suggestedDomain = instance && !instance.domain.startsWith("localhost")
-    ? instance.domain
-    : "";
+  const suggestedDomain = instance && !instance.domain.startsWith("localhost") ? instance.domain : "";
 
   // Wizard state. Three steps: instance identity → admin account → email.
   let step = $state(0);
@@ -97,9 +95,8 @@
     step === 0
       ? appName.trim().length > 0
       : step === 1
-      ? /^[a-z0-9_]{3,30}$/.test(username.trim().toLowerCase()) &&
-        email.includes("@") && password.length >= 8
-      : true,
+        ? /^[a-z0-9_]{3,30}$/.test(username.trim().toLowerCase()) && email.includes("@") && password.length >= 8
+        : true,
   );
 
   function next() {
@@ -147,9 +144,7 @@
 <div class="mb-8 text-center">
   <div class="mb-4 flex justify-center"><img src={logo} alt="" class="h-12 w-auto" /></div>
   <h1 class="text-2xl font-bold tracking-tight text-foreground">Welcome — let's set up</h1>
-  <p class="mt-1.5 text-sm text-muted-foreground">
-    A few details and your instance is live. Nothing to edit on disk.
-  </p>
+  <p class="mt-1.5 text-sm text-muted-foreground">A few details and your instance is live. Nothing to edit on disk.</p>
 </div>
 
 <!-- Step indicator -->
@@ -177,7 +172,9 @@
       <p class="text-xs text-muted-foreground">The name shown across the site.</p>
     </div>
     <div class="flex flex-col gap-1.5">
-      <Label.Root for="appDomain" class={labelClass}>Public domain <span class="text-muted-foreground">(optional)</span></Label.Root>
+      <Label.Root for="appDomain" class={labelClass}
+        >Public domain <span class="text-muted-foreground">(optional)</span></Label.Root
+      >
       <input id="appDomain" bind:value={appDomain} placeholder="blog.example.com" class={field} />
       <p class="text-xs text-muted-foreground">
         Leave blank for local use. Set it to go public and federate over ActivityPub.
@@ -198,7 +195,14 @@
     </div>
     <div class="flex flex-col gap-1.5">
       <Label.Root for="password" class={labelClass}>Password</Label.Root>
-      <input id="password" type="password" bind:value={password} autocomplete="new-password" placeholder="min 8 characters" class={field} />
+      <input
+        id="password"
+        type="password"
+        bind:value={password}
+        autocomplete="new-password"
+        placeholder="min 8 characters"
+        class={field}
+      />
     </div>
     <p class="text-xs text-muted-foreground">This first account is the instance admin.</p>
   {:else}
@@ -208,8 +212,8 @@
         <div>
           <div class="text-sm font-semibold text-foreground">Log to console (default)</div>
           <p class="mt-0.5 text-xs text-muted-foreground">
-            Password-reset and verification links are printed to the server log. Perfect to
-            get started; no mail server needed.
+            Password-reset and verification links are printed to the server log. Perfect to get started; no mail server
+            needed.
           </p>
         </div>
       </RadioGroup.Item>
@@ -239,7 +243,14 @@
         </div>
         <div class="flex flex-col gap-1.5">
           <Label.Root for="relayKey" class={labelClass}>Resend API key</Label.Root>
-          <input id="relayKey" type="password" bind:value={relayApiKey} autocomplete="new-password" placeholder="re_..." class={field} />
+          <input
+            id="relayKey"
+            type="password"
+            bind:value={relayApiKey}
+            autocomplete="new-password"
+            placeholder="re_..."
+            class={field}
+          />
         </div>
       </div>
     {/if}
@@ -267,13 +278,16 @@
           </div>
           <div class="flex min-w-0 flex-1 flex-col gap-1.5">
             <Label.Root for="smtpPassword" class={labelClass}>Password / API key</Label.Root>
-            <input id="smtpPassword" type="password" bind:value={smtpPassword} autocomplete="new-password" class={field} />
+            <input
+              id="smtpPassword"
+              type="password"
+              bind:value={smtpPassword}
+              autocomplete="new-password"
+              class={field}
+            />
           </div>
         </div>
-        <Checkbox.Root
-          bind:checked={smtpTls}
-          class="flex items-center gap-2.5 text-sm text-foreground"
-        >
+        <Checkbox.Root bind:checked={smtpTls} class="flex items-center gap-2.5 text-sm text-foreground">
           {#snippet children({ checked })}
             <span
               class="flex size-5 items-center justify-center rounded-9px border border-border-input bg-background shadow-btn {checked
@@ -325,9 +339,7 @@
       <span></span>
     {/if}
     {#if step < steps.length - 1}
-      <Button type="button" variant="solid" class="h-11" disabled={!canAdvance} onclick={next}>
-        Continue
-      </Button>
+      <Button type="button" variant="solid" class="h-11" disabled={!canAdvance} onclick={next}>Continue</Button>
     {:else}
       <Button type="button" variant="solid" class="h-11" disabled={busy} onclick={finish}>
         {busy ? "Setting up…" : "Finish setup"}

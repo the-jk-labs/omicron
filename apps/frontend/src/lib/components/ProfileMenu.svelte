@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { untrack } from "svelte";
-  import { DropdownMenu } from "bits-ui";
   import { endpoints } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
+  import { DropdownMenu } from "bits-ui";
+  import { untrack } from "svelte";
 
   // Mute / block actions for a profile other than your own. `username` is the
   // plain username for local accounts and the `user@host` handle for remote
@@ -59,7 +59,7 @@
     disabled={busy}
     aria-label="More actions"
     title="More actions"
-    class="border-input text-foreground shadow-btn hover:bg-muted inline-flex size-10 select-none items-center justify-center rounded-full border active:scale-[0.98]"
+    class="inline-flex size-10 select-none items-center justify-center rounded-full border border-input text-foreground shadow-btn hover:bg-muted active:scale-[0.98]"
   >
     <Icon name="more" size={18} />
   </DropdownMenu.Trigger>
@@ -67,7 +67,7 @@
     <DropdownMenu.Content
       sideOffset={8}
       align="end"
-      class="border-muted bg-background shadow-popover z-30 w-[200px] rounded-xl border px-1 py-1.5 focus-visible:outline-none"
+      class="z-30 w-[200px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-none"
     >
       <DropdownMenu.Item onSelect={toggleMute} class={itemClass}>
         <Icon name="mute" size={18} />

@@ -1,31 +1,31 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { untrack } from "svelte";
   import { goto, invalidateAll } from "$app/navigation";
-  import { Button as ButtonPrimitive, Dialog, Label, Select, Switch } from "bits-ui";
-  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
-  import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
   import { endpoints, ApiError } from "$lib/api";
-  import { theme, type ThemePreference } from "$lib/theme.svelte";
-  import { reading, type FeedLangMode, type FeedTab } from "$lib/prefs.svelte";
-  import { LANGUAGES, languageLabel } from "$lib/languages";
-  import { MAX_PROFILE_TAGS } from "$lib/tags";
-  import { AVATAR_MAX_DIMENSION, prepareImage } from "$lib/editor/image";
-  import { formatDate } from "$lib/format";
-  import { timeZone } from "$lib/timezone";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
   import AvatarCropper from "$lib/components/AvatarCropper.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
   import ConnectionsManager from "$lib/components/ConnectionsManager.svelte";
-  import FollowedTagsManager from "$lib/components/FollowedTagsManager.svelte";
-  import WebhookTokensManager from "$lib/components/WebhookTokensManager.svelte";
-  import TagInput from "$lib/components/TagInput.svelte";
-  import ProfileLinksEditor from "$lib/components/ProfileLinksEditor.svelte";
   import CustomSectionEditor from "$lib/components/CustomSectionEditor.svelte";
-  import { identifierToUrl, platformMeta, urlToIdentifier } from "$lib/profileLinks";
+  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
+  import FollowedTagsManager from "$lib/components/FollowedTagsManager.svelte";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
+  import ProfileLinksEditor from "$lib/components/ProfileLinksEditor.svelte";
+  import TagInput from "$lib/components/TagInput.svelte";
+  import Avatar from "$lib/components/ui/Avatar.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import WebhookTokensManager from "$lib/components/WebhookTokensManager.svelte";
+  import { AVATAR_MAX_DIMENSION, prepareImage } from "$lib/editor/image";
+  import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
+  import { formatDate } from "$lib/format";
+  import { LANGUAGES, languageLabel } from "$lib/languages";
+  import { reading, type FeedLangMode, type FeedTab } from "$lib/prefs.svelte";
+  import { identifierToUrl, platformMeta, urlToIdentifier } from "$lib/profileLinks";
+  import { MAX_PROFILE_TAGS } from "$lib/tags";
+  import { theme, type ThemePreference } from "$lib/theme.svelte";
+  import { timeZone } from "$lib/timezone";
   import type { ProfileLink } from "$lib/types";
+  import { Button as ButtonPrimitive, Dialog, Label, Select, Switch } from "bits-ui";
+  import { untrack } from "svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -54,8 +54,7 @@
 
   const insertNameEmoji = (emoji: string) =>
     insertEmojiIntoField(nameEl, displayName, 60, emoji, (v) => (displayName = v));
-  const insertBioEmoji = (emoji: string) =>
-    insertEmojiIntoField(bioEl, bio, 500, emoji, (v) => (bio = v));
+  const insertBioEmoji = (emoji: string) => insertEmojiIntoField(bioEl, bio, 500, emoji, (v) => (bio = v));
   let file = $state<File | null>(null);
   let previewUrl = $state<string | null>(null);
   let fileInput = $state<HTMLInputElement | null>(null);
@@ -97,9 +96,7 @@
     { value: "show", label: "Show only these" },
   ];
   // Languages not already chosen — the options offered by the "Add" picker.
-  const availableLanguages = $derived(
-    LANGUAGES.filter((l) => !reading.feedLangs.includes(l.code)),
-  );
+  const availableLanguages = $derived(LANGUAGES.filter((l) => !reading.feedLangs.includes(l.code)));
   let addLangValue = $state("");
   function addLanguage(code: string) {
     if (code) reading.addFeedLang(code);
@@ -194,9 +191,10 @@
         // re-encode), surface a clear error instead of a failed upload.
         const { blob, type } = await prepareImage(file, AVATAR_MAX_DIMENSION, MAX_BYTES);
         if (blob.size > MAX_BYTES) {
-          error = type === "image/gif"
-            ? "That GIF is too large (max 2 MB). Try a smaller GIF, or use PNG/JPEG/WebP."
-            : "Image too large (max 2 MB) even after compression. Please choose a different photo.";
+          error =
+            type === "image/gif"
+              ? "That GIF is too large (max 2 MB). Try a smaller GIF, or use PNG/JPEG/WebP."
+              : "Image too large (max 2 MB) even after compression. Please choose a different photo.";
           busy = false;
           return;
         }
@@ -209,17 +207,18 @@
         const url = identifierToUrl(l.platform, l.url);
         if (!url) {
           const meta = platformMeta(l.platform);
-          const what = meta.input.kind === "fedi"
-            ? "handle (@user@instance)"
-            : meta.input.kind === "matrix"
-            ? "id (@user:server)"
-            : meta.input.kind === "xmpp"
-            ? "address (user@server)"
-            : meta.input.kind === "irc"
-            ? "address (ircs://host/#channel)"
-            : meta.input.kind === "handle"
-            ? "username"
-            : "web address";
+          const what =
+            meta.input.kind === "fedi"
+              ? "handle (@user@instance)"
+              : meta.input.kind === "matrix"
+                ? "id (@user:server)"
+                : meta.input.kind === "xmpp"
+                  ? "address (user@server)"
+                  : meta.input.kind === "irc"
+                    ? "address (ircs://host/#channel)"
+                    : meta.input.kind === "handle"
+                      ? "username"
+                      : "web address";
           error = `Enter a valid ${meta.label} ${what}.`;
           busy = false;
           return;
@@ -405,13 +404,12 @@
                 disabled={removingPhoto}
                 class="text-muted-foreground hover:text-destructive"
               >
-                <Icon name="trash" size={15} /> {removingPhoto ? "Removing…" : "Remove"}
+                <Icon name="trash" size={15} />
+                {removingPhoto ? "Removing…" : "Remove"}
               </Button>
             {/if}
           </div>
-          <p class="text-xs text-muted-foreground">
-            PNG, JPEG, WebP or GIF · large photos are resized automatically
-          </p>
+          <p class="text-xs text-muted-foreground">PNG, JPEG, WebP or GIF · large photos are resized automatically</p>
         </div>
         <input
           bind:this={fileInput}
@@ -453,13 +451,8 @@
             rows={3}
             maxlength={500}
             placeholder="Tell people about yourself"
-            class={`${field} w-full resize-none pr-11`}
-          ></textarea>
-          <EmojiTrigger
-            onPick={insertBioEmoji}
-            align="end"
-            class={`${emojiOverlayBtn} bottom-2 right-1.5`}
-          />
+            class={`${field} w-full resize-none pr-11`}></textarea>
+          <EmojiTrigger onPick={insertBioEmoji} align="end" class={`${emojiOverlayBtn} bottom-2 right-1.5`} />
         </div>
         <p class="self-end text-xs text-muted-foreground">{bio.length}/500</p>
       </div>
@@ -501,8 +494,8 @@
       <div class="flex flex-col gap-1.5">
         <Label.Root class={labelClass}>Custom section</Label.Root>
         <p class="text-xs text-muted-foreground">
-          A free-form space at the top of your profile's About tab — write it in Markdown and lay
-          it out however you like. Leave it empty to hide the section.
+          A free-form space at the top of your profile's About tab — write it in Markdown and lay it out however you
+          like. Leave it empty to hide the section.
         </p>
         <div class="mt-1">
           <CustomSectionEditor bind:value={customSection} maxLength={MAX_CUSTOM_SECTION_LEN} />
@@ -528,9 +521,7 @@
     <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div>
         <p class="text-sm font-medium text-foreground">Theme</p>
-        <p class="text-xs text-muted-foreground">
-          Use a fixed theme, or follow your system setting.
-        </p>
+        <p class="text-xs text-muted-foreground">Use a fixed theme, or follow your system setting.</p>
       </div>
       <div
         class="inline-flex items-center gap-1 self-start rounded-input border border-input bg-background-alt p-1 shadow-btn sm:self-auto"
@@ -545,7 +536,8 @@
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Icon name={opt.icon} size={15} /> {opt.label}
+            <Icon name={opt.icon} size={15} />
+            {opt.label}
           </ButtonPrimitive.Root>
         {/each}
       </div>
@@ -575,7 +567,8 @@
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Icon name={opt.icon} size={15} /> {opt.label}
+            <Icon name={opt.icon} size={15} />
+            {opt.label}
           </ButtonPrimitive.Root>
         {/each}
       </div>
@@ -589,8 +582,8 @@
             <Icon name="languages" size={15} /> Feed languages
           </p>
           <p class="text-xs text-muted-foreground">
-            Filter which languages appear in your Local and Global feeds. Articles with no set
-            language are always shown.
+            Filter which languages appear in your Local and Global feeds. Articles with no set language are always
+            shown.
           </p>
         </div>
         <div
@@ -631,14 +624,14 @@
         {#if availableLanguages.length > 0}
           <Select.Root type="single" value={addLangValue} onValueChange={addLanguage}>
             <Select.Trigger
-              class="rounded-input border-border-input bg-background shadow-btn inline-flex h-9 items-center gap-1.5 border px-3 text-sm text-muted-foreground transition-colors hover:text-foreground focus:border-foreground outline-none"
+              class="inline-flex h-9 items-center gap-1.5 rounded-input border border-border-input bg-background px-3 text-sm text-muted-foreground shadow-btn outline-none transition-colors hover:text-foreground focus:border-foreground"
               aria-label="Add a language"
             >
               <Icon name="plus" size={15} /> Add language
             </Select.Trigger>
             <Select.Portal>
               <Select.Content
-                class="border-muted bg-background shadow-popover rounded-card z-50 max-h-72 w-52 overflow-y-auto border p-1"
+                class="z-50 max-h-72 w-52 overflow-y-auto rounded-card border border-muted bg-background p-1 shadow-popover"
                 sideOffset={6}
               >
                 <Select.Viewport>
@@ -646,7 +639,7 @@
                     <Select.Item
                       value={lang.code}
                       label={lang.name}
-                      class="rounded-button data-[highlighted]:bg-muted flex h-9 w-full select-none items-center gap-2 px-2 text-sm outline-none"
+                      class="flex h-9 w-full select-none items-center gap-2 rounded-button px-2 text-sm outline-none data-[highlighted]:bg-muted"
                     >
                       <span class="truncate">{lang.name}</span>
                       <span class="truncate text-muted-foreground">{lang.native}</span>
@@ -660,9 +653,7 @@
       </div>
 
       {#if reading.feedLangs.length === 0}
-        <p class="mt-2 text-xs text-muted-foreground">
-          No filter set — articles in every language are shown.
-        </p>
+        <p class="mt-2 text-xs text-muted-foreground">No filter set — articles in every language are shown.</p>
       {/if}
     </div>
   </section>
@@ -674,12 +665,10 @@
 
     <div class="mt-4 flex items-center justify-between gap-4">
       <div class="min-w-0">
-        <Label.Root for="private-account" class="text-sm font-medium text-foreground">
-          Private account
-        </Label.Root>
+        <Label.Root for="private-account" class="text-sm font-medium text-foreground">Private account</Label.Root>
         <p class="mt-0.5 text-xs text-muted-foreground">
-          When on, only followers you approve can see your articles, and new followers must send a
-          request. Turning it off approves everyone waiting.
+          When on, only followers you approve can see your articles, and new followers must send a request. Turning it
+          off approves everyone waiting.
         </p>
       </div>
       <Switch.Root
@@ -687,10 +676,10 @@
         checked={isPrivate}
         onCheckedChange={togglePrivacy}
         disabled={privacyBusy}
-        class="focus-visible:ring-foreground focus-visible:ring-offset-background data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset peer inline-flex h-[36px] min-h-[36px] w-[60px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        class="peer inline-flex h-[36px] min-h-[36px] w-[60px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset"
       >
         <Switch.Thumb
-          class="bg-background data-[state=unchecked]:shadow-mini pointer-events-none block size-[30px] shrink-0 rounded-full transition-transform data-[state=checked]:translate-x-6 data-[state=unchecked]:translate-x-0"
+          class="pointer-events-none block size-[30px] shrink-0 rounded-full bg-background transition-transform data-[state=checked]:translate-x-6 data-[state=unchecked]:translate-x-0 data-[state=unchecked]:shadow-mini"
         />
       </Switch.Root>
     </div>
@@ -724,9 +713,9 @@
   <section class="rounded-card border border-border bg-background p-6">
     <h2 class="text-lg font-semibold tracking-tight text-foreground">Integrations</h2>
     <p class="mt-1 max-w-prose text-sm text-muted-foreground">
-      Publish to this blog from an external system — a CMS like Sanity, a build hook, or a script.
-      Create a token, give it to that system, and posts it sends are published as you and federate
-      like anything you write here. Revoke a token any time to cut it off.
+      Publish to this blog from an external system — a CMS like Sanity, a build hook, or a script. Create a token, give
+      it to that system, and posts it sends are published as you and federate like anything you write here. Revoke a
+      token any time to cut it off.
     </p>
 
     <div class="mt-4">
@@ -742,9 +731,7 @@
       <div class="flex items-start justify-between gap-4">
         <div>
           <dt class="text-muted-foreground">Username</dt>
-          <p class="mt-0.5 text-xs text-muted-foreground">
-            Your fediverse handle — permanent and can't be changed.
-          </p>
+          <p class="mt-0.5 text-xs text-muted-foreground">Your fediverse handle — permanent and can't be changed.</p>
         </div>
         <dd class="font-medium text-foreground">@{data.user.username}</dd>
       </div>
@@ -807,8 +794,8 @@
   <section class="rounded-card border border-destructive/40 bg-background p-6">
     <h2 class="text-lg font-semibold tracking-tight text-destructive">Delete account</h2>
     <p class="mt-1 max-w-prose text-sm text-muted-foreground">
-      Permanently delete your account, posts, and follows. If your instance is federated, other
-      servers are told to remove your profile too. This cannot be undone.
+      Permanently delete your account, posts, and follows. If your instance is federated, other servers are told to
+      remove your profile too. This cannot be undone.
     </p>
 
     <div class="mt-4 flex justify-end">
@@ -822,15 +809,13 @@
 <Dialog.Root bind:open={pwOpen} onOpenChange={onPwOpenChange}>
   <Dialog.Portal>
     <Dialog.Overlay
-      class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+      class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="rounded-card bg-background shadow-popover fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 border border-border p-6 sm:max-w-[440px]"
+      class="fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[440px]"
     >
-      <Dialog.Title class="text-foreground text-lg font-semibold tracking-tight">
-        Change password
-      </Dialog.Title>
-      <Dialog.Description class="text-muted-foreground mt-1 text-sm">
+      <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Change password</Dialog.Title>
+      <Dialog.Description class="mt-1 text-sm text-muted-foreground">
         Enter your current password, then choose a new one.
       </Dialog.Description>
 
@@ -866,20 +851,16 @@
             class={field}
           />
         </div>
-        {#if pwError}<p class="text-destructive text-sm">{pwError}</p>{/if}
+        {#if pwError}<p class="text-sm text-destructive">{pwError}</p>{/if}
       </div>
 
       <div class="mt-6 flex justify-end gap-2">
         <Dialog.Close
-          class="text-foreground hover:bg-muted inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium active:scale-[0.98]"
+          class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
         >
           Cancel
         </Dialog.Close>
-        <Button
-          variant="solid"
-          disabled={pwBusy || !currentPassword || !newPassword}
-          onclick={changePassword}
-        >
+        <Button variant="solid" disabled={pwBusy || !currentPassword || !newPassword} onclick={changePassword}>
           {pwBusy ? "Saving…" : "Update password"}
         </Button>
       </div>
@@ -890,17 +871,15 @@
 <Dialog.Root bind:open={deleteOpen} onOpenChange={onDeleteOpenChange}>
   <Dialog.Portal>
     <Dialog.Overlay
-      class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+      class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="rounded-card bg-background shadow-popover fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 border border-border p-6 sm:max-w-[440px]"
+      class="fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[440px]"
     >
-      <Dialog.Title class="text-foreground text-lg font-semibold tracking-tight">
-        Delete account
-      </Dialog.Title>
-      <Dialog.Description class="text-muted-foreground mt-1 text-sm">
-        This permanently deletes <strong class="text-foreground">@{data.user.username}</strong> and
-        everything in it. Enter your password to confirm.
+      <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Delete account</Dialog.Title>
+      <Dialog.Description class="mt-1 text-sm text-muted-foreground">
+        This permanently deletes <strong class="text-foreground">@{data.user.username}</strong> and everything in it. Enter
+        your password to confirm.
       </Dialog.Description>
 
       <div class="mt-5 flex flex-col gap-1.5">
@@ -912,20 +891,16 @@
           autocomplete="current-password"
           class={field}
         />
-        {#if deleteError}<p class="text-destructive text-sm">{deleteError}</p>{/if}
+        {#if deleteError}<p class="text-sm text-destructive">{deleteError}</p>{/if}
       </div>
 
       <div class="mt-6 flex justify-end gap-2">
         <Dialog.Close
-          class="text-foreground hover:bg-muted inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium active:scale-[0.98]"
+          class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
         >
           Cancel
         </Dialog.Close>
-        <Button
-          variant="destructive"
-          disabled={deleting || deletePassword.length === 0}
-          onclick={deleteAccount}
-        >
+        <Button variant="destructive" disabled={deleting || deletePassword.length === 0} onclick={deleteAccount}>
           {deleting ? "Deleting…" : "Delete forever"}
         </Button>
       </div>

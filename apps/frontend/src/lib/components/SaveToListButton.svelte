@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Popover } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
   import type { ReadingList } from "$lib/types";
+  import { Popover } from "bits-ui";
 
   // "Save to list" control — the reading-list analogue of YouTube's Save button.
   // Opens a popover of the signed-in user's lists (Read later pinned first),
@@ -45,9 +45,7 @@
       if (wasIn) await endpoints().removeFromList(list.id, postId);
       else await endpoints().addToList(list.id, postId);
       lists = lists.map((l) =>
-        l.id === list.id
-          ? { ...l, contains: !wasIn, itemCount: l.itemCount + (wasIn ? -1 : 1) }
-          : l,
+        l.id === list.id ? { ...l, contains: !wasIn, itemCount: l.itemCount + (wasIn ? -1 : 1) } : l,
       );
     } catch (e) {
       error = e instanceof ApiError ? e.message : "Something went wrong.";
@@ -91,7 +89,7 @@
       <Popover.Content
         sideOffset={8}
         align="end"
-        class="border-muted bg-background shadow-popover z-30 w-[260px] rounded-xl border p-1.5 focus-visible:outline-none"
+        class="z-30 w-[260px] rounded-xl border border-muted bg-background p-1.5 shadow-popover focus-visible:outline-none"
       >
         <p class="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Save to…</p>
 
@@ -104,11 +102,11 @@
                 type="button"
                 onclick={() => toggle(list)}
                 disabled={busy.has(list.id)}
-                class="rounded-button hover:bg-muted flex w-full items-center gap-2.5 px-2 py-2 text-left text-sm text-foreground focus-visible:outline-none disabled:opacity-60"
+                class="flex w-full items-center gap-2.5 rounded-button px-2 py-2 text-left text-sm text-foreground hover:bg-muted focus-visible:outline-none disabled:opacity-60"
               >
                 <span
                   class="flex size-4 shrink-0 items-center justify-center rounded border {list.contains
-                    ? 'bg-foreground border-foreground text-background'
+                    ? 'border-foreground bg-foreground text-background'
                     : 'border-border'}"
                 >
                   {#if list.contains}<Icon name="check" size={12} />{/if}
@@ -134,13 +132,13 @@
               bind:value={newTitle}
               placeholder="New list"
               maxlength="100"
-              class="rounded-input border-border bg-background h-8 min-w-0 flex-1 border px-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
+              class="h-8 min-w-0 flex-1 rounded-input border border-border bg-background px-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
             />
             <button
               type="submit"
               disabled={!newTitle.trim() || creating}
               aria-label="Create list"
-              class="rounded-button text-muted-foreground hover:text-foreground hover:bg-muted inline-flex size-8 shrink-0 items-center justify-center focus-visible:outline-none disabled:opacity-50"
+              class="inline-flex size-8 shrink-0 items-center justify-center rounded-button text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none disabled:opacity-50"
             >
               <Icon name="plus" size={16} />
             </button>

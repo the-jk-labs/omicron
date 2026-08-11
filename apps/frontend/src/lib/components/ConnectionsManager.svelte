@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { onMount } from "svelte";
-  import { Tabs } from "bits-ui";
   import { endpoints } from "$lib/api";
+  import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import type { RelationActor } from "$lib/types";
+  import { Tabs } from "bits-ui";
+  import { onMount } from "svelte";
 
   // One panel per relation kind. Each lazily loads its list the first time its
   // tab is opened, then removes rows optimistically as the action is applied.
@@ -90,7 +90,7 @@
     {#each panels as p (p.value)}
       <Tabs.Trigger
         value={p.value}
-        class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center gap-1.5 border-b border-transparent py-3"
+        class="-mb-px inline-flex items-center gap-1.5 border-b border-transparent py-3 text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground"
       >
         {p.label}
       </Tabs.Trigger>
@@ -118,12 +118,7 @@
                   </span>
                 </span>
               </a>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={p.busy === actor.id}
-                onclick={() => applyAction(p, actor)}
-              >
+              <Button variant="outline" size="sm" disabled={p.busy === actor.id} onclick={() => applyAction(p, actor)}>
                 {p.busy === actor.id ? "…" : p.actionLabel}
               </Button>
             </li>

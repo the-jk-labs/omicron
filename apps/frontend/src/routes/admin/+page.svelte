@@ -1,17 +1,17 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Tabs } from "bits-ui";
-  import InstanceModeration from "$lib/components/InstanceModeration.svelte";
-  import AdminInstanceSettings from "$lib/components/AdminInstanceSettings.svelte";
-  import AdminEmail from "$lib/components/AdminEmail.svelte";
-  import AdminUsers from "$lib/components/AdminUsers.svelte";
-  import AdminReports from "$lib/components/AdminReports.svelte";
   import AdminDomains from "$lib/components/AdminDomains.svelte";
+  import AdminEmail from "$lib/components/AdminEmail.svelte";
+  import AdminInstanceSettings from "$lib/components/AdminInstanceSettings.svelte";
+  import AdminReports from "$lib/components/AdminReports.svelte";
   import AdminSecurity from "$lib/components/AdminSecurity.svelte";
   import AdminSeo from "$lib/components/AdminSeo.svelte";
   import AdminUnsplash from "$lib/components/AdminUnsplash.svelte";
+  import AdminUsers from "$lib/components/AdminUsers.svelte";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
+  import InstanceModeration from "$lib/components/InstanceModeration.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
+  import { Tabs } from "bits-ui";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -37,18 +37,15 @@
   <h1 class="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
     <Icon name="gavel" size={22} /> Admin
   </h1>
-  <p class="mt-1 text-muted-foreground">
-    Moderation and instance-wide controls for this server.
-  </p>
+  <p class="mt-1 text-muted-foreground">Moderation and instance-wide controls for this server.</p>
 </header>
 
 <Tabs.Root value="reports">
-  <Tabs.List
-    class="inline-flex items-center gap-1 rounded-input border border-input bg-background-alt p-1 shadow-btn"
-  >
+  <Tabs.List class="inline-flex items-center gap-1 rounded-input border border-input bg-background-alt p-1 shadow-btn">
     {#each tabs as t (t.value)}
       <Tabs.Trigger value={t.value} class={triggerClass}>
-        <Icon name={t.icon} size={16} /> {t.label}
+        <Icon name={t.icon} size={16} />
+        {t.label}
       </Tabs.Trigger>
     {/each}
   </Tabs.List>
@@ -68,9 +65,7 @@
   <Tabs.Content value="users" class="mt-6">
     <section class="rounded-card border border-border bg-background p-6">
       <h2 class="text-lg font-semibold tracking-tight text-foreground">Users</h2>
-      <p class="mt-1 text-sm text-muted-foreground">
-        Every local account on this instance. Suspend to block sign-in.
-      </p>
+      <p class="mt-1 text-sm text-muted-foreground">Every local account on this instance. Suspend to block sign-in.</p>
       <div class="mt-5">
         <AdminUsers selfId={data.user.id} />
       </div>
@@ -81,8 +76,8 @@
     <section class="rounded-card border border-border bg-background p-6">
       <h2 class="text-lg font-semibold tracking-tight text-foreground">Defederation</h2>
       <p class="mt-1 text-sm text-muted-foreground">
-        Block domains this instance won't federate with. Inbound activity is dropped, delivery
-        skips them, and their content stops surfacing here.
+        Block domains this instance won't federate with. Inbound activity is dropped, delivery skips them, and their
+        content stops surfacing here.
       </p>
       <div class="mt-5">
         <AdminDomains />
@@ -94,8 +89,7 @@
     <section class="rounded-card border border-border bg-background p-6">
       <h2 class="text-lg font-semibold tracking-tight text-foreground">Email delivery</h2>
       <p class="mt-1 text-sm text-muted-foreground">
-        How this instance sends password-reset and verification mail. Configure and test it here —
-        no config files.
+        How this instance sends password-reset and verification mail. Configure and test it here — no config files.
       </p>
       <div class="mt-5">
         <AdminEmail />
@@ -131,8 +125,8 @@
     <section class="rounded-card border border-border bg-background p-6">
       <h2 class="text-lg font-semibold tracking-tight text-foreground">Photo search</h2>
       <p class="mt-1 text-sm text-muted-foreground">
-        Writers can already search free, openly-licensed photos for a post banner — Openverse
-        needs no setup. Add an Unsplash key here to offer their library as a second source.
+        Writers can already search free, openly-licensed photos for a post banner — Openverse needs no setup. Add an
+        Unsplash key here to offer their library as a second source.
       </p>
       <div class="mt-5">
         <AdminUnsplash />
@@ -143,9 +137,7 @@
   <Tabs.Content value="settings" class="mt-6">
     <section class="rounded-card border border-border bg-background p-6">
       <h2 class="text-lg font-semibold tracking-tight text-foreground">Instance identity</h2>
-      <p class="mt-1 text-sm text-muted-foreground">
-        The public name and domain for this server.
-      </p>
+      <p class="mt-1 text-sm text-muted-foreground">The public name and domain for this server.</p>
       <div class="mt-5">
         <AdminInstanceSettings />
       </div>
@@ -153,9 +145,7 @@
 
     <section class="mt-6 rounded-card border border-border bg-background p-6">
       <h2 class="text-lg font-semibold tracking-tight text-foreground">Instance settings</h2>
-      <p class="mt-1 text-sm text-muted-foreground">
-        Settings that apply to everyone on this instance.
-      </p>
+      <p class="mt-1 text-sm text-muted-foreground">Settings that apply to everyone on this instance.</p>
       <div class="mt-5">
         <InstanceModeration />
       </div>

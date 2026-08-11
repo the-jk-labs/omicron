@@ -12,14 +12,19 @@
   }: { name: string; src?: string; size?: number; class?: string } = $props();
 
   const initials = $derived(
-    name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?",
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() ?? "")
+      .join("") || "?",
   );
 </script>
 
 <Avatar.Root
   delayMs={200}
   style={`width:${size}px;height:${size}px;font-size:${Math.round(size * 0.36)}px`}
-  class={`data-[status=loaded]:border-foreground bg-muted text-muted-foreground shrink-0 rounded-full border font-medium uppercase data-[status=loading]:border-transparent ${className}`}
+  class={`shrink-0 rounded-full border bg-muted font-medium uppercase text-muted-foreground data-[status=loaded]:border-foreground data-[status=loading]:border-transparent ${className}`}
 >
   <div class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-transparent">
     {#if src}
@@ -33,7 +38,7 @@
         class="aspect-square h-full w-full object-cover"
       />
     {/if}
-    <Avatar.Fallback class="border-muted flex h-full w-full items-center justify-center rounded-full border">
+    <Avatar.Fallback class="flex h-full w-full items-center justify-center rounded-full border border-muted">
       {initials}
     </Avatar.Fallback>
   </div>

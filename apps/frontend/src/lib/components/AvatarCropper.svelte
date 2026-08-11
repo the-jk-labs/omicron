@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { untrack } from "svelte";
-  import { Dialog, Slider } from "bits-ui";
-  import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import { Dialog, Slider } from "bits-ui";
+  import { untrack } from "svelte";
 
   // Instagram-style avatar cropper. Given a picked image (`src` object URL), the
   // user pans (drag) and zooms (slider) inside a circular viewport; confirming
@@ -36,9 +36,7 @@
   let busy = $state(false);
 
   // Scale at which the image exactly covers the viewport (zoom = 1).
-  const coverScale = $derived(
-    natural.w && natural.h ? VIEWPORT / Math.min(natural.w, natural.h) : 1,
-  );
+  const coverScale = $derived(natural.w && natural.h ? VIEWPORT / Math.min(natural.w, natural.h) : 1);
   const scale = $derived(coverScale * zoom);
   const displayW = $derived(natural.w * scale);
   const displayH = $derived(natural.h * scale);
@@ -109,9 +107,7 @@
       if (!ctx) return;
       ctx.drawImage(img, srcX, srcY, srcSize, srcSize, 0, 0, OUTPUT, OUTPUT);
 
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, "image/webp", 0.9),
-      );
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.9));
       if (!blob) return;
       onCrop(new File([blob], "avatar.webp", { type: "image/webp" }));
       open = false;
@@ -124,15 +120,13 @@
 <Dialog.Root bind:open>
   <Dialog.Portal>
     <Dialog.Overlay
-      class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+      class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="rounded-card bg-background shadow-popover fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 border border-border p-6 sm:max-w-[360px]"
+      class="fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[360px]"
     >
-      <Dialog.Title class="text-foreground text-lg font-semibold tracking-tight">
-        Adjust photo
-      </Dialog.Title>
-      <Dialog.Description class="text-foreground-alt mt-1.5 text-sm">
+      <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Adjust photo</Dialog.Title>
+      <Dialog.Description class="mt-1.5 text-sm text-foreground-alt">
         Drag to reposition and zoom to frame your picture.
       </Dialog.Description>
 
@@ -143,7 +137,7 @@
           aria-label="Reposition photo"
           tabindex="0"
           aria-valuenow={Math.round(offset.x)}
-          class="relative cursor-grab overflow-hidden rounded-card bg-dark touch-none select-none active:cursor-grabbing"
+          class="relative cursor-grab touch-none select-none overflow-hidden rounded-card bg-dark active:cursor-grabbing"
           style={`width:${VIEWPORT}px;height:${VIEWPORT}px`}
           onpointerdown={onPointerDown}
           onpointermove={onPointerMove}
@@ -168,7 +162,7 @@
         </div>
 
         <div class="flex w-full items-center gap-3">
-          <Icon name="minus" size={16} class="text-muted-foreground shrink-0" />
+          <Icon name="minus" size={16} class="shrink-0 text-muted-foreground" />
           <Slider.Root
             type="single"
             bind:value={zoom}
@@ -177,21 +171,21 @@
             step={0.01}
             class="relative flex w-full touch-none select-none items-center"
           >
-            <span class="bg-dark-10 relative h-2 w-full grow cursor-pointer overflow-hidden rounded-full">
-              <Slider.Range class="bg-foreground absolute h-full" />
+            <span class="relative h-2 w-full grow cursor-pointer overflow-hidden rounded-full bg-dark-10">
+              <Slider.Range class="absolute h-full bg-foreground" />
             </span>
             <Slider.Thumb
               index={0}
-              class="border-border-input bg-background focus-visible:ring-foreground block size-5 cursor-pointer rounded-full border shadow-mini transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95"
+              class="block size-5 cursor-pointer rounded-full border border-border-input bg-background shadow-mini transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 active:scale-95"
             />
           </Slider.Root>
-          <Icon name="plus" size={16} class="text-muted-foreground shrink-0" />
+          <Icon name="plus" size={16} class="shrink-0 text-muted-foreground" />
         </div>
       </div>
 
       <div class="mt-6 flex justify-end gap-2">
         <Dialog.Close
-          class="text-foreground hover:bg-muted inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium active:scale-[0.98]"
+          class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
         >
           Cancel
         </Dialog.Close>

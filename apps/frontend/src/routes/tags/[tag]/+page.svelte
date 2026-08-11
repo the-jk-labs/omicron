@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { untrack } from "svelte";
   import { endpoints } from "$lib/api";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import PostCard from "$lib/components/PostCard.svelte";
   import TagFollowButton from "$lib/components/TagFollowButton.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { Post } from "$lib/types";
+  import { untrack } from "svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();

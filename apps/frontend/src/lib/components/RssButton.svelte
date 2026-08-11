@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { page } from "$app/stores";
-  import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
 
   // Copies the feed's absolute URL instead of opening it. A feed reader asks the
   // reader to paste a URL into its "Add a feed" box, so the URL is the thing

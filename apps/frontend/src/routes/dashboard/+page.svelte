@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
+  import PageTitle from "$lib/components/PageTitle.svelte";
   import { formatDateTime } from "$lib/format";
   import { timeZone } from "$lib/timezone";
-  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { DashboardSummary, PostStat } from "$lib/types";
   import type { PageData } from "./$types";
 
@@ -53,9 +53,13 @@
       views: d.views,
     })),
   );
-  const linePath = $derived(points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" "));
+  const linePath = $derived(
+    points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" "),
+  );
   const areaPath = $derived(
-    points.length ? `${linePath} L${points[points.length - 1].x.toFixed(1)} ${H} L${points[0].x.toFixed(1)} ${H} Z` : "",
+    points.length
+      ? `${linePath} L${points[points.length - 1].x.toFixed(1)} ${H} L${points[0].x.toFixed(1)} ${H} Z`
+      : "",
   );
 
   // Hover state for the chart. The overlay columns capture the pointer and drive
@@ -72,7 +76,12 @@
       { label: "Comments", value: summary.totals.comments, cls: "text-foreground" },
     ].filter((s) => s.value > 0),
   );
-  const sliceTotal = $derived(Math.max(1, slices.reduce((s, x) => s + x.value, 0)));
+  const sliceTotal = $derived(
+    Math.max(
+      1,
+      slices.reduce((s, x) => s + x.value, 0),
+    ),
+  );
   const C = 2 * Math.PI * 42; // donut circumference (r = 42)
   // Pre-compute each arc's dash length and rotation offset around the ring.
   const arcs = $derived(
@@ -122,16 +131,12 @@
   <h1 class="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
     <Icon name="chart" size={22} /> Dashboard
   </h1>
-  <p class="mt-1 text-muted-foreground">
-    How your writing travels. Aggregate counts only — never who read you.
-  </p>
+  <p class="mt-1 text-muted-foreground">How your writing travels. Aggregate counts only — never who read you.</p>
 </header>
 
 {#if summary.posts.length === 0}
   <div class="rounded-card border border-border bg-background-alt px-6 py-12 text-center">
-    <p class="text-muted-foreground">
-      Publish an article and its stats will show up here.
-    </p>
+    <p class="text-muted-foreground">Publish an article and its stats will show up here.</p>
   </div>
 {:else}
   <!-- Summary cards -->
@@ -152,8 +157,8 @@
     <div class="mt-4 flex items-start gap-2 rounded-card border border-border bg-muted px-4 py-3">
       <Icon name="lock" size={16} />
       <p class="text-sm text-muted-foreground">
-        On-instance view counting is turned off for this instance, so only fediverse
-        engagement is shown. This is a moderator setting.
+        On-instance view counting is turned off for this instance, so only fediverse engagement is shown. This is a
+        moderator setting.
       </p>
     </div>
   {/if}
@@ -168,7 +173,12 @@
         </div>
 
         <div class="relative mt-4">
-          <svg viewBox="0 0 {W} {H}" class="h-44 w-full overflow-visible text-accent" preserveAspectRatio="none" aria-hidden="true">
+          <svg
+            viewBox="0 0 {W} {H}"
+            class="h-44 w-full overflow-visible text-accent"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
             <defs>
               <linearGradient id="viewsFill" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stop-color="currentColor" stop-opacity="0.22" />
@@ -177,12 +187,34 @@
             </defs>
             <!-- baseline grid -->
             {#each [0.25, 0.5, 0.75] as g (g)}
-              <line x1="0" x2={W} y1={H * g} y2={H * g} class="stroke-border" stroke-width="1" vector-effect="non-scaling-stroke" />
+              <line
+                x1="0"
+                x2={W}
+                y1={H * g}
+                y2={H * g}
+                class="stroke-border"
+                stroke-width="1"
+                vector-effect="non-scaling-stroke"
+              />
             {/each}
             <path d={areaPath} fill="url(#viewsFill)" />
-            <path d={linePath} fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />
+            <path
+              d={linePath}
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linejoin="round"
+              stroke-linecap="round"
+              vector-effect="non-scaling-stroke"
+            />
             {#if hover !== null}
-              <circle cx={points[hover].x} cy={points[hover].y} r="4" fill="currentColor" vector-effect="non-scaling-stroke" />
+              <circle
+                cx={points[hover].x}
+                cy={points[hover].y}
+                r="4"
+                fill="currentColor"
+                vector-effect="non-scaling-stroke"
+              />
             {/if}
           </svg>
 
@@ -280,7 +312,10 @@
               <td class="px-5 py-3">
                 <div class="flex items-center gap-2">
                   {#if i === 0 && reach(p) > 0}
-                    <span class="rounded-9px bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-foreground">Top</span>
+                    <span
+                      class="rounded-9px bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-foreground"
+                      >Top</span
+                    >
                   {/if}
                   <a href="/posts/{p.postId}" class="font-medium text-foreground hover:underline">
                     {p.title || "Untitled"}
@@ -293,10 +328,7 @@
               {/if}
               <td class="px-3 py-3 text-right tabular-nums text-foreground">{fmt(p.likes)}</td>
               <td class="px-3 py-3 text-right tabular-nums text-foreground">{fmt(p.comments)}</td>
-              <td
-                class="hidden px-5 py-3 sm:table-cell"
-                title="Likes + comments earned per day since publishing"
-              >
+              <td class="hidden px-5 py-3 sm:table-cell" title="Likes + comments earned per day since publishing">
                 <div class="flex items-center gap-2">
                   <div class="h-1.5 w-full max-w-32 overflow-hidden rounded-full bg-muted">
                     <div class="h-full rounded-full bg-accent" style="width: {Math.max(2, engFrac(p) * 100)}%"></div>
