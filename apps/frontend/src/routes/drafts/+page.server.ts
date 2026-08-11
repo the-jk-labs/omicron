@@ -1,6 +1,6 @@
+import { endpoints } from "$lib/api";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { redirect } from "@sveltejs/kit";
-import { endpoints } from "$lib/api";
 import type { PageServerLoad } from "./$types";
 
 // Drafts are private to their author, so this page requires authentication.

@@ -36,8 +36,7 @@ export const ResizableImage = Image.extend({
       width: {
         default: null,
         parseHTML: (element) => element.getAttribute("width"),
-        renderHTML: (attributes) =>
-          attributes.width ? { width: attributes.width as string } : {},
+        renderHTML: (attributes) => (attributes.width ? { width: attributes.width as string } : {}),
       },
     };
   },
@@ -85,10 +84,7 @@ export const ResizableImage = Image.extend({
         altButton.textContent = "Alt";
         altButton.dataset.missing = alt ? "false" : "true";
         altButton.title = alt ? `Alt text: ${alt}` : "Add alt text";
-        altButton.setAttribute(
-          "aria-label",
-          alt ? `Edit alt text: ${alt}` : "Add alt text for this image",
-        );
+        altButton.setAttribute("aria-label", alt ? `Edit alt text: ${alt}` : "Add alt text for this image");
       }
       render();
 

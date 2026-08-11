@@ -25,8 +25,7 @@ export function autoGrow(node: HTMLTextAreaElement, value: () => string) {
   // borders but `scrollHeight` does not, so the borders have to be added back
   // or the field would end up a couple of pixels short and scroll forever.
   const styles = getComputedStyle(node);
-  const borders =
-    parseFloat(styles.borderTopWidth) + parseFloat(styles.borderBottomWidth);
+  const borders = parseFloat(styles.borderTopWidth) + parseFloat(styles.borderBottomWidth);
 
   function resize() {
     // Collapse first: `scrollHeight` never shrinks below the current height, so

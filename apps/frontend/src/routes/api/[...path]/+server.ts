@@ -44,24 +44,22 @@ const proxy: RequestHandler = async ({ request, params, url, getClientAddress })
   const out = new Headers();
   const setCookie = res.headers.get("set-cookie");
   if (setCookie) out.set("set-cookie", setCookie);
-  for (
-    const h of [
-      "content-type",
-      "cache-control",
-      "etag",
-      "last-modified",
-      "expires",
-      "vary",
-      "content-disposition",
-      // Throttling feedback. Machine callers (the content webhook, scripted API
-      // clients) need these to back off correctly — without them a 429 arrives
-      // with no indication of when to retry.
-      "retry-after",
-      "ratelimit-limit",
-      "ratelimit-remaining",
-      "ratelimit-reset",
-    ]
-  ) {
+  for (const h of [
+    "content-type",
+    "cache-control",
+    "etag",
+    "last-modified",
+    "expires",
+    "vary",
+    "content-disposition",
+    // Throttling feedback. Machine callers (the content webhook, scripted API
+    // clients) need these to back off correctly — without them a 429 arrives
+    // with no indication of when to retry.
+    "retry-after",
+    "ratelimit-limit",
+    "ratelimit-remaining",
+    "ratelimit-reset",
+  ]) {
     const v = res.headers.get(h);
     if (v) out.set(h, v);
   }

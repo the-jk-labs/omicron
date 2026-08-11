@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-import { error } from "@sveltejs/kit";
 import { ApiError, endpoints } from "$lib/api";
 import { FEED_HEADERS, postFeedItem, renderRssFeed } from "$lib/rss";
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 // A writer's RSS feed at /@username/feed.xml — this route wins over the

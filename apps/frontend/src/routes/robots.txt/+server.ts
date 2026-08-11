@@ -57,21 +57,23 @@ const DISALLOW = [
 ];
 
 export const GET: RequestHandler = async ({ fetch, url }) => {
-  const { indexingEnabled } = await endpoints(fetch).seo().catch(() => ({ indexingEnabled: true }));
+  const { indexingEnabled } = await endpoints(fetch)
+    .seo()
+    .catch(() => ({ indexingEnabled: true }));
   // Point at the canonical host's sitemap even when robots.txt was fetched via
   // an alias, so both copies submit the same one URL set.
   const origin = canonicalOrigin(await instanceDomain(fetch)) ?? url.origin;
 
   const body = indexingEnabled
     ? [
-      "User-agent: *",
-      "Allow: /",
-      ...ALLOW.map((p) => `Allow: ${p}`),
-      ...DISALLOW.map((p) => `Disallow: ${p}`),
-      "",
-      `Sitemap: ${origin}/sitemap.xml`,
-      "",
-    ].join("\n")
+        "User-agent: *",
+        "Allow: /",
+        ...ALLOW.map((p) => `Allow: ${p}`),
+        ...DISALLOW.map((p) => `Disallow: ${p}`),
+        "",
+        `Sitemap: ${origin}/sitemap.xml`,
+        "",
+      ].join("\n")
     : ["User-agent: *", "Disallow: /", ""].join("\n");
 
   return new Response(body, {

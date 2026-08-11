@@ -86,7 +86,12 @@ function publisher({ origin, appName }: SiteContext) {
  */
 export function blogPostingLd(
   post: Post,
-  { canonical, description, image, site }: {
+  {
+    canonical,
+    description,
+    image,
+    site,
+  }: {
     canonical: string;
     description: string;
     image?: string;
@@ -108,9 +113,7 @@ export function blogPostingLd(
     // edited it would be asserting an edit that never happened. Absent on a
     // post ingested before the column existed, which is correct — we do not
     // know when it last changed.
-    dateModified: post.updatedAt && post.updatedAt !== post.createdAt
-      ? post.updatedAt
-      : undefined,
+    dateModified: post.updatedAt && post.updatedAt !== post.createdAt ? post.updatedAt : undefined,
     inLanguage: language(post.language),
     image: absolute(image),
     keywords: post.tags?.length ? post.tags.map((t) => t.name).join(", ") : undefined,
@@ -132,10 +135,7 @@ export function blogPostingLd(
  * BlogPosting because a breadcrumb describes the *page's position*, not the
  * article — and the two are emitted as an array so a page can carry both.
  */
-export function breadcrumbLd(
-  post: Post,
-  { canonical, site }: { canonical: string; site: SiteContext },
-) {
+export function breadcrumbLd(post: Post, { canonical, site }: { canonical: string; site: SiteContext }) {
   const crumbs = [
     { name: site.appName, item: site.origin },
     { name: post.author.displayName, item: `${site.origin}/@${post.author.username}` },
@@ -153,16 +153,13 @@ export function breadcrumbLd(
         position: i + 1,
         name: c.name,
         item: c.item ?? (i === crumbs.length - 1 ? canonical : undefined),
-      })
+      }),
     ),
   };
 }
 
 /** A local author's profile page. */
-export function profilePageLd(
-  profile: Profile,
-  { canonical, site }: { canonical: string; site: SiteContext },
-) {
+export function profilePageLd(profile: Profile, { canonical, site }: { canonical: string; site: SiteContext }) {
   const u = profile.user;
   return compact({
     "@context": "https://schema.org",

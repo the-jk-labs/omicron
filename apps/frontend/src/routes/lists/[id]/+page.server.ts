@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-import { error, redirect } from "@sveltejs/kit";
 import { endpoints, ApiError } from "$lib/api";
 import { listIdFromSlug, listPath } from "$lib/links";
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { error, redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
 // A reading list at /lists/<slug>-<id>. The trailing short id is authoritative;

@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-import { error, redirect } from "@sveltejs/kit";
 import { endpoints, ApiError } from "$lib/api";
 import { postPath } from "$lib/links";
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { error, redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
 // Legacy permalink. Posts now live at /@username/<slug>-<uuid>; resolve the id

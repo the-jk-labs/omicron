@@ -15,8 +15,8 @@
 
 import { excerpt, stripHtml } from "$lib/format";
 import { postPath } from "$lib/links";
-import { escapeXml } from "$lib/xml";
 import type { Post } from "$lib/types";
+import { escapeXml } from "$lib/xml";
 
 // The opening section ends at the post's first heading. A post that has no
 // headings (or one long opening section) is capped instead, so a headingless
@@ -114,9 +114,7 @@ export function postFeedItem(post: Post, origin: string): FeedItem {
 }
 
 function renderItem(item: FeedItem): string {
-  const categories = (item.categories ?? [])
-    .map((c) => `\n    <category>${escapeXml(c)}</category>`)
-    .join("");
+  const categories = (item.categories ?? []).map((c) => `\n    <category>${escapeXml(c)}</category>`).join("");
   return [
     "  <item>",
     `    <title>${escapeXml(item.title)}</title>`,

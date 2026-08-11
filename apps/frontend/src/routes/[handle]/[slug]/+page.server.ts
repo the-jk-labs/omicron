@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-import { error, redirect } from "@sveltejs/kit";
 import { endpoints, ApiError } from "$lib/api";
 import { deferBodyImages } from "$lib/bodyImages";
 import { highlightCodeBlocks } from "$lib/highlight";
 import { postPath } from "$lib/links";
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { error, redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
 // Blog post at /@username/<slug>. The slug is the address: the backend resolves
@@ -26,7 +26,10 @@ export const load: PageServerLoad = async ({ fetch, locals, params, url }) => {
     // so it degrades to an empty list rather than propagating.
     const [comments, related] = await Promise.all([
       api.comments(post.id),
-      api.relatedPosts(post.id).then((r) => r.items).catch(() => []),
+      api
+        .relatedPosts(post.id)
+        .then((r) => r.items)
+        .catch(() => []),
     ]);
     // Highlighting is a read-time concern (see lib/highlight.ts): the stored
     // body stays the author's, and this decorates the copy on its way to the

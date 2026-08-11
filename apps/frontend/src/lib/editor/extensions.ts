@@ -1,11 +1,11 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-import StarterKit from "@tiptap/starter-kit";
+import type { Extensions } from "@tiptap/core";
 import Link from "@tiptap/extension-link";
 import { TableKit } from "@tiptap/extension-table";
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
-import { ResizableImage } from "./resizable-image";
 import { CodeBlockTitle } from "./code-block";
-import type { Extensions } from "@tiptap/core";
+import { ResizableImage } from "./resizable-image";
 
 // Editor extensions live here so the feature set is configured in one place.
 // StarterKit ships headings, bold, italic, strike, inline code, code blocks,

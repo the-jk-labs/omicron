@@ -31,18 +31,18 @@ function shortId(id: string): string {
  * keep the two identical. See that file for why non-Latin scripts are absent.
  */
 const TRANSLITERATIONS: Record<string, string> = {
-  "ə": "e",
-  "ı": "i",
-  "ø": "o",
-  "đ": "d",
-  "ð": "d",
-  "ħ": "h",
-  "ŋ": "n",
-  "ł": "l",
-  "ß": "ss",
-  "æ": "ae",
-  "œ": "oe",
-  "þ": "th",
+  ə: "e",
+  ı: "i",
+  ø: "o",
+  đ: "d",
+  ð: "d",
+  ħ: "h",
+  ŋ: "n",
+  ł: "l",
+  ß: "ss",
+  æ: "ae",
+  œ: "oe",
+  þ: "th",
 };
 
 const TRANSLITERATE_RE = new RegExp(`[${Object.keys(TRANSLITERATIONS).join("")}]`, "g");
@@ -62,9 +62,7 @@ export function slugify(title: string): string {
 }
 
 /** Canonical path for a post, e.g. `/@user/some-title`. */
-export function postPath(
-  post: Pick<Post, "id" | "slug"> & { author: { username: string } },
-): string {
+export function postPath(post: Pick<Post, "id" | "slug"> & { author: { username: string } }): string {
   // The slug is the server's, not a local re-derivation: it is what disambiguates
   // two posts with the same title, and what an already-shared link redirects to.
   return `/@${post.author.username}/${post.slug || shortId(post.id)}`;

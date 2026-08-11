@@ -36,8 +36,7 @@ export const CodeBlockTitle = Extension.create({
             parseHTML: (element) => element.getAttribute("data-title") || null,
             // Absent rather than empty when unset, so a block with no filename
             // stores no attribute at all.
-            renderHTML: (attributes) =>
-              attributes.title ? { "data-title": attributes.title } : {},
+            renderHTML: (attributes) => (attributes.title ? { "data-title": attributes.title } : {}),
           },
         },
       },

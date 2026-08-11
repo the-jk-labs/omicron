@@ -24,15 +24,7 @@ import { BRAND_ICONS } from "$lib/brandIcons";
  */
 export type FileIcon = { label: string; tone: Tone; path?: string };
 
-export type Tone =
-  | "blue"
-  | "amber"
-  | "green"
-  | "orange"
-  | "purple"
-  | "red"
-  | "cyan"
-  | "slate";
+export type Tone = "blue" | "amber" | "green" | "orange" | "purple" | "red" | "cyan" | "slate";
 
 // Extension → tone. The label is the extension itself unless LABELS overrides
 // it, so adding a language here is usually a one-line change.
@@ -276,10 +268,13 @@ const BARE_NAME = /^\.?[a-z0-9_+#-]{1,40}$/;
 function chip(extension: string): FileIcon | null {
   const tone = TONES[extension];
   if (!tone) return null;
-  return withLogo({
-    label: LABELS[extension] ?? extension.toUpperCase().slice(0, MAX_LABEL),
-    tone,
-  }, extension);
+  return withLogo(
+    {
+      label: LABELS[extension] ?? extension.toUpperCase().slice(0, MAX_LABEL),
+      tone,
+    },
+    extension,
+  );
 }
 
 // The label is kept even when a logo is found: it is what the mark is labelled

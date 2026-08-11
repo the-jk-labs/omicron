@@ -143,10 +143,7 @@ export class Autosave {
     // next attempt goes through the normal idle debounce rather than
     // immediately, so a server that is down is not hammered.
     if (this.dirty) {
-      this.#idleTimer = setTimeout(
-        () => this.#run(),
-        failed ? this.#opts.retryMs : this.#opts.idleMs,
-      );
+      this.#idleTimer = setTimeout(() => this.#run(), failed ? this.#opts.retryMs : this.#opts.idleMs);
     }
   }
 }

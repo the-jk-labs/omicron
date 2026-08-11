@@ -23,9 +23,7 @@ export function lastmod(value: string | null | undefined): string | null {
 
 /** The newest of a set of dates, as a `<lastmod>` — an index file's own date. */
 export function newest(values: (string | null | undefined)[]): string | null {
-  const times = values
-    .map((v) => (v ? new Date(v).getTime() : Number.NaN))
-    .filter((t) => !Number.isNaN(t));
+  const times = values.map((v) => (v ? new Date(v).getTime() : Number.NaN)).filter((t) => !Number.isNaN(t));
   return times.length ? lastmod(new Date(Math.max(...times)).toISOString()) : null;
 }
 
@@ -37,9 +35,11 @@ function entry(tag: "url" | "sitemap", { loc, lastmod: mod }: SitemapUrl): strin
 }
 
 function document(root: "urlset" | "sitemapindex", tag: "url" | "sitemap", items: SitemapUrl[]) {
-  return `<?xml version="1.0" encoding="UTF-8"?>\n` +
+  return (
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
     `<${root} xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-    `${items.map((i) => entry(tag, i)).join("\n")}\n</${root}>\n`;
+    `${items.map((i) => entry(tag, i)).join("\n")}\n</${root}>\n`
+  );
 }
 
 export function urlsetResponse(urls: SitemapUrl[]): Response {

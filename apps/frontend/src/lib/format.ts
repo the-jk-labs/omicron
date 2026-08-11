@@ -28,7 +28,9 @@ function decodeEntities(text: string): string {
 
 /** Markup to the plain text it renders as — tags dropped, entities decoded. */
 export function stripHtml(html: string): string {
-  return decodeEntities(html.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+  return decodeEntities(html.replace(/<[^>]+>/g, " "))
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function excerpt(html: string, len = 180): string {

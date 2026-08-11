@@ -3,18 +3,17 @@
 // fetch) and in SSR load functions (pass the provided `fetch`).
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
     super(message);
   }
 }
 
 type FetchFn = typeof globalThis.fetch;
 
-async function request<T>(
-  path: string,
-  init: RequestInit,
-  fetchFn: FetchFn,
-): Promise<T> {
+async function request<T>(path: string, init: RequestInit, fetchFn: FetchFn): Promise<T> {
   const res = await fetchFn(`/api${path}`, {
     ...init,
     headers: { "content-type": "application/json", ...init.headers },
