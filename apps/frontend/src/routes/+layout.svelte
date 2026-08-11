@@ -251,7 +251,7 @@
          needs no nonce. Its contents are escaped in $lib/seo — a post title can
          come from another instance and must not be able to close this tag. -->
     <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-    {@html `<script type="application/ld+json">${serializeJsonLd(jsonLd)}</script>`}
+    {@html `<script type="application/ld+json">${serializeJsonLd(jsonLd)}<\/script>`}
   {/if}
 </svelte:head>
 

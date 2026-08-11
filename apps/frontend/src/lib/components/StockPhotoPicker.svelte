@@ -40,6 +40,7 @@
       .photoProviders()
       .then((r) => {
         if (r.providers.length) providers = r.providers;
+        return undefined;
       })
       .catch(() => {});
   });

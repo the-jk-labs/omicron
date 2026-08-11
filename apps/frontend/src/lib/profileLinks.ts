@@ -181,10 +181,10 @@ export const PLATFORMS: PlatformMeta[] = [
   { key: "custom", label: "Other link", icon: "link", input: { kind: "url" }, placeholder: "https://…" },
 ];
 
-const BY_KEY = new Map(PLATFORMS.map((p) => [p.key, p]));
+const BY_KEY = new Map<string, PlatformMeta>(PLATFORMS.map((p) => [p.key, p]));
 
 export function platformMeta(key: string): PlatformMeta {
-  return BY_KEY.get(key as LinkPlatform) ?? PLATFORMS[PLATFORMS.length - 1];
+  return BY_KEY.get(key) ?? PLATFORMS[PLATFORMS.length - 1];
 }
 
 // The "base.com/" prefix shown muted before a handle field (handle kind only).

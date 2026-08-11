@@ -55,8 +55,12 @@ function absolute(url: string | null | undefined): string | undefined {
 
 // Drop keys whose value is undefined, so an absent cover image or language
 // leaves no empty property behind for a validator to complain about.
-function compact<T extends Record<string, unknown>>(obj: T): T {
-  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined)) as T;
+function compact<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  const out: Partial<T> = {};
+  for (const key in obj) {
+    if (obj[key] !== undefined) out[key] = obj[key];
+  }
+  return out;
 }
 
 type SiteContext = {

@@ -20,6 +20,7 @@
       .then((s) => {
         enabled = s.anubisProtection;
         managed = s.anubisManaged;
+        return undefined;
       })
       .catch((e) => (error = e instanceof ApiError ? e.message : "Failed to load settings."))
       .finally(() => (loading = false));

@@ -1,8 +1,8 @@
 import type { Extensions } from "@tiptap/core";
-import Link from "@tiptap/extension-link";
+import { Link } from "@tiptap/extension-link";
 import { TableKit } from "@tiptap/extension-table";
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import StarterKit from "@tiptap/starter-kit";
+import { StarterKit } from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
 import { CodeBlockTitle } from "./code-block";
 import { ResizableImage } from "./resizable-image";

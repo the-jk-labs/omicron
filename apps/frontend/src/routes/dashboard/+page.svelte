@@ -97,7 +97,7 @@
   // Rows are ranked by raw volume so the most-read posts surface first; the
   // engagement column then shows *how well* each post converts that audience.
   const reach = (p: PostStat) => (showViews ? p.views : 0) + p.likes + p.comments;
-  const rankedPosts = $derived<PostStat[]>([...summary.posts].sort((a, b) => reach(b) - reach(a)));
+  const rankedPosts = $derived<PostStat[]>(summary.posts.toSorted((a, b) => reach(b) - reach(a)));
 
   // Engagement velocity: likes + comments earned per day since publishing. Both
   // signals come from the same population (the fediverse), so there's no mixing

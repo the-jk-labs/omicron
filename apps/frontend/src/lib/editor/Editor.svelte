@@ -6,7 +6,7 @@
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import { countWords, readTimeFromWords } from "$lib/format";
   import { type Content, Editor, generateJSON } from "@tiptap/core";
-  import Placeholder from "@tiptap/extension-placeholder";
+  import { Placeholder } from "@tiptap/extension-placeholder";
   import { Dialog, DropdownMenu, Label, Select, Toolbar } from "bits-ui";
   import { onDestroy, onMount } from "svelte";
   import { extensions } from "./extensions";
@@ -30,7 +30,7 @@
     content?: Content;
   } = $props();
 
-  let element: HTMLDivElement;
+  let element = $state<HTMLDivElement | null>(null);
   let editor: Editor;
 
   // The status line every desktop editor has: how much is there, and how long
@@ -285,13 +285,13 @@
         const { url } = await endpoints().uploadImage(blob, type);
         // Insert the image together with a trailing paragraph so the author can
         // keep writing immediately — just like a normal editor.
-        const content = [{ type: "image", attrs: { src: url } }, { type: "paragraph" }];
+        const nodes = [{ type: "image", attrs: { src: url } }, { type: "paragraph" }];
         const chain = editor.chain();
-        if (at === undefined) chain.insertContent(content).focus("end");
+        if (at === undefined) chain.insertContent(nodes).focus("end");
         else {
           // The image node is 1 wide and the empty paragraph 2, so the caret
           // lands at `at + 2` and the next image goes after both.
-          chain.insertContentAt(at, content).focus(at + 2);
+          chain.insertContentAt(at, nodes).focus(at + 2);
           at += 3;
         }
         chain.scrollIntoView().run();
@@ -354,7 +354,7 @@
   onMount(() => {
     const initialContent = typeof content === "string" ? (generateJSON(content, extensions) as Content) : content;
     editor = new Editor({
-      element,
+      element: element!,
       // Placeholder is per-instance (it needs the `placeholder` prop), so it's
       // appended to the shared base extensions here. The first line shows the
       // article prompt; every other empty line (e.g. below an image) shows a
@@ -371,11 +371,11 @@
         handlePaste,
         handleDrop,
       },
-      onUpdate: ({ editor }) => {
-        onUpdate(editor.getHTML(), editor.getJSON());
-        refreshStats(editor);
+      onUpdate: ({ editor: ed }) => {
+        onUpdate(ed.getHTML(), ed.getJSON());
+        refreshStats(ed);
       },
-      onTransaction: ({ editor }) => refreshActive(editor),
+      onTransaction: ({ editor: ed }) => refreshActive(ed),
     });
     refreshActive();
     // A reopened draft arrives with its body already in place, so the counter

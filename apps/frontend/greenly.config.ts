@@ -5,8 +5,7 @@ export default defineConfig({
   checks: [
     { name: "Oxfmt", command: "pnpm fmt:check", onFail: "pnpm fmt" },
     { name: "Oxlint", command: "pnpm lint" },
-    { name: "Svelte Sync", command: "pnpm svelte-kit sync" },
-    { name: "Svelte Check", command: "pnpm svelte-check --tsconfig ./tsconfig.json" },
+    { name: "Svelte Check", command: "pnpm svelte-kit sync && pnpm svelte-check --tsconfig ./tsconfig.json" },
     // { name: "Build", command: "pnpm build" },
   ],
 });

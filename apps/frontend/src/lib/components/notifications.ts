@@ -21,6 +21,10 @@ export function notificationAction(type: Notification["type"]): string {
       return "replied to your comment";
     case "comment_like":
       return "liked your comment";
+    default: {
+      const exhaustive: never = type;
+      return exhaustive;
+    }
   }
 }
 
@@ -39,6 +43,10 @@ export function notificationIcon(type: Notification["type"]): IconName {
       return "comment";
     case "reply":
       return "reply";
+    default: {
+      const exhaustive: never = type;
+      return exhaustive;
+    }
   }
 }
 

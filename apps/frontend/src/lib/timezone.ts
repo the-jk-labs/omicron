@@ -50,7 +50,7 @@ export function rememberTimeZone(): void {
 export function validTimeZone(value: string | undefined): string | null {
   if (!value) return null;
   try {
-    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    Intl.DateTimeFormat("en-US", { timeZone: value });
     return value;
   } catch {
     return null;
