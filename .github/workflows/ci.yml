@@ -55,9 +55,11 @@ jobs:
           node-version: 24
           cache: pnpm
           cache-dependency-path: apps/frontend/pnpm-lock.yaml
+
       - name: Install
         run: pnpm install --frozen-lockfile
-      - name: Check
+
+      - name: Run Checks
         run: pnpm check
 
   docker-build:
