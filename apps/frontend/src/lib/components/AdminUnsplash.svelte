@@ -52,8 +52,8 @@
     Photo search already works with no setup: the banner picker searches
     <strong class="text-foreground">Openverse</strong>, which needs no account. Adding a key here puts
     <strong class="text-foreground">Unsplash</strong>
-    beside it as a second tab. Either way the creator is credited under the banner automatically, as both providers'
-    terms require. Create a free app at
+    beside it as a second tab. Either way the creator is credited under the banner automatically, as both providers' terms
+    require. Create a free app at
     <a
       href="https://unsplash.com/oauth/applications"
       target="_blank"
