@@ -40,11 +40,15 @@ jobs:
         working-directory: apps/frontend
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
         with:
-          # Version comes from package.json's "packageManager" field.
           package_json_file: apps/frontend/package.json
-      - uses: actions/setup-node@v7
+          version: 11.x
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
         with:
           # Keep in step with apps/frontend/Dockerfile, so CI checks the same
           # Node major that the runtime image ships.
@@ -54,7 +58,7 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Check
-        run: pnpm run check
+        run: pnpm check
 
   docker-build:
     name: Docker images build
