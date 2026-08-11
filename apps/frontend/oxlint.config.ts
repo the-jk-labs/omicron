@@ -17,9 +17,6 @@ export default defineConfig({
   },
   overrides: [
     {
-      // Referencing a reactive value on its own line inside `$effect` is the
-      // Svelte 5 idiom for registering it as a dependency — not a dead
-      // expression. oxlint can't see the reactivity, so disable the rule here.
       files: ["**/*.svelte"],
       rules: {
         "no-unused-expressions": "off",
