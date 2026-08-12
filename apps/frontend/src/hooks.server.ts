@@ -1,6 +1,6 @@
+import { canonicalOrigin, instanceDomain, isNonCanonicalHost } from "$lib/canonical";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Handle } from "@sveltejs/kit";
-import { canonicalOrigin, instanceDomain, isNonCanonicalHost } from "$lib/canonical";
 
 // Page loads asked for on a non-canonical hostname (`www.` when the instance is
 // the apex, or vice versa) are sent to the canonical one, so every article has
@@ -59,12 +59,13 @@ function pageLang(locals: App.Locals): string {
 // the headers below are the ones it doesn't manage.
 export const handle: Handle = async ({ event, resolve }) => {
   const redirectResponse = await canonicalRedirect(event);
-  const response = redirectResponse ??
+  const response =
+    redirectResponse ??
     // Load runs inside resolve(), so `locals.lang` is already set by the time
     // the rendered chunks come back through the transform.
-    await resolve(event, {
+    (await resolve(event, {
       transformPageChunk: ({ html }) => html.replace(LANG_PLACEHOLDER, pageLang(event.locals)),
-    });
+    }));
 
   // State the encoding in the header, not only in the document.
   //
@@ -95,13 +96,9 @@ export const handle: Handle = async ({ event, resolve }) => {
   // HSTS only when the request actually arrived over HTTPS (Caddy terminates TLS
   // and forwards x-forwarded-proto). Sent over plain HTTP it would be ignored by
   // browsers anyway, but gating keeps localhost dev clean.
-  const proto = event.request.headers.get("x-forwarded-proto") ??
-    event.url.protocol.replace(":", "");
+  const proto = event.request.headers.get("x-forwarded-proto") ?? event.url.protocol.replace(":", "");
   if (proto === "https") {
-    response.headers.set(
-      "Strict-Transport-Security",
-      "max-age=63072000; includeSubDomains",
-    );
+    response.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
   }
 
   return response;

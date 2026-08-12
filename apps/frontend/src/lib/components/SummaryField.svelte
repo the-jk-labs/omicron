@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Collapsible } from "bits-ui";
-  import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import { Collapsible } from "bits-ui";
 
   // The post's description: what a search engine prints under the title and what
   // a link preview shows. Genuinely optional — leave it blank and the opening
@@ -63,9 +63,8 @@
   {/if}
 
   <Collapsible.Content>
-    <label for="post-summary" class="text-muted-foreground mb-1.5 block text-xs font-medium">
-      Description — shown in search results and link previews. Optional; the opening
-      lines are used when it's blank.
+    <label for="post-summary" class="mb-1.5 block text-xs font-medium text-muted-foreground">
+      Description — shown in search results and link previews. Optional; the opening lines are used when it's blank.
     </label>
     <div class="flex items-center gap-3">
       <input
@@ -75,9 +74,9 @@
         oninput={() => onChange?.()}
         maxlength={MAX_SUMMARY}
         placeholder="One sentence on what this post is about"
-        class="rounded-input border border-input bg-background shadow-btn min-w-0 flex-1 px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
+        class="min-w-0 flex-1 rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-none placeholder:text-muted-foreground focus:border-foreground"
       />
-      <span class="text-muted-foreground shrink-0 text-xs tabular-nums">
+      <span class="shrink-0 text-xs tabular-nums text-muted-foreground">
         {summary.length}/{MAX_SUMMARY}
       </span>
       <Button

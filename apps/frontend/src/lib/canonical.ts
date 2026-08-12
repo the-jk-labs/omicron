@@ -28,7 +28,10 @@ function schemeFor(host: string): string {
 export function canonicalOrigin(domain: string | null | undefined): string | null {
   // The domain is stored without a scheme, but tolerate an operator who typed
   // one (or a trailing slash) into the wizard rather than emitting a broken URL.
-  const host = domain?.trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "");
+  const host = domain
+    ?.trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/+$/, "");
   if (!host) return null;
   return `${schemeFor(host)}://${host}`;
 }
@@ -59,7 +62,9 @@ export async function instanceDomain(fetchFn: typeof fetch): Promise<string | nu
   const now = Date.now();
   if (cached && now - cached.at < TTL_MS) return cached.domain;
 
-  const info = await endpoints(fetchFn).instance().catch(() => null);
+  const info = await endpoints(fetchFn)
+    .instance()
+    .catch(() => null);
   cached = { domain: info?.domain ?? null, at: now };
   return cached.domain;
 }

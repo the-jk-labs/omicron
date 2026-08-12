@@ -48,7 +48,7 @@ function fitOne(pre: HTMLElement) {
  */
 export function fitPre(node: HTMLElement) {
   const fitAll = () => {
-    for (const pre of node.querySelectorAll("pre")) fitOne(pre as HTMLElement);
+    for (const pre of node.querySelectorAll("pre")) fitOne(pre);
   };
 
   // Web fonts land after first paint and change every measurement, so refit once

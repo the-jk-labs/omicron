@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Select } from "bits-ui";
   import Icon from "$lib/components/Icon.svelte";
   import ProfileLinkIcon from "$lib/components/ProfileLinkIcon.svelte";
   import { inputPrefix, PLATFORMS, platformMeta } from "$lib/profileLinks";
   import type { ProfileLink } from "$lib/types";
+  import { Select } from "bits-ui";
 
   // Editor for a user's featured profile links: an ordered list of
   // platform + URL rows, with add / remove / reorder. Bound two-way; the parent
@@ -42,8 +42,7 @@
     "rounded-input border-input bg-background shadow-btn placeholder:text-muted-foreground focus:border-foreground h-10 w-full border px-3 text-sm outline-none transition-colors";
   const inputWrapClass =
     "rounded-input border-input bg-background shadow-btn focus-within:border-foreground flex h-10 w-full items-center border px-3 text-sm transition-colors";
-  const bareInputClass =
-    "placeholder:text-muted-foreground text-foreground w-full min-w-0 bg-transparent outline-none";
+  const bareInputClass = "placeholder:text-muted-foreground text-foreground w-full min-w-0 bg-transparent outline-none";
   const iconBtnClass =
     "text-muted-foreground hover:bg-muted hover:text-foreground inline-flex size-8 shrink-0 items-center justify-center rounded-button transition-colors disabled:pointer-events-none disabled:opacity-40";
 </script>
@@ -58,11 +57,11 @@
             <ProfileLinkIcon platform={link.platform} size={16} />
             <span class="truncate">{meta.label}</span>
           </span>
-          <Icon name="chevronDown" size={15} class="text-muted-foreground shrink-0" />
+          <Icon name="chevronDown" size={15} class="shrink-0 text-muted-foreground" />
         </Select.Trigger>
         <Select.Portal>
           <Select.Content
-            class="border-muted bg-background shadow-popover rounded-card z-50 max-h-72 overflow-y-auto border p-1"
+            class="z-50 max-h-72 overflow-y-auto rounded-card border border-muted bg-background p-1 shadow-popover"
             sideOffset={6}
           >
             <Select.Viewport>
@@ -70,13 +69,13 @@
                 <Select.Item
                   value={p.key}
                   label={p.label}
-                  class="rounded-button data-[highlighted]:bg-muted flex h-9 w-44 select-none items-center gap-2 px-2 text-sm outline-none"
+                  class="flex h-9 w-44 select-none items-center gap-2 rounded-button px-2 text-sm outline-none data-[highlighted]:bg-muted"
                 >
                   {#snippet children({ selected })}
                     <ProfileLinkIcon platform={p.key} size={16} />
                     <span class="truncate">{p.label}</span>
                     {#if selected}
-                      <Icon name="check" size={15} class="text-foreground ml-auto" />
+                      <Icon name="check" size={15} class="ml-auto text-foreground" />
                     {/if}
                   {/snippet}
                 </Select.Item>
@@ -88,7 +87,7 @@
 
       {#if meta.input.kind === "handle"}
         <div class={inputWrapClass}>
-          <span class="text-muted-foreground shrink-0 select-none">{inputPrefix(meta)}</span>
+          <span class="shrink-0 select-none text-muted-foreground">{inputPrefix(meta)}</span>
           <input
             type="text"
             bind:value={link.url}
@@ -112,13 +111,7 @@
       {/if}
 
       <div class="flex shrink-0 items-center gap-0.5">
-        <button
-          type="button"
-          class={iconBtnClass}
-          onclick={() => move(i, -1)}
-          disabled={i === 0}
-          aria-label="Move up"
-        >
+        <button type="button" class={iconBtnClass} onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move up">
           <Icon name="chevronDown" size={16} class="rotate-180" />
         </button>
         <button
@@ -130,12 +123,7 @@
         >
           <Icon name="chevronDown" size={16} />
         </button>
-        <button
-          type="button"
-          class={iconBtnClass}
-          onclick={() => removeAt(i)}
-          aria-label="Remove link"
-        >
+        <button type="button" class={iconBtnClass} onclick={() => removeAt(i)} aria-label="Remove link">
           <Icon name="trash" size={16} />
         </button>
       </div>
@@ -157,12 +145,12 @@
       type="button"
       onclick={addLink}
       disabled={atLimit}
-      class="text-foreground hover:bg-muted rounded-button inline-flex h-9 items-center gap-1.5 px-2.5 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-40"
+      class="inline-flex h-9 items-center gap-1.5 rounded-button px-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
     >
       <Icon name="plus" size={16} /> Add link
     </button>
   </div>
-  <p class="text-muted-foreground text-xs">
+  <p class="text-xs text-muted-foreground">
     {links.length}/{MAX_LINKS} links — shown on your profile. Drag-free reordering with the arrows.
   </p>
 </div>

@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Label, Switch } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
+  import { Label, Switch } from "bits-ui";
 
   // Moderator-only security controls. Currently the AI-scraper shield (Anubis):
   // a proof-of-work challenge shown to browser-like traffic on page loads.
@@ -20,6 +20,7 @@
       .then((s) => {
         enabled = s.anubisProtection;
         managed = s.anubisManaged;
+        return undefined;
       })
       .catch((e) => (error = e instanceof ApiError ? e.message : "Failed to load settings."))
       .finally(() => (loading = false));
@@ -45,19 +46,17 @@
 
 <div class="flex items-start justify-between gap-4">
   <div class="flex flex-col gap-1">
-    <Label.Root for="anubis-protection" class="text-sm font-medium text-foreground">
-      AI-scraper protection
-    </Label.Root>
+    <Label.Root for="anubis-protection" class="text-sm font-medium text-foreground">AI-scraper protection</Label.Root>
     <p class="max-w-prose text-sm text-muted-foreground">
-      Show a lightweight proof-of-work challenge to browser-like traffic on page loads, to slow
-      down AI crawlers that hammer the instance. Real readers pass it in about a second; federation
-      and the API are never challenged. Applies instantly — no restart. Leave off unless you're
-      seeing scraper load: it adds a brief interstitial for everyone, including no-JS readers.
+      Show a lightweight proof-of-work challenge to browser-like traffic on page loads, to slow down AI crawlers that
+      hammer the instance. Real readers pass it in about a second; federation and the API are never challenged. Applies
+      instantly — no restart. Leave off unless you're seeing scraper load: it adds a brief interstitial for everyone,
+      including no-JS readers.
     </p>
     {#if !managed}
       <p class="mt-1 max-w-prose text-sm text-foreground">
-        Not available in this environment — the bundled reverse proxy isn't under management here,
-        so there's nothing to route through the challenge.
+        Not available in this environment — the bundled reverse proxy isn't under management here, so there's nothing to
+        route through the challenge.
       </p>
     {/if}
   </div>

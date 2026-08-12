@@ -6,7 +6,11 @@
   // Renders a profile-link platform's glyph: an inlined Simple Icons brand path
   // for known platforms, or a Lucide icon for website/custom. Inherits colour
   // via `currentColor`.
-  let { platform, size = 18, class: className = "" }: {
+  let {
+    platform,
+    size = 18,
+    class: className = "",
+  }: {
     platform: string;
     size?: number;
     class?: string;
@@ -16,14 +20,7 @@
 </script>
 
 {#if meta.brand}
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="currentColor"
-    class={className}
-    aria-hidden="true"
-  >
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" class={className} aria-hidden="true">
     <path d={meta.brand} />
   </svg>
 {:else}

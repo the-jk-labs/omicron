@@ -1,13 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { onMount } from "svelte";
   import { page } from "$app/stores";
-  import { Label } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
-  import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/Icon.svelte";
   import logo from "$lib/assets/omicron.svg";
+  import Icon from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import { Label } from "bits-ui";
+  import { onMount } from "svelte";
 
   // With a token in the URL we verify immediately; without one we offer to
   // (re)send a verification email.
@@ -79,9 +79,7 @@
     </div>
     <h1 class="text-2xl font-bold tracking-tight text-foreground">Link didn't work</h1>
     <p class="mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">{errorMsg}</p>
-    <Button onclick={() => (view = "resend")} variant="solid" class="mt-6 h-11 w-full">
-      Send a new link
-    </Button>
+    <Button onclick={() => (view = "resend")} variant="solid" class="mt-6 h-11 w-full">Send a new link</Button>
   </div>
 {:else if view === "resent"}
   <div class="flex flex-col items-center text-center">
@@ -90,8 +88,8 @@
     </div>
     <h1 class="text-2xl font-bold tracking-tight text-foreground">Check your inbox</h1>
     <p class="mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
-      If <span class="font-medium text-foreground">{email}</span> needs verifying, a fresh link is
-      on its way. It expires in 24 hours.
+      If <span class="font-medium text-foreground">{email}</span> needs verifying, a fresh link is on its way. It expires
+      in 24 hours.
     </p>
     <Button href="/login" variant="outline" class="mt-6 h-11 w-full">Back to sign in</Button>
   </div>
@@ -99,9 +97,7 @@
   <div class="mb-8 text-center">
     <div class="mb-4 flex justify-center"><img src={logo} alt="" class="h-12 w-auto" /></div>
     <h1 class="text-2xl font-bold tracking-tight text-foreground">Verify your email</h1>
-    <p class="mt-1.5 text-sm text-muted-foreground">
-      Enter your email and we'll send you a new confirmation link.
-    </p>
+    <p class="mt-1.5 text-sm text-muted-foreground">Enter your email and we'll send you a new confirmation link.</p>
   </div>
 
   <form onsubmit={resend} class="flex flex-col gap-4">

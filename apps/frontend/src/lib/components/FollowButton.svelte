@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { untrack } from "svelte";
   import { endpoints } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import type { FollowState } from "$lib/types";
+  import { untrack } from "svelte";
 
   // For remote actors `username` is the full `user@host` handle and follows go
   // through the federated endpoints (signed Follow/Undo); local follows are
@@ -13,7 +13,13 @@
   // `followState` is the richer local model — none / requested (private account
   // awaiting approval) / following. When omitted (remote profiles) it derives
   // from the `following` boolean, so the button stays two-state there.
-  let { username, following, followState, remote = false, size = "default" }: {
+  let {
+    username,
+    following,
+    followState,
+    remote = false,
+    size = "default",
+  }: {
     username: string;
     following: boolean;
     followState?: FollowState;
@@ -21,9 +27,7 @@
     size?: "default" | "sm" | "xs";
   } = $props();
 
-  let current = $state<FollowState>(
-    untrack(() => followState ?? (following ? "following" : "none")),
-  );
+  let current = $state<FollowState>(untrack(() => followState ?? (following ? "following" : "none")));
   let busy = $state(false);
   // Re-sync when the button is reused across a client-side navigation (e.g. from
   // one profile page to another); local toggles don't touch the props.
@@ -52,20 +56,11 @@
     }
   }
 
-  const label = $derived(
-    current === "following" ? "Following" : current === "requested" ? "Requested" : "Follow",
-  );
-  const icon = $derived(
-    current === "following" ? "unfollow" : current === "requested" ? "clock" : "follow",
-  );
+  const label = $derived(current === "following" ? "Following" : current === "requested" ? "Requested" : "Follow");
+  const icon = $derived(current === "following" ? "unfollow" : current === "requested" ? "clock" : "follow");
 </script>
 
-<Button
-  onclick={toggle}
-  disabled={busy}
-  {size}
-  variant={current === "none" ? "solid" : "outline"}
->
+<Button onclick={toggle} disabled={busy} {size} variant={current === "none" ? "solid" : "outline"}>
   <Icon name={icon} size={size === "xs" ? 14 : 16} />
   {label}
 </Button>

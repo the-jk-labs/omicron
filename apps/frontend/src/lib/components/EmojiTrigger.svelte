@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Popover } from "bits-ui";
   import Icon from "$lib/components/Icon.svelte";
+  import { Popover } from "bits-ui";
   import EmojiPicker from "./EmojiPicker.svelte";
 
   // Reusable emoji-insert control: a smile button that opens the picker in a
@@ -37,7 +37,7 @@
     <Popover.Content
       sideOffset={8}
       {align}
-      class="border-muted bg-background shadow-popover z-30 w-[22rem] max-w-[94vw] overflow-hidden rounded-card border focus-visible:outline-none"
+      class="z-30 w-[22rem] max-w-[94vw] overflow-hidden rounded-card border border-muted bg-background shadow-popover focus-visible:outline-none"
     >
       <EmojiPicker onPick={pick} />
     </Popover.Content>

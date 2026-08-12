@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-import { makeApi } from "./client";
 import type {
   AdminInstance,
   AdminUser,
@@ -36,6 +34,8 @@ import type {
   User,
   WebhookToken,
 } from "$lib/types";
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { makeApi } from "./client";
 
 type LikeState = { likeCount: number; liked: boolean };
 
@@ -45,11 +45,7 @@ export type LangFilter = { langMode: "show" | "hide"; langs: string };
 
 // Builds the `?scope=&cursor=&langMode=&langs=` query string for the public
 // timelines, omitting whatever isn't set.
-function timelineQuery(
-  cursor?: string | null,
-  langFilter?: LangFilter | null,
-  scope?: "local",
-): string {
+function timelineQuery(cursor?: string | null, langFilter?: LangFilter | null, scope?: "local"): string {
   const params = new URLSearchParams();
   if (scope) params.set("scope", scope);
   if (cursor) params.set("cursor", cursor);
@@ -71,48 +67,40 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
   return {
     // instance identity + first-run setup wizard
     instance: () => api.get<InstanceInfo>("/instance"),
-    completeSetup: (
-      body: {
-        appName: string;
-        appDomain?: string;
-        email?: EmailInput;
-        admin: { username: string; email: string; password: string; displayName?: string };
-      },
-    ) => api.post<{ user: User }>("/setup", body),
+    completeSetup: (body: {
+      appName: string;
+      appDomain?: string;
+      email?: EmailInput;
+      admin: { username: string; email: string; password: string; displayName?: string };
+    }) => api.post<{ user: User }>("/setup", body),
     // Send a wizard test email with not-yet-saved details (open pre-setup).
-    testSetupEmail: (body: { to: string; email?: EmailInput }) =>
-      api.post<{ ok: true }>("/setup/test-email", body),
+    testSetupEmail: (body: { to: string; email?: EmailInput }) => api.post<{ ok: true }>("/setup/test-email", body),
 
     // auth
     me: () => api.get<{ user: User | null }>("/auth/me"),
     register: (body: { username: string; email: string; password: string; displayName?: string }) =>
       api.post<{ user: User }>("/auth/register", body),
-    login: (body: { identifier: string; password: string }) =>
-      api.post<{ user: User }>("/auth/login", body),
+    login: (body: { identifier: string; password: string }) => api.post<{ user: User }>("/auth/login", body),
     logout: () => api.post<{ ok: true }>("/auth/logout"),
-    forgotPassword: (identifier: string) =>
-      api.post<{ ok: true }>("/auth/password/forgot", { identifier }),
+    forgotPassword: (identifier: string) => api.post<{ ok: true }>("/auth/password/forgot", { identifier }),
     resetPassword: (token: string, password: string) =>
       api.post<{ ok: true }>("/auth/password/reset", { token, password }),
     verifyEmail: (token: string) => api.post<{ ok: true }>("/auth/email/verify", { token }),
-    resendVerification: (email: string) =>
-      api.post<{ ok: true }>("/auth/email/resend", { email }),
+    resendVerification: (email: string) => api.post<{ ok: true }>("/auth/email/resend", { email }),
     changePassword: (currentPassword: string, newPassword: string) =>
       api.post<{ ok: true }>("/auth/password/change", { currentPassword, newPassword }),
     deleteAccount: (password: string) => api.del<{ ok: true }>("/auth/me", { password }),
 
     // writer dashboard (own analytics) + moderator instance settings
-    dashboard: (days?: number) =>
-      api.get<DashboardSummary>(`/dashboard${days ? `?days=${days}` : ""}`),
+    dashboard: (days?: number) => api.get<DashboardSummary>(`/dashboard${days ? `?days=${days}` : ""}`),
     adminSettings: () => api.get<InstanceSettings>("/admin/settings"),
     setAnalytics: (onInstanceViews: boolean) =>
       api.put<InstanceSettings>("/admin/settings/analytics", { onInstanceViews }),
 
     // admin instance identity (name + domain + federation toggle, restart-applied)
     adminInstance: () => api.get<AdminInstance>("/admin/instance"),
-    setAdminInstance: (
-      body: { appName?: string; appDomain?: string; federationEnabled?: boolean },
-    ) => api.put<AdminInstance>("/admin/instance", body),
+    setAdminInstance: (body: { appName?: string; appDomain?: string; federationEnabled?: boolean }) =>
+      api.put<AdminInstance>("/admin/instance", body),
     // Rotate the auto-managed session secret (takes effect on restart, signs out).
     rotateSessionSecret: () => api.post<{ ok: true }>("/admin/instance/rotate-secret", {}),
 
@@ -125,44 +113,37 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // moderator-only write side.
     seo: () => api.get<SeoSettings>("/seo"),
     // Yes/no check backing the IndexNow key file; never returns the key.
-    verifyIndexNowKey: (key: string) =>
-      api.get<{ ok: boolean }>(`/seo/indexnow-key/${encodeURIComponent(key)}`),
+    verifyIndexNowKey: (key: string) => api.get<{ ok: boolean }>(`/seo/indexnow-key/${encodeURIComponent(key)}`),
     sitemapEntries: () => api.get<SitemapContents>("/seo/sitemap-entries"),
     sitemapPosts: (page: number) => api.get<SitemapEntry[]>(`/seo/sitemap-posts?page=${page}`),
     adminSeo: () => api.get<SeoSettings>("/admin/seo"),
     setAdminSeo: (body: Partial<SeoSettings>) => api.put<SeoSettings>("/admin/seo", body),
     // The Unsplash access key. Never read back — only whether one is set.
     adminUnsplash: () => api.get<{ configured: boolean }>("/admin/unsplash"),
-    setAdminUnsplash: (accessKey: string | null) =>
-      api.put<{ configured: boolean }>("/admin/unsplash", { accessKey }),
+    setAdminUnsplash: (accessKey: string | null) => api.put<{ configured: boolean }>("/admin/unsplash", { accessKey }),
 
     // admin email settings (runtime-configurable delivery)
     adminEmail: () => api.get<EmailSettings>("/admin/email"),
     setAdminEmail: (body: EmailInput) => api.put<EmailSettings>("/admin/email", body),
     testAdminEmail: (to: string) => api.post<{ ok: true }>("/admin/email/test", { to }),
     // Path B self-host: generate DKIM keys + get DNS records; live-verify them.
-    generateDkim: (domain: string) =>
-      api.post<DkimGenerateResult>("/admin/email/dkim", { domain }),
+    generateDkim: (domain: string) => api.post<DkimGenerateResult>("/admin/email/dkim", { domain }),
     checkEmailDns: () => api.get<EmailDnsResult>("/admin/email/dns"),
     checkPort25: () => api.get<{ ok: boolean; detail: string }>("/admin/email/port25"),
 
     // admin moderation
     adminUsers: (q?: string) =>
       api.get<{ users: AdminUser[] }>(`/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`),
-    suspendUser: (id: string, suspend: boolean) =>
-      api.post<{ ok: true }>(`/admin/users/${id}/suspend`, { suspend }),
+    suspendUser: (id: string, suspend: boolean) => api.post<{ ok: true }>(`/admin/users/${id}/suspend`, { suspend }),
     adminRemovePost: (id: string) => api.del<{ ok: true }>(`/admin/posts/${id}`),
     adminReports: (status?: "open" | "resolved") =>
-      api.get<{ reports: Report[]; openCount: number }>(
-        `/admin/reports${status ? `?status=${status}` : ""}`,
-      ),
+      api.get<{ reports: Report[]; openCount: number }>(`/admin/reports${status ? `?status=${status}` : ""}`),
     resolveReport: (id: string, resolution?: string) =>
       api.post<{ ok: true }>(`/admin/reports/${id}/resolve`, { resolution }),
     blockedDomains: () => api.get<{ domains: BlockedDomain[] }>("/admin/domains"),
     blockDomain: (domain: string, reason?: string) =>
       api.post<{ domain: string; purged: number }>("/admin/domains", { domain, reason }),
-    unblockDomain: (domain: string) =>
-      api.del<{ ok: true }>(`/admin/domains/${encodeURIComponent(domain)}`),
+    unblockDomain: (domain: string) => api.del<{ ok: true }>(`/admin/domains/${encodeURIComponent(domain)}`),
 
     // user-facing report (flag a post or account)
     report: (subjectType: "post" | "user", subjectId: string, reason?: string) =>
@@ -170,30 +151,23 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
 
     // notifications
     notifications: (cursor?: string | null) =>
-      api.get<Page<Notification>>(
-        `/notifications${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
-      ),
+      api.get<Page<Notification>>(`/notifications${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
     unreadNotificationCount: () => api.get<{ count: number }>("/notifications/unread-count"),
     markAllNotificationsRead: () => api.post<{ ok: true }>("/notifications/read"),
     markNotificationRead: (id: string) => api.post<{ ok: true }>(`/notifications/${id}/read`),
 
     // search
     search: (query: string, scope?: "posts" | "people" | "tags") =>
-      api.get<SearchResults>(
-        `/search?q=${encodeURIComponent(query)}${scope ? `&scope=${scope}` : ""}`,
-      ),
+      api.get<SearchResults>(`/search?q=${encodeURIComponent(query)}${scope ? `&scope=${scope}` : ""}`),
 
     // tags
     tag: (slug: string) => api.get<TagDetail>(`/tags/${encodeURIComponent(slug)}`),
     tagPosts: (slug: string, cursor?: string | null) =>
       api.get<Page<Post>>(
-        `/tags/${encodeURIComponent(slug)}/posts${
-          cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""
-        }`,
+        `/tags/${encodeURIComponent(slug)}/posts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
       ),
     followTag: (slug: string) => api.post<{ ok: true }>(`/tags/${encodeURIComponent(slug)}/follow`),
-    unfollowTag: (slug: string) =>
-      api.del<{ ok: true }>(`/tags/${encodeURIComponent(slug)}/follow`),
+    unfollowTag: (slug: string) => api.del<{ ok: true }>(`/tags/${encodeURIComponent(slug)}/follow`),
     trendingTags: () => api.get<{ tags: TagWithCount[] }>("/tags"),
     followedTags: () => api.get<{ tags: TagWithCount[] }>("/tags/following"),
 
@@ -202,8 +176,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     webhookTokens: () => api.get<{ tokens: WebhookToken[] }>("/webhooks/tokens"),
     createWebhookToken: (label: string) =>
       api.post<{ token: string; tokenInfo: WebhookToken }>("/webhooks/tokens", { label }),
-    revokeWebhookToken: (id: string) =>
-      api.del<{ ok: true }>(`/webhooks/tokens/${encodeURIComponent(id)}`),
+    revokeWebhookToken: (id: string) => api.del<{ ok: true }>(`/webhooks/tokens/${encodeURIComponent(id)}`),
 
     // feed + posts
     feed: (cursor?: string | null) =>
@@ -218,17 +191,33 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // slug the post has been moved off, or a trailing short id from a
     // pre-slug link — so every permalink ever issued arrives here.
     postBySlug: (username: string, slug: string) =>
-      api.get<{ post: Post }>(
-        `/posts/by/${encodeURIComponent(username)}/${encodeURIComponent(slug)}`,
-      ),
+      api.get<{ post: Post }>(`/posts/by/${encodeURIComponent(username)}/${encodeURIComponent(slug)}`),
     drafts: (cursor?: string | null) =>
       api.get<Page<Post>>(`/posts/drafts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
-    createPost: (
-      body: { title?: string; contentHtml: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; summary?: string | null; coverUrl?: string | null; coverCredit?: CoverCredit | null; tags?: string[] },
-    ) => api.post<{ post: { id: string; slug: string | null } }>("/posts", body),
+    createPost: (body: {
+      title?: string;
+      contentHtml: string;
+      contentJson?: unknown;
+      status?: "draft" | "published";
+      language?: string | null;
+      summary?: string | null;
+      coverUrl?: string | null;
+      coverCredit?: CoverCredit | null;
+      tags?: string[];
+    }) => api.post<{ post: { id: string; slug: string | null } }>("/posts", body),
     updatePost: (
       id: string,
-      body: { title?: string; contentHtml?: string; contentJson?: unknown; status?: "draft" | "published"; language?: string | null; summary?: string | null; coverUrl?: string | null; coverCredit?: CoverCredit | null; tags?: string[] },
+      body: {
+        title?: string;
+        contentHtml?: string;
+        contentJson?: unknown;
+        status?: "draft" | "published";
+        language?: string | null;
+        summary?: string | null;
+        coverUrl?: string | null;
+        coverCredit?: CoverCredit | null;
+        tags?: string[];
+      },
       // `slug` comes back because a retitle changes it, and the editor has to
       // navigate to the post's new address.
     ) => api.patch<{ post: { id: string; slug: string | null } }>(`/posts/${id}`, body),
@@ -240,16 +229,11 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     likePost: (id: string) => api.post<LikeState>(`/posts/${id}/like`),
     unlikePost: (id: string) => api.del<LikeState>(`/posts/${id}/like`),
     comments: (id: string, cursor?: string | null) =>
-      api.get<Page<Comment>>(
-        `/posts/${id}/comments${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
-      ),
+      api.get<Page<Comment>>(`/posts/${id}/comments${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
     createComment: (id: string, content: string, parentId?: string | null) =>
       api.post<{ comment: Comment }>(`/posts/${id}/comments`, { content, parentId }),
     editComment: (postId: string, commentId: string, content: string) =>
-      api.patch<{ comment: { id: string; content: string } }>(
-        `/posts/${postId}/comments/${commentId}`,
-        { content },
-      ),
+      api.patch<{ comment: { id: string; content: string } }>(`/posts/${postId}/comments/${commentId}`, { content }),
     deleteComment: (postId: string, commentId: string) =>
       api.del<{ ok: true }>(`/posts/${postId}/comments/${commentId}`),
     likeComment: (postId: string, commentId: string) =>
@@ -259,8 +243,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
 
     // reading lists
     myLists: () => api.get<{ lists: ReadingList[] }>("/lists"),
-    userLists: (username: string) =>
-      api.get<{ lists: ReadingList[] }>(`/lists/user/${encodeURIComponent(username)}`),
+    userLists: (username: string) => api.get<{ lists: ReadingList[] }>(`/lists/user/${encodeURIComponent(username)}`),
     readLater: () => api.get<{ list: ReadingList }>("/lists/read-later"),
     list: (id: string) => api.get<ReadingListDetail>(`/lists/${id}`),
     listItems: (id: string, cursor?: string | null) =>
@@ -268,28 +251,21 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     listsForPost: (postId: string) => api.get<{ lists: ReadingList[] }>(`/lists/for-post/${postId}`),
     createList: (body: { title: string; description?: string; visibility?: "public" | "private" }) =>
       api.post<{ list: ReadingList }>("/lists", body),
-    updateList: (
-      id: string,
-      body: { title?: string; description?: string; visibility?: "public" | "private" },
-    ) => api.patch<{ list: ReadingList }>(`/lists/${id}`, body),
+    updateList: (id: string, body: { title?: string; description?: string; visibility?: "public" | "private" }) =>
+      api.patch<{ list: ReadingList }>(`/lists/${id}`, body),
     deleteList: (id: string) => api.del<{ ok: true }>(`/lists/${id}`),
-    addToList: (id: string, postId: string) =>
-      api.post<{ ok: true }>(`/lists/${id}/items`, { postId }),
-    removeFromList: (id: string, postId: string) =>
-      api.del<{ ok: true }>(`/lists/${id}/items/${postId}`),
+    addToList: (id: string, postId: string) => api.post<{ ok: true }>(`/lists/${id}/items`, { postId }),
+    removeFromList: (id: string, postId: string) => api.del<{ ok: true }>(`/lists/${id}/items/${postId}`),
 
     // current user's profile editing
-    updateProfile: (
-      body: {
-        displayName?: string;
-        bio?: string;
-        publicEmail?: string;
-        customSection?: string;
-        tags?: string[];
-        links?: { platform: string; url: string; label: string }[];
-      },
-    ) =>
-      api.patch<{ user: User }>("/users/me", body),
+    updateProfile: (body: {
+      displayName?: string;
+      bio?: string;
+      publicEmail?: string;
+      customSection?: string;
+      tags?: string[];
+      links?: { platform: string; url: string; label: string }[];
+    }) => api.patch<{ user: User }>("/users/me", body),
     // Renders the profile's custom Markdown section through the same path as
     // saving, so the editor's preview is exactly what will be stored.
     previewCustomSection: (customSection: string) =>
@@ -299,16 +275,13 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.postRaw<{ user: User }>("/users/me/avatar", blob, contentType),
     removeAvatar: () => api.del<{ user: User }>("/users/me/avatar"),
     // Post-body image upload. The blob is already resized/compressed client-side.
-    uploadImage: (blob: Blob, contentType: string) =>
-      api.postRaw<{ url: string }>("/uploads", blob, contentType),
+    uploadImage: (blob: Blob, contentType: string) => api.postRaw<{ url: string }>("/uploads", blob, contentType),
 
     // Free-photo search for the banner picker. `photoProviders` says which
     // tabs to offer — never empty, since Openverse needs no configuration.
     photoProviders: () => api.get<{ providers: PhotoProvider[] }>("/photos/providers"),
     searchPhotos: (provider: PhotoProvider, q: string, page = 1) =>
-      api.get<{ items: StockPhoto[] }>(
-        `/photos/search?provider=${provider}&q=${encodeURIComponent(q)}&page=${page}`,
-      ),
+      api.get<{ items: StockPhoto[] }>(`/photos/search?provider=${provider}&q=${encodeURIComponent(q)}&page=${page}`),
     // Tells a provider one of its photos was used — required by Unsplash's API
     // terms so a photographer's download count reflects reality.
     recordPhotoUse: (provider: PhotoProvider, token: string) =>
@@ -318,21 +291,15 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     suggestedUsers: () => api.get<{ items: SuggestedUser[] }>("/users/suggested"),
     profile: (username: string) => api.get<Profile>(`/users/${username}`),
     userPosts: (username: string, cursor?: string | null) =>
-      api.get<Page<Post>>(
-        `/users/${username}/posts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
-      ),
-    follow: (username: string) =>
-      api.post<{ ok: true; state: "requested" | "following" }>(`/users/${username}/follow`),
+      api.get<Page<Post>>(`/users/${username}/posts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
+    follow: (username: string) => api.post<{ ok: true; state: "requested" | "following" }>(`/users/${username}/follow`),
     unfollow: (username: string) => api.del(`/users/${username}/follow`),
 
     // private-account controls: privacy toggle + the follow-request inbox
-    setPrivacy: (isPrivate: boolean) =>
-      api.patch<{ user: User }>("/users/me/privacy", { isPrivate }),
+    setPrivacy: (isPrivate: boolean) => api.patch<{ user: User }>("/users/me/privacy", { isPrivate }),
     followRequests: () => api.get<{ items: FollowRequest[] }>("/users/me/follow-requests"),
-    approveFollowRequest: (id: string) =>
-      api.post<{ ok: true }>(`/users/me/follow-requests/${id}/approve`),
-    rejectFollowRequest: (id: string) =>
-      api.post<{ ok: true }>(`/users/me/follow-requests/${id}/reject`),
+    approveFollowRequest: (id: string) => api.post<{ ok: true }>(`/users/me/follow-requests/${id}/approve`),
+    rejectFollowRequest: (id: string) => api.post<{ ok: true }>(`/users/me/follow-requests/${id}/reject`),
 
     // mute / block local users (auth required)
     mute: (username: string) => api.post(`/users/${username}/mute`),
@@ -341,40 +308,28 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     unblock: (username: string) => api.del(`/users/${username}/block`),
 
     // a profile's public follower / following lists
-    userFollowers: (username: string) =>
-      api.get<{ items: RelationActor[] }>(`/users/${username}/followers`),
-    userFollowing: (username: string) =>
-      api.get<{ items: RelationActor[] }>(`/users/${username}/following`),
+    userFollowers: (username: string) => api.get<{ items: RelationActor[] }>(`/users/${username}/followers`),
+    userFollowing: (username: string) => api.get<{ items: RelationActor[] }>(`/users/${username}/following`),
 
     // remove one of your own followers (Instagram/Mastodon "Remove follower").
     // `identifier` is a local username or a remote user@host handle.
-    removeFollower: (identifier: string) =>
-      api.del(`/users/me/followers/${encodeURIComponent(identifier)}`),
+    removeFollower: (identifier: string) => api.del(`/users/me/followers/${encodeURIComponent(identifier)}`),
 
     // muted / blocked lists for the signed-in user (Settings → Connections)
     muted: () => api.get<{ items: RelationActor[] }>("/users/me/muted"),
     blocked: () => api.get<{ items: RelationActor[] }>("/users/me/blocked"),
 
     // remote (federated) profiles + their posts, browsed read-only
-    remoteProfile: (handle: string) =>
-      api.get<RemoteProfile>(`/remote/users/${encodeURIComponent(handle)}`),
+    remoteProfile: (handle: string) => api.get<RemoteProfile>(`/remote/users/${encodeURIComponent(handle)}`),
     remoteUserPosts: (handle: string, cursor?: string | null) =>
       api.get<Page<Post>>(
-        `/remote/users/${encodeURIComponent(handle)}/posts${
-          cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""
-        }`,
+        `/remote/users/${encodeURIComponent(handle)}/posts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
       ),
-    remoteFollow: (handle: string) =>
-      api.post(`/remote/users/${encodeURIComponent(handle)}/follow`),
-    remoteUnfollow: (handle: string) =>
-      api.del(`/remote/users/${encodeURIComponent(handle)}/follow`),
-    remoteMute: (handle: string) =>
-      api.post(`/remote/users/${encodeURIComponent(handle)}/mute`),
-    remoteUnmute: (handle: string) =>
-      api.del(`/remote/users/${encodeURIComponent(handle)}/mute`),
-    remoteBlock: (handle: string) =>
-      api.post(`/remote/users/${encodeURIComponent(handle)}/block`),
-    remoteUnblock: (handle: string) =>
-      api.del(`/remote/users/${encodeURIComponent(handle)}/block`),
+    remoteFollow: (handle: string) => api.post(`/remote/users/${encodeURIComponent(handle)}/follow`),
+    remoteUnfollow: (handle: string) => api.del(`/remote/users/${encodeURIComponent(handle)}/follow`),
+    remoteMute: (handle: string) => api.post(`/remote/users/${encodeURIComponent(handle)}/mute`),
+    remoteUnmute: (handle: string) => api.del(`/remote/users/${encodeURIComponent(handle)}/mute`),
+    remoteBlock: (handle: string) => api.post(`/remote/users/${encodeURIComponent(handle)}/block`),
+    remoteUnblock: (handle: string) => api.del(`/remote/users/${encodeURIComponent(handle)}/block`),
   };
 }

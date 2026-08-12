@@ -1,30 +1,30 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { onMount } from "svelte";
   import { goto, invalidateAll } from "$app/navigation";
   import { env } from "$env/dynamic/public";
-  import { DropdownMenu } from "bits-ui";
   import { endpoints } from "$lib/api";
-  import { theme } from "$lib/theme.svelte";
+  import logo from "$lib/assets/omicron.svg";
   import Icon from "$lib/components/Icon.svelte";
+  import { notificationAction, notificationHref, notificationIcon } from "$lib/components/notifications";
   import SearchBar from "$lib/components/SearchBar.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import logo from "$lib/assets/omicron.svg";
-  import type { Notification, User } from "$lib/types";
-  import { notifications } from "$lib/notifications.svelte";
-  import {
-    notificationAction,
-    notificationHref,
-    notificationIcon,
-  } from "$lib/components/notifications";
   import { timeAgo } from "$lib/format";
+  import { notifications } from "$lib/notifications.svelte";
+  import { theme } from "$lib/theme.svelte";
   import { timeZone } from "$lib/timezone";
+  import type { Notification, User } from "$lib/types";
+  import { DropdownMenu } from "bits-ui";
+  import { onMount } from "svelte";
 
   // `minimal` strips the nav down to logo + theme toggle for standalone pages
   // (auth screens), which carry their own focused layout. `appName` comes from
   // the instance settings, falling back to the build-time env then the default.
-  let { user, minimal = false, appName = env.PUBLIC_APP_NAME || "Omicron" }: {
+  let {
+    user,
+    minimal = false,
+    appName = env.PUBLIC_APP_NAME || "Omicron",
+  }: {
     user: User | null;
     minimal?: boolean;
     appName?: string;
@@ -110,13 +110,13 @@
       {:else if user}
         <DropdownMenu.Root onOpenChange={(open) => open && loadNotifications()}>
           <DropdownMenu.Trigger
-            class="text-muted-foreground hover:bg-muted relative inline-flex h-9 w-9 select-none items-center justify-center rounded-full active:scale-[0.98] focus-visible:outline-none"
+            class="relative inline-flex h-9 w-9 select-none items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none active:scale-[0.98]"
             aria-label="Notifications"
           >
             <Icon name="bell" size={18} />
             {#if notifications.count > 0}
               <span
-                class="bg-destructive text-background absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none"
+                class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-background"
               >
                 {notifications.count > 99 ? "99+" : notifications.count}
               </span>
@@ -126,58 +126,52 @@
             <DropdownMenu.Content
               sideOffset={8}
               align="end"
-              class="border-muted bg-background shadow-popover z-30 w-[360px] max-w-[calc(100vw-2rem)] rounded-xl border p-1 focus-visible:outline-none"
+              class="z-30 w-[360px] max-w-[calc(100vw-2rem)] rounded-xl border border-muted bg-background p-1 shadow-popover focus-visible:outline-none"
             >
-              <p class="text-foreground px-3 py-2 text-sm font-semibold">Notifications</p>
-              <DropdownMenu.Separator class="bg-muted -mx-1 my-1 h-px" />
+              <p class="px-3 py-2 text-sm font-semibold text-foreground">Notifications</p>
+              <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-muted" />
               {#if notifLoading && notifItems.length === 0}
-                <p class="text-muted-foreground px-3 py-6 text-center text-sm">Loading…</p>
+                <p class="px-3 py-6 text-center text-sm text-muted-foreground">Loading…</p>
               {:else if notifItems.length === 0}
-                <p class="text-muted-foreground px-3 py-6 text-center text-sm">
-                  No notifications yet.
-                </p>
+                <p class="px-3 py-6 text-center text-sm text-muted-foreground">No notifications yet.</p>
               {:else}
                 <div class="max-h-[60vh] overflow-y-auto">
                   {#each notifItems as n (n.id)}
                     {@const href = notificationHref(n)}
                     <DropdownMenu.Item
                       onSelect={() => href && goto(href)}
-                      class="rounded-button data-[highlighted]:bg-muted !ring-0 !ring-transparent flex w-full cursor-pointer select-none items-start gap-3 px-3 py-2.5 focus-visible:outline-none {n.read
+                      class="flex w-full cursor-pointer select-none items-start gap-3 rounded-button px-3 py-2.5 !ring-0 !ring-transparent focus-visible:outline-none data-[highlighted]:bg-muted {n.read
                         ? ''
                         : 'bg-muted/40'}"
                     >
                       <div class="relative shrink-0">
-                        <Avatar
-                          name={n.actor?.displayName ?? "?"}
-                          src={n.actor?.avatarUrl ?? undefined}
-                          size={36}
-                        />
+                        <Avatar name={n.actor?.displayName ?? "?"} src={n.actor?.avatarUrl ?? undefined} size={36} />
                         <span
-                          class="bg-background text-muted-foreground absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full"
+                          class="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-background text-muted-foreground"
                         >
                           <Icon name={notificationIcon(n.type)} size={12} />
                         </span>
                       </div>
                       <div class="min-w-0 flex-1">
-                        <p class="text-foreground text-sm leading-snug">
+                        <p class="text-sm leading-snug text-foreground">
                           <span class="font-semibold">{n.actor?.displayName ?? "Someone"}</span>
                           {notificationAction(n.type)}
                         </p>
                         {#if n.postTitle}
-                          <p class="text-muted-foreground truncate text-xs">{n.postTitle}</p>
+                          <p class="truncate text-xs text-muted-foreground">{n.postTitle}</p>
                         {:else if n.commentSnippet}
-                          <p class="text-muted-foreground truncate text-xs">{n.commentSnippet}</p>
+                          <p class="truncate text-xs text-muted-foreground">{n.commentSnippet}</p>
                         {/if}
-                        <p class="text-muted-foreground mt-0.5 text-xs">{timeAgo(n.createdAt, $timeZone)}</p>
+                        <p class="mt-0.5 text-xs text-muted-foreground">{timeAgo(n.createdAt, $timeZone)}</p>
                       </div>
                     </DropdownMenu.Item>
                   {/each}
                 </div>
               {/if}
-              <DropdownMenu.Separator class="bg-muted -mx-1 my-1 h-px" />
+              <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-muted" />
               <DropdownMenu.Item
                 onSelect={() => goto("/notifications")}
-                class="rounded-button data-[highlighted]:bg-muted !ring-0 !ring-transparent flex h-10 w-full cursor-pointer select-none items-center justify-center text-sm font-medium focus-visible:outline-none"
+                class="flex h-10 w-full cursor-pointer select-none items-center justify-center rounded-button text-sm font-medium !ring-0 !ring-transparent focus-visible:outline-none data-[highlighted]:bg-muted"
               >
                 See all
               </DropdownMenu.Item>
@@ -200,13 +194,13 @@
             <DropdownMenu.Content
               sideOffset={8}
               align="end"
-              class="border-muted bg-background shadow-popover z-30 w-[229px] rounded-xl border px-1 py-1.5 focus-visible:outline-none"
+              class="z-30 w-[229px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-none"
             >
               <div class="px-3 py-2">
-                <p class="text-foreground truncate text-sm font-semibold">{user.displayName}</p>
-                <p class="text-muted-foreground truncate text-xs">@{user.username}</p>
+                <p class="truncate text-sm font-semibold text-foreground">{user.displayName}</p>
+                <p class="truncate text-xs text-muted-foreground">@{user.username}</p>
               </div>
-              <DropdownMenu.Separator class="bg-muted -mx-1 my-1 h-px" />
+              <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-muted" />
               <DropdownMenu.Item onSelect={() => goto(`/@${user.username}`)} class={itemClass}>
                 <Icon name="user" size={18} /> Profile
               </DropdownMenu.Item>
@@ -224,7 +218,7 @@
               <DropdownMenu.Item onSelect={() => goto("/lists")} class={itemClass}>
                 <Icon name="library" size={18} /> Lists
               </DropdownMenu.Item>
-              <DropdownMenu.Separator class="bg-muted -mx-1 my-1 h-px" />
+              <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-muted" />
               <DropdownMenu.Item onSelect={() => goto("/dashboard")} class={itemClass}>
                 <Icon name="chart" size={18} /> Stats
               </DropdownMenu.Item>
@@ -236,7 +230,7 @@
               <DropdownMenu.Item onSelect={() => goto("/settings")} class={itemClass}>
                 <Icon name="settings" size={18} /> Settings
               </DropdownMenu.Item>
-              <DropdownMenu.Separator class="bg-muted -mx-1 my-1 h-px" />
+              <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-muted" />
               <DropdownMenu.Item onSelect={logout} class={itemClass}>
                 <Icon name="logout" size={18} /> Sign out
               </DropdownMenu.Item>

@@ -1,11 +1,11 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { goto, invalidateAll } from "$app/navigation";
-  import { Label } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
-  import Button from "$lib/components/ui/Button.svelte";
   import logo from "$lib/assets/omicron.svg";
   import PageTitle from "$lib/components/PageTitle.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import { Label } from "bits-ui";
 
   let identifier = $state("");
   let password = $state("");
@@ -48,7 +48,10 @@
   <div class="flex flex-col gap-1.5">
     <div class="flex items-center justify-between">
       <Label.Root for="password" class={labelClass}>Password</Label.Root>
-      <a href="/forgot-password" class="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+      <a
+        href="/forgot-password"
+        class="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+      >
         Forgot password?
       </a>
     </div>

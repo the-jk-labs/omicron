@@ -1,21 +1,21 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { onDestroy, onMount, untrack } from "svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import type { Content } from "@tiptap/core";
   import { beforeNavigate, goto, replaceState } from "$app/navigation";
   import { endpoints, ApiError } from "$lib/api";
   import { Autosave } from "$lib/autosave.svelte";
-  import { confirm } from "$lib/components/ui/confirm";
-  import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/Icon.svelte";
-  import SaveStatus from "$lib/components/SaveStatus.svelte";
-  import TagInput from "$lib/components/TagInput.svelte";
-  import LanguageSelect from "$lib/components/LanguageSelect.svelte";
   import BannerPicker from "$lib/components/BannerPicker.svelte";
+  import Icon from "$lib/components/Icon.svelte";
+  import LanguageSelect from "$lib/components/LanguageSelect.svelte";
+  import PageTitle from "$lib/components/PageTitle.svelte";
+  import SaveStatus from "$lib/components/SaveStatus.svelte";
   import SummaryField from "$lib/components/SummaryField.svelte";
+  import TagInput from "$lib/components/TagInput.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import { confirm } from "$lib/components/ui/confirm";
   import { reading } from "$lib/prefs.svelte";
   import type { CoverCredit } from "$lib/types";
+  import type { Content } from "@tiptap/core";
+  import { onDestroy, onMount, untrack } from "svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -38,7 +38,7 @@
   // A reopened draft keeps whatever it was saved with — including a
   // deliberate blank. Only a genuinely new post takes the remembered default,
   // so revisiting a draft never silently relabels it.
-  let language = $state<string | null>(draft ? draft.language ?? null : reading.composeLang);
+  let language = $state<string | null>(draft ? (draft.language ?? null) : reading.composeLang);
   // The one-line description search engines print under the title, and link
   // previews show. Left empty it falls back to a truncation of the opening
   // paragraph — which is what every post used to get, often cut mid-clause.
@@ -78,13 +78,10 @@
   // starts at the remembered default, and comparing that against null would
   // mark the page dirty the instant it opened, so simply looking at the
   // composer and leaving would raise the unsaved-changes prompt.
-  const initialLanguage = draft ? draft.language ?? null : reading.composeLang;
+  const initialLanguage = draft ? (draft.language ?? null) : reading.composeLang;
   const initialSummary = draft?.summary ?? "";
   $effect(() => {
-    const changed =
-      tags.join(",") !== initialTags ||
-      language !== initialLanguage ||
-      summary !== initialSummary;
+    const changed = tags.join(",") !== initialTags || language !== initialLanguage || summary !== initialSummary;
     if (changed) change();
   });
 
@@ -93,10 +90,7 @@
   function hasContent(): boolean {
     if (!touched) return false;
     return (
-      title.trim().length > 0 ||
-      tags.length > 0 ||
-      coverUrl !== null ||
-      (html.trim().length > 0 && html !== "<p></p>")
+      title.trim().length > 0 || tags.length > 0 || coverUrl !== null || (html.trim().length > 0 && html !== "<p></p>")
     );
   }
 
@@ -223,8 +217,7 @@
     if (autosave.dirty) {
       const leave = await confirm({
         title: "Leave without saving?",
-        description:
-          "Your last change could not be saved. Leaving now loses it — staying lets the editor try again.",
+        description: "Your last change could not be saved. Leaving now loses it — staying lets the editor try again.",
         confirmText: "Leave",
         cancelText: "Stay",
       });

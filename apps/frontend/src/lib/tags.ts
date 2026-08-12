@@ -8,13 +8,15 @@ export const MAX_TAGS_PER_POST = 5;
 export const MAX_PROFILE_TAGS = 10;
 
 export function normalizeTag(raw: string): string {
-  return raw
-    .normalize("NFKC")
-    .toLowerCase()
-    .replace(/^#+/, "")
-    // `c++` → `cpp`, `c#` → `csharp`; see the backend copy for why.
-    .replace(/(?<=[\p{L}\p{M}\p{N}_])\++/gu, (run) => "p".repeat(run.length))
-    .replace(/(?<=[\p{L}\p{M}\p{N}_])#/gu, "sharp")
-    .replace(/[^\p{L}\p{M}\p{N}_]+/gu, "")
-    .slice(0, MAX_TAG_LENGTH);
+  return (
+    raw
+      .normalize("NFKC")
+      .toLowerCase()
+      .replace(/^#+/, "")
+      // `c++` → `cpp`, `c#` → `csharp`; see the backend copy for why.
+      .replace(/(?<=[\p{L}\p{M}\p{N}_])\++/gu, (run) => "p".repeat(run.length))
+      .replace(/(?<=[\p{L}\p{M}\p{N}_])#/gu, "sharp")
+      .replace(/[^\p{L}\p{M}\p{N}_]+/gu, "")
+      .slice(0, MAX_TAG_LENGTH)
+  );
 }

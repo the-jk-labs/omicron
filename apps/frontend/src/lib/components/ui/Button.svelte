@@ -30,10 +30,8 @@
   // Colour/border/weight only — geometry comes from `base` + `sizes`.
   const variants: Record<Variant, string> = {
     solid: "rounded-input bg-dark text-background shadow-mini hover:bg-dark/95 font-semibold",
-    destructive:
-      "rounded-input bg-destructive text-background shadow-mini hover:bg-destructive/90 font-semibold",
-    outline:
-      "rounded-input border border-input text-foreground shadow-btn hover:bg-muted select-none font-semibold",
+    destructive: "rounded-input bg-destructive text-background shadow-mini hover:bg-destructive/90 font-semibold",
+    outline: "rounded-input border border-input text-foreground shadow-btn hover:bg-muted select-none font-semibold",
     ghost: "rounded-input text-foreground hover:bg-muted font-medium",
     icon: "border-input text-foreground shadow-btn hover:bg-muted inline-flex size-10 select-none items-center justify-center rounded-full border text-sm font-medium active:scale-[0.98]",
     link: "hover:text-foreground/80 inline-flex items-center gap-1 font-medium underline underline-offset-4",

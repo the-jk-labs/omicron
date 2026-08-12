@@ -1,20 +1,16 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { onMount, untrack } from "svelte";
   import { endpoints } from "$lib/api";
-  import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
-  import { timeAgo } from "$lib/format";
-  import { timeZone } from "$lib/timezone";
-  import { notifications as bell } from "$lib/notifications.svelte";
-  import {
-    notificationAction,
-    notificationHref,
-    notificationIcon,
-  } from "$lib/components/notifications";
+  import { notificationAction, notificationHref, notificationIcon } from "$lib/components/notifications";
   import PageTitle from "$lib/components/PageTitle.svelte";
+  import Avatar from "$lib/components/ui/Avatar.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import { timeAgo } from "$lib/format";
+  import { notifications as bell } from "$lib/notifications.svelte";
+  import { timeZone } from "$lib/timezone";
   import type { Notification } from "$lib/types";
+  import { onMount, untrack } from "svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -33,7 +29,10 @@
   // Seeing the page counts as reading everything: clear the server unread state
   // and the nav badge. Rows already rendered keep their unread highlight.
   onMount(() => {
-    if (bell.count > 0) endpoints().markAllNotificationsRead().catch(() => {});
+    if (bell.count > 0)
+      endpoints()
+        .markAllNotificationsRead()
+        .catch(() => {});
     bell.clear();
   });
 
@@ -53,14 +52,14 @@
 <PageTitle text="Notifications" />
 
 <header class="mb-6 pb-2">
-  <h1 class="text-foreground flex items-center gap-2 text-2xl font-bold tracking-tight">
+  <h1 class="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
     <Icon name="bell" size={22} /> Notifications
   </h1>
-  <p class="text-muted-foreground mt-1">Follows, likes, and replies to your posts and comments.</p>
+  <p class="mt-1 text-muted-foreground">Follows, likes, and replies to your posts and comments.</p>
 </header>
 
 {#if items.length === 0}
-  <div class="rounded-card border-border bg-background-alt border px-6 py-12 text-center">
+  <div class="rounded-card border border-border bg-background-alt px-6 py-12 text-center">
     <p class="text-muted-foreground">You don't have any notifications yet.</p>
   </div>
 {:else}
@@ -71,29 +70,29 @@
         <Button
           href={href ?? undefined}
           variant="plain"
-          class="rounded-card flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted {n.read
+          class="flex w-full items-start gap-3 rounded-card px-4 py-3 text-left transition-colors hover:bg-muted {n.read
             ? ''
             : 'bg-muted/40'}"
         >
           <div class="relative shrink-0">
             <Avatar name={n.actor?.displayName ?? "?"} src={n.actor?.avatarUrl ?? undefined} size={40} />
             <span
-              class="bg-background text-muted-foreground absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full"
+              class="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-background text-muted-foreground"
             >
               <Icon name={notificationIcon(n.type)} size={12} />
             </span>
           </div>
           <div class="min-w-0 flex-1">
-            <p class="text-foreground text-sm leading-snug">
+            <p class="text-sm leading-snug text-foreground">
               <span class="font-semibold">{n.actor?.displayName ?? "Someone"}</span>
               {notificationAction(n.type)}
             </p>
             {#if n.postTitle}
-              <p class="text-muted-foreground truncate text-sm">{n.postTitle}</p>
+              <p class="truncate text-sm text-muted-foreground">{n.postTitle}</p>
             {:else if n.commentSnippet}
-              <p class="text-muted-foreground truncate text-sm">{n.commentSnippet}</p>
+              <p class="truncate text-sm text-muted-foreground">{n.commentSnippet}</p>
             {/if}
-            <span class="text-muted-foreground mt-0.5 block text-xs">{timeAgo(n.createdAt, $timeZone)}</span>
+            <span class="mt-0.5 block text-xs text-muted-foreground">{timeAgo(n.createdAt, $timeZone)}</span>
           </div>
         </Button>
       </li>

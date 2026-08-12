@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-import { error } from "@sveltejs/kit";
 import { ApiError, endpoints } from "$lib/api";
 import { listIdFromSlug, listPath } from "$lib/links";
 import { FEED_HEADERS, postFeedItem, renderRssFeed } from "$lib/rss";
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 // A reading list's RSS feed at /lists/<slug>-<id>/feed.xml.
@@ -38,8 +38,7 @@ export const GET: RequestHandler = async ({ fetch, params, url }) => {
 
   const body = renderRssFeed({
     title: `${detail.list.title} · ${appName}`,
-    description: detail.list.description ||
-      `A reading list by ${detail.owner.displayName} on ${appName}`,
+    description: detail.list.description || `A reading list by ${detail.owner.displayName} on ${appName}`,
     link: `${url.origin}${listPath(detail.list)}`,
     feedUrl: url.href,
     items: items.map((post) => postFeedItem(post, url.origin)),

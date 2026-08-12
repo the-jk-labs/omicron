@@ -45,10 +45,7 @@ const UPLOAD_PATH = /^\/api\/uploads\/([A-Za-z0-9-]+)\.(?:png|jpe?g|webp|gif)$/;
  * instance used a relative `src`, resolving it here would point the tag at a
  * path on *our* domain that has nothing behind it. No image beats a broken one.
  */
-export function absoluteBanner(
-  url: string | null | undefined,
-  origin: string,
-): string | undefined {
+export function absoluteBanner(url: string | null | undefined, origin: string): string | undefined {
   if (!url) return undefined;
   // An upload is published as its JPEG derivative rather than the stored file.
   // Everything uploaded here is WebP (the browser re-encodes before sending),

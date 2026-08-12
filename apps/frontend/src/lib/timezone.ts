@@ -39,8 +39,7 @@ export function rememberTimeZone(): void {
   localZone.set(zone);
   // Rewritten on every load rather than only when absent, so both the expiry
   // and the zone itself stay current for a reader who moves.
-  document.cookie =
-    `${TZ_COOKIE}=${encodeURIComponent(zone)}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
+  document.cookie = `${TZ_COOKIE}=${encodeURIComponent(zone)}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
 }
 
 /**
@@ -51,7 +50,7 @@ export function rememberTimeZone(): void {
 export function validTimeZone(value: string | undefined): string | null {
   if (!value) return null;
   try {
-    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    Intl.DateTimeFormat("en-US", { timeZone: value });
     return value;
   } catch {
     return null;

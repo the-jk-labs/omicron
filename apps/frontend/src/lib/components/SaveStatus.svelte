@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import Icon from "$lib/components/Icon.svelte";
   import type { SaveState } from "$lib/autosave.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   // The composer's autosave indicator: what the editor did with the author's
   // work and when. Its whole job is to make the missing "Save" click feel safe,
@@ -56,9 +56,7 @@
 
 {#if label}
   <p
-    class="flex items-center gap-1.5 text-xs {status === 'error'
-      ? 'text-destructive'
-      : 'text-muted-foreground'}"
+    class="flex items-center gap-1.5 text-xs {status === 'error' ? 'text-destructive' : 'text-muted-foreground'}"
     title={status === "error" ? (error ?? undefined) : undefined}
     aria-live="polite"
   >

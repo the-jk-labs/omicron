@@ -38,20 +38,20 @@
 </script>
 
 <div
-  class="rounded-input border-border-input bg-background focus-within:border-foreground/40 flex flex-wrap items-center gap-2 border px-3 py-2 transition-colors"
+  class="flex flex-wrap items-center gap-2 rounded-input border border-border-input bg-background px-3 py-2 transition-colors focus-within:border-foreground/40"
   role="group"
   aria-label="Tags"
 >
   {#each tags as tag, i (tag)}
     <span
-      class="bg-muted text-foreground inline-flex items-center gap-1 rounded-full py-1 pl-3 pr-1.5 text-sm font-medium"
+      class="inline-flex items-center gap-1 rounded-full bg-muted py-1 pl-3 pr-1.5 text-sm font-medium text-foreground"
     >
       #{tag}
       <button
         type="button"
         onclick={() => removeAt(i)}
         aria-label={`Remove tag ${tag}`}
-        class="text-muted-foreground hover:bg-dark-10 hover:text-foreground inline-flex size-4 items-center justify-center rounded-full"
+        class="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground hover:bg-dark-10 hover:text-foreground"
       >
         <Icon name="close" size={12} />
       </button>
@@ -64,8 +64,8 @@
       onkeydown={onKeydown}
       onblur={commit}
       placeholder={tags.length ? "Add another tag" : "Add tags (press Enter)"}
-      class="placeholder:text-muted-foreground min-w-[8rem] flex-1 bg-transparent py-1 text-sm outline-none"
+      class="min-w-[8rem] flex-1 bg-transparent py-1 text-sm outline-none placeholder:text-muted-foreground"
     />
   {/if}
 </div>
-<p class="text-muted-foreground mt-1.5 text-xs">{hint}</p>
+<p class="mt-1.5 text-xs text-muted-foreground">{hint}</p>

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import Image from "@tiptap/extension-image";
+import { Image } from "@tiptap/extension-image";
 
 // The stock Tiptap image node is fixed-width. This extension adds a `width`
 // attribute plus a node view that draws four corner handles, so an author can
@@ -36,8 +36,7 @@ export const ResizableImage = Image.extend({
       width: {
         default: null,
         parseHTML: (element) => element.getAttribute("width"),
-        renderHTML: (attributes) =>
-          attributes.width ? { width: attributes.width as string } : {},
+        renderHTML: (attributes) => (attributes.width ? { width: attributes.width } : {}),
       },
     };
   },
@@ -79,16 +78,13 @@ export const ResizableImage = Image.extend({
         img.alt = current.attrs.alt ?? "";
         if (current.attrs.title) img.title = current.attrs.title;
         else img.removeAttribute("title");
-        frame.style.width = (current.attrs.width as string | null) ?? "100%";
+        frame.style.width = typeof current.attrs.width === "string" ? current.attrs.width : "100%";
 
-        const alt = (current.attrs.alt as string | null)?.trim() ?? "";
+        const alt = typeof current.attrs.alt === "string" ? current.attrs.alt.trim() : "";
         altButton.textContent = "Alt";
         altButton.dataset.missing = alt ? "false" : "true";
         altButton.title = alt ? `Alt text: ${alt}` : "Add alt text";
-        altButton.setAttribute(
-          "aria-label",
-          alt ? `Edit alt text: ${alt}` : "Add alt text for this image",
-        );
+        altButton.setAttribute("aria-label", alt ? `Edit alt text: ${alt}` : "Add alt text for this image");
       }
       render();
 
@@ -106,7 +102,7 @@ export const ResizableImage = Image.extend({
         editor.view.dom.dispatchEvent(
           new CustomEvent<EditAltDetail>(EDIT_ALT_EVENT, {
             bubbles: true,
-            detail: { pos, alt: (current.attrs.alt as string | null) ?? "" },
+            detail: { pos, alt: typeof current.attrs.alt === "string" ? current.attrs.alt : "" },
           }),
         );
       });

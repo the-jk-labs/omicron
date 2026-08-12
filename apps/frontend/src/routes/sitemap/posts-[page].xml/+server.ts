@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-import { error } from "@sveltejs/kit";
 import { endpoints } from "$lib/api";
 import { canonicalOrigin, instanceDomain } from "$lib/canonical";
 import { postPath } from "$lib/links";
 import { lastmod, urlsetResponse } from "$lib/sitemap";
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { error } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 // One page of the post sitemap, listed by /sitemap.xml. The home feed rides

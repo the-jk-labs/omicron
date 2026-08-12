@@ -1,26 +1,26 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { onMount, untrack } from "svelte";
-  import { Tabs, Separator } from "bits-ui";
+  import { fitPre } from "$lib/actions/fitPre";
   import { endpoints } from "$lib/api";
-  import PostCard from "$lib/components/PostCard.svelte";
-  import ReadingListCard from "$lib/components/ReadingListCard.svelte";
-  import ProfileLinksCard from "$lib/components/ProfileLinksCard.svelte";
-  import ProfileLinkIcon from "$lib/components/ProfileLinkIcon.svelte";
-  import { platformMeta } from "$lib/profileLinks";
   import FollowButton from "$lib/components/FollowButton.svelte";
-  import ProfileMenu from "$lib/components/ProfileMenu.svelte";
-  import RssButton from "$lib/components/RssButton.svelte";
   import FollowListDialog from "$lib/components/FollowListDialog.svelte";
+  import Icon from "$lib/components/Icon.svelte";
+  import PageTitle from "$lib/components/PageTitle.svelte";
+  import PostCard from "$lib/components/PostCard.svelte";
+  import ProfileLinkIcon from "$lib/components/ProfileLinkIcon.svelte";
+  import ProfileLinksCard from "$lib/components/ProfileLinksCard.svelte";
+  import ProfileMenu from "$lib/components/ProfileMenu.svelte";
+  import ReadingListCard from "$lib/components/ReadingListCard.svelte";
+  import RssButton from "$lib/components/RssButton.svelte";
   import TagList from "$lib/components/TagList.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import Icon from "$lib/components/Icon.svelte";
   import { formatDate } from "$lib/format";
+  import { platformMeta } from "$lib/profileLinks";
   import { timeZone } from "$lib/timezone";
-  import { fitPre } from "$lib/actions/fitPre";
-  import PageTitle from "$lib/components/PageTitle.svelte";
   import type { Post } from "$lib/types";
+  import { Tabs, Separator } from "bits-ui";
+  import { onMount, untrack } from "svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -117,14 +117,8 @@
 
   {#if data.remote}
     {#if data.user}
-      <div
-        class="col-start-2 row-start-1 flex shrink-0 items-center gap-2 justify-self-end self-center sm:col-start-3"
-      >
-        <FollowButton
-          username={data.profile.user.username}
-          following={data.profile.isFollowing}
-          remote
-        />
+      <div class="col-start-2 row-start-1 flex shrink-0 items-center gap-2 self-center justify-self-end sm:col-start-3">
+        <FollowButton username={data.profile.user.username} following={data.profile.isFollowing} remote />
         <ProfileMenu
           username={data.profile.user.username}
           muted={data.profile.isMuted}
@@ -134,9 +128,7 @@
       </div>
     {/if}
   {:else}
-    <div
-      class="col-start-2 row-start-1 flex shrink-0 items-center gap-2 justify-self-end self-center sm:col-start-3"
-    >
+    <div class="col-start-2 row-start-1 flex shrink-0 items-center gap-2 self-center justify-self-end sm:col-start-3">
       <!-- Subscribing needs no account, so this shows for signed-out visitors
            too — unlike the follow/edit actions beside it. -->
       {#if data.seo?.indexingEnabled !== false}
@@ -180,11 +172,14 @@
           title="View on {data.profile.user.host}"
           class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-dark-10 hover:text-foreground"
         >
-          <Icon name="globe" size={12} /> {data.profile.user.host}
+          <Icon name="globe" size={12} />
+          {data.profile.user.host}
         </a>
       {/if}
     </div>
-    {#if profile.user.bio}<p class="mt-2 max-w-prose whitespace-pre-line text-foreground-alt">{profile.user.bio}</p>{/if}
+    {#if profile.user.bio}<p class="mt-2 max-w-prose whitespace-pre-line text-foreground-alt">
+        {profile.user.bio}
+      </p>{/if}
     {#if profileLinks.length}
       <!-- Compact icon-only links; the About tab carries the labelled detail. -->
       <div class="mt-3 flex flex-wrap items-center gap-0.5">
@@ -235,11 +230,7 @@
             <strong class="text-foreground">{followerCount}</strong> followers
           </span>
         </FollowListDialog>
-        <FollowListDialog
-          username={profile.user.username}
-          kind="following"
-          title="Following"
-        >
+        <FollowListDialog username={profile.user.username} kind="following" title="Following">
           <span><strong class="text-foreground">{profile.counts.following}</strong> following</span>
         </FollowListDialog>
       {/if}
@@ -251,26 +242,27 @@
   <Tabs.List class="mb-2 flex items-center gap-6 text-sm font-medium">
     <Tabs.Trigger
       value="articles"
-      class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center border-b border-transparent py-3"
-    >Articles</Tabs.Trigger>
+      class="-mb-px inline-flex items-center border-b border-transparent py-3 text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground"
+      >Articles</Tabs.Trigger
+    >
     {#if !data.remote && !locked}
       <Tabs.Trigger
         value="lists"
-        class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center border-b border-transparent py-3"
-      >Lists</Tabs.Trigger>
+        class="-mb-px inline-flex items-center border-b border-transparent py-3 text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground"
+        >Lists</Tabs.Trigger
+      >
     {/if}
     <Tabs.Trigger
       value="about"
-      class="text-muted-foreground data-[state=active]:text-foreground data-[state=active]:border-foreground -mb-px inline-flex items-center border-b border-transparent py-3"
-    >About</Tabs.Trigger>
+      class="-mb-px inline-flex items-center border-b border-transparent py-3 text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground"
+      >About</Tabs.Trigger
+    >
   </Tabs.List>
 
   <Tabs.Content value="articles" class="select-none pt-3">
     {#if locked}
       <div class="rounded-card border border-border bg-background-alt px-6 py-12 text-center">
-        <div
-          class="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground"
-        >
+        <div class="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
           <Icon name="lock" size={22} />
         </div>
         <p class="font-semibold text-foreground">This account is private</p>
@@ -361,7 +353,8 @@
               <a
                 href={`mailto:${data.profile.user.publicEmail}`}
                 class="truncate text-sm text-foreground underline-offset-4 hover:underline"
-              >{data.profile.user.publicEmail}</a>
+                >{data.profile.user.publicEmail}</a
+              >
             </dd>
           </div>
         {/if}
@@ -379,7 +372,9 @@
               <Icon name="admin" size={15} /> Role
             </dt>
             <dd>
-              <span class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+              <span
+                class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground"
+              >
                 <Icon name="admin" size={12} /> Admin
               </span>
             </dd>
@@ -396,7 +391,8 @@
               target="_blank"
               rel="noreferrer"
               class="truncate text-sm text-foreground underline-offset-4 hover:underline"
-            >View on {data.profile.user.host}</a>
+              >View on {data.profile.user.host}</a
+            >
           </dd>
         </div>
       {/if}
@@ -404,7 +400,7 @@
 
     {#if isSelf && !profile.user.bio}
       <div class="mt-3 max-w-prose">
-        <Separator.Root class="bg-border my-3 h-px" />
+        <Separator.Root class="my-3 h-px bg-border" />
         <p class="text-sm text-muted-foreground">
           Your profile has no bio yet — add one from Edit profile to tell people who you are.
         </p>

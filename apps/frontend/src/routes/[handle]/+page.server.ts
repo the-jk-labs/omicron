@@ -1,6 +1,6 @@
+import { endpoints, ApiError } from "$lib/api";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { error } from "@sveltejs/kit";
-import { endpoints, ApiError } from "$lib/api";
 import type { PageServerLoad } from "./$types";
 
 // Profile page at /@username (local) or /@user@host (remote). The leading "@"
@@ -12,10 +12,7 @@ export const load: PageServerLoad = async ({ fetch, params }) => {
   const isRemote = handle.includes("@");
   try {
     if (isRemote) {
-      const [profile, posts] = await Promise.all([
-        api.remoteProfile(handle),
-        api.remoteUserPosts(handle),
-      ]);
+      const [profile, posts] = await Promise.all([api.remoteProfile(handle), api.remoteUserPosts(handle)]);
       return { remote: true as const, profile, page: posts };
     }
     const [profile, posts, lists] = await Promise.all([

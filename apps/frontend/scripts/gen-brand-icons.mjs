@@ -85,9 +85,7 @@ for (const slug of SLUGS) {
   }
   entries.push({ slug, title: icon.title, path: icon.path });
 }
-const body = entries
-  .map(({ slug, title, path }) => `  // ${title}\n  ${slug}: ${JSON.stringify(path)},`)
-  .join("\n");
+const body = entries.map(({ slug, title, path }) => `  // ${title}\n  ${slug}: ${JSON.stringify(path)},`).join("\n");
 
 const file = `// SPDX-License-Identifier: AGPL-3.0-or-later
 //

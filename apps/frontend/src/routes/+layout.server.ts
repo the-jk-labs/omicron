@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-import { redirect } from "@sveltejs/kit";
 import { endpoints } from "$lib/api";
 import { TZ_COOKIE, validTimeZone } from "$lib/timezone";
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
 
 // The discovery rail only renders on the home feed and profile pages (see
@@ -33,7 +33,10 @@ export const load: LayoutServerLoad = async ({ cookies, fetch, route }) => {
   // and cheap; default to indexable if the backend hiccups.
   const seoPromise = api.seo().catch(() => ({ indexingEnabled: true, verification: {} }));
 
-  const userPromise = api.me().then((r) => r.user).catch(() => null);
+  const userPromise = api
+    .me()
+    .then((r) => r.user)
+    .catch(() => null);
   const discoverPromise = DISCOVER_ROUTES.has(route.id ?? "")
     ? Promise.allSettled([api.trendingPosts(), api.suggestedUsers(), api.trendingTags()])
     : null;

@@ -89,9 +89,7 @@ const ALIASES: Record<string, string> = {
   txt: "plaintext",
 };
 
-const LABELS: ReadonlyMap<string, string> = new Map(
-  CODE_LANGUAGES.map((lang) => [lang.value, lang.label]),
-);
+const LABELS: ReadonlyMap<string, string> = new Map(CODE_LANGUAGES.map((lang) => [lang.value, lang.label]));
 
 /**
  * A declared language as a reader should see it — "TypeScript", not "ts".

@@ -3,27 +3,26 @@
 // fetch) and in SSR load functions (pass the provided `fetch`).
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
     super(message);
   }
 }
 
 type FetchFn = typeof globalThis.fetch;
 
-async function request<T>(
-  path: string,
-  init: RequestInit,
-  fetchFn: FetchFn,
-): Promise<T> {
-  const res = await fetchFn(`/api${path}`, {
-    ...init,
-    headers: { "content-type": "application/json", ...init.headers },
-  });
+async function request<T>(path: string, init: RequestInit, fetchFn: FetchFn): Promise<T> {
+  const headers = new Headers(init.headers);
+  if (!headers.has("content-type")) headers.set("content-type", "application/json");
+  const res = await fetchFn(`/api${path}`, { ...init, headers });
   const text = await res.text();
   const body = text ? JSON.parse(text) : null;
   if (!res.ok) {
     throw new ApiError(res.status, body?.error ?? `Request failed (${res.status})`);
   }
+  // oxlint-disable-next-line no-unsafe-type-assertion
   return body as T;
 }
 

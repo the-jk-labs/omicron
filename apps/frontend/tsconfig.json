@@ -6,8 +6,10 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
+    "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "sourceMap": true,
+    "types": ["node"],
     "strict": true,
     "moduleResolution": "bundler"
   }

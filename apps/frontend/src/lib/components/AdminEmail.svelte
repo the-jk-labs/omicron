@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Checkbox, Label, RadioGroup } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
-  import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
   import type { EmailInput, EmailMode, EmailSettings, EmailDnsRecords, EmailDnsReport } from "$lib/types";
+  import { Checkbox, Label, RadioGroup } from "bits-ui";
 
   // Runtime email configuration (services/emailSettings.ts). Four modes:
   //   console · smtp · relay (one API key) · direct (self-host + DKIM/DNS).
@@ -48,11 +48,38 @@
 
   // Common SMTP providers, so the operator picks one and only fills credentials.
   const presets: Record<string, { host: string; port: number; tls: boolean; username?: string; note: string }> = {
-    Resend: { host: "smtp.resend.com", port: 587, tls: false, username: "resend", note: "Password = your Resend API key." },
-    SendGrid: { host: "smtp.sendgrid.net", port: 587, tls: false, username: "apikey", note: "Username is literally 'apikey'; password = your API key." },
-    Mailgun: { host: "smtp.mailgun.org", port: 587, tls: false, note: "Username/password from your Mailgun domain's SMTP credentials." },
-    Postmark: { host: "smtp.postmarkapp.com", port: 587, tls: false, note: "Username and password are both your Server API token." },
-    Brevo: { host: "smtp-relay.brevo.com", port: 587, tls: false, note: "Use the SMTP key from Brevo (not your login password)." },
+    Resend: {
+      host: "smtp.resend.com",
+      port: 587,
+      tls: false,
+      username: "resend",
+      note: "Password = your Resend API key.",
+    },
+    SendGrid: {
+      host: "smtp.sendgrid.net",
+      port: 587,
+      tls: false,
+      username: "apikey",
+      note: "Username is literally 'apikey'; password = your API key.",
+    },
+    Mailgun: {
+      host: "smtp.mailgun.org",
+      port: 587,
+      tls: false,
+      note: "Username/password from your Mailgun domain's SMTP credentials.",
+    },
+    Postmark: {
+      host: "smtp.postmarkapp.com",
+      port: 587,
+      tls: false,
+      note: "Username and password are both your Server API token.",
+    },
+    Brevo: {
+      host: "smtp-relay.brevo.com",
+      port: 587,
+      tls: false,
+      note: "Use the SMTP key from Brevo (not your login password).",
+    },
     Gmail: { host: "smtp.gmail.com", port: 587, tls: false, note: "Use an App Password, not your account password." },
   };
   let presetNote = $state("");
@@ -72,7 +99,9 @@
       await navigator.clipboard.writeText(text);
       copied = key;
       setTimeout(() => (copied === key ? (copied = "") : null), 1500);
-    } catch { /* clipboard unavailable */ }
+    } catch {
+      /* clipboard unavailable */
+    }
   }
 
   async function checkPort() {
@@ -200,10 +229,10 @@
   const recordRows = $derived(
     records
       ? [
-        { key: "dkim", rec: records.dkim, c: report?.dkim },
-        { key: "spf", rec: records.spf, c: report?.spf },
-        { key: "dmarc", rec: records.dmarc, c: report?.dmarc },
-      ]
+          { key: "dkim", rec: records.dkim, c: report?.dkim },
+          { key: "spf", rec: records.spf, c: report?.spf },
+          { key: "dmarc", rec: records.dmarc, c: report?.dmarc },
+        ]
       : [],
   );
 </script>
@@ -310,17 +339,17 @@
           class={field}
         />
         <p class="text-xs text-muted-foreground">
-          Create a key at resend.com. To send from your own domain, verify it there (their
-          dashboard shows the DNS records); until then you can send from their test domain.
+          Create a key at resend.com. To send from your own domain, verify it there (their dashboard shows the DNS
+          records); until then you can send from their test domain.
         </p>
       </div>
     </div>
   {:else if mode === "direct"}
     <div class="flex flex-col gap-3 rounded-card border border-border bg-background-alt p-4">
       <p class="text-sm text-muted-foreground">
-        Self-hosted delivery sends straight to each recipient's mail server, signed with your DKIM
-        key — no third party. It needs the DNS records below published and outbound port 25 open on
-        this host (many providers block it). Check that first:
+        Self-hosted delivery sends straight to each recipient's mail server, signed with your DKIM key — no third party.
+        It needs the DNS records below published and outbound port 25 open on this host (many providers block it). Check
+        that first:
       </p>
       <div class="flex items-center gap-3">
         <Button type="button" variant="outline" class="h-10" disabled={checkingPort} onclick={checkPort}>
@@ -351,13 +380,18 @@
       <div>
         <h3 class="text-sm font-semibold text-foreground">Sending domain (DKIM / SPF / DMARC)</h3>
         <p class="mt-0.5 text-xs text-muted-foreground">
-          Generate a signing key, publish the three records, then verify — email is healthy once
-          DKIM and SPF check out.
+          Generate a signing key, publish the three records, then verify — email is healthy once DKIM and SPF check out.
         </p>
       </div>
       <div class="flex gap-2">
         <input bind:value={dnsDomain} placeholder="example.com" class="{field} min-w-0 flex-1" />
-        <Button type="button" variant="outline" class="h-11 shrink-0" disabled={generating || !dnsDomain.trim()} onclick={generate}>
+        <Button
+          type="button"
+          variant="outline"
+          class="h-11 shrink-0"
+          disabled={generating || !dnsDomain.trim()}
+          onclick={generate}
+        >
           {generating ? "Generating…" : hasKey ? "Regenerate" : "Generate keys"}
         </Button>
         <Button type="button" variant="outline" class="h-11 shrink-0" disabled={verifying || !hasKey} onclick={verify}>
@@ -380,20 +414,32 @@
               {#each recordRows as row (row.key)}
                 <tr class="border-t border-border align-top">
                   <td class="whitespace-nowrap px-3 py-2 text-foreground">
-                    <button type="button" class="hover:text-foreground-alt" title="Copy host" onclick={() => copy(row.rec.host, row.key + "-h")}>
+                    <button
+                      type="button"
+                      class="hover:text-foreground-alt"
+                      title="Copy host"
+                      onclick={() => copy(row.rec.host, row.key + "-h")}
+                    >
                       {copied === row.key + "-h" ? "copied ✓" : row.rec.host}
                     </button>
                   </td>
                   <td class="px-3 py-2 text-muted-foreground">{row.rec.type}</td>
                   <td class="max-w-[22rem] break-all px-3 py-2 text-foreground">
-                    <button type="button" class="text-left hover:text-foreground-alt" title="Copy value" onclick={() => copy(row.rec.value, row.key + "-v")}>
+                    <button
+                      type="button"
+                      class="text-left hover:text-foreground-alt"
+                      title="Copy value"
+                      onclick={() => copy(row.rec.value, row.key + "-v")}
+                    >
                       {copied === row.key + "-v" ? "copied ✓" : row.rec.value}
                     </button>
                   </td>
                   {#if report}
                     <td class="px-3 py-2">
                       {#if row.c?.ok}
-                        <span class="inline-flex items-center gap-1 text-foreground"><Icon name="check" size={14} /> ok</span>
+                        <span class="inline-flex items-center gap-1 text-foreground"
+                          ><Icon name="check" size={14} /> ok</span
+                        >
                       {:else}
                         <span class="text-destructive">missing</span>
                       {/if}
@@ -426,7 +472,7 @@
         type="button"
         variant="outline"
         class="h-11 shrink-0"
-        disabled={testState === 'sending' || !testTo.trim()}
+        disabled={testState === "sending" || !testTo.trim()}
         onclick={sendTest}
       >
         {testState === "sending" ? "Sending…" : "Send test"}

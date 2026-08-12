@@ -9,7 +9,7 @@
   let { links }: { links: ProfileLink[] } = $props();
 </script>
 
-<ul class="divide-border bg-background-alt rounded-card border-border divide-y overflow-hidden rounded-card border">
+<ul class="divide-y divide-border overflow-hidden rounded-card border border-border bg-background-alt">
   {#each links as link (link.platform + link.url)}
     {@const meta = platformMeta(link.platform)}
     <li>
@@ -17,17 +17,17 @@
         href={link.url}
         target="_blank"
         rel="me noopener noreferrer"
-        class="hover:bg-muted flex items-center justify-between gap-3 px-4 py-3 transition-colors focus-visible:outline-none"
+        class="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted focus-visible:outline-none"
       >
         <span class="flex min-w-0 items-center gap-2.5">
-          <span class="text-muted-foreground group-hover:text-foreground shrink-0">
+          <span class="shrink-0 text-muted-foreground group-hover:text-foreground">
             <ProfileLinkIcon platform={link.platform} size={18} />
           </span>
-          <span class="text-foreground truncate text-sm font-medium">
+          <span class="truncate text-sm font-medium text-foreground">
             {link.label || meta.label}
           </span>
         </span>
-        <span class="text-muted-foreground min-w-0 truncate text-sm">{linkSubtitle(link.platform, link.url)}</span>
+        <span class="min-w-0 truncate text-sm text-muted-foreground">{linkSubtitle(link.platform, link.url)}</span>
       </a>
     </li>
   {/each}

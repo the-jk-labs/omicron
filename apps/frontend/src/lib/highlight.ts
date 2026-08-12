@@ -1,7 +1,7 @@
+import { codeLanguageLabel } from "$lib/codeLanguages";
+import { type FileIcon, fileIcon } from "$lib/fileIcons";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import hljs from "highlight.js/lib/common";
-import { type FileIcon, fileIcon } from "$lib/fileIcons";
-import { codeLanguageLabel } from "$lib/codeLanguages";
 
 // Syntax highlighting for rendered post bodies.
 //
@@ -142,8 +142,10 @@ function withTitle(pre: string, title: string | null, declared?: string | null):
   if (!name) return pre;
   const icon = fileIcon(title, declared);
   const chip = icon ? `<span class="code-icon" data-tone="${icon.tone}">${glyph(icon)}</span>` : "";
-  return `<figure class="code-figure"><figcaption class="code-title">${chip}` +
-    `<span class="code-name">${name}</span></figcaption>${pre}</figure>`;
+  return (
+    `<figure class="code-figure"><figcaption class="code-title">${chip}` +
+    `<span class="code-name">${name}</span></figcaption>${pre}</figure>`
+  );
 }
 
 /**
@@ -157,6 +159,8 @@ function withTitle(pre: string, title: string | null, declared?: string | null):
  */
 function glyph(icon: FileIcon): string {
   if (!icon.path) return icon.label;
-  return `<svg viewBox="0 0 24 24" fill="currentColor" role="img" ` +
-    `aria-label="${icon.label}"><path d="${icon.path}"/></svg>`;
+  return (
+    `<svg viewBox="0 0 24 24" fill="currentColor" role="img" ` +
+    `aria-label="${icon.label}"><path d="${icon.path}"/></svg>`
+  );
 }

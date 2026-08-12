@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Label, Switch } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
+  import { Label, Switch } from "bits-ui";
 
   // Moderator-only instance settings. Loads the current state on mount and
   // persists each toggle immediately. Only rendered for admins (see settings).
@@ -37,13 +37,10 @@
 
 <div class="flex items-start justify-between gap-4">
   <div class="flex flex-col gap-1">
-    <Label.Root for="analytics-views" class="text-sm font-medium text-foreground">
-      On-instance view counting
-    </Label.Root>
+    <Label.Root for="analytics-views" class="text-sm font-medium text-foreground">On-instance view counting</Label.Root>
     <p class="max-w-prose text-sm text-muted-foreground">
-      Count aggregate page views for posts read on this instance. No IPs, cookies, or
-      identifiers are stored, and Do&nbsp;Not&nbsp;Track / GPC are honoured. Turn off to show
-      writers only fediverse engagement.
+      Count aggregate page views for posts read on this instance. No IPs, cookies, or identifiers are stored, and
+      Do&nbsp;Not&nbsp;Track / GPC are honoured. Turn off to show writers only fediverse engagement.
     </p>
   </div>
 

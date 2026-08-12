@@ -12,17 +12,15 @@
 
 <a
   href={listPath(list)}
-  class="group rounded-card border-border bg-background-alt hover:bg-muted flex flex-col gap-2 border p-4 transition-colors focus-visible:outline-none"
+  class="group flex flex-col gap-2 rounded-card border border-border bg-background-alt p-4 transition-colors hover:bg-muted focus-visible:outline-none"
 >
   <div class="flex items-start justify-between gap-2">
-    <span
-      class="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-card"
-    >
+    <span class="flex size-9 shrink-0 items-center justify-center rounded-card bg-muted text-muted-foreground">
       <Icon name={list.isReadLater ? "clock" : "bookmark"} size={18} />
     </span>
     {#if list.visibility === "private"}
       <span
-        class="text-muted-foreground inline-flex items-center gap-1 text-xs"
+        class="inline-flex items-center gap-1 text-xs text-muted-foreground"
         title="Private — only you can see this list"
       >
         <Icon name="lock" size={12} /> Private

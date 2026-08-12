@@ -1,13 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Label } from "bits-ui";
   import { endpoints, ApiError } from "$lib/api";
-  import { confirm } from "$lib/components/ui/confirm";
-  import Button from "$lib/components/ui/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import { confirm } from "$lib/components/ui/confirm";
   import { formatDate } from "$lib/format";
   import { timeZone } from "$lib/timezone";
   import type { BlockedDomain } from "$lib/types";
+  import { Label } from "bits-ui";
 
   let domains = $state<BlockedDomain[]>([]);
   let loading = $state(true);
@@ -43,9 +43,10 @@
     adding = true;
     try {
       const res = await endpoints().blockDomain(domain.trim(), reason.trim() || undefined);
-      notice = res.purged > 0
-        ? `Blocked ${res.domain} and removed ${res.purged} cached ${res.purged === 1 ? "account" : "accounts"}.`
-        : `Blocked ${res.domain}.`;
+      notice =
+        res.purged > 0
+          ? `Blocked ${res.domain} and removed ${res.purged} cached ${res.purged === 1 ? "account" : "accounts"}.`
+          : `Blocked ${res.domain}.`;
       domain = "";
       reason = "";
       await load();
@@ -104,7 +105,8 @@
     {#if notice}<p class="text-sm text-muted-foreground">{notice}</p>{/if}
     <div class="flex justify-end">
       <Button variant="destructive" disabled={adding || !domain.trim()} type="submit">
-        <Icon name="block" size={15} /> {adding ? "Blocking…" : "Block domain"}
+        <Icon name="block" size={15} />
+        {adding ? "Blocking…" : "Block domain"}
       </Button>
     </div>
   </form>

@@ -1,6 +1,6 @@
+import { endpoints } from "$lib/api";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { error } from "@sveltejs/kit";
-import { endpoints } from "$lib/api";
 import type { RequestHandler } from "./$types";
 
 // The IndexNow key file.
@@ -19,7 +19,9 @@ import type { RequestHandler } from "./$types";
 // exposes no key file at all.
 
 export const GET: RequestHandler = async ({ fetch, params }) => {
-  const { ok } = await endpoints(fetch).verifyIndexNowKey(params.key).catch(() => ({ ok: false }));
+  const { ok } = await endpoints(fetch)
+    .verifyIndexNowKey(params.key)
+    .catch(() => ({ ok: false }));
   if (!ok) error(404, "Not found");
 
   return new Response(`${params.key}\n`, {

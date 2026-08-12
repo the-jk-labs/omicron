@@ -1,17 +1,17 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
-  import { type Content, Editor, generateJSON } from "@tiptap/core";
-  import Placeholder from "@tiptap/extension-placeholder";
-  import { Dialog, DropdownMenu, Label, Select, Toolbar } from "bits-ui";
-  import Icon, { type IconName } from "$lib/components/Icon.svelte";
-  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
   import { endpoints, ApiError } from "$lib/api";
+  import { CODE_LANGUAGES, codeLanguageLabel } from "$lib/codeLanguages";
+  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
+  import Icon, { type IconName } from "$lib/components/Icon.svelte";
+  import { countWords, readTimeFromWords } from "$lib/format";
+  import { type Content, Editor, generateJSON } from "@tiptap/core";
+  import { Placeholder } from "@tiptap/extension-placeholder";
+  import { Dialog, DropdownMenu, Label, Select, Toolbar } from "bits-ui";
+  import { onDestroy, onMount } from "svelte";
+  import { extensions } from "./extensions";
   import { isAcceptedImage, prepareImage } from "./image";
   import { EDIT_ALT_EVENT, type EditAltDetail } from "./resizable-image";
-  import { extensions } from "./extensions";
-  import { CODE_LANGUAGES, codeLanguageLabel } from "$lib/codeLanguages";
-  import { countWords, readTimeFromWords } from "$lib/format";
 
   // Isolated Tiptap integration. The parent receives content via `onUpdate`.
   // This component is lazy-loaded (dynamic import) so Tiptap stays out of the
@@ -30,7 +30,7 @@
     content?: Content;
   } = $props();
 
-  let element: HTMLDivElement;
+  let element = $state<HTMLDivElement | null>(null);
   let editor: Editor;
 
   // The status line every desktop editor has: how much is there, and how long
@@ -56,8 +56,7 @@
   }
 
   const LOCALE = "en-US";
-  const count = (n: number, one: string) =>
-    `${n.toLocaleString(LOCALE)} ${n === 1 ? one : one + "s"}`;
+  const count = (n: number, one: string) => `${n.toLocaleString(LOCALE)} ${n === 1 ? one : one + "s"}`;
 
   // Heading levels offered in the text-style dropdown.
   const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const;
@@ -123,15 +122,11 @@
   let codeLanguage = $state("");
   let codeTitle = $state("");
   let codeMeta = $state({ language: "", title: "" });
-  const codeButtonLabel = $derived(
-    codeMeta.language ? codeLanguageLabel(codeMeta.language) : "Language",
-  );
+  const codeButtonLabel = $derived(codeMeta.language ? codeLanguageLabel(codeMeta.language) : "Language");
   // Matches MAX_TITLE in the backend's Markdown renderer, which caps the same
   // field on a fence — so neither way of writing a post can store a longer one.
   const MAX_CODE_TITLE = 120;
-  const selectedLanguageLabel = $derived(
-    CODE_LANGUAGES.find((l) => l.value === codeLanguage)?.label ?? "Auto-detect",
-  );
+  const selectedLanguageLabel = $derived(CODE_LANGUAGES.find((l) => l.value === codeLanguage)?.label ?? "Auto-detect");
 
   function openCodeSettings() {
     const attrs = editor.getAttributes("codeBlock");
@@ -143,12 +138,16 @@
   function applyCodeSettings(e: SubmitEvent) {
     e.preventDefault();
     const title = codeTitle.trim();
-    editor.chain().focus().updateAttributes("codeBlock", {
-      // Null rather than "" for both: an unset attribute is what the reader and
-      // the sanitizer expect, and what a Markdown fence produces.
-      language: codeLanguage || null,
-      title: title || null,
-    }).run();
+    editor
+      .chain()
+      .focus()
+      .updateAttributes("codeBlock", {
+        // Null rather than "" for both: an unset attribute is what the reader and
+        // the sanitizer expect, and what a Markdown fence produces.
+        language: codeLanguage || null,
+        title: title || null,
+      })
+      .run();
     codeOpen = false;
   }
 
@@ -286,16 +285,13 @@
         const { url } = await endpoints().uploadImage(blob, type);
         // Insert the image together with a trailing paragraph so the author can
         // keep writing immediately — just like a normal editor.
-        const content = [
-          { type: "image", attrs: { src: url } },
-          { type: "paragraph" },
-        ];
+        const nodes = [{ type: "image", attrs: { src: url } }, { type: "paragraph" }];
         const chain = editor.chain();
-        if (at === undefined) chain.insertContent(content).focus("end");
+        if (at === undefined) chain.insertContent(nodes).focus("end");
         else {
           // The image node is 1 wide and the empty paragraph 2, so the caret
           // lands at `at + 2` and the next image goes after both.
-          chain.insertContentAt(at, content).focus(at + 2);
+          chain.insertContentAt(at, nodes).focus(at + 2);
           at += 3;
         }
         chain.scrollIntoView().run();
@@ -356,11 +352,9 @@
   // Markdown is untouched — that goes through input rules and the clipboard
   // handler, not through here.
   onMount(() => {
-    const initialContent = typeof content === "string"
-      ? (generateJSON(content, extensions) as Content)
-      : content;
+    const initialContent = typeof content === "string" ? (generateJSON(content, extensions) as Content) : content;
     editor = new Editor({
-      element,
+      element: element!,
       // Placeholder is per-instance (it needs the `placeholder` prop), so it's
       // appended to the shared base extensions here. The first line shows the
       // article prompt; every other empty line (e.g. below an image) shows a
@@ -377,11 +371,11 @@
         handlePaste,
         handleDrop,
       },
-      onUpdate: ({ editor }) => {
-        onUpdate(editor.getHTML(), editor.getJSON());
-        refreshStats(editor);
+      onUpdate: ({ editor: ed }) => {
+        onUpdate(ed.getHTML(), ed.getJSON());
+        refreshStats(ed);
       },
-      onTransaction: ({ editor }) => refreshActive(editor),
+      onTransaction: ({ editor: ed }) => refreshActive(ed),
     });
     refreshActive();
     // A reopened draft arrives with its body already in place, so the counter
@@ -413,10 +407,26 @@
     { key: "strike", icon: "strike", label: "Strikethrough", run: () => editor.chain().focus().toggleStrike().run() },
     { key: "code", icon: "code", label: "Inline code", run: () => editor.chain().focus().toggleCode().run() },
     { key: "link", icon: "link", label: "Link", run: toggleLink },
-    { key: "list", icon: "list", label: "Bullet list", divider: true, run: () => editor.chain().focus().toggleBulletList().run() },
-    { key: "orderedList", icon: "orderedList", label: "Numbered list", run: () => editor.chain().focus().toggleOrderedList().run() },
+    {
+      key: "list",
+      icon: "list",
+      label: "Bullet list",
+      divider: true,
+      run: () => editor.chain().focus().toggleBulletList().run(),
+    },
+    {
+      key: "orderedList",
+      icon: "orderedList",
+      label: "Numbered list",
+      run: () => editor.chain().focus().toggleOrderedList().run(),
+    },
     { key: "quote", icon: "quote", label: "Quote", run: () => editor.chain().focus().toggleBlockquote().run() },
-    { key: "codeBlock", icon: "codeBlock", label: "Code block", run: () => editor.chain().focus().toggleCodeBlock().run() },
+    {
+      key: "codeBlock",
+      icon: "codeBlock",
+      label: "Code block",
+      run: () => editor.chain().focus().toggleCodeBlock().run(),
+    },
     { icon: "table", label: "Table", divider: true, run: insertTable },
     { icon: "image", label: "Image", run: () => imageInput?.click() },
     { icon: "hr", label: "Divider", run: () => editor.chain().focus().setHorizontalRule().run() },
@@ -433,7 +443,9 @@
 </script>
 
 <div>
-  <Toolbar.Root class="rounded-10px border-border bg-background-alt shadow-mini no-scrollbar mb-4 flex w-full items-center justify-start gap-0.5 overflow-x-auto border px-2 py-1 sm:justify-between sm:gap-0">
+  <Toolbar.Root
+    class="no-scrollbar mb-4 flex w-full items-center justify-start gap-0.5 overflow-x-auto rounded-10px border border-border bg-background-alt px-2 py-1 shadow-mini sm:justify-between sm:gap-0"
+  >
     <!-- Text style: a single dropdown for normal text + Heading 1–6. -->
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
@@ -448,12 +460,9 @@
         <DropdownMenu.Content
           sideOffset={8}
           align="start"
-          class="border-muted bg-background shadow-popover z-30 w-[200px] rounded-xl border px-1 py-1.5 focus-visible:outline-none"
+          class="z-30 w-[200px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-none"
         >
-          <DropdownMenu.Item
-            onSelect={setParagraph}
-            class={`${itemClass} ${headingLevel === 0 ? "bg-muted" : ""}`}
-          >
+          <DropdownMenu.Item onSelect={setParagraph} class={`${itemClass} ${headingLevel === 0 ? "bg-muted" : ""}`}>
             <Icon name="paragraph" size={16} /> Normal text
           </DropdownMenu.Item>
           {#each HEADING_LEVELS as level (level)}
@@ -488,7 +497,7 @@
         onclick={openCodeSettings}
         aria-label="Code block language and filename"
         title="Language and filename"
-        class={`${headingTrigger} text-foreground/60 max-w-[11rem] text-sm`}
+        class={`${headingTrigger} max-w-[11rem] text-sm text-foreground/60`}
       >
         <Icon name="settings" size={16} class="shrink-0" />
         <span class="truncate">{codeButtonLabel}</span>
@@ -500,7 +509,7 @@
     {#if active.table}
       <DropdownMenu.Root>
         <DropdownMenu.Trigger
-          class={`${headingTrigger} text-foreground/60 text-sm`}
+          class={`${headingTrigger} text-sm text-foreground/60`}
           aria-label="Edit table"
           title="Edit table"
         >
@@ -512,11 +521,11 @@
           <DropdownMenu.Content
             sideOffset={8}
             align="start"
-            class="border-muted bg-background shadow-popover z-30 w-[200px] rounded-xl px-1 py-1.5 focus-visible:outline-none border"
+            class="z-30 w-[200px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-none"
           >
             {#each tableActions as action (action.label)}
               {#if action.divider}
-                <DropdownMenu.Separator class="bg-border -mx-1 my-1 h-px" />
+                <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-border" />
               {/if}
               <DropdownMenu.Item onSelect={action.run} class={itemClass}>
                 <Icon name={action.icon} size={16} />
@@ -553,7 +562,7 @@
   <div bind:this={element}></div>
 
   <!-- Bottom right, out of the way: read when wanted, ignored otherwise. -->
-  <p class="text-muted-foreground mt-2 flex justify-end gap-2 text-xs tabular-nums">
+  <p class="mt-2 flex justify-end gap-2 text-xs tabular-nums text-muted-foreground">
     <span>{count(stats.characters, "character")}</span>
     <span aria-hidden="true">·</span>
     <span>{count(stats.words, "word")}</span>
@@ -567,46 +576,41 @@
 <Dialog.Root bind:open={codeOpen}>
   <Dialog.Portal>
     <Dialog.Overlay
-      class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+      class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="rounded-card bg-background shadow-popover fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 border border-border p-6 sm:max-w-[420px]"
+      class="fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[420px]"
     >
-      <Dialog.Title class="text-foreground text-lg font-semibold tracking-tight">
-        Code block
-      </Dialog.Title>
-      <Dialog.Description class="text-muted-foreground mt-1 text-sm">
-        The language colours the code. The filename shows above it, with the
-        language's mark.
+      <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Code block</Dialog.Title>
+      <Dialog.Description class="mt-1 text-sm text-muted-foreground">
+        The language colours the code. The filename shows above it, with the language's mark.
       </Dialog.Description>
       <form onsubmit={applyCodeSettings} class="mt-4 flex flex-col gap-4">
         <div class="flex flex-col gap-1.5">
-          <Label.Root for="code-language" class="text-sm font-medium leading-none">
-            Language
-          </Label.Root>
+          <Label.Root for="code-language" class="text-sm font-medium leading-none">Language</Label.Root>
           <Select.Root type="single" bind:value={codeLanguage}>
             <Select.Trigger
               id="code-language"
-              class="rounded-input border-border-input bg-background shadow-btn inline-flex h-10 w-full items-center justify-between gap-2 border px-3 text-sm outline-none transition-colors focus:border-foreground"
+              class="inline-flex h-10 w-full items-center justify-between gap-2 rounded-input border border-border-input bg-background px-3 text-sm shadow-btn outline-none transition-colors focus:border-foreground"
             >
               <span class="truncate">{selectedLanguageLabel}</span>
-              <Icon name="chevronDown" size={15} class="text-muted-foreground shrink-0" />
+              <Icon name="chevronDown" size={15} class="shrink-0 text-muted-foreground" />
             </Select.Trigger>
             <Select.Portal>
               <Select.Content
-                class="border-muted bg-background shadow-popover rounded-card z-50 max-h-72 w-[--bits-select-anchor-width] overflow-y-auto border p-1"
+                class="z-50 max-h-72 w-[--bits-select-anchor-width] overflow-y-auto rounded-card border border-muted bg-background p-1 shadow-popover"
                 sideOffset={6}
               >
                 <Select.Viewport>
                   <Select.Item
                     value=""
                     label="Auto-detect"
-                    class="rounded-button data-[highlighted]:bg-muted flex h-9 w-full select-none items-center gap-2 px-2 text-sm outline-none"
+                    class="flex h-9 w-full select-none items-center gap-2 rounded-button px-2 text-sm outline-none data-[highlighted]:bg-muted"
                   >
                     {#snippet children({ selected: isSel })}
-                      <span class="text-muted-foreground truncate">Auto-detect</span>
+                      <span class="truncate text-muted-foreground">Auto-detect</span>
                       {#if isSel}
-                        <Icon name="check" size={15} class="text-foreground ml-auto shrink-0" />
+                        <Icon name="check" size={15} class="ml-auto shrink-0 text-foreground" />
                       {/if}
                     {/snippet}
                   </Select.Item>
@@ -614,12 +618,12 @@
                     <Select.Item
                       value={lang.value}
                       label={lang.label}
-                      class="rounded-button data-[highlighted]:bg-muted flex h-9 w-full select-none items-center gap-2 px-2 text-sm outline-none"
+                      class="flex h-9 w-full select-none items-center gap-2 rounded-button px-2 text-sm outline-none data-[highlighted]:bg-muted"
                     >
                       {#snippet children({ selected: isSel })}
                         <span class="truncate">{lang.label}</span>
                         {#if isSel}
-                          <Icon name="check" size={15} class="text-foreground ml-auto shrink-0" />
+                          <Icon name="check" size={15} class="ml-auto shrink-0 text-foreground" />
                         {/if}
                       {/snippet}
                     </Select.Item>
@@ -631,7 +635,7 @@
         </div>
         <div class="flex flex-col gap-1.5">
           <Label.Root for="code-title" class="text-sm font-medium leading-none">
-            Filename <span class="text-muted-foreground font-normal">(optional)</span>
+            Filename <span class="font-normal text-muted-foreground">(optional)</span>
           </Label.Root>
           <input
             id="code-title"
@@ -639,18 +643,18 @@
             type="text"
             maxlength={MAX_CODE_TITLE}
             placeholder="src/main.ts"
-            class="rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
+            class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-none placeholder:text-muted-foreground focus:border-foreground"
           />
         </div>
         <div class="flex justify-end gap-2">
           <Dialog.Close
-            class="text-foreground hover:bg-muted inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium active:scale-[0.98]"
+            class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
           >
             Cancel
           </Dialog.Close>
           <button
             type="submit"
-            class="rounded-input bg-dark text-background shadow-mini hover:bg-dark/95 inline-flex h-10 items-center justify-center px-5 text-sm font-semibold active:scale-[0.98]"
+            class="inline-flex h-10 items-center justify-center rounded-input bg-dark px-5 text-sm font-semibold text-background shadow-mini hover:bg-dark/95 active:scale-[0.98]"
           >
             Save
           </button>
@@ -663,23 +667,19 @@
 <Dialog.Root bind:open={altOpen}>
   <Dialog.Portal>
     <Dialog.Overlay
-      class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+      class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="rounded-card bg-background shadow-popover fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 border border-border p-6 sm:max-w-[420px]"
+      class="fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[420px]"
     >
-      <Dialog.Title class="text-foreground text-lg font-semibold tracking-tight">
-        Describe this image
-      </Dialog.Title>
-      <Dialog.Description class="text-muted-foreground mt-1 text-sm">
-        Read aloud to people using a screen reader, and shown if the image fails to
-        load. Leave it empty if the image is purely decorative.
+      <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Describe this image</Dialog.Title>
+      <Dialog.Description class="mt-1 text-sm text-muted-foreground">
+        Read aloud to people using a screen reader, and shown if the image fails to load. Leave it empty if the image is
+        purely decorative.
       </Dialog.Description>
       <form onsubmit={applyAlt} class="mt-4 flex flex-col gap-4">
         <div class="flex flex-col gap-1.5">
-          <Label.Root for="image-alt" class="text-sm font-medium leading-none">
-            Alt text
-          </Label.Root>
+          <Label.Root for="image-alt" class="text-sm font-medium leading-none">Alt text</Label.Root>
           <!-- svelte-ignore a11y_autofocus -->
           <input
             id="image-alt"
@@ -687,18 +687,18 @@
             type="text"
             placeholder="A rabbit peering out of its burrow"
             autofocus
-            class="rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
+            class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-none placeholder:text-muted-foreground focus:border-foreground"
           />
         </div>
         <div class="flex justify-end gap-2">
           <Dialog.Close
-            class="text-foreground hover:bg-muted inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium active:scale-[0.98]"
+            class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
           >
             Cancel
           </Dialog.Close>
           <button
             type="submit"
-            class="rounded-input bg-dark text-background shadow-mini hover:bg-dark/95 inline-flex h-10 items-center justify-center px-5 text-sm font-semibold active:scale-[0.98]"
+            class="inline-flex h-10 items-center justify-center rounded-input bg-dark px-5 text-sm font-semibold text-background shadow-mini hover:bg-dark/95 active:scale-[0.98]"
           >
             Save
           </button>
@@ -711,14 +711,12 @@
 <Dialog.Root bind:open={linkOpen}>
   <Dialog.Portal>
     <Dialog.Overlay
-      class="fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+      class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="rounded-card bg-background shadow-popover fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 border border-border p-6 sm:max-w-[420px]"
+      class="fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[420px]"
     >
-      <Dialog.Title class="text-foreground text-lg font-semibold tracking-tight">
-        Add link
-      </Dialog.Title>
+      <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Add link</Dialog.Title>
       <form onsubmit={applyLink} class="mt-4 flex flex-col gap-4">
         <div class="flex flex-col gap-1.5">
           <Label.Root for="link-url" class="text-sm font-medium leading-none">URL</Label.Root>
@@ -729,18 +727,18 @@
             type="url"
             placeholder="https://example.com"
             autofocus
-            class="rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground"
+            class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-none placeholder:text-muted-foreground focus:border-foreground"
           />
         </div>
         <div class="flex justify-end gap-2">
           <Dialog.Close
-            class="text-foreground hover:bg-muted inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium active:scale-[0.98]"
+            class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
           >
             Cancel
           </Dialog.Close>
           <button
             type="submit"
-            class="rounded-input bg-dark text-background shadow-mini hover:bg-dark/95 inline-flex h-10 items-center justify-center px-5 text-sm font-semibold active:scale-[0.98]"
+            class="inline-flex h-10 items-center justify-center rounded-input bg-dark px-5 text-sm font-semibold text-background shadow-mini hover:bg-dark/95 active:scale-[0.98]"
           >
             Add link
           </button>

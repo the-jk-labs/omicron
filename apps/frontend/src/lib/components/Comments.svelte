@@ -1,17 +1,17 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { untrack } from "svelte";
   import { goto } from "$app/navigation";
-  import { endpoints, ApiError } from "$lib/api";
   import { autoGrow } from "$lib/actions/autoGrow.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
-  import { confirm } from "$lib/components/ui/confirm";
-  import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
+  import { endpoints, ApiError } from "$lib/api";
   import CommentNode from "$lib/components/CommentNode.svelte";
   import type { CommentActions, CommentUiState } from "$lib/components/comments";
+  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
+  import Avatar from "$lib/components/ui/Avatar.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import { confirm } from "$lib/components/ui/confirm";
+  import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
   import type { Comment, Page, User } from "$lib/types";
+  import { untrack } from "svelte";
 
   let {
     postId,
@@ -35,8 +35,7 @@
   });
   let draft = $state("");
   let draftEl = $state<HTMLTextAreaElement | null>(null);
-  const insertDraftEmoji = (emoji: string) =>
-    insertEmojiIntoField(draftEl, draft, 2000, emoji, (v) => (draft = v));
+  const insertDraftEmoji = (emoji: string) => insertEmojiIntoField(draftEl, draft, 2000, emoji, (v) => (draft = v));
   let error = $state("");
   let busy = $state(false);
   let loadingMore = $state(false);
@@ -64,9 +63,7 @@
   }
 
   // Total responses = top-level comments + every reply.
-  const total = $derived(
-    comments.reduce((n, c) => n + 1 + c.replies.length, 0),
-  );
+  const total = $derived(comments.reduce((n, c) => n + 1 + c.replies.length, 0));
 
   async function submit(e: SubmitEvent) {
     e.preventDefault();
@@ -153,8 +150,7 @@
   }
 
   // The viewer may delete their own comments; admins may delete any.
-  const canDelete = (comment: Comment) =>
-    !!user && (user.id === comment.author.id || user.isAdmin);
+  const canDelete = (comment: Comment) => !!user && (user.id === comment.author.id || user.isAdmin);
 
   // Only the author may edit their own comment.
   const canEdit = (comment: Comment) => !!user && user.id === comment.author.id;
@@ -247,7 +243,7 @@
 </script>
 
 <section class="mt-2">
-  <h2 class="text-foreground mb-5 text-lg font-semibold tracking-tight">
+  <h2 class="mb-5 text-lg font-semibold tracking-tight text-foreground">
     Responses ({total})
   </h2>
 
@@ -263,15 +259,10 @@
             rows={2}
             maxlength={2000}
             placeholder="What are your thoughts?"
-            class={`${field} pr-11`}
-          ></textarea>
-          <EmojiTrigger
-            onPick={insertDraftEmoji}
-            align="end"
-            class={`${emojiOverlayBtn} bottom-2 right-1.5`}
-          />
+            class={`${field} pr-11`}></textarea>
+          <EmojiTrigger onPick={insertDraftEmoji} align="end" class={`${emojiOverlayBtn} bottom-2 right-1.5`} />
         </div>
-        {#if error}<p class="text-destructive mt-1.5 text-sm">{error}</p>{/if}
+        {#if error}<p class="mt-1.5 text-sm text-destructive">{error}</p>{/if}
         <div class="mt-2 flex justify-end">
           <Button type="submit" variant="solid" size="sm" disabled={busy || !draft.trim()}>
             {busy ? "Posting…" : "Respond"}
@@ -280,13 +271,13 @@
       </div>
     </form>
   {:else}
-    <p class="text-muted-foreground mb-8 text-sm">
+    <p class="mb-8 text-sm text-muted-foreground">
       <Button href="/login" variant="link">Sign in</Button> to leave a response.
     </p>
   {/if}
 
   {#if comments.length === 0}
-    <p class="text-muted-foreground py-6 text-center text-sm">No responses yet. Be the first.</p>
+    <p class="py-6 text-center text-sm text-muted-foreground">No responses yet. Be the first.</p>
   {:else}
     <ul class="flex flex-col gap-6">
       {#each comments as comment (comment.id)}

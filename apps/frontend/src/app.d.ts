@@ -17,5 +17,3 @@ declare global {
     }
   }
 }
-
-export {};

@@ -22,3 +22,4 @@ apps/backend/.state/
 
 # OS
 .DS_Store
+.vscode

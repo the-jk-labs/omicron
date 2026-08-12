@@ -28,9 +28,9 @@ class NotificationStore {
   start() {
     if (!browser || this.#enabled) return;
     this.#enabled = true;
-    this.refresh();
+    void this.refresh();
     this.#timer = setInterval(() => {
-      if (!document.hidden) this.refresh();
+      if (!document.hidden) void this.refresh();
     }, POLL_MS);
     document.addEventListener("visibilitychange", this.#onVisible);
   }
@@ -49,7 +49,7 @@ class NotificationStore {
   }
 
   #onVisible = () => {
-    if (browser && !document.hidden) this.refresh();
+    if (browser && !document.hidden) void this.refresh();
   };
 }
 
