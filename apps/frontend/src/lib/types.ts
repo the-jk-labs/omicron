@@ -101,6 +101,27 @@ export type Post = {
   likeCount: number;
   liked: boolean;
   commentCount: number;
+  // "Repost" — federates as ActivityPub Announce. `recommended` is the
+  // signed-in viewer's own state, mirroring `liked`.
+  recommendCount: number;
+  recommended: boolean;
+  // Present only on a "For you" feed item that reached the viewer via a
+  // recommendation from someone they follow, rather than authorship/follow —
+  // null on every other listing (profiles, Local, Global, search, …), and the
+  // signal the card uses to show its "X recommended this" banner.
+  recommendedBy?: RecommendedBy | null;
+};
+
+// Who recommended a post, and when — see `Post.recommendedBy`. Shaped like
+// `PostAuthor` (local-or-remote, `username` a `user@host` handle for a remote
+// recommender) so `/@${username}` resolves either way.
+export type RecommendedBy = {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  remote: boolean;
+  recommendedAt: string;
 };
 
 // A publishing token for the content webhook, as shown on the owner's Settings
@@ -170,7 +191,8 @@ export type NotificationType =
   | "like"
   | "comment"
   | "reply"
-  | "comment_like";
+  | "comment_like"
+  | "recommend";
 
 export type Notification = {
   id: string;

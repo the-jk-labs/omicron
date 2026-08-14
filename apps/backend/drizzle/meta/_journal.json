@@ -204,6 +204,13 @@
       "when": 1786209507621,
       "tag": "0028_post_slugs",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1786209507622,
+      "tag": "0029_recommendations",
+      "breakpoints": true
     }
   ]
 }

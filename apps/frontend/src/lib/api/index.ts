@@ -38,6 +38,7 @@ import type {
 import { makeApi } from "./client";
 
 type LikeState = { likeCount: number; liked: boolean };
+type RecommendState = { recommendCount: number; recommended: boolean };
 
 // The reader's feed language filter, forwarded to the timeline endpoints as
 // query params (see prefs.svelte.ts `feedLangQuery`).
@@ -225,9 +226,11 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // Posts to read next, shown under an article (see relatedPosts service).
     relatedPosts: (id: string) => api.get<{ items: Post[] }>(`/posts/${id}/related`),
 
-    // likes + comments
+    // likes + recommends ("reposts", federate as ActivityPub Announce) + comments
     likePost: (id: string) => api.post<LikeState>(`/posts/${id}/like`),
     unlikePost: (id: string) => api.del<LikeState>(`/posts/${id}/like`),
+    recommendPost: (id: string) => api.post<RecommendState>(`/posts/${id}/recommend`),
+    unrecommendPost: (id: string) => api.del<RecommendState>(`/posts/${id}/recommend`),
     comments: (id: string, cursor?: string | null) =>
       api.get<Page<Comment>>(`/posts/${id}/comments${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
     createComment: (id: string, content: string, parentId?: string | null) =>
@@ -292,6 +295,9 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     profile: (username: string) => api.get<Profile>(`/users/${username}`),
     userPosts: (username: string, cursor?: string | null) =>
       api.get<Page<Post>>(`/users/${username}/posts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
+    // A profile's "Recommendations" tab: posts they've recommended ("reposted").
+    userRecommendations: (username: string, cursor?: string | null) =>
+      api.get<Page<Post>>(`/users/${username}/recommendations${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
     follow: (username: string) => api.post<{ ok: true; state: "requested" | "following" }>(`/users/${username}/follow`),
     unfollow: (username: string) => api.del(`/users/${username}/follow`),
 
@@ -324,6 +330,12 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     remoteUserPosts: (handle: string, cursor?: string | null) =>
       api.get<Page<Post>>(
         `/remote/users/${encodeURIComponent(handle)}/posts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,
+      ),
+    remoteUserRecommendations: (handle: string, cursor?: string | null) =>
+      api.get<Page<Post>>(
+        `/remote/users/${encodeURIComponent(handle)}/recommendations${
+          cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""
+        }`,
       ),
     remoteFollow: (handle: string) => api.post(`/remote/users/${encodeURIComponent(handle)}/follow`),
     remoteUnfollow: (handle: string) => api.del(`/remote/users/${encodeURIComponent(handle)}/follow`),

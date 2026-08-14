@@ -15,7 +15,8 @@ export type NotificationType =
   | "like"
   | "comment"
   | "reply"
-  | "comment_like";
+  | "comment_like"
+  | "recommend";
 
 type NotifyParams = {
   recipientId: string;

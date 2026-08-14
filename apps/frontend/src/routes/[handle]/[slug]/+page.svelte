@@ -6,6 +6,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import PostCard from "$lib/components/PostCard.svelte";
+  import RecommendButton from "$lib/components/RecommendButton.svelte";
   import SaveToListButton from "$lib/components/SaveToListButton.svelte";
   import TagList from "$lib/components/TagList.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
@@ -416,6 +417,7 @@
       <Icon name="comment" size={18} />
       <span class="tabular-nums">{commentCount}</span>
     </a>
+    <RecommendButton postId={post.id} recommended={post.recommended} recommendCount={post.recommendCount} />
     <div class="ml-auto inline-flex h-10 items-center px-2">
       <SaveToListButton postId={post.id} signedIn={!!data.user} />
     </div>

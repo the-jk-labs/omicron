@@ -63,6 +63,30 @@
     cursor = data.page.nextCursor;
   });
 
+  // "Recommendations" tab: posts this profile has recommended ("reposted").
+  let recommended = $state<Post[]>(untrack(() => data.recommendations.items));
+  let recommendedCursor = $state<string | null>(untrack(() => data.recommendations.nextCursor));
+  let recommendedLoading = $state(false);
+  $effect(() => {
+    recommended = data.recommendations.items;
+    recommendedCursor = data.recommendations.nextCursor;
+  });
+
+  async function loadMoreRecommended() {
+    if (!recommendedCursor) return;
+    recommendedLoading = true;
+    try {
+      const handle = profile.user.username;
+      const next = data.remote
+        ? await endpoints().remoteUserRecommendations(handle, recommendedCursor)
+        : await endpoints().userRecommendations(handle, recommendedCursor);
+      recommended = [...recommended, ...next.items];
+      recommendedCursor = next.nextCursor;
+    } finally {
+      recommendedLoading = false;
+    }
+  }
+
   // The full fediverse address (@user@host). Remote handles already carry the
   // host; for local users the host is the instance we're being served from, so
   // we read it from the browser once mounted (unknown during SSR).
@@ -252,6 +276,13 @@
         >Lists</Tabs.Trigger
       >
     {/if}
+    {#if !locked}
+      <Tabs.Trigger
+        value="recommendations"
+        class="-mb-px inline-flex items-center border-b border-transparent py-3 text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground"
+        >Recommendations</Tabs.Trigger
+      >
+    {/if}
     <Tabs.Trigger
       value="about"
       class="-mb-px inline-flex items-center border-b border-transparent py-3 text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground"
@@ -298,6 +329,29 @@
             <ReadingListCard {list} />
           {/each}
         </div>
+      {/if}
+    </Tabs.Content>
+  {/if}
+
+  {#if !locked}
+    <Tabs.Content value="recommendations" class="select-none pt-3">
+      {#if recommended.length === 0}
+        <p class="py-10 text-center text-muted-foreground">
+          {isSelf
+            ? "You haven't recommended anything yet."
+            : `${profile.user.displayName} hasn't recommended anything yet.`}
+        </p>
+      {:else}
+        {#each recommended as post (post.id)}
+          <PostCard {post} />
+        {/each}
+        {#if recommendedCursor}
+          <div class="mt-8 flex justify-center">
+            <Button onclick={loadMoreRecommended} disabled={recommendedLoading} variant="outline">
+              {recommendedLoading ? "Loading…" : "Show more"}
+            </Button>
+          </div>
+        {/if}
       {/if}
     </Tabs.Content>
   {/if}

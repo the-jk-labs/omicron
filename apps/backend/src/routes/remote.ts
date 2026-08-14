@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { federationRunning } from "@/services/federationState.ts";
 import * as remoteProfilesService from "@/services/remoteProfiles.ts";
 import * as relationsService from "@/services/relations.ts";
+import * as recommendationsService from "@/services/recommendations.ts";
 import { enrichPosts } from "@/services/engagement.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { remoteProfile } from "@/routes/serializers.ts";
@@ -77,6 +78,21 @@ remoteRoutes.get("/users/:handle/posts", async (c) => {
     handle,
     cursor,
     viewer?.id ?? null,
+  );
+  return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
+});
+
+// A remote actor's "Recommendations" tab: posts they've boosted (recorded from
+// an inbound Announce), newest-recommended first.
+remoteRoutes.get("/users/:handle/recommendations", async (c) => {
+  const viewer = c.get("user");
+  const handle = c.req.param("handle");
+  const cursor = decodeCursor(c.req.query("cursor"));
+  const actor = await remoteProfilesService.getProfile(handle);
+  const { items, nextCursor } = await recommendationsService.listByRemoteActor(
+    actor.id,
+    viewer?.id ?? null,
+    cursor,
   );
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
 });

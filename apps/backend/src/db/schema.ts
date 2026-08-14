@@ -318,6 +318,37 @@ export const likes = pgTable("likes", {
   index("likes_post_idx").on(t.postId),
 ]);
 
+// ── recommendations ("repost", federates as ActivityPub Announce) ───────
+// A recommender announcing a post (their own, another local post, or a cached
+// remote one) to their followers — the fediverse's "boost"/"repost", named
+// "recommend" in Omicron's UI. One row per (post, recommender); the recommender
+// is either a local user (`userId`) or a cached remote actor (`remoteActorId`),
+// the same local-or-remote shape `follows`/`notifications` use. Deliberately
+// NOT surfaced on the Local or Global timelines (those list posts by their own
+// publish time, unaffected by this table) — only on the recommender's
+// followers' "For you" feed and the recommender's profile "Recommendations"
+// tab (see db/repositories/recommendations.ts).
+export const recommendations = pgTable("recommendations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+  remoteActorId: uuid("remote_actor_id").references(() => remoteActors.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  // Recommending is idempotent per (post, recommender), local or remote.
+  uniqueIndex("recommendations_post_user_idx")
+    .on(t.postId, t.userId)
+    .where(sql`${t.userId} is not null`),
+  uniqueIndex("recommendations_post_remote_actor_idx")
+    .on(t.postId, t.remoteActorId)
+    .where(sql`${t.remoteActorId} is not null`),
+  index("recommendations_post_idx").on(t.postId),
+  // A recommender's own "Recommendations" tab, newest first.
+  index("recommendations_user_created_idx").on(t.userId, t.createdAt.desc(), t.id.desc()),
+  index("recommendations_remote_actor_created_idx")
+    .on(t.remoteActorId, t.createdAt.desc(), t.id.desc()),
+]);
+
 // ── comments ───────────────────────────────────────────────────────────
 // Single-level threaded comments. `content` is plain text — rendered escaped
 // on the client, never as HTML. `parentId` is null for top-level comments and
@@ -644,6 +675,7 @@ export type Follow = typeof follows.$inferSelect;
 export type Mute = typeof mutes.$inferSelect;
 export type Block = typeof blocks.$inferSelect;
 export type Like = typeof likes.$inferSelect;
+export type Recommendation = typeof recommendations.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;
 export type CommentLike = typeof commentLikes.$inferSelect;

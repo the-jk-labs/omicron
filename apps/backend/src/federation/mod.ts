@@ -12,8 +12,10 @@ import {
 } from "@fedify/fedify";
 import { RedisKvStore, RedisMessageQueue } from "@fedify/redis";
 import { getRedis, redisEnabled, redisFactory } from "@/lib/redis.ts";
+import type { Context } from "@fedify/fedify";
 import {
   Accept,
+  Announce,
   Article,
   Block,
   Create,
@@ -30,6 +32,7 @@ import * as usersRepo from "@/db/repositories/users.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
+import * as recommendationsRepo from "@/db/repositories/recommendations.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as listsRepo from "@/db/repositories/readingLists.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
@@ -41,6 +44,7 @@ import { cacheActor } from "@/federation/remote.ts";
 import { origin } from "@/config.ts";
 import { normalizeTags } from "@/lib/tags.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
+import type { Post } from "@/db/schema.ts";
 
 // ── ActivityPub wiring (isolated) ────────────────────────────────────────
 // This module is only imported when FEDERATION_ENABLED=true (see app.ts), so a
@@ -206,7 +210,47 @@ async function fromBlockedDomain(actorId: URL | null | undefined): Promise<boole
   }
 }
 
-// ── Inbox: inbound Follow / Undo / Create ────────────────────────────────
+// Ingests a remote Article, keyed by its ActivityPub id — shared by the
+// inbound Create handler (a fresh post) and the inbound Announce handler (a
+// remote actor boosting a post we may not have cached yet). Resolves the
+// article's *attributed author*, not the wrapping activity's actor, since
+// those two differ for an Announce (the booster isn't the writer). Returns the
+// existing cached row without refetching anything if we already have it.
+async function ingestArticle(
+  ctx: Context<ContextData>,
+  article: Article,
+): Promise<Post | undefined> {
+  if (!article.id) return undefined;
+  const existing = await postsRepo.findByApId(article.id.href);
+  if (existing) return existing;
+
+  if (!article.attributionId) return undefined;
+  const author = await ctx.lookupObject(article.attributionId);
+  if (!isActor(author) || !author.id) return undefined;
+  const actor = await cacheActor(author);
+
+  const post = await postsRepo.upsertRemotePost({
+    remoteActorId: actor.id,
+    apId: article.id.href,
+    title: article.name?.toString() ?? null,
+    // Remote HTML is untrusted and rendered with {@html} by the reader —
+    // sanitize before it ever touches the database.
+    contentHtml: sanitizePostHtml(article.content?.toString()),
+    apType: "Article",
+    language: articleLanguage(article),
+    createdAt: article.published ? new Date(article.published.epochMilliseconds) : undefined,
+  });
+
+  // Mirror any Hashtag tags onto the post so it joins our tag pages/feeds.
+  const tagNames: string[] = [];
+  for await (const tag of article.getTags(ctx)) {
+    if (tag instanceof Hashtag && tag.name) tagNames.push(tag.name.toString());
+  }
+  await tagsRepo.setPostTags(post.id, normalizeTags(tagNames));
+  return post;
+}
+
+// ── Inbox: inbound Follow / Undo / Create / Announce ─────────────────────
 function setupInbox(f: Federation<ContextData>) {
   f.setInboxListeners("/users/{identifier}/inbox", "/inbox")
     .on(Follow, async (ctx, follow) => {
@@ -265,12 +309,35 @@ function setupInbox(f: Federation<ContextData>) {
     .on(Undo, async (ctx, undo) => {
       if (await fromBlockedDomain(undo.actorId)) return;
       const object = await undo.getObject(ctx);
-      if (!(object instanceof Follow) || !object.objectId) return;
-      const parsed = ctx.parseUri(object.objectId);
-      if (parsed?.type !== "actor") return;
-      const followee = await usersRepo.findByUsername(parsed.identifier);
-      if (followee && undo.actorId) {
-        await followsRepo.removeRemoteFollower(followee.id, undo.actorId.href);
+      if (object instanceof Follow) {
+        if (!object.objectId) return;
+        const parsed = ctx.parseUri(object.objectId);
+        if (parsed?.type !== "actor") return;
+        const followee = await usersRepo.findByUsername(parsed.identifier);
+        if (followee && undo.actorId) {
+          await followsRepo.removeRemoteFollower(followee.id, undo.actorId.href);
+        }
+        return;
+      }
+      if (object instanceof Announce) {
+        // A remote actor un-boosted a post. `object` here is the original
+        // Announce, nested inside the Undo — its own `objectId` is the boosted
+        // post's URI (not the Announce's own id), which is what we keyed the
+        // recommendation on.
+        if (!object.objectId || !undo.actorId) return;
+        const post = await postsRepo.findByApId(object.objectId.href);
+        if (!post) return;
+        const actor = await remoteActorsRepo.findByApId(undo.actorId.href);
+        if (!actor) return;
+        await recommendationsRepo.removeRemote(post.id, actor.id);
+        if (post.authorId) {
+          await notifications.unnotify({
+            recipientId: post.authorId,
+            type: "recommend",
+            remoteActorId: actor.id,
+            postId: post.id,
+          });
+        }
       }
     })
     .on(Block, async (ctx, block) => {
@@ -313,29 +380,39 @@ function setupInbox(f: Federation<ContextData>) {
       // ignore microblog Notes (Mastodon, Pixelfed, …) outright.
       const object = await create.getObject(ctx);
       if (!(object instanceof Article)) return;
-      if (!object.id) return;
-      if (await postsRepo.findByApId(object.id.href)) return;
-      const author = await create.getActor(ctx);
-      if (!isActor(author) || !author.id) return;
-      const actor = await cacheActor(author);
-      const post = await postsRepo.upsertRemotePost({
-        remoteActorId: actor.id,
-        apId: object.id.href,
-        title: object.name?.toString() ?? null,
-        // Remote HTML is untrusted and rendered with {@html} by the reader —
-        // sanitize before it ever touches the database.
-        contentHtml: sanitizePostHtml(object.content?.toString()),
-        apType: "Article",
-        language: articleLanguage(object),
-        createdAt: object.published ? new Date(object.published.epochMilliseconds) : undefined,
-      });
+      await ingestArticle(ctx, object);
+    })
+    .on(Announce, async (ctx, announce) => {
+      if (await fromBlockedDomain(announce.actorId)) return;
+      // A remote actor "boosted" a post — record it as a recommendation from
+      // them, so it can surface on their local followers' "For you" feed (see
+      // db/repositories/recommendations.ts). Only Articles are recognised,
+      // matching the rest of this instance's long-form-only stance; a boosted
+      // Note (a Mastodon retweet) is silently ignored.
+      if (!announce.objectId) return;
+      const recommender = await announce.getActor(ctx);
+      if (!isActor(recommender) || !recommender.id) return;
+      const actor = await cacheActor(recommender);
 
-      // Mirror any Hashtag tags onto the post so it joins our tag pages/feeds.
-      const tagNames: string[] = [];
-      for await (const tag of object.getTags(ctx)) {
-        if (tag instanceof Hashtag && tag.name) tagNames.push(tag.name.toString());
+      let post = await postsRepo.findByApId(announce.objectId.href);
+      if (!post) {
+        const object = await announce.getObject(ctx);
+        if (!(object instanceof Article)) return;
+        post = await ingestArticle(ctx, object);
+        if (!post) return;
       }
-      await tagsRepo.setPostTags(post.id, normalizeTags(tagNames));
+
+      await recommendationsRepo.addRemote(post.id, actor.id);
+      // Notify the post's local author (if any); remote-authored posts have no
+      // local recipient.
+      if (post.authorId) {
+        await notifications.notify({
+          recipientId: post.authorId,
+          type: "recommend",
+          remoteActorId: actor.id,
+          postId: post.id,
+        });
+      }
     })
     .on(Update, async (ctx, update) => {
       if (await fromBlockedDomain(update.actorId)) return;

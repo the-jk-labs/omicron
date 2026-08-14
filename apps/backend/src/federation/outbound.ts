@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import type { Context } from "@fedify/fedify";
 import {
   Accept,
+  type Actor,
+  Announce,
   Block,
   Delete,
   Follow,
@@ -13,6 +16,7 @@ import { getFederation } from "@/federation/mod.ts";
 import { origin } from "@/config.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
+import * as postsRepo from "@/db/repositories/posts.ts";
 
 // Outbound Follow / Undo(Follow) to a remote actor URI. Wired for future use
 // when the UI lets users follow remote handles; the call site already enqueues
@@ -139,6 +143,78 @@ export async function sendAcceptFollow(
         actor: actor.id,
         object: actorUri,
       }),
+    }),
+  );
+}
+
+// Resolves a local user's remote followers into deliverable actor objects.
+// Shared by sendRecommend/sendUnrecommend, mirroring deliver.ts's
+// remoteRecipients (kept separate — that one also checks the blocklist, which
+// a recommend/undo-recommend doesn't need since the recipients are the
+// recommender's own approved followers).
+async function followerRecipients(ctx: Context<unknown>, userId: string): Promise<Actor[]> {
+  const uris = await followsRepo.remoteFollowerActors(userId);
+  const recipients: Actor[] = [];
+  for (const uri of uris) {
+    const actor = await ctx.lookupObject(uri);
+    if (isActor(actor)) recipients.push(actor);
+  }
+  return recipients;
+}
+
+// Outbound Announce — a local user "recommending" (reposting) a post to their
+// followers. The post may be local or a cached remote one; either way the
+// Announce references its canonical ActivityPub URI. The activity id is
+// deterministic (`#recommends/{postId}` under the recommender's actor) so
+// sendUnrecommend can reconstruct it below without persisting anything extra.
+export async function sendRecommend(userId: string, postId: string): Promise<void> {
+  const user = await usersRepo.findById(userId);
+  if (!user) return;
+  const row = await postsRepo.findById(postId);
+  if (!row) return;
+
+  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const recipients = await followerRecipients(ctx, user.id);
+  if (recipients.length === 0) return;
+
+  const objectUri = row.post.remote && row.post.apId
+    ? new URL(row.post.apId)
+    : new URL(`/posts/${row.post.id}`, origin);
+  const actorUri = ctx.getActorUri(user.username);
+
+  await ctx.sendActivity(
+    { identifier: user.username },
+    recipients,
+    new Announce({
+      id: new URL(`#recommends/${postId}`, actorUri),
+      actor: actorUri,
+      object: objectUri,
+      tos: [PUBLIC_COLLECTION],
+      cc: ctx.getFollowersUri(user.username),
+    }),
+  );
+}
+
+// Outbound Undo(Announce) — sent when a local user un-recommends a post.
+// Reconstructs the original Announce by its deterministic id; no lookup of the
+// post is needed (or possible, if it has since been deleted).
+export async function sendUnrecommend(userId: string, postId: string): Promise<void> {
+  const user = await usersRepo.findById(userId);
+  if (!user) return;
+
+  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const recipients = await followerRecipients(ctx, user.id);
+  if (recipients.length === 0) return;
+
+  const actorUri = ctx.getActorUri(user.username);
+  await ctx.sendActivity(
+    { identifier: user.username },
+    recipients,
+    new Undo({
+      id: new URL(`#undo-recommends/${postId}`, actorUri),
+      actor: actorUri,
+      object: new Announce({ id: new URL(`#recommends/${postId}`, actorUri), actor: actorUri }),
+      tos: [PUBLIC_COLLECTION],
     }),
   );
 }

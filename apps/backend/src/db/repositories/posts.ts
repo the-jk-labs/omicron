@@ -31,14 +31,14 @@ import type { LanguageFilter } from "@/lib/languages.ts";
 
 // A post's author is either a local user or a cached remote actor; every read
 // left-joins both and the serializer coalesces whichever side is present.
-const localAuthorColumns = {
+export const localAuthorColumns = {
   id: users.id,
   username: users.username,
   displayName: users.displayName,
   avatarUrl: users.avatarUrl,
 };
 
-const remoteActorColumns = {
+export const remoteActorColumns = {
   id: remoteActors.id,
   handle: remoteActors.handle,
   displayName: remoteActors.displayName,
@@ -49,8 +49,9 @@ const remoteActorColumns = {
 // and only ever used inside the search query's `@@` / `ts_rank`, so timelines
 // must not pull it back for every row.
 const { searchVector: _searchVector, ...postColumns } = getTableColumns(posts);
+export { postColumns };
 
-function selectPosts() {
+export function selectPosts() {
   return db
     .select({ post: postColumns, localAuthor: localAuthorColumns, remoteActor: remoteActorColumns })
     .from(posts)
@@ -446,20 +447,20 @@ function beforeCursor(cursor: Cursor | null) {
 
 // Only published posts surface in public feeds and profiles; drafts are private
 // to their author (see listDraftsByAuthor).
-const isPublished = eq(posts.status, "published");
+export const isPublished = eq(posts.status, "published");
 
 // A locally-suspended author vanishes from every public listing — feeds,
 // trending, search, tags and their own profile — until an admin reinstates them
 // (nothing is deleted). Remote posts have no local author (`authorId is null`)
 // and are unaffected. Relies on every listing left-joining `users` on authorId.
-const notSuspended = sql`(${posts.authorId} is null or ${users.suspendedAt} is null)`;
+export const notSuspended = sql`(${posts.authorId} is null or ${users.suspendedAt} is null)`;
 
 // Gates posts by a *private* local author to approved followers only (plus the
 // author themselves). Public authors and remote posts (authorId null) are
 // unaffected. Relies on every listing left-joining `users` on authorId. Unlike
 // notHidden this can't be dropped for guests — a private author's posts must
 // never show to a logged-out viewer — so it always returns a condition.
-function visibleToViewer(viewerId: string | null) {
+export function visibleToViewer(viewerId: string | null) {
   if (!viewerId) {
     return sql`(${posts.authorId} is null or ${users.isPrivate} = false)`;
   }
@@ -479,7 +480,7 @@ function visibleToViewer(viewerId: string | null) {
 // Excludes authors the viewer has muted or blocked, and authors who have blocked
 // the viewer (blocks are bidirectional locally). Returns undefined for guests —
 // `and()` drops undefined operands, so feeds are unfiltered when logged out.
-function notHidden(viewerId: string | null) {
+export function notHidden(viewerId: string | null) {
   if (!viewerId) return undefined;
   const hiddenLocal = sql`(
     select target_user_id from mutes
