@@ -86,6 +86,20 @@ export function registerJobHandlers() {
     await sendAcceptFollow(userId, targetActor, followActivityId);
   });
 
+  // A local user recommended / un-recommended a post; fan out an
+  // Announce / Undo(Announce) to their remote followers (a "boost").
+  registerHandler("send_recommend", async ({ userId, postId }) => {
+    if (!federationRunning()) return;
+    const { sendRecommend } = await import("@/federation/outbound.ts");
+    await sendRecommend(userId, postId);
+  });
+
+  registerHandler("send_unrecommend", async ({ userId, postId }) => {
+    if (!federationRunning()) return;
+    const { sendUnrecommend } = await import("@/federation/outbound.ts");
+    await sendUnrecommend(userId, postId);
+  });
+
   // Account deletion. Broadcast a Delete(actor) to remote followers first (so
   // other instances tombstone us) while the key pair still exists, then remove
   // the user — FK cascades wipe their posts, follows, sessions, mutes & blocks.

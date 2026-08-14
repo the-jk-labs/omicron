@@ -3,6 +3,7 @@ import { type Context, Hono } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import * as postsService from "@/services/posts.ts";
 import * as likesService from "@/services/likes.ts";
+import * as recommendationsService from "@/services/recommendations.ts";
 import * as commentsService from "@/services/comments.ts";
 import * as commentLikesService from "@/services/commentLikes.ts";
 import { enrichPost, enrichPosts } from "@/services/engagement.ts";
@@ -145,6 +146,20 @@ postRoutes.delete("/:id/like", async (c) => {
   const user = requireUser(c);
   const stats = await likesService.unlike(user.id, c.req.param("id"));
   return c.json({ likeCount: stats.count, liked: stats.liked });
+});
+
+// Recommend / un-recommend a post ("repost"; auth required). Federates as an
+// ActivityPub Announce/Undo(Announce). Returns fresh recommend stats.
+postRoutes.post("/:id/recommend", async (c) => {
+  const user = requireUser(c);
+  const stats = await recommendationsService.recommend(user.id, c.req.param("id"));
+  return c.json({ recommendCount: stats.count, recommended: stats.recommended });
+});
+
+postRoutes.delete("/:id/recommend", async (c) => {
+  const user = requireUser(c);
+  const stats = await recommendationsService.unrecommend(user.id, c.req.param("id"));
+  return c.json({ recommendCount: stats.count, recommended: stats.recommended });
 });
 
 // Comments (list public, create requires auth).

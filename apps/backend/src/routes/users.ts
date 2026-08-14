@@ -4,6 +4,7 @@ import * as followsService from "@/services/follows.ts";
 import * as followRequestsService from "@/services/followRequests.ts";
 import * as postsService from "@/services/posts.ts";
 import * as usersService from "@/services/users.ts";
+import * as recommendationsService from "@/services/recommendations.ts";
 import * as relationsService from "@/services/relations.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
@@ -168,6 +169,22 @@ userRoutes.get("/:username/posts", async (c) => {
     user.id,
     cursor,
     viewer?.id ?? null,
+  );
+  return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
+});
+
+// A user's "Recommendations" tab (public, cursor-paginated): posts they've
+// recommended, newest-recommended first. Filtered by the viewer's mutes/blocks
+// and the recommended posts' own visibility, same as /:username/posts.
+userRoutes.get("/:username/recommendations", async (c) => {
+  const viewer = c.get("user");
+  const user = await usersRepo.findByUsername(c.req.param("username"));
+  if (!user) throw notFound("User not found.");
+  const cursor = decodeCursor(c.req.query("cursor"));
+  const { items, nextCursor } = await recommendationsService.listByUser(
+    user.id,
+    viewer?.id ?? null,
+    cursor,
   );
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
 });

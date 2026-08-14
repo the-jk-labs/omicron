@@ -8,7 +8,27 @@ import { bannerOf } from "@/lib/cover.ts";
 
 // Minimal API payloads — never leak password hashes, keys, or emails publicly.
 
-export type Engagement = { likeCount: number; liked: boolean; commentCount: number };
+export type Engagement = {
+  likeCount: number;
+  liked: boolean;
+  commentCount: number;
+  recommendCount: number;
+  recommended: boolean;
+};
+
+// Who recommended a post, and when — attached only to a feed item that reached
+// the viewer via a recommendation rather than authorship/follow (see
+// services/feed.ts). Shaped like `postAuthor` (local-or-remote, `username` a
+// `user@host` handle for a remote recommender) so `/@${username}` resolves
+// either way.
+export type RecommendedBy = {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  remote: boolean;
+  recommendedAt: Date;
+};
 
 export type LinkSummary = { platform: string; url: string; label: string };
 
@@ -105,6 +125,7 @@ export function postWithAuthor(
   row: PostWithAuthor,
   engagement?: Engagement,
   tags: TagSummary[] = [],
+  recommendedBy: RecommendedBy | null = null,
 ) {
   return {
     id: row.post.id,
@@ -137,6 +158,12 @@ export function postWithAuthor(
     likeCount: engagement?.likeCount ?? 0,
     liked: engagement?.liked ?? false,
     commentCount: engagement?.commentCount ?? 0,
+    recommendCount: engagement?.recommendCount ?? 0,
+    recommended: engagement?.recommended ?? false,
+    // Present only on a "For you" feed item that arrived via a recommendation
+    // rather than authorship/follow; null everywhere else (profiles, Local,
+    // Global, search, …), which the frontend reads as "not a recommend entry".
+    recommendedBy,
   };
 }
 
@@ -252,7 +279,8 @@ export function notificationView(row: NotificationRow) {
       | "like"
       | "comment"
       | "reply"
-      | "comment_like",
+      | "comment_like"
+      | "recommend",
     actor,
     postId: n.postId,
     postTitle: row.postTitle,
