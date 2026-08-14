@@ -74,27 +74,24 @@
     <!-- Signed-out visitor: who runs this place and how to join it. Pinned to
          the bottom (mt-auto) and sticky with the rest of the rail, so it stays
          on screen rather than scrolling away with the hero. -->
-    <div class="mt-auto flex flex-col overflow-hidden rounded-card border border-border bg-background-alt text-sm">
-      <img src={welcomeBanner} alt="" class="aspect-video w-full object-cover" />
+    <div class="mt-auto flex flex-col overflow-hidden rounded-card border border-border bg-background-alt text-xs">
+      <img src={welcomeBanner} alt="" class="aspect-[2/1] w-full object-cover" />
 
-      <div class="flex flex-col gap-4 p-3.5">
+      <div class="flex flex-col gap-2.5 p-3">
         <div>
-          <p class="font-semibold text-foreground">{instance?.domain || appName}</p>
-          <p class="mt-1 text-muted-foreground">
-            An independent, self-hosted {appName} instance — read, write, and follow writers here, or anywhere on the
-            fediverse.
-          </p>
+          <p class="text-sm font-semibold text-foreground">{instance?.domain || appName}</p>
+          <p class="mt-0.5 text-muted-foreground">An independent {appName} instance in the fediverse.</p>
         </div>
 
-        <div class="flex flex-col gap-2">
-          <UIButton href="/register" variant="solid" size="sm">Create account</UIButton>
-          <UIButton href="/login" variant="outline" size="sm">Sign in</UIButton>
+        <div class="flex flex-col gap-1.5">
+          <UIButton href="/register" variant="solid" size="xs">Create account</UIButton>
+          <UIButton href="/login" variant="outline" size="xs">Sign in</UIButton>
         </div>
 
         {#if instance?.federationEnabled}
-          <p class="flex items-center gap-1.5 border-t border-border pt-3 text-xs text-muted-foreground">
-            <Icon name="globe" size={14} />
-            Federates across the fediverse
+          <p class="flex items-center gap-1.5 whitespace-nowrap border-t border-border pt-2 text-muted-foreground">
+            <Icon name="globe" size={12} />
+            On the fediverse
           </p>
         {/if}
       </div>
