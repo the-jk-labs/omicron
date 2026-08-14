@@ -280,7 +280,7 @@
            scroll — fixed, with no pre-pin drift. -->
       <div class="hidden lg:block">
         <div class="sticky top-24">
-          <SideNav user={data.user} />
+          <SideNav user={data.user} {appName} instance={data.instance} />
         </div>
       </div>
 
