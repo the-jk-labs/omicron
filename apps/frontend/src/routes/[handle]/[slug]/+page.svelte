@@ -22,10 +22,16 @@
   let { data }: { data: PageData } = $props();
   const post = $derived(data.post);
   const minutes = $derived(readTime(post.contentHtml));
-  // A cover lives on whoever sent it; drop it rather than render a broken image.
+  // The hero above the article only renders for an explicit cover choice, not
+  // `bannerUrl`'s body-image fallback (see backend lib/cover.ts's `bannerOf`)
+  // — this is the one surface that also renders the full body, so promoting
+  // an arbitrary body image to a hero would either duplicate it (if it's
+  // already the post's opening element) or visually remove it from where the
+  // author placed it (if it isn't). Feed cards, share cards, and RSS still use
+  // `bannerUrl` as-is; they never show the body alongside it.
   let coverFailed = $state(false);
   $effect(() => {
-    void post.bannerUrl;
+    void post.coverUrl;
     coverFailed = false;
   });
   // Origin instance (host) parsed from a remote author's `user@host` handle.
@@ -324,7 +330,7 @@
     </DropdownMenu.Root>
   </div>
 
-  {#if post.bannerUrl && !coverFailed}
+  {#if post.coverUrl && !coverFailed}
     <!-- The cover is almost always this page's largest element, so it is what
          the browser (and Google's Core Web Vitals) times the load by.
 
@@ -342,7 +348,7 @@
     <div class="mb-8 aspect-[16/9] max-h-[28rem] w-full overflow-hidden rounded-card border border-border">
       <!-- Decorative: the headline above it already names the post. -->
       <img
-        src={post.bannerUrl}
+        src={post.coverUrl}
         alt=""
         fetchpriority="high"
         decoding="async"
