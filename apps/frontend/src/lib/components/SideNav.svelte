@@ -1,11 +1,17 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { page } from "$app/state";
+  import welcomeBanner from "$lib/assets/welcome-banner.png";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
-  import type { User } from "$lib/types";
+  import UIButton from "$lib/components/ui/Button.svelte";
+  import type { InstanceInfo, User } from "$lib/types";
   import { Button } from "bits-ui";
 
-  let { user }: { user: User | null } = $props();
+  let {
+    user,
+    appName = "Omicron",
+    instance = null,
+  }: { user: User | null; appName?: string; instance?: InstanceInfo | null } = $props();
 
   type Item = { label: string; href: string; icon: IconName };
 
@@ -61,6 +67,34 @@
           {item.label}
         </Button.Root>
       {/each}
+    </div>
+  {/if}
+
+  {#if !user}
+    <!-- Signed-out visitor: who runs this place and how to join it. Pinned to
+         the bottom (mt-auto) and sticky with the rest of the rail, so it stays
+         on screen rather than scrolling away with the hero. -->
+    <div class="mt-auto flex flex-col overflow-hidden rounded-card border border-border bg-background-alt text-xs">
+      <img src={welcomeBanner} alt="" class="aspect-[2/1] w-full object-cover" />
+
+      <div class="flex flex-col gap-2.5 p-3">
+        <div>
+          <p class="text-sm font-semibold text-foreground">{instance?.domain || appName}</p>
+          <p class="mt-0.5 text-muted-foreground">An independent {appName} instance in the fediverse.</p>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <UIButton href="/register" variant="solid" size="xs">Create account</UIButton>
+          <UIButton href="/login" variant="outline" size="xs">Sign in</UIButton>
+        </div>
+
+        {#if instance?.federationEnabled}
+          <p class="flex items-center gap-1.5 whitespace-nowrap border-t border-border pt-2 text-muted-foreground">
+            <Icon name="globe" size={12} />
+            On the fediverse
+          </p>
+        {/if}
+      </div>
     </div>
   {/if}
 </nav>
