@@ -2,6 +2,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import Icon from "$lib/components/Icon.svelte";
+  import RecommendButton from "$lib/components/RecommendButton.svelte";
   import SaveToListButton from "$lib/components/SaveToListButton.svelte";
   import TagList from "$lib/components/TagList.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
@@ -33,6 +34,19 @@
 </script>
 
 <article class="py-5">
+  {#if post.recommendedBy}
+    <!-- "For you" feed only: this post reached the viewer because someone they
+         follow recommended it, not because of its own author/date — flag that
+         above the byline, Twitter-repost-style, before anything else. -->
+    <Button
+      href={`/@${post.recommendedBy.username}`}
+      variant="plain"
+      class="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+    >
+      <Icon name="recommend" size={14} />
+      {post.recommendedBy.displayName} recommended this
+    </Button>
+  {/if}
   <div class="mb-3 flex items-center gap-2 text-sm text-foreground-alt">
     <Button href={`/@${post.author.username}`} variant="plain" class="flex min-w-0 items-center gap-2 hover:opacity-80">
       <Avatar name={post.author.displayName} src={post.author.avatarUrl ?? undefined} size={24} />
@@ -89,6 +103,9 @@
       <span class="flex items-center gap-1"><Icon name="heart" size={13} /> {post.likeCount}</span>
       <span class="flex items-center gap-1"><Icon name="comment" size={13} /> {post.commentCount}</span>
     </div>
-    <span class="ml-auto shrink-0"><SaveToListButton postId={post.id} {signedIn} /></span>
+    <span class="ml-auto flex shrink-0 items-center gap-1">
+      <RecommendButton postId={post.id} recommended={post.recommended} recommendCount={post.recommendCount} size="xs" />
+      <SaveToListButton postId={post.id} {signedIn} />
+    </span>
   </div>
 </article>

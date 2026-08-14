@@ -12,16 +12,21 @@ export const load: PageServerLoad = async ({ fetch, params }) => {
   const isRemote = handle.includes("@");
   try {
     if (isRemote) {
-      const [profile, posts] = await Promise.all([api.remoteProfile(handle), api.remoteUserPosts(handle)]);
-      return { remote: true as const, profile, page: posts };
+      const [profile, posts, recommendations] = await Promise.all([
+        api.remoteProfile(handle),
+        api.remoteUserPosts(handle),
+        api.remoteUserRecommendations(handle),
+      ]);
+      return { remote: true as const, profile, page: posts, recommendations };
     }
-    const [profile, posts, lists] = await Promise.all([
+    const [profile, posts, lists, recommendations] = await Promise.all([
       api.profile(handle),
       api.userPosts(handle),
       // Public lists (plus the owner's private ones, when they're the viewer).
       api.userLists(handle),
+      api.userRecommendations(handle),
     ]);
-    return { remote: false as const, profile, page: posts, lists: lists.lists };
+    return { remote: false as const, profile, page: posts, lists: lists.lists, recommendations };
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) error(404, "User not found");
     throw err;

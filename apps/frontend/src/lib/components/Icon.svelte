@@ -82,6 +82,7 @@
     Rss,
     Bell,
     TriangleAlert,
+    Repeat2,
   } from "@lucide/svelte";
 
   export const icons = {
@@ -164,6 +165,7 @@
     gavel: Gavel,
     table: Table,
     alert: TriangleAlert,
+    recommend: Repeat2,
   } as const;
 
   export type IconName = keyof typeof icons;
