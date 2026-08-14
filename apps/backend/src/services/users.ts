@@ -170,9 +170,30 @@ export async function setPrivacy(userId: string, isPrivate: boolean): Promise<Us
 // "Who to follow" suggestions for the discovery rail. Each suggestion carries
 // the actor summary (so `/@username` links + Follow work) plus a follower count
 // for a little social proof.
-export async function suggestedFollows(viewerId: string | null, limit = 5) {
-  const rows = await usersRepo.suggested(viewerId, limit);
-  return rows.map((r) => ({ ...relationActorLocal(r), followerCount: r.followerCount }));
+//
+// Drawn from a bounded pool of the most-followed eligible accounts (same
+// indexed query as before, just a bigger LIMIT) and shuffled in memory, so
+// every visitor doesn't see the identical three people. That's cheaper than
+// `ORDER BY random()` in the query itself, which can't use an index and forces
+// Postgres to sort the whole matching set on every request.
+const SUGGESTION_POOL_SIZE = 20;
+
+export async function suggestedFollows(viewerId: string | null, count = 3) {
+  const pool = await usersRepo.suggested(viewerId, SUGGESTION_POOL_SIZE);
+  const picked = sampleRandom(pool, count);
+  return picked.map((r) => ({ ...relationActorLocal(r), followerCount: r.followerCount }));
+}
+
+// Partial Fisher-Yates: only shuffles the first `count` positions, so picking
+// a handful out of the pool stays O(count) rather than O(pool).
+function sampleRandom<T>(items: T[], count: number): T[] {
+  const pool = [...items];
+  const n = Math.min(count, pool.length);
+  for (let i = 0; i < n; i++) {
+    const j = i + Math.floor(Math.random() * (pool.length - i));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, n);
 }
 
 // A user's profile links, for the public profile and the settings editor.
