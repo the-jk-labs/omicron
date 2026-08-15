@@ -8,6 +8,7 @@ import * as unsplash from "@/services/unsplash.ts";
 import * as moderation from "@/services/moderation.ts";
 import * as emailSettings from "@/services/emailSettings.ts";
 import * as setup from "@/services/instanceSetup.ts";
+import * as mediaService from "@/services/media.ts";
 import { sendTestEmail } from "@/services/email.ts";
 import { dnsRecords } from "@/services/dkim.ts";
 import { checkOutboundPort25, verifyRecords } from "@/services/emailDns.ts";
@@ -134,6 +135,8 @@ async function instanceSnapshot() {
     federationEnabled: await setup.getFederationEnabled(),
     federationRunning: federationRunning(),
     sessionSecretManaged: sessionSecretManaged(),
+    bannerText: await setup.getBannerText(),
+    bannerImageUrl: await setup.getBannerImageUrl(),
   };
 }
 
@@ -146,12 +149,16 @@ const instanceSchema = z.object({
   appName: z.string().trim().min(1, "An instance name is required.").max(100).optional(),
   appDomain: z.string().trim().max(253).optional(),
   federationEnabled: z.boolean().optional(),
+  // The tagline on the signed-out visitor card. An empty string clears it back
+  // to the built-in default sentence.
+  bannerText: z.string().trim().max(280).optional(),
 });
 
-// Update the app name / public domain / federation toggle. A domain change
-// reaches ActivityPub only after a restart (federation identity binds at boot),
-// as does flipping federation on/off (the Fedify mount and queue handlers bind at
-// boot); app-level name/URLs update at once. The UI surfaces those caveats.
+// Update the app name / public domain / federation toggle / banner tagline. A
+// domain change reaches ActivityPub only after a restart (federation identity
+// binds at boot), as does flipping federation on/off (the Fedify mount and
+// queue handlers bind at boot); app-level name/URLs/banner text update at
+// once. The UI surfaces those caveats.
 adminRoutes.put("/instance", async (c) => {
   requireAdmin(c);
   const parsed = instanceSchema.safeParse(await c.req.json().catch(() => null));
@@ -162,6 +169,27 @@ adminRoutes.put("/instance", async (c) => {
   if (parsed.data.federationEnabled !== undefined) {
     await setup.setFederationEnabled(parsed.data.federationEnabled);
   }
+  return c.json(await instanceSnapshot());
+});
+
+// Upload the banner image shown on the signed-out visitor card. Reuses the same
+// validated, size-capped, magic-byte-checked disk storage as post/avatar
+// uploads (see services/media.ts); the browser has already downscaled and
+// re-encoded the image before it reaches here (see lib/editor/image.ts), so
+// this layer only validates and persists.
+adminRoutes.post("/instance/banner", async (c) => {
+  requireAdmin(c);
+  const contentType = (c.req.header("content-type") ?? "").split(";")[0].trim();
+  const bytes = new Uint8Array(await c.req.arrayBuffer());
+  const url = await mediaService.saveImage(bytes, contentType);
+  await setup.setBannerImageUrl(url);
+  return c.json(await instanceSnapshot(), 201);
+});
+
+// Revert the banner image to the bundled default artwork.
+adminRoutes.delete("/instance/banner", async (c) => {
+  requireAdmin(c);
+  await setup.setBannerImageUrl(null);
   return c.json(await instanceSnapshot());
 });
 

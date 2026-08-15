@@ -3,24 +3,33 @@
   import { endpoints, ApiError } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import { INSTANCE_BANNER_MAX_DIMENSION, isAcceptedImage, prepareImage } from "$lib/editor/image";
   import type { AdminInstance } from "$lib/types";
   import { Dialog, Label, Switch } from "bits-ui";
 
-  // Runtime instance identity: app name + public domain + the federation toggle,
-  // all editable after setup so an operator never returns to a config file. The
-  // domain change and the federation toggle bind at boot, so both apply on the
-  // next restart — surfaced inline. Admin-only (mounted from the admin page).
+  // Runtime instance identity: app name + public domain + the federation toggle
+  // + the signed-out visitor card (banner text + image), all editable after
+  // setup so an operator never returns to a config file or a hardcoded string.
+  // The domain change and the federation toggle bind at boot, so both apply on
+  // the next restart — surfaced inline. Admin-only (mounted from the admin
+  // page).
   let appName = $state("");
   let appDomain = $state("");
   // Desired federation state (what applies on restart) vs what's running now.
   let federationEnabled = $state(false);
   let federationRunning = $state(false);
   let sessionSecretManaged = $state(false);
+  let bannerText = $state("");
+  let bannerImageUrl = $state<string | null>(null);
 
   let loading = $state(true);
   let saving = $state(false);
   let error = $state("");
   let saved = $state(false);
+
+  let bannerFileInput = $state<HTMLInputElement | null>(null);
+  let bannerUploading = $state(false);
+  let bannerError = $state("");
 
   // Rotate-secret dialog state.
   let rotateOpen = $state(false);
@@ -42,6 +51,8 @@
     federationEnabled = s.federationEnabled;
     federationRunning = s.federationRunning;
     sessionSecretManaged = s.sessionSecretManaged;
+    bannerText = s.bannerText ?? "";
+    bannerImageUrl = s.bannerImageUrl;
   }
 
   $effect(() => {
@@ -62,6 +73,7 @@
           appName: appName.trim(),
           appDomain: appDomain.trim(),
           federationEnabled,
+          bannerText: bannerText.trim(),
         }),
       );
       saved = true;
@@ -69,6 +81,42 @@
       error = e instanceof ApiError ? e.message : "Failed to save.";
     } finally {
       saving = false;
+    }
+  }
+
+  async function onBannerFile(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    // Reset the input so re-picking the same file fires `change` again.
+    (e.target as HTMLInputElement).value = "";
+    if (!file) return;
+    if (!isAcceptedImage(file)) {
+      bannerError = "Unsupported image type. Use PNG, JPEG, WebP, or GIF.";
+      return;
+    }
+    bannerError = "";
+    bannerUploading = true;
+    try {
+      const { blob, type } = await prepareImage(file, INSTANCE_BANNER_MAX_DIMENSION);
+      // Only take the image URL from the response, not the whole snapshot —
+      // the rest of this form (name/domain/banner text) may hold unsaved edits
+      // that a full `apply()` here would silently overwrite.
+      bannerImageUrl = (await endpoints().uploadInstanceBanner(blob, type)).bannerImageUrl;
+    } catch (e) {
+      bannerError = e instanceof ApiError ? e.message : "Failed to upload the banner image.";
+    } finally {
+      bannerUploading = false;
+    }
+  }
+
+  async function removeBanner() {
+    bannerError = "";
+    bannerUploading = true;
+    try {
+      bannerImageUrl = (await endpoints().removeInstanceBanner()).bannerImageUrl;
+    } catch (e) {
+      bannerError = e instanceof ApiError ? e.message : "Failed to remove the banner image.";
+    } finally {
+      bannerUploading = false;
     }
   }
 
@@ -107,6 +155,73 @@
       Used for links in email and share cards. A change applies to app URLs at once, but reaches ActivityPub only after
       a restart (federation identity binds at boot).
     </p>
+  </div>
+
+  <div class="flex flex-col gap-3 rounded-card border border-border bg-background-alt p-3.5">
+    <div class="flex flex-col gap-0.5">
+      <span class={labelClass}>Signed-out visitor card</span>
+      <p class="text-xs text-muted-foreground">
+        Shown to signed-out visitors alongside "Create account" / "Sign in". Left blank, the tagline defaults to "An
+        independent {appName || "Omicron"} instance in the fediverse." and the image to the bundled artwork.
+      </p>
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+      <Label.Root for="admin-bannerText" class={labelClass}>Banner text</Label.Root>
+      <input
+        id="admin-bannerText"
+        bind:value={bannerText}
+        disabled={loading}
+        maxlength={280}
+        placeholder="An independent {appName || 'Omicron'} instance in the fediverse."
+        class={field}
+      />
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+      <span class={labelClass}>Banner image</span>
+      <div class="flex items-center gap-3">
+        <div
+          class="aspect-[2/1] w-32 shrink-0 overflow-hidden rounded-card border border-border bg-background {bannerImageUrl
+            ? ''
+            : 'flex items-center justify-center text-muted-foreground'}"
+        >
+          {#if bannerImageUrl}
+            <img src={bannerImageUrl} alt="" class="h-full w-full object-cover" />
+          {:else}
+            <Icon name="image" size={18} />
+          {/if}
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <div class="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onclick={() => bannerFileInput?.click()}
+              disabled={bannerUploading}
+            >
+              <Icon name="image" size={15} />
+              {bannerUploading ? "Uploading…" : "Upload"}
+            </Button>
+            {#if bannerImageUrl}
+              <Button type="button" variant="ghost" size="sm" onclick={removeBanner} disabled={bannerUploading}>
+                <Icon name="close" size={15} /> Reset to default
+              </Button>
+            {/if}
+          </div>
+          <p class="text-xs text-muted-foreground">Resized and re-encoded to WebP automatically for fast loading.</p>
+        </div>
+      </div>
+      {#if bannerError}<p class="text-sm text-destructive">{bannerError}</p>{/if}
+      <input
+        bind:this={bannerFileInput}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        onchange={onBannerFile}
+        class="hidden"
+      />
+    </div>
   </div>
 
   <div class="flex items-start justify-between gap-3 rounded-card border border-border bg-background-alt px-3.5 py-3">

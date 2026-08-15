@@ -17,6 +17,8 @@ export const SETUP_KEYS = {
   appDomain: "instance.appDomain",
   federationEnabled: "instance.federationEnabled",
   emailMode: "email.mode",
+  bannerText: "instance.bannerText",
+  bannerImageUrl: "instance.bannerImageUrl",
 } as const;
 
 // Setup is complete once the wizard has finished — or, as a fallback, once any
@@ -111,15 +113,45 @@ export async function isTlsDomainAllowed(domain: string): Promise<boolean> {
 // Update the instance identity from the admin page (runtime config). Mirrors the
 // wizard, but usable after setup. An empty domain is stored as-is and falls back
 // to the env/default in getAppDomain, so clearing it reverts to the boot value.
+// `bannerText` follows the same clear-to-revert rule: an explicit empty string
+// is stored (falls back to the built-in sentence in the UI), `undefined` leaves
+// the current value untouched.
 export async function setInstanceIdentity(input: {
   appName?: string;
   appDomain?: string;
+  bannerText?: string;
 }): Promise<void> {
   const name = input.appName?.trim();
   if (name) await settingsRepo.set(SETUP_KEYS.appName, name);
   if (input.appDomain !== undefined) {
     await settingsRepo.set(SETUP_KEYS.appDomain, input.appDomain.trim());
   }
+  if (input.bannerText !== undefined) {
+    await settingsRepo.set(SETUP_KEYS.bannerText, input.bannerText.trim());
+  }
+}
+
+// The admin-set tagline for the signed-out visitor card, or null when unset —
+// callers fall back to the built-in "An independent <name> instance in the
+// fediverse." sentence in that case, so an unconfigured instance still reads
+// naturally.
+export async function getBannerText(): Promise<string | null> {
+  const fromDb = await settingsRepo.get<string>(SETUP_KEYS.bannerText);
+  return fromDb?.trim() || null;
+}
+
+// The admin-uploaded banner image URL for the signed-out visitor card, or null
+// when unset — callers fall back to the bundled default artwork.
+export async function getBannerImageUrl(): Promise<string | null> {
+  const fromDb = await settingsRepo.get<string>(SETUP_KEYS.bannerImageUrl);
+  return fromDb?.trim() || null;
+}
+
+// Persist (or, with `null`, clear) the banner image URL. Clearing only drops
+// the setting — the uploaded file itself is left on disk, same as removing an
+// avatar, since nothing else references it for cleanup.
+export async function setBannerImageUrl(url: string | null): Promise<void> {
+  await settingsRepo.set(SETUP_KEYS.bannerImageUrl, url ?? "");
 }
 
 // A public snapshot of the instance's identity, safe to expose unauthenticated.
@@ -128,13 +160,17 @@ export async function publicInfo(): Promise<{
   domain: string;
   federationEnabled: boolean;
   setupComplete: boolean;
+  bannerText: string | null;
+  bannerImageUrl: string | null;
 }> {
-  const [name, domain, setupComplete] = await Promise.all([
+  const [name, domain, setupComplete, bannerText, bannerImageUrl] = await Promise.all([
     getAppName(),
     getAppDomain(),
     isSetupComplete(),
+    getBannerText(),
+    getBannerImageUrl(),
   ]);
-  return { name, domain, federationEnabled: federationRunning(), setupComplete };
+  return { name, domain, federationEnabled: federationRunning(), setupComplete, bannerText, bannerImageUrl };
 }
 
 // Persists the wizard's instance settings and marks setup finished. The admin

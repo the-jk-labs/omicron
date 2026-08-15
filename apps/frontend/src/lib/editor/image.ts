@@ -11,6 +11,10 @@ const MAX_DIMENSION = 1600;
 // feeds); 160px covers that at 2x retina without shipping an oversized photo that
 // Lighthouse flags as larger than its displayed dimensions.
 export const AVATAR_MAX_DIMENSION = 160;
+// The signed-out visitor card banner (SideNav) renders at sidebar width, well
+// under 300px wide even on a wide desktop; 800px covers that at 2x-3x density
+// without shipping a full-bleed-sized photo for a thumbnail-sized slot.
+export const INSTANCE_BANNER_MAX_DIMENSION = 800;
 // WebP quality — a good size/quality trade-off for photographic content.
 const WEBP_QUALITY = 0.82;
 

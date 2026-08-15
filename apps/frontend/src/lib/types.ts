@@ -381,6 +381,10 @@ export type InstanceInfo = {
   domain: string;
   federationEnabled: boolean;
   setupComplete: boolean;
+  // Admin-customizable signed-out visitor card; null means "use the built-in
+  // default" (a generated sentence / the bundled artwork).
+  bannerText: string | null;
+  bannerImageUrl: string | null;
 };
 
 // Web-managed email settings. `EmailInput` is what the wizard/admin form sends
@@ -441,6 +445,8 @@ export type AdminInstance = {
   federationEnabled: boolean;
   federationRunning: boolean;
   sessionSecretManaged: boolean;
+  bannerText: string | null;
+  bannerImageUrl: string | null;
 };
 
 // ── moderation (admin only) ──
