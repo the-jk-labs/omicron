@@ -100,10 +100,18 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
 
     // admin instance identity (name + domain + federation toggle, restart-applied)
     adminInstance: () => api.get<AdminInstance>("/admin/instance"),
-    setAdminInstance: (body: { appName?: string; appDomain?: string; federationEnabled?: boolean }) =>
-      api.put<AdminInstance>("/admin/instance", body),
+    setAdminInstance: (body: {
+      appName?: string;
+      appDomain?: string;
+      federationEnabled?: boolean;
+      bannerText?: string;
+    }) => api.put<AdminInstance>("/admin/instance", body),
     // Rotate the auto-managed session secret (takes effect on restart, signs out).
     rotateSessionSecret: () => api.post<{ ok: true }>("/admin/instance/rotate-secret", {}),
+    // Signed-out visitor card banner image: upload a new one, or revert to default.
+    uploadInstanceBanner: (blob: Blob, contentType: string) =>
+      api.postRaw<AdminInstance>("/admin/instance/banner", blob, contentType),
+    removeInstanceBanner: () => api.del<AdminInstance>("/admin/instance/banner"),
 
     // admin security: the AI-scraper shield (Anubis), toggled live via Caddy.
     adminSecurity: () => api.get<SecuritySettings>("/admin/security"),
