@@ -6,9 +6,11 @@
 # them from files, so no credentials are ever hardcoded or hand-typed.
 #
 # Upgrades:
-#   git pull && docker compose up -d --build
+#   git pull && docker compose up -d --build && docker image prune -f && docker builder prune -f
 # Migrations run automatically on backend startup; data lives in the `pgdata`
 # volume and secrets in the `secrets` volume, so upgrades never lose content.
+# `image prune`/`builder prune` only drop untagged image layers and build
+# cache — they never touch a named volume, so this is safe to run every time.
 
 services:
   # Generates any missing secrets once, then exits. Postgres, the backend and

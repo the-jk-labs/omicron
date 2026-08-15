@@ -88,8 +88,17 @@ log "Building and starting the stack (first run compiles images; this can take a
 # shellcheck disable=SC2086
 $COMPOSE up -d --build
 
+# Drop dangling image layers and build cache left behind by the rebuild.
+# `image prune`/`builder prune` only ever remove untagged, unused layers — never
+# a named volume, so pgdata/uploads/secrets/etc. (and any running container)
+# are untouched. Runs on every install and upgrade so cache never piles up.
+log "Clearing build cache…"
+"$ENGINE" image prune -f >/dev/null 2>&1 || true
+"$ENGINE" builder prune -f >/dev/null 2>&1 || true
+
 log "Done. Omicron is starting."
 printf '  • Local:   http://localhost%s\n' "$([ -n "${HTTP_PORT:-}" ] && [ "${HTTP_PORT}" != "80" ] && printf ':%s' "$HTTP_PORT")"
 printf '  • Public:  point a DNS A record at this host, then finish the web wizard — HTTPS is automatic.\n'
 printf '  • Logs:    (cd %s && %s logs -f)\n' "$OMICRON_DIR" "$COMPOSE"
-printf '  • Upgrade: (cd %s && git pull && %s up -d --build)\n' "$OMICRON_DIR" "$COMPOSE"
+printf '  • Upgrade: (cd %s && git pull && %s up -d --build && %s image prune -f && %s builder prune -f)\n' \
+  "$OMICRON_DIR" "$COMPOSE" "$ENGINE" "$ENGINE"
