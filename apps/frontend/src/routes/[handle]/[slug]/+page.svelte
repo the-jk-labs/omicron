@@ -257,31 +257,22 @@
     <h1 class="mb-4 text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl">{post.title}</h1>
   {/if}
 
-  <div class="flex items-center gap-3 pb-8">
+  <div class="flex items-start gap-3 pb-8">
     <Avatar name={post.author.displayName} src={post.author.avatarUrl ?? undefined} size={44} />
-    <div class="text-sm">
+    <div class="min-w-0 flex-1 text-sm">
       <Button href={`/@${post.author.username}`} variant="plain" class="font-medium text-foreground hover:underline">
         {post.author.displayName}
       </Button>
-      <div class="flex flex-wrap items-center gap-2 text-muted-foreground">
+      <div class="flex flex-col gap-1 text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
         <span>{formatDateTime(post.createdAt, $timeZone)}</span>
-        <Separator.Root
-          orientation="vertical"
-          class="shrink-0 bg-border data-[orientation=vertical]:h-3 data-[orientation=vertical]:w-px"
-        />
+        <Separator.Root orientation="vertical" class="hidden shrink-0 bg-border sm:block sm:h-3 sm:w-px" />
         <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
         {#if post.remote && originInstance}
-          <Separator.Root
-            orientation="vertical"
-            class="shrink-0 bg-border data-[orientation=vertical]:h-3 data-[orientation=vertical]:w-px"
-          />
+          <Separator.Root orientation="vertical" class="hidden shrink-0 bg-border sm:block sm:h-3 sm:w-px" />
           <span class="flex items-center gap-1"><Icon name="globe" size={13} /> {originInstance}</span>
         {/if}
         {#if post.language}
-          <Separator.Root
-            orientation="vertical"
-            class="shrink-0 bg-border data-[orientation=vertical]:h-3 data-[orientation=vertical]:w-px"
-          />
+          <Separator.Root orientation="vertical" class="hidden shrink-0 bg-border sm:block sm:h-3 sm:w-px" />
           <span class="flex items-center gap-1"><Icon name="languages" size={13} /> {languageLabel(post.language)}</span
           >
         {/if}
@@ -290,7 +281,7 @@
 
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
-        class="ml-auto inline-flex size-9 items-center justify-center rounded-full border border-input text-muted-foreground shadow-btn hover:bg-muted hover:text-foreground active:scale-[0.98]"
+        class="ml-auto inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-input text-muted-foreground shadow-btn hover:bg-muted hover:text-foreground active:scale-[0.98]"
         aria-label="Post options"
       >
         <Icon name="more" size={18} />
