@@ -290,7 +290,7 @@
 
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
-        class="ml-auto inline-flex size-9 items-center justify-center rounded-full border border-input text-muted-foreground shadow-btn hover:bg-muted hover:text-foreground active:scale-[0.98]"
+        class="ml-auto inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-input text-muted-foreground shadow-btn hover:bg-muted hover:text-foreground active:scale-[0.98]"
         aria-label="Post options"
       >
         <Icon name="more" size={18} />
