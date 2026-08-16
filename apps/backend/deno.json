@@ -31,7 +31,7 @@
     "sanitize-html": "npm:sanitize-html@2.17.7",
     "markdown-it": "npm:markdown-it@15.0.0",
     "@vscode/markdown-it-katex": "npm:@vscode/markdown-it-katex@1.1.2",
-    "katex": "npm:katex@0.16.47",
+    "katex": "npm:katex@0.18.4",
     "@imagemagick/magick-wasm": "npm:@imagemagick/magick-wasm@0.0.35",
     "@imagemagick/magick-wasm/magick.wasm": "npm:@imagemagick/magick-wasm@0.0.35/magick.wasm",
     "zod": "npm:zod@^4.0",
