@@ -83,7 +83,7 @@
 </script>
 
 <Dialog.Root bind:open {onOpenChange}>
-  <Dialog.Trigger class="-mx-1 rounded-button px-1 hover:text-foreground focus-visible:outline-none">
+  <Dialog.Trigger class="-mx-1 rounded-button px-1 hover:text-foreground focus-visible:outline-hidden">
     {@render children()}
   </Dialog.Trigger>
 
@@ -98,7 +98,7 @@
         <Dialog.Title class="text-base font-semibold tracking-tight text-foreground">
           {title}
         </Dialog.Title>
-        <Dialog.Close class="text-muted-foreground hover:text-foreground focus-visible:outline-none" aria-label="Close">
+        <Dialog.Close class="text-muted-foreground hover:text-foreground focus-visible:outline-hidden" aria-label="Close">
           <Icon name="close" size={18} />
         </Dialog.Close>
       </div>
@@ -133,7 +133,7 @@
                   <Button.Root
                     onclick={() => removeFollower(actor)}
                     disabled={removing.has(actor.id)}
-                    class="shrink-0 rounded-input border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-btn hover:bg-muted focus-visible:outline-none disabled:opacity-50 data-[confirm]:border-destructive data-[confirm]:text-destructive"
+                    class="shrink-0 rounded-input border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-btn hover:bg-muted focus-visible:outline-hidden disabled:opacity-50 data-confirm:border-destructive data-confirm:text-destructive"
                     data-confirm={confirming.has(actor.id) ? "" : undefined}
                   >
                     {confirming.has(actor.id) ? "Confirm" : "Remove"}

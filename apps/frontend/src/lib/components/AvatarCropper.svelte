@@ -176,7 +176,7 @@
             </span>
             <Slider.Thumb
               index={0}
-              class="block size-5 cursor-pointer rounded-full border border-border-input bg-background shadow-mini transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 active:scale-95"
+              class="block size-5 cursor-pointer rounded-full border border-border-input bg-background shadow-mini transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 active:scale-95"
             />
           </Slider.Root>
           <Icon name="plus" size={16} class="shrink-0 text-muted-foreground" />

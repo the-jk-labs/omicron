@@ -93,7 +93,7 @@
         <Dialog.Title class="text-base font-semibold tracking-tight text-foreground">
           {editing ? "Edit list" : "New list"}
         </Dialog.Title>
-        <Dialog.Close class="text-muted-foreground hover:text-foreground focus-visible:outline-none" aria-label="Close">
+        <Dialog.Close class="text-muted-foreground hover:text-foreground focus-visible:outline-hidden" aria-label="Close">
           <Icon name="close" size={18} />
         </Dialog.Close>
       </div>
@@ -107,7 +107,7 @@
               bind:value={title}
               maxlength="100"
               placeholder="e.g. Weekend reads"
-              class="h-10 rounded-input border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
+              class="h-10 rounded-input border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-foreground/20"
             />
           </div>
         {/if}
@@ -122,7 +122,7 @@
             maxlength="500"
             rows="3"
             placeholder="What's this list about?"
-            class="resize-none rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
+            class="resize-none rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-foreground/20"
           ></textarea>
         </div>
 
@@ -134,7 +134,7 @@
           <Switch.Root
             id="list-private"
             bind:checked={isPrivate}
-            class="peer inline-flex h-[28px] min-h-[28px] w-[48px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10"
+            class="peer inline-flex h-[28px] min-h-[28px] w-[48px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10"
           >
             <Switch.Thumb
               class="pointer-events-none block size-[22px] shrink-0 rounded-full bg-background transition-transform data-[state=checked]:translate-x-[20px] data-[state=unchecked]:translate-x-0"

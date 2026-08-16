@@ -31,7 +31,7 @@
   // Height is pinned rather than derived from padding, so the input and the
   // Create button beside it are the same 40px — `Button size="default"` is h-10.
   const field =
-    "h-10 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground";
+    "h-10 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-hidden placeholder:text-muted-foreground focus:border-foreground";
 
   async function load() {
     loading = true;

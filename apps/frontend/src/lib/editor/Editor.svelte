@@ -439,7 +439,7 @@
     "rounded-9px bg-background-alt hover:bg-muted active:bg-dark-10 inline-flex h-10 shrink-0 items-center gap-1 px-2.5 transition-all active:scale-[0.98]";
   // Verbatim Bits UI docs DropdownMenu.Item class (v3 syntax), matching the post menu.
   const itemClass =
-    "rounded-button data-[highlighted]:bg-muted !ring-0 !ring-transparent flex h-9 w-full cursor-pointer select-none items-center gap-2.5 px-2.5 text-sm font-medium focus-visible:outline-none";
+    "rounded-button data-highlighted:bg-muted ring-0! ring-transparent! flex h-9 w-full cursor-pointer select-none items-center gap-2.5 px-2.5 text-sm font-medium focus-visible:outline-hidden";
 </script>
 
 <div>
@@ -460,7 +460,7 @@
         <DropdownMenu.Content
           sideOffset={8}
           align="start"
-          class="z-30 w-[200px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-none"
+          class="z-30 w-[200px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-hidden"
         >
           <DropdownMenu.Item onSelect={setParagraph} class={`${itemClass} ${headingLevel === 0 ? "bg-muted" : ""}`}>
             <Icon name="paragraph" size={16} /> Normal text
@@ -497,7 +497,7 @@
         onclick={openCodeSettings}
         aria-label="Code block language and filename"
         title="Language and filename"
-        class={`${headingTrigger} max-w-[11rem] text-sm text-foreground/60`}
+        class={`${headingTrigger} max-w-44 text-sm text-foreground/60`}
       >
         <Icon name="settings" size={16} class="shrink-0" />
         <span class="truncate">{codeButtonLabel}</span>
@@ -521,7 +521,7 @@
           <DropdownMenu.Content
             sideOffset={8}
             align="start"
-            class="z-30 w-[200px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-none"
+            class="z-30 w-[200px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-hidden"
           >
             {#each tableActions as action (action.label)}
               {#if action.divider}
@@ -591,21 +591,21 @@
           <Select.Root type="single" bind:value={codeLanguage}>
             <Select.Trigger
               id="code-language"
-              class="inline-flex h-10 w-full items-center justify-between gap-2 rounded-input border border-border-input bg-background px-3 text-sm shadow-btn outline-none transition-colors focus:border-foreground"
+              class="inline-flex h-10 w-full items-center justify-between gap-2 rounded-input border border-border-input bg-background px-3 text-sm shadow-btn outline-hidden transition-colors focus:border-foreground"
             >
               <span class="truncate">{selectedLanguageLabel}</span>
               <Icon name="chevronDown" size={15} class="shrink-0 text-muted-foreground" />
             </Select.Trigger>
             <Select.Portal>
               <Select.Content
-                class="z-50 max-h-72 w-[--bits-select-anchor-width] overflow-y-auto rounded-card border border-muted bg-background p-1 shadow-popover"
+                class="z-50 max-h-72 w-(--bits-select-anchor-width) overflow-y-auto rounded-card border border-muted bg-background p-1 shadow-popover"
                 sideOffset={6}
               >
                 <Select.Viewport>
                   <Select.Item
                     value=""
                     label="Auto-detect"
-                    class="flex h-9 w-full select-none items-center gap-2 rounded-button px-2 text-sm outline-none data-[highlighted]:bg-muted"
+                    class="flex h-9 w-full select-none items-center gap-2 rounded-button px-2 text-sm outline-hidden data-highlighted:bg-muted"
                   >
                     {#snippet children({ selected: isSel })}
                       <span class="truncate text-muted-foreground">Auto-detect</span>
@@ -618,7 +618,7 @@
                     <Select.Item
                       value={lang.value}
                       label={lang.label}
-                      class="flex h-9 w-full select-none items-center gap-2 rounded-button px-2 text-sm outline-none data-[highlighted]:bg-muted"
+                      class="flex h-9 w-full select-none items-center gap-2 rounded-button px-2 text-sm outline-hidden data-highlighted:bg-muted"
                     >
                       {#snippet children({ selected: isSel })}
                         <span class="truncate">{lang.label}</span>
@@ -643,7 +643,7 @@
             type="text"
             maxlength={MAX_CODE_TITLE}
             placeholder="src/main.ts"
-            class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-none placeholder:text-muted-foreground focus:border-foreground"
+            class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
           />
         </div>
         <div class="flex justify-end gap-2">
@@ -687,7 +687,7 @@
             type="text"
             placeholder="A rabbit peering out of its burrow"
             autofocus
-            class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-none placeholder:text-muted-foreground focus:border-foreground"
+            class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
           />
         </div>
         <div class="flex justify-end gap-2">
@@ -727,7 +727,7 @@
             type="url"
             placeholder="https://example.com"
             autofocus
-            class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-none placeholder:text-muted-foreground focus:border-foreground"
+            class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
           />
         </div>
         <div class="flex justify-end gap-2">

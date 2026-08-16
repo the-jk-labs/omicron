@@ -75,7 +75,7 @@
          the bottom (mt-auto) and sticky with the rest of the rail, so it stays
          on screen rather than scrolling away with the hero. -->
     <div class="mt-auto flex flex-col overflow-hidden rounded-card border border-border bg-background-alt text-xs">
-      <img src={instance?.bannerImageUrl || welcomeBanner} alt="" class="aspect-[2/1] w-full object-cover" />
+      <img src={instance?.bannerImageUrl || welcomeBanner} alt="" class="aspect-2/1 w-full object-cover" />
 
       <div class="flex flex-col gap-2.5 p-3">
         <div>

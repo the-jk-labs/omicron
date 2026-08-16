@@ -76,7 +76,7 @@
   }
 
   const field =
-    "rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground";
+    "rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-hidden placeholder:text-muted-foreground focus:border-foreground";
   const labelClass = "text-sm font-medium leading-none";
 </script>
 

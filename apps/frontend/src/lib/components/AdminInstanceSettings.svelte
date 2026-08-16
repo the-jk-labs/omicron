@@ -38,7 +38,7 @@
   let rotateError = $state("");
 
   const field =
-    "h-11 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground";
+    "h-11 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus:border-foreground";
   const labelClass = "text-sm font-medium leading-none text-foreground";
 
   // A saved federation choice that differs from what's mounted needs a restart.
@@ -182,7 +182,7 @@
       <span class={labelClass}>Banner image</span>
       <div class="flex items-center gap-3">
         <div
-          class="aspect-[2/1] w-32 shrink-0 overflow-hidden rounded-card border border-border bg-background {bannerImageUrl
+          class="aspect-2/1 w-32 shrink-0 overflow-hidden rounded-card border border-border bg-background {bannerImageUrl
             ? ''
             : 'flex items-center justify-center text-muted-foreground'}"
         >
@@ -243,7 +243,7 @@
       id="admin-federation"
       bind:checked={federationEnabled}
       disabled={loading || saving}
-      class="peer inline-flex h-[28px] min-h-[28px] w-[48px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset"
+      class="peer inline-flex h-[28px] min-h-[28px] w-[48px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset"
     >
       <Switch.Thumb
         class="pointer-events-none block size-[22px] shrink-0 rounded-full bg-background transition-transform data-[state=checked]:translate-x-[20px] data-[state=unchecked]:translate-x-0 data-[state=unchecked]:shadow-mini"
@@ -293,7 +293,7 @@
                   Rotate session secret?
                 </Dialog.Title>
                 <Dialog.Close
-                  class="text-muted-foreground hover:text-foreground focus-visible:outline-none"
+                  class="text-muted-foreground hover:text-foreground focus-visible:outline-hidden"
                   aria-label="Close"
                 >
                   <Icon name="close" size={18} />

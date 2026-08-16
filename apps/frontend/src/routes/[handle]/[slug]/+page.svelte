@@ -152,9 +152,9 @@
     }
   }
 
-  // Verbatim Bits UI docs DropdownMenu.Item class (v3 syntax).
+  // Verbatim Bits UI docs DropdownMenu.Item class.
   const itemClass =
-    "rounded-button data-[highlighted]:bg-muted !ring-0 !ring-transparent flex h-10 w-full cursor-pointer select-none items-center gap-2.5 py-3 pl-3 pr-1.5 text-sm font-medium focus-visible:outline-none";
+    "rounded-button data-highlighted:bg-muted ring-0! ring-transparent! flex h-10 w-full cursor-pointer select-none items-center gap-2.5 py-3 pl-3 pr-1.5 text-sm font-medium focus-visible:outline-hidden";
 
   // Share via the native sheet where available, falling back to copying the link.
   async function sharePost() {
@@ -290,7 +290,7 @@
         <DropdownMenu.Content
           sideOffset={8}
           align="end"
-          class="z-30 w-[180px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-none"
+          class="z-30 w-[180px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-hidden"
         >
           <DropdownMenu.Item onSelect={sharePost} class={itemClass}>
             <Icon name={shared ? "check" : "share"} size={18} />
@@ -336,7 +336,7 @@
          default in the browser's estimation; `decoding="async"` keeps decode
          off the main thread. Deliberately not `loading="lazy"` — that would
          delay the very element being timed. -->
-    <div class="mb-8 aspect-[16/9] max-h-[28rem] w-full overflow-hidden rounded-card border border-border">
+    <div class="mb-8 aspect-video max-h-112 w-full overflow-hidden rounded-card border border-border">
       <!-- Decorative: the headline above it already names the post. -->
       <img
         src={post.coverUrl}
@@ -469,7 +469,7 @@
             rows={3}
             maxlength={1000}
             placeholder="e.g. spam, harassment, illegal content"
-            class="resize-none rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-none placeholder:text-muted-foreground focus:border-foreground"
+            class="resize-none rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
           ></textarea>
           {#if reportError}<p class="text-sm text-destructive">{reportError}</p>{/if}
         </div>

@@ -313,7 +313,7 @@
                 <div class="flex items-center gap-2">
                   {#if i === 0 && reach(p) > 0}
                     <span
-                      class="rounded-9px bg-accent px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent-foreground"
+                      class="rounded-9px bg-accent px-1.5 py-0.5 text-xxs font-semibold uppercase tracking-wide text-accent-foreground"
                       >Top</span
                     >
                   {/if}

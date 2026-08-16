@@ -226,7 +226,7 @@
   }
 
   const field =
-    "rounded-input border border-input bg-background shadow-btn w-full px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground resize-none";
+    "rounded-input border border-input bg-background shadow-btn w-full px-3.5 py-2.5 text-sm outline-hidden placeholder:text-muted-foreground focus:border-foreground resize-none";
 
   // Bundled once and passed down to every CommentNode.
   const actions: CommentActions = {

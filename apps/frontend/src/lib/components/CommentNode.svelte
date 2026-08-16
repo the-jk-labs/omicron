@@ -77,7 +77,7 @@
         </div>
       </form>
     {:else}
-      <p class="mt-1 whitespace-pre-wrap break-words text-sm text-foreground-alt">{comment.content}</p>
+      <p class="mt-1 whitespace-pre-wrap wrap-break-word text-sm text-foreground-alt">{comment.content}</p>
     {/if}
 
     <!-- Actions (negative margin offsets the buttons' padding so the heart

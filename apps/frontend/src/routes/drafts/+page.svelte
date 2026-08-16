@@ -93,7 +93,7 @@
             variant="ghost"
             aria-label="Delete draft"
             title="Delete draft"
-            class="inline-flex size-9 items-center justify-center !px-0 text-muted-foreground hover:text-destructive"
+            class="inline-flex size-9 items-center justify-center px-0! text-muted-foreground hover:text-destructive"
           >
             <Icon name="trash" size={16} />
           </Button>

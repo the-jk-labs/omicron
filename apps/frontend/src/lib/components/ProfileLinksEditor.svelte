@@ -37,12 +37,12 @@
   }
 
   const triggerClass =
-    "rounded-input border-border-input bg-background shadow-btn data-[placeholder]:text-muted-foreground inline-flex h-10 w-40 shrink-0 items-center justify-between gap-2 border px-3 text-sm transition-colors focus:border-foreground outline-none";
+    "rounded-input border-border-input bg-background shadow-btn data-placeholder:text-muted-foreground inline-flex h-10 w-40 shrink-0 items-center justify-between gap-2 border px-3 text-sm transition-colors focus:border-foreground outline-hidden";
   const inputClass =
-    "rounded-input border-input bg-background shadow-btn placeholder:text-muted-foreground focus:border-foreground h-10 w-full border px-3 text-sm outline-none transition-colors";
+    "rounded-input border-input bg-background shadow-btn placeholder:text-muted-foreground focus:border-foreground h-10 w-full border px-3 text-sm outline-hidden transition-colors";
   const inputWrapClass =
     "rounded-input border-input bg-background shadow-btn focus-within:border-foreground flex h-10 w-full items-center border px-3 text-sm transition-colors";
-  const bareInputClass = "placeholder:text-muted-foreground text-foreground w-full min-w-0 bg-transparent outline-none";
+  const bareInputClass = "placeholder:text-muted-foreground text-foreground w-full min-w-0 bg-transparent outline-hidden";
   const iconBtnClass =
     "text-muted-foreground hover:bg-muted hover:text-foreground inline-flex size-8 shrink-0 items-center justify-center rounded-button transition-colors disabled:pointer-events-none disabled:opacity-40";
 </script>
@@ -69,7 +69,7 @@
                 <Select.Item
                   value={p.key}
                   label={p.label}
-                  class="flex h-9 w-44 select-none items-center gap-2 rounded-button px-2 text-sm outline-none data-[highlighted]:bg-muted"
+                  class="flex h-9 w-44 select-none items-center gap-2 rounded-button px-2 text-sm outline-hidden data-highlighted:bg-muted"
                 >
                   {#snippet children({ selected })}
                     <ProfileLinkIcon platform={p.key} size={16} />

@@ -352,7 +352,7 @@
   }
 
   const field =
-    "rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground";
+    "rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-hidden placeholder:text-muted-foreground focus:border-foreground";
   const labelClass = "text-sm font-medium leading-none";
 </script>
 
@@ -624,7 +624,7 @@
         {#if availableLanguages.length > 0}
           <Select.Root type="single" value={addLangValue} onValueChange={addLanguage}>
             <Select.Trigger
-              class="inline-flex h-9 items-center gap-1.5 rounded-input border border-border-input bg-background px-3 text-sm text-muted-foreground shadow-btn outline-none transition-colors hover:text-foreground focus:border-foreground"
+              class="inline-flex h-9 items-center gap-1.5 rounded-input border border-border-input bg-background px-3 text-sm text-muted-foreground shadow-btn outline-hidden transition-colors hover:text-foreground focus:border-foreground"
               aria-label="Add a language"
             >
               <Icon name="plus" size={15} /> Add language
@@ -639,7 +639,7 @@
                     <Select.Item
                       value={lang.code}
                       label={lang.name}
-                      class="flex h-9 w-full select-none items-center gap-2 rounded-button px-2 text-sm outline-none data-[highlighted]:bg-muted"
+                      class="flex h-9 w-full select-none items-center gap-2 rounded-button px-2 text-sm outline-hidden data-highlighted:bg-muted"
                     >
                       <span class="truncate">{lang.name}</span>
                       <span class="truncate text-muted-foreground">{lang.native}</span>
@@ -676,7 +676,7 @@
         checked={isPrivate}
         onCheckedChange={togglePrivacy}
         disabled={privacyBusy}
-        class="peer inline-flex h-[36px] min-h-[36px] w-[60px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset"
+        class="peer inline-flex h-[36px] min-h-[36px] w-[60px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset"
       >
         <Switch.Thumb
           class="pointer-events-none block size-[30px] shrink-0 rounded-full bg-background transition-transform data-[state=checked]:translate-x-6 data-[state=unchecked]:translate-x-0 data-[state=unchecked]:shadow-mini"

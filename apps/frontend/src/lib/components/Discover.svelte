@@ -102,7 +102,7 @@
       </h2>
       <div class="flex flex-wrap gap-2">
         {#each tags as tag (tag.slug)}
-          <Button href={`/tags/${tag.slug}`} variant="outline" size="xs" class="rounded-full !font-medium">
+          <Button href={`/tags/${tag.slug}`} variant="outline" size="xs" class="rounded-full font-medium!">
             <Icon name="tag" size={13} />
             {tag.name}
             <span class="text-muted-foreground">{tag.postCount}</span>

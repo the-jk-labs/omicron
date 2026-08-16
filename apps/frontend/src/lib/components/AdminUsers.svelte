@@ -76,7 +76,7 @@
       bind:value={query}
       oninput={onSearch}
       placeholder="Search by handle or name"
-      class="w-full rounded-input border border-input bg-background py-2.5 pl-9 pr-3.5 text-sm shadow-btn outline-none placeholder:text-muted-foreground focus:border-foreground"
+      class="w-full rounded-input border border-input bg-background py-2.5 pl-9 pr-3.5 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
     />
   </div>
 

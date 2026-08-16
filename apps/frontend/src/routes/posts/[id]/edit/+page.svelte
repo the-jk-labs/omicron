@@ -97,7 +97,7 @@
 <input
   placeholder="Title"
   bind:value={title}
-  class="mb-6 w-full border-none bg-transparent text-3xl font-bold tracking-tight text-foreground placeholder:text-muted-foreground focus:outline-none sm:text-4xl"
+  class="mb-6 w-full border-none bg-transparent text-3xl font-bold tracking-tight text-foreground placeholder:text-muted-foreground focus:outline-hidden sm:text-4xl"
 />
 
 <SummaryField bind:summary />

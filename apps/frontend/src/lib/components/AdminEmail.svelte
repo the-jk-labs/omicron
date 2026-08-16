@@ -116,10 +116,10 @@
   }
 
   const field =
-    "h-11 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground";
+    "h-11 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus:border-foreground";
   const labelClass = "text-sm font-medium leading-none text-foreground";
   const radioItem =
-    "flex items-start gap-3 rounded-card border border-border bg-background p-3.5 text-left shadow-btn transition-colors data-[state=checked]:border-foreground hover:border-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground";
+    "flex items-start gap-3 rounded-card border border-border bg-background p-3.5 text-left shadow-btn transition-colors data-[state=checked]:border-foreground hover:border-foreground/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-foreground";
 
   function domainFromAddress(addr: string): string {
     const m = addr.match(/<([^>]+)>/);
@@ -424,7 +424,7 @@
                     </button>
                   </td>
                   <td class="px-3 py-2 text-muted-foreground">{row.rec.type}</td>
-                  <td class="max-w-[22rem] break-all px-3 py-2 text-foreground">
+                  <td class="max-w-88 break-all px-3 py-2 text-foreground">
                     <button
                       type="button"
                       class="text-left hover:text-foreground-alt"
