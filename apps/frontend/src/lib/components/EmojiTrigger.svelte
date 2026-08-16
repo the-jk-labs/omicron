@@ -37,7 +37,7 @@
     <Popover.Content
       sideOffset={8}
       {align}
-      class="z-30 w-[22rem] max-w-[94vw] overflow-hidden rounded-card border border-muted bg-background shadow-popover focus-visible:outline-none"
+      class="z-30 w-88 max-w-[94vw] overflow-hidden rounded-card border border-muted bg-background shadow-popover focus-visible:outline-hidden"
     >
       <EmojiPicker onPick={pick} />
     </Popover.Content>

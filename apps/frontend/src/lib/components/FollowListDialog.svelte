@@ -83,7 +83,7 @@
 </script>
 
 <Dialog.Root bind:open {onOpenChange}>
-  <Dialog.Trigger class="-mx-1 rounded-button px-1 hover:text-foreground focus-visible:outline-none">
+  <Dialog.Trigger class="-mx-1 rounded-button px-1 hover:text-foreground focus-visible:outline-hidden">
     {@render children()}
   </Dialog.Trigger>
 
@@ -92,13 +92,16 @@
       class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="fixed left-1/2 top-1/2 z-50 flex max-h-[80vh] w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card border border-border bg-background shadow-popover sm:max-w-[440px]"
+      class="fixed top-1/2 left-1/2 z-50 flex max-h-[80vh] w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card border border-border bg-background shadow-popover sm:max-w-[440px]"
     >
       <div class="flex items-center justify-between border-b border-border px-5 py-4">
         <Dialog.Title class="text-base font-semibold tracking-tight text-foreground">
           {title}
         </Dialog.Title>
-        <Dialog.Close class="text-muted-foreground hover:text-foreground focus-visible:outline-none" aria-label="Close">
+        <Dialog.Close
+          class="text-muted-foreground hover:text-foreground focus-visible:outline-hidden"
+          aria-label="Close"
+        >
           <Icon name="close" size={18} />
         </Dialog.Close>
       </div>
@@ -133,7 +136,7 @@
                   <Button.Root
                     onclick={() => removeFollower(actor)}
                     disabled={removing.has(actor.id)}
-                    class="shrink-0 rounded-input border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-btn hover:bg-muted focus-visible:outline-none disabled:opacity-50 data-[confirm]:border-destructive data-[confirm]:text-destructive"
+                    class="shrink-0 rounded-input border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-btn hover:bg-muted focus-visible:outline-hidden disabled:opacity-50 data-confirm:border-destructive data-confirm:text-destructive"
                     data-confirm={confirming.has(actor.id) ? "" : undefined}
                   >
                     {confirming.has(actor.id) ? "Confirm" : "Remove"}

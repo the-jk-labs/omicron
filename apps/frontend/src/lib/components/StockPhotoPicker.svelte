@@ -108,11 +108,14 @@
       class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card border border-border bg-background shadow-popover sm:max-w-[720px]"
+      class="fixed top-1/2 left-1/2 z-50 flex max-h-[85vh] w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card border border-border bg-background shadow-popover sm:max-w-[720px]"
     >
       <div class="flex items-center justify-between border-b border-border px-5 py-4">
         <Dialog.Title class="text-base font-semibold tracking-tight text-foreground">Choose a photo</Dialog.Title>
-        <Dialog.Close class="text-muted-foreground hover:text-foreground focus-visible:outline-none" aria-label="Close">
+        <Dialog.Close
+          class="text-muted-foreground hover:text-foreground focus-visible:outline-hidden"
+          aria-label="Close"
+        >
           <Icon name="close" size={18} />
         </Dialog.Close>
       </div>
@@ -144,7 +147,7 @@
             bind:value={query}
             placeholder="Search free photos — mountains, desk, coffee…"
             aria-label="Search photos"
-            class="h-10 min-w-0 flex-1 rounded-input border border-input bg-background px-3.5 text-sm shadow-btn outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground"
+            class="h-10 min-w-0 flex-1 rounded-input border border-input bg-background px-3.5 text-sm shadow-btn outline-hidden transition-colors placeholder:text-muted-foreground focus:border-foreground"
           />
           <Button type="submit" variant="solid" size="sm" disabled={searching || !query.trim()}>
             {searching ? "Searching…" : "Search"}
@@ -164,7 +167,7 @@
                 <button
                   type="button"
                   onclick={() => pick(photo)}
-                  class="group aspect-[4/3] overflow-hidden rounded-card border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground"
+                  class="group aspect-4/3 overflow-hidden rounded-card border border-border focus-visible:ring-2 focus-visible:ring-foreground focus-visible:outline-hidden"
                 >
                   <img
                     src={photo.thumbUrl}

@@ -44,7 +44,7 @@
 >
   {#each tags as tag, i (tag)}
     <span
-      class="inline-flex items-center gap-1 rounded-full bg-muted py-1 pl-3 pr-1.5 text-sm font-medium text-foreground"
+      class="inline-flex items-center gap-1 rounded-full bg-muted py-1 pr-1.5 pl-3 text-sm font-medium text-foreground"
     >
       #{tag}
       <button
@@ -64,7 +64,7 @@
       onkeydown={onKeydown}
       onblur={commit}
       placeholder={tags.length ? "Add another tag" : "Add tags (press Enter)"}
-      class="min-w-[8rem] flex-1 bg-transparent py-1 text-sm outline-none placeholder:text-muted-foreground"
+      class="min-w-32 flex-1 bg-transparent py-1 text-sm outline-hidden placeholder:text-muted-foreground"
     />
   {/if}
 </div>

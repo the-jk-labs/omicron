@@ -439,7 +439,7 @@
     "rounded-9px bg-background-alt hover:bg-muted active:bg-dark-10 inline-flex h-10 shrink-0 items-center gap-1 px-2.5 transition-all active:scale-[0.98]";
   // Verbatim Bits UI docs DropdownMenu.Item class (v3 syntax), matching the post menu.
   const itemClass =
-    "rounded-button data-[highlighted]:bg-muted !ring-0 !ring-transparent flex h-9 w-full cursor-pointer select-none items-center gap-2.5 px-2.5 text-sm font-medium focus-visible:outline-none";
+    "rounded-button data-highlighted:bg-muted ring-0! ring-transparent! flex h-9 w-full cursor-pointer select-none items-center gap-2.5 px-2.5 text-sm font-medium focus-visible:outline-hidden";
 </script>
 
 <div>
@@ -460,7 +460,7 @@
         <DropdownMenu.Content
           sideOffset={8}
           align="start"
-          class="z-30 w-[200px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-none"
+          class="z-30 w-[200px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-hidden"
         >
           <DropdownMenu.Item onSelect={setParagraph} class={`${itemClass} ${headingLevel === 0 ? "bg-muted" : ""}`}>
             <Icon name="paragraph" size={16} /> Normal text
@@ -497,7 +497,7 @@
         onclick={openCodeSettings}
         aria-label="Code block language and filename"
         title="Language and filename"
-        class={`${headingTrigger} max-w-[11rem] text-sm text-foreground/60`}
+        class={`${headingTrigger} max-w-44 text-sm text-foreground/60`}
       >
         <Icon name="settings" size={16} class="shrink-0" />
         <span class="truncate">{codeButtonLabel}</span>
@@ -521,7 +521,7 @@
           <DropdownMenu.Content
             sideOffset={8}
             align="start"
-            class="z-30 w-[200px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-none"
+            class="z-30 w-[200px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-hidden"
           >
             {#each tableActions as action (action.label)}
               {#if action.divider}
@@ -562,7 +562,7 @@
   <div bind:this={element}></div>
 
   <!-- Bottom right, out of the way: read when wanted, ignored otherwise. -->
-  <p class="mt-2 flex justify-end gap-2 text-xs tabular-nums text-muted-foreground">
+  <p class="mt-2 flex justify-end gap-2 text-xs text-muted-foreground tabular-nums">
     <span>{count(stats.characters, "character")}</span>
     <span aria-hidden="true">·</span>
     <span>{count(stats.words, "word")}</span>
@@ -579,7 +579,7 @@
       class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[420px]"
+      class="fixed top-1/2 left-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[420px]"
     >
       <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Code block</Dialog.Title>
       <Dialog.Description class="mt-1 text-sm text-muted-foreground">
@@ -587,25 +587,25 @@
       </Dialog.Description>
       <form onsubmit={applyCodeSettings} class="mt-4 flex flex-col gap-4">
         <div class="flex flex-col gap-1.5">
-          <Label.Root for="code-language" class="text-sm font-medium leading-none">Language</Label.Root>
+          <Label.Root for="code-language" class="text-sm leading-none font-medium">Language</Label.Root>
           <Select.Root type="single" bind:value={codeLanguage}>
             <Select.Trigger
               id="code-language"
-              class="inline-flex h-10 w-full items-center justify-between gap-2 rounded-input border border-border-input bg-background px-3 text-sm shadow-btn outline-none transition-colors focus:border-foreground"
+              class="inline-flex h-10 w-full items-center justify-between gap-2 rounded-input border border-border-input bg-background px-3 text-sm shadow-btn outline-hidden transition-colors focus:border-foreground"
             >
               <span class="truncate">{selectedLanguageLabel}</span>
               <Icon name="chevronDown" size={15} class="shrink-0 text-muted-foreground" />
             </Select.Trigger>
             <Select.Portal>
               <Select.Content
-                class="z-50 max-h-72 w-[--bits-select-anchor-width] overflow-y-auto rounded-card border border-muted bg-background p-1 shadow-popover"
+                class="z-50 max-h-72 w-(--bits-select-anchor-width) overflow-y-auto rounded-card border border-muted bg-background p-1 shadow-popover"
                 sideOffset={6}
               >
                 <Select.Viewport>
                   <Select.Item
                     value=""
                     label="Auto-detect"
-                    class="flex h-9 w-full select-none items-center gap-2 rounded-button px-2 text-sm outline-none data-[highlighted]:bg-muted"
+                    class="flex h-9 w-full items-center gap-2 rounded-button px-2 text-sm outline-hidden select-none data-highlighted:bg-muted"
                   >
                     {#snippet children({ selected: isSel })}
                       <span class="truncate text-muted-foreground">Auto-detect</span>
@@ -618,7 +618,7 @@
                     <Select.Item
                       value={lang.value}
                       label={lang.label}
-                      class="flex h-9 w-full select-none items-center gap-2 rounded-button px-2 text-sm outline-none data-[highlighted]:bg-muted"
+                      class="flex h-9 w-full items-center gap-2 rounded-button px-2 text-sm outline-hidden select-none data-highlighted:bg-muted"
                     >
                       {#snippet children({ selected: isSel })}
                         <span class="truncate">{lang.label}</span>
@@ -634,7 +634,7 @@
           </Select.Root>
         </div>
         <div class="flex flex-col gap-1.5">
-          <Label.Root for="code-title" class="text-sm font-medium leading-none">
+          <Label.Root for="code-title" class="text-sm leading-none font-medium">
             Filename <span class="font-normal text-muted-foreground">(optional)</span>
           </Label.Root>
           <input
@@ -643,7 +643,7 @@
             type="text"
             maxlength={MAX_CODE_TITLE}
             placeholder="src/main.ts"
-            class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-none placeholder:text-muted-foreground focus:border-foreground"
+            class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
           />
         </div>
         <div class="flex justify-end gap-2">
@@ -670,7 +670,7 @@
       class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[420px]"
+      class="fixed top-1/2 left-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[420px]"
     >
       <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Describe this image</Dialog.Title>
       <Dialog.Description class="mt-1 text-sm text-muted-foreground">
@@ -679,7 +679,7 @@
       </Dialog.Description>
       <form onsubmit={applyAlt} class="mt-4 flex flex-col gap-4">
         <div class="flex flex-col gap-1.5">
-          <Label.Root for="image-alt" class="text-sm font-medium leading-none">Alt text</Label.Root>
+          <Label.Root for="image-alt" class="text-sm leading-none font-medium">Alt text</Label.Root>
           <!-- svelte-ignore a11y_autofocus -->
           <input
             id="image-alt"
@@ -687,7 +687,7 @@
             type="text"
             placeholder="A rabbit peering out of its burrow"
             autofocus
-            class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-none placeholder:text-muted-foreground focus:border-foreground"
+            class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
           />
         </div>
         <div class="flex justify-end gap-2">
@@ -714,12 +714,12 @@
       class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[420px]"
+      class="fixed top-1/2 left-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[420px]"
     >
       <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Add link</Dialog.Title>
       <form onsubmit={applyLink} class="mt-4 flex flex-col gap-4">
         <div class="flex flex-col gap-1.5">
-          <Label.Root for="link-url" class="text-sm font-medium leading-none">URL</Label.Root>
+          <Label.Root for="link-url" class="text-sm leading-none font-medium">URL</Label.Root>
           <!-- svelte-ignore a11y_autofocus -->
           <input
             id="link-url"
@@ -727,7 +727,7 @@
             type="url"
             placeholder="https://example.com"
             autofocus
-            class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-none placeholder:text-muted-foreground focus:border-foreground"
+            class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
           />
         </div>
         <div class="flex justify-end gap-2">

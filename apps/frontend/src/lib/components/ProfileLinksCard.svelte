@@ -17,7 +17,7 @@
         href={link.url}
         target="_blank"
         rel="me noopener noreferrer"
-        class="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted focus-visible:outline-none"
+        class="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted focus-visible:outline-hidden"
       >
         <span class="flex min-w-0 items-center gap-2.5">
           <span class="shrink-0 text-muted-foreground group-hover:text-foreground">

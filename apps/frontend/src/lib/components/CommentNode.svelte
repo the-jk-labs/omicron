@@ -66,7 +66,7 @@
             maxlength={2000}
             placeholder="Edit your comment…"
             class={`${field} pr-11`}></textarea>
-          <EmojiTrigger onPick={insertEditEmoji} align="end" class={`${emojiOverlayBtn} bottom-2 right-1.5`} />
+          <EmojiTrigger onPick={insertEditEmoji} align="end" class={`${emojiOverlayBtn} right-1.5 bottom-2`} />
         </div>
         {#if ui.editError}<p class="mt-1.5 text-sm text-destructive">{ui.editError}</p>{/if}
         <div class="mt-2 flex justify-end gap-2">
@@ -77,13 +77,13 @@
         </div>
       </form>
     {:else}
-      <p class="mt-1 whitespace-pre-wrap break-words text-sm text-foreground-alt">{comment.content}</p>
+      <p class="mt-1 text-sm wrap-break-word whitespace-pre-wrap text-foreground-alt">{comment.content}</p>
     {/if}
 
     <!-- Actions (negative margin offsets the buttons' padding so the heart
          icon lines up with the author name + comment text above). -->
     {#if ui.editingId !== comment.id}
-      <div class="-ml-2 mt-1.5 flex items-center gap-1">
+      <div class="mt-1.5 -ml-2 flex items-center gap-1">
         <Button
           onclick={() => actions.toggleLike(comment)}
           variant="ghost"
@@ -146,7 +146,7 @@
               maxlength={2000}
               placeholder={`Reply to ${comment.author.displayName}…`}
               class={`${field} pr-11`}></textarea>
-            <EmojiTrigger onPick={insertReplyEmoji} align="end" class={`${emojiOverlayBtn} bottom-2 right-1.5`} />
+            <EmojiTrigger onPick={insertReplyEmoji} align="end" class={`${emojiOverlayBtn} right-1.5 bottom-2`} />
           </div>
           {#if ui.replyError}<p class="mt-1.5 text-sm text-destructive">{ui.replyError}</p>{/if}
           <div class="mt-2 flex justify-end gap-2">
@@ -164,7 +164,7 @@
       <Button
         onclick={() => actions.toggleThread(comment.id)}
         variant="ghost"
-        class="-ml-2 mt-2 h-8 gap-1.5 px-2 text-xs font-semibold text-accent hover:text-accent"
+        class="mt-2 -ml-2 h-8 gap-1.5 px-2 text-xs font-semibold text-accent hover:text-accent"
       >
         <Icon
           name="chevronDown"

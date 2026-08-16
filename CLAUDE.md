@@ -86,16 +86,13 @@ and existing markup.
    ✅ Use `text-foreground`, `bg-muted`, `text-destructive`, `bg-background`, etc.
 
 3. **Copy the docs' example class strings verbatim** when styling a Bits UI
-   component (see each component page on bits-ui.com). The docs use Tailwind v4;
-   this project is v3.4, so adapt only the syntax:
-   - `outline-hidden` → `outline-none`
-   - `ring-0!` → `!ring-0`
-   - `data-highlighted:` → `data-[highlighted]:`
+   component (see each component page on bits-ui.com). The docs use Tailwind v4
+   and so does this project — no syntax translation needed.
 
 ### Where the theme lives
 
-- Tokens (colours/radii/shadows/fonts): `apps/frontend/tailwind.config.ts`
-- CSS variables (ported verbatim from the docs `:root`): `apps/frontend/src/app.css`
+- Tokens (colours/radii/shadows/fonts) and CSS variables (ported verbatim from
+  the docs `:root`): `apps/frontend/src/app.css` (`@theme` block).
 
 These are ported from the Bits UI docs theme
 (`docs/src/lib/styles/app.css` in `huntabyte/bits-ui`). Keep them in sync with

@@ -21,7 +21,7 @@
   let saved = $state("");
 
   const field =
-    "h-11 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground";
+    "h-11 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus:border-foreground";
 
   $effect(() => {
     endpoints()
@@ -76,7 +76,7 @@
     </p>
 
     <div class="flex flex-col gap-1.5">
-      <Label.Root for="unsplash-key" class="text-sm font-medium leading-none text-foreground">Access key</Label.Root>
+      <Label.Root for="unsplash-key" class="text-sm leading-none font-medium text-foreground">Access key</Label.Root>
       <input
         id="unsplash-key"
         bind:value={accessKey}

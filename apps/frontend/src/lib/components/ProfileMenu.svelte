@@ -49,9 +49,9 @@
     }
   }
 
-  // Verbatim Bits UI docs DropdownMenu.Item class (v4 syntax rewritten to v3).
+  // Verbatim Bits UI docs DropdownMenu.Item class.
   const itemClass =
-    "rounded-button data-[highlighted]:bg-muted !ring-0 !ring-transparent flex h-10 w-full cursor-pointer select-none items-center gap-2.5 py-3 pl-3 pr-1.5 text-sm font-medium focus-visible:outline-none";
+    "rounded-button data-highlighted:bg-muted ring-0! ring-transparent! flex h-10 w-full cursor-pointer select-none items-center gap-2.5 py-3 pl-3 pr-1.5 text-sm font-medium focus-visible:outline-hidden";
 </script>
 
 <DropdownMenu.Root>
@@ -59,7 +59,7 @@
     disabled={busy}
     aria-label="More actions"
     title="More actions"
-    class="inline-flex size-10 shrink-0 select-none items-center justify-center rounded-full border border-input text-foreground shadow-btn hover:bg-muted active:scale-[0.98]"
+    class="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-input text-foreground shadow-btn select-none hover:bg-muted active:scale-[0.98]"
   >
     <Icon name="more" size={18} />
   </DropdownMenu.Trigger>
@@ -67,7 +67,7 @@
     <DropdownMenu.Content
       sideOffset={8}
       align="end"
-      class="z-30 w-[200px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-none"
+      class="z-30 w-[200px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-hidden"
     >
       <DropdownMenu.Item onSelect={toggleMute} class={itemClass}>
         <Icon name="mute" size={18} />

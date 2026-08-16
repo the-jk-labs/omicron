@@ -160,9 +160,9 @@
           </div>
 
           {#if r.reason}
-            <p class="mt-2 whitespace-pre-wrap text-sm text-foreground">{r.reason}</p>
+            <p class="mt-2 text-sm whitespace-pre-wrap text-foreground">{r.reason}</p>
           {:else}
-            <p class="mt-2 text-sm italic text-muted-foreground">No reason given.</p>
+            <p class="mt-2 text-sm text-muted-foreground italic">No reason given.</p>
           {/if}
 
           <p class="mt-2 text-xs text-muted-foreground">

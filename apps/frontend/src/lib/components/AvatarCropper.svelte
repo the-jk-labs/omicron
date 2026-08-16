@@ -123,7 +123,7 @@
       class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[360px]"
+      class="fixed top-1/2 left-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[360px]"
     >
       <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Adjust photo</Dialog.Title>
       <Dialog.Description class="mt-1.5 text-sm text-foreground-alt">
@@ -137,7 +137,7 @@
           aria-label="Reposition photo"
           tabindex="0"
           aria-valuenow={Math.round(offset.x)}
-          class="relative cursor-grab touch-none select-none overflow-hidden rounded-card bg-dark active:cursor-grabbing"
+          class="relative cursor-grab touch-none overflow-hidden rounded-card bg-dark select-none active:cursor-grabbing"
           style={`width:${VIEWPORT}px;height:${VIEWPORT}px`}
           onpointerdown={onPointerDown}
           onpointermove={onPointerMove}
@@ -169,14 +169,14 @@
             min={1}
             max={3}
             step={0.01}
-            class="relative flex w-full touch-none select-none items-center"
+            class="relative flex w-full touch-none items-center select-none"
           >
             <span class="relative h-2 w-full grow cursor-pointer overflow-hidden rounded-full bg-dark-10">
               <Slider.Range class="absolute h-full bg-foreground" />
             </span>
             <Slider.Thumb
               index={0}
-              class="block size-5 cursor-pointer rounded-full border border-border-input bg-background shadow-mini transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 active:scale-95"
+              class="block size-5 cursor-pointer rounded-full border border-border-input bg-background shadow-mini transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:outline-hidden active:scale-95"
             />
           </Slider.Root>
           <Icon name="plus" size={16} class="shrink-0 text-muted-foreground" />

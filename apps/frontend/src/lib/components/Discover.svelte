@@ -38,7 +38,7 @@
       <ol class="space-y-4">
         {#each posts as post, i (post.id)}
           <li class="flex gap-3">
-            <span class="w-4 shrink-0 text-base font-bold tabular-nums text-muted-foreground/60">
+            <span class="w-4 shrink-0 text-base font-bold text-muted-foreground/60 tabular-nums">
               {i + 1}
             </span>
             <div class="min-w-0">
@@ -51,7 +51,7 @@
               </a>
               <a
                 href={postPath(post)}
-                class="mt-0.5 line-clamp-2 block font-semibold leading-snug text-foreground hover:text-foreground-alt"
+                class="mt-0.5 line-clamp-2 block leading-snug font-semibold text-foreground hover:text-foreground-alt"
               >
                 {post.title ?? "Untitled"}
               </a>
@@ -102,7 +102,7 @@
       </h2>
       <div class="flex flex-wrap gap-2">
         {#each tags as tag (tag.slug)}
-          <Button href={`/tags/${tag.slug}`} variant="outline" size="xs" class="rounded-full !font-medium">
+          <Button href={`/tags/${tag.slug}`} variant="outline" size="xs" class="rounded-full font-medium!">
             <Icon name="tag" size={13} />
             {tag.name}
             <span class="text-muted-foreground">{tag.postCount}</span>

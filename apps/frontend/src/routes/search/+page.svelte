@@ -66,7 +66,7 @@
       placeholder="Search"
       aria-label="Search articles and people"
       autofocus={!data.query}
-      class="w-full bg-transparent text-[15px] outline-none placeholder:text-muted-foreground"
+      class="w-full bg-transparent text-[15px] outline-hidden placeholder:text-muted-foreground"
     />
   </div>
 </form>

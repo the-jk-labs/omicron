@@ -31,7 +31,7 @@
   // Height is pinned rather than derived from padding, so the input and the
   // Create button beside it are the same 40px — `Button size="default"` is h-10.
   const field =
-    "h-10 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground";
+    "h-10 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-hidden placeholder:text-muted-foreground focus:border-foreground";
 
   async function load() {
     loading = true;
@@ -127,7 +127,7 @@
 
 <div class="mt-4 flex flex-col gap-1.5 sm:flex-row sm:items-end sm:gap-2">
   <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-    <Label.Root for="tokenLabel" class="text-sm font-medium leading-none">New token</Label.Root>
+    <Label.Root for="tokenLabel" class="text-sm leading-none font-medium">New token</Label.Root>
     <input
       id="tokenLabel"
       bind:value={label}

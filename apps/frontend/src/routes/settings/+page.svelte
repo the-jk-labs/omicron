@@ -352,7 +352,7 @@
   }
 
   const field =
-    "rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground";
+    "rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-hidden placeholder:text-muted-foreground focus:border-foreground";
   const labelClass = "text-sm font-medium leading-none";
 </script>
 
@@ -435,7 +435,7 @@
           <EmojiTrigger
             onPick={insertNameEmoji}
             align="end"
-            class={`${emojiOverlayBtn} right-1.5 top-1/2 -translate-y-1/2`}
+            class={`${emojiOverlayBtn} top-1/2 right-1.5 -translate-y-1/2`}
           />
         </div>
       </div>
@@ -452,7 +452,7 @@
             maxlength={500}
             placeholder="Tell people about yourself"
             class={`${field} w-full resize-none pr-11`}></textarea>
-          <EmojiTrigger onPick={insertBioEmoji} align="end" class={`${emojiOverlayBtn} bottom-2 right-1.5`} />
+          <EmojiTrigger onPick={insertBioEmoji} align="end" class={`${emojiOverlayBtn} right-1.5 bottom-2`} />
         </div>
         <p class="self-end text-xs text-muted-foreground">{bio.length}/500</p>
       </div>
@@ -530,7 +530,7 @@
           <ButtonPrimitive.Root
             onclick={() => theme.set(opt.value)}
             aria-pressed={theme.preference === opt.value}
-            class={`inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-button px-3 text-sm font-medium active:scale-[0.98] ${
+            class={`inline-flex h-8 items-center gap-1.5 rounded-button px-3 text-sm font-medium whitespace-nowrap active:scale-[0.98] ${
               theme.preference === opt.value
                 ? "bg-background text-foreground shadow-mini"
                 : "text-muted-foreground hover:text-foreground"
@@ -561,7 +561,7 @@
           <ButtonPrimitive.Root
             onclick={() => reading.setDefaultFeed(opt.value)}
             aria-pressed={currentFeed === opt.value}
-            class={`inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-button px-3 text-sm font-medium active:scale-[0.98] ${
+            class={`inline-flex h-8 items-center gap-1.5 rounded-button px-3 text-sm font-medium whitespace-nowrap active:scale-[0.98] ${
               currentFeed === opt.value
                 ? "bg-background text-foreground shadow-mini"
                 : "text-muted-foreground hover:text-foreground"
@@ -593,7 +593,7 @@
             <ButtonPrimitive.Root
               onclick={() => reading.setFeedLangMode(opt.value)}
               aria-pressed={reading.feedLangMode === opt.value}
-              class={`inline-flex h-8 items-center whitespace-nowrap rounded-button px-3 text-sm font-medium active:scale-[0.98] ${
+              class={`inline-flex h-8 items-center rounded-button px-3 text-sm font-medium whitespace-nowrap active:scale-[0.98] ${
                 reading.feedLangMode === opt.value
                   ? "bg-background text-foreground shadow-mini"
                   : "text-muted-foreground hover:text-foreground"
@@ -608,7 +608,7 @@
       <div class="mt-4 flex flex-wrap items-center gap-2">
         {#each reading.feedLangs as code (code)}
           <span
-            class="inline-flex items-center gap-1.5 rounded-button border border-border bg-muted py-1 pl-3 pr-1.5 text-sm text-foreground"
+            class="inline-flex items-center gap-1.5 rounded-button border border-border bg-muted py-1 pr-1.5 pl-3 text-sm text-foreground"
           >
             {languageLabel(code)}
             <ButtonPrimitive.Root
@@ -624,7 +624,7 @@
         {#if availableLanguages.length > 0}
           <Select.Root type="single" value={addLangValue} onValueChange={addLanguage}>
             <Select.Trigger
-              class="inline-flex h-9 items-center gap-1.5 rounded-input border border-border-input bg-background px-3 text-sm text-muted-foreground shadow-btn outline-none transition-colors hover:text-foreground focus:border-foreground"
+              class="inline-flex h-9 items-center gap-1.5 rounded-input border border-border-input bg-background px-3 text-sm text-muted-foreground shadow-btn outline-hidden transition-colors hover:text-foreground focus:border-foreground"
               aria-label="Add a language"
             >
               <Icon name="plus" size={15} /> Add language
@@ -639,7 +639,7 @@
                     <Select.Item
                       value={lang.code}
                       label={lang.name}
-                      class="flex h-9 w-full select-none items-center gap-2 rounded-button px-2 text-sm outline-none data-[highlighted]:bg-muted"
+                      class="flex h-9 w-full items-center gap-2 rounded-button px-2 text-sm outline-hidden select-none data-highlighted:bg-muted"
                     >
                       <span class="truncate">{lang.name}</span>
                       <span class="truncate text-muted-foreground">{lang.native}</span>
@@ -676,7 +676,7 @@
         checked={isPrivate}
         onCheckedChange={togglePrivacy}
         disabled={privacyBusy}
-        class="peer inline-flex h-[36px] min-h-[36px] w-[60px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset"
+        class="peer inline-flex h-[36px] min-h-[36px] w-[60px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset"
       >
         <Switch.Thumb
           class="pointer-events-none block size-[30px] shrink-0 rounded-full bg-background transition-transform data-[state=checked]:translate-x-6 data-[state=unchecked]:translate-x-0 data-[state=unchecked]:shadow-mini"
@@ -812,7 +812,7 @@
       class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[440px]"
+      class="fixed top-1/2 left-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[440px]"
     >
       <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Change password</Dialog.Title>
       <Dialog.Description class="mt-1 text-sm text-muted-foreground">
@@ -874,7 +874,7 @@
       class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[440px]"
+      class="fixed top-1/2 left-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[440px]"
     >
       <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Delete account</Dialog.Title>
       <Dialog.Description class="mt-1 text-sm text-muted-foreground">

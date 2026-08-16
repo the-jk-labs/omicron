@@ -64,7 +64,7 @@
     <div class="flex items-start gap-4">
       <div class="min-w-0 flex-1">
         {#if post.title}
-          <h2 class="text-xl font-bold leading-snug text-foreground group-hover:text-foreground-alt sm:text-2xl">
+          <h2 class="text-xl leading-snug font-bold text-foreground group-hover:text-foreground-alt sm:text-2xl">
             {post.title}
           </h2>
         {/if}

@@ -12,7 +12,7 @@
 
 <a
   href={listPath(list)}
-  class="group flex flex-col gap-2 rounded-card border border-border bg-background-alt p-4 transition-colors hover:bg-muted focus-visible:outline-none"
+  class="group flex flex-col gap-2 rounded-card border border-border bg-background-alt p-4 transition-colors hover:bg-muted focus-visible:outline-hidden"
 >
   <div class="flex items-start justify-between gap-2">
     <span class="flex size-9 shrink-0 items-center justify-center rounded-card bg-muted text-muted-foreground">

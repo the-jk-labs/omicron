@@ -84,7 +84,7 @@
 
   <div class="rounded-card border border-border bg-background-alt p-3">
     {#if preview}
-      <div class="relative aspect-[16/9] max-h-64 w-full overflow-hidden rounded-card border border-border">
+      <div class="relative aspect-video max-h-64 w-full overflow-hidden rounded-card border border-border">
         <!-- Decorative here: this is a control, and the banner is labelled by
              the text above it. -->
         <img src={preview} alt="" class="h-full w-full object-cover" />
@@ -98,7 +98,7 @@
       </div>
     {:else}
       <div
-        class="flex aspect-[16/9] max-h-64 w-full flex-col items-center justify-center gap-1.5 rounded-card border border-dashed border-border text-muted-foreground"
+        class="flex aspect-video max-h-64 w-full flex-col items-center justify-center gap-1.5 rounded-card border border-dashed border-border text-muted-foreground"
       >
         <Icon name="image" size={22} />
         <span class="text-sm">No banner yet</span>

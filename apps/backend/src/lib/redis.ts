@@ -45,6 +45,12 @@ export function newRedis(): Redis {
     maxRetriesPerRequest: null,
     // Quiet, bounded reconnect backoff so a Redis blip doesn't spam logs.
     retryStrategy: (times) => Math.min(times * 200, 5_000),
+    // ioredis 6 defaults to RESP3; @fedify/redis's own bundled ioredis (5.x)
+    // was built against RESP2 reply shapes, and we hand this same client
+    // straight to its RedisKvStore/RedisMessageQueue. Pin RESP2 so both sides
+    // see identical wire behaviour regardless of which ioredis major issued
+    // the connection.
+    protocol: 2,
   });
   r.on("error", (err) => console.error("redis: connection error:", err.message));
   return r;

@@ -27,7 +27,7 @@
       type="search"
       placeholder="Search"
       aria-label="Search articles and people"
-      class="w-40 bg-transparent text-sm outline-none placeholder:text-muted-foreground md:w-48 lg:w-64"
+      class="w-40 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground md:w-48 lg:w-64"
     />
   </div>
 </form>

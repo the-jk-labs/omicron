@@ -106,7 +106,7 @@
 </script>
 
 <nav
-  class="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur transition-transform duration-200 ease-out motion-reduce:transition-none lg:hidden"
+  class="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm transition-transform duration-200 ease-out motion-reduce:transition-none lg:hidden"
   style={`transform: translateY(${overhang}px)${hiddenByScroll ? " translateY(100%)" : ""}`}
   onfocusin={reveal}
   aria-label="Primary"

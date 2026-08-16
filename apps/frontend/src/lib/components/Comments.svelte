@@ -226,7 +226,7 @@
   }
 
   const field =
-    "rounded-input border border-input bg-background shadow-btn w-full px-3.5 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-foreground resize-none";
+    "rounded-input border border-input bg-background shadow-btn w-full px-3.5 py-2.5 text-sm outline-hidden placeholder:text-muted-foreground focus:border-foreground resize-none";
 
   // Bundled once and passed down to every CommentNode.
   const actions: CommentActions = {
@@ -260,7 +260,7 @@
             maxlength={2000}
             placeholder="What are your thoughts?"
             class={`${field} pr-11`}></textarea>
-          <EmojiTrigger onPick={insertDraftEmoji} align="end" class={`${emojiOverlayBtn} bottom-2 right-1.5`} />
+          <EmojiTrigger onPick={insertDraftEmoji} align="end" class={`${emojiOverlayBtn} right-1.5 bottom-2`} />
         </div>
         {#if error}<p class="mt-1.5 text-sm text-destructive">{error}</p>{/if}
         <div class="mt-2 flex justify-end">

@@ -86,7 +86,7 @@
   }
 
   const field =
-    "h-11 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground";
+    "h-11 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus:border-foreground";
   const labelClass = "text-sm font-medium leading-none text-foreground";
 
   // Per-step gating so the operator can't advance past an incomplete step. The
@@ -136,7 +136,7 @@
   }
 
   const radioItem =
-    "flex items-start gap-3 rounded-card border border-border bg-background p-4 text-left shadow-btn transition-colors data-[state=checked]:border-foreground hover:border-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground";
+    "flex items-start gap-3 rounded-card border border-border bg-background p-4 text-left shadow-btn transition-colors data-[state=checked]:border-foreground hover:border-foreground/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-foreground";
 </script>
 
 <svelte:head><title>Set up your instance</title></svelte:head>

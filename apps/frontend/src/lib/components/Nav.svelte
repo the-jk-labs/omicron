@@ -41,10 +41,9 @@
     goto("/");
   }
 
-  // Verbatim Bits UI docs DropdownMenu.Item class (v4 `data-highlighted:` /
-  // `ring-0!` rewritten to the v3 `data-[highlighted]:` / `!ring-0` syntax).
+  // Verbatim Bits UI docs DropdownMenu.Item class.
   const itemClass =
-    "rounded-button data-[highlighted]:bg-muted !ring-0 !ring-transparent flex h-10 w-full cursor-pointer select-none items-center gap-2.5 py-3 pl-3 pr-1.5 text-sm font-medium focus-visible:outline-none";
+    "rounded-button data-highlighted:bg-muted ring-0! ring-transparent! flex h-10 w-full cursor-pointer select-none items-center gap-2.5 py-3 pl-3 pr-1.5 text-sm font-medium focus-visible:outline-hidden";
 
   // Notification bell state. The unread badge is driven by the polling store
   // (started/stopped with the signed-in user below); the list is fetched fresh
@@ -73,7 +72,7 @@
   });
 </script>
 
-<header class="sticky top-0 z-20 bg-background/80 backdrop-blur">
+<header class="sticky top-0 z-20 bg-background/80 backdrop-blur-sm">
   <nav class="relative mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
     <Button href="/" variant="plain" class="flex items-center gap-2 text-foreground hover:opacity-80">
       <img src={logo} alt="" width="28" height="28" class="h-7 w-auto" />
@@ -82,7 +81,7 @@
 
     {#if !minimal}
       <!-- Centered search pill (sm and up) -->
-      <div class="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 sm:block">
+      <div class="absolute top-1/2 left-1/2 hidden -translate-x-1/2 -translate-y-1/2 sm:block">
         <SearchBar />
       </div>
     {/if}
@@ -90,7 +89,7 @@
     <div class="flex items-center gap-1.5">
       {#if !minimal}
         <!-- Icon-only search fallback (below sm) -->
-        <Button href="/search" variant="icon" class="!border-0 !shadow-none sm:hidden" aria-label="Search">
+        <Button href="/search" variant="icon" class="border-0! shadow-none! sm:hidden" aria-label="Search">
           <Icon name="search" size={18} />
         </Button>
       {/if}
@@ -98,7 +97,7 @@
       <Button
         onclick={() => theme.toggle()}
         variant="icon"
-        class="!border-0 !shadow-none"
+        class="border-0! shadow-none!"
         aria-label="Toggle dark mode"
         title="Toggle theme"
       >
@@ -110,13 +109,13 @@
       {:else if user}
         <DropdownMenu.Root onOpenChange={(open) => open && loadNotifications()}>
           <DropdownMenu.Trigger
-            class="relative inline-flex h-9 w-9 select-none items-center justify-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-none active:scale-[0.98]"
+            class="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground select-none hover:bg-muted focus-visible:outline-hidden active:scale-[0.98]"
             aria-label="Notifications"
           >
             <Icon name="bell" size={18} />
             {#if notifications.count > 0}
               <span
-                class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold leading-none text-background"
+                class="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-xxs leading-none font-semibold text-background"
               >
                 {notifications.count > 99 ? "99+" : notifications.count}
               </span>
@@ -126,7 +125,7 @@
             <DropdownMenu.Content
               sideOffset={8}
               align="end"
-              class="z-30 w-[360px] max-w-[calc(100vw-2rem)] rounded-xl border border-muted bg-background p-1 shadow-popover focus-visible:outline-none"
+              class="z-30 w-[360px] max-w-[calc(100vw-2rem)] rounded-xl border border-muted bg-background p-1 shadow-popover focus-visible:outline-hidden"
             >
               <p class="px-3 py-2 text-sm font-semibold text-foreground">Notifications</p>
               <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-muted" />
@@ -140,14 +139,14 @@
                     {@const href = notificationHref(n)}
                     <DropdownMenu.Item
                       onSelect={() => href && goto(href)}
-                      class="flex w-full cursor-pointer select-none items-start gap-3 rounded-button px-3 py-2.5 !ring-0 !ring-transparent focus-visible:outline-none data-[highlighted]:bg-muted {n.read
+                      class="flex w-full cursor-pointer items-start gap-3 rounded-button px-3 py-2.5 ring-0! ring-transparent! select-none focus-visible:outline-hidden data-highlighted:bg-muted {n.read
                         ? ''
                         : 'bg-muted/40'}"
                     >
                       <div class="relative shrink-0">
                         <Avatar name={n.actor?.displayName ?? "?"} src={n.actor?.avatarUrl ?? undefined} size={36} />
                         <span
-                          class="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-background text-muted-foreground"
+                          class="absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full bg-background text-muted-foreground"
                         >
                           <Icon name={notificationIcon(n.type)} size={12} />
                         </span>
@@ -171,7 +170,7 @@
               <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-muted" />
               <DropdownMenu.Item
                 onSelect={() => goto("/notifications")}
-                class="flex h-10 w-full cursor-pointer select-none items-center justify-center rounded-button text-sm font-medium !ring-0 !ring-transparent focus-visible:outline-none data-[highlighted]:bg-muted"
+                class="flex h-10 w-full cursor-pointer items-center justify-center rounded-button text-sm font-medium ring-0! ring-transparent! select-none focus-visible:outline-hidden data-highlighted:bg-muted"
               >
                 See all
               </DropdownMenu.Item>
@@ -185,7 +184,7 @@
 
         <DropdownMenu.Root>
           <DropdownMenu.Trigger
-            class="inline-flex select-none items-center justify-center rounded-full active:scale-[0.98]"
+            class="inline-flex items-center justify-center rounded-full select-none active:scale-[0.98]"
             aria-label="Account menu"
           >
             <Avatar name={user.displayName} src={user.avatarUrl ?? undefined} size={34} />
@@ -194,7 +193,7 @@
             <DropdownMenu.Content
               sideOffset={8}
               align="end"
-              class="z-30 w-[229px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-none"
+              class="z-30 w-[229px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-hidden"
             >
               <div class="px-3 py-2">
                 <p class="truncate text-sm font-semibold text-foreground">{user.displayName}</p>

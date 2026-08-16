@@ -167,7 +167,7 @@
     <p class="text-xs text-muted-foreground">{value.length.toLocaleString()}/{maxLength.toLocaleString()}</p>
   </div>
 
-  <Tabs.Content value="write" class="flex flex-col gap-2 focus-visible:outline-none">
+  <Tabs.Content value="write" class="flex flex-col gap-2 focus-visible:outline-hidden">
     <Toolbar.Root
       class="no-scrollbar flex w-full items-center gap-0.5 overflow-x-auto rounded-10px border border-border bg-background-alt px-2 py-1 shadow-mini"
     >
@@ -190,13 +190,13 @@
       maxlength={maxLength}
       spellcheck="false"
       placeholder={"# Hi, I'm …\n\nWrite anything here — headings, lists, tables, images, links.\nMarkdown and simple HTML both work."}
-      class="w-full resize-y rounded-input border border-input bg-background px-3.5 py-2.5 font-mono text-sm leading-relaxed shadow-btn outline-none placeholder:text-muted-foreground focus:border-foreground"
+      class="w-full resize-y rounded-input border border-input bg-background px-3.5 py-2.5 font-mono text-sm leading-relaxed shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
     ></textarea>
   </Tabs.Content>
 
   <Tabs.Content
     value="preview"
-    class="min-h-[220px] rounded-card border border-border bg-background-alt px-5 py-4 focus-visible:outline-none"
+    class="min-h-[220px] rounded-card border border-border bg-background-alt px-5 py-4 focus-visible:outline-hidden"
   >
     {#if previewLoading}
       <p class="flex items-center gap-2 text-sm text-muted-foreground">

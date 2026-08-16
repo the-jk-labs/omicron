@@ -80,7 +80,7 @@
     <Popover.Trigger
       title="Save"
       aria-label="Save to a reading list"
-      class="inline-flex items-center gap-1.5 rounded-button text-muted-foreground hover:text-foreground focus-visible:outline-none"
+      class="inline-flex items-center gap-1.5 rounded-button text-muted-foreground hover:text-foreground focus-visible:outline-hidden"
     >
       <Icon name={saved ? "bookmarkCheck" : "bookmark"} size={18} />
     </Popover.Trigger>
@@ -89,7 +89,7 @@
       <Popover.Content
         sideOffset={8}
         align="end"
-        class="z-30 w-[260px] rounded-xl border border-muted bg-background p-1.5 shadow-popover focus-visible:outline-none"
+        class="z-30 w-[260px] rounded-xl border border-muted bg-background p-1.5 shadow-popover focus-visible:outline-hidden"
       >
         <p class="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Save to…</p>
 
@@ -102,10 +102,10 @@
                 type="button"
                 onclick={() => toggle(list)}
                 disabled={busy.has(list.id)}
-                class="flex w-full items-center gap-2.5 rounded-button px-2 py-2 text-left text-sm text-foreground hover:bg-muted focus-visible:outline-none disabled:opacity-60"
+                class="flex w-full items-center gap-2.5 rounded-button px-2 py-2 text-left text-sm text-foreground hover:bg-muted focus-visible:outline-hidden disabled:opacity-60"
               >
                 <span
-                  class="flex size-4 shrink-0 items-center justify-center rounded border {list.contains
+                  class="flex size-4 shrink-0 items-center justify-center rounded-sm border {list.contains
                     ? 'border-foreground bg-foreground text-background'
                     : 'border-border'}"
                 >
@@ -132,13 +132,13 @@
               bind:value={newTitle}
               placeholder="New list"
               maxlength="100"
-              class="h-8 min-w-0 flex-1 rounded-input border border-border bg-background px-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
+              class="h-8 min-w-0 flex-1 rounded-input border border-border bg-background px-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:outline-hidden"
             />
             <button
               type="submit"
               disabled={!newTitle.trim() || creating}
               aria-label="Create list"
-              class="inline-flex size-8 shrink-0 items-center justify-center rounded-button text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none disabled:opacity-50"
+              class="inline-flex size-8 shrink-0 items-center justify-center rounded-button text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-hidden disabled:opacity-50"
             >
               <Icon name="plus" size={16} />
             </button>
@@ -154,7 +154,7 @@
     href="/login"
     title="Save"
     aria-label="Sign in to save"
-    class="inline-flex items-center gap-1.5 rounded-button text-muted-foreground hover:text-foreground focus-visible:outline-none"
+    class="inline-flex items-center gap-1.5 rounded-button text-muted-foreground hover:text-foreground focus-visible:outline-hidden"
   >
     <Icon name="bookmark" size={18} />
   </a>

@@ -12,14 +12,13 @@
 // passing the sanitizer: unknown tags, styles, scripts and event handlers are
 // dropped there. Do not remove that final step.
 
-// @ts-types="npm:@types/markdown-it@^14"
-import MarkdownIt from "markdown-it";
-// @ts-types="npm:@types/markdown-it@^14/lib/token.d.mts"
-import type Token from "markdown-it/lib/token.mjs";
+// v15 ships its own bundled declarations, so no `@ts-types` pragma or
+// separate `@types/markdown-it` package is needed anymore.
+import MarkdownIt, { type MarkdownIt as MarkdownItInstance, type Token } from "markdown-it";
 // CommonJS, so the plugin arrives as the module's `exports` object rather than
 // the function itself.
 import katexModule from "@vscode/markdown-it-katex";
-type Plugin = (md: MarkdownIt, options?: Record<string, unknown>) => void;
+type Plugin = (md: MarkdownItInstance, options?: Record<string, unknown>) => void;
 const katex = (katexModule as unknown as { default?: Plugin }).default ??
   (katexModule as unknown as Plugin);
 
