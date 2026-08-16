@@ -23,7 +23,7 @@
     "@fedify/fedify": "jsr:@fedify/fedify@2.3.4",
     "@fedify/fedify/vocab": "jsr:@fedify/fedify@2.3.4/vocab",
     "@fedify/redis": "jsr:@fedify/redis@2.3.4",
-    "ioredis": "npm:ioredis@^5.8.2",
+    "ioredis": "npm:ioredis@^6.0.0",
     "drizzle-orm": "npm:drizzle-orm@0.45.2",
     "drizzle-kit": "npm:drizzle-kit@0.31.10",
     "postgres": "npm:postgres@^3.4",

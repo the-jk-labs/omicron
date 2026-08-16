@@ -88,8 +88,15 @@ function createFederationInstance(): Federation<ContextData> {
   let kv: KvStore;
   let queue: MessageQueue;
   if (redisEnabled()) {
-    kv = new RedisKvStore(getRedis()!);
-    queue = new RedisMessageQueue(redisFactory());
+    // @fedify/redis bundles its own ioredis@5.x internally, while `getRedis()`
+    // hands it our app-wide ioredis@6.x client — same wire protocol (RESP2,
+    // pinned in lib/redis.ts) and API, but TypeScript sees two structurally
+    // distinct `Redis` classes from the two package copies. Verified
+    // functionally identical against a live Redis instance.
+    kv = new RedisKvStore(getRedis()! as unknown as ConstructorParameters<typeof RedisKvStore>[0]);
+    queue = new RedisMessageQueue(
+      redisFactory() as unknown as ConstructorParameters<typeof RedisMessageQueue>[0],
+    );
     console.log("✔ Federation using Redis-backed KV + message queue (durable).");
   } else {
     kv = new MemoryKvStore();
