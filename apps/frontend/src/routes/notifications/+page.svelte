@@ -77,7 +77,7 @@
           <div class="relative shrink-0">
             <Avatar name={n.actor?.displayName ?? "?"} src={n.actor?.avatarUrl ?? undefined} size={40} />
             <span
-              class="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-background text-muted-foreground"
+              class="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full bg-background text-muted-foreground"
             >
               <Icon name={notificationIcon(n.type)} size={12} />
             </span>

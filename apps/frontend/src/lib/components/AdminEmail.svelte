@@ -413,7 +413,7 @@
             <tbody class="font-mono">
               {#each recordRows as row (row.key)}
                 <tr class="border-t border-border align-top">
-                  <td class="whitespace-nowrap px-3 py-2 text-foreground">
+                  <td class="px-3 py-2 whitespace-nowrap text-foreground">
                     <button
                       type="button"
                       class="hover:text-foreground-alt"
@@ -424,7 +424,7 @@
                     </button>
                   </td>
                   <td class="px-3 py-2 text-muted-foreground">{row.rec.type}</td>
-                  <td class="max-w-88 break-all px-3 py-2 text-foreground">
+                  <td class="max-w-88 px-3 py-2 break-all text-foreground">
                     <button
                       type="button"
                       class="text-left hover:text-foreground-alt"

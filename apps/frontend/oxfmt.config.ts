@@ -6,7 +6,7 @@ export default defineConfig({
   svelte: true,
   insertFinalNewline: true,
   sortTailwindcss: {
-    config: "tailwind.config.ts",
+    stylesheet: "src/app.css",
     functions: ["clsx", "cn"],
     attributes: ["classNames", "tw"],
   },

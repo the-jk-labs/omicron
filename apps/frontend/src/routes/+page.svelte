@@ -188,7 +188,7 @@
     {/each}
   </Tabs.List>
   {#each feeds as feed (feed.value)}
-    <Tabs.Content value={feed.value} class="select-none pt-3">
+    <Tabs.Content value={feed.value} class="pt-3 select-none">
       {@render feedView(feed)}
     </Tabs.Content>
   {/each}

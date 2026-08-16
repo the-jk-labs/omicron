@@ -76,7 +76,7 @@
     </p>
 
     <div class="flex flex-col gap-1.5">
-      <Label.Root for="unsplash-key" class="text-sm font-medium leading-none text-foreground">Access key</Label.Root>
+      <Label.Root for="unsplash-key" class="text-sm leading-none font-medium text-foreground">Access key</Label.Root>
       <input
         id="unsplash-key"
         bind:value={accessKey}

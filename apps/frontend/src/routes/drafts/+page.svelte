@@ -74,7 +74,7 @@
     {#each drafts as draft (draft.id)}
       <li class="flex items-start justify-between gap-4 rounded-card px-4 py-5 transition-colors hover:bg-muted">
         <Button href={`/compose?id=${draft.id}`} variant="plain" class="group block min-w-0 flex-1 text-left">
-          <h2 class="truncate text-xl font-bold leading-snug text-foreground group-hover:text-foreground-alt">
+          <h2 class="truncate text-xl leading-snug font-bold text-foreground group-hover:text-foreground-alt">
             {draft.title?.trim() || "Untitled draft"}
           </h2>
           {#if excerpt(draft.contentHtml)}

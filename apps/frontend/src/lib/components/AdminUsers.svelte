@@ -69,14 +69,14 @@
 
 <div class="flex flex-col gap-4">
   <div class="relative">
-    <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+    <span class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">
       <Icon name="search" size={16} />
     </span>
     <input
       bind:value={query}
       oninput={onSearch}
       placeholder="Search by handle or name"
-      class="w-full rounded-input border border-input bg-background py-2.5 pl-9 pr-3.5 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
+      class="w-full rounded-input border border-input bg-background py-2.5 pr-3.5 pl-9 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
     />
   </div>
 

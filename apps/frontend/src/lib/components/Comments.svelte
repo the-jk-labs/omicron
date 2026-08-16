@@ -260,7 +260,7 @@
             maxlength={2000}
             placeholder="What are your thoughts?"
             class={`${field} pr-11`}></textarea>
-          <EmojiTrigger onPick={insertDraftEmoji} align="end" class={`${emojiOverlayBtn} bottom-2 right-1.5`} />
+          <EmojiTrigger onPick={insertDraftEmoji} align="end" class={`${emojiOverlayBtn} right-1.5 bottom-2`} />
         </div>
         {#if error}<p class="mt-1.5 text-sm text-destructive">{error}</p>{/if}
         <div class="mt-2 flex justify-end">

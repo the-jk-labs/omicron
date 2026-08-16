@@ -254,7 +254,7 @@
   {/if}
 
   {#if post.title}
-    <h1 class="mb-4 text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl">{post.title}</h1>
+    <h1 class="mb-4 text-3xl leading-tight font-bold tracking-tight text-foreground sm:text-4xl">{post.title}</h1>
   {/if}
 
   <div class="flex items-start gap-3 pb-8">
@@ -449,7 +449,7 @@
       class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
-      class="fixed left-1/2 top-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[440px]"
+      class="fixed top-1/2 left-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[440px]"
     >
       <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Report post</Dialog.Title>
       <Dialog.Description class="mt-1 text-sm text-muted-foreground">
@@ -462,7 +462,7 @@
         </div>
       {:else}
         <div class="mt-5 flex flex-col gap-1.5">
-          <Label.Root for="report-reason" class="text-sm font-medium leading-none">Reason</Label.Root>
+          <Label.Root for="report-reason" class="text-sm leading-none font-medium">Reason</Label.Root>
           <textarea
             id="report-reason"
             bind:value={reportReason}

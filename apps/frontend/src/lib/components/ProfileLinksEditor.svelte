@@ -42,7 +42,8 @@
     "rounded-input border-input bg-background shadow-btn placeholder:text-muted-foreground focus:border-foreground h-10 w-full border px-3 text-sm outline-hidden transition-colors";
   const inputWrapClass =
     "rounded-input border-input bg-background shadow-btn focus-within:border-foreground flex h-10 w-full items-center border px-3 text-sm transition-colors";
-  const bareInputClass = "placeholder:text-muted-foreground text-foreground w-full min-w-0 bg-transparent outline-hidden";
+  const bareInputClass =
+    "placeholder:text-muted-foreground text-foreground w-full min-w-0 bg-transparent outline-hidden";
   const iconBtnClass =
     "text-muted-foreground hover:bg-muted hover:text-foreground inline-flex size-8 shrink-0 items-center justify-center rounded-button transition-colors disabled:pointer-events-none disabled:opacity-40";
 </script>
@@ -69,7 +70,7 @@
                 <Select.Item
                   value={p.key}
                   label={p.label}
-                  class="flex h-9 w-44 select-none items-center gap-2 rounded-button px-2 text-sm outline-hidden data-highlighted:bg-muted"
+                  class="flex h-9 w-44 items-center gap-2 rounded-button px-2 text-sm outline-hidden select-none data-highlighted:bg-muted"
                 >
                   {#snippet children({ selected })}
                     <ProfileLinkIcon platform={p.key} size={16} />
@@ -87,7 +88,7 @@
 
       {#if meta.input.kind === "handle"}
         <div class={inputWrapClass}>
-          <span class="shrink-0 select-none text-muted-foreground">{inputPrefix(meta)}</span>
+          <span class="shrink-0 text-muted-foreground select-none">{inputPrefix(meta)}</span>
           <input
             type="text"
             bind:value={link.url}

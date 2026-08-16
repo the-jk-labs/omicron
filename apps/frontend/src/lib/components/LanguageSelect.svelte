@@ -38,7 +38,7 @@
         <Select.Item
           value={UNSET}
           label="No language"
-          class="flex h-9 w-full select-none items-center gap-2 rounded-button px-2 text-sm outline-hidden data-highlighted:bg-muted"
+          class="flex h-9 w-full items-center gap-2 rounded-button px-2 text-sm outline-hidden select-none data-highlighted:bg-muted"
         >
           {#snippet children({ selected: isSel })}
             <span class="truncate text-muted-foreground">No language</span>
@@ -51,7 +51,7 @@
           <Select.Item
             value={lang.code}
             label={lang.name}
-            class="flex h-9 w-full select-none items-center gap-2 rounded-button px-2 text-sm outline-hidden data-highlighted:bg-muted"
+            class="flex h-9 w-full items-center gap-2 rounded-button px-2 text-sm outline-hidden select-none data-highlighted:bg-muted"
           >
             {#snippet children({ selected: isSel })}
               <span class="truncate">{lang.name}</span>

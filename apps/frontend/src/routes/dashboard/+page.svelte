@@ -232,7 +232,7 @@
               >
                 {#if hover === i}
                   <span
-                    class="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-input border border-border bg-background px-2 py-1 text-xs text-foreground shadow-popover"
+                    class="pointer-events-none absolute top-0 left-1/2 z-10 -translate-x-1/2 -translate-y-full rounded-input border border-border bg-background px-2 py-1 text-xs whitespace-nowrap text-foreground shadow-popover"
                   >
                     {dayLabel(p.day)} · {fmt(p.views)}
                   </span>
@@ -279,7 +279,7 @@
                   <span class="h-2.5 w-2.5 rounded-full bg-current {a.cls}"></span>
                   {a.label}
                 </span>
-                <span class="tabular-nums text-foreground">{pct(a.share)}</span>
+                <span class="text-foreground tabular-nums">{pct(a.share)}</span>
               </li>
             {/each}
           </ul>
@@ -313,7 +313,7 @@
                 <div class="flex items-center gap-2">
                   {#if i === 0 && reach(p) > 0}
                     <span
-                      class="rounded-9px bg-accent px-1.5 py-0.5 text-xxs font-semibold uppercase tracking-wide text-accent-foreground"
+                      class="rounded-9px bg-accent px-1.5 py-0.5 text-xxs font-semibold tracking-wide text-accent-foreground uppercase"
                       >Top</span
                     >
                   {/if}
@@ -324,16 +324,16 @@
                 <p class="mt-0.5 text-xs text-muted-foreground">{formatDateTime(p.createdAt, $timeZone)}</p>
               </td>
               {#if showViews}
-                <td class="px-3 py-3 text-right tabular-nums text-foreground">{fmt(p.views)}</td>
+                <td class="px-3 py-3 text-right text-foreground tabular-nums">{fmt(p.views)}</td>
               {/if}
-              <td class="px-3 py-3 text-right tabular-nums text-foreground">{fmt(p.likes)}</td>
-              <td class="px-3 py-3 text-right tabular-nums text-foreground">{fmt(p.comments)}</td>
+              <td class="px-3 py-3 text-right text-foreground tabular-nums">{fmt(p.likes)}</td>
+              <td class="px-3 py-3 text-right text-foreground tabular-nums">{fmt(p.comments)}</td>
               <td class="hidden px-5 py-3 sm:table-cell" title="Likes + comments earned per day since publishing">
                 <div class="flex items-center gap-2">
                   <div class="h-1.5 w-full max-w-32 overflow-hidden rounded-full bg-muted">
                     <div class="h-full rounded-full bg-accent" style="width: {Math.max(2, engFrac(p) * 100)}%"></div>
                   </div>
-                  <span class="w-10 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{engLabel(p)}</span>
+                  <span class="w-10 shrink-0 text-right text-xs text-muted-foreground tabular-nums">{engLabel(p)}</span>
                 </div>
               </td>
             </tr>

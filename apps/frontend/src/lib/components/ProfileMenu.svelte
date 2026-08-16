@@ -59,7 +59,7 @@
     disabled={busy}
     aria-label="More actions"
     title="More actions"
-    class="inline-flex size-10 shrink-0 select-none items-center justify-center rounded-full border border-input text-foreground shadow-btn hover:bg-muted active:scale-[0.98]"
+    class="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-input text-foreground shadow-btn select-none hover:bg-muted active:scale-[0.98]"
   >
     <Icon name="more" size={18} />
   </DropdownMenu.Trigger>

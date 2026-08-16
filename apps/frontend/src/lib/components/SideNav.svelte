@@ -91,7 +91,7 @@
         </div>
 
         {#if instance?.federationEnabled}
-          <p class="flex items-center gap-1.5 whitespace-nowrap border-t border-border pt-2 text-muted-foreground">
+          <p class="flex items-center gap-1.5 border-t border-border pt-2 whitespace-nowrap text-muted-foreground">
             <Icon name="globe" size={12} />
             On the fediverse
           </p>

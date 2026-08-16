@@ -132,7 +132,7 @@
               bind:value={newTitle}
               placeholder="New list"
               maxlength="100"
-              class="h-8 min-w-0 flex-1 rounded-input border border-border bg-background px-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-foreground/20"
+              class="h-8 min-w-0 flex-1 rounded-input border border-border bg-background px-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:outline-hidden"
             />
             <button
               type="submit"

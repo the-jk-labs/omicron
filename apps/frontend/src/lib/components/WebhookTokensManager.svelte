@@ -127,7 +127,7 @@
 
 <div class="mt-4 flex flex-col gap-1.5 sm:flex-row sm:items-end sm:gap-2">
   <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-    <Label.Root for="tokenLabel" class="text-sm font-medium leading-none">New token</Label.Root>
+    <Label.Root for="tokenLabel" class="text-sm leading-none font-medium">New token</Label.Root>
     <input
       id="tokenLabel"
       bind:value={label}

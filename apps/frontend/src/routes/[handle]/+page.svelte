@@ -290,7 +290,7 @@
     >
   </Tabs.List>
 
-  <Tabs.Content value="articles" class="select-none pt-3">
+  <Tabs.Content value="articles" class="pt-3 select-none">
     {#if locked}
       <div class="rounded-card border border-border bg-background-alt px-6 py-12 text-center">
         <div class="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -334,7 +334,7 @@
   {/if}
 
   {#if !locked}
-    <Tabs.Content value="recommendations" class="select-none pt-3">
+    <Tabs.Content value="recommendations" class="pt-3 select-none">
       {#if recommended.length === 0}
         <p class="py-10 text-center text-muted-foreground">
           {isSelf

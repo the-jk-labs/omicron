@@ -76,7 +76,7 @@
         placeholder="One sentence on what this post is about"
         class="min-w-0 flex-1 rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
       />
-      <span class="shrink-0 text-xs tabular-nums text-muted-foreground">
+      <span class="shrink-0 text-xs text-muted-foreground tabular-nums">
         {summary.length}/{MAX_SUMMARY}
       </span>
       <Button

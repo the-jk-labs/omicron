@@ -44,7 +44,7 @@
 >
   {#each tags as tag, i (tag)}
     <span
-      class="inline-flex items-center gap-1 rounded-full bg-muted py-1 pl-3 pr-1.5 text-sm font-medium text-foreground"
+      class="inline-flex items-center gap-1 rounded-full bg-muted py-1 pr-1.5 pl-3 text-sm font-medium text-foreground"
     >
       #{tag}
       <button
