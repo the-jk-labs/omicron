@@ -44,6 +44,7 @@ import { cacheActor } from "@/federation/remote.ts";
 import { origin } from "@/config.ts";
 import { normalizeTags } from "@/lib/tags.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
+import { sameOrigin } from "@/lib/domain.ts";
 import type { Post } from "@/db/schema.ts";
 
 // ── ActivityPub wiring (isolated) ────────────────────────────────────────
@@ -234,6 +235,16 @@ async function ingestArticle(
   if (!article.attributionId) return undefined;
   const author = await ctx.lookupObject(article.attributionId);
   if (!isActor(author) || !author.id) return undefined;
+
+  // Authority check: a post may only be attributed to an actor on the same
+  // origin as the post's own id. Without this, a hostile instance can deliver an
+  // Article on its own domain that claims `attributedTo` an account on another
+  // server, and we would store its content under that victim's name (fediverse
+  // impersonation). Fedify already refetches an embedded object from the origin
+  // of its id, so this closes the remaining gap where the id and the attributed
+  // actor disagree.
+  if (!sameOrigin(article.id, author.id)) return undefined;
+
   const actor = await cacheActor(author);
 
   const post = await postsRepo.upsertRemotePost({

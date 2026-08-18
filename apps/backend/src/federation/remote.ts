@@ -11,6 +11,7 @@ import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import { normalizeTags } from "@/lib/tags.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
+import { sameOrigin } from "@/lib/domain.ts";
 import type { RemoteActor } from "@/db/schema.ts";
 
 // Resolving and caching remote fediverse actors + their posts. This is the
@@ -115,6 +116,11 @@ export async function fetchOutboxPosts(handle: string, remoteActorId: string): P
       // Long-form only: keep Articles, skip microblog Notes (Mastodon, …).
       if (!(obj instanceof Article)) continue;
       if (!obj.id) continue;
+      // Authority check: only cache a post whose id shares the actor's origin.
+      // An actor's outbox listing a post on another server's domain would
+      // otherwise let us store that post under this actor's name — the same
+      // cross-origin impersonation the inbox path guards against.
+      if (!sameOrigin(obj.id, actor.id)) continue;
       await postsRepo.upsertRemotePost({
         remoteActorId,
         apId: obj.id.href,
