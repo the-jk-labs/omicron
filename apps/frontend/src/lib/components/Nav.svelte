@@ -74,9 +74,13 @@
 
 <header class="sticky top-0 z-20 bg-background/80 backdrop-blur-sm">
   <nav class="relative mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-    <Button href="/" variant="plain" class="flex items-center gap-2 text-foreground hover:opacity-80">
-      <img src={logo} alt="" width="28" height="28" class="h-7 w-auto" />
-      <span class="text-xl font-bold tracking-tight">{appName}</span>
+    <!-- `min-w-0` + `truncate`: the instance name is operator-chosen and can be
+         long, and a narrow phone leaves the row barely wider than its contents.
+         Without them the name refuses to give up width and the right-hand
+         controls ride over it instead. -->
+    <Button href="/" variant="plain" class="flex min-w-0 items-center gap-2 text-foreground hover:opacity-80">
+      <img src={logo} alt="" width="28" height="28" class="h-7 w-auto shrink-0" />
+      <span class="truncate text-xl font-bold tracking-tight">{appName}</span>
     </Button>
 
     {#if !minimal}
@@ -86,7 +90,7 @@
       </div>
     {/if}
 
-    <div class="flex items-center gap-1.5">
+    <div class="flex shrink-0 items-center gap-1.5">
       {#if !minimal}
         <!-- Icon-only search fallback (below sm) -->
         <Button href="/search" variant="icon" class="border-0! shadow-none! sm:hidden" aria-label="Search">
