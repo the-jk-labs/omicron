@@ -5,11 +5,12 @@ import * as authService from "@/services/auth.ts";
 import * as sessionsRepo from "@/db/repositories/sessions.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as usersService from "@/services/users.ts";
-import { SESSION_COOKIE, SESSION_TTL_MS } from "@/lib/session.ts";
+import { cookieSecure, SESSION_COOKIE, SESSION_TTL_MS } from "@/lib/session.ts";
 import { config } from "@/config.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import { rateLimit } from "@/lib/rateLimit.ts";
 import { privateUser, profileLinkView } from "@/routes/serializers.ts";
+import type { Context } from "hono";
 import type { AppEnv } from "@/routes/types.ts";
 
 export const authRoutes = new Hono<AppEnv>();
@@ -42,26 +43,32 @@ const tokenLimiter = rateLimit({
   max: config.RL_LOGIN_MAX,
 });
 
-const cookieOpts = {
-  httpOnly: true,
-  sameSite: "Lax" as const,
-  path: "/",
-  secure: !config.APP_DOMAIN.startsWith("localhost"),
-  maxAge: SESSION_TTL_MS / 1000,
-};
+// Session cookie attributes. `secure` is decided per request from the forwarded
+// scheme (see lib/session.ts cookieSecure) rather than a static config guess, so
+// the flag is correct on a wizard-configured HTTPS instance whose APP_DOMAIN was
+// never moved off its localhost default.
+function cookieOpts(c: Context) {
+  return {
+    httpOnly: true,
+    sameSite: "Lax" as const,
+    path: "/",
+    secure: cookieSecure(c, config.APP_DOMAIN),
+    maxAge: SESSION_TTL_MS / 1000,
+  };
+}
 
 authRoutes.post("/register", registerLimiter, async (c) => {
   const body = await c.req.json();
   const user = await authService.register(body);
   const { token } = await authService.login(user.username, body.password);
-  setCookie(c, SESSION_COOKIE, token, cookieOpts);
+  setCookie(c, SESSION_COOKIE, token, cookieOpts(c));
   return c.json({ user: privateUser(user) }, 201);
 });
 
 authRoutes.post("/login", loginLimiter, async (c) => {
   const { identifier, password } = await c.req.json();
   const { user, token } = await authService.login(identifier, password);
-  setCookie(c, SESSION_COOKIE, token, cookieOpts);
+  setCookie(c, SESSION_COOKIE, token, cookieOpts(c));
   return c.json({ user: privateUser(user, await tagsRepo.tagsForUser(user.id)) });
 });
 

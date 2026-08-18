@@ -6,21 +6,26 @@ import * as authService from "@/services/auth.ts";
 import * as setup from "@/services/instanceSetup.ts";
 import * as emailSettings from "@/services/emailSettings.ts";
 import { sendTestEmail } from "@/services/email.ts";
-import { SESSION_COOKIE, SESSION_TTL_MS } from "@/lib/session.ts";
+import { cookieSecure, SESSION_COOKIE, SESSION_TTL_MS } from "@/lib/session.ts";
 import { config } from "@/config.ts";
 import { badRequest, conflict } from "@/lib/http.ts";
 import { privateUser } from "@/routes/serializers.ts";
+import type { Context } from "hono";
 import type { AppEnv } from "@/routes/types.ts";
 
-// Session cookie attributes (kept in sync with routes/auth.ts). Secure unless
-// running on a bare localhost domain, where there's no TLS to require.
-const cookieOpts = {
-  httpOnly: true,
-  sameSite: "Lax" as const,
-  path: "/",
-  secure: !config.APP_DOMAIN.startsWith("localhost"),
-  maxAge: SESSION_TTL_MS / 1000,
-};
+// Session cookie attributes (kept in sync with routes/auth.ts). `secure` is
+// decided per request from the forwarded scheme (lib/session.ts cookieSecure),
+// so a wizard-configured HTTPS instance gets a Secure cookie even while
+// APP_DOMAIN still holds its localhost default.
+function cookieOpts(c: Context) {
+  return {
+    httpOnly: true,
+    sameSite: "Lax" as const,
+    path: "/",
+    secure: cookieSecure(c, config.APP_DOMAIN),
+    maxAge: SESSION_TTL_MS / 1000,
+  };
+}
 
 // Public, unauthenticated snapshot of the instance's identity. Drives the
 // frontend chrome (app name) and the first-run setup gate.
@@ -90,7 +95,7 @@ setupRoutes.post("/", async (c) => {
   // treats its email as verified, so the owner can never be locked out.
   const user = await authService.register(admin);
   const { token } = await authService.login(user.username, admin.password);
-  setCookie(c, SESSION_COOKIE, token, cookieOpts);
+  setCookie(c, SESSION_COOKIE, token, cookieOpts(c));
 
   await setup.completeSetup({ appName, appDomain, email });
 
