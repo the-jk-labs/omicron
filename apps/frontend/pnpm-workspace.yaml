@@ -1,3 +1,12 @@
 saveExact: true
 minimumReleaseAge: 0
 trustPolicy: "off"
+
+# Force the vulnerable transitive `cookie` (<0.7.0, pulled by an older
+# @sveltejs/kit that `runed`/`bits-ui` resolve) up to the patched 0.7 line.
+# Pinned to ^0.7.0 (>=0.7.0 <0.8.0), NOT a bare ">=0.7.0": the latter resolves
+# cookie 2.x, whose API dropped the `parse`/`serialize` named exports that
+# @sveltejs/kit imports, breaking the Vite build. 0.7.x fixes the advisory and
+# keeps the exports kit needs. GHSA-pxg6-pf52-xh8x.
+overrides:
+  cookie@<0.7.0: "^0.7.0"

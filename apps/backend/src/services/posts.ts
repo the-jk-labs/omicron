@@ -16,6 +16,26 @@ import { queue } from "@/queue/queue.ts";
 
 // Business logic for posts. Creating a local post enqueues federation delivery.
 
+// Upper bound on a stored post body, in characters of sanitized HTML. Generous
+// — a very long illustrated article is well under this — but finite, so a
+// signed-in author (or a stolen session) can't push an unbounded string through
+// the sanitizer and into a row as a storage-exhaustion vector. Images are
+// referenced by URL, never inlined, so real posts stay far below it. Mirrors the
+// byte caps the ingest webhook (WEBHOOK_MAX_BODY_BYTES) and the profile custom
+// section (MAX_CUSTOM_SECTION_LEN) already enforce on their own write paths.
+const MAX_POST_HTML_LEN = 1_000_000;
+
+// Rejects an over-long body. Checked after sanitizing, on the value that will
+// actually be stored and served, so padding that the sanitizer strips doesn't
+// count against the author.
+function assertBodyWithinLimit(html: string): void {
+  if (html.length > MAX_POST_HTML_LEN) {
+    throw badRequest(
+      `Post content is too large (limit ${MAX_POST_HTML_LEN.toLocaleString("en-US")} characters).`,
+    );
+  }
+}
+
 // The author's own one-line description of a post.
 //
 // This is what a search engine prints under the title in results, and what a
@@ -82,6 +102,7 @@ export async function createPost(authorId: string, input: {
   // and is correctly rejected below.
   const html = sanitizePostHtml(input.contentHtml).trim();
   if (!html) throw badRequest("Post content cannot be empty.");
+  assertBodyWithinLimit(html);
 
   // A title is required to publish; drafts may be saved untitled (work in progress).
   const title = input.title?.trim();
@@ -251,6 +272,7 @@ export async function updatePost(authorId: string, id: string, input: {
     ? sanitizePostHtml(input.contentHtml).trim()
     : undefined;
   if (input.contentHtml !== undefined && !html) throw badRequest("Post content cannot be empty.");
+  if (html !== undefined) assertBodyWithinLimit(html);
 
   const title = input.title?.trim();
   // Untitled drafts are allowed, but a post must have a title to be published.
