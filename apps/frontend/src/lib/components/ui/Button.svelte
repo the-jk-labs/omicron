@@ -38,11 +38,23 @@
     plain: "",
   };
 
+  // A caller's own display utility has to win over ours. Tailwind v4 emits the
+  // display utilities alphabetically — `.hidden` lands *before* `.inline-flex` —
+  // so the `inline-flex` in the strings above beats a `hidden` passed in by the
+  // caller whichever order the class attribute lists them in, and a button asked
+  // to disappear renders anyway. Dropping ours when the caller sets its own makes
+  // `class="hidden sm:inline-flex"` behave the way it reads.
+  const DISPLAY_UTILITY = /^(block|contents|flex|grid|hidden|inline|inline-block|inline-flex|inline-grid|table)$/;
+  const callerSetsDisplay = $derived(className.split(/\s+/).some((c) => DISPLAY_UTILITY.test(c)));
+  const ownDisplay = (s: string) => (callerSetsDisplay ? s.replace(/(^|\s)inline-flex(?=\s|$)/g, "$1") : s);
+
   // icon/link/plain are self-contained; the rest compose base + size + variant.
   const classes = $derived(
-    variant === "icon" || variant === "link" || variant === "plain"
-      ? `${variants[variant]} ${className}`
-      : `${base} ${sizes[size]} ${variants[variant]} ${className}`,
+    `${ownDisplay(
+      variant === "icon" || variant === "link" || variant === "plain"
+        ? variants[variant]
+        : `${base} ${sizes[size]} ${variants[variant]}`,
+    )} ${className}`,
   );
 </script>
 
