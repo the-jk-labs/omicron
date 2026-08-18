@@ -13,6 +13,14 @@ import type { User } from "@/db/schema.ts";
 // Business logic for authentication. First registered user becomes admin.
 
 const USERNAME_RE = /^[a-z0-9_]{3,30}$/;
+// A plausible email address, and — the security-relevant part — one with no
+// whitespace or control characters. This value is later used verbatim as the
+// SMTP `RCPT TO:<…>` command and the `To:` MIME header (lib/smtp.ts, lib/mime.ts),
+// so an unvalidated CR/LF in it would inject SMTP commands / mail headers (an
+// open-relay / header-injection hole). `[^\s@]+` forbids exactly those bytes.
+// Matches the shape already enforced on the public-profile email (services/users.ts).
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_EMAIL_LEN = 254; // RFC 5321 maximum address length
 const PASSWORD_RESET_TTL_MS = 1000 * 60 * 60; // 1 hour
 const EMAIL_VERIFY_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
 
@@ -39,16 +47,25 @@ export async function register(input: {
   if (!USERNAME_RE.test(username)) {
     throw badRequest("Username must be 3-30 chars: lowercase letters, numbers, underscore.");
   }
+  // Validate the email before it is stored: it becomes the recipient of every
+  // account email, used raw in the SMTP envelope and the `To:` header, so it
+  // must be a single well-formed address with no embedded newline. The setup
+  // wizard and admin routes validate via zod; this is the choke point for the
+  // public /api/auth/register path, which does not.
+  const email = input.email.trim();
+  if (email.length > MAX_EMAIL_LEN || !EMAIL_RE.test(email)) {
+    throw badRequest("Enter a valid email address.");
+  }
   if (input.password.length < 8) {
     throw badRequest("Password must be at least 8 characters.");
   }
   if (await usersRepo.findByUsername(username)) throw conflict("Username already taken.");
-  if (await usersRepo.findByEmail(input.email)) throw conflict("Email already registered.");
+  if (await usersRepo.findByEmail(email)) throw conflict("Email already registered.");
 
   const isFirstUser = (await usersRepo.countUsers()) === 0;
   const user = await usersRepo.create({
     username,
-    email: input.email,
+    email,
     passwordHash: await hashPassword(input.password),
     displayName: input.displayName?.trim() || username,
     isAdmin: isFirstUser,
