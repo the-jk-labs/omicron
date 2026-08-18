@@ -89,14 +89,19 @@ export function timeAgo(iso: string, timeZone?: string): string {
   return formatDate(iso, timeZone);
 }
 
-// Date plus 24h hh:mm time, e.g. "Jul 8, 2026, 14:05".
-export function formatDateTime(iso: string, timeZone?: string): string {
-  const date = new Date(iso);
-  const time = date.toLocaleTimeString(LOCALE, {
+// 24h hh:mm clock time, e.g. "14:05". Separate from `formatDateTime` so a
+// caller that has room for the day but not the time — a feed card on a phone —
+// can drop just the time rather than reformatting the whole stamp.
+export function formatTime(iso: string, timeZone?: string): string {
+  return new Date(iso).toLocaleTimeString(LOCALE, {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
     timeZone,
   });
-  return `${formatDate(iso, timeZone)}, ${time}`;
+}
+
+// Date plus 24h hh:mm time, e.g. "Jul 8, 2026, 14:05".
+export function formatDateTime(iso: string, timeZone?: string): string {
+  return `${formatDate(iso, timeZone)}, ${formatTime(iso, timeZone)}`;
 }
