@@ -9,6 +9,7 @@
     "backfill:sanitize": "deno run -A scripts/backfill_sanitize.ts",
     "backfill:math": "deno run -A scripts/backfill_math.ts",
     "backfill:unescape": "deno run -A scripts/backfill_unescape.ts",
+    "backfill:email-lowercase": "deno run -A scripts/backfill_email_lowercase.ts",
     "check": "deno check src/main.ts",
     "test": "deno test -A",
     "fmt": "deno fmt",
