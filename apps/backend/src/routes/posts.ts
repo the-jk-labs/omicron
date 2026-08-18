@@ -9,6 +9,7 @@ import * as commentLikesService from "@/services/commentLikes.ts";
 import { enrichPost, enrichPosts } from "@/services/engagement.ts";
 import * as analyticsService from "@/services/analytics.ts";
 import { isBot, readerOptedOut, VIEW_COOKIE, VIEW_COOKIE_TTL_MS } from "@/lib/analytics.ts";
+import { cookieSecure } from "@/lib/session.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { parseLanguageFilter } from "@/lib/languages.ts";
 import { requireUser } from "@/routes/middleware.ts";
@@ -18,13 +19,18 @@ import type { AppEnv } from "@/routes/types.ts";
 
 export const postRoutes = new Hono<AppEnv>();
 
-const viewCookieOpts = {
-  httpOnly: true,
-  sameSite: "Lax" as const,
-  path: "/",
-  secure: !config.APP_DOMAIN.startsWith("localhost"),
-  maxAge: VIEW_COOKIE_TTL_MS / 1000,
-};
+// `secure` is decided per request from the forwarded scheme (lib/session.ts
+// cookieSecure), matching the session cookie, so this is Secure on a
+// wizard-configured HTTPS instance rather than keyed to the boot-time domain.
+function viewCookieOpts(c: Context<AppEnv>) {
+  return {
+    httpOnly: true,
+    sameSite: "Lax" as const,
+    path: "/",
+    secure: cookieSecure(c, config.APP_DOMAIN),
+    maxAge: VIEW_COOKIE_TTL_MS / 1000,
+  };
+}
 
 // Timeline (public). `?scope=local` returns only posts from this instance;
 // otherwise the global blog feed across the fediverse.
@@ -80,7 +86,7 @@ function countView(c: Context<AppEnv>, row: { post: { id: string } }) {
     !viewer && !anonCookie && !readerOptedOut(headers) && !isBot(headers.get("user-agent") ?? "")
   ) {
     anonCookie = crypto.randomUUID() + crypto.randomUUID();
-    setCookie(c, VIEW_COOKIE, anonCookie, viewCookieOpts);
+    setCookie(c, VIEW_COOKIE, anonCookie, viewCookieOpts(c));
   }
   analyticsService.recordPostView(row.post.id, headers, viewer?.id ?? null, anonCookie).catch(
     () => {},

@@ -52,7 +52,13 @@ export async function register(input: {
   // must be a single well-formed address with no embedded newline. The setup
   // wizard and admin routes validate via zod; this is the choke point for the
   // public /api/auth/register path, which does not.
-  const email = input.email.trim();
+  //
+  // Lowercased, not merely trimmed: every lookup elsewhere (login, password
+  // reset, resend) lowercases the identifier before `findByEmail`, so storing a
+  // mixed-case address would (a) make the account unreachable at sign-in and
+  // (b) let `Alice@x` and `alice@x` register as two rows past the unique index,
+  // which is case-sensitive. Canonicalising here keeps one address ⇒ one account.
+  const email = input.email.trim().toLowerCase();
   if (email.length > MAX_EMAIL_LEN || !EMAIL_RE.test(email)) {
     throw badRequest("Enter a valid email address.");
   }
