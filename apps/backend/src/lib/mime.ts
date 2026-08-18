@@ -25,6 +25,21 @@ export interface BuiltMessage {
 
 const CRLF = "\r\n";
 
+// A header value (or SMTP-envelope field) must not carry a line break or other
+// control character: interpolated into a header line or a `RCPT TO:` command, a
+// CR/LF would start a new header / SMTP command (injection). Every value that
+// reaches a header goes through here first. Callers upstream validate their
+// inputs; this is the last-line guard that turns a slip into a thrown error
+// rather than a smuggled header. Matches C0 controls and DEL.
+// deno-lint-ignore no-control-regex
+const HEADER_UNSAFE = /[\x00-\x1f\x7f]/;
+
+function assertHeaderSafe(value: string, field: string): void {
+  if (HEADER_UNSAFE.test(value)) {
+    throw new Error(`Illegal control character in email ${field}.`);
+  }
+}
+
 /** Extract the bare address from a `Name <addr>` or `addr` header value. */
 export function extractAddress(value: string): string {
   const angle = value.match(/<([^>]+)>/);
@@ -52,6 +67,13 @@ function randomBoundary(): string {
 
 /** Assemble headers + body for a text (and optional HTML) message. */
 export function buildMessage(input: MessageInput): BuiltMessage {
+  // Guard the values that become header lines. `text`/`html` are the body (base64
+  // encoded below) and don't need it, but From/To/Subject are written straight
+  // into headers, so a CR/LF here must be refused, not serialized.
+  assertHeaderSafe(input.from, "sender");
+  assertHeaderSafe(input.to, "recipient");
+  assertHeaderSafe(input.subject, "subject");
+
   const fromAddress = extractAddress(input.from);
   const domain = domainOf(fromAddress) || "localhost";
   const messageId = `<${crypto.randomUUID()}@${domain}>`;

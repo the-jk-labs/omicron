@@ -154,6 +154,16 @@ export async function sendSmtp(opts: SmtpOptions, env: SmtpEnvelope): Promise<vo
   const timeoutMs = opts.timeoutMs ?? 20_000;
   const helo = opts.heloName || "localhost";
 
+  // The envelope addresses are interpolated into the `MAIL FROM:<…>` / `RCPT
+  // TO:<…>` command lines below. A CR/LF (or other control byte) in one would
+  // terminate that line and inject a further SMTP command, so refuse it here —
+  // a last-line guard behind the address validation the callers already do.
+  // deno-lint-ignore no-control-regex
+  const CONTROL = /[\x00-\x1f\x7f]/;
+  if (CONTROL.test(env.from) || CONTROL.test(env.to)) {
+    throw new Error("Illegal control character in SMTP envelope address.");
+  }
+
   let socket: Deno.Conn;
   try {
     socket = opts.implicitTls
