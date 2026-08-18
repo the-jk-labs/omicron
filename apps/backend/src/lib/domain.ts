@@ -34,3 +34,15 @@ export function hostMatchesDomain(host: string, domain: string): boolean {
   host = host.trim().toLowerCase();
   return host === domain || host.endsWith(`.${domain}`);
 }
+
+// Whether two ActivityPub ids come from the same origin (scheme + host + port).
+//
+// The authority check for federated ingest: a server may only speak for objects
+// on its own origin. A remote Article whose `id` lives on one host but whose
+// `attributedTo` actor lives on another is an impersonation attempt — one
+// instance publishing a post under an account it does not control — so the two
+// origins must match before we store the post under that author. Matches
+// Mastodon's same-origin rule for an object and its attributed actor.
+export function sameOrigin(a: URL | null | undefined, b: URL | null | undefined): boolean {
+  return a != null && b != null && a.origin === b.origin;
+}
