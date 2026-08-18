@@ -130,3 +130,14 @@ export async function setSuspended(id: string, at: Date | null) {
   const [row] = await db.update(users).set({ suspendedAt: at }).where(eq(users.id, id)).returning();
   return row;
 }
+
+// Every account's id, email, and creation time — for the one-off email-lowercase
+// backfill (scripts/backfill_email_lowercase.ts), which canonicalises rows that
+// predate case-normalised registration. Oldest first, so a collision report is
+// deterministic and names the original account first.
+export function listEmails(): Promise<{ id: string; email: string; createdAt: Date }[]> {
+  return db
+    .select({ id: users.id, email: users.email, createdAt: users.createdAt })
+    .from(users)
+    .orderBy(users.createdAt);
+}
