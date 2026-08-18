@@ -7,7 +7,7 @@
   import TagList from "$lib/components/TagList.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import { excerpt, formatDateTime, readTime } from "$lib/format";
+  import { excerpt, formatDate, formatTime, readTime } from "$lib/format";
   import { postPath } from "$lib/links";
   import { timeZone } from "$lib/timezone";
   import type { Post } from "$lib/types";
@@ -96,13 +96,23 @@
     <TagList tags={post.tags} class="mt-3" />
   {/if}
 
-  <div class="mt-4 flex items-center gap-3">
-    <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
-      <span>{formatDateTime(post.createdAt, $timeZone)}</span>
-      <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
-      <span class="flex items-center gap-1"><Icon name="heart" size={13} /> {post.likeCount}</span>
-      <span class="flex items-center gap-1"><Icon name="comment" size={13} /> {post.commentCount}</span>
-    </div>
+  <!-- Meta and actions share one wrapping row rather than sitting in two
+       columns: on a phone the meta needs two lines, and a fixed action column
+       beside it then floats in the gap between them, aligned to neither. In one
+       row the buttons stay on the meta's line while there is room and drop to
+       their own right-aligned line when there is not. -->
+  <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
+    <!-- The clock time is what pushes this row past a phone's width, and a card
+         in a feed is a "when", not a timestamp — the post itself still carries
+         the exact one. -->
+    <span
+      >{formatDate(post.createdAt, $timeZone)}<span class="hidden sm:inline"
+        >, {formatTime(post.createdAt, $timeZone)}</span
+      ></span
+    >
+    <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
+    <span class="flex items-center gap-1"><Icon name="heart" size={13} /> {post.likeCount}</span>
+    <span class="flex items-center gap-1"><Icon name="comment" size={13} /> {post.commentCount}</span>
     <span class="ml-auto flex shrink-0 items-center gap-1">
       <RecommendButton postId={post.id} recommended={post.recommended} recommendCount={post.recommendCount} size="xs" />
       <SaveToListButton postId={post.id} {signedIn} />
