@@ -31,6 +31,14 @@ jobs:
         run: deno lint
       - name: Test
         run: deno task test
+      - name: Audit dependencies
+        # Surface every advisory in the log for visibility, then fail only on a
+        # high/critical one — so a serious CVE in a dependency blocks the merge,
+        # while an unfixable low can't wedge the pipeline. Runs against the deps
+        # the steps above already resolved.
+        run: |
+          deno audit || true
+          deno audit --level=high
 
   frontend:
     name: Frontend (svelte-check)
@@ -61,6 +69,14 @@ jobs:
 
       - name: Run Checks
         run: pnpm check
+
+      - name: Audit dependencies
+        # Same policy as the backend: print all advisories, fail only on
+        # high/critical. `--prod` ignores devDependencies (build-time only, not
+        # shipped in the runtime image).
+        run: |
+          pnpm audit --prod || true
+          pnpm audit --prod --audit-level high
 
   docker-build:
     name: Docker images build
