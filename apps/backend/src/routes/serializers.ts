@@ -1,5 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Post, ProfileLink, RemoteActor, User, WebhookToken } from "@/db/schema.ts";
+import type {
+  Post,
+  ProfileLink,
+  ReadingList as ReadingListRow,
+  RemoteActor,
+  User,
+  WebhookToken,
+} from "@/db/schema.ts";
 import type { PostWithAuthor } from "@/db/repositories/posts.ts";
 import type { CommentWithAuthor } from "@/db/repositories/comments.ts";
 import type { NotificationRow } from "@/db/repositories/notifications.ts";
@@ -325,7 +332,7 @@ export function readingListView(
     id: string;
     title: string;
     description: string;
-    visibility: string;
+    visibility: ReadingListRow["visibility"];
     isReadLater: boolean;
     createdAt: Date;
     itemCount: number;

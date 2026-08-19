@@ -7,6 +7,10 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "verbatimModuleSyntax": true,
+    // The backend writes its imports with explicit ".ts" extensions (Deno
+    // requires them), so resolving its source through the `@` alias needs this.
+    // Permitted only because this project never emits JS from tsc (noEmit).
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "sourceMap": true,
     "types": ["node"],
