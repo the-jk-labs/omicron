@@ -294,11 +294,17 @@ export function listAllContent() {
 // fetch and each file would look wholly rewritten to a crawler.
 export const SITEMAP_PAGE_SIZE = 40000;
 
+// Private accounts are excluded for the same reason listSitemapProfiles
+// excludes them: their posts are visible only to approved followers, so a
+// crawler that follows the URL gets nothing — and the entry itself would
+// publish the post's existence, author and slug to anyone who fetches
+// /sitemap.xml.
 const publishedLocally = () =>
   and(
     eq(posts.remote, false),
     eq(posts.status, "published"),
     sql`${users.suspendedAt} is null`,
+    eq(users.isPrivate, false),
   );
 
 export function listSitemapEntries(page = 1) {
