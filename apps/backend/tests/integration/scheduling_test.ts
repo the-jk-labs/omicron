@@ -11,9 +11,10 @@
 // unit test cannot stage.
 import { assert, assertEquals, assertNotEquals } from "@std/assert";
 import { db } from "@/db/client.ts";
-import { posts } from "@/db/schema.ts";
+import { notifications, posts } from "@/db/schema.ts";
 import { eq } from "drizzle-orm";
 import * as postsRepo from "@/db/repositories/posts.ts";
+import { sweep } from "@/services/scheduledPosts.ts";
 import { closeDb, mkPost, mkUser, resetDb } from "./harness.ts";
 
 const opts = { sanitizeResources: false, sanitizeOps: false };
@@ -198,6 +199,34 @@ Deno.test("an author's own scheduled posts list soonest first", opts, async (t) 
       scheduled: 3,
       published: 0,
     });
+  });
+});
+
+Deno.test("a swept post tells its author it went out", opts, async (t) => {
+  await resetDb();
+  const author = await mkUser("writer");
+  const due = await mkPost(author.id, "due", {
+    status: "scheduled",
+    publishAt: new Date(Date.now() - 60_000),
+  });
+  await mkPost(author.id, "later", { status: "scheduled" });
+
+  await t.step("one sweep publishes the due post and notifies the author", async () => {
+    assertEquals(await sweep(), 1);
+
+    const notes = await db.select().from(notifications);
+    assertEquals(notes.length, 1);
+    assertEquals(notes[0].type, "post_published");
+    assertEquals(notes[0].recipientId, author.id);
+    assertEquals(notes[0].postId, due.id);
+    // Nobody did this — a timer did. The reader keys off the missing actor to
+    // render it as a statement rather than as "<someone> did <something>".
+    assertEquals(notes[0].actorId, null);
+  });
+
+  await t.step("a second sweep finds nothing and notifies nobody twice", async () => {
+    assertEquals(await sweep(), 0);
+    assertEquals((await db.select().from(notifications)).length, 1);
   });
 });
 

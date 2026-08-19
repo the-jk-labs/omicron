@@ -291,7 +291,8 @@ export function notificationView(row: NotificationRow) {
       | "comment"
       | "reply"
       | "comment_like"
-      | "recommend",
+      | "recommend"
+      | "post_published",
     actor,
     postId: n.postId,
     postTitle: row.postTitle,

@@ -16,7 +16,11 @@ export type NotificationType =
   | "comment"
   | "reply"
   | "comment_like"
-  | "recommend";
+  | "recommend"
+  // The instance published a scheduled post. The only type with no actor —
+  // nobody did this, a timer did — which is why the reader renders it as a
+  // statement rather than as "<someone> did <something>".
+  | "post_published";
 
 type NotifyParams = {
   recipientId: string;
