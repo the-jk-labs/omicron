@@ -421,20 +421,9 @@
   </div>
 </article>
 
-{#if data.related?.length}
-  <!-- Where to go next. A post page linked onward to nothing but its author,
-       which left readers with only the back button and left crawlers unable to
-       reach the rest of the archive from an article. Real <a> links, rendered
-       server-side, so both audiences follow the same ones. -->
-  <section aria-labelledby="read-next" class="mt-12 border-t border-border pt-8">
-    <h2 id="read-next" class="mb-4 text-lg font-bold tracking-tight text-foreground">Read next</h2>
-    {#each data.related as related (related.id)}
-      <PostCard post={related} />
-    {/each}
-  </section>
-{/if}
-
-<div id="responses" class="mt-12">
+<!-- scroll-mt clears the 64px sticky header, so the comment-count button
+     above lands on the "Responses" heading rather than under the nav. -->
+<div id="responses" class="mt-12 scroll-mt-20 border-t border-border pt-8">
   <Comments
     postId={post.id}
     initial={data.comments}
@@ -442,6 +431,24 @@
     onCountChange={(delta) => (commentCount += delta)}
   />
 </div>
+
+{#if data.related?.length}
+  <!-- Where to go next. A post page linked onward to nothing but its author,
+       which left readers with only the back button and left crawlers unable to
+       reach the rest of the archive from an article. Real <a> links, rendered
+       server-side, so both audiences follow the same ones.
+
+       Last on the page, below the responses: a reader who reaches the end of an
+       article is either replying to it or leaving, and an exit ramp placed
+       above the reply box pushes that box off screen at the moment it is
+       wanted. The thread paginates, so the bottom stays reachable. -->
+  <section aria-labelledby="read-next" class="mt-12 border-t border-border pt-8">
+    <h2 id="read-next" class="mb-4 text-lg font-bold tracking-tight text-foreground">Read next</h2>
+    {#each data.related as related (related.id)}
+      <PostCard post={related} />
+    {/each}
+  </section>
+{/if}
 
 <Dialog.Root bind:open={reportOpen} onOpenChange={onReportOpenChange}>
   <Dialog.Portal>
