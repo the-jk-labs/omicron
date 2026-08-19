@@ -11,6 +11,23 @@ const config = {
     // render-blocking CSS and JS transfer sizes.
     adapter: adapter({ precompress: true }),
 
+    // `@` resolves to the backend's source tree, mirroring the `@/` import map
+    // in apps/backend/deno.json so a path written there means the same thing
+    // here. It exists so `src/lib/types.ts` can derive the API payload types
+    // from the backend's own serializers instead of re-declaring them by hand —
+    // a serializer change then fails this app's typecheck instead of silently
+    // shipping a wrong type. Declared here rather than as a `paths` entry in
+    // tsconfig.json because SvelteKit generates `paths` itself; overriding that
+    // object wholesale would drop the `$lib`/`$app` aliases it puts there.
+    //
+    // Every import through this alias MUST be `import type`. The backend is
+    // Deno and its modules are not resolvable at runtime here; type-only
+    // imports are erased at build time (verbatimModuleSyntax), so nothing from
+    // the backend ever reaches the bundle.
+    alias: {
+      "@": "../backend/src",
+    },
+
     // Content-Security-Policy. `auto` makes SvelteKit hash/nonce its own inline
     // hydration script, so we can keep `script-src 'self'` with NO
     // `unsafe-inline` — an injected inline <script> (e.g. from any future
