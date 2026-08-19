@@ -5,7 +5,12 @@
   import { endpoints } from "$lib/api";
   import logo from "$lib/assets/omicron.svg";
   import Icon from "$lib/components/Icon.svelte";
-  import { notificationAction, notificationHref, notificationIcon } from "$lib/components/notifications";
+  import {
+    notificationAction,
+    notificationHref,
+    notificationIcon,
+    notificationSubject,
+  } from "$lib/components/notifications";
   import SearchBar from "$lib/components/SearchBar.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -148,16 +153,26 @@
                         : 'bg-muted/40'}"
                     >
                       <div class="relative shrink-0">
-                        <Avatar name={n.actor?.displayName ?? "?"} src={n.actor?.avatarUrl ?? undefined} size={36} />
-                        <span
-                          class="absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full bg-background text-muted-foreground"
-                        >
-                          <Icon name={notificationIcon(n.type)} size={12} />
-                        </span>
+                        {#if n.actor}
+                          <Avatar name={n.actor.displayName} src={n.actor.avatarUrl ?? undefined} size={36} />
+                          <span
+                            class="absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full bg-background text-muted-foreground"
+                          >
+                            <Icon name={notificationIcon(n.type)} size={12} />
+                          </span>
+                        {:else}
+                          <!-- Nobody did this — the instance did. An avatar with a "?" in it
+                               would be claiming otherwise, so the icon stands alone. -->
+                          <div
+                            class="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                          >
+                            <Icon name={notificationIcon(n.type)} size={16} />
+                          </div>
+                        {/if}
                       </div>
                       <div class="min-w-0 flex-1">
                         <p class="text-sm leading-snug text-foreground">
-                          <span class="font-semibold">{n.actor?.displayName ?? "Someone"}</span>
+                          <span class="font-semibold">{notificationSubject(n)}</span>
                           {notificationAction(n.type)}
                         </p>
                         {#if n.postTitle}

@@ -8,13 +8,17 @@
   import LanguageSelect from "$lib/components/LanguageSelect.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import SaveStatus from "$lib/components/SaveStatus.svelte";
+  import ScheduleDialog from "$lib/components/ScheduleDialog.svelte";
   import SummaryField from "$lib/components/SummaryField.svelte";
   import TagInput from "$lib/components/TagInput.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { confirm } from "$lib/components/ui/confirm";
+  import { formatScheduleLong, timeUntil } from "$lib/format";
   import { reading } from "$lib/prefs.svelte";
-  import type { CoverCredit } from "$lib/types";
+  import { timeZone } from "$lib/timezone";
+  import type { CoverCredit, OwnPostStatus } from "$lib/types";
   import type { Content } from "@tiptap/core";
+  import { DropdownMenu } from "bits-ui";
   import { onDestroy, onMount, untrack } from "svelte";
   import type { PageData } from "./$types";
 
@@ -54,6 +58,11 @@
   let error = $state("");
   let busy = $state(false);
   let savingDraft = $state(false);
+  // Set while the post is waiting for a scheduled moment, and null otherwise.
+  // Seeded from the loaded post so reopening a scheduled draft shows its time
+  // rather than offering to schedule it again from scratch.
+  let publishAt = $state<string | null>(draft?.publishAt ?? null);
+  let scheduleOpen = $state(false);
 
   // Set once the author edits the title, tags or body, so the unsaved-changes
   // guards only fire on real changes (not when simply opening/closing a draft).
@@ -97,6 +106,9 @@
   // `bypass` lets our own post-save navigations through the unsaved-changes guard.
   let bypass = false;
 
+  const menuItemClass =
+    "flex h-10 cursor-pointer items-center gap-2 rounded-button px-3 text-sm font-medium text-foreground select-none data-highlighted:bg-muted focus-visible:outline-hidden";
+
   /** Everything the composer holds, in the shape the API takes. */
   function body() {
     return {
@@ -113,12 +125,15 @@
     };
   }
 
-  // Autosave, drafts only. The composer is the draft surface — a published post
-  // is edited on its own page — so a background write here can never push an
-  // unfinished sentence to readers or federate an Update to remote instances.
+  // Autosave, unpublished posts only. The composer is the draft surface — a
+  // published post is edited on its own page — so a background write here can
+  // never push an unfinished sentence to readers or federate an Update to
+  // remote instances.
   //
   // `status` is only ever sent on the create: an update that omits it leaves
-  // the post a draft, so no timer can publish anything.
+  // the post in whatever state it is already in. That is what makes autosave
+  // safe on a *scheduled* post too — a timer cannot publish one early, and
+  // typing in the editor cannot silently unschedule it.
   const autosave = new Autosave({
     canSave: () => hasContent(),
     save: async () => {
@@ -137,8 +152,12 @@
   onDestroy(() => autosave.stop());
 
   // Creates or updates the post in the requested state, then leaves the editor.
-  async function persist(status: "draft" | "published") {
-    if (status === "published") {
+  // `at` is the moment a scheduled post goes out, and is ignored otherwise.
+  async function persist(status: OwnPostStatus, at: string | null = null) {
+    // A scheduled post is held to the publishing rules, not the draft ones:
+    // once it is out of the author's hands there is nobody to tell that it had
+    // no title. The server enforces the same thing; this is so they hear it now.
+    if (status !== "draft") {
       if (!title.trim()) {
         error = "A blog post must have a title.";
         return;
@@ -153,15 +172,17 @@
     }
     error = "";
     bypass = true;
-    if (status === "published") busy = true;
-    else savingDraft = true;
+    if (status === "draft") savingDraft = true;
+    else busy = true;
     // Hand over from autosave cleanly: no new timer may fire, and an autosave
     // already in flight must land before this write, or a create could race a
     // create and leave two drafts — or an old body could overwrite the new one.
     autosave.stop();
     await autosave.flush();
     try {
-      const payload = { ...body(), status };
+      // `publishAt` is always sent alongside a status, never on its own: the
+      // two are one decision, and the server rejects a mismatch between them.
+      const payload = { ...body(), status, publishAt: status === "scheduled" ? at : null };
       if (postId) {
         await endpoints().updatePost(postId, payload);
       } else {
@@ -171,11 +192,14 @@
       // Remember what they actually published in, so the next post starts
       // here instead of empty.
       if (status === "published") reading.setComposeLang(language);
-      goto(status === "published" ? `/posts/${postId}` : "/drafts");
+      // A published post goes to its own page; anything still unpublished goes
+      // back to the list it now belongs in, on the matching tab.
+      goto(status === "published" ? `/posts/${postId}` : `/posts/manage?tab=${status}`);
     } catch (err) {
       bypass = false;
       busy = false;
       savingDraft = false;
+      scheduleOpen = false;
       // The editor stays open on a failure, so autosave has to come back with
       // it — otherwise a failed publish silently leaves the author unprotected.
       autosave.resume();
@@ -230,20 +254,70 @@
 
 <PageTitle text="Write" />
 
-<div class="mb-8 flex items-center justify-between">
-  <p class="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-    <Icon name="compose" size={16} /> Draft
-  </p>
+<div class="mb-8 flex flex-wrap items-center justify-between gap-3">
+  {#if publishAt}
+    <p class="flex items-center gap-1.5 text-sm font-medium text-foreground">
+      <Icon name="clock" size={16} />
+      Scheduled · {formatScheduleLong(publishAt, $timeZone)}
+      <span class="font-normal text-muted-foreground">({timeUntil(publishAt)})</span>
+    </p>
+  {:else}
+    <p class="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+      <Icon name="compose" size={16} /> Draft
+    </p>
+  {/if}
   <div class="flex items-center gap-2">
     <SaveStatus status={autosave.state} savedAt={autosave.savedAt} error={autosave.error} />
     <Button onclick={() => persist("draft")} disabled={busy || savingDraft} variant="ghost">
       {savingDraft ? "Saving…" : "Save draft"}
     </Button>
-    <Button onclick={() => persist("published")} disabled={busy || savingDraft} variant="solid">
-      {busy ? "Publishing…" : "Publish"}
-    </Button>
+    <!-- Split control: the common action stays one click away, and the timing
+         choices sit behind the caret rather than competing with it. -->
+    <div class="flex items-center">
+      <Button
+        onclick={() => persist("published")}
+        disabled={busy || savingDraft}
+        variant="solid"
+        class="rounded-r-none"
+      >
+        {busy ? "Publishing…" : publishAt ? "Publish now" : "Publish"}
+      </Button>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger disabled={busy || savingDraft}>
+          {#snippet child({ props })}
+            <Button
+              {...props}
+              variant="solid"
+              aria-label="Publishing options"
+              class="rounded-l-none border-l border-background/20 px-2"
+            >
+              <Icon name="chevronDown" size={16} />
+            </Button>
+          {/snippet}
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            align="end"
+            sideOffset={6}
+            class="z-50 w-56 rounded-card border border-border bg-background p-1 shadow-popover focus-visible:outline-hidden"
+          >
+            <DropdownMenu.Item onSelect={() => (scheduleOpen = true)} class={menuItemClass}>
+              <Icon name="clock" size={16} />
+              {publishAt ? "Reschedule…" : "Schedule…"}
+            </DropdownMenu.Item>
+            {#if publishAt}
+              <DropdownMenu.Item onSelect={() => persist("draft")} class={menuItemClass}>
+                <Icon name="draft" size={16} /> Unschedule, keep as draft
+              </DropdownMenu.Item>
+            {/if}
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+    </div>
   </div>
 </div>
+
+<ScheduleDialog bind:open={scheduleOpen} current={publishAt} onconfirm={(at) => persist("scheduled", at)} />
 
 <input
   placeholder="Title"

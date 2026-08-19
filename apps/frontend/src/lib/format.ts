@@ -105,3 +105,45 @@ export function formatTime(iso: string, timeZone?: string): string {
 export function formatDateTime(iso: string, timeZone?: string): string {
   return `${formatDate(iso, timeZone)}, ${formatTime(iso, timeZone)}`;
 }
+
+// The forward-looking counterpart to `timeAgo`, and deliberately wordier: this
+// one appears where the reader is deciding whether a time is what they meant
+// ("in 2 days"), not scanning a list of things that already happened.
+export function timeUntil(iso: string): string {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return "any moment now";
+  const m = Math.round(ms / 60_000);
+  if (m < 1) return "in under a minute";
+  if (m < 60) return `in ${m} minute${m === 1 ? "" : "s"}`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `in ${h} hour${h === 1 ? "" : "s"}`;
+  const d = Math.round(h / 24);
+  if (d < 14) return `in ${d} day${d === 1 ? "" : "s"}`;
+  const w = Math.round(d / 7);
+  if (w < 9) return `in ${w} week${w === 1 ? "" : "s"}`;
+  const mo = Math.round(d / 30);
+  return `in ${mo} month${mo === 1 ? "" : "s"}`;
+}
+
+// The unabbreviated form — "Thursday, 21 August 2026 at 09:00". Used where the
+// reader is confirming a time they are about to commit to rather than glancing
+// at one, so nothing is shortened: the weekday is spelled out because "is that
+// a Thursday?" is exactly the question someone scheduling a post asks.
+export function formatScheduleLong(iso: string, timeZone?: string): string {
+  const date = new Date(iso).toLocaleDateString(LOCALE, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone,
+  });
+  return `${date} at ${formatTime(iso, timeZone)}`;
+}
+
+// The zone a time is being read in, as a short offset like "GMT+4". Shown
+// beside any time the author is choosing: a schedule is the one place where
+// "09:00 in whose morning?" has a wrong answer.
+export function zoneLabel(timeZone?: string): string {
+  const parts = new Intl.DateTimeFormat(LOCALE, { timeZone, timeZoneName: "shortOffset" }).formatToParts(new Date());
+  return parts.find((p) => p.type === "timeZoneName")?.value ?? "";
+}

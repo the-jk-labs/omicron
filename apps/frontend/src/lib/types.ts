@@ -60,6 +60,11 @@ export type CoverCredit = {
   licenseUrl?: string;
 };
 
+// The three states a post the signed-in author owns can be in. `scheduled` is a
+// draft with a time attached: private and unfederated exactly like one, until
+// the instance publishes it on that schedule.
+export type OwnPostStatus = "draft" | "scheduled" | "published";
+
 export type Post = {
   id: string;
   title: string | null;
@@ -71,7 +76,11 @@ export type Post = {
   contentHtml: string;
   contentJson?: unknown;
   remote: boolean;
-  status?: "draft" | "published";
+  status?: OwnPostStatus;
+  // When a scheduled post goes out, as an ISO instant. Only ever present on the
+  // author's own scheduled posts — every public listing filters them out, and a
+  // direct link to one 404s for anyone else.
+  publishAt?: string | null;
   // BCP-47 primary language subtag (e.g. "en", "tr"), or null/undefined when the
   // author didn't specify one.
   language?: string | null;
@@ -192,7 +201,11 @@ export type NotificationType =
   | "comment"
   | "reply"
   | "comment_like"
-  | "recommend";
+  | "recommend"
+  // A scheduled post of the reader's own went live. The only type with no
+  // actor — a timer did it, not a person — which the renderers key off to show
+  // it as a statement rather than as "<someone> did <something>".
+  | "post_published";
 
 export type Notification = {
   id: string;
