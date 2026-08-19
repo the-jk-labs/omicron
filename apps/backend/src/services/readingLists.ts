@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as listsRepo from "@/db/repositories/readingLists.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
+import * as postsService from "@/services/posts.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import type { ReadingList } from "@/db/schema.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
@@ -22,8 +23,11 @@ function normalizeVisibility(v: unknown): "public" | "private" {
 }
 
 // Attaches item counts to a batch of lists in one query.
-async function withCounts(lists: ReadingList[]): Promise<ListWithCount[]> {
-  const counts = await listsRepo.itemCountsFor(lists.map((l) => l.id));
+async function withCounts(
+  lists: ReadingList[],
+  viewerId: string | null,
+): Promise<ListWithCount[]> {
+  const counts = await listsRepo.itemCountsFor(lists.map((l) => l.id), viewerId);
   return lists.map((l) => ({ ...l, itemCount: counts.get(l.id) ?? 0 }));
 }
 
@@ -31,7 +35,7 @@ async function withCounts(lists: ReadingList[]): Promise<ListWithCount[]> {
 // exist (created lazily here so the list is always present in the UI).
 export async function myLists(userId: string): Promise<ListWithCount[]> {
   await listsRepo.ensureReadLater(userId);
-  return withCounts(await listsRepo.listForUser(userId, false));
+  return withCounts(await listsRepo.listForUser(userId, false), userId);
 }
 
 // A named user's lists for their profile. The owner sees everything; everyone
@@ -44,12 +48,12 @@ export async function listsForProfile(
   if (!owner) throw notFound("User not found.");
   const isOwner = viewerId === owner.id;
   if (isOwner) await listsRepo.ensureReadLater(owner.id);
-  return withCounts(await listsRepo.listForUser(owner.id, !isOwner));
+  return withCounts(await listsRepo.listForUser(owner.id, !isOwner), viewerId);
 }
 
 export async function readLater(userId: string): Promise<ListWithCount> {
   const list = await listsRepo.ensureReadLater(userId);
-  const [withCount] = await withCounts([list]);
+  const [withCount] = await withCounts([list], userId);
   return withCount;
 }
 
@@ -101,7 +105,7 @@ export async function getList(
   { list: ListWithCount; isOwner: boolean; owner: { username: string; displayName: string } }
 > {
   const list = await readableList(listId, viewerId);
-  const [withCount] = await withCounts([list]);
+  const [withCount] = await withCounts([list], viewerId);
   const owner = await usersRepo.findById(list.userId);
   return {
     list: withCount,
@@ -114,7 +118,7 @@ export async function listItems(listId: string, viewerId: string | null, cursor:
   // `listId` may be a short id-prefix from a canonical URL; resolve to the full
   // row first, then query items by its real UUID.
   const list = await readableList(listId, viewerId);
-  const rows = await listsRepo.listItems(list.id, cursor, DEFAULT_PAGE_SIZE);
+  const rows = await listsRepo.listItems(list.id, viewerId, cursor, DEFAULT_PAGE_SIZE);
   const hasMore = rows.length > DEFAULT_PAGE_SIZE;
   const items = hasMore ? rows.slice(0, DEFAULT_PAGE_SIZE) : rows;
   const last = items.at(-1);
@@ -153,7 +157,7 @@ export async function updateList(
   if (input.visibility !== undefined) patch.visibility = normalizeVisibility(input.visibility);
 
   const updated = Object.keys(patch).length ? await listsRepo.update(list.id, patch) : list;
-  const [withCount] = await withCounts([updated]);
+  const [withCount] = await withCounts([updated], userId);
   return withCount;
 }
 
@@ -166,7 +170,16 @@ export async function deleteList(userId: string, listId: string): Promise<void> 
 
 export async function addItem(userId: string, listId: string, postId: string): Promise<void> {
   const list = await ownedList(listId, userId);
-  if (!(await postsRepo.findById(postId))) throw notFound("Post not found.");
+  // Only a post this user can actually see may be saved. `getPost` applies the
+  // same rule a permalink does — drafts to their author, private authors to
+  // approved followers, blocks both ways — and throws not-found otherwise, so
+  // an id alone is never enough to pull a post into a list.
+  //
+  // The read path filters too, so this is the second of two gates rather than
+  // the only one. It matters because the read filter is evaluated against
+  // whoever is *reading*: without this, a post the saver could never see would
+  // sit in the list waiting for someone who can.
+  await postsService.getPost(postId, userId);
   await listsRepo.addItem(list.id, postId);
   // Public lists federate an Add to the owner's remote followers; private and
   // Read-later-while-private lists stay local.
@@ -192,6 +205,6 @@ export async function listsForPost(
   await listsRepo.ensureReadLater(userId);
   const lists = await listsRepo.listForUser(userId, false);
   const containing = await listsRepo.listIdsContaining(lists.map((l) => l.id), postId);
-  const withCount = await withCounts(lists);
+  const withCount = await withCounts(lists, userId);
   return withCount.map((l) => ({ ...l, contains: containing.has(l.id) }));
 }
