@@ -40,3 +40,12 @@ declare module "hono" {
   // oxlint-disable-next-line no-explicit-any
   export type Context = Record<string, any>;
 }
+
+// Reached the same way, via `lib/http.ts`, which maps Hono's own client-error
+// exception onto this app's `{ error }` response shape. Only `status` and
+// `message` are touched there.
+declare module "hono/http-exception" {
+  export class HTTPException extends Error {
+    readonly status: number;
+  }
+}

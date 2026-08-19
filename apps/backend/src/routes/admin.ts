@@ -17,6 +17,7 @@ import { adminUserView } from "@/routes/serializers.ts";
 import { badRequest } from "@/lib/http.ts";
 import { rotateSessionSecret, sessionSecretManaged } from "@/config.ts";
 import { federationRunning } from "@/services/federationState.ts";
+import { jsonBody } from "@/lib/validate.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 export const adminRoutes = new Hono<AppEnv>();
@@ -32,13 +33,16 @@ const analyticsSchema = z.object({ onInstanceViews: z.boolean() });
 // Toggle the on-instance view-counting opt-out (see ANALYTICS.md). When turned
 // off, no view counters are incremented and the writer dashboard hides the
 // views panel; fediverse engagement is unaffected.
-adminRoutes.put("/settings/analytics", async (c) => {
-  requireAdmin(c);
-  const parsed = analyticsSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) throw badRequest("Expected { onInstanceViews: boolean }.");
-  await settings.setOnInstanceViewsEnabled(parsed.data.onInstanceViews);
-  return c.json({ onInstanceViews: parsed.data.onInstanceViews });
-});
+adminRoutes.put(
+  "/settings/analytics",
+  jsonBody(analyticsSchema, "Expected { onInstanceViews: boolean }."),
+  async (c) => {
+    requireAdmin(c);
+    const { onInstanceViews } = c.req.valid("json");
+    await settings.setOnInstanceViewsEnabled(onInstanceViews);
+    return c.json({ onInstanceViews });
+  },
+);
 
 // ── Security (AI-scraper shield) ─────────────────────────────────────────────
 
@@ -62,19 +66,21 @@ const securitySchema = z.object({ anubisProtection: z.boolean() });
 // Flip the scraper shield on/off. Applied live via Caddy's admin API (no
 // restart); federation and the API are never routed through it. A failure to
 // reach/reconfigure Caddy is surfaced verbatim and nothing is persisted.
-adminRoutes.put("/security/anubis", async (c) => {
-  requireAdmin(c);
-  const parsed = securitySchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) throw badRequest("Expected { anubisProtection: boolean }.");
-  try {
-    await anubis.setAnubisProtectionEnabled(parsed.data.anubisProtection);
-  } catch (err) {
-    throw badRequest(
-      err instanceof Error ? err.message : "Could not update scraper protection.",
-    );
-  }
-  return c.json(await securitySnapshot());
-});
+adminRoutes.put(
+  "/security/anubis",
+  jsonBody(securitySchema, "Expected { anubisProtection: boolean }."),
+  async (c) => {
+    requireAdmin(c);
+    try {
+      await anubis.setAnubisProtectionEnabled(c.req.valid("json").anubisProtection);
+    } catch (err) {
+      throw badRequest(
+        err instanceof Error ? err.message : "Could not update scraper protection.",
+      );
+    }
+    return c.json(await securitySnapshot());
+  },
+);
 
 // ── Discoverability / SEO ────────────────────────────────────────────────────
 
@@ -92,11 +98,9 @@ const seoSchema = z.object({
   indexNowEnabled: z.boolean().optional(),
 });
 
-adminRoutes.put("/seo", async (c) => {
+adminRoutes.put("/seo", jsonBody(seoSchema, "Invalid SEO settings."), async (c) => {
   requireAdmin(c);
-  const parsed = seoSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) throw badRequest("Invalid SEO settings.");
-  await seo.setSeoSettings(parsed.data);
+  await seo.setSeoSettings(c.req.valid("json"));
   return c.json(await seo.getSeoSettings());
 });
 
@@ -114,13 +118,15 @@ adminRoutes.get("/unsplash", async (c) => {
 // A blank (or omitted) key clears it, which is how the feature is turned off.
 const unsplashSchema = z.object({ accessKey: z.string().trim().max(200).nullish() });
 
-adminRoutes.put("/unsplash", async (c) => {
-  requireAdmin(c);
-  const parsed = unsplashSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) throw badRequest("Expected { accessKey: string | null }.");
-  await unsplash.setAccessKey(parsed.data.accessKey ?? null);
-  return c.json({ configured: await unsplash.configured() });
-});
+adminRoutes.put(
+  "/unsplash",
+  jsonBody(unsplashSchema, "Expected { accessKey: string | null }."),
+  async (c) => {
+    requireAdmin(c);
+    await unsplash.setAccessKey(c.req.valid("json").accessKey ?? null);
+    return c.json({ configured: await unsplash.configured() });
+  },
+);
 
 // ── Instance identity (runtime config) ──────────────────────────────────────
 
@@ -159,15 +165,12 @@ const instanceSchema = z.object({
 // binds at boot), as does flipping federation on/off (the Fedify mount and
 // queue handlers bind at boot); app-level name/URLs/banner text update at
 // once. The UI surfaces those caveats.
-adminRoutes.put("/instance", async (c) => {
+adminRoutes.put("/instance", jsonBody(instanceSchema), async (c) => {
   requireAdmin(c);
-  const parsed = instanceSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) {
-    throw badRequest(parsed.error.issues[0]?.message ?? "Invalid instance settings.");
-  }
-  await setup.setInstanceIdentity(parsed.data);
-  if (parsed.data.federationEnabled !== undefined) {
-    await setup.setFederationEnabled(parsed.data.federationEnabled);
+  const body = c.req.valid("json");
+  await setup.setInstanceIdentity(body);
+  if (body.federationEnabled !== undefined) {
+    await setup.setFederationEnabled(body.federationEnabled);
   }
   return c.json(await instanceSnapshot());
 });
@@ -235,13 +238,9 @@ const emailUpdateSchema = z.object({
 
 // Update email settings. Partial: only the keys present are written, so toggling
 // the mode or fixing one field never wipes the rest.
-adminRoutes.put("/email", async (c) => {
+adminRoutes.put("/email", jsonBody(emailUpdateSchema), async (c) => {
   requireAdmin(c);
-  const parsed = emailUpdateSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) {
-    throw badRequest(parsed.error.issues[0]?.message ?? "Invalid email settings.");
-  }
-  await emailSettings.setEmailConfig(parsed.data);
+  await emailSettings.setEmailConfig(c.req.valid("json"));
   return c.json(await emailSettings.redactedConfig());
 });
 
@@ -252,13 +251,9 @@ const dkimSchema = z.object({
   domain: z.string().trim().min(3).max(253),
 });
 
-adminRoutes.post("/email/dkim", async (c) => {
+adminRoutes.post("/email/dkim", jsonBody(dkimSchema), async (c) => {
   requireAdmin(c);
-  const parsed = dkimSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) {
-    throw badRequest(parsed.error.issues[0]?.message ?? "A sending domain is required.");
-  }
-  const domain = parsed.data.domain.toLowerCase();
+  const domain = c.req.valid("json").domain.toLowerCase();
   const { selector, publicKey } = await emailSettings.ensureDkimKeys(domain);
   return c.json({ domain, selector, records: dnsRecords(domain, selector, publicKey) });
 });
@@ -290,14 +285,10 @@ const emailTestSchema = z.object({
 
 // Send a test message through the currently-saved configuration so the admin
 // can confirm delivery (and surface the transport error verbatim if it fails).
-adminRoutes.post("/email/test", async (c) => {
+adminRoutes.post("/email/test", jsonBody(emailTestSchema), async (c) => {
   requireAdmin(c);
-  const parsed = emailTestSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) {
-    throw badRequest(parsed.error.issues[0]?.message ?? "A valid recipient is required.");
-  }
   try {
-    await sendTestEmail(parsed.data.to);
+    await sendTestEmail(c.req.valid("json").to);
   } catch (err) {
     throw badRequest(
       `Could not send the test email: ${err instanceof Error ? err.message : String(err)}`,
@@ -318,13 +309,15 @@ adminRoutes.get("/users", async (c) => {
 const suspendSchema = z.object({ suspend: z.boolean() });
 
 // Suspend or reinstate a local account.
-adminRoutes.post("/users/:id/suspend", async (c) => {
-  const admin = requireAdmin(c);
-  const parsed = suspendSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) throw badRequest("Expected { suspend: boolean }.");
-  await moderation.setSuspended(admin.id, c.req.param("id"), parsed.data.suspend);
-  return c.json({ ok: true });
-});
+adminRoutes.post(
+  "/users/:id/suspend",
+  jsonBody(suspendSchema, "Expected { suspend: boolean }."),
+  async (c) => {
+    const admin = requireAdmin(c);
+    await moderation.setSuspended(admin.id, c.req.param("id"), c.req.valid("json").suspend);
+    return c.json({ ok: true });
+  },
+);
 
 // ── Posts ────────────────────────────────────────────────────────────────
 
@@ -352,10 +345,9 @@ adminRoutes.get("/reports", async (c) => {
 const resolveSchema = z.object({ resolution: z.string().optional() });
 
 // Mark a report resolved with an optional note.
-adminRoutes.post("/reports/:id/resolve", async (c) => {
+adminRoutes.post("/reports/:id/resolve", jsonBody(resolveSchema.catch({})), async (c) => {
   const admin = requireAdmin(c);
-  const parsed = resolveSchema.safeParse(await c.req.json().catch(() => ({})));
-  const resolution = parsed.success ? parsed.data.resolution ?? "" : "";
+  const resolution = c.req.valid("json").resolution ?? "";
   await moderation.resolveReport(admin.id, c.req.param("id"), resolution);
   return c.json({ ok: true });
 });
@@ -372,13 +364,16 @@ const blockDomainSchema = z.object({ domain: z.string().min(1), reason: z.string
 
 // Defederate a domain. Returns the normalized domain and how many cached actors
 // were purged as a result.
-adminRoutes.post("/domains", async (c) => {
-  requireAdmin(c);
-  const parsed = blockDomainSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) throw badRequest("Expected { domain, reason? }.");
-  const result = await moderation.blockDomain(parsed.data.domain, parsed.data.reason ?? "");
-  return c.json(result, 201);
-});
+adminRoutes.post(
+  "/domains",
+  jsonBody(blockDomainSchema, "Expected { domain, reason? }."),
+  async (c) => {
+    requireAdmin(c);
+    const { domain, reason } = c.req.valid("json");
+    const result = await moderation.blockDomain(domain, reason ?? "");
+    return c.json(result, 201);
+  },
+);
 
 // Re-federate a domain. The param is the normalized domain (its primary key).
 adminRoutes.delete("/domains/:domain", async (c) => {

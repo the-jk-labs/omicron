@@ -3,7 +3,8 @@ import { Hono } from "hono";
 import * as stockPhotos from "@/services/stockPhotos.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import { rateLimit } from "@/lib/rateLimit.ts";
-import { badRequest } from "@/lib/http.ts";
+import { jsonBody } from "@/lib/validate.ts";
+import { z } from "zod";
 import type { AppEnv } from "@/routes/types.ts";
 
 // Free-photo search for the editor's banner picker. Every route is
@@ -47,15 +48,16 @@ photoRoutes.get("/search", searchLimiter, async (c) => {
 // Unsplash's API terms require it — it is what keeps a photographer's download
 // count honest when we hotlink their image. Best-effort inside the service, so
 // this always answers ok.
-photoRoutes.post("/use", async (c) => {
-  requireUser(c);
-  const body = await c.req.json().catch(() => null) as
-    | { provider?: unknown; token?: unknown }
-    | null;
-  const provider = stockPhotos.requireProvider(body?.provider);
-  if (typeof body?.token !== "string" || !body.token) {
-    throw badRequest("Expected { provider: string, token: string }.");
-  }
-  await stockPhotos.recordUse(provider, body.token);
-  return c.json({ ok: true });
-});
+photoRoutes.post(
+  "/use",
+  // `provider` stays a plain string here rather than an enum: the set of
+  // providers lives in services/stockPhotos.ts, and `requireProvider` is what
+  // decides membership. A second list here would be one to keep in step.
+  jsonBody(z.object({ provider: z.string(), token: z.string().min(1) })),
+  async (c) => {
+    requireUser(c);
+    const { provider, token } = c.req.valid("json");
+    await stockPhotos.recordUse(stockPhotos.requireProvider(provider), token);
+    return c.json({ ok: true });
+  },
+);
