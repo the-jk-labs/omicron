@@ -183,7 +183,7 @@
             <Calendar.Grid class="mt-2 w-full border-collapse select-none">
               <Calendar.GridHead>
                 <Calendar.GridRow class="flex w-full justify-between">
-                  {#each weekdays as day (day)}
+                  {#each weekdays as day, i (i)}
                     <Calendar.HeadCell class="w-9 text-xs font-normal text-muted-foreground">
                       {day.slice(0, 2)}
                     </Calendar.HeadCell>
@@ -191,9 +191,9 @@
                 </Calendar.GridRow>
               </Calendar.GridHead>
               <Calendar.GridBody>
-                {#each month.weeks as week (week[0])}
+                {#each month.weeks as week, weekIndex (weekIndex)}
                   <Calendar.GridRow class="flex w-full justify-between">
-                    {#each week as dayValue (dayValue)}
+                    {#each week as dayValue, dayIndex (dayIndex)}
                       <Calendar.Cell date={dayValue} month={month.value} class="p-0">
                         <Calendar.Day class={cellClass} />
                       </Calendar.Cell>
@@ -217,7 +217,11 @@
             class="inline-flex h-10 items-center rounded-input border border-input bg-background px-3 text-sm shadow-btn focus-within:ring-2 focus-within:ring-foreground/20"
           >
             {#snippet children({ segments })}
-              {#each segments as segment (segment.part)}
+              <!-- Keyed by index, not by `part`: a time field emits more than one
+                   `literal` segment, and a duplicate key is a hard render error —
+                   which, thrown from inside a dialog, leaves the body scroll lock
+                   applied and the whole page unclickable. -->
+              {#each segments as segment, i (i)}
                 <TimeField.Segment part={segment.part} class={segmentClass}>
                   {segment.value}
                 </TimeField.Segment>
