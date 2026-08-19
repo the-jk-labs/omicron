@@ -18,7 +18,7 @@ export async function getTag(rawSlug: string, viewerId: string | null) {
   const tag = await tagsRepo.findBySlug(slug);
   if (!tag) throw notFound("Tag not found.");
   const [postCount, followerCount, isFollowing] = await Promise.all([
-    tagsRepo.postCount(tag.id),
+    tagsRepo.postCount(tag.id, viewerId),
     tagsRepo.followerCount(tag.id),
     viewerId ? tagsRepo.isFollowing(viewerId, tag.id) : Promise.resolve(false),
   ]);

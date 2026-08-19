@@ -200,6 +200,11 @@ export function listFeedFor(userId: string, cursor: Cursor | null, limit = DEFAU
         ),
         notSuspended,
         notHidden(userId),
+        // Gates on the *post's* author, not the recommender. The `or` above
+        // only establishes that the viewer follows whoever boosted it — a
+        // followed account can recommend a private author's post, and without
+        // this that post's body would be served to a non-follower.
+        visibleToViewer(userId),
         beforeCursor(cursor),
       ),
     )

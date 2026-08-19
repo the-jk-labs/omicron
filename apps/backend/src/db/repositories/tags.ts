@@ -1,7 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { posts, postTags, remoteActorTags, tagFollows, tags, userTags } from "@/db/schema.ts";
+import {
+  posts,
+  postTags,
+  remoteActorTags,
+  tagFollows,
+  tags,
+  users,
+  userTags,
+} from "@/db/schema.ts";
+import { isPublished, notSuspended, visibleToViewer } from "@/db/repositories/posts.ts";
 
 // Tag DB access. Callers pass already-normalized slugs (see lib/tags.ts); the
 // stored `name` mirrors the slug so display and matching stay consistent.
@@ -55,14 +64,24 @@ export function findBySlug(slug: string) {
   return db.query.tags.findFirst({ where: eq(tags.slug, slug) });
 }
 
-// Count of published Article posts carrying a tag.
-export async function postCount(tagId: string): Promise<number> {
+// Count of published Article posts carrying a tag, as the viewer may see them.
+// Carries the same predicates as the listing (posts.listByTag) — a count taken
+// over a wider set than the list it labels is itself a disclosure: it tells the
+// reader how many posts they are not being shown.
+export async function postCount(tagId: string, viewerId: string | null): Promise<number> {
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(postTags)
     .innerJoin(posts, eq(posts.id, postTags.postId))
+    .leftJoin(users, eq(posts.authorId, users.id))
     .where(
-      and(eq(postTags.tagId, tagId), eq(posts.status, "published"), eq(posts.apType, "Article")),
+      and(
+        eq(postTags.tagId, tagId),
+        eq(posts.apType, "Article"),
+        isPublished,
+        notSuspended,
+        visibleToViewer(viewerId),
+      ),
     );
   return row?.count ?? 0;
 }
@@ -105,8 +124,19 @@ export function trending(limit: number, sinceDays = 14): Promise<TagWithCount[]>
     .from(tags)
     .innerJoin(postTags, eq(postTags.tagId, tags.id))
     .innerJoin(posts, eq(posts.id, postTags.postId))
+    .leftJoin(users, eq(posts.authorId, users.id))
+    // Ranked over what a logged-out reader can see. Trending is a global
+    // ranking, not a personalized one, so it is computed as anonymous rather
+    // than threaded with a viewer — and a suspended or private author must not
+    // push a tag up a board that everyone sees.
     .where(
-      and(eq(posts.status, "published"), eq(posts.apType, "Article"), gt(posts.createdAt, since)),
+      and(
+        eq(posts.apType, "Article"),
+        gt(posts.createdAt, since),
+        isPublished,
+        notSuspended,
+        visibleToViewer(null),
+      ),
     )
     .groupBy(tags.id)
     .orderBy(desc(sql`count(${postTags.postId})`))
@@ -131,7 +161,12 @@ export function listSitemapTags(): Promise<{ slug: string; lastPostAt: Date }[]>
     .from(tags)
     .innerJoin(postTags, eq(postTags.tagId, tags.id))
     .innerJoin(posts, eq(posts.id, postTags.postId))
-    .where(and(eq(posts.status, "published"), eq(posts.remote, false)))
+    .leftJoin(users, eq(posts.authorId, users.id))
+    // A crawler is anonymous, so the ">1 post" threshold below has to be
+    // counted over posts a crawler can actually reach — otherwise a tag whose
+    // only visible post is one becomes exactly the thin page the threshold
+    // exists to keep out of the sitemap.
+    .where(and(eq(posts.remote, false), isPublished, notSuspended, visibleToViewer(null)))
     .groupBy(tags.id)
     .having(sql`count(${postTags.postId}) > 1`)
     .limit(10000) as Promise<{ slug: string; lastPostAt: Date }[]>;
