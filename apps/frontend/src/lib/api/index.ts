@@ -207,9 +207,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // The author's own posts in one state — the three tabs of /posts/manage.
     // Scheduled posts come back soonest-first; the other two newest-first.
     ownPosts: (status: OwnPostStatus, cursor?: string | null) =>
-      api.get<Page<Post>>(
-        `/posts/mine?status=${status}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
-      ),
+      api.get<Page<Post>>(`/posts/mine?status=${status}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`),
     ownPostCounts: () => api.get<Record<OwnPostStatus, number>>("/posts/mine/counts"),
     createPost: (body: {
       title?: string;

@@ -1,12 +1,11 @@
-import { endpoints } from "$lib/api";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
-// Drafts are private to their author, so this page requires authentication.
-export const load: PageServerLoad = async ({ fetch, parent }) => {
-  const { user } = await parent();
-  if (!user) redirect(302, "/login");
-  const page = await endpoints(fetch).drafts();
-  return { page };
+// Drafts moved into the tabbed management page when scheduled posts arrived and
+// there was more than one kind of unpublished post to show. This address was
+// linked from the nav for a long time and is in the documentation, so it keeps
+// working rather than 404ing on anyone's bookmark.
+export const load: PageServerLoad = () => {
+  redirect(308, "/posts/manage?tab=draft");
 };

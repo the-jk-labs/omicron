@@ -145,7 +145,7 @@
       postId = post.id;
       // Put the new draft's id in the address bar, so a reload — or the browser
       // restoring the tab — continues this draft instead of starting a second
-      // one and leaving the author with duplicates in /drafts.
+      // one and leaving the author with duplicates in the drafts list.
       replaceState(`/compose?id=${post.id}`, {});
     },
   });

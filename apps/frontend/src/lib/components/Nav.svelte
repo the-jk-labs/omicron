@@ -230,8 +230,8 @@
               <DropdownMenu.Item onSelect={() => goto("/compose")} class={itemClass}>
                 <Icon name="compose" size={18} /> Write an article
               </DropdownMenu.Item>
-              <DropdownMenu.Item onSelect={() => goto("/drafts")} class={itemClass}>
-                <Icon name="draft" size={18} /> Drafts
+              <DropdownMenu.Item onSelect={() => goto("/posts/manage")} class={itemClass}>
+                <Icon name="compose" size={18} /> Your posts
               </DropdownMenu.Item>
               <DropdownMenu.Item onSelect={() => goto("/lists")} class={itemClass}>
                 <Icon name="library" size={18} /> Lists

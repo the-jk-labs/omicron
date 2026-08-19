@@ -40,7 +40,10 @@ const ALLOW = ["/api/uploads/"];
 
 const DISALLOW = [
   "/compose",
+  // Kept alongside its replacement: the old address still redirects, and a
+  // crawler that has it should not follow the redirect to find out.
   "/drafts",
+  "/posts/manage",
   "/dashboard",
   "/settings",
   "/admin",
