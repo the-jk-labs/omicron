@@ -150,7 +150,7 @@ export const posts = pgTable("posts", {
   // Publication state. `draft` posts are private to their author (never federated,
   // never surfaced in any public feed or profile) until published. Remote posts
   // are always `published`. Existing rows default to `published` on migration.
-  status: text("status").notNull().default("published"),
+  status: text("status").$type<"draft" | "published">().notNull().default("published"),
   // BCP-47 primary language subtag the author wrote this post in (e.g. "en",
   // "tr"), lowercased, or null when unspecified. Drives the reader's per-language
   // feed filter and federates as the Article content's language tag. Remote posts
@@ -468,7 +468,7 @@ export const readingLists = pgTable("reading_lists", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description").notNull().default(""),
-  visibility: text("visibility").notNull().default("public"), // "public" | "private"
+  visibility: text("visibility").$type<"public" | "private">().notNull().default("public"),
   isReadLater: boolean("is_read_later").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
