@@ -93,6 +93,30 @@ install` in `apps/backend` does it on its own. Skip this and `pnpm check`
 reports `Cannot find module 'drizzle-orm'` against backend files rather than
 anything you changed.
 
+### Tests
+
+```bash
+cd apps/backend
+deno task test              # unit tests — no database needed
+deno task test:integration  # visibility rules — needs a throwaway database
+```
+
+The integration suite runs the committed migrations and asserts on who can see
+what: drafts, private accounts, suspended authors, across feeds, tag pages,
+reading lists and the sitemap. It reads `DATABASE_URL` and **truncates every
+table it touches**, so point it at a scratch database, never a real one:
+
+```bash
+docker run -d --name omicron-test-db -p 55432:5432 \
+  -e POSTGRES_USER=omicron -e POSTGRES_PASSWORD=omicron \
+  -e POSTGRES_DB=omicron_test postgres:16-alpine
+
+DATABASE_URL=postgres://omicron:omicron@localhost:55432/omicron_test \
+SESSION_SECRET=test-secret deno task test:integration
+```
+
+CI runs both on every push and PR against its own Postgres service.
+
 See the [local setup guide](https://docs.omicron.blog/development/local-setup/)
 for the full picture.
 
