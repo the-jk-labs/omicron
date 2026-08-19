@@ -339,7 +339,7 @@ export function listSitemapEntries(page = 1) {
 // explainable to the author who chose those tags, and it degrades to "recent
 // posts by anyone" rather than to nothing when a post shares no tags — an empty
 // section would leave the dead end exactly as it was.
-export function listRelated(postId: string, limit = 4) {
+export function listRelated(postId: string, limit = 3) {
   const shared = db
     .select({
       id: posts.id,

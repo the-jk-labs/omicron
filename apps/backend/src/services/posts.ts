@@ -304,7 +304,7 @@ async function assertVisible(row: postsRepo.PostWithAuthor, viewerId: string | n
 // shares tags with nothing (or carries none), the newest posts stand in, so the
 // reader is never left at a dead end. Deduplicated by id because the fallback
 // is only topped up when the related set comes back short.
-export async function relatedPosts(postId: string, limit = 4) {
+export async function relatedPosts(postId: string, limit = 3) {
   const related = await postsRepo.listRelated(postId, limit);
   if (related.length >= limit) return related;
 
