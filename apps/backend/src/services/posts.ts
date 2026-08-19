@@ -84,18 +84,92 @@ export function resolveTags(raw: string[]): string[] {
   return slugs;
 }
 
+// The three states a local post can be written into. `scheduled` is `draft`
+// plus a due time: private and unfederated exactly like a draft, until the
+// sweeper publishes it (see services/scheduledPosts.ts).
+export type PostStatus = "draft" | "scheduled" | "published";
+
+function resolveStatus(raw: string | undefined, fallback: PostStatus): PostStatus {
+  if (raw === undefined) return fallback;
+  return raw === "draft" || raw === "scheduled" ? raw : "published";
+}
+
+// A schedule must clear the sweeper's tick by a comfortable margin. Anything
+// closer than this is really "publish now" wearing a date, and would race the
+// sweep it is trying to be ahead of.
+const MIN_SCHEDULE_LEAD_MS = 60_000;
+// Five years. Not a policy, just a guard against a mistyped year putting a post
+// beyond any horizon the author will ever look at again.
+const MAX_SCHEDULE_AHEAD_MS = 5 * 365 * 24 * 60 * 60 * 1000;
+
+/**
+ * The due time to store for a write, given the state it lands in.
+ *
+ * Returns `undefined` when the caller's write should not touch the column at
+ * all — an edit to a scheduled post that says nothing about its timing must
+ * keep the time it already has, or every autosave would silently unschedule it.
+ */
+function resolvePublishAt(
+  status: PostStatus,
+  raw: string | null | undefined,
+  existing: Date | null,
+): Date | null | undefined {
+  // Any state but `scheduled` carries no due time; the database enforces this
+  // too, so leaving a stale one would be an error rather than an oddity.
+  if (status !== "scheduled") return existing === null ? undefined : null;
+
+  if (raw === undefined || raw === null) {
+    if (existing) return undefined;
+    throw badRequest("Choose when this post should go out.");
+  }
+
+  const at = new Date(raw);
+  if (Number.isNaN(at.getTime())) throw badRequest("That publish time is not a valid date.");
+  const ahead = at.getTime() - Date.now();
+  if (ahead < MIN_SCHEDULE_LEAD_MS) {
+    throw badRequest("Pick a time at least a minute from now, or publish the post directly.");
+  }
+  if (ahead > MAX_SCHEDULE_AHEAD_MS) {
+    throw badRequest("That publish time is too far in the future.");
+  }
+  return at;
+}
+
+/**
+ * Columns to add when a write publishes a post for the first time.
+ *
+ * A post is dated from when it went live, not from when its draft was started.
+ * Without this a draft begun a fortnight ago publishes *into* the timeline a
+ * fortnight down, below everything written since, where no reader will reach
+ * it. Scheduling makes that the normal case — every scheduled post is an old
+ * draft — but it was already true of the Publish button, which is why the rule
+ * lives here and is shared by both.
+ *
+ * Deliberately not applied to an edit of an already-published post: that is
+ * what `updated_at` records, and re-dating on every typo fix would reshuffle
+ * the whole timeline. `claimDue` stamps the same column for the sweeper's path.
+ */
+export function firstPublicationFields(
+  previous: PostStatus,
+  next: PostStatus,
+): { createdAt: Date } | Record<never, never> {
+  return next === "published" && previous !== "published" ? { createdAt: new Date() } : {};
+}
+
 export async function createPost(authorId: string, input: {
   title?: string;
   contentHtml: string;
   contentJson?: unknown;
   status?: string;
+  publishAt?: string | null;
   language?: string | null;
   summary?: string | null;
   coverUrl?: string | null;
   coverCredit?: Record<string, unknown> | null;
   tags?: string[];
 }) {
-  const status = input.status === "draft" ? "draft" : "published";
+  const status = resolveStatus(input.status, "published");
+  const publishAt = resolvePublishAt(status, input.publishAt, null) ?? null;
 
   // Author HTML is rendered with {@html} by the reader — sanitize before store.
   // Sanitizing first means a body of only disallowed markup collapses to empty
@@ -104,9 +178,12 @@ export async function createPost(authorId: string, input: {
   if (!html) throw badRequest("Post content cannot be empty.");
   assertBodyWithinLimit(html);
 
-  // A title is required to publish; drafts may be saved untitled (work in progress).
+  // A title is required to publish; drafts may be saved untitled (work in
+  // progress). A scheduled post is held to the publishing rule rather than the
+  // draft one, because the moment it goes out nobody is watching — an untitled
+  // one would fail in the sweeper, hours later, with no one to tell.
   const title = input.title?.trim();
-  if (status === "published" && !title) throw badRequest("A blog post must have a title.");
+  if (status !== "draft" && !title) throw badRequest("A blog post must have a title.");
 
   const tags = input.tags !== undefined ? resolveTags(input.tags) : undefined;
 
@@ -116,6 +193,7 @@ export async function createPost(authorId: string, input: {
     contentHtml: html,
     contentJson: input.contentJson ?? null,
     status,
+    publishAt,
     language: normalizeLanguage(input.language),
     summary: normalizeSummary(input.summary),
     ...coverFields(input.coverUrl, input.coverCredit),
@@ -128,7 +206,8 @@ export async function createPost(authorId: string, input: {
   // short id until it is titled.
   post.slug = await syncSlug(post);
 
-  // Only published posts fan out to remote followers; drafts stay private.
+  // Only published posts fan out to remote followers; drafts and scheduled
+  // posts stay private until they go live.
   if (status === "published") {
     queue.add("federate_post", { postId: post.id });
     queue.add("indexnow_submit", { postId: post.id });
@@ -190,8 +269,11 @@ export async function getPostBySlug(
 // Who may read a single post. Feeds filter in SQL (visibleToViewer); a direct
 // permalink is gated here, whichever way the reader addressed it.
 async function assertVisible(row: postsRepo.PostWithAuthor, viewerId: string | null) {
-  // Drafts are private to their author — anyone else gets a plain not-found.
-  if (row.post.status === "draft" && row.post.authorId !== viewerId) {
+  // Anything not yet published — a draft, or a post waiting for its scheduled
+  // moment — is private to its author, and anyone else gets a plain not-found.
+  // Written as "not published" rather than "is a draft" so that a state added
+  // here later is private by default, which is the safe way to be wrong.
+  if (row.post.status !== "published" && row.post.authorId !== viewerId) {
     throw notFound("Post not found.");
   }
   // A block hides the two users' posts from each other everywhere — including a
@@ -242,6 +324,32 @@ export async function listDrafts(authorId: string, cursor: Cursor | null) {
   return pageOf(rows, DEFAULT_PAGE_SIZE);
 }
 
+export async function listScheduled(authorId: string, cursor: Cursor | null) {
+  const rows = await postsRepo.listScheduledByAuthor(authorId, cursor, DEFAULT_PAGE_SIZE);
+  return pageOfDue(rows, DEFAULT_PAGE_SIZE);
+}
+
+export async function listOwnPublished(authorId: string, cursor: Cursor | null) {
+  const rows = await postsRepo.listPublishedByAuthor(authorId, cursor, DEFAULT_PAGE_SIZE);
+  return pageOf(rows, DEFAULT_PAGE_SIZE);
+}
+
+/** How many posts the author holds in each state — the management tab badges. */
+export function ownCounts(authorId: string) {
+  return postsRepo.countsByAuthor(authorId);
+}
+
+/**
+ * The author's own posts in one requested state. One entry point rather than
+ * three endpoints, because the management page's three tabs differ only in
+ * which state they ask for.
+ */
+export function listOwn(authorId: string, status: PostStatus, cursor: Cursor | null) {
+  if (status === "scheduled") return listScheduled(authorId, cursor);
+  if (status === "published") return listOwnPublished(authorId, cursor);
+  return listDrafts(authorId, cursor);
+}
+
 // Edits a post. Only the author may edit, and only local posts (remote posts
 // are owned by their origin instance). Re-enqueues federation for the update.
 export async function updatePost(authorId: string, id: string, input: {
@@ -249,6 +357,7 @@ export async function updatePost(authorId: string, id: string, input: {
   contentHtml?: string;
   contentJson?: unknown;
   status?: string;
+  publishAt?: string | null;
   language?: string | null;
   summary?: string | null;
   coverUrl?: string | null;
@@ -260,11 +369,23 @@ export async function updatePost(authorId: string, id: string, input: {
   if (row.post.remote) throw forbidden("Federated posts cannot be edited here.");
   if (row.post.authorId !== authorId) throw forbidden("You can only edit your own posts.");
 
-  const status = input.status === undefined
-    ? row.post.status
-    : input.status === "draft"
-    ? "draft"
-    : "published";
+  const previous = row.post.status;
+  // An omitted status leaves the post where it is. That is what keeps the
+  // composer's autosave safe: it never sends one, so a background write can
+  // neither publish a scheduled post early nor quietly unschedule it.
+  const status = resolveStatus(input.status, previous);
+
+  // Scheduling an already-live post would have to unpublish it first, which is
+  // not what anyone means by "schedule this" — they mean a staged revision,
+  // which needs somewhere to keep the revision and is a separate feature.
+  // Refusing plainly beats silently pulling a published post off the site.
+  if (previous === "published" && status === "scheduled") {
+    throw badRequest(
+      "This post is already published. Turn it back into a draft first if you want to schedule it.",
+    );
+  }
+
+  const publishAt = resolvePublishAt(status, input.publishAt, row.post.publishAt);
 
   // Only sanitize when new content is supplied; an omitted field leaves the
   // existing (already-sanitized) body untouched.
@@ -275,9 +396,11 @@ export async function updatePost(authorId: string, id: string, input: {
   if (html !== undefined) assertBodyWithinLimit(html);
 
   const title = input.title?.trim();
-  // Untitled drafts are allowed, but a post must have a title to be published.
+  // Untitled drafts are allowed, but a post must have a title to be published —
+  // and a scheduled post is held to the same rule, since by the time it
+  // publishes there is nobody around to be told it could not.
   const resolvedTitle = input.title !== undefined ? (title || null) : row.post.title;
-  if (status === "published" && !resolvedTitle) {
+  if (status !== "draft" && !resolvedTitle) {
     throw badRequest("A blog post must have a title.");
   }
 
@@ -285,6 +408,10 @@ export async function updatePost(authorId: string, id: string, input: {
     ...(input.title !== undefined ? { title: title || null } : {}),
     ...(html ? { contentHtml: html, contentJson: input.contentJson ?? null } : {}),
     ...(input.status !== undefined ? { status } : {}),
+    ...(publishAt !== undefined ? { publishAt } : {}),
+    // Dates the post from when it went live rather than from when its draft was
+    // started — see firstPublicationFields.
+    ...firstPublicationFields(previous, status),
     ...(input.language !== undefined ? { language: normalizeLanguage(input.language) } : {}),
     ...(input.summary !== undefined ? { summary: normalizeSummary(input.summary) } : {}),
     // `coverUrl` present is the whole banner decision, credit included — an
@@ -312,20 +439,23 @@ export async function updatePost(authorId: string, id: string, input: {
     if (!touchedColumns) await postsRepo.touch(post.id);
   }
 
-  // Federate only published posts. Publishing a draft (draft → published) fans
-  // out for the first time as a Create; edits to an already-published post
-  // re-deliver as an Update so remote instances refresh their cached copy.
+  // Federate only published posts. Going live for the first time (from a draft
+  // or, via "publish now", from a schedule) fans out as a Create; edits to an
+  // already-published post re-deliver as an Update so remote instances refresh
+  // their cached copy.
   if (post.status === "published") {
-    const action = row.post.status === "published" ? "update" : "create";
+    const action = previous === "published" ? "update" : "create";
     queue.add("federate_post", { postId: post.id, action });
     // Resubmit on edit as well as on publish: an engine holding the old copy is
     // exactly the case IndexNow exists to shorten.
     queue.add("indexnow_submit", { postId: post.id });
-  } else if (row.post.status === "published" && post.authorId) {
+  } else if (previous === "published" && post.authorId) {
     // Unpublishing (published → draft) makes the post private again; tombstone
     // the copies already delivered to remote followers.
     queue.add("federate_post_delete", { postId: post.id, authorId: post.authorId });
   }
+  // draft ↔ scheduled needs no federation either way: neither state was ever
+  // delivered to anyone, so there is nothing to send and nothing to retract.
   return post;
 }
 
@@ -363,6 +493,25 @@ export function pageOf(
     items,
     nextCursor: hasMore && last
       ? encodeCursor({ createdAt: last.post.createdAt.toISOString(), id: last.post.id })
+      : null,
+  };
+}
+
+// Pagination for the scheduled listing, which is ordered by when a post goes
+// out rather than when it was written. Same opaque cursor shape as `pageOf` —
+// its timestamp half simply carries `publish_at` here, matching
+// `afterDueCursor` in the repository.
+export function pageOfDue(
+  rows: postsRepo.PostWithAuthor[],
+  limit: number,
+): { items: postsRepo.PostWithAuthor[]; nextCursor: string | null } {
+  const hasMore = rows.length > limit;
+  const items = hasMore ? rows.slice(0, limit) : rows;
+  const last = items.at(-1);
+  return {
+    items,
+    nextCursor: hasMore && last?.post.publishAt
+      ? encodeCursor({ createdAt: last.post.publishAt.toISOString(), id: last.post.id })
       : null,
   };
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import {
   and,
+  count,
   desc,
   eq,
   getTableColumns,
@@ -8,6 +9,7 @@ import {
   inArray,
   isNull,
   lt,
+  lte,
   notInArray,
   or,
   sql,
@@ -655,6 +657,99 @@ export function listDraftsByAuthor(
     .where(and(eq(posts.authorId, authorId), eq(posts.status, "draft"), beforeCursor(cursor)))
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
+}
+
+// Keyset pagination forward through an *ascending* (publish_at, id) ordering.
+// The `Cursor` tuple is an opaque (timestamp, id) pair — here its timestamp
+// half carries `publish_at` rather than `created_at`, which is why this cannot
+// reuse `beforeCursor`.
+function afterDueCursor(cursor: Cursor | null) {
+  if (!cursor) return undefined;
+  const ts = new Date(cursor.createdAt);
+  return or(
+    gt(posts.publishAt, ts),
+    and(eq(posts.publishAt, ts), gt(posts.id, cursor.id)),
+  );
+}
+
+// An author's own scheduled posts, soonest first — the opposite order to
+// drafts, because what the author is reading here is a running order, not an
+// edit history. Private to them, exactly like a draft. Served by
+// `posts_author_due_idx`.
+export function listScheduledByAuthor(
+  authorId: string,
+  cursor: Cursor | null,
+  limit = DEFAULT_PAGE_SIZE,
+) {
+  return selectPosts()
+    .where(
+      and(eq(posts.authorId, authorId), eq(posts.status, "scheduled"), afterDueCursor(cursor)),
+    )
+    .orderBy(posts.publishAt, posts.id)
+    .limit(limit + 1);
+}
+
+// An author's own published posts, newest first — the Published tab of the
+// management page. Unlike `publishedBriefByAuthor` (which the dashboard uses
+// for its stats spine) these are full rows, because the tab shows the same
+// card as the other two.
+export function listPublishedByAuthor(
+  authorId: string,
+  cursor: Cursor | null,
+  limit = DEFAULT_PAGE_SIZE,
+) {
+  return selectPosts()
+    .where(and(eq(posts.authorId, authorId), eq(posts.status, "published"), beforeCursor(cursor)))
+    .orderBy(desc(posts.createdAt), desc(posts.id))
+    .limit(limit + 1);
+}
+
+// How many posts the author holds in each state, for the management page's tab
+// badges. One grouped scan rather than three counts.
+export async function countsByAuthor(authorId: string) {
+  const rows = await db
+    .select({ status: posts.status, n: count() })
+    .from(posts)
+    .where(and(eq(posts.authorId, authorId), eq(posts.remote, false)))
+    .groupBy(posts.status);
+  const totals = { draft: 0, scheduled: 0, published: 0 };
+  for (const row of rows) totals[row.status] = Number(row.n);
+  return totals;
+}
+
+/**
+ * Claim every post that has come due and publish it, returning the ones this
+ * call actually took. The scheduling sweeper's only query.
+ *
+ * The claim has to be atomic against other backend processes: two of them
+ * sweeping the same row would each enqueue a `federate_post`, and remote
+ * instances would receive the article twice. `for update skip locked` inside
+ * the subquery is what prevents that — a row being claimed elsewhere is
+ * skipped rather than waited on, so each post is returned to exactly one
+ * process and the work spreads across nodes instead of serialising behind a
+ * lock. The `status = 'scheduled'` predicate then makes it idempotent even if a
+ * process dies between the update committing and its side effects running: the
+ * row is published, so no later tick can claim it again.
+ *
+ * `created_at` is stamped to now rather than left at the draft's creation date,
+ * so the post lands at the top of the timeline instead of wherever it was
+ * written — see `firstPublicationFields` in services/posts.ts, which applies
+ * the same rule to the manual publish button.
+ */
+export function claimDue(limit = 50, now = new Date()) {
+  const due = db
+    .select({ id: posts.id })
+    .from(posts)
+    .where(and(eq(posts.status, "scheduled"), lte(posts.publishAt, now)))
+    .orderBy(posts.publishAt)
+    .limit(limit)
+    .for("update", { skipLocked: true });
+
+  return db
+    .update(posts)
+    .set({ status: "published", publishAt: null, createdAt: now, updatedAt: now })
+    .where(inArray(posts.id, due))
+    .returning({ id: posts.id, authorId: posts.authorId });
 }
 
 // An author's published posts as lightweight (id, title, createdAt) rows — the

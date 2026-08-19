@@ -123,6 +123,11 @@ export const contentSchema = z.object({
   // first-class one rather than a stripped-down import.
   tags: z.array(z.string()).max(50).optional(),
   language: z.string().trim().max(20).nullish(),
+  // Deliberately without `scheduled`: an ingesting CMS sends no publish time,
+  // and the state is meaningless (and rejected by the database) without one. A
+  // CMS that wants to schedule should hold the post itself and deliver it when
+  // it is due. Scheduling through the webhook would need a `publishAt` field
+  // here and is a separate feature.
   status: z.enum(["draft", "published"]).optional(),
 });
 

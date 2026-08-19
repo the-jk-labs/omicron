@@ -144,6 +144,10 @@ export function postWithAuthor(
     contentJson: row.post.contentJson,
     remote: row.post.remote,
     status: row.post.status,
+    // When a scheduled post goes out, and null on every other post. Only ever
+    // reaches its own author: a scheduled post is filtered out of every public
+    // listing and refused by name (see assertVisible in services/posts.ts).
+    publishAt: row.post.publishAt,
     language: row.post.language,
     // Present only on ingested posts (see services/webhooks.ts); null for
     // anything written in the editor, whose preview the reader derives itself.
@@ -316,6 +320,9 @@ export function barePost(p: Omit<Post, "searchVector">) {
     slug: p.slug,
     contentHtml: p.contentHtml,
     status: p.status,
+    // The composer reads this back after scheduling, so its header can show
+    // the time that was actually stored rather than the one it sent.
+    publishAt: p.publishAt,
     language: p.language,
     summary: p.summary,
     coverUrl: p.coverUrl,

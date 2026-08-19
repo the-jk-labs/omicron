@@ -64,17 +64,33 @@ export async function mkUser(username: string, opts: UserOpts = {}) {
   return row;
 }
 
-export type PostOpts = { status?: "draft" | "published"; apType?: string; remote?: boolean };
+export type PostOpts = {
+  status?: "draft" | "scheduled" | "published";
+  apType?: string;
+  remote?: boolean;
+  // Only meaningful with `status: "scheduled"`, where a due time is required by
+  // the `posts_publish_at_status_ck` constraint. Defaults to an hour out, so a
+  // test that only cares that the post is *pending* need not pick a time.
+  publishAt?: Date;
+  // Backdates the row. Lets a test assert on something having *moved* a
+  // timestamp without racing the clock it would otherwise be comparing against.
+  createdAt?: Date;
+};
 
 export async function mkPost(authorId: string, slug: string, opts: PostOpts = {}) {
+  const status = opts.status ?? "published";
   const [row] = await db.insert(posts).values({
     authorId,
     title: slug,
     contentHtml: `<p>${slug}</p>`,
     slug,
-    status: opts.status ?? "published",
+    status,
+    // The database enforces that these two agree; supplying a time on a
+    // non-scheduled post would be rejected rather than ignored.
+    publishAt: status === "scheduled" ? (opts.publishAt ?? new Date(Date.now() + 3_600_000)) : null,
     apType: opts.apType ?? "Article",
     remote: opts.remote ?? false,
+    ...(opts.createdAt ? { createdAt: opts.createdAt, updatedAt: opts.createdAt } : {}),
   }).returning();
   return row;
 }
