@@ -10,7 +10,13 @@ import {
   remoteActors,
   users,
 } from "@/db/schema.ts";
-import type { PostWithAuthor } from "@/db/repositories/posts.ts";
+import {
+  isPublished,
+  notHidden,
+  notSuspended,
+  type PostWithAuthor,
+  visibleToViewer,
+} from "@/db/repositories/posts.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
 
 // Reading-list DB access. Adding a post is idempotent via the unique
@@ -123,13 +129,32 @@ export async function removeItem(listId: string, postId: string): Promise<void> 
 }
 
 // Item count per list, for the list cards. Batched over many lists in one query.
-export async function itemCountsFor(listIds: string[]): Promise<Map<string, number>> {
+//
+// Counts only what this viewer could actually read, using the same predicates
+// as `listItems`. A raw count would otherwise report items the reader is not
+// allowed to see — a list showing "5 posts" and returning 4 tells a stranger a
+// hidden post exists, which is a smaller version of the disclosure the filter
+// on the read path closes.
+export async function itemCountsFor(
+  listIds: string[],
+  viewerId: string | null,
+): Promise<Map<string, number>> {
   const map = new Map<string, number>();
   if (listIds.length === 0) return map;
   const rows = await db
     .select({ listId: readingListItems.listId, count: sql<number>`count(*)::int` })
     .from(readingListItems)
-    .where(inArray(readingListItems.listId, listIds))
+    .innerJoin(posts, eq(readingListItems.postId, posts.id))
+    .leftJoin(users, eq(posts.authorId, users.id))
+    .where(
+      and(
+        inArray(readingListItems.listId, listIds),
+        isPublished,
+        notSuspended,
+        notHidden(viewerId),
+        visibleToViewer(viewerId),
+      ),
+    )
     .groupBy(readingListItems.listId);
   for (const r of rows as { listId: string; count: number }[]) map.set(r.listId, r.count);
   return map;
@@ -155,12 +180,24 @@ export async function listIdsContaining(
 // newest-added first to match the on-site list order.
 export type ItemRef = { id: string; apId: string | null; remote: boolean };
 
+// Filtered as an anonymous stranger sees it: this collection is served to any
+// instance that asks for it, so a draft or a private author's post must not
+// appear even as a bare URI. `visibleToViewer(null)` and `notSuspended` read
+// `users`, hence the left join.
 export async function itemRefs(listId: string): Promise<ItemRef[]> {
   const rows = await db
     .select({ id: posts.id, apId: posts.apId, remote: posts.remote })
     .from(readingListItems)
     .innerJoin(posts, eq(readingListItems.postId, posts.id))
-    .where(eq(readingListItems.listId, listId))
+    .leftJoin(users, eq(posts.authorId, users.id))
+    .where(
+      and(
+        eq(readingListItems.listId, listId),
+        isPublished,
+        notSuspended,
+        visibleToViewer(null),
+      ),
+    )
     .orderBy(desc(readingListItems.createdAt), desc(readingListItems.id));
   return rows as ItemRef[];
 }
@@ -186,8 +223,16 @@ function beforeItemCursor(cursor: Cursor | null) {
 
 // A list's posts, most recently added first, keyset-paginated. Fetches
 // `limit + 1` so the service can derive the next cursor.
+//
+// Carries the same visibility predicates as every other listing (timelines,
+// profiles, tags, search). Being *in* a list grants a post no exemption: a
+// draft, a suspended author's post, and a private author's post are each
+// withheld here exactly as they are everywhere else, however the item came to
+// be saved. Without this a public list re-published anything it held — the post
+// could 404 on its own permalink and still be served in full from here.
 export async function listItems(
   listId: string,
+  viewerId: string | null,
   cursor: Cursor | null,
   limit = DEFAULT_PAGE_SIZE,
 ): Promise<ListItemRow[]> {
@@ -213,7 +258,16 @@ export async function listItems(
     .innerJoin(posts, eq(readingListItems.postId, posts.id))
     .leftJoin(users, eq(posts.authorId, users.id))
     .leftJoin(remoteActors, eq(posts.remoteActorId, remoteActors.id))
-    .where(and(eq(readingListItems.listId, listId), beforeItemCursor(cursor)))
+    .where(
+      and(
+        eq(readingListItems.listId, listId),
+        isPublished,
+        notSuspended,
+        notHidden(viewerId),
+        visibleToViewer(viewerId),
+        beforeItemCursor(cursor),
+      ),
+    )
     .orderBy(desc(readingListItems.createdAt), desc(readingListItems.id))
     .limit(limit + 1);
   return rows as unknown as ListItemRow[];
