@@ -718,6 +718,11 @@ export function listByTag(
 export function listFeed(userId: string, cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
   // Only *approved* follows contribute posts: a pending request to a private
   // account must not leak that account's posts into the requester's feed.
+  //
+  // The follow branches below are self-gating that way, but the followed-tag
+  // branch is not — it matches on a tag anyone can apply, so without
+  // `visibleToViewer` a private author's post reaches every reader who follows
+  // one of its tags.
   const followedLocal = sql`(
     select followee_id from follows
     where follower_id = ${userId} and followee_id is not null and approved = true
@@ -744,6 +749,7 @@ export function listFeed(userId: string, cursor: Cursor | null, limit = DEFAULT_
         ),
         notSuspended,
         notHidden(userId),
+        visibleToViewer(userId),
         beforeCursor(cursor),
       ),
     )
