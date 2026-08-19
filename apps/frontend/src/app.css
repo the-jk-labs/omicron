@@ -243,11 +243,11 @@ html {
 }
 
 /* Rendered post content (the HTML produced by Tiptap). Its own reading face —
-   Source Sans 3, not the interface's Inter — at a generous size with relaxed
+   Source Sans 3, not the interface's Inter — at 1rem with relaxed
    leading. Code, keys and maths keep their own faces below. Extend as the
    editor grows. */
 .prose-omicron {
-  @apply font-content text-[1.125rem] leading-[1.75] text-foreground sm:text-[1.25rem] sm:leading-[1.8];
+  @apply font-content text-[1rem] leading-[1.75] text-foreground sm:leading-[1.8];
 }
 /* Media never overflows the reading column on narrow screens. */
 .prose-omicron img,
@@ -369,10 +369,10 @@ html {
 }
 
 /* Compact variant for prose shown outside a full article — the profile's custom
-   section. Same elements, tightened to sans-ish reading size so it sits inside a
-   card without dwarfing the surrounding UI. */
+   section. Same elements and size as an article, with tighter leading and
+   spacing so it sits inside a card without dwarfing the surrounding UI. */
 .prose-compact {
-  @apply text-[1rem] leading-[1.7] sm:text-[1.0625rem] sm:leading-[1.75];
+  @apply text-[1rem] leading-[1.7] sm:leading-[1.75];
 }
 .prose-compact > :first-child {
   @apply mt-0;
