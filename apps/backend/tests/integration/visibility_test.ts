@@ -135,20 +135,21 @@ Deno.test("public listings exclude drafts and suspended authors", opts, async (t
   const rust = await mkTag("rust");
   for (const p of [draft, live, bySuspended, byPrivate]) await tagPost(p.id, rust.id);
 
-  const global = await postsRepo.listGlobal(null, null) as unknown as Rows;
-  const byTag = await postsRepo.listByTag("rust", null, null) as unknown as Rows;
+  const hiddenFromEveryone = [draft, bySuspended, byPrivate];
 
   await t.step("listGlobal shows only the one publishable post", async () => {
-    assertEquals(includesPost(global, live.id), true);
-    for (const hidden of [draft, bySuspended, byPrivate]) {
-      assertFalse(includesPost(global, hidden.id), `leaked ${hidden.slug}`);
+    const rows = await postsRepo.listGlobal(null, null) as unknown as Rows;
+    assertEquals(includesPost(rows, live.id), true);
+    for (const hidden of hiddenFromEveryone) {
+      assertFalse(includesPost(rows, hidden.id), `leaked ${hidden.slug}`);
     }
   });
 
   await t.step("listByTag agrees with it", async () => {
-    assertEquals(includesPost(byTag, live.id), true);
-    for (const hidden of [draft, bySuspended, byPrivate]) {
-      assertFalse(includesPost(byTag, hidden.id), `leaked ${hidden.slug}`);
+    const rows = await postsRepo.listByTag("rust", null, null) as unknown as Rows;
+    assertEquals(includesPost(rows, live.id), true);
+    for (const hidden of hiddenFromEveryone) {
+      assertFalse(includesPost(rows, hidden.id), `leaked ${hidden.slug}`);
     }
   });
 
