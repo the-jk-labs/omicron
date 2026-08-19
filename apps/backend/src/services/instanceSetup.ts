@@ -170,7 +170,14 @@ export async function publicInfo(): Promise<{
     getBannerText(),
     getBannerImageUrl(),
   ]);
-  return { name, domain, federationEnabled: federationRunning(), setupComplete, bannerText, bannerImageUrl };
+  return {
+    name,
+    domain,
+    federationEnabled: federationRunning(),
+    setupComplete,
+    bannerText,
+    bannerImageUrl,
+  };
 }
 
 // Persists the wizard's instance settings and marks setup finished. The admin
