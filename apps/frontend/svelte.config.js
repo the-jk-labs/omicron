@@ -24,6 +24,11 @@ const config = {
     // Deno and its modules are not resolvable at runtime here; type-only
     // imports are erased at build time (verbatimModuleSyntax), so nothing from
     // the backend ever reaches the bundle.
+    //
+    // Consequently `pnpm build` does not need ../backend to exist at all —
+    // which is what lets the Dockerfile keep building from this directory alone
+    // as its context. Only the typecheck reads through this alias, and it needs
+    // the backend's own npm dependencies resolvable (see the CI frontend job).
     alias: {
       "@": "../backend/src",
     },

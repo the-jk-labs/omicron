@@ -67,6 +67,20 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # The typecheck reads the backend's serializers to prove this app's API
+      # types still match them (apps/frontend/src/lib/api/contract.ts), so it
+      # resolves the backend's own npm dependencies — drizzle-orm above all,
+      # which every `db/schema.ts` type flows from. Deno materializes them into
+      # apps/backend/node_modules (`nodeModulesDir: auto` in deno.json). Without
+      # this step svelte-check fails with 45 "Cannot find module 'drizzle-orm'"
+      # errors on backend source, none of which are the frontend's fault.
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Install backend dependencies (for the cross-app typecheck)
+        working-directory: apps/backend
+        run: deno install
+
       - name: Run Checks
         run: pnpm check
 
