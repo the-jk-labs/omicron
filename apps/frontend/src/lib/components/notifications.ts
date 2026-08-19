@@ -4,6 +4,19 @@
 import type { IconName } from "$lib/components/Icon.svelte";
 import type { Notification } from "$lib/types";
 
+/**
+ * The bold half of a notification line — normally who did it.
+ *
+ * `post_published` has no actor: the instance published a scheduled post, and
+ * "Someone is now live" is nonsense. Naming the post as the subject instead
+ * makes the same two-part line read as a statement — "Your scheduled post is
+ * now live" — without either renderer needing a special case in its markup.
+ */
+export function notificationSubject(n: Notification): string {
+  if (n.type === "post_published") return "Your scheduled post";
+  return n.actor?.displayName ?? "Someone";
+}
+
 // The verb phrase after the actor's name, e.g. "started following you".
 export function notificationAction(type: Notification["type"]): string {
   switch (type) {
@@ -23,6 +36,8 @@ export function notificationAction(type: Notification["type"]): string {
       return "liked your comment";
     case "recommend":
       return "recommended your post";
+    case "post_published":
+      return "is now live";
     default: {
       const exhaustive: never = type;
       return exhaustive;
@@ -47,6 +62,8 @@ export function notificationIcon(type: Notification["type"]): IconName {
       return "reply";
     case "recommend":
       return "recommend";
+    case "post_published":
+      return "clock";
     default: {
       const exhaustive: never = type;
       return exhaustive;

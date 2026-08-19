@@ -3,7 +3,7 @@ import * as postsRepo from "@/db/repositories/posts.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as tokensRepo from "@/db/repositories/webhookTokens.ts";
-import { resolveTags } from "@/services/posts.ts";
+import { firstPublicationFields, resolveTags } from "@/services/posts.ts";
 import { badRequest, conflict, forbidden, HttpError, unauthorized } from "@/lib/http.ts";
 import { renderMarkdown } from "@/lib/markdown.ts";
 import { normalizeLanguage } from "@/lib/languages.ts";
@@ -190,6 +190,16 @@ export async function ingestContent(
   if (payload.language !== undefined) fields.language = normalizeLanguage(payload.language);
   if (payload.status !== undefined) fields.status = payload.status;
   else if (!existing) fields.status = "published";
+  // A post going live for the first time is dated from now, not from whenever
+  // its row was first written — the same rule the Publish button and the
+  // scheduling sweeper follow. Without it a CMS that stages a draft and
+  // publishes it a week later files the article a week down the timeline.
+  if (existing) {
+    Object.assign(
+      fields,
+      firstPublicationFields(existing.status, fields.status ?? existing.status),
+    );
+  }
 
   // The summary follows the description when one is sent, and is re-derived
   // from the body whenever the body changes or the description is explicitly

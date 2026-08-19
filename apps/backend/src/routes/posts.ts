@@ -55,7 +55,11 @@ const createPostSchema = z.object({
   title: z.string().optional(),
   contentHtml: z.string(),
   contentJson: z.unknown().optional(),
-  status: z.enum(["draft", "published"]).optional(),
+  status: z.enum(["draft", "scheduled", "published"]).optional(),
+  // ISO instant a `scheduled` post goes out. The service owns the rules that
+  // need more than a shape — that it parses, is far enough ahead of the
+  // sweeper, and is required by (and only by) the scheduled state.
+  publishAt: z.string().nullable().optional(),
   language: z.string().nullable().optional(),
   summary: z.string().nullable().optional(),
   coverUrl: z.string().nullable().optional(),
@@ -77,6 +81,28 @@ postRoutes.get("/drafts", async (c) => {
   const cursor = decodeCursor(c.req.query("cursor"));
   const { items, nextCursor } = await postsService.listDrafts(user.id, cursor);
   return c.json({ items: await enrichPosts(items, user.id), nextCursor });
+});
+
+// The signed-in author's own posts in one state — what the three tabs of the
+// management page read (auth required). Registered before "/:id" for the same
+// reason as "/drafts": otherwise "mine" is captured as a post id.
+//
+// `/drafts` above is the same listing for `?status=draft` and stays because it
+// is a documented part of the HTTP API; this is the general form the newer tabs
+// need rather than three near-identical endpoints.
+postRoutes.get("/mine", async (c) => {
+  const user = requireUser(c);
+  const cursor = decodeCursor(c.req.query("cursor"));
+  const raw = c.req.query("status");
+  const status = raw === "scheduled" || raw === "published" ? raw : "draft";
+  const { items, nextCursor } = await postsService.listOwn(user.id, status, cursor);
+  return c.json({ items: await enrichPosts(items, user.id), nextCursor });
+});
+
+// How many posts the author holds in each state — the tab badges, in one query.
+postRoutes.get("/mine/counts", async (c) => {
+  const user = requireUser(c);
+  return c.json(await postsService.ownCounts(user.id));
 });
 
 // Trending posts (public) — the discovery rail's short "Trending" list.

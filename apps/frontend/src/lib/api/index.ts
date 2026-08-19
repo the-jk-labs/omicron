@@ -13,6 +13,7 @@ import type {
   InstanceInfo,
   InstanceSettings,
   Notification,
+  OwnPostStatus,
   Page,
   Post,
   Profile,
@@ -203,11 +204,18 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.get<{ post: Post }>(`/posts/by/${encodeURIComponent(username)}/${encodeURIComponent(slug)}`),
     drafts: (cursor?: string | null) =>
       api.get<Page<Post>>(`/posts/drafts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
+    // The author's own posts in one state — the three tabs of /posts/manage.
+    // Scheduled posts come back soonest-first; the other two newest-first.
+    ownPosts: (status: OwnPostStatus, cursor?: string | null) =>
+      api.get<Page<Post>>(`/posts/mine?status=${status}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`),
+    ownPostCounts: () => api.get<Record<OwnPostStatus, number>>("/posts/mine/counts"),
     createPost: (body: {
       title?: string;
       contentHtml: string;
       contentJson?: unknown;
-      status?: "draft" | "published";
+      status?: OwnPostStatus;
+      // ISO instant, required by (and only by) `status: "scheduled"`.
+      publishAt?: string | null;
       language?: string | null;
       summary?: string | null;
       coverUrl?: string | null;
@@ -220,7 +228,10 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
         title?: string;
         contentHtml?: string;
         contentJson?: unknown;
-        status?: "draft" | "published";
+        // Omitting this leaves the post in the state it is already in, which is
+        // what makes the composer's autosave safe on a scheduled post.
+        status?: OwnPostStatus;
+        publishAt?: string | null;
         language?: string | null;
         summary?: string | null;
         coverUrl?: string | null;

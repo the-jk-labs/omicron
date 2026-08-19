@@ -126,6 +126,9 @@
   const NOINDEX_PREFIXES = [
     "/compose",
     "/drafts",
+    // Deliberately the full segment, not "/posts": this is a prefix list, and
+    // "/posts" would take every published article out of the index with it.
+    "/posts/manage",
     "/dashboard",
     "/settings",
     "/admin",

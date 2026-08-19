@@ -120,7 +120,7 @@ Deno.test("feeds: recommending cannot widen a post's audience", opts, async (t) 
   });
 });
 
-Deno.test("public listings exclude drafts and suspended authors", opts, async (t) => {
+Deno.test("public listings exclude unpublished posts and suspended authors", opts, async (t) => {
   await resetDb();
 
   const author = await mkUser("author");
@@ -128,16 +128,20 @@ Deno.test("public listings exclude drafts and suspended authors", opts, async (t
   const priv = await mkUser("priv", { isPrivate: true });
 
   const draft = await mkPost(author.id, "draft-post", { status: "draft" });
+  // A post waiting for its moment is as private as a draft, and is here for the
+  // same reason every other row in this suite is: it is a post status that must
+  // be filtered by predicates written before it existed.
+  const scheduled = await mkPost(author.id, "scheduled-post", { status: "scheduled" });
   const live = await mkPost(author.id, "live-post");
   const bySuspended = await mkPost(suspended.id, "suspended-post");
   const byPrivate = await mkPost(priv.id, "private-post");
 
   const rust = await mkTag("rust");
-  for (const p of [draft, live, bySuspended, byPrivate]) await tagPost(p.id, rust.id);
+  for (const p of [draft, scheduled, live, bySuspended, byPrivate]) await tagPost(p.id, rust.id);
 
-  const hiddenFromEveryone = [draft, bySuspended, byPrivate];
+  const hiddenFromEveryone = [draft, scheduled, bySuspended, byPrivate];
 
-  await t.step("listGlobal shows only the one publishable post", async () => {
+  await t.step("listGlobal shows only the one published post", async () => {
     const rows = await postsRepo.listGlobal(null, null) as unknown as Rows;
     assertEquals(includesPost(rows, live.id), true);
     for (const hidden of hiddenFromEveryone) {
@@ -222,15 +226,19 @@ Deno.test("the sitemap publishes nothing a crawler cannot read", opts, async (t)
 
   const live = await mkPost(author.id, "live-post");
   const draft = await mkPost(author.id, "draft-post", { status: "draft" });
+  // Listing a scheduled post would hand a crawler the URL, title and author of
+  // something nobody is meant to read yet — and the page 404s, so the entry is
+  // worse than useless even ignoring the leak.
+  const scheduled = await mkPost(author.id, "scheduled-post", { status: "scheduled" });
   const byPrivate = await mkPost(priv.id, "private-post");
   const bySuspended = await mkPost(suspended.id, "suspended-post");
 
   const entries = await postsRepo.listSitemapEntries();
   const ids = new Set(entries.map((e) => e.id));
 
-  await t.step("only the publishable post is listed", () => {
+  await t.step("only the published post is listed", () => {
     assertEquals(ids.has(live.id), true);
-    for (const hidden of [draft, byPrivate, bySuspended]) {
+    for (const hidden of [draft, scheduled, byPrivate, bySuspended]) {
       assertFalse(ids.has(hidden.id), `leaked ${hidden.slug}`);
     }
   });

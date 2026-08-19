@@ -6,6 +6,7 @@ import { buildApp } from "@/app.ts";
 import { getFederationEnabled } from "@/services/instanceSetup.ts";
 import { seedFederationRunning } from "@/services/federationState.ts";
 import { startJobWorker } from "@/queue/queue.ts";
+import { startScheduleSweeper } from "@/services/scheduledPosts.ts";
 import { reconcileAnubisInBackground } from "@/services/anubisProtection.ts";
 import { APP_VERSION } from "@/version.ts";
 
@@ -24,6 +25,12 @@ async function main() {
   // Drain durable jobs when Redis is configured; no-op in-process otherwise.
   // Handlers are registered inside buildApp(), so start the worker after it.
   startJobWorker();
+
+  // Publish posts whose scheduled time has arrived. Database-backed rather than
+  // queue-backed, so it behaves the same with and without Redis, and safe to
+  // run on every node — see services/scheduledPosts.ts. Started after the
+  // worker so its first sweep has somewhere to enqueue federation.
+  startScheduleSweeper();
 
   // `onListen` overrides Deno's own "Listening on http://0.0.0.0:8000/" banner,
   // which otherwise prints alongside ours and announces the same thing twice —

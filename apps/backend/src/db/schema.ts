@@ -147,10 +147,26 @@ export const posts = pgTable("posts", {
   // Drives the Global feed, which surfaces blogs only.
   apType: text("ap_type").notNull().default("Article"),
   remote: boolean("remote").notNull().default(false),
-  // Publication state. `draft` posts are private to their author (never federated,
-  // never surfaced in any public feed or profile) until published. Remote posts
-  // are always `published`. Existing rows default to `published` on migration.
-  status: text("status").$type<"draft" | "published">().notNull().default("published"),
+  // Publication state. `draft` and `scheduled` posts are private to their author
+  // (never federated, never surfaced in any public feed or profile) until they
+  // go live; a `scheduled` one differs only in that the instance publishes it
+  // on a timer rather than waiting for a button. Remote posts are always
+  // `published`. Existing rows default to `published` on migration.
+  //
+  // Every listing that can reach another user's post filters on
+  // `status = 'published'` — see `isPublished` in repositories/posts.ts — which
+  // is what lets a new state be added here without auditing them all again.
+  status: text("status")
+    .$type<"draft" | "scheduled" | "published">()
+    .notNull()
+    .default("published"),
+  // When a `scheduled` post is due to go live, and null on every other post.
+  // The two halves of that are a database CHECK (`posts_publish_at_status_ck`),
+  // because both ways of breaking it are silent: a scheduled post with no due
+  // time is never claimed and simply never publishes, and a published post that
+  // still claims to be due would be re-federated on the next sweeper tick.
+  // Cleared as the post publishes — see `claimDue` in repositories/posts.ts.
+  publishAt: timestamp("publish_at", { withTimezone: true }),
   // BCP-47 primary language subtag the author wrote this post in (e.g. "en",
   // "tr"), lowercased, or null when unspecified. Drives the reader's per-language
   // feed filter and federates as the Article content's language tag. Remote posts
@@ -202,6 +218,13 @@ export const posts = pgTable("posts", {
   index("posts_author_created_idx").on(t.authorId, t.createdAt.desc()),
   // Drafts listing: an author's posts filtered by status, newest first.
   index("posts_author_status_created_idx").on(t.authorId, t.status, t.createdAt.desc()),
+  // The scheduling sweeper's only query, run every 30 seconds forever. Partial,
+  // so it holds one entry per pending post rather than one per post here.
+  index("posts_due_idx").on(t.publishAt).where(sql`${t.status} = 'scheduled'`),
+  // The author's Scheduled tab: soonest first, the opposite order to drafts.
+  index("posts_author_due_idx")
+    .on(t.authorId, t.publishAt)
+    .where(sql`${t.status} = 'scheduled'`),
   index("posts_remote_actor_created_idx").on(t.remoteActorId, t.createdAt.desc()),
   uniqueIndex("posts_ap_id_idx").on(t.apId),
   // One post per external key *per author* — each writer's tokens address their

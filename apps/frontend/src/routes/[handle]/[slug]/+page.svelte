@@ -212,7 +212,7 @@
     deleteError = "";
     try {
       await endpoints().updatePost(post.id, { status: "draft" });
-      goto("/drafts");
+      goto("/posts/manage?tab=draft");
     } catch (err) {
       deleteError = err instanceof ApiError ? err.message : "Failed to unpublish.";
       unpublishing = false;
