@@ -84,6 +84,15 @@ cd apps/backend && deno task dev              # http://localhost:8000
 cd apps/frontend && pnpm install && pnpm dev  # http://localhost:5173
 ```
 
+Run the backend at least once before the frontend's `pnpm check`, even when
+working only on the frontend. The frontend typecheck reads the backend's
+serializers to verify its own API types still match them
+(`apps/frontend/src/lib/api/contract.ts`), so it needs the backend's npm
+dependencies on disk. `deno task dev` installs them as a side effect; `deno
+install` in `apps/backend` does it on its own. Skip this and `pnpm check`
+reports `Cannot find module 'drizzle-orm'` against backend files rather than
+anything you changed.
+
 See the [local setup guide](https://docs.omicron.blog/development/local-setup/)
 for the full picture.
 
