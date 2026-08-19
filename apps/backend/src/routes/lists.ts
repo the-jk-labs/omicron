@@ -5,9 +5,21 @@ import { enrichPosts } from "@/services/engagement.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import { readingListView } from "@/routes/serializers.ts";
+import { jsonBody } from "@/lib/validate.ts";
+import { z } from "zod";
 import type { AppEnv } from "@/routes/types.ts";
 
 export const listRoutes = new Hono<AppEnv>();
+
+// Title/description limits and the read-later rules stay in
+// services/readingLists.ts; this states the shape only. `visibility` is the one
+// place a schema can say more than "a string" without duplicating a rule — the
+// column itself is `"public" | "private"`.
+const listSchema = z.object({
+  title: z.string().optional(),
+  description: z.string().optional(),
+  visibility: z.enum(["public", "private"]).optional(),
+});
 
 // The signed-in user's own lists (all visibilities). Read-later is created
 // lazily so it's always present.
@@ -18,10 +30,9 @@ listRoutes.get("/", async (c) => {
 });
 
 // Create a list (auth). Defaults to public unless `visibility: "private"`.
-listRoutes.post("/", async (c) => {
+listRoutes.post("/", jsonBody(listSchema), async (c) => {
   const user = requireUser(c);
-  const body = await c.req.json();
-  const list = await listsService.createList(user.id, body);
+  const list = await listsService.createList(user.id, c.req.valid("json"));
   return c.json({ list: readingListView(list) }, 201);
 });
 
@@ -71,10 +82,9 @@ listRoutes.get("/:id/items", async (c) => {
 });
 
 // Edit a list (owner only).
-listRoutes.patch("/:id", async (c) => {
+listRoutes.patch("/:id", jsonBody(listSchema), async (c) => {
   const user = requireUser(c);
-  const body = await c.req.json();
-  const list = await listsService.updateList(user.id, c.req.param("id"), body);
+  const list = await listsService.updateList(user.id, c.req.param("id"), c.req.valid("json"));
   return c.json({ list: readingListView(list) });
 });
 
@@ -86,10 +96,9 @@ listRoutes.delete("/:id", async (c) => {
 });
 
 // Add / remove a post (owner only).
-listRoutes.post("/:id/items", async (c) => {
+listRoutes.post("/:id/items", jsonBody(z.object({ postId: z.string() })), async (c) => {
   const user = requireUser(c);
-  const { postId } = await c.req.json();
-  await listsService.addItem(user.id, c.req.param("id"), postId);
+  await listsService.addItem(user.id, c.req.param("id"), c.req.valid("json").postId);
   return c.json({ ok: true });
 });
 

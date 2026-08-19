@@ -10,6 +10,8 @@ import { config } from "@/config.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import { rateLimit } from "@/lib/rateLimit.ts";
 import { privateUser, profileLinkView } from "@/routes/serializers.ts";
+import { jsonBody } from "@/lib/validate.ts";
+import { z } from "zod";
 import type { Context } from "hono";
 import type { AppEnv } from "@/routes/types.ts";
 
@@ -57,16 +59,28 @@ function cookieOpts(c: Context) {
   };
 }
 
-authRoutes.post("/register", registerLimiter, async (c) => {
-  const body = await c.req.json();
+// Shape only. The rules that make a credential acceptable — username format,
+// a well-formed email, password strength — stay in services/auth.ts, so they
+// are stated once and cannot drift from what registration actually enforces.
+const registerSchema = z.object({
+  username: z.string(),
+  email: z.string(),
+  password: z.string(),
+  displayName: z.string().optional(),
+});
+
+authRoutes.post("/register", registerLimiter, jsonBody(registerSchema), async (c) => {
+  const body = c.req.valid("json");
   const user = await authService.register(body);
   const { token } = await authService.login(user.username, body.password);
   setCookie(c, SESSION_COOKIE, token, cookieOpts(c));
   return c.json({ user: privateUser(user) }, 201);
 });
 
-authRoutes.post("/login", loginLimiter, async (c) => {
-  const { identifier, password } = await c.req.json();
+const loginSchema = z.object({ identifier: z.string(), password: z.string() });
+
+authRoutes.post("/login", loginLimiter, jsonBody(loginSchema), async (c) => {
+  const { identifier, password } = c.req.valid("json");
   const { user, token } = await authService.login(identifier, password);
   setCookie(c, SESSION_COOKIE, token, cookieOpts(c));
   return c.json({ user: privateUser(user, await tagsRepo.tagsForUser(user.id)) });
@@ -74,44 +88,61 @@ authRoutes.post("/login", loginLimiter, async (c) => {
 
 // Request a password-reset email. Always 200 with the same body whether or not
 // the identifier matches an account (no user enumeration).
-authRoutes.post("/password/forgot", emailSendLimiter, async (c) => {
-  const { identifier } = await c.req.json().catch(() => ({ identifier: "" }));
-  await authService.requestPasswordReset(String(identifier ?? ""));
-  return c.json({ ok: true });
-});
+authRoutes.post(
+  "/password/forgot",
+  emailSendLimiter,
+  jsonBody(z.object({ identifier: z.string() })),
+  async (c) => {
+    await authService.requestPasswordReset(c.req.valid("json").identifier);
+    return c.json({ ok: true });
+  },
+);
 
 // Complete a password reset with the emailed token.
-authRoutes.post("/password/reset", tokenLimiter, async (c) => {
-  const { token, password } = await c.req.json().catch(() => ({}));
-  await authService.resetPassword(String(token ?? ""), String(password ?? ""));
-  return c.json({ ok: true });
-});
+authRoutes.post(
+  "/password/reset",
+  tokenLimiter,
+  jsonBody(z.object({ token: z.string(), password: z.string() })),
+  async (c) => {
+    const { token, password } = c.req.valid("json");
+    await authService.resetPassword(token, password);
+    return c.json({ ok: true });
+  },
+);
 
 // Confirm an email address from the emailed token.
-authRoutes.post("/email/verify", tokenLimiter, async (c) => {
-  const { token } = await c.req.json().catch(() => ({}));
-  await authService.verifyEmail(String(token ?? ""));
-  return c.json({ ok: true });
-});
+authRoutes.post(
+  "/email/verify",
+  tokenLimiter,
+  jsonBody(z.object({ token: z.string() })),
+  async (c) => {
+    await authService.verifyEmail(c.req.valid("json").token);
+    return c.json({ ok: true });
+  },
+);
 
 // Re-send a verification email. Always 200 with the same body (no enumeration).
-authRoutes.post("/email/resend", emailSendLimiter, async (c) => {
-  const { email } = await c.req.json().catch(() => ({ email: "" }));
-  await authService.resendVerification(String(email ?? ""));
-  return c.json({ ok: true });
-});
+authRoutes.post(
+  "/email/resend",
+  emailSendLimiter,
+  jsonBody(z.object({ email: z.string() })),
+  async (c) => {
+    await authService.resendVerification(c.req.valid("json").email);
+    return c.json({ ok: true });
+  },
+);
 
 // Change the signed-in user's password (requires their current password).
-authRoutes.post("/password/change", async (c) => {
-  const user = requireUser(c);
-  const { currentPassword, newPassword } = await c.req.json().catch(() => ({}));
-  await authService.changePassword(
-    user.id,
-    String(currentPassword ?? ""),
-    String(newPassword ?? ""),
-  );
-  return c.json({ ok: true });
-});
+authRoutes.post(
+  "/password/change",
+  jsonBody(z.object({ currentPassword: z.string(), newPassword: z.string() })),
+  async (c) => {
+    const user = requireUser(c);
+    const { currentPassword, newPassword } = c.req.valid("json");
+    await authService.changePassword(user.id, currentPassword, newPassword);
+    return c.json({ ok: true });
+  },
+);
 
 authRoutes.post("/logout", async (c) => {
   const token = getCookie(c, SESSION_COOKIE);
@@ -131,10 +162,9 @@ authRoutes.get("/me", async (c) => {
 });
 
 // Permanently delete the signed-in account (requires the current password).
-authRoutes.delete("/me", async (c) => {
+authRoutes.delete("/me", jsonBody(z.object({ password: z.string() })), async (c) => {
   const user = requireUser(c);
-  const { password } = await c.req.json().catch(() => ({ password: "" }));
-  await authService.deleteAccount(user.id, password ?? "");
+  await authService.deleteAccount(user.id, c.req.valid("json").password);
   deleteCookie(c, SESSION_COOKIE, { path: "/" });
   return c.json({ ok: true });
 });

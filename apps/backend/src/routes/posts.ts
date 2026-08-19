@@ -15,6 +15,8 @@ import { parseLanguageFilter } from "@/lib/languages.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import { barePost, commentView } from "@/routes/serializers.ts";
 import { config } from "@/config.ts";
+import { jsonBody } from "@/lib/validate.ts";
+import { z } from "zod";
 import type { AppEnv } from "@/routes/types.ts";
 
 export const postRoutes = new Hono<AppEnv>();
@@ -45,11 +47,26 @@ postRoutes.get("/", async (c) => {
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
 });
 
+// The editor's payload. Every field is optional except the body itself, so a
+// draft can be saved with nothing but content; the service applies the rules
+// that need more than a shape (a title is required to publish, the body must be
+// non-empty once sanitized).
+const createPostSchema = z.object({
+  title: z.string().optional(),
+  contentHtml: z.string(),
+  contentJson: z.unknown().optional(),
+  status: z.enum(["draft", "published"]).optional(),
+  language: z.string().nullable().optional(),
+  summary: z.string().nullable().optional(),
+  coverUrl: z.string().nullable().optional(),
+  coverCredit: z.record(z.string(), z.unknown()).nullable().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
 // Create a post (auth required).
-postRoutes.post("/", async (c) => {
+postRoutes.post("/", jsonBody(createPostSchema), async (c) => {
   const user = requireUser(c);
-  const body = await c.req.json();
-  const post = await postsService.createPost(user.id, body);
+  const post = await postsService.createPost(user.id, c.req.valid("json"));
   return c.json({ post: barePost(post) }, 201);
 });
 
@@ -126,11 +143,15 @@ postRoutes.get("/:id/related", async (c) => {
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null) });
 });
 
+// An edit sends only what changed, so every field is optional — including the
+// body, which a title-only or tag-only edit leaves out. Derived from the create
+// schema so the two cannot describe different fields.
+const updatePostSchema = createPostSchema.partial();
+
 // Edit a post (auth required; author only, local posts only).
-postRoutes.patch("/:id", async (c) => {
+postRoutes.patch("/:id", jsonBody(updatePostSchema), async (c) => {
   const user = requireUser(c);
-  const body = await c.req.json();
-  const post = await postsService.updatePost(user.id, c.req.param("id"), body);
+  const post = await postsService.updatePost(user.id, c.req.param("id"), c.req.valid("json"));
   return c.json({ post: barePost(post) });
 });
 
@@ -180,9 +201,15 @@ postRoutes.get("/:id/comments", async (c) => {
   return c.json({ items: items.map(commentView), nextCursor });
 });
 
-postRoutes.post("/:id/comments", async (c) => {
+const createCommentSchema = z.object({
+  content: z.string(),
+  // Present when replying to another comment; absent or null on a top-level one.
+  parentId: z.string().nullable().optional(),
+});
+
+postRoutes.post("/:id/comments", jsonBody(createCommentSchema), async (c) => {
   const user = requireUser(c);
-  const body = await c.req.json();
+  const body = c.req.valid("json");
   const comment = await commentsService.create(
     user.id,
     c.req.param("id"),
@@ -203,12 +230,19 @@ postRoutes.post("/:id/comments", async (c) => {
 });
 
 // Edit a comment (auth required; author only).
-postRoutes.patch("/:id/comments/:commentId", async (c) => {
-  const user = requireUser(c);
-  const body = await c.req.json();
-  const comment = await commentsService.edit(user.id, c.req.param("commentId"), body.content);
-  return c.json({ comment: { id: comment.id, content: comment.content } });
-});
+postRoutes.patch(
+  "/:id/comments/:commentId",
+  jsonBody(z.object({ content: z.string() })),
+  async (c) => {
+    const user = requireUser(c);
+    const comment = await commentsService.edit(
+      user.id,
+      c.req.param("commentId"),
+      c.req.valid("json").content,
+    );
+    return c.json({ comment: { id: comment.id, content: comment.content } });
+  },
+);
 
 // Delete a comment (auth required; author or admin only).
 postRoutes.delete("/:id/comments/:commentId", async (c) => {

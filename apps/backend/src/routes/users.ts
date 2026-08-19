@@ -15,49 +15,63 @@ import { profileLinkView, publicUser } from "@/routes/serializers.ts";
 import { badRequest, notFound } from "@/lib/http.ts";
 import { renderMarkdown } from "@/lib/markdown.ts";
 import { MAX_CUSTOM_SECTION_LEN } from "@/services/users.ts";
+import { jsonBody } from "@/lib/validate.ts";
+import { z } from "zod";
 import type { AppEnv } from "@/routes/types.ts";
 
 export const userRoutes = new Hono<AppEnv>();
 
+// Every field optional: the profile form patches only what the user touched.
+// Length limits, the email format, and the link/tag caps stay in
+// services/users.ts, which is the one place they are enforced.
+const updateProfileSchema = z.object({
+  displayName: z.string().optional(),
+  bio: z.string().optional(),
+  publicEmail: z.string().optional(),
+  customSection: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  links: z.array(
+    z.object({
+      platform: z.string().optional(),
+      url: z.string().optional(),
+      label: z.string().optional(),
+    }),
+  ).optional(),
+});
+
 // Update the signed-in user's own profile (display name, bio). Registered
 // before "/:username" so the literal "me" segment wins.
-userRoutes.patch("/me", async (c) => {
+userRoutes.patch("/me", jsonBody(updateProfileSchema), async (c) => {
   const viewer = requireUser(c);
-  const body = await c.req.json();
-  const { user, tags, links } = await usersService.updateProfile(viewer.id, {
-    displayName: body.displayName,
-    bio: body.bio,
-    publicEmail: body.publicEmail,
-    customSection: body.customSection,
-    tags: body.tags,
-    links: body.links,
-  });
+  const { user, tags, links } = await usersService.updateProfile(viewer.id, c.req.valid("json"));
   return c.json({ user: publicUser(user, tags, links.map(profileLinkView)) });
 });
 
 // Live preview for the profile's custom Markdown section. Goes through the very
 // same render + sanitize path as saving, so what the editor shows is exactly
 // what will be stored — no second Markdown implementation in the frontend.
-userRoutes.post("/me/custom-section/preview", async (c) => {
-  requireUser(c);
-  const body = await c.req.json();
-  const source = typeof body.customSection === "string" ? body.customSection : "";
-  if (source.length > MAX_CUSTOM_SECTION_LEN) {
-    throw badRequest(
-      `Custom section must be ${
-        MAX_CUSTOM_SECTION_LEN.toLocaleString("en-US")
-      } characters or fewer.`,
-    );
-  }
-  return c.json({ html: renderMarkdown(source) });
-});
+userRoutes.post(
+  "/me/custom-section/preview",
+  jsonBody(z.object({ customSection: z.string() })),
+  (c) => {
+    requireUser(c);
+    const source = c.req.valid("json").customSection;
+    if (source.length > MAX_CUSTOM_SECTION_LEN) {
+      throw badRequest(
+        `Custom section must be ${
+          MAX_CUSTOM_SECTION_LEN.toLocaleString("en-US")
+        } characters or fewer.`,
+      );
+    }
+    return c.json({ html: renderMarkdown(source) });
+  },
+);
 
 // Toggle the signed-in user's private/public account state. Going public
 // auto-approves pending follow requests (handled in the service).
-userRoutes.patch("/me/privacy", async (c) => {
+userRoutes.patch("/me/privacy", jsonBody(z.object({ isPrivate: z.boolean() })), async (c) => {
   const viewer = requireUser(c);
-  const body = await c.req.json();
-  const user = await usersService.setPrivacy(viewer.id, body.isPrivate === true);
+  const user = await usersService.setPrivacy(viewer.id, c.req.valid("json").isPrivate);
   return c.json({ user: publicUser(user) });
 });
 

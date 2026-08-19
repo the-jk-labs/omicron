@@ -5,7 +5,7 @@ import * as moderation from "@/services/moderation.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import { rateLimit } from "@/lib/rateLimit.ts";
 import { config } from "@/config.ts";
-import { badRequest } from "@/lib/http.ts";
+import { jsonBody } from "@/lib/validate.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 export const reportRoutes = new Hono<AppEnv>();
@@ -25,10 +25,8 @@ const reportSchema = z.object({
 });
 
 // File a report against a post or an account. Signed-in users only.
-reportRoutes.post("/", reportLimiter, async (c) => {
+reportRoutes.post("/", reportLimiter, jsonBody(reportSchema), async (c) => {
   const user = requireUser(c);
-  const parsed = reportSchema.safeParse(await c.req.json().catch(() => null));
-  if (!parsed.success) throw badRequest("Expected { subjectType, subjectId, reason? }.");
-  await moderation.report(user.id, parsed.data);
+  await moderation.report(user.id, c.req.valid("json"));
   return c.json({ ok: true }, 201);
 });

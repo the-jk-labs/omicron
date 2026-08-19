@@ -9,6 +9,8 @@ import { badRequest } from "@/lib/http.ts";
 import { rateLimit } from "@/lib/rateLimit.ts";
 import { readCappedBody } from "@/lib/inboxBody.ts";
 import { config } from "@/config.ts";
+import { jsonBody } from "@/lib/validate.ts";
+import { z } from "zod";
 import type { AppEnv } from "@/routes/types.ts";
 
 export const webhookRoutes = new Hono<AppEnv>();
@@ -79,12 +81,17 @@ webhookRoutes.get("/tokens", async (c) => {
 
 // Mint a token. The plaintext is in this response and nowhere else, ever —
 // only its hash is stored, so it cannot be shown again.
-webhookRoutes.post("/tokens", async (c) => {
-  const user = requireUser(c);
-  const body = await c.req.json().catch(() => ({}));
-  const { token, row } = await webhookTokens.mint(user.id, body?.label);
-  return c.json({ token, tokenInfo: webhookTokenView(row) }, 201);
-});
+webhookRoutes.post(
+  "/tokens",
+  // A label is optional — an unlabelled token is valid, and the service names
+  // it. The body may be absent entirely, so the object itself gets a default.
+  jsonBody(z.object({ label: z.string().optional() }).default({})),
+  async (c) => {
+    const user = requireUser(c);
+    const { token, row } = await webhookTokens.mint(user.id, c.req.valid("json").label);
+    return c.json({ token, tokenInfo: webhookTokenView(row) }, 201);
+  },
+);
 
 webhookRoutes.delete("/tokens/:id", async (c) => {
   const user = requireUser(c);
