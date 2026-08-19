@@ -36,14 +36,14 @@
       label: "Drafts",
       icon: "draft",
       noun: "draft",
-      empty: "You don't have any drafts yet.",
+      empty: "Nothing unfinished. Posts you save without publishing wait here.",
     },
     {
       value: "scheduled",
       label: "Scheduled",
       icon: "clock",
       noun: "scheduled post",
-      empty: "Nothing is waiting to go out. Schedule a draft and it will appear here.",
+      empty: "Nothing is queued. Give a draft a time and it will publish itself.",
     },
     {
       value: "published",
@@ -198,9 +198,9 @@
 
 <header class="mb-6">
   <h1 class="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
-    <Icon name="compose" size={22} /> Your posts
+    <Icon name="posts" size={22} /> Your posts
   </h1>
-  <p class="mt-1 text-muted-foreground">Everything you've written — drafts, scheduled and live.</p>
+  <p class="mt-1 text-muted-foreground">Everything you've written, in one place.</p>
 </header>
 
 {#if error}<p class="mb-4 text-sm text-destructive">{error}</p>{/if}
@@ -214,11 +214,12 @@
       >
         <Icon name={tab.icon} size={16} />
         {tab.label}
-        {#if counts[tab.value] > 0}
-          <span class="rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-            {counts[tab.value]}
-          </span>
-        {/if}
+        <!-- On every tab, including the zeroes. "0 scheduled" is worth knowing
+             at a glance on a page whose job is to account for everything, and a
+             badge that appears on one tab only leaves the row looking lopsided.
+             Plain muted text rather than a filled pill: it is a footnote to the
+             label, not a notification count. -->
+        <span class="text-xs text-muted-foreground tabular-nums">{counts[tab.value]}</span>
       </Tabs.Trigger>
     {/each}
   </Tabs.List>
@@ -244,11 +245,12 @@
          often as the author has posts. -->
     <p class="px-4 py-12 text-center text-muted-foreground">Loading…</p>
   {:else if pane.items.length === 0}
+    <!-- One muted line in a card, matching the empty state every other page in
+         the app uses. No call to action inside it: "Write" is already on the
+         rail and in the top bar, and a third button here was what turned this
+         into a tall hollow rectangle. -->
     <div class="rounded-card border border-border bg-background-alt px-6 py-12 text-center">
       <p class="text-muted-foreground">{tab.empty}</p>
-      {#if tab.value !== "published"}
-        <Button href="/compose" variant="solid" class="mt-4">Start writing</Button>
-      {/if}
     </div>
   {:else}
     <ul class="space-y-2">

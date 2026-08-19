@@ -23,7 +23,7 @@
           { label: "Profile", href: `/@${user.username}`, icon: "user" },
           { label: "Lists", href: "/lists", icon: "library" },
           { label: "Write", href: "/compose", icon: "compose" },
-          { label: "Your posts", href: "/posts/manage", icon: "compose" },
+          { label: "Your posts", href: "/posts/manage", icon: "posts" },
           { label: "Dashboard", href: "/dashboard", icon: "chart" },
         ]
       : [{ label: "Home", href: "/", icon: "home" }],
