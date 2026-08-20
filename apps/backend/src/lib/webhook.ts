@@ -175,6 +175,10 @@ export function requireCreateFields(payload: ContentPayload): void {
  * stripping Markdown by hand means every syntax markdown-it understands is
  * handled, including what a regex would miss (reference links, HTML blocks,
  * tables). Truncation lands on a word boundary when one is close enough.
+ *
+ * The frontend's `excerpt` (lib/format.ts) is the same rule, for posts written
+ * in the editor rather than ingested. The two appear side by side in one feed,
+ * so change them together.
  */
 export function summarize(contentHtml: string, limit = SUMMARY_LENGTH): string {
   const text = htmlToText(contentHtml).replace(/\s+/g, " ").trim();
