@@ -33,9 +33,25 @@ export function stripHtml(html: string): string {
     .trim();
 }
 
+// Clipped at a word boundary, not at the character the limit happens to land
+// on: a slice mid-word ("the functions open, read, wri…") reads as damage
+// rather than as an abbreviation, and this text is the card excerpt, the
+// og:description on every share and the RSS item description.
+//
+// The rule is the backend's `summarize` (lib/webhook.ts), deliberately: an
+// ingested post carries a summary derived there and an editor-written one is
+// summarized here, and the two sit side by side in the same feed. Keep them
+// the same shape. A short last word is dropped; a boundary that would throw
+// away more than 40% of the allowance is ignored and the hard cut kept, so a
+// single very long token can't collapse the excerpt to nothing. Trailing
+// punctuation goes before the ellipsis so it doesn't read as ",…".
 export function excerpt(html: string, len = 180): string {
   const text = stripHtml(html);
-  return text.length > len ? `${text.slice(0, len).trimEnd()}…` : text;
+  if (text.length <= len) return text;
+  const clipped = text.slice(0, len);
+  const lastSpace = clipped.lastIndexOf(" ");
+  const head = lastSpace > len * 0.6 ? clipped.slice(0, lastSpace) : clipped;
+  return `${head.replace(/[\s.,;:!?-]+$/, "")}…`;
 }
 
 // Rough Medium-style read time (~200 words/min, floored at 1).
