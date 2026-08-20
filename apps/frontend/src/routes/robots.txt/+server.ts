@@ -34,9 +34,15 @@ import type { RequestHandler } from "./$types";
 // was declared off-limits to the very fetchers it exists for, and the card came
 // out blank however correct the tag was.
 //
+// `/api/og/` is the second, and carved out for the same reason: it holds
+// nothing but the share cards generated for posts that have no image of their
+// own (backend routes/og.ts), and those are fetched by exactly the crawlers
+// that read this file first. A post's `og:image` pointing into a disallowed
+// path is a blank card however correct the tag is.
+//
 // Listed before the disallows because that is the order the spec resolves ties
 // in for crawlers that don't implement longest-match.
-const ALLOW = ["/api/uploads/"];
+const ALLOW = ["/api/uploads/", "/api/og/"];
 
 // This list is also the AI-scraper shield's challenge list: the `app-challenge`
 // rule in botPolicy.yaml walls exactly these routes (bar `/api/`, which the

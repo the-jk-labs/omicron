@@ -2,6 +2,7 @@
 import { Hono } from "hono";
 import { authRoutes } from "@/routes/auth.ts";
 import { postRoutes } from "@/routes/posts.ts";
+import { ogRoutes } from "@/routes/og.ts";
 import { feedRoutes } from "@/routes/feed.ts";
 import { userRoutes } from "@/routes/users.ts";
 import { mediaRoutes } from "@/routes/media.ts";
@@ -24,6 +25,7 @@ export const apiRoutes = new Hono<AppEnv>();
 
 apiRoutes.route("/auth", authRoutes);
 apiRoutes.route("/posts", postRoutes);
+apiRoutes.route("/og", ogRoutes);
 apiRoutes.route("/feed", feedRoutes);
 apiRoutes.route("/users", userRoutes);
 apiRoutes.route("/uploads", mediaRoutes);

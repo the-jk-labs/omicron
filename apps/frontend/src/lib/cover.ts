@@ -62,3 +62,36 @@ export function absoluteBanner(url: string | null | undefined, origin: string): 
     return undefined;
   }
 }
+
+/**
+ * The generated share card for a post, or undefined when there will not be one.
+ *
+ * The card is what a link-preview scraper gets for a post that carries no image
+ * of its own — a black tile with the title, author and instance on it, drawn by
+ * the backend (its lib/ogCard.ts). Before it existed, every such post shared as
+ * the same brand tile, so a timeline full of links from one instance was a
+ * column of identical squares saying nothing about what any of them was.
+ *
+ * Local, titled posts only. A federated copy is the other instance's to
+ * illustrate, and an untitled post has nothing to draw. Both keep the brand
+ * tile, and so does a title in a script the backend's bundled face cannot set —
+ * which only the backend can know, so that case is a redirect back to the brand
+ * tile rather than a decision made here.
+ *
+ * The `v` parameter is the post's own last-changed time. Scrapers cache a share
+ * image by URL and for far longer than any header asks, so without it a
+ * retitled post would keep showing its old title on every platform that had
+ * already seen the link.
+ */
+export function postCardUrl(
+  post:
+    | { id: string; title?: string | null; remote: boolean; updatedAt?: string; createdAt: string }
+    | null
+    | undefined,
+  origin: string,
+): string | undefined {
+  if (!post || post.remote || !post.title?.trim()) return undefined;
+  const changed = Date.parse(post.updatedAt ?? post.createdAt);
+  const version = Number.isFinite(changed) ? changed : 0;
+  return `${origin}/api/og/posts/${post.id}.jpg?v=${version}`;
+}
