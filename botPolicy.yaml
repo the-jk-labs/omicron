@@ -1,37 +1,63 @@
 # Anubis bot policy for Omicron.
 #
-# Rules are evaluated top-to-bottom; the first match wins. Everything that must
-# NOT face a proof-of-work challenge is ALLOWed up front, then a catch-all
-# challenges browser-like traffic (the AI scrapers we want to slow down).
+# Rules are evaluated top-to-bottom, the first match wins, and a request that
+# matches nothing falls through to Anubis's default ALLOW. So this file is a
+# list of exceptions, and what it says is: challenge the interactive half of the
+# app, and let everything else through.
+#
+# It used to say the opposite — a catch-all challenged every browser-like
+# User-Agent and a handful of paths were exempted — and that broke the site's
+# whole reason to exist. Anubis decides *before* it forwards anything upstream,
+# so a challenged path never reaches the app at all: it answers 200 with an
+# interstitial carrying `<meta name="robots" content="noindex,nofollow">`. Every
+# article, profile and tag page was that interstitial to anything that cannot
+# run JavaScript, and so was every URL that does not exist — a dead link
+# answered 200 with a challenge instead of 404, so stale URLs could never drop
+# out of a search index.
+#
+# Now the challenge covers /compose, search, the dashboard, post management,
+# settings, admin, notifications and the auth pages: the routes where a request
+# costs real work or invites automated abuse, and which no crawler, feed reader
+# or text browser has any business fetching. Everything else — `/`, `/@user`,
+# `/@user/<slug>`, `/tags/…`, public reading lists, feeds, sitemaps, static
+# assets, the API the frontend proxies, and 404s — is served as itself.
+#
+# The trade, stated plainly: proof-of-work no longer stands in front of article
+# text, so a scraper that renders JavaScript can read posts. It always could —
+# a non-browser User-Agent has fallen through to the default ALLOW since day
+# one — and what is bought back is that the instance is legible to everything
+# that *cannot* solve a challenge: search engines beyond the handful named
+# below, archives, feed readers, link checkers, readers with JS off. A blog
+# nobody can index or link to is not worth shielding.
 #
 # Federation never reaches Anubis at all — Caddy routes ActivityPub straight to
-# the backend — so these ALLOWs are defense-in-depth for the app branch: the API
-# the frontend proxies, feeds, .well-known, and robots.txt. Anything without a
-# browser-style User-Agent falls through to Anubis's default ALLOW, so plain
-# HTTP clients and RSS readers are never blocked.
+# the backend — so the /.well-known ALLOW below is defense-in-depth.
+#
+# New routes therefore default to ALLOW. A new *public* page needs nothing; a
+# new admin or compose-like page must be added to the app-challenge rule at the
+# bottom or it ships unshielded.
 bots:
   # Legitimate search-engine crawlers, so the shield never delists this instance
   # from search. Anubis's bundled list matches each crawler's User-Agent AND
   # confirms it by reverse-DNS, so an AI scraper faking a "Googlebot" UA is still
   # challenged. Covers Google, Bing, DuckDuckGo, Apple, Kagi, Marginalia, Mojeek,
-  # Qwant and the Internet Archive. Kept first so a verified crawler wins before
-  # the browser-challenge catch-all below.
+  # Qwant and the Internet Archive.
   - import: (data)/crawlers/_allow-good.yaml
 
   # The bundled list above covers each engine's main indexing crawler, but every
   # engine also runs first-party fetchers under their own User-Agents that it
   # does not name — Google's URL-inspection and discovery fetchers, Bing's
-  # preview renderer, the AdsBot family. Those hit article pages too, and
-  # without this they fall through to the browser challenge below and receive an
-  # interstitial carrying `<meta name="robots" content="noindex,nofollow">` —
-  # which is what actually keeps posts out of the index.
+  # preview renderer, the AdsBot family.
   #
   # Unlike the bundled rules this matches on User-Agent alone, with no
   # reverse-DNS confirmation, so a scraper that sets one of these strings gets
   # through. That is the deliberate trade: these names are narrow and specific
   # (no generic browser UA is allowed here), and a searchable instance is worth
   # more than shielding against a scraper willing to impersonate Googlebot.
-  # Remove this block if you would rather be unindexed than impersonated.
+  #
+  # Read pages no longer need this rule — nothing challenges them. It stays
+  # because these fetchers also crawl the challenged half of the app, and
+  # because it is what keeps them working if the challenge list is ever widened.
   - name: search-engine-fetchers
     user_agent_regex: >-
       Google-InspectionTool|GoogleOther|Storebot-Google|AdsBot-Google|Google-Site-Verification|BingPreview|MicrosoftPreview|SeznamBot|Yeti|Sogou|Baiduspider
@@ -44,64 +70,112 @@ bots:
   # they render the challenge page's own title and no image, and the share goes
   # out looking broken.
   #
-  # Whether one was challenged before this rule was pure accident of spelling.
-  # The catch-all below challenges any User-Agent containing "Mozilla", and
-  # these services disagree about whether to include it: `facebookexternalhit`
-  # sends both a bare form and `Mozilla/5.0 (compatible; facebookexternalhit)`,
-  # Discord and LinkedIn always include it, Slack and WhatsApp never do. The
-  # ones without it were reaching the app only by falling through to Anubis's
-  # default ALLOW. Naming them all makes the behaviour deliberate and stops a
-  # vendor's UA-string revision from silently breaking previews.
-  #
-  # Same trade as search-engine-fetchers above: User-Agent alone, no reverse-DNS
-  # confirmation, so a scraper sending one of these strings gets through. These
-  # are narrow tokens (no generic browser UA matches), and the cost of being
-  # wrong is one more scraper, against the certainty of every shared link
-  # rendering blank.
+  # Post URLs are allowed outright now, so this is no longer what saves a shared
+  # link. Kept for the same reason as the rule above, and because it stops a
+  # vendor's UA-string revision from quietly changing behaviour: these services
+  # disagree about whether to include "Mozilla" in their User-Agent, and under
+  # the old catch-all that spelling accident alone decided who was challenged.
   - name: social-preview
     user_agent_regex: >-
       facebookexternalhit|facebookcatalog|Twitterbot|Discordbot|Slackbot|LinkedInBot|WhatsApp|TelegramBot|Cardyb|redditbot|SkypeUriPreview|Iframely|Embedly|Mastodon/|Pleroma|Akkoma|Misskey
     action: ALLOW
 
+  # The machine endpoints, ALLOWed explicitly and ahead of the challenge rule.
+  #
+  # None of them can be challenged by the rule at the bottom as it stands, so
+  # these are belt-and-braces: they exist so that widening the challenge list
+  # later — a CEL regex with one alternation too many — cannot silently take
+  # down the API, federation discovery, feeds or search-engine verification.
+  # Each is listed with what breaks if it is challenged.
+
+  # The API the frontend proxies — and the one path that must never be
+  # challenged even though it is where a request costs the most work.
+  #
+  # It is same-origin XHR from pages that are themselves allowed, so the caller
+  # holds no challenge cookie. A signed-out reader loading more responses on a
+  # post, paginating the home feed or a tag page, or rendering any uploaded
+  # image (`/api/uploads/…`) would receive challenge HTML where JSON or a JPEG
+  # is expected: the UI breaks silently, and the visitor cannot recover, because
+  # an interstitial can only be solved by a document load. Abuse of the
+  # expensive endpoints is the rate limiter's job, not Anubis's.
   - name: api
     path_regex: ^/api/
     action: ALLOW
 
+  # WebFinger and host-meta. Caddy routes these to the backend without passing
+  # through Anubis; if that ever changes, remote instances must still resolve
+  # `@user@this.host`.
   - name: well-known
     path_regex: ^/\.well-known/
     action: ALLOW
 
+  # Feeds and the sitemaps that share the .xml suffix: /@user/feed.xml,
+  # /lists/<id>/feed.xml, /sitemap.xml, /sitemap/posts-<n>.xml. No feed reader
+  # runs JavaScript.
   - name: feeds
     path_regex: (\.(rss|atom|xml)$)|(/feed/?$)
     action: ALLOW
 
+  # The admin Discoverability page is the single source of truth for robots.txt
+  # and the sitemap link (SERVE_ROBOTS_TXT=false keeps Anubis from shadowing the
+  # path with its own), so the app must be the one to answer here.
   - name: robots
     path_regex: ^/robots\.txt$
     action: ALLOW
 
-  # The IndexNow key file, for the same reason robots.txt is exempt above.
-  #
-  # When the instance submits a URL, the receiving engine fetches this file and
-  # checks the contents match the key that came with the submission — that is
-  # the whole of how it knows the sender owns the domain. A challenge page in
-  # its place fails the check, and every submission is then rejected with
-  # nothing to show for it: no error reaches the operator, the posts simply
-  # never arrive.
-  #
-  # A verified crawler already gets through on the bundled list above, but the
-  # verification fetch does not necessarily come from one — several engines
-  # receive IndexNow submissions and each fetches the file itself, some with a
-  # browser-shaped User-Agent that the catch-all would challenge.
+  # The IndexNow key file. When the instance submits a URL, the receiving engine
+  # fetches this file and checks the contents match the key that came with the
+  # submission — that is the whole of how it knows the sender owns the domain. A
+  # challenge page in its place fails the check and every submission is rejected
+  # silently: no error reaches the operator, the posts simply never arrive.
   #
   # Nothing is given away by exempting it. The file is a single line containing
   # a key that is public by design, served only when IndexNow is switched on and
-  # only for the one correct filename; every other name 404s (see the route in
-  # the app).
+  # only for the one correct filename; every other name 404s.
   - name: indexnow-key
     path_regex: ^/indexnow-[0-9a-fA-F]+\.txt$
     action: ALLOW
 
-  # Everything else that looks like a browser gets the challenge.
-  - name: browser-challenge
-    user_agent_regex: Mozilla|Opera
+  # The proof-of-work wall, and the only rule that raises one.
+  #
+  # Both conditions must hold — an expensive path AND a browser-shaped
+  # User-Agent — which a plain rule cannot express: Anubis rejects a bot entry
+  # carrying both `path_regex` and `user_agent_regex` ("must set either
+  # user_agent_regex, path_regex, and not both"), so this is written as a CEL
+  # expression, where `all:` is a conjunction.
+  #
+  # The User-Agent half is what the old catch-all did and is kept verbatim, so
+  # non-browser clients still fall through to the default ALLOW exactly as
+  # before. The path half is the app's own robots.txt `Disallow` list — see
+  # DISALLOW in apps/frontend/src/routes/robots.txt/+server.ts — which is the
+  # same judgement call written down twice: the routes no crawler should spend a
+  # fetch on are the routes worth walling. Keep the two in step. It differs in
+  # two places, both deliberate: `/api/` is disallowed there but must stay
+  # ALLOWed here (see above), and `/lists` is absent there because a robots.txt
+  # path is a prefix and would swallow public lists, a problem this rule does
+  # not have because it anchors the match. The list:
+  #
+  #   /compose, /search           composing and full-text search — the two that
+  #                               cost real work per request
+  #   /dashboard, /drafts,        the author's own surfaces
+  #   /posts/manage, /posts/*/edit
+  #   /settings, /admin,          account, instance administration, and the
+  #   /notifications,             signed-in social surfaces
+  #   /follow-requests
+  #   /lists                      the signed-in "my lists" page only — a public
+  #                               list lives at /lists/<slug>-<id> and is not
+  #                               matched
+  #   auth pages                  /login, /register, /setup, /verify-email and
+  #                               password reset, where the wall is aimed at
+  #                               credential stuffing and bot signups rather
+  #                               than at server cost
+  - name: app-challenge
     action: CHALLENGE
+    expression:
+      all:
+        - 'userAgent.matches("Mozilla|Opera")'
+        - >-
+          path.matches("^/(compose|search|dashboard|drafts|settings|admin|notifications|follow-requests|login|register|setup|verify-email|forgot-password|reset-password)(/|$)")
+          || path.matches("^/lists/?$")
+          || path.matches("^/posts/manage(/|$)")
+          || path.matches("^/posts/[^/]+/edit/?$")
