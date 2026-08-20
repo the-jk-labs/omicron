@@ -1,11 +1,21 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { page } from "$app/state";
   import { endpoints, ApiError } from "$lib/api";
   import logo from "$lib/assets/omicron.svg";
   import Icon from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import type { InstanceInfo } from "$lib/types";
   import { Label } from "bits-ui";
+
+  // An instance still on the default `console` transport writes the reset link
+  // to the backend log instead of sending it. Offering the form anyway ends the
+  // only account-recovery path there is on a screen that says a message is on
+  // its way, and nothing ever arrives — so say what is actually true and point
+  // at the one person who can help.
+  const instance = $derived(page.data.instance as InstanceInfo | null);
+  const canSendEmail = $derived(instance?.emailEnabled !== false);
 
   let identifier = $state("");
   let error = $state("");
@@ -33,7 +43,20 @@
 
 <PageTitle text="Reset password" />
 
-{#if sent}
+{#if !canSendEmail}
+  <div class="flex flex-col items-center text-center">
+    <div class="mb-5 flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+      <Icon name="mail" size={26} />
+    </div>
+    <h1 class="text-2xl font-bold tracking-tight text-foreground">This instance can't send email</h1>
+    <p class="mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
+      Password reset needs outbound email, and it hasn't been set up here yet. Ask the administrator of
+      <span class="font-medium text-foreground">{instance?.domain ?? "this instance"}</span> to reset your password or to
+      configure email.
+    </p>
+    <Button href="/login" variant="outline" class="mt-6 h-11 w-full">Back to sign in</Button>
+  </div>
+{:else if sent}
   <div class="flex flex-col items-center text-center">
     <div class="mb-5 flex size-14 items-center justify-center rounded-full bg-muted text-foreground">
       <Icon name="mail" size={26} />

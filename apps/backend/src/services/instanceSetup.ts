@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
-import { type EmailInput, setEmailConfig } from "@/services/emailSettings.ts";
+import { type EmailInput, getEmailMode, setEmailConfig } from "@/services/emailSettings.ts";
 import { federationRunning } from "@/services/federationState.ts";
 import { config } from "@/config.ts";
 
@@ -16,7 +16,6 @@ export const SETUP_KEYS = {
   appName: "instance.appName",
   appDomain: "instance.appDomain",
   federationEnabled: "instance.federationEnabled",
-  emailMode: "email.mode",
   bannerText: "instance.bannerText",
   bannerImageUrl: "instance.bannerImageUrl",
 } as const;
@@ -57,14 +56,6 @@ export async function getFederationEnabled(): Promise<boolean> {
 // Persist the desired federation state from the admin page. Restart-applied.
 export async function setFederationEnabled(value: boolean): Promise<void> {
   await settingsRepo.set(SETUP_KEYS.federationEnabled, value);
-}
-
-// Effective email transport mode: wizard → EMAIL_TRANSPORT env/default.
-// The wizard stores the operator's choice here; the concrete transport wiring
-// (SMTP creds / relay) is configured in a later step of the wizard.
-export async function getEmailMode(): Promise<string> {
-  const fromDb = await settingsRepo.get<string>(SETUP_KEYS.emailMode);
-  return fromDb?.trim() || config.EMAIL_TRANSPORT;
 }
 
 // The effective instance origin (scheme + domain), honouring a wizard-set
@@ -155,18 +146,28 @@ export async function setBannerImageUrl(url: string | null): Promise<void> {
 }
 
 // A public snapshot of the instance's identity, safe to expose unauthenticated.
+//
+// `emailEnabled` is here rather than behind the admin API because the pages
+// that need it are the ones nobody is signed in on: password reset and email
+// verification both end at "check your inbox", and on an instance still using
+// the default `console` transport there is no inbox to check — the link only
+// ever reaches the operator's backend log. A visitor who is locked out has to
+// be told that, and it gives away nothing: it is a property of the instance,
+// not of any account, and it names no host, credential or key.
 export async function publicInfo(): Promise<{
   name: string;
   domain: string;
   federationEnabled: boolean;
   setupComplete: boolean;
+  emailEnabled: boolean;
   bannerText: string | null;
   bannerImageUrl: string | null;
 }> {
-  const [name, domain, setupComplete, bannerText, bannerImageUrl] = await Promise.all([
+  const [name, domain, setupComplete, emailMode, bannerText, bannerImageUrl] = await Promise.all([
     getAppName(),
     getAppDomain(),
     isSetupComplete(),
+    getEmailMode(),
     getBannerText(),
     getBannerImageUrl(),
   ]);
@@ -175,6 +176,7 @@ export async function publicInfo(): Promise<{
     domain,
     federationEnabled: federationRunning(),
     setupComplete,
+    emailEnabled: emailMode !== "console",
     bannerText,
     bannerImageUrl,
   };
