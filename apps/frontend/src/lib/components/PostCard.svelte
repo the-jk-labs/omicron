@@ -14,6 +14,19 @@
 
   let { post }: { post: Post } = $props();
 
+  // The card's body is one big link over the title, the summary and the
+  // thumbnail, so its accessible name was everything inside it concatenated:
+  // "UNIX-programming-timev Historically, UNIX systems have maintained two
+  // different time values for a file." Anyone pulling up a list of links, or
+  // tabbing through a feed, heard the whole excerpt on every card before they
+  // could tell one post from the next. Naming the link from the heading alone
+  // fixes that and leaves the hit area, the markup and the styling untouched.
+  //
+  // Only when there is a title: an untitled post (a remote note, mostly) has no
+  // heading to point at, and its summary is then the only thing that can name
+  // the link — which is what happens without the attribute.
+  const titleId = $props.id();
+
   const signedIn = $derived(!!page.data.user);
   // An ingested post carries its own preview (the CMS's `description`); anything
   // written in the editor has none, so fall back to clipping the body.
@@ -60,11 +73,19 @@
     {/if}
   </div>
 
-  <Button href={postPath(post)} variant="plain" class="group block w-full text-left">
+  <Button
+    href={postPath(post)}
+    variant="plain"
+    aria-labelledby={post.title ? titleId : undefined}
+    class="group block w-full text-left"
+  >
     <div class="flex items-start gap-4">
       <div class="min-w-0 flex-1">
         {#if post.title}
-          <h2 class="text-xl leading-snug font-bold text-foreground group-hover:text-foreground-alt sm:text-2xl">
+          <h2
+            id={titleId}
+            class="text-xl leading-snug font-bold text-foreground group-hover:text-foreground-alt sm:text-2xl"
+          >
             {post.title}
           </h2>
         {/if}
