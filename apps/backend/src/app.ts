@@ -6,6 +6,7 @@ import { federationRunning } from "@/services/federationState.ts";
 import { handleError } from "@/lib/http.ts";
 import { sessionMiddleware } from "@/routes/middleware.ts";
 import { healthRoutes } from "@/routes/health.ts";
+import { wellKnownRoutes } from "@/routes/wellKnown.ts";
 import { apiRoutes } from "@/routes/index.ts";
 import { registerJobHandlers } from "@/queue/handlers.ts";
 import { checkRateLimit, clientIp, rateLimit } from "@/lib/rateLimit.ts";
@@ -69,6 +70,12 @@ export async function buildApp() {
   // Federation paths are delegated to Fedify's fetch handler; everything else
   // falls through to the app's own routes.
   if (federationRunning()) {
+    // Discovery documents Fedify does not register — the NodeInfo entry point
+    // and host-meta. Mounted *before* the Fedify handler below, which is what
+    // lets the NodeInfo JRD here take the path back from Fedify's own
+    // single-version one. See routes/wellKnown.ts.
+    app.route("/", wellKnownRoutes);
+
     const { getFederation } = await import("@/federation/mod.ts");
     const { withAttributionDomains } = await import("@/federation/attribution.ts");
     const fed = getFederation();

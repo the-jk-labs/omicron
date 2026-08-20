@@ -12,12 +12,14 @@ import { sql } from "@/db/client.ts";
 import { db } from "@/db/client.ts";
 import { runMigrations } from "@/db/migrate.ts";
 import {
+  comments,
   follows,
   posts,
   postTags,
   readingListItems,
   readingLists,
   recommendations,
+  sessions,
   tagFollows,
   tags,
   users,
@@ -93,6 +95,22 @@ export async function mkPost(authorId: string, slug: string, opts: PostOpts = {}
     ...(opts.createdAt ? { createdAt: opts.createdAt, updatedAt: opts.createdAt } : {}),
   }).returning();
   return row;
+}
+
+export async function mkComment(postId: string, authorId: string, content = "hi") {
+  const [row] = await db.insert(comments).values({ postId, authorId, content }).returning();
+  return row;
+}
+
+// A sign-in. `createdAt` is the whole point — the activity windows NodeInfo
+// publishes are windows on this column — so it is required rather than defaulted.
+export async function mkSession(userId: string, createdAt: Date) {
+  await db.insert(sessions).values({
+    id: `session-${userId}-${createdAt.getTime()}`,
+    userId,
+    createdAt,
+    expiresAt: new Date(createdAt.getTime() + 30 * 24 * 3_600_000),
+  });
 }
 
 export async function mkTag(slug: string) {

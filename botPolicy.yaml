@@ -109,6 +109,15 @@ bots:
     path_regex: ^/\.well-known/
     action: ALLOW
 
+  # NodeInfo. Caddy routes it to the backend without passing through Anubis; if
+  # that ever changes, this is what keeps the instance listed. A directory
+  # (FediDB, instances.social, fediverse.observer) crawls /.well-known/nodeinfo
+  # and /nodeinfo/2.x with no browser behind it, so a challenge here does not
+  # slow the crawl down — it removes the instance from the listing entirely.
+  - name: nodeinfo
+    path_regex: ^/nodeinfo(/|$)
+    action: ALLOW
+
   # Feeds and the sitemaps that share the .xml suffix: /@user/feed.xml,
   # /lists/<id>/feed.xml, /sitemap.xml, /sitemap/posts-<n>.xml. No feed reader
   # runs JavaScript.

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, ne, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { type ActorKeyPair, follows, type NewUser, users } from "@/db/schema.ts";
+import { type ActorKeyPair, follows, type NewUser, sessions, users } from "@/db/schema.ts";
 
 // All user DB access lives here. Services/routes never touch `db` directly.
 
@@ -88,6 +88,22 @@ export function firstUser() {
 
 export async function countUsers(): Promise<number> {
   const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(users);
+  return row?.n ?? 0;
+}
+
+// Accounts that signed in at least once since `since` — NodeInfo's definition of
+// an active user, which is a sign-in and not a post.
+//
+// Counted from sessions, one row per sign-in, so an account that signed in twice
+// counts once. It errs low and never high: signing out deletes the row, so a
+// visit that ended in a deliberate logout is not remembered. That is the right
+// direction for a number published to fediverse directories — an undercount
+// misrepresents nothing, and there is no other record of a sign-in to consult.
+export async function countActiveSince(since: Date): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(distinct ${sessions.userId})::int` })
+    .from(sessions)
+    .where(gte(sessions.createdAt, since));
   return row?.n ?? 0;
 }
 

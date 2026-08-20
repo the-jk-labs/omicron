@@ -400,6 +400,23 @@ export function listRecentExcluding(postId: string, limit = 4) {
     .limit(limit);
 }
 
+// Everything this instance has itself published, for NodeInfo's usage figures.
+//
+// Deliberately wider than `publishedLocally()` above, which is the *sitemap's*
+// question ("what should a crawler index?") and so drops private authors. This
+// one asks what the node holds, and a private author's article is as much this
+// node's output as anyone's — only the count leaves, never a title or a body.
+// Drafts and scheduled posts are not published and never counted; a suspended
+// author's work is withdrawn, so it is not counted either.
+export async function countLocalPublished(): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(posts)
+    .innerJoin(users, eq(posts.authorId, users.id))
+    .where(and(eq(posts.remote, false), isPublished, isNull(users.suspendedAt)));
+  return row?.n ?? 0;
+}
+
 export async function countSitemapEntries(): Promise<number> {
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })

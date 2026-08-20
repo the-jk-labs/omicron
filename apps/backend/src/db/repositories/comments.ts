@@ -96,6 +96,14 @@ export function listReplies(parentIds: string[], viewerId: string | null) {
     .orderBy(asc(comments.createdAt), asc(comments.id));
 }
 
+// Every response on the instance, for NodeInfo's usage figures. Comments are
+// always local — the column is a FK to `users`, so a remote reply is never one
+// of these — which is why there is nothing to filter here.
+export async function countAll(): Promise<number> {
+  const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(comments);
+  return row?.n ?? 0;
+}
+
 // Comment count for many posts in one query.
 export async function countsFor(postIds: string[]): Promise<Map<string, number>> {
   const map = new Map<string, number>();
