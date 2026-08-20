@@ -1,11 +1,29 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { goto, invalidateAll } from "$app/navigation";
+  import { page } from "$app/state";
+  import { env } from "$env/dynamic/public";
   import { endpoints, ApiError } from "$lib/api";
   import logo from "$lib/assets/omicron.svg";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import type { InstanceInfo } from "$lib/types";
   import { Label } from "bits-ui";
+
+  // Whose site this is. The line under the heading used to say that the first
+  // account on a fresh instance becomes the admin — which no visitor of this
+  // page can ever act on: the layout gate redirects every route to /setup until
+  // setup is complete, and setup is complete as soon as a single account exists
+  // (isSetupComplete in instanceSetup.ts). By the time /register renders, the
+  // admin exists. So it promised a role the reader can't have and volunteered
+  // the instance's setup state to a stranger.
+  //
+  // What a sign-up form on a federated network actually owes the reader is the
+  // name of the instance they're joining, which is the operator's, not the
+  // project's. Resolution order matches the nav and PageTitle: admin-configured
+  // name, then the build-time env, then the project name as a last resort.
+  const instance = $derived(page.data.instance as InstanceInfo | null);
+  const appName = $derived(instance?.name || env.PUBLIC_APP_NAME || "Omicron");
 
   let username = $state("");
   let email = $state("");
@@ -39,7 +57,16 @@
 <div class="mb-8 text-center">
   <div class="mb-4 flex justify-center"><img src={logo} alt="" class="h-12 w-auto" /></div>
   <h1 class="text-2xl font-bold tracking-tight text-foreground">Create your account</h1>
-  <p class="mt-1.5 text-sm text-muted-foreground">The first account on a fresh instance becomes the admin.</p>
+  <!-- Federation is an operator's switch: an instance can be run as a standalone
+       blog, and this flag is the state the backend is actually running with, not
+       a pending toggle. Don't promise the fediverse to someone who won't get it. -->
+  <p class="mt-1.5 text-sm text-muted-foreground">
+    {#if instance?.federationEnabled}
+      Join {appName} and follow writers across the fediverse.
+    {:else}
+      Join {appName} and start writing.
+    {/if}
+  </p>
 </div>
 
 <form onsubmit={submit} class="flex flex-col gap-4">
