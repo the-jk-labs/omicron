@@ -6,6 +6,26 @@ import { postPath } from "$lib/links";
 import { error, redirect } from "@sveltejs/kit";
 import type { PageServerLoad } from "./$types";
 
+// Addresses a reader guesses for an author's feed when all they have is the
+// author's URL. The one real feed is /@username/feed.xml — its own route, which
+// wins over this one — and every other spelling landed here as a post slug and
+// 404ed, so a subscription typed by hand silently never arrived.
+//
+// Redirected rather than served, so the feed keeps a single URL: one address for
+// a reader's client to poll and revalidate, and one for a search engine to see.
+const FEED_ALIASES = new Set([
+  "rss",
+  "atom",
+  "feed",
+  "rss.xml",
+  "atom.xml",
+  "feed.rss",
+  "feed.atom",
+  // WordPress and Hugo defaults, which are what a reader who has used either
+  // will try first.
+  "index.xml",
+]);
+
 // Blog post at /@username/<slug>. The slug is the address: the backend resolves
 // it against the author's live slug, then against slugs the post has been moved
 // off (a retitle), then against a trailing short id — which is what permalinks
@@ -39,7 +59,16 @@ export const load: PageServerLoad = async ({ fetch, locals, params, url }) => {
     post.contentHtml = deferBodyImages(highlightCodeBlocks(post.contentHtml));
     data = { post, comments, related };
   } catch (err) {
-    if (err instanceof ApiError && err.status === 404) error(404, "Post not found");
+    if (err instanceof ApiError && err.status === 404) {
+      // Checked only once the slug has failed to resolve, so an author who
+      // titles a post "RSS" keeps /@them/rss. And local authors only: a remote
+      // actor's posts are syndicated by their own instance, and this instance's
+      // feed route 404s for them, so a redirect would only move the 404.
+      if (!handle.includes("@") && FEED_ALIASES.has(params.slug.toLowerCase())) {
+        redirect(308, `/@${handle}/feed.xml`);
+      }
+      error(404, "Post not found");
+    }
     throw err;
   }
 
