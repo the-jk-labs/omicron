@@ -6,6 +6,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import type { InstanceInfo } from "$lib/types";
   import { Label } from "bits-ui";
   import { onMount } from "svelte";
 
@@ -14,6 +15,11 @@
   type State = "verifying" | "success" | "error" | "resend" | "resent";
 
   const token = $page.url.searchParams.get("token") ?? "";
+  // Only the resend form depends on outbound email. A token already in hand
+  // verifies fine either way — it reached the reader somehow — so the check
+  // gates the form, not the whole page.
+  const instance = $derived($page.data.instance as InstanceInfo | null);
+  const canSendEmail = $derived(instance?.emailEnabled !== false);
   let view = $state<State>(token ? "verifying" : "resend");
   let errorMsg = $state("");
 
@@ -90,6 +96,18 @@
     <p class="mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
       If <span class="font-medium text-foreground">{email}</span> needs verifying, a fresh link is on its way. It expires
       in 24 hours.
+    </p>
+    <Button href="/login" variant="outline" class="mt-6 h-11 w-full">Back to sign in</Button>
+  </div>
+{:else if !canSendEmail}
+  <div class="flex flex-col items-center text-center">
+    <div class="mb-5 flex size-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+      <Icon name="mail" size={26} />
+    </div>
+    <h1 class="text-2xl font-bold tracking-tight text-foreground">This instance can't send email</h1>
+    <p class="mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
+      Confirmation links need outbound email, and it hasn't been set up here yet. Ask the administrator of
+      <span class="font-medium text-foreground">{instance?.domain ?? "this instance"}</span> to configure it.
     </p>
     <Button href="/login" variant="outline" class="mt-6 h-11 w-full">Back to sign in</Button>
   </div>

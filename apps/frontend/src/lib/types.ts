@@ -394,6 +394,11 @@ export type InstanceInfo = {
   domain: string;
   federationEnabled: boolean;
   setupComplete: boolean;
+  // False while the instance is still on the default `console` transport, which
+  // writes mail to the backend log instead of sending it. The pages that end at
+  // "check your inbox" — password reset, email verification — have to say so
+  // rather than promising a message that will never arrive.
+  emailEnabled: boolean;
   // Admin-customizable signed-out visitor card; null means "use the built-in
   // default" (a generated sentence / the bundled artwork).
   bannerText: string | null;

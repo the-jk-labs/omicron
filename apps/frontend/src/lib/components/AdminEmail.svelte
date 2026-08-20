@@ -265,6 +265,18 @@
     </RadioGroup.Item>
   </RadioGroup.Root>
 
+  {#if mode === "console"}
+    <!-- "Zero config" is only half the story, and the missing half costs an
+         operator their users' accounts: with nothing configured, a reader who
+         forgets their password has no way back in and no way to find that out
+         except by asking. Say it here, where the choice is being made. -->
+    <p class="rounded-card border border-border bg-background-alt px-4 py-3 text-sm text-muted-foreground">
+      Nothing is delivered in this mode — reset and confirmation links are written to the backend log. Password reset
+      and email verification tell visitors so instead of offering a form. Fine for local development; pick another mode
+      before anyone else signs up.
+    </p>
+  {/if}
+
   {#if mode !== "console"}
     <div class="flex flex-col gap-1.5">
       <Label.Root for="email-from" class={labelClass}>From address</Label.Root>
