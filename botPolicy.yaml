@@ -61,6 +61,64 @@ status_codes:
   CHALLENGE: 503
   DENY: 403
 
+# The way out for a visitor the challenge cannot let in.
+#
+# Anubis renders the interstitial itself — it never reaches this app — and that
+# page is a dead end for anyone who cannot solve it. It says "Making sure you're
+# not a bot!", shows a spinner, and stops there: no link back to the site, no
+# contact, and the only static sentence on it (an upstream <noscript>) says that
+# JavaScript is required and offers nothing to do about it. Two kinds of visitor
+# get stuck on it forever:
+#
+#   - someone browsing with JavaScript off, or blocked for this domain by an
+#     extension, for whom the check simply cannot complete;
+#   - someone whose browser *does* run JavaScript but failed to fetch the
+#     challenge script — that is the "Anubis could not load its JavaScript. The
+#     server may be overloaded." line, which the page keeps hidden (inline
+#     `display:none`) until its own watchdog gives up.
+#
+# `impressum.footer` is raw HTML that Anubis renders into the footer of every
+# page it serves — the challenge, the deny page and the imprint page below —
+# with no JavaScript involved, so it is the one place we can hand those visitors
+# an explanation and a link out. It points at `/`, which is never challenged
+# (see the rules below): the reading half of this instance works with JavaScript
+# off, and that is worth saying on the screen that has just refused to.
+#
+# `page` is not optional — Anubis refuses to start with a footer and no imprint
+# page ("impressum page title must be defined") — so it carries the longer
+# version of the same explanation. An operator who wants a support address or a
+# legal notice on their instance's challenge screen should add it to the body
+# here; nothing else in this file needs to change.
+impressum:
+  footer: >-
+    Stuck on this screen? Getting past it needs JavaScript, and it only guards
+    this site's sign-in, account and writing pages. Everything there is to read
+    works without it — <a href="/">go to the home page</a>.<br>
+  page:
+    title: Why am I seeing that screen?
+    body: >-
+      <p>You came here from a screen that says "Making sure you're not a bot!".
+      It is a proof-of-work check that this site puts in front of its sign-in,
+      account and writing pages, so that automated scrapers cannot hammer the
+      pages that cost real work to serve. It is not an error, and it is not
+      aimed at you personally.</p>
+
+      <p>Passing the check needs JavaScript. If the screen never finishes, it is
+      almost always one of two things:</p>
+
+      <ul>
+      <li><strong>JavaScript is switched off</strong> for this site, either in
+      your browser's settings or by an extension. Allow it here and reload the
+      page.</li>
+      <li><strong>The check's own script did not load.</strong> Reload the page;
+      it is fetched again from scratch.</li>
+      </ul>
+
+      <p>You do not have to pass the check to read. Articles, profiles, tags,
+      reading lists and feeds are all served straight from the site, with no
+      challenge and no JavaScript required.
+      <a href="/">Go to the home page</a> to carry on reading.</p>
+
 bots:
   # Legitimate search-engine crawlers, so the shield never delists this instance
   # from search. Anubis's bundled list matches each crawler's User-Agent AND
