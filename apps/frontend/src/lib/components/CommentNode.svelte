@@ -14,7 +14,7 @@
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
-  import { formatDateTime } from "$lib/format";
+  import { countLabel, formatDateTime } from "$lib/format";
   import { timeZone } from "$lib/timezone";
   import type { Comment, User } from "$lib/types";
 
@@ -35,6 +35,9 @@
   } = $props();
 
   const isReply = $derived(comment.id !== thread.id);
+  // `aria-label` replaces the button's content as its accessible name, so the
+  // like count has to be spoken in the label itself.
+  const likeLabel = $derived(`${comment.liked ? "Unlike" : "Like"} (${countLabel(comment.likeCount, "like")})`);
 
   // Local refs for caret-aware emoji insertion into the edit/reply boxes. Only
   // one of each is ever open at a time (state lives in the shared `ui`).
@@ -90,7 +93,8 @@
           size="xs"
           class={comment.liked ? "text-foreground" : "text-muted-foreground"}
           aria-pressed={comment.liked}
-          aria-label={comment.liked ? "Unlike" : "Like"}
+          aria-label={likeLabel}
+          title={likeLabel}
         >
           <Icon name="heart" size={15} class={comment.liked ? "fill-current" : ""} />
           {#if comment.likeCount > 0}<span class="tabular-nums">{comment.likeCount}</span>{/if}

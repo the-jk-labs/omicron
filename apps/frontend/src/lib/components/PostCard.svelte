@@ -7,7 +7,7 @@
   import TagList from "$lib/components/TagList.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import { excerpt, formatDate, formatTime, readTime } from "$lib/format";
+  import { countLabel, excerpt, formatDate, formatTime, readTime } from "$lib/format";
   import { postPath } from "$lib/links";
   import { timeZone } from "$lib/timezone";
   import type { Post } from "$lib/types";
@@ -132,8 +132,20 @@
       ></span
     >
     <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
-    <span class="flex items-center gap-1"><Icon name="heart" size={13} /> {post.likeCount}</span>
-    <span class="flex items-center gap-1"><Icon name="comment" size={13} /> {post.commentCount}</span>
+    <span class="flex items-center gap-1" title={countLabel(post.likeCount, "like")}>
+      <span aria-hidden="true" class="flex items-center gap-1">
+        <Icon name="heart" size={13} />
+        {post.likeCount}
+      </span>
+      <span class="sr-only">{countLabel(post.likeCount, "like")}</span>
+    </span>
+    <span class="flex items-center gap-1" title={countLabel(post.commentCount, "response")}>
+      <span aria-hidden="true" class="flex items-center gap-1">
+        <Icon name="comment" size={13} />
+        {post.commentCount}
+      </span>
+      <span class="sr-only">{countLabel(post.commentCount, "response")}</span>
+    </span>
     <span class="ml-auto flex shrink-0 items-center gap-1">
       <RecommendButton postId={post.id} recommended={post.recommended} recommendCount={post.recommendCount} size="xs" />
       <SaveToListButton postId={post.id} {signedIn} />

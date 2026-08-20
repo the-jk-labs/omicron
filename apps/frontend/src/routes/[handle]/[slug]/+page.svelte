@@ -12,7 +12,7 @@
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { confirm } from "$lib/components/ui/confirm";
-  import { formatDateTime, readTime } from "$lib/format";
+  import { countLabel, formatDateTime, readTime } from "$lib/format";
   import { languageLabel } from "$lib/languages";
   import { timeZone } from "$lib/timezone";
   import { Dialog, DropdownMenu, Label, Separator } from "bits-ui";
@@ -49,6 +49,11 @@
     likeCount = data.post.likeCount;
     commentCount = data.post.commentCount;
   });
+  // The counts sit inside the buttons visually, but an `aria-label` replaces
+  // the content as the accessible name — so the labels carry the counts
+  // themselves, or a screen reader hears "Like" and never the number.
+  const likeLabel = $derived(`${liked ? "Unlike" : "Like"} (${countLabel(likeCount, "like")})`);
+  const commentLabel = $derived(countLabel(commentCount, "response"));
   // Enhance server-rendered code blocks with a copy-to-clipboard button. The
   // content is injected via {@html}, so we reach into the DOM after each render.
   let contentEl = $state<HTMLElement>();
@@ -402,13 +407,16 @@
       variant="ghost"
       class={liked ? "text-foreground" : "text-muted-foreground"}
       aria-pressed={liked}
-      aria-label={liked ? "Unlike" : "Like"}
+      aria-label={likeLabel}
+      title={likeLabel}
     >
       <Icon name="heart" size={18} class={liked ? "fill-current" : ""} />
       <span class="tabular-nums">{likeCount}</span>
     </Button>
     <a
       href="#responses"
+      aria-label={commentLabel}
+      title={commentLabel}
       class="inline-flex h-10 items-center gap-1.5 rounded-input px-4 text-sm font-medium text-muted-foreground hover:bg-muted"
     >
       <Icon name="comment" size={18} />
