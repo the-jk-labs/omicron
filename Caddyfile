@@ -77,11 +77,37 @@
 	}
 	handle {
 		# App (SvelteKit) branch. When the admin enables AI-scraper protection,
-		# the backend reloads this config with this one line changed to
-		# `reverse_proxy anubis:8080` (the Anubis sidecar, which forwards back to
-		# frontend:3000). The exact string is matched in anubisProtection.ts —
-		# keep it on its own line.
-		reverse_proxy frontend:3000
+		# the backend swaps the upstream below for the Anubis sidecar (which
+		# forwards back to this same app) and reloads the config.
+		#
+		# That swap is a literal substring replacement of the directive line, so
+		# the line must appear exactly once in this file — a second occurrence,
+		# in a comment above all, would be rewritten instead and the toggle would
+		# silently do nothing. anubisProtection.ts refuses to apply rather than
+		# guess if it ever finds more than one.
+		reverse_proxy frontend:3000 {
+			# Anubis announces a challenge with 503 (see status_codes in
+			# botPolicy.yaml). A 503 is supposed to say *when* to come back, and
+			# nothing else in the stack can say it: Anubis has no way to set a
+			# response header, so the one client-facing half of that answer is
+			# added here.
+			#
+			# An hour: long enough that a search crawler or an uptime monitor
+			# backs off properly rather than retrying into the same wall, short
+			# enough that a URL is re-checked the same day the operator turns
+			# protection off. Browsers ignore it entirely — they are busy solving
+			# the challenge.
+			#
+			# Attached to the branch rather than to the Anubis upstream, so the
+			# toggle stays a one-line substring swap. With protection off this is
+			# inert: SvelteKit does not answer 503, and if it ever did under load,
+			# a Retry-After would be the right thing to send anyway.
+			@challenge status 503
+			handle_response @challenge {
+				header Retry-After 3600
+				copy_response
+			}
+		}
 	}
 }
 
