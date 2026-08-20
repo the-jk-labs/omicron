@@ -1,11 +1,18 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { goto, invalidateAll } from "$app/navigation";
+  import { page } from "$app/state";
+  import { env } from "$env/dynamic/public";
   import { endpoints, ApiError } from "$lib/api";
   import logo from "$lib/assets/omicron.svg";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import type { InstanceInfo } from "$lib/types";
   import { Label } from "bits-ui";
+
+  // "Omicron" is the software's name; the site has the operator's. Same
+  // resolution order as the nav and PageTitle.
+  const appName = $derived((page.data.instance as InstanceInfo | null)?.name || env.PUBLIC_APP_NAME || "Omicron");
 
   let identifier = $state("");
   let password = $state("");
@@ -37,7 +44,7 @@
 <div class="mb-8 text-center">
   <div class="mb-4 flex justify-center"><img src={logo} alt="" class="h-12 w-auto" /></div>
   <h1 class="text-2xl font-bold tracking-tight text-foreground">Welcome back</h1>
-  <p class="mt-1.5 text-sm text-muted-foreground">Sign in to continue to Omicron.</p>
+  <p class="mt-1.5 text-sm text-muted-foreground">Sign in to continue to {appName}.</p>
 </div>
 
 <form onsubmit={submit} class="flex flex-col gap-4">
