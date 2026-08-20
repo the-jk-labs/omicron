@@ -241,6 +241,10 @@ services:
       - "${HTTPS_PORT:-443}:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Omicron's skin for the Anubis challenge screen, served by Caddy at the
+      # path Anubis links its own stylesheet from. See anubis-theme.css and the
+      # @anubis_theme handler in the Caddyfile.
+      - ./anubis-theme.css:/srv/anubis-theme.css:ro
       - caddy_data:/data
       - caddy_config:/config
 

@@ -33,3 +33,24 @@ Deno.test("an ambiguous Caddyfile is refused, not guessed at", async (t) => {
     assertThrows(() => routeThroughAnubis("handle {\n\trespond 200\n}\n"));
   });
 });
+
+// The challenge screen's stylesheet is three files agreeing with each other:
+// the Caddyfile answers Anubis's own stylesheet URL out of /srv, the compose
+// file mounts anubis-theme.css there, and the file exists to be served. Break
+// any one of those links — a rename, a moved mount — and nothing errors: Caddy
+// 404s the path, Anubis serves its own CSS, and the first page a visitor sees
+// quietly goes back to looking like someone else's site. Nobody would notice
+// until they looked.
+Deno.test("the challenge screen's stylesheet is wired end to end", async () => {
+  assertStringIncludes(CADDYFILE, "@anubis_theme path /.within.website/x/xess/xess.min.css");
+  assertStringIncludes(CADDYFILE, "root * /srv");
+  assertStringIncludes(CADDYFILE, "rewrite * /anubis-theme.css");
+
+  const compose = await Deno.readTextFile(
+    new URL("../../../../docker-compose.yml", import.meta.url),
+  );
+  assertStringIncludes(compose, "./anubis-theme.css:/srv/anubis-theme.css:ro");
+
+  const css = await Deno.readTextFile(new URL("../../../../anubis-theme.css", import.meta.url));
+  assert(css.length > 0, "anubis-theme.css is shipped but empty");
+});
