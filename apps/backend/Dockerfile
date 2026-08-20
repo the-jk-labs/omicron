@@ -7,6 +7,10 @@ WORKDIR /app
 COPY deno.json ./
 COPY src ./src
 COPY drizzle ./drizzle
+# The bundled font the generated share card is drawn in (lib/ogCard.ts). Without
+# it every card render fails and posts without an image share the brand tile —
+# which is the failure this exists to fix, and a silent one.
+COPY assets ./assets
 # The one-off maintenance tasks (`deno task backfill:*`), so an operator can run
 # one against the live database with `docker compose exec backend`. They are
 # never started by the container itself.

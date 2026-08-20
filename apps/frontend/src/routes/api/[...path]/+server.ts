@@ -28,7 +28,17 @@ const proxy: RequestHandler = async ({ request, params, url, getClientAddress })
     headers.delete("x-forwarded-for");
   }
 
-  const init: RequestInit = { method: request.method, headers };
+  const init: RequestInit = {
+    method: request.method,
+    headers,
+    // Hand a backend redirect back to the caller instead of chasing it here.
+    // `fetch` follows by default, and the one place the backend redirects — a
+    // post's generated share card falling back to the brand image — points at
+    // the instance's *public* origin, which a container reaching out to itself
+    // may not resolve at all. The caller is a link-preview scraper on the open
+    // internet; following it is its job, not ours.
+    redirect: "manual",
+  };
   if (!["GET", "HEAD"].includes(request.method)) {
     // Forward the body as raw bytes so binary uploads (e.g. avatar images) pass
     // through untouched; JSON bodies are equally preserved.
@@ -52,6 +62,8 @@ const proxy: RequestHandler = async ({ request, params, url, getClientAddress })
     "expires",
     "vary",
     "content-disposition",
+    // Without this a redirect arrives as a bodyless 3xx with nowhere to go.
+    "location",
     // Throttling feedback. Machine callers (the content webhook, scripted API
     // clients) need these to back off correctly — without them a 429 arrives
     // with no indication of when to retry.

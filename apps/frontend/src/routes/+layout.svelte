@@ -9,7 +9,7 @@
   import Nav from "$lib/components/Nav.svelte";
   import SideNav from "$lib/components/SideNav.svelte";
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
-  import { absoluteBanner } from "$lib/cover";
+  import { absoluteBanner, postCardUrl } from "$lib/cover";
   import { excerpt } from "$lib/format";
   import { blogPostingLd, breadcrumbLd, profilePageLd, serializeJsonLd, webSiteLd } from "$lib/seo";
   import { rememberTimeZone } from "$lib/timezone";
@@ -70,7 +70,7 @@
   // stored root-relative (`/api/uploads/…`) and a scraper would resolve that
   // against itself. An unparseable URL falls back rather than emitting a broken
   // og:image.
-  const shareImage = $derived(absoluteBanner(post?.bannerUrl, origin) ?? ogImage);
+  const shareImage = $derived(absoluteBanner(post?.bannerUrl, origin) ?? postCardUrl(post, origin) ?? ogImage);
 
   // RSS auto-discovery: a reader pointed at a profile, an article or a
   // reading-list page finds the feed from this tag alone — which is how Feedly,
