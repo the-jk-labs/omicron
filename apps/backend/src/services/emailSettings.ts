@@ -89,6 +89,20 @@ async function defaultFrom(): Promise<string> {
 
 // The effective, ready-to-send configuration. Every field falls back through
 // env then a built-in default, so this is always fully populated.
+/**
+ * The effective transport mode on its own, resolved by the same DB → env →
+ * default rule as the full config.
+ *
+ * Separate from `getEmailConfig` because the only public caller — the instance
+ * info a signed-out visitor reads, to know whether a reset link can actually be
+ * delivered — has no business loading the SMTP password and the DKIM private
+ * key to answer one question.
+ */
+export async function getEmailMode(): Promise<EmailMode> {
+  const mode = await settingsRepo.get<string>(EMAIL_KEYS.mode);
+  return isMode(mode) ? mode : (config.EMAIL_TRANSPORT as EmailMode);
+}
+
 export async function getEmailConfig(): Promise<EmailConfig> {
   const g = settingsRepo.get;
   const [
