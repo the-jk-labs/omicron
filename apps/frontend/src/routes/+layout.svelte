@@ -72,11 +72,14 @@
   // og:image.
   const shareImage = $derived(absoluteBanner(post?.bannerUrl, origin) ?? ogImage);
 
-  // RSS auto-discovery: a reader pointed at a profile or reading-list page finds
-  // the feed from this tag alone. Local profiles only (a remote actor's posts are
-  // syndicated by their own instance) and public lists only (a private list's
-  // feed 404s for the anonymous reader that would fetch it). Skipped when the
-  // admin has indexing off, since the feed serves nothing then.
+  // RSS auto-discovery: a reader pointed at a profile, an article or a
+  // reading-list page finds the feed from this tag alone — which is how Feedly,
+  // Inoreader, Miniflux and NetNewsWire subscribe, none of them running the
+  // JavaScript that would reveal the link any other way. Local authors only (a
+  // remote actor's posts are syndicated by their own instance) and public lists
+  // only (a private list's feed 404s for the anonymous reader that would fetch
+  // it). Skipped when the admin has indexing off, since the feed serves nothing
+  // then.
   const feedLink = $derived.by(() => {
     if (data.seo?.indexingEnabled === false) return null;
     const pageData = $page.data as { remote?: boolean; profile?: Profile; list?: ReadingList };
@@ -86,6 +89,16 @@
     }
     if ($page.route.id === "/lists/[id]" && pageData.list?.visibility === "public") {
       return { href, title: `${pageData.list.title} · ${appName}` };
+    }
+    // An article advertises its author's feed, not a feed of its own: paste the
+    // URL you are reading into a feed reader and you subscribe to the writer,
+    // which is the only feed that exists. Not `href` above — that would append
+    // /feed.xml to the article's own path.
+    if (post && !post.remote) {
+      return {
+        href: `/@${post.author.username}/feed.xml`,
+        title: `${post.author.displayName} · ${appName}`,
+      };
     }
     return null;
   });
