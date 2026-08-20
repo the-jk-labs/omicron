@@ -64,7 +64,18 @@ export async function buildPerson(
     // approval flow. Public accounts advertise instant follows (false).
     manuallyApprovesFollowers: user.isPrivate,
     endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
-    url: ctx.getActorUri(identifier),
+    // Where a *person* goes, which is not where the actor document lives.
+    //
+    // `id` above is the ActivityPub identity (/users/<name>) and is served as
+    // JSON-LD only — Fedify answers a browser's Accept header there with 406.
+    // This field is the one Mastodon renders as the profile link and the one
+    // WebFinger republishes as `rel="profile-page"`, so pointing it at the actor
+    // document meant every route a human could take from another instance to
+    // this author's profile ended at "Not Acceptable". The reading page is the
+    // answer, and it negotiates back to this actor for anything that asks for
+    // JSON-LD (see the frontend's hooks.server.ts). Same split Mastodon draws
+    // between /users/<name> and /@<name>.
+    url: new URL(`/@${identifier}`, origin),
     icon: user.avatarUrl ? new Image({ url: new URL(user.avatarUrl, origin) }) : undefined,
     publicKey: keys[0]?.cryptographicKey,
     assertionMethods: keys.map((k) => k.multikey),

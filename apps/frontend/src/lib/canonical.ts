@@ -12,7 +12,7 @@
 // page's <head>, hooks.server.ts redirects page loads to it, and robots.txt +
 // sitemap.xml advertise it, so all four agree no matter which host was asked.
 
-import { endpoints } from "$lib/api";
+import { instanceSnapshot } from "$lib/instance";
 
 // Localhost has no certificate, so it is served over plain HTTP. Mirrors the
 // backend's own scheme rule in config.ts — keep the two in step.
@@ -51,20 +51,9 @@ export function isNonCanonicalHost(url: URL, domain: string | null | undefined):
   return url.host !== new URL(origin).host;
 }
 
-// The instance identity is a single row that changes only when an admin edits
-// it, but hooks.server.ts needs it on every page load — so hold it for a minute
-// rather than putting a backend round-trip in front of each request. A failed
-// lookup is cached as null for the same minute, which degrades to "no redirect".
-const TTL_MS = 60_000;
-let cached: { domain: string | null; at: number } | null = null;
-
+// Re-exported from $lib/instance, which owns the cached snapshot: the canonical
+// origin is one of several things a request needs the instance's own identity
+// for, and they should all read the same minute-old answer.
 export async function instanceDomain(fetchFn: typeof fetch): Promise<string | null> {
-  const now = Date.now();
-  if (cached && now - cached.at < TTL_MS) return cached.domain;
-
-  const info = await endpoints(fetchFn)
-    .instance()
-    .catch(() => null);
-  cached = { domain: info?.domain ?? null, at: now };
-  return cached.domain;
+  return (await instanceSnapshot(fetchFn)).domain;
 }

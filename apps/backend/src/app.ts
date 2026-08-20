@@ -57,6 +57,25 @@ function withPublicScheme(req: Request): Request {
   return fixed === req.url ? req : new Request(fixed, req);
 }
 
+// Every federation route but WebFinger and NodeInfo is JSON-LD only: ask for
+// HTML and Fedify answers 406. That is right for a collection nobody browses,
+// and wrong for an actor — /users/<name> is the identity another instance
+// republishes, so it gets opened in browsers, from a WebFinger client, from a
+// link someone pasted. Send those to the profile page instead, which is what the
+// actor's own `url` now advertises (see federation/actor.ts).
+//
+// Only the bare actor document. A 406 on /users/<name>/outbox is a correct
+// answer to a request that has no HTML equivalent to be redirected to.
+function onNotAcceptable(request: Request): Response {
+  const path = new URL(request.url).pathname;
+  const actor = /^\/users\/([^/]+)$/.exec(path);
+  if (!actor) return new Response("Not Acceptable", { status: 406 });
+  // 302, not 308: the actor document is still what lives at this URL, and a
+  // client that later asks for JSON-LD must come back here rather than replay a
+  // cached permanent redirect to a page of HTML.
+  return new Response(null, { status: 302, headers: { location: `/@${actor[1]}` } });
+}
+
 // Builds the fully-composed Hono app. Federation is mounted only when enabled,
 // keeping the standalone blog free of any ActivityPub code paths.
 export async function buildApp() {
@@ -119,7 +138,10 @@ export async function buildApp() {
           });
           return await fed.fetch(buffered, { contextData: undefined });
         }
-        const res = await fed.fetch(withPublicScheme(c.req.raw), { contextData: undefined });
+        const res = await fed.fetch(withPublicScheme(c.req.raw), {
+          contextData: undefined,
+          onNotAcceptable,
+        });
         return isActorDoc(c.req.method, path)
           ? await withAttributionDomains(res, config.APP_DOMAIN)
           : res;
