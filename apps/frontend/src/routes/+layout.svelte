@@ -291,6 +291,25 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background text-foreground">
+  <!-- The one thing a reader with JavaScript off can usefully be told. Every
+       form in this app posts through fetch (the `submit` handlers on the auth
+       pages, the search bar, the editor), so with scripting disabled those
+       pages render in full and then do nothing at all when the button is
+       pressed — no error, no hint that it never could have worked. The reading
+       half needs no JavaScript whatsoever, so say so and point at it.
+
+       On every page rather than only the interactive ones: a reader who lands
+       on an article has no way to find out that signing in is impossible until
+       they try, and one static line is cheaper to keep honest than another list
+       of routes. -->
+  <noscript>
+    <div class="border-b border-border bg-muted px-4 py-3 text-center text-sm text-foreground">
+      JavaScript is switched off, so anything here that needs a button — signing in, searching, publishing — does
+      nothing. Reading needs none of it:
+      <a href="/" class="font-medium underline underline-offset-4">go to the home page</a>.
+    </div>
+  </noscript>
+
   <Nav user={data.user} {appName} minimal={standalone} />
 
   {#if standalone}
