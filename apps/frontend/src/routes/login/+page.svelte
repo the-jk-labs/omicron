@@ -55,12 +55,19 @@
   <div class="flex flex-col gap-1.5">
     <div class="flex items-center justify-between">
       <Label.Root for="password" class={labelClass}>Password</Label.Root>
-      <a
-        href="/forgot-password"
-        class="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-      >
-        Forgot password?
-      </a>
+      <!-- The one escape hatch for a locked-out reader, so it has to read as a
+           link before it is hovered. It used to be a bare <a> with
+           `underline-offset-4 hover:underline` — an offset for an underline it
+           never drew — in `text-xs text-muted-foreground`, which is this page's
+           colour for helper text that is *not* interactive (the subtitle above,
+           the prose below). It was the only anchor here without an underline,
+           and on a touch device the hover rule never fires, so it stayed
+           indistinguishable from a caption for good.
+           Button variant="link" is the idiom every other link on these screens
+           already uses ("Create one", "Sign in"): underlined, in the foreground
+           colour. Kept one step down at text-xs so it stays subordinate to the
+           label it sits beside. -->
+      <Button href="/forgot-password" variant="link" class="text-xs">Forgot password?</Button>
     </div>
     <input id="password" type="password" bind:value={password} autocomplete="current-password" class={field} />
   </div>
