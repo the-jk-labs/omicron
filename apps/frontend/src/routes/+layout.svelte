@@ -103,6 +103,22 @@
     return null;
   });
 
+  // ActivityPub autodiscovery on a profile page: the machine-readable twin of
+  // the RSS link above, and the other half of the negotiation in
+  // hooks.server.ts. A fediverse client that fetched this page as HTML — because
+  // it did not think to ask for JSON-LD, or followed a link that landed here —
+  // finds the actor from this tag rather than giving up on the handle.
+  //
+  // Local profiles only (a remote actor is served by its own instance, and this
+  // page is a cached copy), and only while the backend is federating, since
+  // /users/<name> is a 404 otherwise.
+  const actorLink = $derived.by(() => {
+    if (!data.instance?.federationEnabled) return null;
+    const pageData = $page.data as { remote?: boolean; profile?: Profile };
+    if ($page.route.id !== "/[handle]" || pageData.remote || !pageData.profile) return null;
+    return `${origin}/users/${pageData.profile.user.username}`;
+  });
+
   // The right discovery rail only belongs on the home feed and profile pages;
   // every other route (post, compose, settings, auth, …) hides it.
   const showDiscover = $derived($page.route.id === "/" || $page.route.id === "/[handle]");
@@ -253,6 +269,9 @@
   <meta property="og:image:alt" content={post?.title ?? appName} />
   {#if feedLink}
     <link rel="alternate" type="application/rss+xml" title={feedLink.title} href={feedLink.href} />
+  {/if}
+  {#if actorLink}
+    <link rel="alternate" type="application/activity+json" href={actorLink} />
   {/if}
   <!-- Search-engine site verification (admin-configured) -->
   {#each verificationTags as tag (tag.name)}

@@ -41,6 +41,7 @@ import * as notifications from "@/services/notifications.ts";
 import { articleLanguage, buildArticle } from "@/federation/article.ts";
 import { buildPerson } from "@/federation/actor.ts";
 import { cacheActor } from "@/federation/remote.ts";
+import { setupNodeInfo } from "@/federation/nodeinfo.ts";
 import { origin } from "@/config.ts";
 import { normalizeTags } from "@/lib/tags.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
@@ -61,6 +62,7 @@ export function getFederation(): Federation<ContextData> {
   if (federation) return federation;
 
   const f = createFederationInstance();
+  setupNodeInfo(f);
   setupActor(f);
   setupFollowers(f);
   setupLists(f);

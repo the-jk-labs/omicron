@@ -1,4 +1,5 @@
 import { canonicalOrigin, instanceDomain, isNonCanonicalHost } from "$lib/canonical";
+import { instanceSnapshot } from "$lib/instance";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Handle } from "@sveltejs/kit";
 
@@ -24,6 +25,62 @@ async function canonicalRedirect(event: Parameters<Handle>[0]["event"]): Promise
   // 308 rather than 301: permanent (so engines transfer ranking to the canonical
   // URL) without the legacy licence to rewrite the method.
   return new Response(null, { status: 308, headers: { location: target } });
+}
+
+// ActivityPub content negotiation on a profile page.
+//
+// `/@alice` is where the fediverse now points at this instance's authors: the
+// actor advertises it as its `url` and WebFinger republishes it as the
+// profile-page link (see the backend's federation/actor.ts). A human asking for
+// that URL wants the page. A server asking for it — Mastodon resolving a handle
+// someone pasted into its search box, an instance following a link out of a post
+// — wants the actor document, and gets HTML it cannot parse unless this
+// redirects it to where the JSON lives.
+//
+// Local handles only. `/@user@host` is this instance's cached copy of somebody
+// else's actor; the original is theirs to serve, and /users/user@host is not a
+// route.
+const AP_HANDLE = /^\/@([^/@]+)$/;
+const AP_TYPES = new Set(["application/activity+json", "application/ld+json"]);
+
+// The client's most-preferred media type, or null when it expressed no
+// preference. Deliberately narrower than the backend's Fedify equivalent, which
+// also honours a bare `application/json`: this decides whether to redirect a
+// *page* away from a reader, so only an unambiguous request for ActivityPub
+// counts. A browser's `text/html,...,*/*;q=0.8` and a bare `*/*` both rank
+// something else first and are left alone.
+function topMediaType(accept: string | null): string | null {
+  if (!accept) return null;
+  const ranked = accept
+    .split(",")
+    .map((part, index) => {
+      const [type, ...params] = part
+        .trim()
+        .split(";")
+        .map((p) => p.trim());
+      const q = params.map((p) => /^q=([\d.]+)$/i.exec(p)).find((m) => m !== null);
+      return { type: type.toLowerCase(), q: q ? Number(q[1]) : 1, index };
+    })
+    .filter((entry) => entry.type && Number.isFinite(entry.q) && entry.q > 0)
+    // Equal weights keep the order the client wrote them in, which is the
+    // convention every ActivityPub implementation relies on.
+    .sort((a, b) => b.q - a.q || a.index - b.index);
+  return ranked[0]?.type ?? null;
+}
+
+async function activityPubRedirect(event: Parameters<Handle>[0]["event"]): Promise<Response | null> {
+  if (!CANONICAL_METHODS.has(event.request.method)) return null;
+  const handle = AP_HANDLE.exec(event.url.pathname);
+  if (!handle) return null;
+  if (!AP_TYPES.has(topMediaType(event.request.headers.get("accept")) ?? "")) return null;
+  // Only when the backend is actually federating. With federation off there is
+  // no actor to redirect to and /users/<name> is a 404, so the page — which at
+  // least says who the author is — is the better answer.
+  if (!(await instanceSnapshot(event.fetch)).federationEnabled) return null;
+
+  // 302: the page is what lives here, and this is a per-request answer to one
+  // client's Accept header, never a permanent move.
+  return new Response(null, { status: 302, headers: { location: `/users/${handle[1]}` } });
 }
 
 // `<html lang>` for this response. app.html carries a `%omicron.lang%`
@@ -58,7 +115,7 @@ function pageLang(locals: App.Locals): string {
 // svelte.config.js (`kit.csp`) so SvelteKit can nonce its own inline scripts;
 // the headers below are the ones it doesn't manage.
 export const handle: Handle = async ({ event, resolve }) => {
-  const redirectResponse = await canonicalRedirect(event);
+  const redirectResponse = (await canonicalRedirect(event)) ?? (await activityPubRedirect(event));
   const response =
     redirectResponse ??
     // Load runs inside resolve(), so `locals.lang` is already set by the time
