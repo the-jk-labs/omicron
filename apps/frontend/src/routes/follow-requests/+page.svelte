@@ -51,20 +51,22 @@
   <ul class="space-y-1">
     {#each items as req (req.requestId)}
       <li class="flex items-center gap-3 rounded-card px-4 py-3 transition-colors hover:bg-muted">
-        <a href={`/@${req.actor.username}`} class="shrink-0">
+        <!-- Avatar and name in one link, as in every other people list (search,
+             connections, the follower dialog). They were two separate links to
+             the same profile: now that the avatar is decorative the first would
+             have had no accessible name at all, and before that it was a second
+             identical stop for anyone tabbing or listening through the row. -->
+        <a href={`/@${req.actor.username}`} class="group flex min-w-0 flex-1 items-center gap-3">
           <Avatar name={req.actor.displayName} src={req.actor.avatarUrl ?? undefined} size={40} />
+          <span class="min-w-0">
+            <span class="block truncate text-sm font-semibold text-foreground group-hover:underline">
+              {req.actor.displayName}
+            </span>
+            <span class="block truncate text-xs text-muted-foreground">
+              @{req.actor.username} · {timeAgo(req.createdAt, $timeZone)}
+            </span>
+          </span>
         </a>
-        <div class="min-w-0 flex-1">
-          <a
-            href={`/@${req.actor.username}`}
-            class="block truncate text-sm font-semibold text-foreground hover:underline"
-          >
-            {req.actor.displayName}
-          </a>
-          <p class="truncate text-xs text-muted-foreground">
-            @{req.actor.username} · {timeAgo(req.createdAt, $timeZone)}
-          </p>
-        </div>
         <div class="flex shrink-0 items-center gap-2">
           <Button size="sm" variant="solid" disabled={busy[req.requestId]} onclick={() => act(req, true)}>
             <Icon name="check" size={15} /> Approve
