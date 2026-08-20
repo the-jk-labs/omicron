@@ -71,6 +71,33 @@
 	@anubis_boot path /.within.website/x/cmd/anubis/static/js/main.mjs /.within.website/x/cmd/anubis/static/locales/*
 	header @anubis_boot >Cache-Control "no-cache"
 
+	# Anubis's stylesheet, answered with Omicron's own — see anubis-theme.css for
+	# what it changes, what it deliberately leaves alone, and why this is the only
+	# seam available. Anubis renders the challenge screen itself and never forwards
+	# those requests, so the app cannot style that page; Caddy sits in front of
+	# Anubis, so answering the stylesheet's path here wins and the pinned upstream
+	# image stays untouched.
+	#
+	# Both of Anubis's stylesheet URLs are matched: the templates link the minified
+	# one, and the unminified path exists too.
+	#
+	# Not conditional on the shield being on. With it off nothing ever requests
+	# this path, and a route that has to know about the toggle is a route the
+	# toggle can break.
+	#
+	# `no-cache` rather than a long max-age: the file is bind-mounted, so an
+	# upgrade or an operator's edit must not be shadowed by a week-old copy. It
+	# costs one 304 on a few KB — against the ~190 KB of embedded fonts it replaces
+	# — and it keeps a round trip in front of the challenge script, which is what
+	# the @anubis_boot block above exists to guarantee.
+	@anubis_theme path /.within.website/x/xess/xess.min.css /.within.website/x/xess/xess.css
+	handle @anubis_theme {
+		root * /srv
+		rewrite * /anubis-theme.css
+		header Cache-Control "no-cache"
+		file_server
+	}
+
 	@federation path /.well-known/* /users/* /inbox /nodeinfo /nodeinfo/*
 	handle @federation {
 		reverse_proxy backend:8000

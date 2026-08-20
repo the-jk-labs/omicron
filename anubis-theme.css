@@ -1,0 +1,249 @@
+/* Omicron's skin for the Anubis interstitial.
+ *
+ * Anubis renders the "Making sure you're not a bot!" screen itself — it answers
+ * before the request ever reaches this app — so the first page a visitor sees on
+ * a protected route is not ours to write. Out of the box it arrives in Anubis's
+ * own colours: a gruvbox dark background, a serif display face for the heading
+ * and a magenta progress bar, none of which appear anywhere else on this site.
+ * The visitor's honest reading of that is "I have landed on the wrong site".
+ *
+ * The one seam we have is the stylesheet. Anubis links exactly one, at a fixed
+ * path, and Caddy sits in front of Anubis — so Caddy answers that path with this
+ * file instead (see the `@anubis_theme` handler in the Caddyfile). Nothing is
+ * patched, forked or rebuilt; the pinned upstream image is untouched.
+ *
+ * What this deliberately does NOT do: the mascot, the "Protected by Anubis"
+ * footer and the page's wording all stay exactly as upstream ships them. Anubis
+ * is MIT and its authors sell custom images, custom titles and "Anubis" removal
+ * as BotStopper — restyling the frame while leaving their attribution and their
+ * jackal in place is the line this file stays on. An operator who wants the rest
+ * should buy BotStopper: https://anubis.techaro.lol/docs/admin/botstopper
+ *
+ * The text is already localized, and better than this app is: Anubis renders it
+ * server-side in whichever of its ~25 languages best matches the visitor's
+ * Accept-Language header (Polish, Italian, Turkish, Ukrainian, Chinese …), and
+ * falls back to English otherwise. Nothing here should hard-code any string —
+ * every rule below styles what is there rather than replacing it.
+ *
+ * Colours are the app's own tokens, copied from `apps/frontend/src/app.css` and
+ * resolved to plain hsl() because Tailwind never runs on this file. Keep them in
+ * step by hand if the theme moves.
+ *
+ * Light/dark follows the OS, which is what the app does too until the reader
+ * picks otherwise. That choice lives in localStorage, which a stylesheet cannot
+ * read, so a reader who forced dark on a light machine gets a light challenge
+ * screen. Unfixable from here, and mild.
+ *
+ * Upgrade note (written against Anubis v1.26.2): if a later Anubis moves its
+ * stylesheet URL the Caddy handler stops matching, Anubis serves its own CSS
+ * again and the screen goes back to looking upstream — visibly plain, never
+ * broken. If it keeps the URL but renames elements, the generic element rules
+ * below still carry the page. Re-check this file when bumping the image tag.
+ */
+
+:root {
+  --om-background: hsl(0 0% 100%);
+  --om-foreground: hsl(0 0% 9%);
+  --om-muted: hsl(240 5% 96%);
+  --om-muted-foreground: hsl(0 0% 9% / 0.65);
+  --om-border: hsl(240 6% 10% / 0.1);
+  --om-destructive: hsl(347 77% 50%);
+
+  /* Same stack as the app's `--font-sans`. Inter itself is bundled by Vite under
+     a content-hashed URL that nothing outside a build can link to, so this page
+     uses it only when the reader happens to have it installed and lands on
+     system-ui otherwise — close enough that the two screens read as one site. */
+  --om-font:
+    "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --om-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --om-background: hsl(0 0% 5%);
+    --om-foreground: hsl(0 0% 95%);
+    --om-muted: hsl(240 4% 16%);
+    --om-muted-foreground: hsl(0 0% 100% / 0.55);
+    --om-border: hsl(0 0% 96% / 0.1);
+    --om-destructive: hsl(350 89% 60%);
+  }
+}
+
+/* Anubis inlines `html, body { height: 100%; display: flex; … }` in a <style>
+   block that comes *after* this file, so plain type selectors lose the cascade
+   to it no matter what they say. `:root` outranks `html` on specificity and
+   wins from anywhere, which is why these two rules are written the long way.
+   Both elements need saying: the rule names `html` as well as `body`, so
+   leaving `html` a flex container centres the whole body box inside the
+   viewport however the body itself is laid out.
+   The flex centering they replace is also a trap: content taller than the
+   viewport (the "Why am I seeing this?" section, expanded) overflows above the
+   top edge with no way to scroll to it. */
+:root,
+:root body {
+  display: block;
+  height: auto;
+  min-height: 100%;
+}
+
+:root body {
+  margin: 0;
+  padding: clamp(2rem, 10vh, 6rem) 1.25rem 3rem;
+  background-color: var(--om-background);
+  color: var(--om-foreground);
+  font-family: var(--om-font);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+main {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+}
+
+/* Matches the app's auth screens: `text-2xl font-bold tracking-tight`. */
+h1,
+#title {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+}
+
+p {
+  margin: 0 0 0.75rem;
+}
+
+a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+strong {
+  font-weight: 600;
+}
+
+ul {
+  margin: 0 0 0.75rem;
+  padding-left: 1.25rem;
+}
+
+li {
+  margin-bottom: 0.35rem;
+}
+
+code,
+pre {
+  font-family: var(--om-font-mono);
+  font-size: 0.8125rem;
+}
+
+pre {
+  overflow-x: auto;
+  margin: 0;
+  padding: 0.75rem 0.875rem;
+  border-radius: 10px;
+  background-color: var(--om-muted);
+  text-align: left;
+}
+
+/* The status line under the mascot ("Loading…", "Calculating…"), and the error
+   the page unhides when its own script never arrives. */
+body #status {
+  margin: 1rem 0 0;
+  color: var(--om-muted-foreground);
+  font-size: 0.875rem;
+}
+
+body #anubis-script-error {
+  margin: 0.75rem 0 0;
+  color: var(--om-destructive);
+  font-size: 0.875rem;
+}
+
+/* Progress bar. Anubis's inline block gives it a 4px magenta outline and a 2rem
+   height; the app's own progress bars are a thin neutral track with a solid
+   foreground fill, so this is the one element worth actively undoing. `body …`
+   only exists to outrank that later inline block. */
+body #progress {
+  box-sizing: border-box;
+  width: min(20rem, 90%);
+  height: 0.5rem;
+  margin: 1.25rem auto 0.5rem;
+  border-radius: 9999px;
+  outline: none;
+  background-color: var(--om-muted);
+}
+
+body .bar-inner {
+  background-color: var(--om-foreground);
+}
+
+/* "Why am I seeing this?" — collapsed by default, and long. */
+details {
+  margin: 1.5rem 0 0;
+  padding: 1rem 1.125rem;
+  border: 1px solid var(--om-border);
+  border-radius: 16px;
+  background-color: var(--om-background);
+  color: var(--om-muted-foreground);
+  font-size: 0.875rem;
+  text-align: left;
+}
+
+details > summary {
+  cursor: pointer;
+  color: var(--om-foreground);
+  font-weight: 500;
+}
+
+details[open] > summary {
+  margin-bottom: 0.75rem;
+}
+
+details p:last-child {
+  margin-bottom: 0;
+}
+
+/* The no-JavaScript notice, and the way out this instance adds to it — see the
+   `impressum` block in botPolicy.yaml. */
+noscript {
+  display: block;
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+}
+
+footer {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--om-border);
+  color: var(--om-muted-foreground);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+footer p {
+  margin: 0 0 0.5rem;
+}
+
+footer p:last-child {
+  margin-bottom: 0;
+}
