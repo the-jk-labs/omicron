@@ -38,6 +38,9 @@ import type { RequestHandler } from "./$types";
 // in for crawlers that don't implement longest-match.
 const ALLOW = ["/api/uploads/"];
 
+// This list is also the AI-scraper shield's challenge list: the `app-challenge`
+// rule in botPolicy.yaml walls exactly these routes (bar `/api/`, which the
+// frontend's own XHR needs). Adding a route here means adding it there too.
 const DISALLOW = [
   "/compose",
   // Kept alongside its replacement: the old address still redirects, and a
