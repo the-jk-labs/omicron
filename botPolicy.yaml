@@ -89,14 +89,26 @@ status_codes:
 # version of the same explanation. An operator who wants a support address or a
 # legal notice on their instance's challenge screen should add it to the body
 # here; nothing else in this file needs to change.
+#
+# `lang="en"`, because everything around it may not be. Anubis picks the page's
+# language from the visitor's Accept-Language header and renders its own text in
+# whichever of its ~25 translations fits, stamping `<html lang="pl">` (or `it`,
+# `uk`, `zh-CN`, …) to match. These two blocks are the instance's own words and
+# stay English whatever it picks, so they are labelled as English: it is what
+# lets a browser's "translate this page" offer handle them, and what stops a
+# screen reader from voicing English prose with Polish phonemes. An operator who
+# translates this text should change the tag with it.
 impressum:
   footer: >-
-    Stuck on this screen? Getting past it needs JavaScript, and it only guards
-    this site's sign-in, account and writing pages. Everything there is to read
-    works without it — <a href="/">go to the home page</a>.<br>
+    <span lang="en">Stuck on this screen? Getting past it needs JavaScript, and
+    it only guards this site's sign-in, account and writing pages. Everything
+    there is to read works without it —
+    <a href="/">go to the home page</a>.</span><br>
   page:
     title: Why am I seeing that screen?
     body: >-
+      <div lang="en">
+
       <p>You came here from a screen that says "Making sure you're not a bot!".
       It is a proof-of-work check that this site puts in front of its sign-in,
       account and writing pages, so that automated scrapers cannot hammer the
@@ -118,6 +130,8 @@ impressum:
       reading lists and feeds are all served straight from the site, with no
       challenge and no JavaScript required.
       <a href="/">Go to the home page</a> to carry on reading.</p>
+
+      </div>
 
 bots:
   # Legitimate search-engine crawlers, so the shield never delists this instance
