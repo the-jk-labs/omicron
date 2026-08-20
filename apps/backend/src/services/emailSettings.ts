@@ -87,8 +87,6 @@ async function defaultFrom(): Promise<string> {
   return `${name} <noreply@${domain}>`;
 }
 
-// The effective, ready-to-send configuration. Every field falls back through
-// env then a built-in default, so this is always fully populated.
 /**
  * The effective transport mode on its own, resolved by the same DB → env →
  * default rule as the full config.
@@ -103,6 +101,8 @@ export async function getEmailMode(): Promise<EmailMode> {
   return isMode(mode) ? mode : (config.EMAIL_TRANSPORT as EmailMode);
 }
 
+// The effective, ready-to-send configuration. Every field falls back through
+// env then a built-in default, so this is always fully populated.
 export async function getEmailConfig(): Promise<EmailConfig> {
   const g = settingsRepo.get;
   const [
