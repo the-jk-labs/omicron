@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import {
-  AlphaAction,
-  ImageMagick,
-  initializeImageMagick,
-  MagickColor,
-  MagickFormat,
-} from "@imagemagick/magick-wasm";
+import { AlphaAction, ImageMagick, MagickColor, MagickFormat } from "@imagemagick/magick-wasm";
+import { initializeMagick } from "@/lib/magick.ts";
 
 // Transcoding an uploaded image into the JPEG used as a post's Open Graph
 // share image.
@@ -40,35 +35,9 @@ const OG_HEIGHT = 630;
 // Comfortably under WhatsApp's ~600KB ceiling at these dimensions.
 const OG_QUALITY = 82;
 
-// The wasm blob is ~14MB and initialising it is not free, so it happens once,
-// lazily, on the first share-image request — never during boot, which would tax
-// every instance whether or not a link is ever shared. Held as the promise
-// rather than a flag so concurrent first requests await one initialisation
-// instead of racing into several.
-let ready: Promise<void> | null = null;
-
-function initialize(): Promise<void> {
-  if (!ready) {
-    ready = (async () => {
-      // Resolved through the import map rather than a path into node_modules,
-      // so it works the same under `deno cache` in the image and a local run.
-      const wasm = await Deno.readFile(
-        new URL(import.meta.resolve("@imagemagick/magick-wasm/magick.wasm")),
-      );
-      await initializeImageMagick(wasm);
-    })().catch((err) => {
-      // Let a failed initialisation be retried rather than poisoning every
-      // later request with the same rejected promise.
-      ready = null;
-      throw err;
-    });
-  }
-  return ready;
-}
-
 /** Transcode an uploaded image to the JPEG used as a share image. */
 export async function toShareJpeg(source: Uint8Array): Promise<Uint8Array<ArrayBuffer>> {
-  await initialize();
+  await initializeMagick();
   let out: Uint8Array<ArrayBuffer> | null = null;
   ImageMagick.read(source, (img) => {
     // Drops EXIF: a scraper needs none of it, and a phone photo's camera and
