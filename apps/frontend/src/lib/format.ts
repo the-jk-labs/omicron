@@ -54,6 +54,13 @@ export function excerpt(html: string, len = 180): string {
   return `${head.replace(/[\s.,;:!?-]+$/, "")}…`;
 }
 
+// A counter as a phrase — "2 likes", "1 response" — for tooltips and
+// screen-reader labels, where the bare number the counter shows ("2") names
+// nothing on its own.
+export function countLabel(n: number, one: string, many = `${one}s`): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
 // Rough Medium-style read time (~200 words/min, floored at 1).
 export function readTime(html: string): number {
   return readTimeFromWords(countWords(stripHtml(html)));

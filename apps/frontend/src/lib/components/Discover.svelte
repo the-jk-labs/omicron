@@ -6,6 +6,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import { countLabel } from "$lib/format";
   import { postPath } from "$lib/links";
   import type { Post, SuggestedUser, TagWithCount } from "$lib/types";
 
@@ -56,8 +57,20 @@
                 {post.title ?? "Untitled"}
               </a>
               <div class="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                <span class="flex items-center gap-1"><Icon name="heart" size={12} /> {post.likeCount}</span>
-                <span class="flex items-center gap-1"><Icon name="comment" size={12} /> {post.commentCount}</span>
+                <span class="flex items-center gap-1" title={countLabel(post.likeCount, "like")}>
+                  <span aria-hidden="true" class="flex items-center gap-1">
+                    <Icon name="heart" size={12} />
+                    {post.likeCount}
+                  </span>
+                  <span class="sr-only">{countLabel(post.likeCount, "like")}</span>
+                </span>
+                <span class="flex items-center gap-1" title={countLabel(post.commentCount, "response")}>
+                  <span aria-hidden="true" class="flex items-center gap-1">
+                    <Icon name="comment" size={12} />
+                    {post.commentCount}
+                  </span>
+                  <span class="sr-only">{countLabel(post.commentCount, "response")}</span>
+                </span>
               </div>
             </div>
           </li>

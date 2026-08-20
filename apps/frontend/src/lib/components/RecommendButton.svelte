@@ -5,6 +5,7 @@
   import { endpoints } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import { countLabel } from "$lib/format";
   import { untrack } from "svelte";
 
   // Recommend ("repost") toggle — federates as an ActivityPub
@@ -37,6 +38,13 @@
     count = recommendCountProp;
   });
 
+  // The visible count is inside the button, but `aria-label` replaces the
+  // content as the accessible name — so the count has to be in the label
+  // itself, or a screen reader hears "Recommend" and never the number.
+  const label = $derived(
+    `${recommended ? "Remove recommendation" : "Recommend"} (${countLabel(count, "recommendation")})`,
+  );
+
   async function toggle() {
     if (!page.data.user) {
       goto("/login");
@@ -68,8 +76,8 @@
   {size}
   class={recommended ? "text-foreground" : "text-muted-foreground"}
   aria-pressed={recommended}
-  aria-label={recommended ? "Remove recommendation" : "Recommend"}
-  title={recommended ? "Remove recommendation" : "Recommend"}
+  aria-label={label}
+  title={label}
 >
   <Icon name="recommend" size={iconSize} />
   <span class="tabular-nums">{count}</span>
