@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
+import { routeThroughAnubis } from "@/lib/caddyfile.ts";
 
 // AI-scraper shield (Anubis) — an opt-in, admin-toggled proof-of-work wall in
 // front of browser page loads. Off by default (see setup-must-be-toy-easy: a
@@ -28,12 +29,6 @@ const CADDY_ADMIN_URL = Deno.env.get("CADDY_ADMIN_URL")?.trim();
 // so we transform the operator's real config rather than a drifting duplicate.
 const CADDYFILE_PATH = Deno.env.get("CADDYFILE_PATH")?.trim() || "/etc/caddy/Caddyfile";
 
-// The single line the toggle rewrites. By default the fallback proxies the app
-// directly; enabling protection re-points it at the Anubis sidecar, which then
-// forwards to the same app. Keep these two strings in sync with the Caddyfile.
-const DIRECT_UPSTREAM = "reverse_proxy frontend:3000";
-const ANUBIS_UPSTREAM = "reverse_proxy anubis:8080";
-
 // Whether the live toggle can work in this deployment (Caddy admin reachable).
 export function anubisManaged(): boolean {
   return CADDY_ADMIN_URL !== undefined && CADDY_ADMIN_URL !== "";
@@ -47,13 +42,7 @@ export async function anubisProtectionEnabled(): Promise<boolean> {
 // the Anubis sidecar when enabling.
 async function renderCaddyfile(enabled: boolean): Promise<string> {
   const base = await Deno.readTextFile(CADDYFILE_PATH);
-  if (!enabled) return base;
-  if (!base.includes(DIRECT_UPSTREAM)) {
-    throw new Error(
-      `Caddyfile at ${CADDYFILE_PATH} has no "${DIRECT_UPSTREAM}" line to route through Anubis.`,
-    );
-  }
-  return base.replace(DIRECT_UPSTREAM, ANUBIS_UPSTREAM);
+  return enabled ? routeThroughAnubis(base) : base;
 }
 
 // Push a Caddyfile to Caddy's admin API, which adapts and applies it atomically

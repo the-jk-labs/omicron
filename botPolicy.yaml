@@ -36,6 +36,31 @@
 # New routes therefore default to ALLOW. A new *public* page needs nothing; a
 # new admin or compose-like page must be added to the app-challenge rule at the
 # bottom or it ships unshielded.
+
+# What HTTP status a refusal is announced with.
+#
+# Anubis answers both a challenge and a denial with 200 by default, which is a
+# lie in the one direction that costs something: the body is an interstitial, not
+# the page that was asked for, and every automated client is told the request
+# succeeded. A search engine reads a 200 whose body is not the article as a soft
+# 404 — and, since every challenged URL returns the same interstitial, as a pile
+# of duplicates of each other. An uptime monitor reads it as healthy. A link
+# checker reads it as a working link.
+#
+# 503 says what is true: this is temporary, the URL is fine, come back. It is
+# also the code Google documents for "do not drop this URL", and the one the
+# Caddyfile attaches a Retry-After to. 403 for a denial says the opposite and
+# equally true thing: this client is not getting served, and no amount of
+# retrying will change that.
+#
+# The challenge page has always carried `<meta name="robots" content="noindex,
+# nofollow">`; the status code was the half that was missing. Neither affects a
+# browser, which renders and runs an error page exactly as it does a 200 —
+# verified against this pinned image with a real browser solving the challenge.
+status_codes:
+  CHALLENGE: 503
+  DENY: 403
+
 bots:
   # Legitimate search-engine crawlers, so the shield never delists this instance
   # from search. Anubis's bundled list matches each crawler's User-Agent AND
