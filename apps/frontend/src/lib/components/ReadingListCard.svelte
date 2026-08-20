@@ -8,10 +8,17 @@
   let { list }: { list: ReadingList } = $props();
 
   const count = $derived(list.itemCount === 1 ? "1 post" : `${list.itemCount} posts`);
+
+  // As on a post card: the whole card is one link, so without this its
+  // accessible name is every scrap of text in it — "Private <title>
+  // <description> 3 posts". The title is what distinguishes one card from
+  // another; the rest is visible beside it either way.
+  const titleId = $props.id();
 </script>
 
 <a
   href={listPath(list)}
+  aria-labelledby={titleId}
   class="group flex flex-col gap-2 rounded-card border border-border bg-background-alt p-4 transition-colors hover:bg-muted focus-visible:outline-hidden"
 >
   <div class="flex items-start justify-between gap-2">
@@ -27,7 +34,7 @@
       </span>
     {/if}
   </div>
-  <h3 class="truncate font-semibold text-foreground group-hover:text-foreground-alt">
+  <h3 id={titleId} class="truncate font-semibold text-foreground group-hover:text-foreground-alt">
     {list.title}
   </h3>
   {#if list.description}
