@@ -2,11 +2,10 @@
 <script lang="ts">
   import { endpoints, ApiError } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
+  import Time from "$lib/components/Time.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { confirm } from "$lib/components/ui/confirm";
-  import { formatDate } from "$lib/format";
-  import { timeZone } from "$lib/timezone";
   import type { AdminUser } from "$lib/types";
 
   // The signed-in admin's own id, so the row for self can hide the suspend
@@ -110,7 +109,7 @@
               {/if}
             </div>
             <p class="truncate text-xs text-muted-foreground">
-              @{u.username} · {u.email} · joined {formatDate(u.createdAt, $timeZone)}
+              @{u.username} · {u.email} · joined <Time iso={u.createdAt} kind="date" />
             </p>
           </div>
           {#if u.id !== selfId && !u.isAdmin}

@@ -55,8 +55,8 @@
     stats = { characters, words, minutes: readTimeFromWords(words) };
   }
 
-  const LOCALE = "en-US";
-  const count = (n: number, one: string) => `${n.toLocaleString(LOCALE)} ${n === 1 ? one : one + "s"}`;
+  import { locale } from "$lib/locale";
+  const count = (n: number, one: string) => `${n.toLocaleString($locale ?? "en-US")} ${n === 1 ? one : one + "s"}`;
 
   // Heading levels offered in the text-style dropdown.
   const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const;

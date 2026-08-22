@@ -9,12 +9,12 @@
   import RecommendButton from "$lib/components/RecommendButton.svelte";
   import SaveToListButton from "$lib/components/SaveToListButton.svelte";
   import TagList from "$lib/components/TagList.svelte";
+  import Time from "$lib/components/Time.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { confirm } from "$lib/components/ui/confirm";
-  import { countLabel, formatDateTime, readTime } from "$lib/format";
+  import { countLabel, readTime } from "$lib/format";
   import { languageLabel } from "$lib/languages";
-  import { timeZone } from "$lib/timezone";
   import { Dialog, DropdownMenu, Label, Separator } from "bits-ui";
   import { untrack } from "svelte";
   import type { PageData } from "./$types";
@@ -269,7 +269,7 @@
         {post.author.displayName}
       </Button>
       <div class="flex flex-col gap-1 text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-        <span>{formatDateTime(post.createdAt, $timeZone)}</span>
+        <Time iso={post.createdAt} />
         <Separator.Root orientation="vertical" class="hidden shrink-0 bg-border sm:block sm:h-3 sm:w-px" />
         <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
         {#if post.remote && originInstance}

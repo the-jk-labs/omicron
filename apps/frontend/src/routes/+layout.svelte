@@ -12,6 +12,7 @@
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
   import { absoluteBanner, postCardUrl } from "$lib/cover";
   import { excerpt } from "$lib/format";
+  import { rememberLocale } from "$lib/locale";
   import { blogPostingLd, breadcrumbLd, profilePageLd, serializeJsonLd, webSiteLd } from "$lib/seo";
   import { rememberTimeZone } from "$lib/timezone";
   import type { Post, Profile, ReadingList } from "$lib/types";
@@ -19,12 +20,14 @@
 
   let { data, children }: { data: LayoutData; children: import("svelte").Snippet } = $props();
 
-  // Hand the reader's timezone to the server for the *next* render, and switch
-  // this one over to it now that we're past hydration. On every visit but the
-  // very first the cookie is already there and this changes nothing on screen —
-  // which is the point: no timestamp flipping hours after the page paints.
+  // Hand the reader's timezone/locale to the server for the *next* render, and
+  // switch this one over to it now that we're past hydration. On every visit
+  // but the very first the cookies are already there and this changes nothing on
+  // screen — which is the point: no timestamp flickering between `Aug 18` and
+  // `18 avq` (locale) or jumping hours (timezone) after the page paints.
   $effect(() => {
     rememberTimeZone();
+    rememberLocale();
   });
 
   // Site-wide social-share defaults. Pages may set their own <title>; these

@@ -11,11 +11,11 @@
   import type { CommentActions, CommentUiState } from "$lib/components/comments";
   import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import Time from "$lib/components/Time.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
-  import { countLabel, formatDateTime } from "$lib/format";
-  import { timeZone } from "$lib/timezone";
+  import { countLabel } from "$lib/format";
   import type { Comment, User } from "$lib/types";
 
   let {
@@ -56,7 +56,7 @@
       <a href={`/@${comment.author.username}`} class="font-medium text-foreground hover:underline">
         {comment.author.displayName}
       </a>
-      <span class="text-xs text-muted-foreground">{formatDateTime(comment.createdAt, $timeZone)}</span>
+      <Time iso={comment.createdAt} relative class="text-xs text-muted-foreground" />
     </div>
     {#if ui.editingId === comment.id}
       <form onsubmit={(e) => actions.submitEdit(e, comment)} class="mt-2">

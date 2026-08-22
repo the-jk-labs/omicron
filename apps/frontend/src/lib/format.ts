@@ -94,13 +94,15 @@ export function readTimeFromWords(words: number): number {
 // renders one way in the server's HTML and another on hydration, and the reader
 // sees it change under them. `$lib/timezone` resolves the zone to pass in.
 //
-// The locale is pinned for the same reason — the server's default locale is not
-// the browser's, and an unpinned one turns "Aug 3, 2026" into "3 avq 2026" on
-// hydration. The UI is English throughout, so en-US is the honest choice.
-const LOCALE = "en-US";
+// Locale is the same story — the server's default is not the browser's, and an
+// unpinned one turns "Aug 3, 2026" into "3 avq 2026" on hydration. Every helper
+// therefore takes an explicit `locale` (from `$lib/locale`, which mirrors the
+// timezone cookie/Accept-Language dance) and falls back to `en-US` only when
+// nothing was resolved yet. Callers should pass `$locale` alongside `$timeZone`.
+const FALLBACK_LOCALE = "en-US";
 
-export function formatDate(iso: string, timeZone?: string): string {
-  return new Date(iso).toLocaleDateString(LOCALE, {
+export function formatDate(iso: string, timeZone?: string, locale?: string): string {
+  return new Date(iso).toLocaleDateString(locale ?? FALLBACK_LOCALE, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -110,7 +112,9 @@ export function formatDate(iso: string, timeZone?: string): string {
 
 // Compact relative time, e.g. "now", "5m", "3h", "2d", falling back to an
 // absolute date past a week. Used where space is tight (notification rows).
-export function timeAgo(iso: string, timeZone?: string): string {
+// `locale` only affects the absolute fallback (the compact tokens are
+// language-agnostic).
+export function timeAgo(iso: string, timeZone?: string, locale?: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const s = Math.max(0, Math.floor(diff / 1000));
   if (s < 60) return "now";
@@ -120,14 +124,43 @@ export function timeAgo(iso: string, timeZone?: string): string {
   if (h < 24) return `${h}h`;
   const d = Math.floor(h / 24);
   if (d < 7) return `${d}d`;
-  return formatDate(iso, timeZone);
+  return formatDate(iso, timeZone, locale);
+}
+
+// Localized, human relative time — e.g. "2 days ago", "2 gün əvvəl",
+// "vor 2 Tagen" via `Intl.RelativeTimeFormat`. Used where the spec asks for
+// nisbi zaman rather than the compact `timeAgo` above.
+export function formatRelative(iso: string, locale?: string): string {
+  const diffMs = new Date(iso).getTime() - Date.now();
+  const sec = Math.round(diffMs / 1000);
+  const absSec = Math.abs(sec);
+  const loc = locale ?? FALLBACK_LOCALE;
+  try {
+    const rtf = new Intl.RelativeTimeFormat(loc, { numeric: "auto" });
+    if (absSec < 60) return rtf.format(sec, "second");
+    const min = Math.round(sec / 60);
+    if (Math.abs(min) < 60) return rtf.format(min, "minute");
+    const hr = Math.round(sec / 3600);
+    if (Math.abs(hr) < 24) return rtf.format(hr, "hour");
+    const day = Math.round(sec / 86400);
+    if (Math.abs(day) < 7) return rtf.format(day, "day");
+    const week = Math.round(sec / 604800);
+    if (Math.abs(week) < 5) return rtf.format(week, "week");
+    const month = Math.round(sec / 2629746);
+    if (Math.abs(month) < 12) return rtf.format(month, "month");
+    const year = Math.round(sec / 31556952);
+    return rtf.format(year, "year");
+  } catch {
+    // Fallback for unknown locale — fall back to compact timeAgo logic.
+    return timeAgo(iso, undefined, loc);
+  }
 }
 
 // 24h hh:mm clock time, e.g. "14:05". Separate from `formatDateTime` so a
 // caller that has room for the day but not the time — a feed card on a phone —
 // can drop just the time rather than reformatting the whole stamp.
-export function formatTime(iso: string, timeZone?: string): string {
-  return new Date(iso).toLocaleTimeString(LOCALE, {
+export function formatTime(iso: string, timeZone?: string, locale?: string): string {
+  return new Date(iso).toLocaleTimeString(locale ?? FALLBACK_LOCALE, {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -135,17 +168,40 @@ export function formatTime(iso: string, timeZone?: string): string {
   });
 }
 
-// Date plus 24h hh:mm time, e.g. "Jul 8, 2026, 14:05".
-export function formatDateTime(iso: string, timeZone?: string): string {
-  return `${formatDate(iso, timeZone)}, ${formatTime(iso, timeZone)}`;
+// Date plus 24h hh:mm time — e.g. "Aug 18, 2026, 13:40" in en-US or
+// "18 avq 2026 13:40" in az. A single `toLocaleString` call lets `Intl` handle
+// the punctuation for the active locale, rather than a manual
+// `${date}, ${time}` which produced the stray "2026 , 13:40" (space before
+// comma) and ignored the locale's own separator.
+export function formatDateTime(iso: string, timeZone?: string, locale?: string): string {
+  return new Date(iso).toLocaleString(locale ?? FALLBACK_LOCALE, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone,
+  });
 }
 
 // The forward-looking counterpart to `timeAgo`, and deliberately wordier: this
 // one appears where the reader is deciding whether a time is what they meant
 // ("in 2 days"), not scanning a list of things that already happened.
-export function timeUntil(iso: string): string {
+export function timeUntil(iso: string, locale?: string): string {
   const ms = new Date(iso).getTime() - Date.now();
   if (ms <= 0) return "any moment now";
+  const loc = locale ?? FALLBACK_LOCALE;
+  // Prefer localized relative for future as well when a non-English locale is
+  // active — "2 gün sonra" reads better than "in 2 days" for an Azerbaijani
+  // reader. `formatRelative` already handles future via positive `diff`.
+  if (loc !== FALLBACK_LOCALE) {
+    try {
+      return formatRelative(iso, loc);
+    } catch {
+      // fall through to English wordy form
+    }
+  }
   const m = Math.round(ms / 60_000);
   if (m < 1) return "in under a minute";
   if (m < 60) return `in ${m} minute${m === 1 ? "" : "s"}`;
@@ -163,21 +219,24 @@ export function timeUntil(iso: string): string {
 // reader is confirming a time they are about to commit to rather than glancing
 // at one, so nothing is shortened: the weekday is spelled out because "is that
 // a Thursday?" is exactly the question someone scheduling a post asks.
-export function formatScheduleLong(iso: string, timeZone?: string): string {
-  const date = new Date(iso).toLocaleDateString(LOCALE, {
+export function formatScheduleLong(iso: string, timeZone?: string, locale?: string): string {
+  const date = new Date(iso).toLocaleDateString(locale ?? FALLBACK_LOCALE, {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
     timeZone,
   });
-  return `${date} at ${formatTime(iso, timeZone)}`;
+  return `${date} at ${formatTime(iso, timeZone, locale)}`;
 }
 
 // The zone a time is being read in, as a short offset like "GMT+4". Shown
 // beside any time the author is choosing: a schedule is the one place where
 // "09:00 in whose morning?" has a wrong answer.
-export function zoneLabel(timeZone?: string): string {
-  const parts = new Intl.DateTimeFormat(LOCALE, { timeZone, timeZoneName: "shortOffset" }).formatToParts(new Date());
+export function zoneLabel(timeZone?: string, locale?: string): string {
+  const parts = new Intl.DateTimeFormat(locale ?? FALLBACK_LOCALE, {
+    timeZone,
+    timeZoneName: "shortOffset",
+  }).formatToParts(new Date());
   return parts.find((p) => p.type === "timeZoneName")?.value ?? "";
 }

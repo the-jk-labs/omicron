@@ -2,6 +2,8 @@
 <script lang="ts">
   import type { SaveState } from "$lib/autosave.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import { locale } from "$lib/locale";
+  import { timeZone } from "$lib/timezone";
 
   // The composer's autosave indicator: what the editor did with the author's
   // work and when. Its whole job is to make the missing "Save" click feel safe,
@@ -30,16 +32,29 @@
 
   function ago(at: number, from: number): string {
     const s = Math.max(0, Math.round((from - at) / 1000));
-    if (s < 45) return "just now";
-    const m = Math.round(s / 60);
-    if (m < 60) return `${m} minute${m === 1 ? "" : "s"} ago`;
-    const h = Math.round(m / 60);
-    if (h < 24) return `${h} hour${h === 1 ? "" : "s"} ago`;
+    const loc = $locale;
+    // Localized relative for recent saves — "just now" / "2 minutes ago" /
+    // "2 dəqiqə əvvəl" etc. via Intl.RelativeTimeFormat.
+    try {
+      const rtf = new Intl.RelativeTimeFormat(loc, { numeric: "auto" });
+      if (s < 45) return rtf.format(0, "second"); // "now" / "indi"
+      const m = Math.round(s / 60);
+      if (m < 60) return rtf.format(-m, "minute");
+      const h = Math.round(m / 60);
+      if (h < 24) return rtf.format(-h, "hour");
+    } catch {
+      if (s < 45) return "just now";
+      const m = Math.round(s / 60);
+      if (m < 60) return `${m} minute${m === 1 ? "" : "s"} ago`;
+      const h = Math.round(m / 60);
+      if (h < 24) return `${h} hour${h === 1 ? "" : "s"} ago`;
+    }
     // Past a day the clock time is the useful fact, not the count of hours.
-    return new Date(at).toLocaleTimeString("en-US", {
+    return new Date(at).toLocaleTimeString(loc, {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
+      timeZone: $timeZone,
     });
   }
 
