@@ -79,7 +79,7 @@
       class="w-40 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground md:w-48 lg:w-64"
     />
     <kbd
-      class="ml-auto hidden items-center self-center text-xs leading-none font-medium tracking-wide text-muted-foreground/70 md:inline-flex"
+      class="ml-auto hidden items-center self-center text-sm leading-none font-semibold tracking-wide text-muted-foreground md:inline-flex"
       aria-hidden="true"
       title="Press ⌘K or / to search"
     >
