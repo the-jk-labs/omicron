@@ -146,6 +146,11 @@ services:
     environment:
       INTERNAL_API_URL: ${INTERNAL_API_URL:-http://backend:8000}
       PUBLIC_APP_NAME: ${PUBLIC_APP_NAME:-Omicron}
+      PUBLIC_SOURCE_URL: ${PUBLIC_SOURCE_URL:-https://github.com/the-jk-labs/omicron}
+      PUBLIC_STATUS_URL: ${PUBLIC_STATUS_URL:-}
+      PUBLIC_CONTACT_URL: ${PUBLIC_CONTACT_URL:-}
+      PUBLIC_CONTACT_EMAIL: ${PUBLIC_CONTACT_EMAIL:-}
+      PUBLIC_ABUSE_EMAIL: ${PUBLIC_ABUSE_EMAIL:-}
       APP_DOMAIN: ${APP_DOMAIN:-localhost:5173}
       PORT: 3000
       # Behind Caddy the app is reached over TLS on the public domain; trust the
