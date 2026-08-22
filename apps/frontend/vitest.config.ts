@@ -32,6 +32,13 @@ export default defineConfig({
     conditions: ["browser"],
     alias: {
       $lib: fileURLToPath(new URL("./src/lib", import.meta.url)),
+      // SvelteKit's `$app/*` modules are virtual — there is no file to resolve
+      // outside a kit build. Point them at the jsdom test doubles so components
+      // that read `page`/`goto`/`browser` can be rendered directly.
+      "$app/state": fileURLToPath(new URL("./src/test/mocks/$app/state.ts", import.meta.url)),
+      "$app/navigation": fileURLToPath(new URL("./src/test/mocks/$app/navigation.ts", import.meta.url)),
+      "$app/stores": fileURLToPath(new URL("./src/test/mocks/$app/stores.ts", import.meta.url)),
+      "$app/environment": fileURLToPath(new URL("./src/test/mocks/$app/environment.ts", import.meta.url)),
     },
   },
 });
