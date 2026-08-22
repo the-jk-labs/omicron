@@ -1,7 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { page } from "$app/state";
-  import { env } from "$env/dynamic/public";
   import FollowButton from "$lib/components/FollowButton.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import ReactionCount from "$lib/components/ReactionCount.svelte";
@@ -16,13 +15,7 @@
   // in the initial SSR HTML rather than popping in after client hydration. Each
   // section renders only when it has something to show.
   type Discover = { posts: Post[]; people: SuggestedUser[]; tags: TagWithCount[] };
-  let {
-    data = null,
-    appName = env.PUBLIC_APP_NAME || "Omicron",
-  }: {
-    data?: Discover | null;
-    appName?: string;
-  } = $props();
+  let { data = null }: { data?: Discover | null } = $props();
   const signedIn = $derived(!!page.data.user);
 
   const posts = $derived(data?.posts ?? []);
@@ -113,9 +106,4 @@
       </div>
     </section>
   {/if}
-
-  <p class="border-t border-border pt-4 text-xs text-muted-foreground">
-    © {new Date().getFullYear()}
-    {appName} · Federated blogging
-  </p>
 </aside>
