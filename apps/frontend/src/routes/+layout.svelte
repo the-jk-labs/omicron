@@ -347,14 +347,26 @@
       <!-- Right rail: discovery (home feed and profile pages only) -->
       <div class={showDiscover ? "hidden xl:block" : "hidden"}>
         <div class="sticky top-24">
-          <Discover data={data.discover} {appName} />
+          <Discover data={data.discover} />
         </div>
       </div>
     </div>
   {/if}
 
   {#if !isSetup}
-    <Footer {appName} instance={data.instance} />
+    {#if standalone}
+      <div class="mx-auto max-w-sm px-4 py-6">
+        <Footer {appName} instance={data.instance} />
+      </div>
+    {:else}
+      <!-- Mobile footer: the desktop footer lives in the left rail (SideNav), but the
+           rail is hidden below lg, so a compact copy is shown here on phones/tablets.
+           Matches Mastodon's pattern of a sidebar footer on desktop and a page footer
+           on mobile, kept compact and in our theme tokens. -->
+      <div class="mx-auto max-w-6xl px-4 pb-6 lg:hidden">
+        <Footer {appName} instance={data.instance} />
+      </div>
+    {/if}
   {/if}
 </div>
 

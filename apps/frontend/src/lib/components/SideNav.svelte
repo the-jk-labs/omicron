@@ -2,6 +2,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import welcomeBanner from "$lib/assets/welcome-banner.png";
+  import Footer from "$lib/components/Footer.svelte";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import UIButton from "$lib/components/ui/Button.svelte";
   import type { InstanceInfo, User } from "$lib/types";
@@ -99,4 +100,11 @@
       </div>
     </div>
   {/if}
+
+  <!-- Mastodon-style compact footer at the bottom of the left rail (desktop).
+       Uses the same links as the mobile footer but lives inside the sticky rail
+       so it stays visible like Mastodon's left-column footer. -->
+  <div class="mt-6">
+    <Footer {appName} {instance} />
+  </div>
 </nav>
