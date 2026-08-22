@@ -6,6 +6,7 @@ import {
   eq,
   getTableColumns,
   gt,
+  ilike,
   inArray,
   isNull,
   lt,
@@ -573,19 +574,46 @@ export function listGlobal(
 // weight B), backed by a GIN index — an index lookup, not a per-row recompute.
 // `websearch_to_tsquery` accepts plain user input (quoted phrases, `or`, `-term`)
 // and never throws on stray syntax. Ranked by relevance, then recency.
-export function searchPosts(viewerId: string | null, query: string, limit = DEFAULT_PAGE_SIZE) {
+// Optional `tag` (normalized slug) and `author` (substring on handle/name) narrow
+// the result set without changing the ranking — the filters cover "find this topic
+// via tag" and "find this author's writing".
+export function searchPosts(
+  viewerId: string | null,
+  query: string,
+  limit = DEFAULT_PAGE_SIZE,
+  opts?: { tag?: string; author?: string },
+) {
   const tsquery = sql`websearch_to_tsquery('english', ${query})`;
+  const filters = [
+    eq(posts.apType, "Article"),
+    isPublished,
+    notSuspended,
+    notHidden(viewerId),
+    visibleToViewer(viewerId),
+    sql`${posts.searchVector} @@ ${tsquery}`,
+  ];
+  if (opts?.tag) {
+    // Exact slug match via an exists subquery — keeps the main select's joins
+    // untouched and uses the `tags_slug_idx` + `post_tags_tag_idx` indexes.
+    filters.push(
+      sql`exists (select 1 from post_tags pt join tags t on t.id = pt.tag_id where pt.post_id = ${posts.id} and t.slug = ${opts.tag})`,
+    );
+  }
+  if (opts?.author) {
+    const term = `%${opts.author.replace(/[%_\\]/g, "\\$&")}%`;
+    // Matches either a local author's handle/display name or a cached remote
+    // actor's handle/display name — both are left-joined in selectPosts().
+    filters.push(
+      or(
+        ilike(users.username, term),
+        ilike(users.displayName, term),
+        ilike(remoteActors.handle, term),
+        ilike(remoteActors.displayName, term),
+      )!,
+    );
+  }
   return selectPosts()
-    .where(
-      and(
-        eq(posts.apType, "Article"),
-        isPublished,
-        notSuspended,
-        notHidden(viewerId),
-        visibleToViewer(viewerId),
-        sql`${posts.searchVector} @@ ${tsquery}`,
-      ),
-    )
+    .where(and(...filters))
     .orderBy(
       sql`ts_rank(${posts.searchVector}, ${tsquery}) desc`,
       desc(posts.createdAt),

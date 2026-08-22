@@ -24,16 +24,38 @@
   // as the user types — debounced so we don't refetch on every keystroke.
   // The page's load function owns the actual results.
   let query = $state(untrack(() => data.query ?? ""));
-  // Keep the field in sync when the active query changes via navigation (a link
-  // or Back/Forward); reacts to `data.query` only, so live typing is untouched.
+  // Tag & author narrow only the Articles tab (see +page.ts). Seeded from the URL
+  // and kept in sync on navigation; live-typed values are debounced like `query`.
+  let tagFilter = $state(untrack(() => (data as { tag?: string }).tag ?? ""));
+  let authorFilter = $state(untrack(() => (data as { author?: string }).author ?? ""));
+
+  // Keep fields in sync when the active query/filters change via navigation
+  // (a link or Back/Forward); don't fight live typing when the field is focused.
   $effect(() => {
-    query = data.query ?? "";
+    if (document.activeElement?.getAttribute("data-search-input") !== "q") query = data.query ?? "";
+  });
+  $effect(() => {
+    const t = (data as { tag?: string }).tag ?? "";
+    if (document.activeElement?.getAttribute("data-search-input") !== "tag") tagFilter = t;
+  });
+  $effect(() => {
+    const a = (data as { author?: string }).author ?? "";
+    if (document.activeElement?.getAttribute("data-search-input") !== "author") authorFilter = a;
   });
 
-  function run(q: string) {
+  function buildUrl(q: string, tag: string, author: string) {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (tag) params.set("tag", tag);
+    if (author) params.set("author", author);
+    const qs = params.toString();
+    return qs ? `/search?${qs}` : "/search";
+  }
+
+  function run(q: string, tag: string, author: string) {
     // replaceState keeps the query out of history so Back doesn't step through
     // every keystroke; keepFocus leaves the field active as results stream in.
-    goto(q ? `/search?q=${encodeURIComponent(q)}` : "/search", {
+    goto(buildUrl(q, tag, author), {
       keepFocus: true,
       replaceState: true,
     });
@@ -41,14 +63,19 @@
 
   function submit(e: SubmitEvent) {
     e.preventDefault();
-    run(query.trim());
+    run(query.trim(), tagFilter.trim(), authorFilter.trim());
   }
 
   $effect(() => {
     const q = query.trim();
-    if (q === (data.query ?? "")) return; // already showing this query
-    const t = setTimeout(() => run(q), 250);
-    return () => clearTimeout(t);
+    const t = tagFilter.trim();
+    const a = authorFilter.trim();
+    const curQ = data.query ?? "";
+    const curT = (data as { tag?: string }).tag ?? "";
+    const curA = (data as { author?: string }).author ?? "";
+    if (q === curQ && t === curT && a === curA) return; // already showing this state
+    const timeout = setTimeout(() => run(q, t, a), 250);
+    return () => clearTimeout(timeout);
   });
 </script>
 
@@ -61,6 +88,7 @@
     <Icon name="search" size={18} class="shrink-0 text-muted-foreground" />
     <!-- svelte-ignore a11y_autofocus -->
     <input
+      data-search-input="q"
       bind:value={query}
       type="search"
       placeholder="Search"
@@ -75,15 +103,133 @@
   <div class="py-20 text-center">
     <Icon name="search" size={32} class="mx-auto text-muted-foreground" />
     <p class="mt-3 text-sm text-muted-foreground">Search articles and people across the fediverse.</p>
+    <p class="mt-1 text-xs text-muted-foreground">
+      Tip: press <kbd class="rounded-5px border border-border bg-muted px-1 py-0.5">/</kbd> to search anywhere, filter by
+      tag or author on the results page.
+    </p>
   </div>
 {:else}
   <header class="mb-4">
     <h1 class="text-2xl font-bold tracking-tight text-foreground">
       Results for <span class="italic">“{data.query}”</span>
     </h1>
+    {#if (data as { tag?: string }).tag || (data as { author?: string }).author}
+      <p class="mt-1 text-sm text-muted-foreground">
+        Filtered
+        {#if (data as { tag?: string }).tag}
+          by tag <span class="font-medium text-foreground">#{(data as { tag?: string }).tag}</span>
+        {/if}
+        {#if (data as { tag?: string }).tag && (data as { author?: string }).author}
+          <span class="opacity-60"> · </span>
+        {/if}
+        {#if (data as { author?: string }).author}
+          by author <span class="font-medium text-foreground">{(data as { author?: string }).author}</span>
+        {/if}
+      </p>
+    {/if}
   </header>
 
-  {#key data.query}
+  <!-- Tag & author filters — narrow only the Articles results. Debounced like the query
+       so typing a filter re-runs search without a page reload. Theme tokens only. -->
+  <form onsubmit={submit} class="mb-4 flex flex-col gap-3 sm:flex-row" role="search" aria-label="Filter articles">
+    <label class="flex flex-1 flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground">Tag</span>
+      <div
+        class="flex h-9 items-center gap-2 rounded-input border border-border bg-background px-3 focus-within:border-foreground/20 focus-within:ring-1 focus-within:ring-foreground/10"
+      >
+        <Icon name="tag" size={14} class="shrink-0 text-muted-foreground" />
+        <input
+          data-search-input="tag"
+          bind:value={tagFilter}
+          type="search"
+          placeholder="e.g. technology"
+          aria-label="Filter articles by tag"
+          class="w-full bg-transparent text-sm outline-hidden placeholder:text-muted-foreground"
+        />
+        {#if tagFilter}
+          <button
+            type="button"
+            onclick={() => (tagFilter = "")}
+            class="shrink-0 rounded-5px p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Clear tag filter"
+          >
+            <Icon name="close" size={14} />
+          </button>
+        {/if}
+      </div>
+    </label>
+    <label class="flex flex-1 flex-col gap-1.5">
+      <span class="text-xs font-medium text-foreground">Author</span>
+      <div
+        class="flex h-9 items-center gap-2 rounded-input border border-border bg-background px-3 focus-within:border-foreground/20 focus-within:ring-1 focus-within:ring-foreground/10"
+      >
+        <Icon name="user" size={14} class="shrink-0 text-muted-foreground" />
+        <input
+          data-search-input="author"
+          bind:value={authorFilter}
+          type="search"
+          placeholder="username or name"
+          aria-label="Filter articles by author"
+          class="w-full bg-transparent text-sm outline-hidden placeholder:text-muted-foreground"
+        />
+        {#if authorFilter}
+          <button
+            type="button"
+            onclick={() => (authorFilter = "")}
+            class="shrink-0 rounded-5px p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Clear author filter"
+          >
+            <Icon name="close" size={14} />
+          </button>
+        {/if}
+      </div>
+    </label>
+  </form>
+
+  {#if tagFilter.trim() || authorFilter.trim()}
+    <div class="mb-3 flex flex-wrap items-center gap-2 text-xs">
+      <span class="text-muted-foreground">Active filters:</span>
+      {#if tagFilter.trim()}
+        <span class="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 font-medium text-foreground">
+          <Icon name="tag" size={12} /> #{tagFilter.trim()}
+          <button
+            type="button"
+            onclick={() => (tagFilter = "")}
+            class="ml-1 rounded-full p-0.5 hover:bg-background"
+            aria-label="Remove tag filter"
+          >
+            <Icon name="close" size={12} />
+          </button>
+        </span>
+      {/if}
+      {#if authorFilter.trim()}
+        <span class="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 font-medium text-foreground">
+          <Icon name="user" size={12} />
+          {authorFilter.trim()}
+          <button
+            type="button"
+            onclick={() => (authorFilter = "")}
+            class="ml-1 rounded-full p-0.5 hover:bg-background"
+            aria-label="Remove author filter"
+          >
+            <Icon name="close" size={12} />
+          </button>
+        </span>
+      {/if}
+      <button
+        type="button"
+        onclick={() => {
+          tagFilter = "";
+          authorFilter = "";
+        }}
+        class="text-muted-foreground hover:text-foreground hover:underline hover:underline-offset-2"
+      >
+        Clear all
+      </button>
+    </div>
+  {/if}
+
+  {#key `${data.query}-${(data as { tag?: string }).tag ?? ""}-${(data as { author?: string }).author ?? ""}`}
     <Tabs.Root value={defaultTab} class="w-full">
       <Tabs.List class="mb-2 flex items-center gap-6 text-sm font-medium">
         <Tabs.Trigger
@@ -111,7 +257,24 @@
 
       <Tabs.Content value="articles" class="pt-3">
         {#if posts.length === 0}
-          <p class="py-10 text-center text-muted-foreground">No articles match “{data.query}”.</p>
+          <p class="py-10 text-center text-muted-foreground">
+            No articles match “{data.query}”{#if (data as { tag?: string }).tag}
+              with tag
+              <span class="font-medium">#{(data as { tag?: string }).tag}</span
+              >{/if}{#if (data as { author?: string }).author}
+              by
+              <span class="font-medium">{(data as { author?: string }).author}</span>{/if}.
+            {#if (data as { tag?: string }).tag || (data as { author?: string }).author}
+              <button
+                type="button"
+                onclick={() => {
+                  tagFilter = "";
+                  authorFilter = "";
+                }}
+                class="ml-1 font-medium text-foreground underline underline-offset-2">Clear filters</button
+              >
+            {/if}
+          </p>
         {:else}
           {#each posts as post (post.id)}
             <PostCard {post} />

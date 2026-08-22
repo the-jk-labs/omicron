@@ -15,8 +15,16 @@ const MAX_POSTS = 20;
 const MAX_PEOPLE = 10;
 const MAX_TAGS = 10;
 
-export async function searchPosts(viewerId: string | null, query: string) {
-  return await postsRepo.searchPosts(viewerId, query, MAX_POSTS);
+export async function searchPosts(
+  viewerId: string | null,
+  query: string,
+  opts?: { tag?: string; author?: string },
+) {
+  // Normalize tag if provided — empty after normalization means "no tag filter".
+  const normalizedTag = opts?.tag ? normalizeTag(opts.tag) : undefined;
+  const tag = normalizedTag || undefined;
+  const author = opts?.author?.trim() || undefined;
+  return await postsRepo.searchPosts(viewerId, query, MAX_POSTS, { tag, author });
 }
 
 export async function searchPeople(query: string) {

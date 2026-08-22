@@ -97,8 +97,14 @@
 
     <div class="flex shrink-0 items-center gap-1.5">
       {#if !minimal}
-        <!-- Icon-only search fallback (below sm) -->
-        <Button href="/search" variant="icon" class="border-0! shadow-none! sm:hidden" aria-label="Search">
+        <!-- Icon-only search fallback (below sm) — the pill is hidden here -->
+        <Button
+          href="/search"
+          variant="icon"
+          class="border-0! shadow-none! sm:hidden"
+          aria-label="Search"
+          title="Search (press /)"
+        >
           <Icon name="search" size={18} />
         </Button>
       {/if}
