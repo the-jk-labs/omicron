@@ -103,8 +103,10 @@
 
   <!-- Mastodon-style compact footer at the bottom of the left rail (desktop).
        Uses the same links as the mobile footer but lives inside the sticky rail
-       so it stays visible like Mastodon's left-column footer. -->
+       so it stays visible like Mastodon's left-column footer. Slight px keeps the
+       text aligned with the nav items' inset (px-3 + icon) instead of hugging
+       the rail edge. -->
   <div class="mt-6">
-    <Footer {appName} {instance} />
+    <Footer {appName} {instance} class="px-1" />
   </div>
 </nav>
