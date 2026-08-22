@@ -33,6 +33,17 @@ export function stripHtml(html: string): string {
     .trim();
 }
 
+// A heading written `#UserID` — no space after the marker — is not an ATX
+// heading as far as the markdown renderer is concerned, so it renders as a
+// literal `#` at the start of a paragraph rather than a heading. That hash is
+// Markdown syntax, not prose, and it leaked into the excerpt ("#UserID The user
+// ID …"). Drop it here. Anchoring the strip to a block-level opening tag —
+// never `<pre>`/`<code>` — leaves a genuine `#` untouched, whether that is
+// `#include` inside a code fence or a hashtag mid-prose.
+function stripHeadingMarkers(html: string): string {
+  return html.replace(/(<(?:p|li|blockquote|td|th)(?:\s[^>]*)?>)\s*#{1,6}(?=\S)/g, "$1");
+}
+
 // Clipped at a word boundary, not at the character the limit happens to land
 // on: a slice mid-word ("the functions open, read, wri…") reads as damage
 // rather than as an abbreviation, and this text is the card excerpt, the
@@ -46,7 +57,7 @@ export function stripHtml(html: string): string {
 // single very long token can't collapse the excerpt to nothing. Trailing
 // punctuation goes before the ellipsis so it doesn't read as ",…".
 export function excerpt(html: string, len = 180): string {
-  const text = stripHtml(html);
+  const text = stripHtml(stripHeadingMarkers(html));
   if (text.length <= len) return text;
   const clipped = text.slice(0, len);
   const lastSpace = clipped.lastIndexOf(" ");
