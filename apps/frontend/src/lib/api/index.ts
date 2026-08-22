@@ -166,9 +166,22 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     markAllNotificationsRead: () => api.post<{ ok: true }>("/notifications/read"),
     markNotificationRead: (id: string) => api.post<{ ok: true }>(`/notifications/${id}/read`),
 
-    // search
-    search: (query: string, scope?: "posts" | "people" | "tags") =>
-      api.get<SearchResults>(`/search?q=${encodeURIComponent(query)}${scope ? `&scope=${scope}` : ""}`),
+    // search — `tag` and `author` narrow only the posts side (see backend routes/search.ts)
+    search: (
+      query: string,
+      scopeOrOpts?:
+        | "posts"
+        | "people"
+        | "tags"
+        | { scope?: "posts" | "people" | "tags"; tag?: string; author?: string },
+    ) => {
+      const opts = typeof scopeOrOpts === "string" ? { scope: scopeOrOpts } : (scopeOrOpts ?? {});
+      const params = new URLSearchParams({ q: query });
+      if (opts.scope) params.set("scope", opts.scope);
+      if (opts.tag) params.set("tag", opts.tag);
+      if (opts.author) params.set("author", opts.author);
+      return api.get<SearchResults>(`/search?${params.toString()}`);
+    },
 
     // tags
     tag: (slug: string) => api.get<TagDetail>(`/tags/${encodeURIComponent(slug)}`),
