@@ -205,6 +205,25 @@ Deno.test("summarize: clips a single unbroken run rather than emptying it", () =
   assertEquals(out, "x".repeat(20) + "…");
 });
 
+Deno.test("summarize: drops a heading marker markdown leaves literal", () => {
+  const out = summarize(renderMarkdown("#UserID The user ID from our entry in the password file"));
+  assertEquals(out, "UserID The user ID from our entry in the password file");
+});
+
+Deno.test("summarize: drops the marker on every section, not just the first", () => {
+  const out = summarize(
+    renderMarkdown("#UserID The user id\n\n#ProcandprocID An executing instance\n\nBody text."),
+  );
+  assert(!out.includes("#"), `still has a hash: ${out}`);
+  assertStringIncludes(out, "UserID The user id");
+  assertStringIncludes(out, "ProcandprocID An executing instance");
+});
+
+Deno.test("summarize: leaves a hash inside a code fence alone", () => {
+  const out = summarize(renderMarkdown("#NAME proc\n\n```c\n#include <sys/types.h>\n```\n"), 200);
+  assertStringIncludes(out, "#include <sys/types.h>");
+});
+
 Deno.test("externalKey: prefers the sender's slug over the title", () => {
   assertEquals(externalKey({ title: "Hello world", slug: "cms-doc-42" }), "cms-doc-42");
 });

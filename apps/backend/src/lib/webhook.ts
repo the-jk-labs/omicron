@@ -181,13 +181,25 @@ export function requireCreateFields(payload: ContentPayload): void {
  * so change them together.
  */
 export function summarize(contentHtml: string, limit = SUMMARY_LENGTH): string {
-  const text = htmlToText(contentHtml).replace(/\s+/g, " ").trim();
+  const text = htmlToText(stripHeadingMarkers(contentHtml)).replace(/\s+/g, " ").trim();
   if (text.length <= limit) return text;
   const clipped = text.slice(0, limit);
   const lastSpace = clipped.lastIndexOf(" ");
   // Only honour the word boundary when it isn't throwing most of the text away.
   const head = lastSpace > limit * 0.6 ? clipped.slice(0, lastSpace) : clipped;
   return `${head.replace(/[\s.,;:!?-]+$/, "")}…`;
+}
+
+// A heading written `#UserID` — no space after the marker — is not an ATX
+// heading as far as markdown-it is concerned, so it renders as a literal `#` at
+// the start of a paragraph rather than an `<h1>`. That hash is Markdown syntax,
+// not prose: it heads every section of an ingested man page, and it showed up
+// in the summary as "#UserID The user ID …". Drop the marker so the summary
+// reads "UserID The user ID …". Anchoring the strip to a block-level opening
+// tag — never `<pre>`/`<code>` — leaves a genuine `#` untouched, whether that
+// is `#include` inside a code fence or a hashtag mid-prose.
+function stripHeadingMarkers(html: string): string {
+  return html.replace(/(<(?:p|li|blockquote|td|th)(?:\s[^>]*)?>)\s*#{1,6}(?=\S)/g, "$1");
 }
 
 /**
