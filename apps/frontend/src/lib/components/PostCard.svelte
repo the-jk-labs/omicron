@@ -6,11 +6,11 @@
   import RecommendButton from "$lib/components/RecommendButton.svelte";
   import SaveToListButton from "$lib/components/SaveToListButton.svelte";
   import TagList from "$lib/components/TagList.svelte";
+  import Time from "$lib/components/Time.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import { excerpt, formatDate, formatTime, readTime } from "$lib/format";
+  import { excerpt, readTime } from "$lib/format";
   import { postPath } from "$lib/links";
-  import { timeZone } from "$lib/timezone";
   import type { Post } from "$lib/types";
 
   let { post }: { post: Post } = $props();
@@ -124,14 +124,14 @@
        row the buttons stay on the meta's line while there is room and drop to
        their own right-aligned line when there is not. -->
   <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
-    <!-- The clock time is what pushes this row past a phone's width, and a card
-         in a feed is a "when", not a timestamp — the post itself still carries
-         the exact one. -->
-    <span
-      >{formatDate(post.createdAt, $timeZone)}<span class="hidden sm:inline"
-        >, {formatTime(post.createdAt, $timeZone)}</span
-      ></span
-    >
+    <!-- Localized date with semantic <time>; clock time stays on `sm+` (phone
+         width). Time.svelte handles locale, timezone (title) and the
+         `datetime` attribute — no manual `, ` concatenation, so the stray
+         "2026 , 13:40" (space before comma) cannot happen. -->
+    <span class="inline-flex items-center gap-1">
+      <Time iso={post.createdAt} kind="date" />
+      <span class="hidden sm:inline">· <Time iso={post.createdAt} kind="time" /></span>
+    </span>
     <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
     <ReactionCount icon="heart" count={post.likeCount} singular="like" size={13} />
     <ReactionCount icon="comment" count={post.commentCount} singular="response" size={13} />

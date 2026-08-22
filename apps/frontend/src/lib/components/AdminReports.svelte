@@ -2,10 +2,9 @@
 <script lang="ts">
   import { endpoints, ApiError } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
+  import Time from "$lib/components/Time.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { confirm } from "$lib/components/ui/confirm";
-  import { formatDate } from "$lib/format";
-  import { timeZone } from "$lib/timezone";
   import type { Report } from "$lib/types";
   import { Tabs } from "bits-ui";
 
@@ -156,7 +155,7 @@
             {:else}
               <span class="font-medium text-muted-foreground">{subjectLabel(r)}</span>
             {/if}
-            <span class="ml-auto text-xs text-muted-foreground">{formatDate(r.createdAt, $timeZone)}</span>
+            <span class="ml-auto text-xs text-muted-foreground"><Time iso={r.createdAt} kind="date" /></span>
           </div>
 
           {#if r.reason}

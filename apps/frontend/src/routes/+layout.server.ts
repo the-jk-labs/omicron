@@ -1,6 +1,7 @@
-import { endpoints } from "$lib/api";
-import { TZ_COOKIE, validTimeZone } from "$lib/timezone";
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { endpoints } from "$lib/api";
+import { LOCALE_COOKIE, localeFromAcceptLanguage, validLocale } from "$lib/locale";
+import { TZ_COOKIE, validTimeZone } from "$lib/timezone";
 import { redirect } from "@sveltejs/kit";
 import type { LayoutServerLoad } from "./$types";
 
@@ -11,13 +12,19 @@ const DISCOVER_ROUTES = new Set(["/", "/[handle]"]);
 // Resolves the current user once for every page (used by the nav + guards) and,
 // on the routes that show it, the discovery rail — server-side, in parallel, so
 // the rail renders with the page instead of popping in after client hydration.
-export const load: LayoutServerLoad = async ({ cookies, fetch, route }) => {
+export const load: LayoutServerLoad = async ({ cookies, fetch, route, request }) => {
   const api = endpoints(fetch);
 
   // The reader's own timezone, parked in a cookie by the browser on their last
   // visit, so dates render server-side in the zone they'll still be in after
   // hydration instead of flipping from UTC. See $lib/timezone.
   const timeZone = validTimeZone(cookies.get(TZ_COOKIE));
+
+  // Locale for date formatting: cookie wins, then Accept-Language, then fallback.
+  // Mirrors `timezone.ts` — server and client must agree or the timestamp
+  // flickers between `Aug 18` and `18 avq` on hydration.
+  const locale =
+    validLocale(cookies.get(LOCALE_COOKIE)) ?? localeFromAcceptLanguage(request.headers.get("accept-language")) ?? null;
 
   // First-run gate: until the instance is set up, every route is redirected to
   // the wizard; once set up, the wizard route redirects back into the app. If
@@ -58,5 +65,5 @@ export const load: LayoutServerLoad = async ({ cookies, fetch, route }) => {
 
   const seo = await seoPromise;
 
-  return { user, discover, instance, seo, timeZone };
+  return { user, discover, instance, seo, timeZone, locale };
 };

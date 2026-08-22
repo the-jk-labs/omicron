@@ -7,10 +7,9 @@
 <script lang="ts">
   import { ApiError, endpoints } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
+  import Time from "$lib/components/Time.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { confirm } from "$lib/components/ui/confirm";
-  import { formatDate } from "$lib/format";
-  import { timeZone } from "$lib/timezone";
   import type { WebhookToken } from "$lib/types";
   import { Label } from "bits-ui";
   import { onMount } from "svelte";
@@ -164,10 +163,8 @@
           <span class="min-w-0">
             <span class="block truncate text-sm font-medium text-foreground">{token.label}</span>
             <span class="block truncate text-xs text-muted-foreground">
-              {token.lastUsedAt ? `Last used ${formatDate(token.lastUsedAt, $timeZone)}` : "Never used"} · Created {formatDate(
-                token.createdAt,
-                $timeZone,
-              )}
+              {#if token.lastUsedAt}Last used <Time iso={token.lastUsedAt} kind="date" />{:else}Never used{/if} · Created
+              <Time iso={token.createdAt} kind="date" />
             </span>
           </span>
         </span>

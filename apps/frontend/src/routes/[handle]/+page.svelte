@@ -13,11 +13,10 @@
   import ReadingListCard from "$lib/components/ReadingListCard.svelte";
   import RssButton from "$lib/components/RssButton.svelte";
   import TagList from "$lib/components/TagList.svelte";
+  import Time from "$lib/components/Time.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import { formatDate } from "$lib/format";
   import { platformMeta } from "$lib/profileLinks";
-  import { timeZone } from "$lib/timezone";
   import type { Post } from "$lib/types";
   import { Tabs, Separator } from "bits-ui";
   import { onMount, untrack } from "svelte";
@@ -417,7 +416,7 @@
           <dt class="flex items-center gap-2 text-sm text-muted-foreground">
             <Icon name="calendar" size={15} /> Joined
           </dt>
-          <dd class="text-sm text-foreground">{formatDate(data.profile.user.createdAt, $timeZone)}</dd>
+          <dd class="text-sm text-foreground"><Time iso={data.profile.user.createdAt} kind="date" /></dd>
         </div>
 
         {#if isAdmin}

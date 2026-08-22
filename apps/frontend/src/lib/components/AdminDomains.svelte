@@ -2,10 +2,9 @@
 <script lang="ts">
   import { endpoints, ApiError } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
+  import Time from "$lib/components/Time.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { confirm } from "$lib/components/ui/confirm";
-  import { formatDate } from "$lib/format";
-  import { timeZone } from "$lib/timezone";
   import type { BlockedDomain } from "$lib/types";
   import { Label } from "bits-ui";
 
@@ -124,7 +123,7 @@
             <div class="min-w-0 flex-1">
               <p class="truncate font-medium text-foreground">{d.domain}</p>
               <p class="truncate text-xs text-muted-foreground">
-                {d.reason ? d.reason : "No reason given"} · {formatDate(d.createdAt, $timeZone)}
+                {d.reason ? d.reason : "No reason given"} · <Time iso={d.createdAt} kind="date" />
               </p>
             </div>
             <Button variant="outline" size="sm" disabled={busyDomain === d.domain} onclick={() => unblock(d)}>

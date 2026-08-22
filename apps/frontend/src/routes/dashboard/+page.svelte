@@ -2,7 +2,8 @@
 <script lang="ts">
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
-  import { formatDateTime } from "$lib/format";
+  import Time from "$lib/components/Time.svelte";
+  import { locale } from "$lib/locale";
   import { timeZone } from "$lib/timezone";
   import type { DashboardSummary, PostStat } from "$lib/types";
   import type { PageData } from "./$types";
@@ -117,7 +118,7 @@
   const engFrac = (p: PostStat) => engPerDay(p) / maxPerDay;
 
   function dayLabel(iso: string): string {
-    return new Date(iso).toLocaleDateString("en-US", {
+    return new Date(iso).toLocaleDateString($locale, {
       month: "short",
       day: "numeric",
       timeZone: $timeZone,
@@ -321,7 +322,7 @@
                     {p.title || "Untitled"}
                   </a>
                 </div>
-                <p class="mt-0.5 text-xs text-muted-foreground">{formatDateTime(p.createdAt, $timeZone)}</p>
+                <p class="mt-0.5 text-xs text-muted-foreground"><Time iso={p.createdAt} /></p>
               </td>
               {#if showViews}
                 <td class="px-3 py-3 text-right text-foreground tabular-nums">{fmt(p.views)}</td>

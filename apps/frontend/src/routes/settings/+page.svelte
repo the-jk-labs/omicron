@@ -11,18 +11,17 @@
   import PageTitle from "$lib/components/PageTitle.svelte";
   import ProfileLinksEditor from "$lib/components/ProfileLinksEditor.svelte";
   import TagInput from "$lib/components/TagInput.svelte";
+  import Time from "$lib/components/Time.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import WebhookTokensManager from "$lib/components/WebhookTokensManager.svelte";
   import { AVATAR_MAX_DIMENSION, prepareImage } from "$lib/editor/image";
   import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
-  import { formatDate } from "$lib/format";
   import { LANGUAGES, languageLabel } from "$lib/languages";
   import { reading, type FeedLangMode, type FeedTab } from "$lib/prefs.svelte";
   import { identifierToUrl, platformMeta, urlToIdentifier } from "$lib/profileLinks";
   import { MAX_PROFILE_TAGS } from "$lib/tags";
   import { theme, type ThemePreference } from "$lib/theme.svelte";
-  import { timeZone } from "$lib/timezone";
   import type { ProfileLink } from "$lib/types";
   import { Button as ButtonPrimitive, Dialog, Label, Select, Switch } from "bits-ui";
   import { untrack } from "svelte";
@@ -779,7 +778,7 @@
       </div>
       <div class="flex items-center justify-between gap-4">
         <dt class="text-muted-foreground">Joined</dt>
-        <dd class="font-medium text-foreground">{formatDate(data.user.createdAt, $timeZone)}</dd>
+        <dd class="font-medium text-foreground"><Time iso={data.user.createdAt} kind="date" /></dd>
       </div>
     </dl>
 

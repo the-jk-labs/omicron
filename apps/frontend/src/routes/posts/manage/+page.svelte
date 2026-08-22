@@ -5,10 +5,12 @@
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import ScheduleDialog from "$lib/components/ScheduleDialog.svelte";
+  import Time from "$lib/components/Time.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { confirm } from "$lib/components/ui/confirm";
-  import { excerpt, formatDateTime, formatScheduleLong, timeUntil } from "$lib/format";
+  import { excerpt, formatScheduleLong, timeUntil } from "$lib/format";
   import { postPath } from "$lib/links";
+  import { locale } from "$lib/locale";
   import { timeZone } from "$lib/timezone";
   import type { OwnPostStatus, Post } from "$lib/types";
   import { DropdownMenu, Tabs } from "bits-ui";
@@ -273,13 +275,13 @@
                      record, so it says both when and how soon. -->
                 <span class="inline-flex items-center gap-1 font-medium text-foreground">
                   <Icon name="clock" size={12} />
-                  Publishes {formatScheduleLong(post.publishAt, $timeZone)}
+                  Publishes {formatScheduleLong(post.publishAt, $timeZone, $locale)}
                 </span>
-                · {timeUntil(post.publishAt)}
+                · {timeUntil(post.publishAt, $locale)}
               {:else if tab.value === "published"}
-                Published {formatDateTime(post.createdAt, $timeZone)}
+                Published <Time iso={post.createdAt} />
               {:else}
-                Last edited {formatDateTime(post.updatedAt ?? post.createdAt, $timeZone)}
+                Last edited <Time iso={post.updatedAt ?? post.createdAt} />
               {/if}
             </span>
           </Button>
