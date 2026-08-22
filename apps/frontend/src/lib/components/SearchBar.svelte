@@ -79,11 +79,11 @@
       class="w-40 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground md:w-48 lg:w-64"
     />
     <kbd
-      class="hidden items-center gap-0.5 rounded-5px border border-border bg-background px-1.5 py-0.5 text-xs leading-none font-medium text-muted-foreground shadow-mini md:inline-flex"
+      class="hidden text-[11px] font-medium tracking-wide text-muted-foreground/60 md:inline"
       aria-hidden="true"
-      title="Press / or ⌘K to search"
+      title="Press ⌘K or / to search"
     >
-      <span class="text-[11px]">/</span>
+      ⌘K
     </kbd>
   </div>
 </form>
