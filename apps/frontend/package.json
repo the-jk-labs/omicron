@@ -9,6 +9,8 @@
     "preview": "vite preview",
     "start": "node server.js",
     "check": "greenly",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "svelte-check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
@@ -38,9 +40,13 @@
     "@sveltejs/kit": "2.70.2",
     "@sveltejs/vite-plugin-svelte": "7.3.0",
     "@tailwindcss/vite": "4.3.3",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/svelte": "5.4.2",
     "@types/node": "^26.2.0",
     "emoji-picker-element-data": "1.8.0",
     "greenly": "1.1.5",
+    "jsdom": "30.0.1",
     "oxfmt": "0.63.0",
     "oxlint": "1.78.0",
     "oxlint-tsgolint": "7.0.2001",
@@ -48,6 +54,7 @@
     "svelte-check": "4.7.6",
     "tailwindcss": "4.3.3",
     "typescript": "6.0.3",
-    "vite": "8.2.1"
+    "vite": "8.2.1",
+    "vitest": "4.1.11"
   }
 }
