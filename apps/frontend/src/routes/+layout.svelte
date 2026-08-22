@@ -5,6 +5,7 @@
   import { env } from "$env/dynamic/public";
   import { canonicalOrigin } from "$lib/canonical";
   import Discover from "$lib/components/Discover.svelte";
+  import Footer from "$lib/components/Footer.svelte";
   import MobileNav from "$lib/components/MobileNav.svelte";
   import Nav from "$lib/components/Nav.svelte";
   import SideNav from "$lib/components/SideNav.svelte";
@@ -350,6 +351,10 @@
         </div>
       </div>
     </div>
+  {/if}
+
+  {#if !isSetup}
+    <Footer {appName} instance={data.instance} />
   {/if}
 </div>
 
