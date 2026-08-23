@@ -117,12 +117,9 @@ jobs:
       # apps/backend/node_modules (`nodeModulesDir: auto` in deno.json). Without
       # this step svelte-check fails with 45 "Cannot find module 'drizzle-orm'"
       # errors on backend source, none of which are the frontend's fault.
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
       - name: Install backend dependencies (for the cross-app typecheck)
         working-directory: apps/backend
-        run: deno install
+        run: pnpm install --frozen-lockfile
 
       - name: Run Checks
         run: pnpm check
