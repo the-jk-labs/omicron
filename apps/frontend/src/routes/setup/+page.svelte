@@ -95,7 +95,7 @@
     step === 0
       ? appName.trim().length > 0
       : step === 1
-        ? /^[a-z0-9_]{3,30}$/.test(username.trim().toLowerCase()) && email.includes("@") && password.length >= 8
+        ? /^[a-z0-9_]{3,30}$/.test(username.trim().toLowerCase()) && email.includes("@") && password.length >= 12
         : true,
   );
 
@@ -200,11 +200,13 @@
         type="password"
         bind:value={password}
         autocomplete="new-password"
-        placeholder="min 8 characters"
+        placeholder="at least 12 characters"
         class={field}
       />
     </div>
-    <p class="text-xs text-muted-foreground">This first account is the instance admin.</p>
+    <p class="text-xs text-muted-foreground">
+      At least 12 characters. Checked against known breaches on submit. This first account is the instance admin.
+    </p>
   {:else}
     <span class={labelClass}>How should the instance send email?</span>
     <RadioGroup.Root bind:value={emailMode} class="flex flex-col gap-3">

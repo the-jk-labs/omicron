@@ -8,6 +8,7 @@ import { hashToken, newToken } from "@/lib/tokens.ts";
 import { badRequest, conflict, forbidden, notFound, unauthorized } from "@/lib/http.ts";
 import { config } from "@/config.ts";
 import { queue } from "@/queue/queue.ts";
+import { isPwnedPassword } from "@/lib/hibp.ts";
 import type { User } from "@/db/schema.ts";
 
 // Business logic for authentication. First registered user becomes admin.
@@ -23,6 +24,26 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_EMAIL_LEN = 254; // RFC 5321 maximum address length
 const PASSWORD_RESET_TTL_MS = 1000 * 60 * 60; // 1 hour
 const EMAIL_VERIFY_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
+const MIN_PASSWORD_LEN = 12;
+const MAX_PASSWORD_LEN = 128;
+
+function assertPasswordLength(pw: string): void {
+  if (pw.length < MIN_PASSWORD_LEN) {
+    throw badRequest(`Password must be at least ${MIN_PASSWORD_LEN} characters.`);
+  }
+  if (pw.length > MAX_PASSWORD_LEN) {
+    throw badRequest(`Password must be at most ${MAX_PASSWORD_LEN} characters.`);
+  }
+}
+
+async function assertNotPwned(pw: string): Promise<void> {
+  if (!config.HIBP_CHECK_ENABLED) return;
+  if (await isPwnedPassword(pw)) {
+    throw badRequest(
+      "This password has appeared in a data breach — please choose a different one.",
+    );
+  }
+}
 
 // Issues a fresh single-use token of a purpose (invalidating any prior ones),
 // stores only its hash, and returns the raw token for the emailed link.
@@ -62,9 +83,8 @@ export async function register(input: {
   if (email.length > MAX_EMAIL_LEN || !EMAIL_RE.test(email)) {
     throw badRequest("Enter a valid email address.");
   }
-  if (input.password.length < 8) {
-    throw badRequest("Password must be at least 8 characters.");
-  }
+  assertPasswordLength(input.password);
+  await assertNotPwned(input.password);
   if (await usersRepo.findByUsername(username)) throw conflict("Username already taken.");
   if (await usersRepo.findByEmail(email)) throw conflict("Email already registered.");
 
@@ -147,7 +167,8 @@ export async function requestPasswordReset(identifier: string): Promise<void> {
 // Completes a reset: validates the token, sets the new password, and drops all
 // of the user's sessions so any pre-existing login must re-authenticate.
 export async function resetPassword(rawToken: string, newPassword: string): Promise<void> {
-  if (newPassword.length < 8) throw badRequest("Password must be at least 8 characters.");
+  assertPasswordLength(newPassword);
+  await assertNotPwned(newPassword);
   const row = await authTokensRepo.findValid(await hashToken(rawToken), "password_reset");
   if (!row) throw badRequest("This reset link is invalid or has expired.");
   await usersRepo.update(row.userId, { passwordHash: await hashPassword(newPassword) });
@@ -162,7 +183,8 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string,
 ): Promise<void> {
-  if (newPassword.length < 8) throw badRequest("Password must be at least 8 characters.");
+  assertPasswordLength(newPassword);
+  await assertNotPwned(newPassword);
   const user = await usersRepo.findById(userId);
   if (!user) throw notFound("Account not found.");
   if (!(await verifyPassword(currentPassword, user.passwordHash))) {

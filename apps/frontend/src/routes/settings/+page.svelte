@@ -18,6 +18,7 @@
   import WebhookTokensManager from "$lib/components/WebhookTokensManager.svelte";
   import { AVATAR_MAX_DIMENSION, prepareImage } from "$lib/editor/image";
   import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
+  import { MIN_PASSWORD_LEN, isPwnedPasswordClient } from "$lib/password";
   import { reading, type FeedTab } from "$lib/prefs.svelte";
   import { identifierToUrl, platformMeta, urlToIdentifier } from "$lib/profileLinks";
   import { MAX_PROFILE_TAGS } from "$lib/tags";
@@ -290,12 +291,16 @@
 
   async function changePassword() {
     pwError = "";
-    if (newPassword.length < 8) {
-      pwError = "New password must be at least 8 characters.";
+    if (newPassword.length < MIN_PASSWORD_LEN) {
+      pwError = `New password must be at least ${MIN_PASSWORD_LEN} characters.`;
       return;
     }
     if (newPassword !== confirmPassword) {
       pwError = "New passwords don't match.";
+      return;
+    }
+    if (await isPwnedPasswordClient(newPassword)) {
+      pwError = "This password has appeared in a data breach — please choose a different one.";
       return;
     }
     pwBusy = true;
