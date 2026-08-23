@@ -24,7 +24,9 @@ searchRoutes.get("/", async (c) => {
   const wantTags = !scope || scope === "tags";
 
   const [postRows, people, tags] = await Promise.all([
-    wantPosts ? searchService.searchPosts(viewer?.id ?? null, query, { tag, author }) : Promise.resolve([]),
+    wantPosts
+      ? searchService.searchPosts(viewer?.id ?? null, query, { tag, author })
+      : Promise.resolve([]),
     wantPeople ? searchService.searchPeople(query) : Promise.resolve([]),
     wantTags ? searchService.searchTags(query) : Promise.resolve([]),
   ]);
