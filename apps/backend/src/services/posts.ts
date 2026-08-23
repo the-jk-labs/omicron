@@ -543,7 +543,7 @@ export async function localTimeline(
   return pageOf(rows, DEFAULT_PAGE_SIZE);
 }
 
-// The discovery rail's "Trending" list — "Son 7 gün": a short, unpaginated set of
+// The discovery rail's "Trending" list — "Last 7 days": a short, unpaginated set of
 // the most engaged posts from the last 7 days, filtered by the viewer's
 // mutes/blocks. Rank = (likes×1 + comments×2, without self-votes) /
 // (hours+2)^1.5 so fresh engagement outranks stale bulk. See

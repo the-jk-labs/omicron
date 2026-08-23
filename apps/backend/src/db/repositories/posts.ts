@@ -623,7 +623,7 @@ export function searchPosts(
 }
 
 // Trending: the most-engaged published Article posts from the last 7 days.
-// The UI shows "Son 7 gün" so the window must match what the reader sees; a
+// The UI shows "Last 7 days" so the window must match what the reader sees; a
 // post older than that never appears, no matter how many likes it once had.
 // Score is intentionally documented here so the ranking is not a black box:
 //

@@ -100,6 +100,15 @@ the docs; do not invent new design tokens.
 
 ---
 
+## Language (STRICT)
+
+UI, code, comments, and documentation must be **English only**. Do not inject
+Azerbaijani (or any non-English) text into UI strings, component markup, code
+comments, variable names, or commit messages. User-provided Azerbaijani bug
+reports should be understood but always implemented and surfaced in English.
+
+---
+
 ## 📚 Keeping the documentation site in sync
 
 The user-facing documentation lives in a **separate repository**:
