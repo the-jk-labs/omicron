@@ -5,6 +5,7 @@ import * as relationsRepo from "@/db/repositories/relations.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
+import { diversify, freshDiversityState } from "@/lib/feedDiversity.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import { MAX_TAGS_PER_POST, normalizeTags } from "@/lib/tags.ts";
 import { type LanguageFilter, normalizeLanguage } from "@/lib/languages.ts";
@@ -525,22 +526,69 @@ export async function listByAuthor(
   return pageOf(rows, DEFAULT_PAGE_SIZE);
 }
 
-export async function globalTimeline(
-  cursor: Cursor | null,
-  viewerId: string | null = null,
-  langFilter: LanguageFilter | null = null,
-) {
-  const rows = await postsRepo.listGlobal(viewerId, cursor, DEFAULT_PAGE_SIZE, langFilter);
-  return pageOf(rows, DEFAULT_PAGE_SIZE);
+// Discovery timelines assemble each page with author diversity (see
+// lib/feedDiversity.ts): a wide window is fetched in rank order and posts are
+// picked under two caps — never more than two posts by one author in a row,
+// and at most ~a fifth of the page per author — so one prolific writer (say,
+// an eight-part series) can't make the whole instance look monotonous. The
+// cursor advances past every row examined: a held-back post before the page's
+// last row is trimmed from this timeline (it stays on profiles, tag pages,
+// search and trending), one after it returns with the next page. Each pass
+// accepts at least one row, so assembly always progresses.
+const FEED_WINDOW = DEFAULT_PAGE_SIZE * 4;
+
+async function diversifiedTimelinePage(
+  fetchRows: (cursor: Cursor | null, limit: number) => Promise<postsRepo.PostWithAuthor[]>,
+  start: Cursor | null,
+): Promise<{ items: postsRepo.PostWithAuthor[]; nextCursor: string | null }> {
+  let cursor = start;
+  const items: postsRepo.PostWithAuthor[] = [];
+  let state = freshDiversityState();
+  for (;;) {
+    // Repos fetch limit+1; the overflow only signals "more in the DB".
+    const rows = await fetchRows(cursor, FEED_WINDOW);
+    if (!rows.length) return { items, nextCursor: null };
+    const result = diversify(rows, DEFAULT_PAGE_SIZE - items.length, (row) => {
+      return row.post.authorId ?? row.post.remoteActorId ?? "";
+    }, state);
+    state = result.state;
+    items.push(...result.kept);
+    const lastScanned = rows[result.scanned - 1];
+    if (!lastScanned) return { items, nextCursor: null };
+    cursor = { createdAt: lastScanned.post.createdAt.toISOString(), id: lastScanned.post.id };
+    const windowDrained = result.scanned >= rows.length;
+    const dbDrained = rows.length <= FEED_WINDOW;
+    if (items.length >= DEFAULT_PAGE_SIZE) {
+      return {
+        items,
+        nextCursor: !windowDrained || !dbDrained ? encodeCursor(cursor) : null,
+      };
+    }
+    if (windowDrained && dbDrained) return { items, nextCursor: null };
+    // Short page with more source behind it — pull the next window.
+  }
 }
 
-export async function localTimeline(
+export function globalTimeline(
   cursor: Cursor | null,
   viewerId: string | null = null,
   langFilter: LanguageFilter | null = null,
 ) {
-  const rows = await postsRepo.listLocal(viewerId, cursor, DEFAULT_PAGE_SIZE, langFilter);
-  return pageOf(rows, DEFAULT_PAGE_SIZE);
+  return diversifiedTimelinePage(
+    (c, limit) => postsRepo.listGlobal(viewerId, c, limit, langFilter),
+    cursor,
+  );
+}
+
+export function localTimeline(
+  cursor: Cursor | null,
+  viewerId: string | null = null,
+  langFilter: LanguageFilter | null = null,
+) {
+  return diversifiedTimelinePage(
+    (c, limit) => postsRepo.listLocal(viewerId, c, limit, langFilter),
+    cursor,
+  );
 }
 
 // The discovery rail's "Trending" list — "Last 7 days": a short, unpaginated set of
