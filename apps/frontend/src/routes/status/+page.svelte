@@ -10,7 +10,7 @@
   const statusExternal = (env.PUBLIC_STATUS_URL as string | undefined)?.trim() || "";
 </script>
 
-<PageTitle text="Status · {appName}" />
+<PageTitle text="Status" />
 
 <article class="mx-auto max-w-3xl">
   <h1 class="text-3xl font-bold tracking-tight text-foreground">Status</h1>

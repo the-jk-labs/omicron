@@ -11,7 +11,7 @@
   const sourceUrl = env.PUBLIC_SOURCE_URL || "https://github.com/the-jk-labs/omicron";
 </script>
 
-<PageTitle text="About · {appName}" />
+<PageTitle text="About" />
 
 <article class="mx-auto max-w-3xl">
   <h1 class="text-3xl font-bold tracking-tight text-foreground">About {appName}</h1>
