@@ -47,7 +47,7 @@
   const originInstance = $derived(post.author.username.split("@")[1] ?? null);
 </script>
 
-<article class="py-5">
+<article class="py-5" lang={post.language ?? undefined}>
   {#if post.recommendedBy}
     <!-- "For you" feed only: this post reached the viewer because someone they
          follow recommended it, not because of its own author/date — flag that
@@ -78,6 +78,7 @@
     href={postPath(post)}
     variant="plain"
     aria-labelledby={post.title ? titleId : undefined}
+    hreflang={post.language ?? undefined}
     class="group block w-full text-left"
   >
     <div class="flex items-start gap-4">

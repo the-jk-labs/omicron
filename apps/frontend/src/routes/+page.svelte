@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { endpoints } from "$lib/api";
+  import FeedLanguageFilter from "$lib/components/FeedLanguageFilter.svelte";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import PostCard from "$lib/components/PostCard.svelte";
@@ -96,6 +97,21 @@
     if (reading.feedLangQuery() && activeTab !== "for-you") refetch(activeTab);
   });
 
+  // When the reader changes their language filter in the header or in settings,
+  // reload the currently visible timeline (Local/Global) so the mixed AZ/EN/PL/IT
+  // feed immediately reflects the choice. For-you is excluded — it is personal.
+  $effect(() => {
+    // track
+    void reading.feedLangs;
+    void reading.feedLangMode;
+    if (activeTab === "for-you") return;
+    // don't refetch before the initial tab's first load has settled
+    const feed = feeds.find((f) => f.value === activeTab);
+    if (!feed?.loaded || feed.loading) return;
+    // use untrack to avoid re-triggering on feed mutation
+    untrack(() => refetch(activeTab));
+  });
+
   // Discards a feed's cached page and reloads it (used when the language filter
   // must be re-applied to an already-loaded feed).
   function refetch(value: string) {
@@ -174,6 +190,11 @@
     {/if}
   {/if}
 {/snippet}
+
+<!-- Feed language filter — visible inline so AZ/EN/PL/IT posts are not a mixed wall. Saved in localStorage via reading prefs; Local/Global honour it, For you stays personal. Detailed control lives in Settings. -->
+<div class="mb-6 rounded-card border border-border bg-background p-4">
+  <FeedLanguageFilter compact />
+</div>
 
 <Tabs.Root bind:value={activeTab} onValueChange={ensureLoaded} class="w-full">
   <Tabs.List class="mb-2 flex items-center gap-6 text-sm font-medium">

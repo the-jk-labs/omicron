@@ -306,6 +306,15 @@
       <meta property="article:author" content={creator} />
     {/if}
   {/if}
+  <!-- Language signals: per-card `lang`/`hreflang` covers the feed, this covers the page itself. A post declares its own language as the page language (hooks.server handles <html lang>) and advertises it via og:locale + hreflang so search engines don't misclassify AZ/PL/IT posts as English. -->
+  {#if post?.language}
+    <meta property="og:locale" content={post.language} />
+    <link rel="alternate" hreflang={post.language} href={canonical} />
+    <link rel="alternate" hreflang="x-default" href={canonical} />
+  {:else}
+    <meta property="og:locale" content="en" />
+    <link rel="alternate" hreflang="x-default" href={canonical} />
+  {/if}
   <!-- Screen readers reach a shared link through the card, not the page. -->
   <meta property="og:image:alt" content={post?.title ?? appName} />
   {#if feedLink}
