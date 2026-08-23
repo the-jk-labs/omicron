@@ -13,6 +13,8 @@
 
   let password = $state("");
   let confirm = $state("");
+  let showPassword = $state(false);
+  let showConfirm = $state(false);
   let error = $state("");
   let busy = $state(false);
   let done = $state(false);
@@ -85,16 +87,29 @@
   <form onsubmit={submit} class="flex flex-col gap-4">
     <div class="flex flex-col gap-1.5">
       <Label.Root for="password" class={labelClass}>New password</Label.Root>
-      <input
-        id="password"
-        type="password"
-        bind:value={password}
-        autocomplete="new-password"
-        placeholder={`at least ${MIN_PASSWORD_LEN} characters`}
-        aria-invalid={!!error && password.length < MIN_PASSWORD_LEN}
-        aria-describedby="password-reqs"
-        class={field}
-      />
+      <div class="relative">
+        <input
+          id="password"
+          type={showPassword ? "text" : "password"}
+          bind:value={password}
+          autocomplete="new-password"
+          placeholder={`at least ${MIN_PASSWORD_LEN} characters`}
+          aria-invalid={!!error && password.length < MIN_PASSWORD_LEN}
+          aria-describedby="password-reqs"
+          class={`${field} w-full pr-10`}
+        />
+        <button
+          type="button"
+          onclick={() => (showPassword = !showPassword)}
+          aria-label={showPassword ? "Hide password" : "Show password"}
+          aria-pressed={showPassword}
+          aria-controls="password"
+          title={showPassword ? "Hide password" : "Show password"}
+          class="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <Icon name="eye" size={16} />
+        </button>
+      </div>
       {#if password}
         <div class="flex items-center gap-1.5">
           <div class="flex flex-1 gap-1">
@@ -121,14 +136,27 @@
     </div>
     <div class="flex flex-col gap-1.5">
       <Label.Root for="confirm" class={labelClass}>Confirm password</Label.Root>
-      <input
-        id="confirm"
-        type="password"
-        bind:value={confirm}
-        autocomplete="new-password"
-        aria-invalid={password !== confirm && !!confirm}
-        class={field}
-      />
+      <div class="relative">
+        <input
+          id="confirm"
+          type={showConfirm ? "text" : "password"}
+          bind:value={confirm}
+          autocomplete="new-password"
+          aria-invalid={password !== confirm && !!confirm}
+          class={`${field} w-full pr-10`}
+        />
+        <button
+          type="button"
+          onclick={() => (showConfirm = !showConfirm)}
+          aria-label={showConfirm ? "Hide password" : "Show password"}
+          aria-pressed={showConfirm}
+          aria-controls="confirm"
+          title={showConfirm ? "Hide password" : "Show password"}
+          class="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <Icon name="eye" size={16} />
+        </button>
+      </div>
       {#if confirm && password !== confirm}<p class="text-xs text-destructive" aria-live="polite">
           Passwords do not match.
         </p>{/if}

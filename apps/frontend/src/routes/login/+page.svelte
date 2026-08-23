@@ -5,6 +5,7 @@
   import { env } from "$env/dynamic/public";
   import { endpoints, ApiError } from "$lib/api";
   import logo from "$lib/assets/omicron.svg";
+  import Icon from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import type { InstanceInfo } from "$lib/types";
@@ -16,6 +17,7 @@
 
   let identifier = $state("");
   let password = $state("");
+  let showPassword = $state(false);
   let error = $state("");
   let busy = $state(false);
 
@@ -69,9 +71,28 @@
            label it sits beside. -->
       <Button href="/forgot-password" variant="link" class="text-xs">Forgot password?</Button>
     </div>
-    <input id="password" type="password" bind:value={password} autocomplete="current-password" class={field} />
+    <div class="relative">
+      <input
+        id="password"
+        type={showPassword ? "text" : "password"}
+        bind:value={password}
+        autocomplete="current-password"
+        class={`${field} w-full pr-10`}
+      />
+      <button
+        type="button"
+        onclick={() => (showPassword = !showPassword)}
+        aria-label={showPassword ? "Parolu gizlət" : "Parolu göstər"}
+        aria-pressed={showPassword}
+        aria-controls="password"
+        title={showPassword ? "Parolu gizlət" : "Parolu göstər"}
+        class="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+      >
+        <Icon name="eye" size={16} />
+      </button>
+    </div>
   </div>
-  {#if error}<p class="text-sm text-destructive">{error}</p>{/if}
+  {#if error}<p class="text-sm text-destructive" role="alert">{error}</p>{/if}
   <Button type="submit" disabled={busy} variant="solid" class="mt-1 h-11">
     {busy ? "Signing in…" : "Sign in"}
   </Button>
