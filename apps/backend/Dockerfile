@@ -1,10 +1,18 @@
 # Backend: Deno + Hono + Fedify + Drizzle.
-FROM denoland/deno:2.9.4
+# --- deps: resolve node_modules from the lockfile ---------------------------
+FROM node:24-alpine AS deps
+WORKDIR /app
+# Corepack pins pnpm to the version in package.json's "packageManager" field.
+RUN corepack enable
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 
+# --- runtime: Deno with the installed dependencies --------------------------
+FROM denoland/deno:2.9.4
 WORKDIR /app
 
-# Cache dependencies first for faster rebuilds on code-only changes.
-COPY deno.json ./
+COPY deno.json package.json ./
+COPY --from=deps /app/node_modules ./node_modules
 COPY src ./src
 COPY drizzle ./drizzle
 # The bundled font the generated share card is drawn in (lib/ogCard.ts). Without
