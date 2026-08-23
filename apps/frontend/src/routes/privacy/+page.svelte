@@ -10,7 +10,7 @@
   const domain = $derived(instance?.domain ?? "this instance");
 </script>
 
-<PageTitle text="Privacy · {appName}" />
+<PageTitle text="Privacy" />
 
 <article class="mx-auto max-w-3xl">
   <h1 class="text-3xl font-bold tracking-tight text-foreground">Privacy policy</h1>

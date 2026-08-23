@@ -35,7 +35,12 @@
   // name comes from the instance settings (wizard/admin), falling back to the
   // build-time env and then the default.
   const appName = $derived(data.instance?.name || env.PUBLIC_APP_NAME || "Omicron");
-  const description = "A place to read, write, and connect — powered by ActivityPub. No lock-in, fully self-hostable.";
+  const homeTitle = $derived(`${appName}: fediverse üzərində müstəqil bloq platforması`);
+  // 155 chars for `Omicron` (adjusts with instance name): hits the 150–160 target
+  // search engines show without truncation and matches the hero.
+  const description = $derived(
+    `${appName} — fediverse üzərində müstəqil bloq platforması. Yaz, paylaş, kəşf et. ActivityPub ilə birləş, məlumatların sənə aid olsun və öz instansiyanı işlət.`,
+  );
   // Every absolute URL we publish — the canonical link, og:url, the share image
   // — is built on the instance's configured origin rather than the hostname this
   // request happened to arrive on, so an article has one address wherever it is
@@ -60,10 +65,42 @@
   const creator = $derived(
     post ? (post.author.remote ? `@${post.author.username}` : `@${post.author.username}@${$page.url.host}`) : null,
   );
-  const ogTitle = $derived(post?.title || appName);
+  // Home, tag and profile reuse the same title pattern as PageTitle (homeTitle,
+  // `#tag · App`, `DisplayName · App`) so the tab and the link preview agree.
+  const ogTitle = $derived.by(() => {
+    if (post?.title) return post.title;
+    if ($page.route.id === "/") return homeTitle;
+    const pd = $page.data as {
+      profile?: { user: { displayName: string } };
+      detail?: { tag: { name: string } };
+    };
+    if ($page.route.id === "/[handle]" && pd.profile) return `${pd.profile.user.displayName} · ${appName}`;
+    if ($page.route.id === "/tags/[tag]" && pd.detail?.tag) return `#${pd.detail.tag.name} · ${appName}`;
+    return appName;
+  });
   // An ingested post carries the sender's own `description`; prefer it over a
-  // clipped body, which is only ever a stand-in for one.
-  const ogDescription = $derived(post ? post.summary?.trim() || ogExcerpt(post.contentHtml) : description);
+  // clipped body, which is only ever a stand-in for one. Tag/profile fall back
+  // to a unique per-page description so each URL has its own snippet in the
+  // index (home already has one via `description`).
+  const ogDescription = $derived.by(() => {
+    if (post) return post.summary?.trim() || ogExcerpt(post.contentHtml);
+    if ($page.route.id === "/") return description;
+    const pd = $page.data as {
+      profile?: { user: { displayName: string; username: string; bio: string } };
+      detail?: { tag: { name: string }; postCount: number; followerCount: number };
+    };
+    if ($page.route.id === "/[handle]" && pd.profile) {
+      const u = pd.profile.user;
+      const bio = u.bio?.trim();
+      if (bio) return bio.length > 160 ? `${bio.slice(0, 157)}…` : bio;
+      return `Read articles by ${u.displayName} (@${u.username.split("@")[0]}) on ${appName} — follow their writing across the fediverse.`;
+    }
+    if ($page.route.id === "/tags/[tag]" && pd.detail) {
+      const d = pd.detail;
+      return `Explore #${d.tag.name} on ${appName} — ${d.postCount} ${d.postCount === 1 ? "article" : "articles"}, ${d.followerCount} ${d.followerCount === 1 ? "follower" : "followers"}. Discover writers and posts tagged #${d.tag.name} across the fediverse.`;
+    }
+    return description;
+  });
   const ogType = $derived(post ? "article" : "website");
   // A post's banner becomes its share image, falling back to the instance's
   // brand image. `bannerUrl` rather than `coverUrl`, so a post whose banner is

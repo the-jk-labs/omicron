@@ -13,7 +13,7 @@
   const abuseEmail = (env.PUBLIC_ABUSE_EMAIL as string | undefined)?.trim() || contactEmail;
 </script>
 
-<PageTitle text="Contact · {appName}" />
+<PageTitle text="Contact" />
 
 <article class="mx-auto max-w-3xl">
   <h1 class="text-3xl font-bold tracking-tight text-foreground">Contact</h1>
