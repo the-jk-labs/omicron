@@ -182,7 +182,12 @@
   <!-- Identity block: name, handle, bio, stats. Spans both columns on mobile
        (its own row), middle column on desktop. -->
   <div class="col-span-2 row-start-2 min-w-0 sm:col-span-1 sm:col-start-2 sm:row-start-1">
-    <h1 class="text-2xl font-bold tracking-tight text-foreground">{profile.user.displayName}</h1>
+    <h1
+      class="line-clamp-2 max-w-full overflow-hidden text-2xl font-bold tracking-tight break-words text-foreground"
+      title={profile.user.displayName}
+    >
+      {profile.user.displayName}
+    </h1>
     <div class="flex flex-wrap items-center gap-2">
       <!-- Remote usernames are `user@host`; drop the host here since the
            instance badge beside it already shows it (no duplication). -->
@@ -296,7 +301,7 @@
           <Icon name="lock" size={22} />
         </div>
         <p class="font-semibold text-foreground">This account is private</p>
-        <p class="mt-1 text-sm text-muted-foreground">
+        <p class="mt-1 text-sm break-words text-muted-foreground" title={profile.user.displayName}>
           Follow {profile.user.displayName} to see their articles.
         </p>
       </div>
@@ -335,7 +340,10 @@
   {#if !locked}
     <Tabs.Content value="recommendations" class="pt-3 select-none">
       {#if recommended.length === 0}
-        <p class="py-10 text-center text-muted-foreground">
+        <p
+          class="py-10 text-center break-words text-muted-foreground"
+          title={isSelf ? undefined : profile.user.displayName}
+        >
           {isSelf
             ? "You haven't recommended anything yet."
             : `${profile.user.displayName} hasn't recommended anything yet.`}

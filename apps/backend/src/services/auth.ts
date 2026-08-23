@@ -26,6 +26,7 @@ const PASSWORD_RESET_TTL_MS = 1000 * 60 * 60; // 1 hour
 const EMAIL_VERIFY_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
 const MIN_PASSWORD_LEN = 12;
 const MAX_PASSWORD_LEN = 128;
+const MAX_DISPLAY_NAME_LEN = 60;
 
 function assertPasswordLength(pw: string): void {
   if (pw.length < MIN_PASSWORD_LEN) {
@@ -87,13 +88,17 @@ export async function register(input: {
   await assertNotPwned(input.password);
   if (await usersRepo.findByUsername(username)) throw conflict("Username already taken.");
   if (await usersRepo.findByEmail(email)) throw conflict("Email already registered.");
+  const rawDisplayName = input.displayName?.trim();
+  if (rawDisplayName && rawDisplayName.length > MAX_DISPLAY_NAME_LEN) {
+    throw badRequest(`Display name must be at most ${MAX_DISPLAY_NAME_LEN} characters.`);
+  }
 
   const isFirstUser = (await usersRepo.countUsers()) === 0;
   const user = await usersRepo.create({
     username,
     email,
     passwordHash: await hashPassword(input.password),
-    displayName: input.displayName?.trim() || username,
+    displayName: rawDisplayName || username,
     isAdmin: isFirstUser,
     // The instance owner (first account) is trusted implicitly, so their email
     // counts as verified — they can never be locked out of their own instance.

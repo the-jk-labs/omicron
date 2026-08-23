@@ -55,16 +55,25 @@
     <Button
       href={`/@${post.recommendedBy.username}`}
       variant="plain"
-      class="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+      class="mb-2 flex max-w-full min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+      title={`${post.recommendedBy.displayName} recommended this`}
     >
-      <Icon name="recommend" size={14} />
-      {post.recommendedBy.displayName} recommended this
+      <Icon name="recommend" size={14} class="shrink-0" />
+      <span class="min-w-0 truncate" title={post.recommendedBy.displayName}>{post.recommendedBy.displayName}</span>
+      <span class="shrink-0">recommended this</span>
     </Button>
   {/if}
-  <div class="mb-3 flex items-center gap-2 text-sm text-foreground-alt">
-    <Button href={`/@${post.author.username}`} variant="plain" class="flex min-w-0 items-center gap-2 hover:opacity-80">
-      <Avatar name={post.author.displayName} src={post.author.avatarUrl ?? undefined} size={24} />
-      <span class="truncate font-medium text-foreground">{post.author.displayName}</span>
+  <div class="mb-3 flex min-w-0 items-center gap-2 text-sm text-foreground-alt">
+    <Button
+      href={`/@${post.author.username}`}
+      variant="plain"
+      class="flex max-w-full min-w-0 items-center gap-2 hover:opacity-80"
+      title={post.author.displayName}
+    >
+      <Avatar name={post.author.displayName} src={post.author.avatarUrl ?? undefined} size={24} class="shrink-0" />
+      <span class="min-w-0 truncate font-medium text-foreground" title={post.author.displayName}
+        >{post.author.displayName}</span
+      >
     </Button>
     {#if post.remote && originInstance}
       <span class="flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
