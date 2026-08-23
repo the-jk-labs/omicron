@@ -37,13 +37,13 @@
       <ButtonPrimitive.Root
         onclick={dismiss}
         aria-label="Hide this card"
-        class="absolute top-0 right-0 inline-flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+        class="absolute top-3 right-3 inline-flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
       >
-        <Icon name="close" size={14} />
+        <Icon name="close" size={13} />
       </ButtonPrimitive.Root>
     {/if}
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-      <div class={compact ? "pr-8" : ""}>
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+      <div class={compact ? "min-w-0 flex-1 pr-8" : "min-w-0 flex-1"}>
         <p class="flex items-center gap-1.5 text-sm font-medium text-foreground">
           <Icon name="languages" size={15} /> Feed languages
         </p>
@@ -52,7 +52,7 @@
         </p>
       </div>
       <div
-        class="inline-flex items-center gap-1 self-start rounded-input border border-input bg-background-alt p-1 shadow-btn sm:self-auto"
+        class="inline-flex shrink-0 items-center gap-1 self-start rounded-input border border-input bg-background-alt p-1 shadow-btn sm:self-center"
       >
         {#each langModeOptions as opt (opt.value)}
           <ButtonPrimitive.Root
