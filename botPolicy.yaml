@@ -242,6 +242,27 @@ bots:
     path_regex: ^/indexnow-[0-9a-fA-F]+\.txt$
     action: ALLOW
 
+  # Sitemap content — the URLs that sitemap.xml advertises. A sitemap that
+  # points at a challenged page is a list of dead ends: every fetch renders the
+  # same interstitial (503 + `<meta name="robots" content="noindex,nofollow">`)
+  # and Google drops the whole set as soft 404s. Profiles (`/@user`,
+  # `/@user/slug`), tag indexes (`/tags/slug`) and public lists
+  # (`/lists/slug-id`) are all public reads that must stay reachable to any
+  # crawler, including a browser-like one. They are not in the challenge list
+  # below, but they sit under prefixes that a future widening could accidentally
+  # swallow — an allow here makes the guarantee explicit and keeps
+  # `sitemap/pages.xml` (and the post permalinks it points to) crawlable even
+  # when the challenge regex grows.
+  - name: sitemap-profiles
+    path_regex: ^/@[^/]+
+    action: ALLOW
+  - name: sitemap-tags
+    path_regex: ^/tags/[^/]+
+    action: ALLOW
+  - name: sitemap-lists
+    path_regex: ^/lists/[^/]+
+    action: ALLOW
+
   # The proof-of-work wall, and the only rule that raises one.
   #
   # Both conditions must hold — an expensive path AND a browser-shaped
