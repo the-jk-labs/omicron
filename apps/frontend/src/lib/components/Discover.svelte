@@ -112,13 +112,27 @@
     <section>
       <h2 class="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
         <Icon name="tag" size={18} /> Topics
+        <span
+          class="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+          title="Most used tags in the last 7 days — counts are posts in that window">Last 7 days</span
+        >
       </h2>
+      <p class="-mt-1 mb-3 text-xs leading-relaxed text-muted-foreground">
+        Most used in the last 7 days — counts are posts in that window.
+      </p>
       <div class="flex flex-wrap gap-2">
         {#each tags as tag (tag.slug)}
-          <Button href={`/tags/${tag.slug}`} variant="outline" size="xs" class="rounded-full font-medium!">
+          <Button
+            href={`/tags/${tag.slug}`}
+            variant="outline"
+            size="xs"
+            class="rounded-full font-medium!"
+            title={`${tag.postCount} posts in the last 7 days`}
+          >
             <Icon name="tag" size={13} />
             {tag.name}
             <span class="text-muted-foreground">{tag.postCount}</span>
+            <span class="sr-only">posts in the last 7 days</span>
           </Button>
         {/each}
       </div>
