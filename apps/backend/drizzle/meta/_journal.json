@@ -218,6 +218,13 @@
       "when": 1786209507623,
       "tag": "0030_scheduled_posts",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1786209507624,
+      "tag": "0031_tag_aliases",
+      "breakpoints": true
     }
   ]
 }

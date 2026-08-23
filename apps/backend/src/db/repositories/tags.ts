@@ -5,6 +5,7 @@ import {
   posts,
   postTags,
   remoteActorTags,
+  tagAliases,
   tagFollows,
   tags,
   users,
@@ -18,18 +19,47 @@ import { isPublished, notSuspended, visibleToViewer } from "@/db/repositories/po
 export type TagSummary = { slug: string; name: string };
 export type TagWithCount = TagSummary & { postCount: number };
 
+// Resolve a slug through the alias table — if an alias exists, return the
+// canonical slug, otherwise return the input unchanged.
+export async function resolveAlias(slug: string): Promise<string> {
+  const row = await db.query.tagAliases.findFirst({ where: eq(tagAliases.aliasSlug, slug) });
+  if (!row) return slug;
+  const target = await db.query.tags.findFirst({ where: eq(tags.id, row.tagId) });
+  return target?.slug ?? slug;
+}
+
+async function resolveSlugs(slugs: string[]): Promise<string[]> {
+  if (slugs.length === 0) return slugs;
+  const aliases = await db.select().from(tagAliases).where(inArray(tagAliases.aliasSlug, slugs));
+  if (aliases.length === 0) return slugs;
+  const map = new Map(aliases.map((a) => [a.aliasSlug, a.tagId] as const));
+  const targets = await db.select({ id: tags.id, slug: tags.slug }).from(tags).where(
+    inArray(tags.id, [...map.values()]),
+  );
+  const idToSlug = new Map(targets.map((t) => [t.id, t.slug] as const));
+  return slugs.map((s) => {
+    const tagId = map.get(s);
+    return tagId ? (idToSlug.get(tagId) ?? s) : s;
+  });
+}
+
 // Replaces a post's tags with the given slugs in one transaction: upsert the
 // tags, drop the post's existing edges, then insert the new ones.
+// Aliased slugs are resolved to their canonical target before insertion so that
+// fragmented / misspelled tags (unix, sysprogramming..., perceid) collapse to
+// one canonical tag.
 export async function setPostTags(postId: string, slugs: string[]): Promise<void> {
+  const canonical = await resolveSlugs(slugs);
+  const deduped = [...new Set(canonical)];
   await db.transaction(async (tx) => {
     await tx.delete(postTags).where(eq(postTags.postId, postId));
-    if (slugs.length === 0) return;
+    if (deduped.length === 0) return;
     await tx
       .insert(tags)
-      .values(slugs.map((slug) => ({ slug, name: slug })))
+      .values(deduped.map((slug) => ({ slug, name: slug })))
       .onConflictDoNothing({ target: tags.slug });
     const rows = await tx.select({ id: tags.id, slug: tags.slug }).from(tags).where(
-      inArray(tags.slug, slugs),
+      inArray(tags.slug, deduped),
     );
     await tx
       .insert(postTags)
@@ -60,8 +90,25 @@ export async function tagsForPost(postId: string): Promise<TagSummary[]> {
   return (await tagsForPosts([postId])).get(postId) ?? [];
 }
 
-export function findBySlug(slug: string) {
-  return db.query.tags.findFirst({ where: eq(tags.slug, slug) });
+export async function findBySlug(slug: string) {
+  const direct = await db.query.tags.findFirst({ where: eq(tags.slug, slug) });
+  if (direct) return direct;
+  const alias = await db.query.tagAliases.findFirst({ where: eq(tagAliases.aliasSlug, slug) });
+  if (!alias) return null;
+  return db.query.tags.findFirst({ where: eq(tags.id, alias.tagId) });
+}
+
+export async function findAlias(aliasSlug: string) {
+  return db.query.tagAliases.findFirst({ where: eq(tagAliases.aliasSlug, aliasSlug) });
+}
+
+export async function listAliases() {
+  return db.select({
+    aliasSlug: tagAliases.aliasSlug,
+    tagId: tagAliases.tagId,
+    slug: tags.slug,
+    name: tags.name,
+  }).from(tagAliases).innerJoin(tags, eq(tags.id, tagAliases.tagId)).orderBy(tagAliases.aliasSlug);
 }
 
 // Count of published Article posts carrying a tag, as the viewer may see them.
@@ -110,6 +157,76 @@ export function search(query: string, limit: number): Promise<TagWithCount[]> {
     .groupBy(tags.id)
     .orderBy(desc(sql`count(${postTags.postId})`))
     .limit(limit) as Promise<TagWithCount[]>;
+}
+
+// Autocomplete / similar-tag suggestion for the composer.
+// Uses pg_trgm similarity so that typos (perceid -> perseid) and near-duplicates
+// are surfaced, falling back to substring match. Ordered by similarity then
+// popularity so the most useful canonical tag appears first.
+export function suggest(query: string, limit: number): Promise<TagWithCount[]> {
+  const term = `%${query}%`;
+  return db
+    .select({
+      slug: tags.slug,
+      name: tags.name,
+      postCount: sql<number>`count(${postTags.postId})::int`,
+    })
+    .from(tags)
+    .leftJoin(postTags, eq(postTags.tagId, tags.id))
+    .where(sql`${tags.slug} % ${query} or ${tags.slug} ilike ${term}`)
+    .groupBy(tags.id)
+    .orderBy(desc(sql`similarity(${tags.slug}, ${query})`), desc(sql`count(${postTags.postId})`))
+    .limit(limit) as Promise<TagWithCount[]>;
+}
+
+// Create an alias slug -> target tag. The alias slug must not already be a
+// real tag; the target must exist. Used by admins to map fragmented tags
+// (sysprogramming, lowlevel, perceid) to a canonical one.
+export async function createAlias(aliasSlug: string, targetSlug: string): Promise<void> {
+  const target = await db.query.tags.findFirst({ where: eq(tags.slug, targetSlug) });
+  if (!target) throw new Error(`Target tag "${targetSlug}" not found`);
+  const exists = await db.query.tags.findFirst({ where: eq(tags.slug, aliasSlug) });
+  if (exists) throw new Error(`Alias "${aliasSlug}" is already a real tag — merge it instead`);
+  await db.insert(tagAliases).values({ aliasSlug, tagId: target.id }).onConflictDoNothing();
+}
+
+// Merge source tag into target tag: move all post/tag-follow edges, create an
+// alias for the source slug, then remove the source tag row.
+export async function mergeTags(fromSlug: string, toSlug: string): Promise<void> {
+  if (fromSlug === toSlug) throw new Error("Source and target are the same");
+  const from = await db.query.tags.findFirst({ where: eq(tags.slug, fromSlug) });
+  const to = await db.query.tags.findFirst({ where: eq(tags.slug, toSlug) });
+  if (!from) throw new Error(`Source tag "${fromSlug}" not found`);
+  if (!to) throw new Error(`Target tag "${toSlug}" not found`);
+  await db.transaction(async (tx) => {
+    // Move post tags
+    const fromPostTags = await tx.select({ postId: postTags.postId }).from(postTags).where(eq(postTags.tagId, from.id));
+    for (const { postId } of fromPostTags) {
+      await tx.insert(postTags).values({ postId, tagId: to.id }).onConflictDoNothing();
+    }
+    await tx.delete(postTags).where(eq(postTags.tagId, from.id));
+    // Move tag follows
+    const fromFollows = await tx.select().from(tagFollows).where(eq(tagFollows.tagId, from.id));
+    for (const f of fromFollows) {
+      await tx.insert(tagFollows).values({ userId: f.userId, tagId: to.id }).onConflictDoNothing();
+    }
+    await tx.delete(tagFollows).where(eq(tagFollows.tagId, from.id));
+    // Move profile tags
+    const fromUserTags = await tx.select().from(userTags).where(eq(userTags.tagId, from.id));
+    for (const ut of fromUserTags) {
+      await tx.insert(userTags).values({ userId: ut.userId, tagId: to.id }).onConflictDoNothing();
+    }
+    await tx.delete(userTags).where(eq(userTags.tagId, from.id));
+    const fromRemoteTags = await tx.select().from(remoteActorTags).where(eq(remoteActorTags.tagId, from.id));
+    for (const rt of fromRemoteTags) {
+      await tx.insert(remoteActorTags).values({ remoteActorId: rt.remoteActorId, tagId: to.id }).onConflictDoNothing();
+    }
+    await tx.delete(remoteActorTags).where(eq(remoteActorTags.tagId, from.id));
+    // Alias for future writes and tag-page redirects
+    await tx.insert(tagAliases).values({ aliasSlug: fromSlug, tagId: to.id }).onConflictDoNothing();
+    // Remove source tag row
+    await tx.delete(tags).where(eq(tags.id, from.id));
+  });
 }
 
 // Tags that should never appear in trending — personal/joke tags that were

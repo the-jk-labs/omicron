@@ -8,6 +8,18 @@ import type { AppEnv } from "@/routes/types.ts";
 
 export const tagRoutes = new Hono<AppEnv>();
 
+// Tag autocomplete / similar-tag suggestions for the composer. Registered
+// before "/:slug" so "suggest" isn't captured as a tag slug.
+tagRoutes.get("/suggest", async (c) => {
+  const q = c.req.query("q") ?? "";
+  return c.json({ tags: await tagsService.suggest(q) });
+});
+
+tagRoutes.get("/search", async (c) => {
+  const q = c.req.query("q") ?? "";
+  return c.json({ tags: await tagsService.search(q) });
+});
+
 // Trending tags (public) — the discovery index.
 tagRoutes.get("/", async (c) => {
   return c.json({ tags: await tagsService.trending() });

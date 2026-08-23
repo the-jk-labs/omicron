@@ -418,6 +418,21 @@ export const tags = pgTable("tags", {
   index("tags_slug_trgm_idx").using("gin", sql`${t.slug} gin_trgm_ops`),
 ]);
 
+// ── tag aliases ────────────────────────────────────────────────────────
+// Alias slug -> canonical tag. Writing a post with an aliased tag resolves to
+// the canonical slug before insertion, and reading /tags/:slug redirects via
+// the alias. Lets admins merge fragmented tags (unix, sysprogramming,
+// systemprogramming...) and fix typos (perceid -> perseid) without editing
+// every post. The alias row is the source of truth; no post_tags ever points
+// at an alias slug.
+export const tagAliases = pgTable("tag_aliases", {
+  aliasSlug: text("alias_slug").primaryKey(),
+  tagId: uuid("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("tag_aliases_tag_idx").on(t.tagId),
+]);
+
 // ── post ↔ tag join ──────────────────────────────────────────────────────
 // One row per (post, tag). The unique index makes tagging idempotent; the
 // tag-keyed index backs tag-feed lookups and the post-keyed index backs the
@@ -708,6 +723,8 @@ export type NewAuthToken = typeof authTokens.$inferInsert;
 export type WebhookToken = typeof webhookTokens.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
 export type NewTag = typeof tags.$inferInsert;
+export type TagAlias = typeof tagAliases.$inferSelect;
+export type NewTagAlias = typeof tagAliases.$inferInsert;
 export type PostTag = typeof postTags.$inferSelect;
 export type TagFollow = typeof tagFollows.$inferSelect;
 export type UserTag = typeof userTags.$inferSelect;
