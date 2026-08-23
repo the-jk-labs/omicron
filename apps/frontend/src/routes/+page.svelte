@@ -196,10 +196,7 @@
 {/snippet}
 
 {#if data.personalized}
-  <!-- Feed language filter — signed-in only. Guests see an unfiltered Global/Local wall; logged-in readers can curate Local/Global. Saved in localStorage via reading prefs; For you stays personal. -->
-  <div class="mb-6 rounded-card border border-border bg-background p-4">
-    <FeedLanguageFilter compact />
-  </div>
+  <FeedLanguageFilter compact />
 {/if}
 
 <Tabs.Root bind:value={activeTab} onValueChange={ensureLoaded} class="w-full">
