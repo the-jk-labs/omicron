@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, notInArray, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import {
   posts,
@@ -112,10 +112,29 @@ export function search(query: string, limit: number): Promise<TagWithCount[]> {
     .limit(limit) as Promise<TagWithCount[]>;
 }
 
+// Tags that should never appear in trending — personal/joke tags that were
+// surfacing at the top (e.g. larp, idk, khazar, divineintellect). The list is
+// intentionally small and explicit; broader moderation is handled by the
+// distinct-author and minimum-use thresholds below. Keep lowercase slugs only.
+// Managed in code for now; a future admin panel could move this to
+// instance_settings (trending_blocked_tags).
+const TRENDING_BLOCKED_SLUGS = new Set([
+  "larp",
+  "idk",
+  "khazar",
+  "divineintellect",
+]);
+
 // Trending tags: most-used across posts published in the last 7 days
 // (matches the "Last 7 days" window used for trending posts).
+//
+// Quality gates: a tag must appear on at least 3 posts by at least 3 distinct
+// authors in the window to be eligible. This prevents a single author's
+// personal or joke tag from dominating the discovery rail. Blocklisted slugs
+// are excluded in the WHERE clause before aggregation.
 export function trending(limit: number, sinceDays = 7): Promise<TagWithCount[]> {
   const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
+  const blocked = [...TRENDING_BLOCKED_SLUGS];
   return db
     .select({
       slug: tags.slug,
@@ -137,9 +156,13 @@ export function trending(limit: number, sinceDays = 7): Promise<TagWithCount[]> 
         isPublished,
         notSuspended,
         visibleToViewer(null),
+        blocked.length ? notInArray(tags.slug, blocked) : undefined,
       ),
     )
     .groupBy(tags.id)
+    .having(
+      sql`count(${postTags.postId}) >= 3 and count(distinct coalesce(${posts.authorId}::text, ${posts.remoteActorId}::text)) >= 3`,
+    )
     .orderBy(desc(sql`count(${postTags.postId})`))
     .limit(limit) as Promise<TagWithCount[]>;
 }

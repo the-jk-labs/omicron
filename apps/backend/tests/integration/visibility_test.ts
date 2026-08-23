@@ -138,6 +138,14 @@ Deno.test("public listings exclude unpublished posts and suspended authors", opt
 
   const rust = await mkTag("rust");
   for (const p of [draft, scheduled, live, bySuspended, byPrivate]) await tagPost(p.id, rust.id);
+  // Trending now requires >=3 posts by >=3 distinct authors to filter
+  // personal/joke tags — add two more visible posts by different authors so
+  // the tag is eligible and the visible-only assertion remains meaningful.
+  const author2 = await mkUser("author2");
+  const author3 = await mkUser("author3");
+  const live2 = await mkPost(author2.id, "live-post-2");
+  const live3 = await mkPost(author3.id, "live-post-3");
+  for (const p of [live2, live3]) await tagPost(p.id, rust.id);
 
   const hiddenFromEveryone = [draft, scheduled, bySuspended, byPrivate];
 
@@ -164,7 +172,7 @@ Deno.test("public listings exclude unpublished posts and suspended authors", opt
   });
 
   await t.step("trending ranks the tag by visible posts only", async () => {
-    assertEquals((await tagsRepo.trending(5))[0]?.postCount, 1);
+    assertEquals((await tagsRepo.trending(5))[0]?.postCount, 3);
   });
 });
 
