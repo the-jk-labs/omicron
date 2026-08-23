@@ -167,8 +167,9 @@ Deno.test("public listings exclude unpublished posts and suspended authors", opt
 
   await t.step("the tag's advertised count matches the listing it labels", async () => {
     // A count taken over a wider set than the list beneath it tells the reader
-    // how many posts are being withheld (#55).
-    assertEquals(await tagsRepo.postCount(rust.id, null), 1);
+    // how many posts are being withheld (#55). Three visible posts: `live`
+    // plus the two extra authors seeded above for trending eligibility.
+    assertEquals(await tagsRepo.postCount(rust.id, null), 3);
   });
 
   await t.step("trending ranks the tag by visible posts only", async () => {
