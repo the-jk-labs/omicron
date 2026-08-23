@@ -98,11 +98,11 @@ export async function findBySlug(slug: string) {
   return db.query.tags.findFirst({ where: eq(tags.id, alias.tagId) });
 }
 
-export async function findAlias(aliasSlug: string) {
+export function findAlias(aliasSlug: string) {
   return db.query.tagAliases.findFirst({ where: eq(tagAliases.aliasSlug, aliasSlug) });
 }
 
-export async function listAliases() {
+export function listAliases() {
   return db.select({
     aliasSlug: tagAliases.aliasSlug,
     tagId: tagAliases.tagId,
@@ -200,7 +200,9 @@ export async function mergeTags(fromSlug: string, toSlug: string): Promise<void>
   if (!to) throw new Error(`Target tag "${toSlug}" not found`);
   await db.transaction(async (tx) => {
     // Move post tags
-    const fromPostTags = await tx.select({ postId: postTags.postId }).from(postTags).where(eq(postTags.tagId, from.id));
+    const fromPostTags = await tx.select({ postId: postTags.postId }).from(postTags).where(
+      eq(postTags.tagId, from.id),
+    );
     for (const { postId } of fromPostTags) {
       await tx.insert(postTags).values({ postId, tagId: to.id }).onConflictDoNothing();
     }
@@ -217,9 +219,12 @@ export async function mergeTags(fromSlug: string, toSlug: string): Promise<void>
       await tx.insert(userTags).values({ userId: ut.userId, tagId: to.id }).onConflictDoNothing();
     }
     await tx.delete(userTags).where(eq(userTags.tagId, from.id));
-    const fromRemoteTags = await tx.select().from(remoteActorTags).where(eq(remoteActorTags.tagId, from.id));
+    const fromRemoteTags = await tx.select().from(remoteActorTags).where(
+      eq(remoteActorTags.tagId, from.id),
+    );
     for (const rt of fromRemoteTags) {
-      await tx.insert(remoteActorTags).values({ remoteActorId: rt.remoteActorId, tagId: to.id }).onConflictDoNothing();
+      await tx.insert(remoteActorTags).values({ remoteActorId: rt.remoteActorId, tagId: to.id })
+        .onConflictDoNothing();
     }
     await tx.delete(remoteActorTags).where(eq(remoteActorTags.tagId, from.id));
     // Alias for future writes and tag-page redirects
