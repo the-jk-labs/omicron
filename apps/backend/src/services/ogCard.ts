@@ -2,8 +2,8 @@
 import { config } from "@/config.ts";
 import { renderOgCard } from "@/lib/ogCard.ts";
 import { hashToken } from "@/lib/tokens.ts";
-import * as postsService from "@/services/posts.ts";
 import { getAppDomain } from "@/services/instanceSetup.ts";
+import * as postsService from "@/services/posts.ts";
 
 // On-disk caching for generated post share cards. The drawing itself is in
 // lib/ogCard.ts, which explains why a card exists at all.

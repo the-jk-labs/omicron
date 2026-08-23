@@ -1,7 +1,7 @@
+import { config } from "@/config.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
 import { generateKeyPair } from "@/services/dkim.ts";
-import { config } from "@/config.ts";
 
 // Web-managed email configuration, layered over the instance_settings key/value
 // store exactly like the instance identity (see instanceSetup.ts). The operator
@@ -68,7 +68,9 @@ function isMode(v: unknown): v is EmailMode {
 
 // Reduce a domain/URL/host:port to a bare hostname for the From address.
 function bareHost(value: string): string {
-  return value.trim().toLowerCase()
+  return value
+    .trim()
+    .toLowerCase()
     .replace(/^https?:\/\//, "")
     .split("/")[0]
     .split(":")[0];
@@ -79,11 +81,12 @@ function bareHost(value: string): string {
 // so a fresh instance sends as noreply@your-domain out of the box. Reads the
 // instance settings keys directly to avoid an import cycle with instanceSetup.
 async function defaultFrom(): Promise<string> {
-  const domainRaw = (await settingsRepo.get<string>("instance.appDomain"))?.trim() ||
-    config.APP_DOMAIN;
+  const domainRaw = (await settingsRepo.get<string>("instance.appDomain"))?.trim() || config.APP_DOMAIN;
   const domain = bareHost(domainRaw) || "localhost";
-  const name = (await settingsRepo.get<string>("instance.appName"))?.trim() ||
-    Deno.env.get("PUBLIC_APP_NAME")?.trim() || "Omicron";
+  const name =
+    (await settingsRepo.get<string>("instance.appName"))?.trim() ||
+    Deno.env.get("PUBLIC_APP_NAME")?.trim() ||
+    "Omicron";
   return `${name} <noreply@${domain}>`;
 }
 
@@ -98,7 +101,7 @@ async function defaultFrom(): Promise<string> {
  */
 export async function getEmailMode(): Promise<EmailMode> {
   const mode = await settingsRepo.get<string>(EMAIL_KEYS.mode);
-  return isMode(mode) ? mode : (config.EMAIL_TRANSPORT as EmailMode);
+  return isMode(mode) ? mode : config.EMAIL_TRANSPORT;
 }
 
 // The effective, ready-to-send configuration. Every field falls back through
@@ -139,7 +142,7 @@ export async function getEmailConfig(): Promise<EmailConfig> {
   // inside defaultFrom (config.APP_DOMAIN).
   const explicitFrom = from?.trim() || Deno.env.get("EMAIL_FROM")?.trim();
   return {
-    mode: isMode(mode) ? mode : (config.EMAIL_TRANSPORT as EmailMode),
+    mode: isMode(mode) ? mode : config.EMAIL_TRANSPORT,
     from: explicitFrom || (await defaultFrom()),
     smtp: {
       host: host?.trim() || config.SMTP_HOST,
@@ -205,13 +208,10 @@ export async function setEmailConfig(input: EmailInput): Promise<void> {
 // Ensure a DKIM keypair exists for `domain` (generating one on first use) and
 // record the domain/selector. Returns the public key for the DNS record. The
 // private key never leaves the server.
-export async function ensureDkimKeys(
-  domain: string,
-): Promise<{ selector: string; publicKey: string }> {
+export async function ensureDkimKeys(domain: string): Promise<{ selector: string; publicKey: string }> {
   const existingDomain = await settingsRepo.get<string>(EMAIL_KEYS.dkimDomain);
   let publicKey = await settingsRepo.get<string>(EMAIL_KEYS.dkimPublicKey);
-  const selector = (await settingsRepo.get<string>(EMAIL_KEYS.dkimSelector))?.trim() ||
-    DEFAULT_DKIM_SELECTOR;
+  const selector = (await settingsRepo.get<string>(EMAIL_KEYS.dkimSelector))?.trim() || DEFAULT_DKIM_SELECTOR;
 
   // (Re)generate when there is no key yet, or the sending domain changed.
   if (!publicKey || existingDomain?.trim() !== domain.trim()) {

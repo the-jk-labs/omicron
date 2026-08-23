@@ -15,10 +15,10 @@
 // Each case asserts both directions. A predicate that hides everything would
 // pass a leak test and fail the "still visible" one, which is the mistake this
 // suite is most likely to be asked to catch in future.
-import { assertEquals, assertFalse } from "@std/assert";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import * as postsRepo from "@/db/repositories/posts.ts";
-import * as recsRepo from "@/db/repositories/recommendations.ts";
 import * as listsRepo from "@/db/repositories/readingLists.ts";
+import * as recsRepo from "@/db/repositories/recommendations.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import {
   addToList,
@@ -35,234 +35,273 @@ import {
   tagPost,
 } from "./harness.ts";
 
-const opts = { sanitizeResources: false, sanitizeOps: false };
-
 // A cast shared by the assertions: the repo functions return rows whose `post`
 // is the full column set, and the helper only needs the id.
 type Rows = readonly { post: { id: string } }[];
+type Post = Awaited<ReturnType<typeof mkPost>>;
+type User = Awaited<ReturnType<typeof mkUser>>;
 
-Deno.test("feeds: a private author reaches only approved followers", opts, async (t) => {
-  await resetDb();
+afterAll(async () => {
+  await closeDb();
+});
 
-  const priv = await mkUser("priv", { isPrivate: true });
-  const pub = await mkUser("pub");
-  const approved = await mkUser("approved");
-  const pending = await mkUser("pending");
-  const stranger = await mkUser("stranger");
+describe("feeds: a private author reaches only approved followers", () => {
+  let priv: User;
+  let privPost: Post;
+  let pubPost: Post;
+  let approved: User;
+  let pending: User;
+  let stranger: User;
 
-  const privPost = await mkPost(priv.id, "private-post");
-  const pubPost = await mkPost(pub.id, "public-post");
+  beforeAll(async () => {
+    await resetDb();
 
-  // Everyone follows #rust; nobody follows the private author except
-  // `approved`, whose follow is approved, and `pending`, whose is not.
-  const rust = await mkTag("rust");
-  await tagPost(privPost.id, rust.id);
-  await tagPost(pubPost.id, rust.id);
-  for (const u of [priv, approved, pending, stranger]) await followTag(u.id, rust.id);
-  await follow(approved.id, priv.id, true);
-  await follow(pending.id, priv.id, false);
+    priv = await mkUser("priv", { isPrivate: true });
+    const pub = await mkUser("pub");
+    approved = await mkUser("approved");
+    pending = await mkUser("pending");
+    stranger = await mkUser("stranger");
+
+    privPost = await mkPost(priv.id, "private-post");
+    pubPost = await mkPost(pub.id, "public-post");
+
+    // Everyone follows #rust; nobody follows the private author except
+    // `approved`, whose follow is approved, and `pending`, whose is not.
+    const rust = await mkTag("rust");
+    await tagPost(privPost.id, rust.id);
+    await tagPost(pubPost.id, rust.id);
+    for (const u of [priv, approved, pending, stranger]) await followTag(u.id, rust.id);
+    await follow(approved.id, priv.id, true);
+    await follow(pending.id, priv.id, false);
+  });
 
   const feed = (id: string) => postsRepo.listFeed(id, null) as unknown as Promise<Rows>;
 
-  await t.step("the followed-tag branch does not leak a private author's post", async () => {
-    assertFalse(includesPost(await feed(stranger.id), privPost.id));
+  test("the followed-tag branch does not leak a private author's post", async () => {
+    expect(includesPost(await feed(stranger.id), privPost.id)).toBe(false);
   });
 
-  await t.step("a pending follow request leaks nothing", async () => {
-    assertFalse(includesPost(await feed(pending.id), privPost.id));
+  test("a pending follow request leaks nothing", async () => {
+    expect(includesPost(await feed(pending.id), privPost.id)).toBe(false);
   });
 
-  await t.step("an approved follower still receives it", async () => {
-    assertEquals(includesPost(await feed(approved.id), privPost.id), true);
+  test("an approved follower still receives it", async () => {
+    expect(includesPost(await feed(approved.id), privPost.id)).toBe(true);
   });
 
-  await t.step("the author still sees their own post via the tag branch", async () => {
-    assertEquals(includesPost(await feed(priv.id), privPost.id), true);
+  test("the author still sees their own post via the tag branch", async () => {
+    expect(includesPost(await feed(priv.id), privPost.id)).toBe(true);
   });
 
-  await t.step("a public author's post still reaches a stranger by tag", async () => {
-    assertEquals(includesPost(await feed(stranger.id), pubPost.id), true);
+  test("a public author's post still reaches a stranger by tag", async () => {
+    expect(includesPost(await feed(stranger.id), pubPost.id)).toBe(true);
   });
 });
 
-Deno.test("feeds: recommending cannot widen a post's audience", opts, async (t) => {
-  await resetDb();
+describe("feeds: recommending cannot widen a post's audience", () => {
+  let privPost: Post;
+  let pubPost: Post;
+  let stranger: User;
+  let approved: User;
 
-  const priv = await mkUser("priv", { isPrivate: true });
-  const pub = await mkUser("pub");
-  const booster = await mkUser("booster");
-  const stranger = await mkUser("stranger");
-  const approved = await mkUser("approved");
+  beforeAll(async () => {
+    await resetDb();
 
-  const privPost = await mkPost(priv.id, "private-post");
-  const pubPost = await mkPost(pub.id, "public-post");
+    const priv = await mkUser("priv", { isPrivate: true });
+    const pub = await mkUser("pub");
+    const booster = await mkUser("booster");
+    stranger = await mkUser("stranger");
+    approved = await mkUser("approved");
 
-  // `booster` recommends both. `stranger` and `approved` follow `booster`;
-  // only `approved` is also an approved follower of the private author.
-  await recommend(booster.id, privPost.id);
-  await recommend(booster.id, pubPost.id);
-  await follow(stranger.id, booster.id, true);
-  await follow(approved.id, booster.id, true);
-  await follow(approved.id, priv.id, true);
+    privPost = await mkPost(priv.id, "private-post");
+    pubPost = await mkPost(pub.id, "public-post");
+
+    // `booster` recommends both. `stranger` and `approved` follow `booster`;
+    // only `approved` is also an approved follower of the private author.
+    await recommend(booster.id, privPost.id);
+    await recommend(booster.id, pubPost.id);
+    await follow(stranger.id, booster.id, true);
+    await follow(approved.id, booster.id, true);
+    await follow(approved.id, priv.id, true);
+  });
 
   const recFeed = (id: string) => recsRepo.listFeedFor(id, null) as unknown as Promise<Rows>;
 
-  await t.step("a boost of a private author's post does not reach a non-follower", async () => {
-    assertFalse(includesPost(await recFeed(stranger.id), privPost.id));
+  test("a boost of a private author's post does not reach a non-follower", async () => {
+    expect(includesPost(await recFeed(stranger.id), privPost.id)).toBe(false);
   });
 
-  await t.step("it does reach a follower of that author", async () => {
-    assertEquals(includesPost(await recFeed(approved.id), privPost.id), true);
+  test("it does reach a follower of that author", async () => {
+    expect(includesPost(await recFeed(approved.id), privPost.id)).toBe(true);
   });
 
-  await t.step("a boost of a public post reaches everyone following the booster", async () => {
-    assertEquals(includesPost(await recFeed(stranger.id), pubPost.id), true);
+  test("a boost of a public post reaches everyone following the booster", async () => {
+    expect(includesPost(await recFeed(stranger.id), pubPost.id)).toBe(true);
   });
 });
 
-Deno.test("public listings exclude unpublished posts and suspended authors", opts, async (t) => {
-  await resetDb();
+describe("public listings exclude unpublished posts and suspended authors", () => {
+  let live: Post;
+  let rust: Awaited<ReturnType<typeof mkTag>>;
+  let hiddenFromEveryone: Post[];
 
-  const author = await mkUser("author");
-  const suspended = await mkUser("suspended", { suspended: true });
-  const priv = await mkUser("priv", { isPrivate: true });
+  beforeAll(async () => {
+    await resetDb();
 
-  const draft = await mkPost(author.id, "draft-post", { status: "draft" });
-  // A post waiting for its moment is as private as a draft, and is here for the
-  // same reason every other row in this suite is: it is a post status that must
-  // be filtered by predicates written before it existed.
-  const scheduled = await mkPost(author.id, "scheduled-post", { status: "scheduled" });
-  const live = await mkPost(author.id, "live-post");
-  const bySuspended = await mkPost(suspended.id, "suspended-post");
-  const byPrivate = await mkPost(priv.id, "private-post");
+    const author = await mkUser("author");
+    const suspended = await mkUser("suspended", { suspended: true });
+    const priv = await mkUser("priv", { isPrivate: true });
 
-  const rust = await mkTag("rust");
-  for (const p of [draft, scheduled, live, bySuspended, byPrivate]) await tagPost(p.id, rust.id);
-  // Trending now requires >=3 posts by >=3 distinct authors to filter
-  // personal/joke tags — add two more visible posts by different authors so
-  // the tag is eligible and the visible-only assertion remains meaningful.
-  const author2 = await mkUser("author2");
-  const author3 = await mkUser("author3");
-  const live2 = await mkPost(author2.id, "live-post-2");
-  const live3 = await mkPost(author3.id, "live-post-3");
-  for (const p of [live2, live3]) await tagPost(p.id, rust.id);
+    const draft = await mkPost(author.id, "draft-post", { status: "draft" });
+    // A post waiting for its moment is as private as a draft, and is here for the
+    // same reason every other row in this suite is: it is a post status that must
+    // be filtered by predicates written before it existed.
+    const scheduled = await mkPost(author.id, "scheduled-post", { status: "scheduled" });
+    live = await mkPost(author.id, "live-post");
+    const bySuspended = await mkPost(suspended.id, "suspended-post");
+    const byPrivate = await mkPost(priv.id, "private-post");
 
-  const hiddenFromEveryone = [draft, scheduled, bySuspended, byPrivate];
+    rust = await mkTag("rust");
+    for (const p of [draft, scheduled, live, bySuspended, byPrivate]) await tagPost(p.id, rust.id);
+    // Trending now requires >=3 posts by >=3 distinct authors to filter
+    // personal/joke tags — add two more visible posts by different authors so
+    // the tag is eligible and the visible-only assertion remains meaningful.
+    const author2 = await mkUser("author2");
+    const author3 = await mkUser("author3");
+    const live2 = await mkPost(author2.id, "live-post-2");
+    const live3 = await mkPost(author3.id, "live-post-3");
+    for (const p of [live2, live3]) await tagPost(p.id, rust.id);
 
-  await t.step("listGlobal shows only the one published post", async () => {
-    const rows = await postsRepo.listGlobal(null, null) as unknown as Rows;
-    assertEquals(includesPost(rows, live.id), true);
+    hiddenFromEveryone = [draft, scheduled, bySuspended, byPrivate];
+  });
+
+  test("listGlobal shows only the one published post", async () => {
+    const rows = (await postsRepo.listGlobal(null, null)) as unknown as Rows;
+    expect(includesPost(rows, live.id)).toBe(true);
     for (const hidden of hiddenFromEveryone) {
-      assertFalse(includesPost(rows, hidden.id), `leaked ${hidden.slug}`);
+      expect(includesPost(rows, hidden.id), `leaked ${hidden.slug}`).toBe(false);
     }
   });
 
-  await t.step("listByTag agrees with it", async () => {
-    const rows = await postsRepo.listByTag("rust", null, null) as unknown as Rows;
-    assertEquals(includesPost(rows, live.id), true);
+  test("listByTag agrees with it", async () => {
+    const rows = (await postsRepo.listByTag("rust", null, null)) as unknown as Rows;
+    expect(includesPost(rows, live.id)).toBe(true);
     for (const hidden of hiddenFromEveryone) {
-      assertFalse(includesPost(rows, hidden.id), `leaked ${hidden.slug}`);
+      expect(includesPost(rows, hidden.id), `leaked ${hidden.slug}`).toBe(false);
     }
   });
 
-  await t.step("the tag's advertised count matches the listing it labels", async () => {
-    // A count taken over a wider set than the list beneath it tells the reader
+  test("the tag's advertised count matches the listing it labels", async () => {
     // how many posts are being withheld (#55). Three visible posts: `live`
     // plus the two extra authors seeded above for trending eligibility.
-    assertEquals(await tagsRepo.postCount(rust.id, null), 3);
+    expect(await tagsRepo.postCount(rust.id, null)).toBe(3);
   });
 
-  await t.step("trending ranks the tag by visible posts only", async () => {
-    assertEquals((await tagsRepo.trending(5))[0]?.postCount, 3);
+  test("trending ranks the tag by visible posts only", async () => {
+    expect((await tagsRepo.trending(5))[0]?.postCount).toBe(3);
   });
 });
 
-Deno.test("reading lists: a public list is filtered like any other listing", opts, async (t) => {
-  await resetDb();
+describe("reading lists: a public list is filtered like any other listing", () => {
+  let owner: User;
+  let stranger: User;
+  let live: Post;
+  let draft: Post;
+  let byPrivate: Post;
+  let bySuspended: Post;
+  let list: Awaited<ReturnType<typeof mkList>>;
 
-  const owner = await mkUser("owner");
-  const author = await mkUser("author");
-  const priv = await mkUser("priv", { isPrivate: true });
-  const suspended = await mkUser("suspended", { suspended: true });
-  const stranger = await mkUser("stranger");
+  beforeAll(async () => {
+    await resetDb();
 
-  const live = await mkPost(author.id, "live-post");
-  const draft = await mkPost(author.id, "draft-post", { status: "draft" });
-  const byPrivate = await mkPost(priv.id, "private-post");
-  const bySuspended = await mkPost(suspended.id, "suspended-post");
+    owner = await mkUser("owner");
+    const author = await mkUser("author");
+    const priv = await mkUser("priv", { isPrivate: true });
+    const suspended = await mkUser("suspended", { suspended: true });
+    stranger = await mkUser("stranger");
 
-  const list = await mkList(owner.id, "Saved", "public");
-  for (const p of [live, draft, byPrivate, bySuspended]) await addToList(list.id, p.id);
+    live = await mkPost(author.id, "live-post");
+    draft = await mkPost(author.id, "draft-post", { status: "draft" });
+    byPrivate = await mkPost(priv.id, "private-post");
+    bySuspended = await mkPost(suspended.id, "suspended-post");
 
-  await t.step("an anonymous reader sees only the publishable post (#41)", async () => {
-    const rows = await listsRepo.listItems(list.id, null, null) as unknown as Rows;
-    assertEquals(includesPost(rows, live.id), true);
+    list = await mkList(owner.id, "Saved", "public");
+    for (const p of [live, draft, byPrivate, bySuspended]) await addToList(list.id, p.id);
+  });
+
+  test("an anonymous reader sees only the publishable post (#41)", async () => {
+    const rows = (await listsRepo.listItems(list.id, null, null)) as unknown as Rows;
+    expect(includesPost(rows, live.id)).toBe(true);
     for (const hidden of [draft, byPrivate, bySuspended]) {
-      assertFalse(includesPost(rows, hidden.id), `leaked ${hidden.slug}`);
+      expect(includesPost(rows, hidden.id), `leaked ${hidden.slug}`).toBe(false);
     }
   });
 
-  await t.step("a signed-in stranger sees the same", async () => {
-    const rows = await listsRepo.listItems(list.id, stranger.id, null) as unknown as Rows;
-    assertEquals(rows.length, 1);
+  test("a signed-in stranger sees the same", async () => {
+    const rows = (await listsRepo.listItems(list.id, stranger.id, null)) as unknown as Rows;
+    expect(rows.length).toBe(1);
   });
 
-  await t.step("the item count does not leak what the list is hiding", async () => {
+  test("the item count does not leak what the list is hiding", async () => {
     const counts = await listsRepo.itemCountsFor([list.id], null);
-    assertEquals(counts.get(list.id), 1);
+    expect(counts.get(list.id)).toBe(1);
   });
 
-  await t.step("the federated collection filters as anonymous", async () => {
+  test("the federated collection filters as anonymous", async () => {
     const refs = await listsRepo.itemRefs(list.id);
-    assertEquals(refs.length, 1);
-    assertEquals(refs[0].id, live.id);
+    expect(refs.length).toBe(1);
+    expect(refs[0].id).toBe(live.id);
   });
 
-  await t.step("the owner's own draft is not exempted", async () => {
+  test("the owner's own draft is not exempted", async () => {
     // The owner may read their draft on its own page; a *public* list is a
     // published surface, so it filters for them too.
-    const rows = await listsRepo.listItems(list.id, owner.id, null) as unknown as Rows;
-    assertFalse(includesPost(rows, draft.id));
+    const rows = (await listsRepo.listItems(list.id, owner.id, null)) as unknown as Rows;
+    expect(includesPost(rows, draft.id)).toBe(false);
   });
 });
 
-Deno.test("the sitemap publishes nothing a crawler cannot read", opts, async (t) => {
-  await resetDb();
+describe("the sitemap publishes nothing a crawler cannot read", () => {
+  let ids: Set<string>;
+  let live: Post;
+  let draft: Post;
+  let scheduled: Post;
+  let byPrivate: Post;
+  let bySuspended: Post;
 
-  const author = await mkUser("author");
-  const priv = await mkUser("priv", { isPrivate: true });
-  const suspended = await mkUser("suspended", { suspended: true });
+  beforeAll(async () => {
+    await resetDb();
 
-  const live = await mkPost(author.id, "live-post");
-  const draft = await mkPost(author.id, "draft-post", { status: "draft" });
-  // Listing a scheduled post would hand a crawler the URL, title and author of
-  // something nobody is meant to read yet — and the page 404s, so the entry is
-  // worse than useless even ignoring the leak.
-  const scheduled = await mkPost(author.id, "scheduled-post", { status: "scheduled" });
-  const byPrivate = await mkPost(priv.id, "private-post");
-  const bySuspended = await mkPost(suspended.id, "suspended-post");
+    const author = await mkUser("author");
+    const priv = await mkUser("priv", { isPrivate: true });
+    const suspended = await mkUser("suspended", { suspended: true });
 
-  const entries = await postsRepo.listSitemapEntries();
-  const ids = new Set(entries.map((e) => e.id));
+    live = await mkPost(author.id, "live-post");
+    draft = await mkPost(author.id, "draft-post", { status: "draft" });
+    // Listing a scheduled post would hand a crawler the URL, title and author of
+    // something nobody is meant to read yet — and the page 404s, so the entry is
+    // worse than useless even ignoring the leak.
+    scheduled = await mkPost(author.id, "scheduled-post", { status: "scheduled" });
+    byPrivate = await mkPost(priv.id, "private-post");
+    bySuspended = await mkPost(suspended.id, "suspended-post");
 
-  await t.step("only the published post is listed", () => {
-    assertEquals(ids.has(live.id), true);
+    const entries = await postsRepo.listSitemapEntries();
+    ids = new Set(entries.map((e) => e.id));
+  });
+
+  test("only the published post is listed", () => {
+    expect(ids.has(live.id)).toBe(true);
     for (const hidden of [draft, scheduled, byPrivate, bySuspended]) {
-      assertFalse(ids.has(hidden.id), `leaked ${hidden.slug}`);
+      expect(ids.has(hidden.id), `leaked ${hidden.slug}`).toBe(false);
     }
   });
 
-  await t.step("the count matches what is listed", async () => {
-    assertEquals(await postsRepo.countSitemapEntries(), 1);
+  test("the count matches what is listed", async () => {
+    expect(await postsRepo.countSitemapEntries()).toBe(1);
   });
 
-  await t.step("private and suspended authors get no profile entry", async () => {
+  test("private and suspended authors get no profile entry", async () => {
     const profiles = (await postsRepo.listSitemapProfiles()).map((p) => p.username);
-    assertEquals(profiles, ["author"]);
+    expect(profiles).toEqual(["author"]);
   });
-});
-
-// Runs last: closes the shared pool so the process exits cleanly.
-Deno.test("teardown", opts, async () => {
-  await closeDb();
 });

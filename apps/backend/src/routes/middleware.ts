@@ -1,9 +1,9 @@
+import { getCookie } from "hono/cookie";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { createMiddleware } from "hono/factory";
-import { getCookie } from "hono/cookie";
 import * as sessionsRepo from "@/db/repositories/sessions.ts";
-import { SESSION_COOKIE } from "@/lib/session.ts";
 import { forbidden, unauthorized } from "@/lib/http.ts";
+import { SESSION_COOKIE } from "@/lib/session.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 // Resolves the session cookie → user on every request (null if none).

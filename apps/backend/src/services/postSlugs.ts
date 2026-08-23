@@ -38,9 +38,12 @@ function shortId(id: string): string {
  * it, so re-saving a post (or an ingest webhook re-delivering it) is a no-op
  * rather than a walk up the suffix range.
  */
-async function allocate(
-  post: { id: string; authorId: string; title: string | null; slug?: string | null },
-): Promise<string | null> {
+async function allocate(post: {
+  id: string;
+  authorId: string;
+  title: string | null;
+  slug?: string | null;
+}): Promise<string | null> {
   const base = post.title ? slugify(post.title) : "";
   if (!base) return null;
 
@@ -65,9 +68,12 @@ async function allocate(
  * Never throws: a permalink that stays at its short-id form is a working URL,
  * and losing an author's publish over a slug would not be.
  */
-export async function syncSlug(
-  post: { id: string; authorId: string | null; title: string | null; slug?: string | null },
-): Promise<string | null> {
+export async function syncSlug(post: {
+  id: string;
+  authorId: string | null;
+  title: string | null;
+  slug?: string | null;
+}): Promise<string | null> {
   if (!post.authorId) return null;
   const authorId = post.authorId;
   try {

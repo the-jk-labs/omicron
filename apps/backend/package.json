@@ -1,0 +1,51 @@
+{
+  "name": "omicron-backend",
+  "version": "0.1.0",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "dev": "deno run --watch -A src/main.ts",
+    "start": "deno run -A src/main.ts",
+    "db:generate": "deno run -A npm:drizzle-kit generate",
+    "db:studio": "deno run -A npm:drizzle-kit studio",
+    "check": "greenly",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "test": "vitest run src/",
+    "test:integration": "deno run -A npm:vitest run tests/integration/ --no-file-parallelism",
+    "backfill:markdown": "deno run -A scripts/backfill_markdown.ts",
+    "backfill:sanitize": "deno run -A scripts/backfill_sanitize.ts",
+    "backfill:math": "deno run -A scripts/backfill_math.ts",
+    "backfill:unescape": "deno run -A scripts/backfill_unescape.ts",
+    "backfill:email-lowercase": "deno run -A scripts/backfill_email_lowercase.ts"
+  },
+  "dependencies": {
+    "@fedify/fedify": "2.3.5",
+    "@fedify/redis": "2.3.5",
+    "@hono/zod-validator": "0.9.0",
+    "@imagemagick/magick-wasm": "0.0.42",
+    "@vscode/markdown-it-katex": "1.1.2",
+    "bcryptjs": "3.0.3",
+    "drizzle-orm": "0.45.2",
+    "hono": "4.13.3",
+    "ioredis": "6.0.0",
+    "katex": "0.18.4",
+    "markdown-it": "15.0.0",
+    "postgres": "3.4.9",
+    "sanitize-html": "2.17.7",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/deno": "2.7.0",
+    "@types/node": "26.2.0",
+    "@types/sanitize-html": "2.16.1",
+    "drizzle-kit": "0.31.10",
+    "greenly": "1.1.6",
+    "oxfmt": "0.64.0",
+    "oxlint": "1.79.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "vitest": "4.1.11"
+  }
+}

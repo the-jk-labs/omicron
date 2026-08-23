@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { assertEquals, assertNotEquals } from "@std/assert";
+import { expect, test } from "vitest";
 import { hashPassword, verifyPassword } from "@/lib/password.ts";
 
 // Auth's core invariant: passwords are stored only as salted bcrypt hashes, and
 // verification accepts the right password and rejects the wrong one.
 
-Deno.test("hashPassword: never returns the plaintext, uses bcrypt", async () => {
+test("hashPassword: never returns the plaintext, uses bcrypt", async () => {
   const hash = await hashPassword("correct horse battery staple");
-  assertNotEquals(hash, "correct horse battery staple");
-  assertEquals(hash.startsWith("$2"), true);
+  expect(hash).not.toBe("correct horse battery staple");
+  expect(hash.startsWith("$2")).toBe(true);
 });
 
-Deno.test("hashPassword: salts (same input -> different hashes)", async () => {
+test("hashPassword: salts (same input -> different hashes)", async () => {
   const a = await hashPassword("same-password");
   const b = await hashPassword("same-password");
-  assertNotEquals(a, b);
+  expect(a).not.toBe(b);
 });
 
-Deno.test("verifyPassword: accepts the right password, rejects the wrong one", async () => {
+test("verifyPassword: accepts the right password, rejects the wrong one", async () => {
   const hash = await hashPassword("s3cret-pass");
-  assertEquals(await verifyPassword("s3cret-pass", hash), true);
-  assertEquals(await verifyPassword("wrong-pass", hash), false);
+  expect(await verifyPassword("s3cret-pass", hash)).toBe(true);
+  expect(await verifyPassword("wrong-pass", hash)).toBe(false);
 });

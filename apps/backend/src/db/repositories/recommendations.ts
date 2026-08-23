@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { aliasedTable, and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { posts, recommendations, remoteActors, users } from "@/db/schema.ts";
 import {
   isPublished,
   localAuthorColumns,
@@ -11,6 +10,7 @@ import {
   remoteActorColumns,
   visibleToViewer,
 } from "@/db/repositories/posts.ts";
+import { posts, recommendations, remoteActors, users } from "@/db/schema.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
 
 // Recommend-edge DB access ("repost", federates as ActivityPub Announce). One
@@ -28,25 +28,20 @@ export async function addRemote(postId: string, remoteActorId: string) {
 }
 
 export async function remove(postId: string, userId: string) {
-  await db.delete(recommendations).where(
-    and(eq(recommendations.postId, postId), eq(recommendations.userId, userId)),
-  );
+  await db.delete(recommendations).where(and(eq(recommendations.postId, postId), eq(recommendations.userId, userId)));
 }
 
 export async function removeRemote(postId: string, remoteActorId: string) {
-  await db.delete(recommendations).where(
-    and(eq(recommendations.postId, postId), eq(recommendations.remoteActorId, remoteActorId)),
-  );
+  await db
+    .delete(recommendations)
+    .where(and(eq(recommendations.postId, postId), eq(recommendations.remoteActorId, remoteActorId)));
 }
 
 export type RecommendStats = { count: number; recommended: boolean };
 
 // Recommend count + whether `viewerId` recommended it, for many posts in one
 // query — mirrors likesRepo.statsFor.
-export async function statsFor(
-  postIds: string[],
-  viewerId: string | null,
-): Promise<Map<string, RecommendStats>> {
+export async function statsFor(postIds: string[], viewerId: string | null): Promise<Map<string, RecommendStats>> {
   const map = new Map<string, RecommendStats>();
   if (postIds.length === 0) return map;
 
@@ -54,16 +49,14 @@ export async function statsFor(
     .select({
       postId: recommendations.postId,
       count: sql<number>`count(*)::int`,
-      recommended: viewerId
-        ? sql<boolean>`bool_or(${recommendations.userId} = ${viewerId})`
-        : sql<boolean>`false`,
+      recommended: viewerId ? sql<boolean>`bool_or(${recommendations.userId} = ${viewerId})` : sql<boolean>`false`,
     })
     .from(recommendations)
     .where(inArray(recommendations.postId, postIds))
     .groupBy(recommendations.postId);
 
   for (const r of rows as { postId: string; count: number; recommended: boolean }[]) {
-    map.set(r.postId, { count: r.count, recommended: !!r.recommended });
+    map.set(r.postId, { count: r.count, recommended: r.recommended });
   }
   return map;
 }
@@ -101,12 +94,7 @@ export type RecommendedPostRow = Awaited<ReturnType<typeof listByUser>>[number];
 // Posts a local user has recommended, newest-recommended first — the profile's
 // "Recommendations" tab. Same visibility rules as any other public post
 // listing (published, not suspended, not blocked/muted, private-author gated).
-export function listByUser(
-  userId: string,
-  viewerId: string | null,
-  cursor: Cursor | null,
-  limit = DEFAULT_PAGE_SIZE,
-) {
+export function listByUser(userId: string, viewerId: string | null, cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
   return selectRecommended()
     .where(
       and(
@@ -171,15 +159,9 @@ export function listFeedFor(userId: string, cursor: Cursor | null, limit = DEFAU
       localAuthor: localAuthorColumns,
       remoteActor: remoteActorColumns,
       recommenderId: sql<string>`coalesce(${recommenderUser.id}, ${recommenderActor.id})`,
-      recommenderUsername: sql<
-        string
-      >`coalesce(${recommenderUser.username}, ${recommenderActor.handle})`,
-      recommenderDisplayName: sql<
-        string
-      >`coalesce(${recommenderUser.displayName}, ${recommenderActor.displayName})`,
-      recommenderAvatarUrl: sql<
-        string | null
-      >`coalesce(${recommenderUser.avatarUrl}, ${recommenderActor.avatarUrl})`,
+      recommenderUsername: sql<string>`coalesce(${recommenderUser.username}, ${recommenderActor.handle})`,
+      recommenderDisplayName: sql<string>`coalesce(${recommenderUser.displayName}, ${recommenderActor.displayName})`,
+      recommenderAvatarUrl: sql<string | null>`coalesce(${recommenderUser.avatarUrl}, ${recommenderActor.avatarUrl})`,
       recommenderRemote: sql<boolean>`(${recommendations.remoteActorId} is not null)`,
       recommendationId: recommendations.id,
       recommendedAt: recommendations.createdAt,

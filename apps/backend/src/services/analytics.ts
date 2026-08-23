@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-import * as postViewsRepo from "@/db/repositories/postViews.ts";
-import * as postsRepo from "@/db/repositories/posts.ts";
-import * as likesRepo from "@/db/repositories/likes.ts";
 import * as commentsRepo from "@/db/repositories/comments.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
+import * as likesRepo from "@/db/repositories/likes.ts";
+import * as postsRepo from "@/db/repositories/posts.ts";
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import * as postViewsRepo from "@/db/repositories/postViews.ts";
 import { anonVisitorKey, isBot, readerOptedOut, today, userVisitorKey } from "@/lib/analytics.ts";
 import { onInstanceViewsEnabled } from "@/services/settings.ts";
 
@@ -33,11 +33,7 @@ export async function recordPostView(
   if (isBot(userAgent)) return;
   if (!(await onInstanceViewsEnabled())) return;
 
-  const key = userId
-    ? await userVisitorKey(userId)
-    : anonCookie
-    ? await anonVisitorKey(anonCookie)
-    : null;
+  const key = userId ? await userVisitorKey(userId) : anonCookie ? await anonVisitorKey(anonCookie) : null;
   if (!key) return;
 
   // One view per reader per post, ever: a repeat read — same day or years
@@ -73,10 +69,7 @@ export type DashboardSummary = {
 // Builds the dashboard for one author over their own posts. Engagement (likes,
 // comments, followers) is always included — those are public activities sent to
 // the author. View counts are included only when the instance enables them.
-export async function dashboardFor(
-  authorId: string,
-  sinceDays = 30,
-): Promise<DashboardSummary> {
+export async function dashboardFor(authorId: string, sinceDays = 30): Promise<DashboardSummary> {
   const viewsEnabled = await onInstanceViewsEnabled();
   const posts = await postsRepo.publishedBriefByAuthor(authorId);
   const ids = posts.map((p) => p.id);

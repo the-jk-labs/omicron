@@ -129,7 +129,7 @@ export async function search(query: string, page = 1): Promise<StockPhoto[]> {
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   let res: Response;
   try {
-    res = await fetch(`${API}?${params}`, {
+    res = await fetch(`${API}?${params.toString()}`, {
       headers: { accept: "application/json", "user-agent": USER_AGENT },
       signal: controller.signal,
     });
@@ -146,6 +146,6 @@ export async function search(query: string, page = 1): Promise<StockPhoto[]> {
   }
   if (!res.ok) throw badRequest("Photo search failed. Try again in a moment.");
 
-  const body = await res.json().catch(() => null) as { results?: RawImage[] } | null;
+  const body = (await res.json().catch(() => null)) as { results?: RawImage[] } | null;
   return (body?.results ?? []).map(toPhoto).filter((p): p is StockPhoto => p !== null);
 }

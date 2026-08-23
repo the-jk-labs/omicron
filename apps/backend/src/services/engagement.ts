@@ -1,10 +1,10 @@
+import * as commentsRepo from "@/db/repositories/comments.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as likesRepo from "@/db/repositories/likes.ts";
-import * as commentsRepo from "@/db/repositories/comments.ts";
-import * as tagsRepo from "@/db/repositories/tags.ts";
-import * as recommendationsRepo from "@/db/repositories/recommendations.ts";
-import { postWithAuthor, type RecommendedBy } from "@/routes/serializers.ts";
 import type { PostWithAuthor } from "@/db/repositories/posts.ts";
+import * as recommendationsRepo from "@/db/repositories/recommendations.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
+import { postWithAuthor, type RecommendedBy } from "@/routes/serializers.ts";
 
 // Attaches like + comment + recommend engagement and tags to serialized posts.
 // Counts (and the viewer's own like/recommend state) and tags are fetched in
@@ -36,7 +36,7 @@ export async function enrichPosts(rows: EnrichableRow[], viewerId: string | null
       },
       tagsByPost.get(row.post.id) ?? [],
       row.recommendedBy ?? null,
-    )
+    ),
   );
 }
 

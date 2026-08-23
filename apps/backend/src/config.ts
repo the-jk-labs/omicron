@@ -57,7 +57,7 @@ function resolveSessionSecret(): string {
     console.log(`✔ No SESSION_SECRET set — generated and persisted one at ${STATE_SECRET_PATH}.`);
   } catch (err) {
     console.warn(
-      `! Could not persist a generated SESSION_SECRET to ${STATE_SECRET_PATH}: ${err}. ` +
+      `! Could not persist a generated SESSION_SECRET to ${STATE_SECRET_PATH}: ${JSON.stringify(err)}. ` +
         `Using an ephemeral secret — sessions will not survive a restart.`,
     );
   }
@@ -84,8 +84,7 @@ export function sessionSecretManaged(): boolean {
 export function rotateSessionSecret(): void {
   if (!sessionSecretManaged()) {
     throw new Error(
-      "The session secret is pinned via the SESSION_SECRET env var — " +
-        "rotate it there, not from the web UI.",
+      "The session secret is pinned via the SESSION_SECRET env var — rotate it there, not from the web UI.",
     );
   }
   Deno.mkdirSync(STATE_DIR, { recursive: true });
@@ -100,8 +99,7 @@ function resolveDatabaseUrl(): string | undefined {
   const explicit = Deno.env.get("DATABASE_URL")?.trim();
   if (explicit) return explicit;
 
-  const password = readFileTrimmed(Deno.env.get("POSTGRES_PASSWORD_FILE")) ??
-    Deno.env.get("POSTGRES_PASSWORD")?.trim();
+  const password = readFileTrimmed(Deno.env.get("POSTGRES_PASSWORD_FILE")) ?? Deno.env.get("POSTGRES_PASSWORD")?.trim();
   if (!password) return undefined;
 
   const user = Deno.env.get("POSTGRES_USER")?.trim() || "omicron";
@@ -241,6 +239,4 @@ function load() {
 export const config = load();
 
 // The instance origin (scheme + domain). https unless a localhost dev domain.
-export const origin = `${
-  config.APP_DOMAIN.startsWith("localhost") ? "http" : "https"
-}://${config.APP_DOMAIN}`;
+export const origin = `${config.APP_DOMAIN.startsWith("localhost") ? "http" : "https"}://${config.APP_DOMAIN}`;

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
 import { notFound } from "@/lib/http.ts";
-import * as ogCardService from "@/services/ogCard.ts";
-import { getOrigin } from "@/services/instanceSetup.ts";
 import type { AppEnv } from "@/routes/types.ts";
+import { getOrigin } from "@/services/instanceSetup.ts";
+import * as ogCardService from "@/services/ogCard.ts";
 
 // Generated share images — what a link-preview scraper fetches as `og:image`
 // for a post that carries no picture of its own. See lib/ogCard.ts for what is

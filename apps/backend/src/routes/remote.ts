@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
-import { federationRunning } from "@/services/federationState.ts";
-import * as remoteProfilesService from "@/services/remoteProfiles.ts";
-import * as relationsService from "@/services/relations.ts";
-import * as recommendationsService from "@/services/recommendations.ts";
-import { enrichPosts } from "@/services/engagement.ts";
-import { decodeCursor } from "@/lib/pagination.ts";
-import { remoteProfile } from "@/routes/serializers.ts";
 import { notFound } from "@/lib/http.ts";
+import { decodeCursor } from "@/lib/pagination.ts";
 import { requireUser } from "@/routes/middleware.ts";
+import { remoteProfile } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
+import { enrichPosts } from "@/services/engagement.ts";
+import { federationRunning } from "@/services/federationState.ts";
+import * as recommendationsService from "@/services/recommendations.ts";
+import * as relationsService from "@/services/relations.ts";
+import * as remoteProfilesService from "@/services/remoteProfiles.ts";
 
 // Read-only browsing of remote fediverse actors and their posts. Mounted under
 // /api/remote. Returns 404 entirely when federation is disabled so the
@@ -25,8 +25,10 @@ remoteRoutes.use("*", async (_c, next) => {
 remoteRoutes.get("/users/:handle", async (c) => {
   const viewer = c.get("user");
   const handle = c.req.param("handle");
-  const { actor, isFollowing, isMuted, isBlocked, tags } = await remoteProfilesService
-    .getProfileView(handle, viewer?.id ?? null);
+  const { actor, isFollowing, isMuted, isBlocked, tags } = await remoteProfilesService.getProfileView(
+    handle,
+    viewer?.id ?? null,
+  );
   return c.json(remoteProfile(actor, isFollowing, { isMuted, isBlocked }, tags));
 });
 
@@ -74,11 +76,7 @@ remoteRoutes.get("/users/:handle/posts", async (c) => {
   const viewer = c.get("user");
   const handle = c.req.param("handle");
   const cursor = decodeCursor(c.req.query("cursor"));
-  const { items, nextCursor } = await remoteProfilesService.getPosts(
-    handle,
-    cursor,
-    viewer?.id ?? null,
-  );
+  const { items, nextCursor } = await remoteProfilesService.getPosts(handle, cursor, viewer?.id ?? null);
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
 });
 
@@ -89,10 +87,6 @@ remoteRoutes.get("/users/:handle/recommendations", async (c) => {
   const handle = c.req.param("handle");
   const cursor = decodeCursor(c.req.query("cursor"));
   const actor = await remoteProfilesService.getProfile(handle);
-  const { items, nextCursor } = await recommendationsService.listByRemoteActor(
-    actor.id,
-    viewer?.id ?? null,
-    cursor,
-  );
+  const { items, nextCursor } = await recommendationsService.listByRemoteActor(actor.id, viewer?.id ?? null, cursor);
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
 });

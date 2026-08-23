@@ -1,9 +1,9 @@
+import { config } from "@/config.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { type EmailInput, getEmailMode, setEmailConfig } from "@/services/emailSettings.ts";
 import { federationRunning } from "@/services/federationState.ts";
-import { config } from "@/config.ts";
 
 // First-run setup state + the wizard-managed instance settings, layered over the
 // instance_settings key/value store. Precedence for every effective value is
@@ -72,7 +72,9 @@ export async function getOrigin(): Promise<string> {
 // TLS ask endpoint compares apples to apples (the SNI Caddy sends is a bare
 // host, but the stored/env domain may carry a scheme, path, or port).
 function bareHost(value: string): string {
-  return value.trim().toLowerCase()
+  return value
+    .trim()
+    .toLowerCase()
     .replace(/^https?:\/\//, "")
     .split("/")[0]
     .split(":")[0];
@@ -186,11 +188,7 @@ export async function publicInfo(): Promise<{
 // account is created by the caller (mirrors normal registration); this only
 // records the chosen identity/email settings. Domain/email are optional — when
 // omitted the env/default value keeps applying.
-export async function completeSetup(input: {
-  appName: string;
-  appDomain?: string;
-  email?: EmailInput;
-}): Promise<void> {
+export async function completeSetup(input: { appName: string; appDomain?: string; email?: EmailInput }): Promise<void> {
   const name = input.appName.trim();
   if (name) await settingsRepo.set(SETUP_KEYS.appName, name);
   const domain = input.appDomain?.trim();

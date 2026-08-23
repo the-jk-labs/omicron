@@ -1,50 +1,50 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { assertEquals } from "@std/assert";
+import { expect, test } from "vitest";
 import { MAX_TAG_LENGTH, normalizeTag, normalizeTags } from "@/lib/tags.ts";
 
 // Tag slugs drive uniqueness, URLs and matching, and are federated as Hashtags.
 // Inconsistent normalization means duplicate tags and broken tag pages.
 
-Deno.test("normalizeTag: strips leading #, lowercases", () => {
-  assertEquals(normalizeTag("#Hello"), "hello");
-  assertEquals(normalizeTag("###Deno"), "deno");
+test("normalizeTag: strips leading #, lowercases", () => {
+  expect(normalizeTag("#Hello")).toBe("hello");
+  expect(normalizeTag("###Deno")).toBe("deno");
 });
 
-Deno.test("normalizeTag: drops whitespace and punctuation", () => {
-  assertEquals(normalizeTag("Hello, World!"), "helloworld");
-  assertEquals(normalizeTag("  "), "");
-  assertEquals(normalizeTag("🎉party🎉"), "party");
+test("normalizeTag: drops whitespace and punctuation", () => {
+  expect(normalizeTag("Hello, World!")).toBe("helloworld");
+  expect(normalizeTag("  ")).toBe("");
+  expect(normalizeTag("🎉party🎉")).toBe("party");
 });
 
-Deno.test("normalizeTag: keeps unicode letters and digits and underscore", () => {
-  assertEquals(normalizeTag("café"), "café");
-  assertEquals(normalizeTag("web_3"), "web_3");
+test("normalizeTag: keeps unicode letters and digits and underscore", () => {
+  expect(normalizeTag("café")).toBe("café");
+  expect(normalizeTag("web_3")).toBe("web_3");
 });
 
-Deno.test("normalizeTag: spells out a symbol that is part of the name", () => {
+test("normalizeTag: spells out a symbol that is part of the name", () => {
   // Without this these collapse onto `c`/`f` — a different, unrelated tag.
-  assertEquals(normalizeTag("c++"), "cpp");
-  assertEquals(normalizeTag("#C++"), "cpp");
-  assertEquals(normalizeTag("notepad++"), "notepadpp");
-  assertEquals(normalizeTag("c#"), "csharp");
-  assertEquals(normalizeTag("F#"), "fsharp");
+  expect(normalizeTag("c++")).toBe("cpp");
+  expect(normalizeTag("#C++")).toBe("cpp");
+  expect(normalizeTag("notepad++")).toBe("notepadpp");
+  expect(normalizeTag("c#")).toBe("csharp");
+  expect(normalizeTag("F#")).toBe("fsharp");
 });
 
-Deno.test("normalizeTag: a detached symbol still normalizes away", () => {
-  assertEquals(normalizeTag("+"), "");
-  assertEquals(normalizeTag("+rust"), "rust");
-  assertEquals(normalizeTag("go + rust"), "gorust");
+test("normalizeTag: a detached symbol still normalizes away", () => {
+  expect(normalizeTag("+")).toBe("");
+  expect(normalizeTag("+rust")).toBe("rust");
+  expect(normalizeTag("go + rust")).toBe("gorust");
 });
 
-Deno.test("normalizeTag: caps length", () => {
-  assertEquals(normalizeTag("a".repeat(80)).length, MAX_TAG_LENGTH);
+test("normalizeTag: caps length", () => {
+  expect(normalizeTag("a".repeat(80)).length).toBe(MAX_TAG_LENGTH);
 });
 
-Deno.test("normalizeTags: dedupes case-insensitively, keeps first-seen order", () => {
-  assertEquals(normalizeTags(["#JS", "js", "JS ", "Go"]), ["js", "go"]);
+test("normalizeTags: dedupes case-insensitively, keeps first-seen order", () => {
+  expect(normalizeTags(["#JS", "js", "JS ", "Go"])).toEqual(["js", "go"]);
 });
 
-Deno.test("normalizeTags: drops entries that normalize to empty", () => {
-  assertEquals(normalizeTags(["  ", "#", "!!!", "ok"]), ["ok"]);
-  assertEquals(normalizeTags([]), []);
+test("normalizeTags: drops entries that normalize to empty", () => {
+  expect(normalizeTags(["  ", "#", "!!!", "ok"])).toEqual(["ok"]);
+  expect(normalizeTags([])).toEqual([]);
 });

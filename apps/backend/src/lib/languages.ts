@@ -22,10 +22,7 @@ export type LanguageFilter = { mode: "show" | "hide"; langs: string[] };
 // Builds a LanguageFilter from raw query values, or null when the filter is
 // off (no valid mode, or no valid languages). `langsCsv` is a comma-separated
 // list of language codes.
-export function parseLanguageFilter(
-  mode: string | undefined,
-  langsCsv: string | undefined,
-): LanguageFilter | null {
+export function parseLanguageFilter(mode: string | undefined, langsCsv: string | undefined): LanguageFilter | null {
   if (mode !== "show" && mode !== "hide") return null;
   const langs = [
     ...new Set(

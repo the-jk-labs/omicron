@@ -1,77 +1,65 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { assertEquals } from "@std/assert";
+import { expect, test } from "vitest";
 import { hostMatchesDomain, normalizeDomain, sameOrigin } from "@/lib/domain.ts";
 
 // The defederation blocklist is a moderation/safety control. If normalization
 // accepts junk or matching misses a subdomain, an admin's block silently fails
 // to take effect — so these pin the parsing and the subdomain-match semantics.
 
-Deno.test("normalizeDomain: accepts and lowercases a bare host", () => {
-  assertEquals(normalizeDomain("Example.COM"), "example.com");
-  assertEquals(normalizeDomain("  fosstodon.org  "), "fosstodon.org");
+test("normalizeDomain: accepts and lowercases a bare host", () => {
+  expect(normalizeDomain("Example.COM")).toBe("example.com");
+  expect(normalizeDomain("  fosstodon.org  ")).toBe("fosstodon.org");
 });
 
-Deno.test("normalizeDomain: extracts host from a full URL", () => {
-  assertEquals(normalizeDomain("https://Mastodon.Example.com/@user"), "mastodon.example.com");
-  assertEquals(normalizeDomain("http://host.social:443/path"), "host.social");
+test("normalizeDomain: extracts host from a full URL", () => {
+  expect(normalizeDomain("https://Mastodon.Example.com/@user")).toBe("mastodon.example.com");
+  expect(normalizeDomain("http://host.social:443/path")).toBe("host.social");
 });
 
-Deno.test("normalizeDomain: extracts host from a handle", () => {
-  assertEquals(normalizeDomain("@user@fosstodon.org"), "fosstodon.org");
-  assertEquals(normalizeDomain("user@host.social"), "host.social");
+test("normalizeDomain: extracts host from a handle", () => {
+  expect(normalizeDomain("@user@fosstodon.org")).toBe("fosstodon.org");
+  expect(normalizeDomain("user@host.social")).toBe("host.social");
 });
 
-Deno.test("normalizeDomain: rejects non-hostnames", () => {
+test("normalizeDomain: rejects non-hostnames", () => {
   for (const bad of ["", "   ", "not a domain", "localhost", "192.168.0.1", "http://"]) {
-    assertEquals(normalizeDomain(bad), null, `${JSON.stringify(bad)} should be null`);
+    expect(normalizeDomain(bad), `${JSON.stringify(bad)} should be null`).toBe(null);
   }
 });
 
-Deno.test("hostMatchesDomain: exact host matches", () => {
-  assertEquals(hostMatchesDomain("example.com", "example.com"), true);
-  assertEquals(hostMatchesDomain("Example.com", "example.com"), true);
+test("hostMatchesDomain: exact host matches", () => {
+  expect(hostMatchesDomain("example.com", "example.com")).toBe(true);
+  expect(hostMatchesDomain("Example.com", "example.com")).toBe(true);
 });
 
-Deno.test("hostMatchesDomain: subdomains match (block cascades down)", () => {
-  assertEquals(hostMatchesDomain("mastodon.example.com", "example.com"), true);
-  assertEquals(hostMatchesDomain("a.b.example.com", "example.com"), true);
+test("hostMatchesDomain: subdomains match (block cascades down)", () => {
+  expect(hostMatchesDomain("mastodon.example.com", "example.com")).toBe(true);
+  expect(hostMatchesDomain("a.b.example.com", "example.com")).toBe(true);
 });
 
-Deno.test("hostMatchesDomain: siblings and look-alikes do NOT match", () => {
-  assertEquals(hostMatchesDomain("notexample.com", "example.com"), false);
-  assertEquals(hostMatchesDomain("example.com.evil.com", "example.com"), false);
-  assertEquals(hostMatchesDomain("example.org", "example.com"), false);
+test("hostMatchesDomain: siblings and look-alikes do NOT match", () => {
+  expect(hostMatchesDomain("notexample.com", "example.com")).toBe(false);
+  expect(hostMatchesDomain("example.com.evil.com", "example.com")).toBe(false);
+  expect(hostMatchesDomain("example.org", "example.com")).toBe(false);
 });
 
 // sameOrigin gates federated ingest: a post may only be attributed to an actor
 // on its own origin. A miss here reopens the cross-origin impersonation hole, so
 // pin the accept/reject cases the ingest paths depend on.
-Deno.test("sameOrigin: identical origin matches", () => {
-  assertEquals(
-    sameOrigin(new URL("https://a.example/posts/1"), new URL("https://a.example/users/alice")),
-    true,
-  );
+test("sameOrigin: identical origin matches", () => {
+  expect(sameOrigin(new URL("https://a.example/posts/1"), new URL("https://a.example/users/alice"))).toBe(true);
 });
 
-Deno.test("sameOrigin: different host is refused (the impersonation case)", () => {
-  assertEquals(
-    sameOrigin(new URL("https://evil.example/posts/1"), new URL("https://victim.example/users/x")),
-    false,
-  );
+test("sameOrigin: different host is refused (the impersonation case)", () => {
+  expect(sameOrigin(new URL("https://evil.example/posts/1"), new URL("https://victim.example/users/x"))).toBe(false);
 });
 
-Deno.test("sameOrigin: scheme or port differences are a different origin", () => {
-  assertEquals(
-    sameOrigin(new URL("http://a.example/1"), new URL("https://a.example/2")),
-    false,
-  );
-  assertEquals(
-    sameOrigin(new URL("https://a.example:8443/1"), new URL("https://a.example/2")),
-    false,
-  );
+test("sameOrigin: scheme or port differences are a different origin", () => {
+  expect(sameOrigin(new URL("http://a.example/1"), new URL("https://a.example/2"))).toBe(false);
+  expect(sameOrigin(new URL("https://a.example:8443/1"), new URL("https://a.example/2"))).toBe(false);
 });
 
-Deno.test("sameOrigin: a null id never matches", () => {
-  assertEquals(sameOrigin(null, new URL("https://a.example/2")), false);
-  assertEquals(sameOrigin(new URL("https://a.example/1"), undefined), false);
+test("sameOrigin: a null id never matches", () => {
+  expect(sameOrigin(null, new URL("https://a.example/2"))).toBe(false);
+  expect(sameOrigin(new URL("https://a.example/1"), undefined)).toBe(false);
 });

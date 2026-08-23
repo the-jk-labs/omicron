@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
-import * as searchService from "@/services/search.ts";
-import { enrichPosts } from "@/services/engagement.ts";
 import type { AppEnv } from "@/routes/types.ts";
+import { enrichPosts } from "@/services/engagement.ts";
+import * as searchService from "@/services/search.ts";
 
 export const searchRoutes = new Hono<AppEnv>();
 
@@ -24,9 +24,7 @@ searchRoutes.get("/", async (c) => {
   const wantTags = !scope || scope === "tags";
 
   const [postRows, people, tags] = await Promise.all([
-    wantPosts
-      ? searchService.searchPosts(viewer?.id ?? null, query, { tag, author })
-      : Promise.resolve([]),
+    wantPosts ? searchService.searchPosts(viewer?.id ?? null, query, { tag, author }) : Promise.resolve([]),
     wantPeople ? searchService.searchPeople(query) : Promise.resolve([]),
     wantTags ? searchService.searchTags(query) : Promise.resolve([]),
   ]);

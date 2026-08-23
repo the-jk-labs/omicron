@@ -25,10 +25,7 @@ export async function recordView(postId: string, day: string) {
 // Atomically claims a (post, visitorKey). Returns true if this is the
 // reader's first-ever sighting on this post (→ a unique view), false if
 // already counted. visitorKey is a one-way hash — never a raw id or cookie.
-export async function markSeen(
-  postId: string,
-  visitorKey: string,
-): Promise<boolean> {
+export async function markSeen(postId: string, visitorKey: string): Promise<boolean> {
   const inserted = await db
     .insert(postViewSeen)
     .values({ postId, visitorKey })

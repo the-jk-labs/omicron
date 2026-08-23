@@ -58,9 +58,7 @@ async function loadIntoCaddy(caddyfile: string): Promise<void> {
   });
   if (!res.ok) {
     const detail = (await res.text().catch(() => "")).trim();
-    throw new Error(
-      `Caddy rejected the config${detail ? `: ${detail}` : ` (HTTP ${res.status})`}.`,
-    );
+    throw new Error(`Caddy rejected the config${detail ? `: ${detail}` : ` (HTTP ${res.status})`}.`);
   }
 }
 
@@ -85,7 +83,7 @@ export async function setAnubisProtectionEnabled(enabled: boolean): Promise<void
 // design: serving traffic is never blocked on this.
 export function reconcileAnubisInBackground(): void {
   if (!anubisManaged()) return;
-  (async () => {
+  void (async () => {
     const enabled = await anubisProtectionEnabled();
     for (let attempt = 0; attempt < 60; attempt++) {
       try {

@@ -58,7 +58,7 @@ const LINK_LABELS: Record<LinkPlatform, string> = {
 };
 
 export function linkLabel(platform: string, fallback = ""): string {
-  return isLinkPlatform(platform) ? LINK_LABELS[platform] : (fallback || "Link");
+  return isLinkPlatform(platform) ? LINK_LABELS[platform] : fallback || "Link";
 }
 
 // Compact, scheme-free anchor text for a link (e.g. "github.com/foo"); the full

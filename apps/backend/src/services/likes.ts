@@ -2,8 +2,8 @@
 import * as likesRepo from "@/db/repositories/likes.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
-import * as notifications from "@/services/notifications.ts";
 import { forbidden, notFound } from "@/lib/http.ts";
+import * as notifications from "@/services/notifications.ts";
 
 // Business logic for likes. Returns the fresh stats so the client can update
 // the count + toggle state without a second request.
@@ -20,8 +20,8 @@ export async function like(userId: string, postId: string) {
   const blocked = post.post.authorId
     ? await relationsRepo.localBlockExists(userId, post.post.authorId)
     : post.post.remoteActorId
-    ? await relationsRepo.hasRemote("block", userId, post.post.remoteActorId)
-    : false;
+      ? await relationsRepo.hasRemote("block", userId, post.post.remoteActorId)
+      : false;
   if (blocked) throw forbidden("You cannot like this post.");
   await likesRepo.add(postId, userId);
   // Notify the post's author (local posts only; remote posts have no local

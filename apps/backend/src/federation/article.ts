@@ -2,10 +2,10 @@
 import type { Context } from "@fedify/fedify";
 import { Article, Hashtag, Image, LanguageString, PUBLIC_COLLECTION } from "@fedify/fedify/vocab";
 import { origin } from "@/config.ts";
-import type { Post } from "@/db/schema.ts";
 import type { TagSummary } from "@/db/repositories/tags.ts";
-import { normalizeLanguage } from "@/lib/languages.ts";
+import type { Post } from "@/db/schema.ts";
 import { absoluteBanner, bannerOf } from "@/lib/cover.ts";
+import { normalizeLanguage } from "@/lib/languages.ts";
 
 // The post's banner as an ActivityPub Image.
 //
@@ -54,9 +54,7 @@ export function buildArticle(
     to: PUBLIC_COLLECTION,
     cc: ctx.getFollowersUri(identifier),
     url: new URL(`/posts/${post.id}`, ctx.getActorUri(identifier)),
-    tags: tags.map((t) =>
-      new Hashtag({ name: `#${t.name}`, href: new URL(`/tags/${t.slug}`, origin) })
-    ),
+    tags: tags.map((t) => new Hashtag({ name: `#${t.name}`, href: new URL(`/tags/${t.slug}`, origin) })),
   });
 }
 

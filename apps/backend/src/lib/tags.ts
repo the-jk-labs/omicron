@@ -18,17 +18,19 @@ export const MAX_TAGS_PER_POST = 5;
 export const MAX_PROFILE_TAGS = 10;
 
 export function normalizeTag(raw: string): string {
-  return raw
-    .normalize("NFKC")
-    .toLowerCase()
-    .replace(/^#+/, "")
-    // `c++` → `cpp`, `notepad++` → `notepadpp`, `c#` → `csharp`.
-    .replace(/(?<=[\p{L}\p{M}\p{N}_])\++/gu, (run) => "p".repeat(run.length))
-    .replace(/(?<=[\p{L}\p{M}\p{N}_])#/gu, "sharp")
-    // Keep unicode letters/marks/numbers and underscore; drop everything else
-    // (spaces, punctuation, emoji). `u` flag enables the \p{...} classes.
-    .replace(/[^\p{L}\p{M}\p{N}_]+/gu, "")
-    .slice(0, MAX_TAG_LENGTH);
+  return (
+    raw
+      .normalize("NFKC")
+      .toLowerCase()
+      .replace(/^#+/, "")
+      // `c++` → `cpp`, `notepad++` → `notepadpp`, `c#` → `csharp`.
+      .replace(/(?<=[\p{L}\p{M}\p{N}_])\++/gu, (run) => "p".repeat(run.length))
+      .replace(/(?<=[\p{L}\p{M}\p{N}_])#/gu, "sharp")
+      // Keep unicode letters/marks/numbers and underscore; drop everything else
+      // (spaces, punctuation, emoji). `u` flag enables the \p{...} classes.
+      .replace(/[^\p{L}\p{M}\p{N}_]+/gu, "")
+      .slice(0, MAX_TAG_LENGTH)
+  );
 }
 
 // Normalizes a list of raw tag inputs into unique, non-empty slugs, preserving

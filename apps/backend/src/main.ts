@@ -1,13 +1,13 @@
+import { buildApp } from "@/app.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { config } from "@/config.ts";
 import { runMigrations } from "@/db/migrate.ts";
-import { backfillSlugs } from "@/services/postSlugs.ts";
-import { buildApp } from "@/app.ts";
-import { getFederationEnabled } from "@/services/instanceSetup.ts";
-import { seedFederationRunning } from "@/services/federationState.ts";
 import { startJobWorker } from "@/queue/queue.ts";
-import { startScheduleSweeper } from "@/services/scheduledPosts.ts";
 import { reconcileAnubisInBackground } from "@/services/anubisProtection.ts";
+import { seedFederationRunning } from "@/services/federationState.ts";
+import { getFederationEnabled } from "@/services/instanceSetup.ts";
+import { backfillSlugs } from "@/services/postSlugs.ts";
+import { startScheduleSweeper } from "@/services/scheduledPosts.ts";
 import { APP_VERSION } from "@/version.ts";
 
 // Entry point: migrate → build app → serve. Stateless; all data in Postgres.
@@ -35,10 +35,13 @@ async function main() {
   // `onListen` overrides Deno's own "Listening on http://0.0.0.0:8000/" banner,
   // which otherwise prints alongside ours and announces the same thing twice —
   // once with a localhost URL that is meaningless inside a container.
-  Deno.serve({
-    port: config.PORT,
-    onListen: () => console.log(`✔ Omicron backend v${APP_VERSION} listening on :${config.PORT}`),
-  }, app.fetch);
+  Deno.serve(
+    {
+      port: config.PORT,
+      onListen: () => console.log(`✔ Omicron backend v${APP_VERSION} listening on :${config.PORT}`),
+    },
+    app.fetch,
+  );
 
   // Re-assert the persisted AI-scraper-shield state onto Caddy once it's up
   // (Caddy starts after us and boots protection-off). Non-blocking, fail-open.

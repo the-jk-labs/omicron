@@ -1,23 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Context } from "@fedify/fedify";
 import type { Actor } from "@fedify/fedify/vocab";
-import {
-  Create,
-  Delete,
-  isActor,
-  PUBLIC_COLLECTION,
-  Tombstone,
-  Update,
-} from "@fedify/fedify/vocab";
-import { getFederation } from "@/federation/mod.ts";
-import { buildArticle } from "@/federation/article.ts";
-import { buildPerson } from "@/federation/actor.ts";
+import { Create, Delete, isActor, PUBLIC_COLLECTION, Tombstone, Update } from "@fedify/fedify/vocab";
 import { origin } from "@/config.ts";
-import * as usersRepo from "@/db/repositories/users.ts";
+import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
-import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
+import * as usersRepo from "@/db/repositories/users.ts";
+import { buildPerson } from "@/federation/actor.ts";
+import { buildArticle } from "@/federation/article.ts";
+import { getFederation } from "@/federation/mod.ts";
 
 // Resolves a local author's remote followers into deliverable actor objects,
 // skipping any on a defederated domain (exact host or subdomain). Shared by
@@ -42,10 +35,7 @@ async function remoteRecipients(ctx: Context<unknown>, authorId: string): Promis
 // to all remote followers' inboxes. Fedify handles HTTP signatures, batching and
 // delivery retries. The Article id is stable, so an Update carries the same
 // object id the remote instance already cached.
-export async function deliverPost(
-  postId: string,
-  action: "create" | "update" = "create",
-): Promise<void> {
+export async function deliverPost(postId: string, action: "create" | "update" = "create"): Promise<void> {
   const row = await postsRepo.findById(postId);
   if (!row || row.post.remote || !row.post.authorId) return;
 
@@ -65,20 +55,21 @@ export async function deliverPost(
   // timelines. (Delivery already targets only approved remote followers.)
   const audience = author.isPrivate ? ctx.getFollowersUri(author.username) : PUBLIC_COLLECTION;
 
-  const activity = action === "update"
-    // Update needs a fresh, unique activity id each time; the object id is stable.
-    ? new Update({
-      id: new URL(`/posts/${row.post.id}/updates/${crypto.randomUUID()}`, actorUri),
-      actor: actorUri,
-      object: article,
-      tos: [audience],
-    })
-    : new Create({
-      id: new URL(`/posts/${row.post.id}/activity`, actorUri),
-      actor: actorUri,
-      object: article,
-      tos: [audience],
-    });
+  const activity =
+    action === "update"
+      ? // Update needs a fresh, unique activity id each time; the object id is stable.
+        new Update({
+          id: new URL(`/posts/${row.post.id}/updates/${crypto.randomUUID()}`, actorUri),
+          actor: actorUri,
+          object: article,
+          tos: [audience],
+        })
+      : new Create({
+          id: new URL(`/posts/${row.post.id}/activity`, actorUri),
+          actor: actorUri,
+          object: article,
+          tos: [audience],
+        });
 
   await ctx.sendActivity({ identifier: author.username }, recipients, activity);
 }

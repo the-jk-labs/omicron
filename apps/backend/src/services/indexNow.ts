@@ -27,10 +27,7 @@ const ENDPOINT = "https://api.indexnow.org/IndexNow";
 const TIMEOUT_MS = 5000;
 
 /** Canonical public path for a post — mirrors the frontend's `postPath`. */
-export function postPath(
-  post: { id: string; title: string | null; slug: string | null },
-  username: string,
-): string {
+export function postPath(post: { id: string; title: string | null; slug: string | null }, username: string): string {
   // The stored slug is the post's address; a post without one (untitled, or not
   // yet reached by the boot backfill) is addressed by its short id, as every
   // post was before slugs existed.
@@ -38,8 +35,8 @@ export function postPath(
 }
 
 /** Where the engines fetch the key from to confirm we own this host. */
-export function keyLocation(origin: string, key: string): string {
-  return `${origin}/indexnow-${key}.txt`;
+export function keyLocation(originURL: string, key: string): string {
+  return `${originURL}/indexnow-${key}.txt`;
 }
 
 function origin(): string | null {
@@ -94,7 +91,7 @@ async function submit(urlList: string[], site: string, key: string): Promise<voi
       console.warn(`IndexNow submission rejected (${res.status}) for ${urlList.join(", ")}`);
     }
   } catch (err) {
-    console.warn(`IndexNow submission failed: ${err instanceof Error ? err.message : err}`);
+    console.warn(`IndexNow submission failed: ${err instanceof Error ? err.message : JSON.stringify(err)}`);
   } finally {
     clearTimeout(timer);
   }

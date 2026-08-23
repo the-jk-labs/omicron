@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
 import { escapeHtml } from "@/lib/html.ts";
-import { nodeInfo20 } from "@/services/nodeInfo.ts";
 import { getOrigin } from "@/services/instanceSetup.ts";
+import { nodeInfo20 } from "@/services/nodeInfo.ts";
 
 // Discovery documents an instance is expected to answer on, beyond what Fedify
 // registers for us. Mounted only when federation is running (see app.ts): each
@@ -42,9 +42,8 @@ wellKnownRoutes.get("/.well-known/nodeinfo", async (c) => {
 
 // The 2.0 document. Its 2.1 twin is Fedify's, from the dispatcher in
 // federation/nodeinfo.ts, and both render the same numbers from the same query.
-wellKnownRoutes.get(
-  "/nodeinfo/2.0",
-  async (c) => c.json(await nodeInfo20(), 200, { "content-type": NODEINFO_TYPE("2.0") }),
+wellKnownRoutes.get("/nodeinfo/2.0", async (c) =>
+  c.json(await nodeInfo20(), 200, { "content-type": NODEINFO_TYPE("2.0") }),
 );
 
 // host-meta: the pre-WebFinger discovery step from RFC 6415, which hands a
@@ -80,12 +79,15 @@ wellKnownRoutes.get("/.well-known/host-meta", async (c) => {
 wellKnownRoutes.get("/.well-known/host-meta.json", async (c) =>
   c.json(
     {
-      links: [{
-        rel: "lrdd",
-        type: "application/jrd+json",
-        template: webFingerTemplate(await getOrigin()),
-      }],
+      links: [
+        {
+          rel: "lrdd",
+          type: "application/jrd+json",
+          template: webFingerTemplate(await getOrigin()),
+        },
+      ],
     },
     200,
     { "content-type": "application/jrd+json" },
-  ));
+  ),
+);

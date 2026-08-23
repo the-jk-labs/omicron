@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
-import * as authService from "@/services/auth.ts";
+import { z } from "zod";
+import { config } from "@/config.ts";
 import * as sessionsRepo from "@/db/repositories/sessions.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
-import * as usersService from "@/services/users.ts";
-import { cookieSecure, SESSION_COOKIE, SESSION_TTL_MS } from "@/lib/session.ts";
-import { config } from "@/config.ts";
-import { requireUser } from "@/routes/middleware.ts";
 import { rateLimit } from "@/lib/rateLimit.ts";
-import { privateUser, profileLinkView } from "@/routes/serializers.ts";
+import { cookieSecure, SESSION_COOKIE, SESSION_TTL_MS } from "@/lib/session.ts";
 import { jsonBody } from "@/lib/validate.ts";
-import { z } from "zod";
-import type { Context } from "hono";
+import { requireUser } from "@/routes/middleware.ts";
+import { privateUser, profileLinkView } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
+import * as authService from "@/services/auth.ts";
+import * as usersService from "@/services/users.ts";
 
 export const authRoutes = new Hono<AppEnv>();
 
@@ -88,15 +88,10 @@ authRoutes.post("/login", loginLimiter, jsonBody(loginSchema), async (c) => {
 
 // Request a password-reset email. Always 200 with the same body whether or not
 // the identifier matches an account (no user enumeration).
-authRoutes.post(
-  "/password/forgot",
-  emailSendLimiter,
-  jsonBody(z.object({ identifier: z.string() })),
-  async (c) => {
-    await authService.requestPasswordReset(c.req.valid("json").identifier);
-    return c.json({ ok: true });
-  },
-);
+authRoutes.post("/password/forgot", emailSendLimiter, jsonBody(z.object({ identifier: z.string() })), async (c) => {
+  await authService.requestPasswordReset(c.req.valid("json").identifier);
+  return c.json({ ok: true });
+});
 
 // Complete a password reset with the emailed token.
 authRoutes.post(
@@ -111,26 +106,16 @@ authRoutes.post(
 );
 
 // Confirm an email address from the emailed token.
-authRoutes.post(
-  "/email/verify",
-  tokenLimiter,
-  jsonBody(z.object({ token: z.string() })),
-  async (c) => {
-    await authService.verifyEmail(c.req.valid("json").token);
-    return c.json({ ok: true });
-  },
-);
+authRoutes.post("/email/verify", tokenLimiter, jsonBody(z.object({ token: z.string() })), async (c) => {
+  await authService.verifyEmail(c.req.valid("json").token);
+  return c.json({ ok: true });
+});
 
 // Re-send a verification email. Always 200 with the same body (no enumeration).
-authRoutes.post(
-  "/email/resend",
-  emailSendLimiter,
-  jsonBody(z.object({ email: z.string() })),
-  async (c) => {
-    await authService.resendVerification(c.req.valid("json").email);
-    return c.json({ ok: true });
-  },
-);
+authRoutes.post("/email/resend", emailSendLimiter, jsonBody(z.object({ email: z.string() })), async (c) => {
+  await authService.resendVerification(c.req.valid("json").email);
+  return c.json({ ok: true });
+});
 
 // Change the signed-in user's password (requires their current password).
 authRoutes.post(
@@ -154,10 +139,7 @@ authRoutes.post("/logout", async (c) => {
 authRoutes.get("/me", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ user: null });
-  const [tags, links] = await Promise.all([
-    tagsRepo.tagsForUser(user.id),
-    usersService.profileLinks(user.id),
-  ]);
+  const [tags, links] = await Promise.all([tagsRepo.tagsForUser(user.id), usersService.profileLinks(user.id)]);
   return c.json({ user: privateUser(user, tags, links.map(profileLinkView)) });
 });
 

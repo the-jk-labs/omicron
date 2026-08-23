@@ -1,5 +1,6 @@
+import { readFileSync } from "node:fs";
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { assert, assertStringIncludes, assertThrows } from "@std/assert";
+import { describe, expect, test } from "vitest";
 import { routeThroughAnubis } from "@/lib/caddyfile.ts";
 
 // The toggle is one substring replacement in the operator's own Caddyfile, and
@@ -9,28 +10,28 @@ import { routeThroughAnubis } from "@/lib/caddyfile.ts";
 // here, as a file, rather than the logic being checked against a fixture that
 // cannot drift with it.
 
-const CADDYFILE = await Deno.readTextFile(new URL("../../../../Caddyfile", import.meta.url));
+const CADDYFILE = readFileSync(new URL("../../../../Caddyfile", import.meta.url), "utf8");
 
-Deno.test("the shipped Caddyfile is routed through Anubis, upstream and nothing else", () => {
+test("the shipped Caddyfile is routed through Anubis, upstream and nothing else", () => {
   const routed = routeThroughAnubis(CADDYFILE);
-  assertStringIncludes(routed, "reverse_proxy anubis:8080");
-  assert(
-    !routed.includes("reverse_proxy frontend:3000"),
+  expect(routed).toContain("reverse_proxy anubis:8080");
+  expect(
+    routed.includes("reverse_proxy frontend:3000"),
     "the app upstream survived the swap — the shield would not be in the path",
-  );
+  ).toBe(false);
 });
 
-Deno.test("an ambiguous Caddyfile is refused, not guessed at", async (t) => {
-  await t.step("a second mention, as in a comment above the directive", () => {
+describe("an ambiguous Caddyfile is refused, not guessed at", () => {
+  test("a second mention, as in a comment above the directive", () => {
     // This is the trap: `String.replace` would rewrite the comment and leave the
     // directive alone, and nothing downstream could tell.
-    assertThrows(() =>
-      routeThroughAnubis("# see reverse_proxy frontend:3000\n\treverse_proxy frontend:3000\n")
+    expect(() => routeThroughAnubis("# see reverse_proxy frontend:3000\n\treverse_proxy frontend:3000\n")).toThrow(
+      /exactly once/,
     );
   });
 
-  await t.step("no upstream to swap at all", () => {
-    assertThrows(() => routeThroughAnubis("handle {\n\trespond 200\n}\n"));
+  test("no upstream to swap at all", () => {
+    expect(() => routeThroughAnubis("handle {\n\trespond 200\n}\n")).toThrow(/exactly once/);
   });
 });
 
@@ -41,16 +42,14 @@ Deno.test("an ambiguous Caddyfile is refused, not guessed at", async (t) => {
 // 404s the path, Anubis serves its own CSS, and the first page a visitor sees
 // quietly goes back to looking like someone else's site. Nobody would notice
 // until they looked.
-Deno.test("the challenge screen's stylesheet is wired end to end", async () => {
-  assertStringIncludes(CADDYFILE, "@anubis_theme path /.within.website/x/xess/xess.min.css");
-  assertStringIncludes(CADDYFILE, "root * /srv");
-  assertStringIncludes(CADDYFILE, "rewrite * /anubis-theme.css");
+test("the challenge screen's stylesheet is wired end to end", () => {
+  expect(CADDYFILE).toContain("@anubis_theme path /.within.website/x/xess/xess.min.css");
+  expect(CADDYFILE).toContain("root * /srv");
+  expect(CADDYFILE).toContain("rewrite * /anubis-theme.css");
 
-  const compose = await Deno.readTextFile(
-    new URL("../../../../docker-compose.yml", import.meta.url),
-  );
-  assertStringIncludes(compose, "./anubis-theme.css:/srv/anubis-theme.css:ro");
+  const compose = readFileSync(new URL("../../../../docker-compose.yml", import.meta.url), "utf8");
+  expect(compose).toContain("./anubis-theme.css:/srv/anubis-theme.css:ro");
 
-  const css = await Deno.readTextFile(new URL("../../../../anubis-theme.css", import.meta.url));
-  assert(css.length > 0, "anubis-theme.css is shipped but empty");
+  const css = readFileSync(new URL("../../../../anubis-theme.css", import.meta.url), "utf8");
+  expect(css.length, "anubis-theme.css is shipped but empty").toBeGreaterThan(0);
 });

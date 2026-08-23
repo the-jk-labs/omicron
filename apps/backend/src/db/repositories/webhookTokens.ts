@@ -7,10 +7,7 @@ import { type WebhookToken, webhookTokens } from "@/db/schema.ts";
 // stored hashed (see lib/webhook.ts); the plaintext never reaches this layer.
 
 export async function create(userId: string, label: string, tokenHash: string) {
-  const [row] = await db
-    .insert(webhookTokens)
-    .values({ userId, label, tokenHash })
-    .returning();
+  const [row] = await db.insert(webhookTokens).values({ userId, label, tokenHash }).returning();
   return row;
 }
 
@@ -55,13 +52,7 @@ export async function revoke(userId: string, id: string): Promise<boolean> {
   const rows = await db
     .update(webhookTokens)
     .set({ revokedAt: new Date() })
-    .where(
-      and(
-        eq(webhookTokens.id, id),
-        eq(webhookTokens.userId, userId),
-        isNull(webhookTokens.revokedAt),
-      ),
-    )
+    .where(and(eq(webhookTokens.id, id), eq(webhookTokens.userId, userId), isNull(webhookTokens.revokedAt)))
     .returning({ id: webhookTokens.id });
   return rows.length > 0;
 }

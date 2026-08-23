@@ -26,38 +26,28 @@ export async function removeLocal(kind: RelationKind, userId: string, targetUser
   await db.delete(t).where(and(eq(t.userId, userId), eq(t.targetUserId, targetUserId)));
 }
 
-export async function removeRemote(
-  kind: RelationKind,
-  userId: string,
-  targetRemoteActorId: string,
-) {
+export async function removeRemote(kind: RelationKind, userId: string, targetRemoteActorId: string) {
   const t = table(kind);
-  await db.delete(t).where(
-    and(eq(t.userId, userId), eq(t.targetRemoteActorId, targetRemoteActorId)),
-  );
+  await db.delete(t).where(and(eq(t.userId, userId), eq(t.targetRemoteActorId, targetRemoteActorId)));
 }
 
-export async function hasLocal(
-  kind: RelationKind,
-  userId: string,
-  targetUserId: string,
-): Promise<boolean> {
+export async function hasLocal(kind: RelationKind, userId: string, targetUserId: string): Promise<boolean> {
   const t = table(kind);
-  const row = await db.select({ id: t.id }).from(t).where(
-    and(eq(t.userId, userId), eq(t.targetUserId, targetUserId)),
-  ).limit(1);
+  const row = await db
+    .select({ id: t.id })
+    .from(t)
+    .where(and(eq(t.userId, userId), eq(t.targetUserId, targetUserId)))
+    .limit(1);
   return row.length > 0;
 }
 
-export async function hasRemote(
-  kind: RelationKind,
-  userId: string,
-  targetRemoteActorId: string,
-): Promise<boolean> {
+export async function hasRemote(kind: RelationKind, userId: string, targetRemoteActorId: string): Promise<boolean> {
   const t = table(kind);
-  const row = await db.select({ id: t.id }).from(t).where(
-    and(eq(t.userId, userId), eq(t.targetRemoteActorId, targetRemoteActorId)),
-  ).limit(1);
+  const row = await db
+    .select({ id: t.id })
+    .from(t)
+    .where(and(eq(t.userId, userId), eq(t.targetRemoteActorId, targetRemoteActorId)))
+    .limit(1);
   return row.length > 0;
 }
 
@@ -66,12 +56,16 @@ export async function hasRemote(
 // so this is the single check that hides two users from each other's profile
 // and single-post views (feeds filter separately, in the posts repo).
 export async function localBlockExists(userA: string, userB: string): Promise<boolean> {
-  const row = await db.select({ id: blocks.id }).from(blocks).where(
-    or(
-      and(eq(blocks.userId, userA), eq(blocks.targetUserId, userB)),
-      and(eq(blocks.userId, userB), eq(blocks.targetUserId, userA)),
-    ),
-  ).limit(1);
+  const row = await db
+    .select({ id: blocks.id })
+    .from(blocks)
+    .where(
+      or(
+        and(eq(blocks.userId, userA), eq(blocks.targetUserId, userB)),
+        and(eq(blocks.userId, userB), eq(blocks.targetUserId, userA)),
+      ),
+    )
+    .limit(1);
   return row.length > 0;
 }
 

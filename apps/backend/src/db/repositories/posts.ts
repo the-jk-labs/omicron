@@ -17,17 +17,9 @@ import {
 } from "drizzle-orm";
 import { union } from "drizzle-orm/pg-core";
 import { db } from "@/db/client.ts";
-import {
-  type NewPost,
-  posts,
-  postSlugHistory,
-  postTags,
-  remoteActors,
-  tags,
-  users,
-} from "@/db/schema.ts";
-import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
+import { type NewPost, posts, postSlugHistory, postTags, remoteActors, tags, users } from "@/db/schema.ts";
 import type { LanguageFilter } from "@/lib/languages.ts";
+import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
 
 // Post DB access. Queries fetch `limit + 1` rows so the service can derive a
 // next-cursor without a second round-trip.
@@ -106,9 +98,7 @@ export async function upsertRemotePost(data: {
 // single instance and we deterministically return the oldest match.
 export function findById(id: string) {
   const isFullUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-  const match = isFullUuid
-    ? eq(posts.id, id)
-    : sql`${posts.id}::text like ${`${id.toLowerCase()}%`}`;
+  const match = isFullUuid ? eq(posts.id, id) : sql`${posts.id}::text like ${`${id.toLowerCase()}%`}`;
   return selectPosts()
     .where(match)
     .orderBy(posts.createdAt)
@@ -175,20 +165,12 @@ export async function slugsLike(authorId: string, base: string, excludePostId?: 
 // to an earlier name reclaims its old URL rather than colliding with itself.
 export async function setSlug(postId: string, authorId: string, slug: string) {
   await db.transaction(async (tx) => {
-    const [current] = await tx
-      .select({ slug: posts.slug })
-      .from(posts)
-      .where(eq(posts.id, postId));
+    const [current] = await tx.select({ slug: posts.slug }).from(posts).where(eq(posts.id, postId));
     if (current?.slug === slug) return;
-    await tx
-      .delete(postSlugHistory)
-      .where(and(eq(postSlugHistory.authorId, authorId), eq(postSlugHistory.slug, slug)));
+    await tx.delete(postSlugHistory).where(and(eq(postSlugHistory.authorId, authorId), eq(postSlugHistory.slug, slug)));
     await tx.update(posts).set({ slug }).where(eq(posts.id, postId));
     if (current?.slug) {
-      await tx
-        .insert(postSlugHistory)
-        .values({ postId, authorId, slug: current.slug })
-        .onConflictDoNothing();
+      await tx.insert(postSlugHistory).values({ postId, authorId, slug: current.slug }).onConflictDoNothing();
     }
   });
 }
@@ -269,19 +251,14 @@ export async function touch(id: string) {
 // as the Markdown backfill; remote posts are owned by their origin instance and
 // are never rewritten here.
 export function listAllLocal() {
-  return db
-    .select({ id: posts.id, contentHtml: posts.contentHtml })
-    .from(posts)
-    .where(eq(posts.remote, false));
+  return db.select({ id: posts.id, contentHtml: posts.contentHtml }).from(posts).where(eq(posts.remote, false));
 }
 
 // Every post (id + raw HTML), local AND remote. Used by the sanitizer backfill:
 // unlike listAllLocal, cached remote bodies are included because they are the
 // untrusted content that most needs re-sanitizing.
 export function listAllContent() {
-  return db
-    .select({ id: posts.id, contentHtml: posts.contentHtml })
-    .from(posts);
+  return db.select({ id: posts.id, contentHtml: posts.contentHtml }).from(posts);
 }
 
 // Published, local blog posts for the XML sitemap: just what's needed to build a
@@ -351,10 +328,7 @@ export function listRelated(postId: string, limit = 3) {
     .where(
       and(
         // The tags of the post being read.
-        inArray(
-          postTags.tagId,
-          db.select({ id: postTags.tagId }).from(postTags).where(eq(postTags.postId, postId)),
-        ),
+        inArray(postTags.tagId, db.select({ id: postTags.tagId }).from(postTags).where(eq(postTags.postId, postId))),
         sql`${posts.id} <> ${postId}`,
         eq(posts.status, "published"),
         // Local posts only. A federated copy is served here as `noindex` (it
@@ -368,19 +342,16 @@ export function listRelated(postId: string, limit = 3) {
     .groupBy(posts.id)
     .as("shared");
 
-  return selectPosts()
-    .innerJoin(shared, eq(shared.id, posts.id))
-    // A private author's posts are visible only to approved followers; a
-    // suggestion rail has no viewer context to check that against, so they are
-    // left out entirely rather than teased and then 404'd.
-    .where(
-      and(
-        sql`${users.isPrivate} = false`,
-        sql`${users.suspendedAt} is null`,
-      ),
-    )
-    .orderBy(desc(shared.overlap), desc(posts.createdAt))
-    .limit(limit);
+  return (
+    selectPosts()
+      .innerJoin(shared, eq(shared.id, posts.id))
+      // A private author's posts are visible only to approved followers; a
+      // suggestion rail has no viewer context to check that against, so they are
+      // left out entirely rather than teased and then 404'd.
+      .where(and(sql`${users.isPrivate} = false`, sql`${users.suspendedAt} is null`))
+      .orderBy(desc(shared.overlap), desc(posts.createdAt))
+      .limit(limit)
+  );
 }
 
 // Fallback for a post whose tags nobody else uses (or which has none): the
@@ -442,10 +413,7 @@ export function listSitemapProfiles() {
       lastPostAt: sql<Date>`max(${posts.createdAt})`.as("last_post_at"),
     })
     .from(users)
-    .innerJoin(
-      posts,
-      and(eq(posts.authorId, users.id), eq(posts.status, "published"), eq(posts.remote, false)),
-    )
+    .innerJoin(posts, and(eq(posts.authorId, users.id), eq(posts.status, "published"), eq(posts.remote, false)))
     .where(and(sql`${users.suspendedAt} is null`, eq(users.isPrivate, false)))
     .groupBy(users.username)
     .limit(10000);
@@ -465,10 +433,7 @@ export async function removeByApId(apId: string) {
 function beforeCursor(cursor: Cursor | null) {
   if (!cursor) return undefined;
   const ts = new Date(cursor.createdAt);
-  return or(
-    lt(posts.createdAt, ts),
-    and(eq(posts.createdAt, ts), lt(posts.id, cursor.id)),
-  );
+  return or(lt(posts.createdAt, ts), and(eq(posts.createdAt, ts), lt(posts.id, cursor.id)));
 }
 
 // Only published posts surface in public feeds and profiles; drafts are private
@@ -609,16 +574,12 @@ export function searchPosts(
         ilike(users.displayName, term),
         ilike(remoteActors.handle, term),
         ilike(remoteActors.displayName, term),
-      )!,
+      ),
     );
   }
   return selectPosts()
     .where(and(...filters))
-    .orderBy(
-      sql`ts_rank(${posts.searchVector}, ${tsquery}) desc`,
-      desc(posts.createdAt),
-      desc(posts.id),
-    )
+    .orderBy(sql`ts_rank(${posts.searchVector}, ${tsquery}) desc`, desc(posts.createdAt), desc(posts.id))
     .limit(limit);
 }
 
@@ -718,11 +679,7 @@ export function listByAuthor(
 
 // An author's own drafts — never exposed publicly; the compose/Drafts UI reads
 // these for the signed-in author only.
-export function listDraftsByAuthor(
-  authorId: string,
-  cursor: Cursor | null,
-  limit = DEFAULT_PAGE_SIZE,
-) {
+export function listDraftsByAuthor(authorId: string, cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
   return selectPosts()
     .where(and(eq(posts.authorId, authorId), eq(posts.status, "draft"), beforeCursor(cursor)))
     .orderBy(desc(posts.createdAt), desc(posts.id))
@@ -736,25 +693,16 @@ export function listDraftsByAuthor(
 function afterDueCursor(cursor: Cursor | null) {
   if (!cursor) return undefined;
   const ts = new Date(cursor.createdAt);
-  return or(
-    gt(posts.publishAt, ts),
-    and(eq(posts.publishAt, ts), gt(posts.id, cursor.id)),
-  );
+  return or(gt(posts.publishAt, ts), and(eq(posts.publishAt, ts), gt(posts.id, cursor.id)));
 }
 
 // An author's own scheduled posts, soonest first — the opposite order to
 // drafts, because what the author is reading here is a running order, not an
 // edit history. Private to them, exactly like a draft. Served by
 // `posts_author_due_idx`.
-export function listScheduledByAuthor(
-  authorId: string,
-  cursor: Cursor | null,
-  limit = DEFAULT_PAGE_SIZE,
-) {
+export function listScheduledByAuthor(authorId: string, cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
   return selectPosts()
-    .where(
-      and(eq(posts.authorId, authorId), eq(posts.status, "scheduled"), afterDueCursor(cursor)),
-    )
+    .where(and(eq(posts.authorId, authorId), eq(posts.status, "scheduled"), afterDueCursor(cursor)))
     .orderBy(posts.publishAt, posts.id)
     .limit(limit + 1);
 }
@@ -763,11 +711,7 @@ export function listScheduledByAuthor(
 // management page. Unlike `publishedBriefByAuthor` (which the dashboard uses
 // for its stats spine) these are full rows, because the tab shows the same
 // card as the other two.
-export function listPublishedByAuthor(
-  authorId: string,
-  cursor: Cursor | null,
-  limit = DEFAULT_PAGE_SIZE,
-) {
+export function listPublishedByAuthor(authorId: string, cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
   return selectPosts()
     .where(and(eq(posts.authorId, authorId), eq(posts.status, "published"), beforeCursor(cursor)))
     .orderBy(desc(posts.createdAt), desc(posts.id))
@@ -783,7 +727,7 @@ export async function countsByAuthor(authorId: string) {
     .where(and(eq(posts.authorId, authorId), eq(posts.remote, false)))
     .groupBy(posts.status);
   const totals = { draft: 0, scheduled: 0, published: 0 };
-  for (const row of rows) totals[row.status] = Number(row.n);
+  for (const row of rows) totals[row.status] = row.n;
   return totals;
 }
 
@@ -858,12 +802,7 @@ export function listByRemoteActor(
 
 // Published Article posts carrying a given tag (by slug), local + cached remote.
 // Joins through the post_tags / tags tables; otherwise mirrors listGlobal.
-export function listByTag(
-  slug: string,
-  viewerId: string | null,
-  cursor: Cursor | null,
-  limit = DEFAULT_PAGE_SIZE,
-) {
+export function listByTag(slug: string, viewerId: string | null, cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
   return selectPosts()
     .innerJoin(postTags, eq(postTags.postId, posts.id))
     .innerJoin(tags, eq(tags.id, postTags.tagId))

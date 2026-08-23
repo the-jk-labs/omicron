@@ -1,12 +1,12 @@
+import * as commentLikesRepo from "@/db/repositories/commentLikes.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as commentsRepo from "@/db/repositories/comments.ts";
-import * as commentLikesRepo from "@/db/repositories/commentLikes.ts";
+import type { CommentWithAuthor } from "@/db/repositories/comments.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
-import * as notifications from "@/services/notifications.ts";
-import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";
-import type { CommentWithAuthor } from "@/db/repositories/comments.ts";
+import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
+import * as notifications from "@/services/notifications.ts";
 
 // Business logic for comments. Content is plain text (max 2 000 chars); the
 // client renders it escaped, never as HTML. Comments are single-level threaded:
@@ -21,12 +21,7 @@ export type EnrichedComment = CommentWithAuthor & {
   replies: (CommentWithAuthor & { likeStats: commentLikesRepo.LikeStats })[];
 };
 
-export async function create(
-  authorId: string,
-  postId: string,
-  content: string,
-  parentId?: string | null,
-) {
+export async function create(authorId: string, postId: string, content: string, parentId?: string | null) {
   const text = content?.trim();
   if (!text) throw badRequest("Comment cannot be empty.");
   if (text.length > MAX_LENGTH) {
@@ -39,8 +34,8 @@ export async function create(
   const blocked = post.post.authorId
     ? await relationsRepo.localBlockExists(authorId, post.post.authorId)
     : post.post.remoteActorId
-    ? await relationsRepo.hasRemote("block", authorId, post.post.remoteActorId)
-    : false;
+      ? await relationsRepo.hasRemote("block", authorId, post.post.remoteActorId)
+      : false;
   if (blocked) throw forbidden("You cannot comment on this post.");
 
   // Resolve the parent: replies attach to a top-level comment, so replying to a
@@ -125,7 +120,10 @@ export async function list(
   const tops = hasMore ? rows.slice(0, DEFAULT_PAGE_SIZE) : rows;
   const last = tops.at(-1);
 
-  const replies = await commentsRepo.listReplies(tops.map((r) => r.comment.id), viewerId);
+  const replies = await commentsRepo.listReplies(
+    tops.map((r) => r.comment.id),
+    viewerId,
+  );
 
   // One batched like-stats query covering every comment + reply on this page.
   const allIds = [...tops, ...replies].map((r) => r.comment.id);
@@ -147,8 +145,7 @@ export async function list(
 
   return {
     items,
-    nextCursor: hasMore && last
-      ? encodeCursor({ createdAt: last.comment.createdAt.toISOString(), id: last.comment.id })
-      : null,
+    nextCursor:
+      hasMore && last ? encodeCursor({ createdAt: last.comment.createdAt.toISOString(), id: last.comment.id }) : null,
   };
 }

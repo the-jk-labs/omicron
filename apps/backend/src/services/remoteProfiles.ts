@@ -1,14 +1,14 @@
+import * as followsRepo from "@/db/repositories/follows.ts";
+import * as postsRepo from "@/db/repositories/posts.ts";
+import * as relationsRepo from "@/db/repositories/relations.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
-import * as postsRepo from "@/db/repositories/posts.ts";
-import * as followsRepo from "@/db/repositories/follows.ts";
-import * as relationsRepo from "@/db/repositories/relations.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
-import { fetchOutboxPosts, resolveActor } from "@/federation/remote.ts";
-import { queue } from "@/queue/queue.ts";
-import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
-import { forbidden, notFound } from "@/lib/http.ts";
 import type { RemoteActor } from "@/db/schema.ts";
+import { fetchOutboxPosts, resolveActor } from "@/federation/remote.ts";
+import { forbidden, notFound } from "@/lib/http.ts";
+import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
+import { queue } from "@/queue/queue.ts";
 
 // Read-side federation: resolve `user@host`, cache the actor + their outbox,
 // and serve both from our DB. Cached data is refreshed when older than the TTL
@@ -35,7 +35,7 @@ export async function getProfileView(handle: string, viewerId: string | null) {
   const actor = await getProfile(handle);
   // A blocked remote actor is invisible to the viewer, same as a blocked local
   // user — the profile reads as not-found. Unblock from Connections settings.
-  if (viewerId && await relationsRepo.hasRemote("block", viewerId, actor.id)) {
+  if (viewerId && (await relationsRepo.hasRemote("block", viewerId, actor.id))) {
     throw notFound("Remote user not found.");
   }
   const isFollowing = viewerId ? await followsRepo.isFollowingRemote(viewerId, actor.id) : false;
@@ -65,11 +65,7 @@ export async function unfollow(viewerId: string, handle: string): Promise<void> 
   queue.add("send_unfollow", { followerId: viewerId, targetActor: actor.apId });
 }
 
-export async function getPosts(
-  handle: string,
-  cursor: Cursor | null,
-  viewerId: string | null = null,
-) {
+export async function getPosts(handle: string, cursor: Cursor | null, viewerId: string | null = null) {
   const actor = await getProfile(handle);
   // Only re-crawl the outbox on the first page, and only when stale, so
   // pagination stays cheap and stable.
@@ -88,8 +84,7 @@ export async function getPosts(
   const last = items.at(-1);
   return {
     items,
-    nextCursor: hasMore && last
-      ? encodeCursor({ createdAt: last.post.createdAt.toISOString(), id: last.post.id })
-      : null,
+    nextCursor:
+      hasMore && last ? encodeCursor({ createdAt: last.post.createdAt.toISOString(), id: last.post.id }) : null,
   };
 }

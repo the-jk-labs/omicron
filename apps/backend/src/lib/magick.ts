@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { initializeImageMagick } from "@imagemagick/magick-wasm";
+
+const require = createRequire(import.meta.url);
 
 // One initialisation of the ImageMagick wasm module for the whole process.
 //
@@ -18,11 +22,8 @@ let ready: Promise<void> | null = null;
 export function initializeMagick(): Promise<void> {
   if (!ready) {
     ready = (async () => {
-      // Resolved through the import map rather than a path into node_modules,
-      // so it works the same under `deno cache` in the image and a local run.
-      const wasm = await Deno.readFile(
-        new URL(import.meta.resolve("@imagemagick/magick-wasm/magick.wasm")),
-      );
+      // Resolved out of node_modules the same way under Deno and Node.
+      const wasm = await readFile(require.resolve("@imagemagick/magick-wasm/magick.wasm"));
       await initializeImageMagick(wasm);
     })().catch((err) => {
       // Let a failed initialisation be retried rather than poisoning every

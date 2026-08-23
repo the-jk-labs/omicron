@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Add, isActor, OrderedCollection, PUBLIC_COLLECTION, Remove } from "@fedify/fedify/vocab";
-import { getFederation } from "@/federation/mod.ts";
 import { origin } from "@/config.ts";
-import * as usersRepo from "@/db/repositories/users.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as listsRepo from "@/db/repositories/readingLists.ts";
+import * as usersRepo from "@/db/repositories/users.ts";
+import { getFederation } from "@/federation/mod.ts";
 
 // Announces that a post was added to / removed from a *public* reading list, via
 // a standard Add / Remove activity whose `target` is the list's OrderedCollection
@@ -13,11 +13,7 @@ import * as listsRepo from "@/db/repositories/readingLists.ts";
 //
 // Private lists never federate, so this no-ops for them — the call sites also
 // gate on visibility, this is just defence in depth.
-export async function deliverListItem(
-  listId: string,
-  postId: string,
-  action: "add" | "remove",
-): Promise<void> {
+export async function deliverListItem(listId: string, postId: string, action: "add" | "remove"): Promise<void> {
   const list = await listsRepo.findById(listId);
   if (!list || list.visibility !== "public") return;
 
@@ -31,9 +27,7 @@ export async function deliverListItem(
   if (!row) return;
   // The post's canonical ActivityPub URI: local posts live under this instance's
   // /posts/{id}; remote posts keep their origin apId.
-  const postUri = row.post.remote && row.post.apId
-    ? new URL(row.post.apId)
-    : new URL(`/posts/${row.post.id}`, origin);
+  const postUri = row.post.remote && row.post.apId ? new URL(row.post.apId) : new URL(`/posts/${row.post.id}`, origin);
 
   const ctx = getFederation().createContext(new URL(origin), undefined);
   const recipients = [];

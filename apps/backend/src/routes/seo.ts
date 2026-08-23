@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
-import * as seo from "@/services/seo.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
-import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as listsRepo from "@/db/repositories/readingLists.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
 import type { AppEnv } from "@/routes/types.ts";
+import * as seo from "@/services/seo.ts";
 
 // Public, read-only discoverability surface. The SvelteKit app reads these to
 // render its <head> verification tags, robots.txt and sitemap.xml — all of which

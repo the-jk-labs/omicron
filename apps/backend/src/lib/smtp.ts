@@ -129,7 +129,9 @@ class SmtpConn {
   close() {
     try {
       this.#conn.close();
-    } catch { /* already closed */ }
+    } catch {
+      /* already closed */
+    }
   }
 }
 
@@ -159,6 +161,7 @@ export async function sendSmtp(opts: SmtpOptions, env: SmtpEnvelope): Promise<vo
   // terminate that line and inject a further SMTP command, so refuse it here —
   // a last-line guard behind the address validation the callers already do.
   // deno-lint-ignore no-control-regex
+  // oxlint-disable-next-line no-control-regex
   const CONTROL = /[\x00-\x1f\x7f]/;
   if (CONTROL.test(env.from) || CONTROL.test(env.to)) {
     throw new Error("Illegal control character in SMTP envelope address.");
@@ -171,9 +174,7 @@ export async function sendSmtp(opts: SmtpOptions, env: SmtpEnvelope): Promise<vo
       : await Deno.connect({ hostname: opts.hostname, port: opts.port });
   } catch (err) {
     throw new Error(
-      `Could not connect to ${opts.hostname}:${opts.port} — ${
-        err instanceof Error ? err.message : err
-      }`,
+      `Could not connect to ${opts.hostname}:${opts.port} — ${err instanceof Error ? err.message : JSON.stringify(err)}`,
     );
   }
 
@@ -202,17 +203,13 @@ export async function sendSmtp(opts: SmtpOptions, env: SmtpEnvelope): Promise<vo
         } catch (err) {
           if (opts.starttls === "require") {
             throw new Error(
-              `TLS negotiation with ${opts.hostname} failed: ${
-                err instanceof Error ? err.message : err
-              }`,
+              `TLS negotiation with ${opts.hostname} failed: ${err instanceof Error ? err.message : JSON.stringify(err)}`,
             );
           }
           // Opportunistic: the TLS session is unusable; nothing more we can do on
           // this socket, so surface it (the caller may retry a next MX).
           throw new Error(
-            `STARTTLS with ${opts.hostname} failed (opportunistic): ${
-              err instanceof Error ? err.message : err
-            }`,
+            `STARTTLS with ${opts.hostname} failed (opportunistic): ${err instanceof Error ? err.message : JSON.stringify(err)}`,
           );
         }
       } else if (opts.starttls === "require") {
@@ -254,7 +251,9 @@ export async function sendSmtp(opts: SmtpOptions, env: SmtpEnvelope): Promise<vo
     try {
       await conn.write("QUIT");
       await conn.read();
-    } catch { /* server may drop the socket on QUIT; the message is already accepted */ }
+    } catch {
+      /* server may drop the socket on QUIT; the message is already accepted */
+    }
   } finally {
     conn.close();
   }

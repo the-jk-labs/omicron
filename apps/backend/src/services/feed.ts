@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as recommendationsRepo from "@/db/repositories/recommendations.ts";
-import type { EnrichableRow } from "@/services/engagement.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
+import type { EnrichableRow } from "@/services/engagement.ts";
 
 // Personalized home timeline ("For you"): own + followed-author posts, merged
 // with posts *recommended* ("boosted") by followed authors — the two halves of
@@ -40,15 +40,23 @@ type MergedRow =
   | { source: "authored"; feedAt: Date; raw: postsRepo.PostWithAuthor }
   | { source: "recommended"; feedAt: Date; raw: recommendationsRepo.FeedRecommendationRow };
 
+// A stream's next cursor points right after the last row *of that stream*
+// consumed this page; a stream that contributed nothing this page keeps its
+// incoming cursor unchanged, so its untouched rows are re-offered (and
+// re-merged) once the other stream's fresher rows are exhausted — never
+// skipped, never duplicated. "Drained" only once the DB confirmed no more
+// rows exist beyond what was fetched AND every fetched row was consumed.
+function countSource(rows: MergedRow[], source: MergedRow["source"]): number {
+  return rows.reduce((n, r) => n + (r.source === source ? 1 : 0), 0);
+}
+
 export async function homeFeed(userId: string, cursorRaw: string | null) {
   const cursor = decodeFeedCursor(cursorRaw);
   const limit = DEFAULT_PAGE_SIZE;
 
   const [authoredRows, recommendedRows] = await Promise.all([
     cursor.authored.done ? [] : postsRepo.listFeed(userId, cursor.authored.cursor, limit),
-    cursor.recommended.done
-      ? []
-      : recommendationsRepo.listFeedFor(userId, cursor.recommended.cursor, limit),
+    cursor.recommended.done ? [] : recommendationsRepo.listFeedFor(userId, cursor.recommended.cursor, limit),
   ]);
 
   const authoredHasMore = authoredRows.length > limit;
@@ -70,7 +78,7 @@ export async function homeFeed(userId: string, cursorRaw: string | null) {
       feedAt: raw.recommendedAt,
       raw,
     })),
-  ].sort((a, b) => b.feedAt.getTime() - a.feedAt.getTime());
+  ].toSorted((a, b) => b.feedAt.getTime() - a.feedAt.getTime());
 
   const page = merged.slice(0, limit);
 
@@ -83,16 +91,6 @@ export async function homeFeed(userId: string, cursorRaw: string | null) {
     if (row.source === "authored") lastAuthoredIdx = i;
     else lastRecommendedIdx = i;
   });
-
-  // A stream's next cursor points right after the last row *of that stream*
-  // consumed this page; a stream that contributed nothing this page keeps its
-  // incoming cursor unchanged, so its untouched rows are re-offered (and
-  // re-merged) once the other stream's fresher rows are exhausted — never
-  // skipped, never duplicated. "Drained" only once the DB confirmed no more
-  // rows exist beyond what was fetched AND every fetched row was consumed.
-  function countSource(rows: MergedRow[], source: MergedRow["source"]): number {
-    return rows.reduce((n, r) => n + (r.source === source ? 1 : 0), 0);
-  }
 
   function advance(
     lastIdx: number,
@@ -122,8 +120,8 @@ export async function homeFeed(userId: string, cursorRaw: string | null) {
     authoredHasMore,
     cursor.authored,
     (row) => ({
-      createdAt: (row.raw as postsRepo.PostWithAuthor).post.createdAt.toISOString(),
-      id: (row.raw as postsRepo.PostWithAuthor).post.id,
+      createdAt: row.raw.post.createdAt.toISOString(),
+      id: row.raw.post.id,
     }),
   );
   const recommended = advance(
@@ -138,24 +136,24 @@ export async function homeFeed(userId: string, cursorRaw: string | null) {
     }),
   );
 
-  const nextCursor = authored.done && recommended.done
-    ? null
-    : encodeFeedCursor({ authored, recommended });
+  const nextCursor = authored.done && recommended.done ? null : encodeFeedCursor({ authored, recommended });
 
   const items: EnrichableRow[] = page.map((row) =>
-    row.source === "authored" ? row.raw : {
-      post: row.raw.post,
-      localAuthor: row.raw.localAuthor,
-      remoteActor: row.raw.remoteActor,
-      recommendedBy: {
-        id: row.raw.recommenderId,
-        username: row.raw.recommenderUsername,
-        displayName: row.raw.recommenderDisplayName,
-        avatarUrl: row.raw.recommenderAvatarUrl,
-        remote: row.raw.recommenderRemote,
-        recommendedAt: row.raw.recommendedAt,
-      },
-    }
+    row.source === "authored"
+      ? row.raw
+      : {
+          post: row.raw.post,
+          localAuthor: row.raw.localAuthor,
+          remoteActor: row.raw.remoteActor,
+          recommendedBy: {
+            id: row.raw.recommenderId,
+            username: row.raw.recommenderUsername,
+            displayName: row.raw.recommenderDisplayName,
+            avatarUrl: row.raw.recommenderAvatarUrl,
+            remote: row.raw.recommenderRemote,
+            recommendedAt: row.raw.recommendedAt,
+          },
+        },
   );
 
   return { items, nextCursor };

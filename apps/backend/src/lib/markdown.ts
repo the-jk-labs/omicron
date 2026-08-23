@@ -12,15 +12,15 @@
 // passing the sanitizer: unknown tags, styles, scripts and event handlers are
 // dropped there. Do not remove that final step.
 
-// v15 ships its own bundled declarations, so no `@ts-types` pragma or
-// separate `@types/markdown-it` package is needed anymore.
-import MarkdownIt, { type MarkdownIt as MarkdownItInstance, type Token } from "markdown-it";
 // CommonJS, so the plugin arrives as the module's `exports` object rather than
 // the function itself.
 import katexModule from "@vscode/markdown-it-katex";
+// v15 ships its own bundled declarations, so no `@ts-types` pragma or
+// separate `@types/markdown-it` package is needed anymore.
+import MarkdownIt, { type MarkdownIt as MarkdownItInstance, type Token } from "markdown-it";
 type Plugin = (md: MarkdownItInstance, options?: Record<string, unknown>) => void;
-const katex = (katexModule as unknown as { default?: Plugin }).default ??
-  (katexModule as unknown as Plugin);
+// oxlint-disable-next-line typescript/no-unnecessary-type-assertion
+const katex: Plugin = (katexModule as unknown as { default?: Plugin }).default ?? (katexModule as unknown as Plugin);
 
 import { RENDERABLE_POST_TAGS, sanitizePostHtml } from "@/lib/sanitize.ts";
 
@@ -115,11 +115,7 @@ function looseMarks(children: Token[]): Array<{ child: number; at: number }> {
   const marks: Array<{ child: number; at: number }> = [];
   children.forEach((child, index) => {
     if (child.type !== "text") return;
-    for (
-      let at = child.content.indexOf("**");
-      at !== -1;
-      at = child.content.indexOf("**", at + 2)
-    ) {
+    for (let at = child.content.indexOf("**"); at !== -1; at = child.content.indexOf("**", at + 2)) {
       marks.push({ child: index, at });
     }
   });
@@ -130,12 +126,7 @@ function looseMarks(children: Token[]): Array<{ child: number; at: number }> {
  * Split the text token holding `mark` around it, dropping the two asterisks and
  * putting a `<strong>` boundary in their place.
  */
-function splitAtMark(
-  children: Token[],
-  mark: { child: number; at: number },
-  nesting: 1 | -1,
-  Token: TokenCtor,
-): void {
+function splitAtMark(children: Token[], mark: { child: number; at: number }, nesting: 1 | -1, Token: TokenCtor): void {
   const text = children[mark.child];
   const before = text.content.slice(0, mark.at);
   const after = text.content.slice(mark.at + 2);
@@ -296,7 +287,7 @@ function renderRawHtml(raw: string): string {
 md.renderer.rules.html_inline = (tokens, idx) => renderRawHtml(tokens[idx].content);
 md.renderer.rules.html_block = (tokens, idx) => renderRawHtml(tokens[idx].content);
 
-const defaultFence = md.renderer.rules.fence!;
+const defaultFence = md.renderer.rules.fence;
 md.renderer.rules.fence = (tokens, idx, options, env, self) => {
   const html = defaultFence(tokens, idx, options, env, self);
   const title = fenceTitle(tokens[idx].info);

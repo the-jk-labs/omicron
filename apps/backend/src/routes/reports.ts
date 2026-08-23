@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
 import { z } from "zod";
-import * as moderation from "@/services/moderation.ts";
-import { requireUser } from "@/routes/middleware.ts";
-import { rateLimit } from "@/lib/rateLimit.ts";
 import { config } from "@/config.ts";
+import { rateLimit } from "@/lib/rateLimit.ts";
 import { jsonBody } from "@/lib/validate.ts";
+import { requireUser } from "@/routes/middleware.ts";
 import type { AppEnv } from "@/routes/types.ts";
+import * as moderation from "@/services/moderation.ts";
 
 export const reportRoutes = new Hono<AppEnv>();
 

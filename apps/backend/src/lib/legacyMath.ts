@@ -87,9 +87,7 @@ function decodeEntities(text: string): string {
 
 /** The TeX as the author typed it, recovered from what Markdown left behind. */
 function recoverTex(html: string): string | null {
-  const tex = repairDelimiters(
-    decodeEntities(restoreNewlines(restoreUnderscores(html))).trim(),
-  );
+  const tex = repairDelimiters(decodeEntities(restoreNewlines(restoreUnderscores(html))).trim());
   // Any tag still standing is something we cannot account for — a link, an
   // image, a stray span. Rendering it would destroy content, so we decline.
   if (!tex || /<[a-z/]/i.test(tex) || !looksLikeTex(tex)) return null;
@@ -117,9 +115,8 @@ function renderRun(html: string): string {
   });
   // A failure alone in its paragraph was a `$$…$$` block; anything else sat in a
   // sentence. Retrying in the wrong mode would render it at the wrong size.
-  out = out.replace(
-    /<p>\s*<span class="katex-error">[^<]*<\/span>\s*<\/p>/g,
-    (paragraph) => retryErrors(paragraph, true),
+  out = out.replace(/<p>\s*<span class="katex-error">[^<]*<\/span>\s*<\/p>/g, (paragraph) =>
+    retryErrors(paragraph, true),
   );
   return retryErrors(out, false);
 }

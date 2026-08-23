@@ -16,10 +16,7 @@ export async function remove(postId: string, userId: string) {
 }
 
 // Like count + whether `viewerId` liked it, for many posts in one query.
-export async function statsFor(
-  postIds: string[],
-  viewerId: string | null,
-): Promise<Map<string, LikeStats>> {
+export async function statsFor(postIds: string[], viewerId: string | null): Promise<Map<string, LikeStats>> {
   const map = new Map<string, LikeStats>();
   if (postIds.length === 0) return map;
 
@@ -34,7 +31,7 @@ export async function statsFor(
     .groupBy(likes.postId);
 
   for (const r of rows as { postId: string; count: number; liked: boolean }[]) {
-    map.set(r.postId, { count: r.count, liked: !!r.liked });
+    map.set(r.postId, { count: r.count, liked: r.liked });
   }
   return map;
 }

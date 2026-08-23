@@ -1,12 +1,13 @@
+import { config } from "@/config.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import * as tokensRepo from "@/db/repositories/webhookTokens.ts";
-import { firstPublicationFields, resolveTags } from "@/services/posts.ts";
+import type { NewPost, User } from "@/db/schema.ts";
 import { badRequest, conflict, forbidden, HttpError, unauthorized } from "@/lib/http.ts";
-import { renderMarkdown } from "@/lib/markdown.ts";
 import { normalizeLanguage } from "@/lib/languages.ts";
+import { renderMarkdown } from "@/lib/markdown.ts";
 import {
   type ContentPayload,
   externalKey,
@@ -18,9 +19,8 @@ import {
   summarize,
 } from "@/lib/webhook.ts";
 import { queue } from "@/queue/queue.ts";
+import { firstPublicationFields, resolveTags } from "@/services/posts.ts";
 import { syncSlug } from "@/services/postSlugs.ts";
-import { config } from "@/config.ts";
-import type { NewPost, User } from "@/db/schema.ts";
 
 // Content ingestion from an external system (Sanity, Contentful, a static-site
 // build hook, …). One endpoint — POST /api/webhooks/content — takes a document
@@ -67,7 +67,7 @@ export async function authenticate(headers: Headers): Promise<User> {
   if (looksLikeToken(presented)) return await authorForToken(presented);
 
   const expected = config.WEBHOOK_SECRET;
-  if (!expected || !await secretMatches(presented, expected)) {
+  if (!expected || !(await secretMatches(presented, expected))) {
     throw unauthorized("Invalid webhook credentials.");
   }
   return await configuredAuthor();
@@ -142,10 +142,7 @@ export type IngestResult = {
  * leaves ingested posts indistinguishable from editor-written ones downstream:
  * search, RSS, federation and the reader need no second code path.
  */
-export async function ingestContent(
-  payload: ContentPayload,
-  author: User,
-): Promise<IngestResult> {
+export async function ingestContent(payload: ContentPayload, author: User): Promise<IngestResult> {
   const externalId = externalKey(payload);
 
   // Read the current row first. It answers create-vs-update, which in turn
@@ -195,10 +192,7 @@ export async function ingestContent(
   // scheduling sweeper follow. Without it a CMS that stages a draft and
   // publishes it a week later files the article a week down the timeline.
   if (existing) {
-    Object.assign(
-      fields,
-      firstPublicationFields(existing.status, fields.status ?? existing.status),
-    );
+    Object.assign(fields, firstPublicationFields(existing.status, fields.status ?? existing.status));
   }
 
   // The summary follows the description when one is sent, and is re-derived
@@ -221,14 +215,16 @@ export async function ingestContent(
   // is the one field that lives elsewhere, so `{ slug, tags }` is a complete
   // request — and must not reach the writer, which rejects an empty SET.
   const post = existing
-    ? Object.keys(fields).length > 0 ? await postsRepo.update(existing.id, fields) : existing
+    ? Object.keys(fields).length > 0
+      ? await postsRepo.update(existing.id, fields)
+      : existing
     : await postsRepo.upsertByExternalId({
-      ...fields,
-      // Guaranteed by `requireCreateFields` on this branch.
-      contentHtml: fields.contentHtml!,
-      authorId: author.id,
-      externalId,
-    });
+        ...fields,
+        // Guaranteed by `requireCreateFields` on this branch.
+        contentHtml: fields.contentHtml!,
+        authorId: author.id,
+        externalId,
+      });
 
   // Only reachable when the post was deleted between the lookup and the write.
   if (!post) throw conflict("That post was removed while this update was in flight.");

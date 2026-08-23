@@ -1,12 +1,12 @@
+import type * as postsRepo from "@/db/repositories/posts.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as listsRepo from "@/db/repositories/readingLists.ts";
-import * as postsRepo from "@/db/repositories/posts.ts";
-import * as postsService from "@/services/posts.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import type { ReadingList } from "@/db/schema.ts";
-import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";
+import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { queue } from "@/queue/queue.ts";
+import * as postsService from "@/services/posts.ts";
 
 // Business logic for reading lists. Ownership and visibility are enforced here;
 // routes stay thin. The "Read later" list is a normal list flagged
@@ -23,11 +23,11 @@ function normalizeVisibility(v: unknown): "public" | "private" {
 }
 
 // Attaches item counts to a batch of lists in one query.
-async function withCounts(
-  lists: ReadingList[],
-  viewerId: string | null,
-): Promise<ListWithCount[]> {
-  const counts = await listsRepo.itemCountsFor(lists.map((l) => l.id), viewerId);
+async function withCounts(lists: ReadingList[], viewerId: string | null): Promise<ListWithCount[]> {
+  const counts = await listsRepo.itemCountsFor(
+    lists.map((l) => l.id),
+    viewerId,
+  );
   return lists.map((l) => ({ ...l, itemCount: counts.get(l.id) ?? 0 }));
 }
 
@@ -40,10 +40,7 @@ export async function myLists(userId: string): Promise<ListWithCount[]> {
 
 // A named user's lists for their profile. The owner sees everything; everyone
 // else sees only public lists.
-export async function listsForProfile(
-  username: string,
-  viewerId: string | null,
-): Promise<ListWithCount[]> {
+export async function listsForProfile(username: string, viewerId: string | null): Promise<ListWithCount[]> {
   const owner = await usersRepo.findByUsername(username);
   if (!owner) throw notFound("User not found.");
   const isOwner = viewerId === owner.id;
@@ -101,9 +98,7 @@ async function ownedList(listId: string, userId: string): Promise<ReadingList> {
 export async function getList(
   listId: string,
   viewerId: string | null,
-): Promise<
-  { list: ListWithCount; isOwner: boolean; owner: { username: string; displayName: string } }
-> {
+): Promise<{ list: ListWithCount; isOwner: boolean; owner: { username: string; displayName: string } }> {
   const list = await readableList(listId, viewerId);
   const [withCount] = await withCounts([list], viewerId);
   const owner = await usersRepo.findById(list.userId);
@@ -122,9 +117,8 @@ export async function listItems(listId: string, viewerId: string | null, cursor:
   const hasMore = rows.length > DEFAULT_PAGE_SIZE;
   const items = hasMore ? rows.slice(0, DEFAULT_PAGE_SIZE) : rows;
   const last = items.at(-1);
-  const nextCursor = hasMore && last
-    ? encodeCursor({ createdAt: last.itemCreatedAt.toISOString(), id: last.itemId })
-    : null;
+  const nextCursor =
+    hasMore && last ? encodeCursor({ createdAt: last.itemCreatedAt.toISOString(), id: last.itemId }) : null;
   // Hand back plain PostWithAuthor rows; the route enriches them like any feed.
   return { items: items as postsRepo.PostWithAuthor[], nextCursor };
 }
@@ -198,13 +192,13 @@ export async function removeItem(userId: string, listId: string, postId: string)
 
 // The save-menu payload: every list the user owns, each flagged with whether it
 // already contains the post. Read-later is created lazily so it's always shown.
-export async function listsForPost(
-  userId: string,
-  postId: string,
-): Promise<(ListWithCount & { contains: boolean })[]> {
+export async function listsForPost(userId: string, postId: string): Promise<(ListWithCount & { contains: boolean })[]> {
   await listsRepo.ensureReadLater(userId);
   const lists = await listsRepo.listForUser(userId, false);
-  const containing = await listsRepo.listIdsContaining(lists.map((l) => l.id), postId);
+  const containing = await listsRepo.listIdsContaining(
+    lists.map((l) => l.id),
+    postId,
+  );
   const withCount = await withCounts(lists, userId);
   return withCount.map((l) => ({ ...l, contains: containing.has(l.id) }));
 }

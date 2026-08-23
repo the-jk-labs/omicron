@@ -1,3 +1,4 @@
+import { sql } from "@/db/client.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // One-time backfill: re-sanitize every stored post body through the allowlist
 // sanitizer. Existing rows predate server-side sanitization, so a body ingested
@@ -11,7 +12,6 @@
 // HTML actually changes are updated. Covers local AND remote posts.
 import * as postsRepo from "@/db/repositories/posts.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
-import { sql } from "@/db/client.ts";
 
 const dryRun = Deno.args.includes("--dry-run");
 

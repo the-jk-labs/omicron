@@ -8,7 +8,6 @@ export default {
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url: Deno.env.get("DATABASE_URL") ??
-      "postgres://omicron:omicron@localhost:5432/omicron",
+    url: Deno.env.get("DATABASE_URL") ?? "postgres://omicron:omicron@localhost:5432/omicron",
   },
 } satisfies Config;

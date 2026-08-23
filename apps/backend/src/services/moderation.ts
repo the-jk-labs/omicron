@@ -1,15 +1,15 @@
+import { config } from "@/config.ts";
+import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
+import * as postsRepo from "@/db/repositories/posts.ts";
+import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
+import * as reportsRepo from "@/db/repositories/reports.ts";
+import type { ReportRow } from "@/db/repositories/reports.ts";
+import * as sessionsRepo from "@/db/repositories/sessions.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as usersRepo from "@/db/repositories/users.ts";
-import * as postsRepo from "@/db/repositories/posts.ts";
-import * as reportsRepo from "@/db/repositories/reports.ts";
-import * as sessionsRepo from "@/db/repositories/sessions.ts";
-import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
-import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
-import { badRequest, forbidden, notFound } from "@/lib/http.ts";
-import { hostMatchesDomain, normalizeDomain } from "@/lib/domain.ts";
-import { config } from "@/config.ts";
 import type { BlockedDomain } from "@/db/schema.ts";
-import type { ReportRow } from "@/db/repositories/reports.ts";
+import { hostMatchesDomain, normalizeDomain } from "@/lib/domain.ts";
+import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 
 // Business logic for moderation. Admin authorization is enforced at the route
 // layer (requireAdmin); these functions assume the caller is a moderator except
@@ -62,14 +62,10 @@ export function openReportCount(): Promise<number> {
   return reportsRepo.countOpen();
 }
 
-export async function resolveReport(
-  adminId: string,
-  reportId: string,
-  resolution: string,
-): Promise<void> {
-  const report = await reportsRepo.findById(reportId);
-  if (!report) throw notFound("Report not found.");
-  if (report.status === "resolved") return;
+export async function resolveReport(adminId: string, reportId: string, resolution: string): Promise<void> {
+  const fetchedReport = await reportsRepo.findById(reportId);
+  if (!fetchedReport) throw notFound("Report not found.");
+  if (fetchedReport.status === "resolved") return;
   await reportsRepo.resolve(reportId, adminId, (resolution ?? "").trim().slice(0, MAX_REASON));
 }
 
@@ -82,11 +78,7 @@ export function listUsers(query = ""): Promise<Awaited<ReturnType<typeof usersRe
 // Suspends or reinstates a local account. Admins cannot suspend themselves or
 // other admins (protects the moderator team from lock-out and abuse). Suspending
 // clears the target's sessions so the block takes effect immediately.
-export async function setSuspended(
-  adminId: string,
-  targetId: string,
-  suspend: boolean,
-): Promise<void> {
+export async function setSuspended(adminId: string, targetId: string, suspend: boolean): Promise<void> {
   const target = await usersRepo.findById(targetId);
   if (!target) throw notFound("Account not found.");
   if (target.id === adminId) throw forbidden("You can't suspend your own account.");
@@ -121,10 +113,7 @@ export function isDomainBlocked(host: string): Promise<boolean> {
 // Defederates a domain: refuses future federation with it and purges any content
 // already cached from it (actors + their posts cascade). Returns the normalized
 // domain and how many cached actors were removed.
-export async function blockDomain(
-  input: string,
-  reason: string,
-): Promise<{ domain: string; purged: number }> {
+export async function blockDomain(input: string, reason: string): Promise<{ domain: string; purged: number }> {
   const domain = normalizeDomain(input);
   if (!domain) throw badRequest("Enter a valid domain, e.g. example.social.");
   // Guard against locking ourselves out of our own instance.

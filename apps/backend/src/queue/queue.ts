@@ -86,9 +86,11 @@ export const queue = {
       const raw = JSON.stringify({ name, payload, attempts: 0 } satisfies Envelope);
       // Reuse the shared client for the non-blocking push; the worker keeps its
       // own blocking connection.
-      newRedisShared().lpush(JOBS, raw).catch((err) => {
-        console.error(`queue: failed to enqueue "${name}" to Redis:`, err);
-      });
+      newRedisShared()
+        .lpush(JOBS, raw)
+        .catch((err) => {
+          console.error(`queue: failed to enqueue "${name}" to Redis:`, err);
+        });
       return;
     }
     if (!handlers.has(name)) {
@@ -110,7 +112,7 @@ export const queue = {
 // LPUSH). Only constructed when Redis is enabled.
 let sharedEnqueueClient: ReturnType<typeof newRedis> | null = null;
 function newRedisShared() {
-  return sharedEnqueueClient ??= newRedis();
+  return (sharedEnqueueClient ??= newRedis());
 }
 
 let workerStarted = false;
@@ -132,7 +134,9 @@ export function startJobWorker(): void {
     // Recover anything a previous worker left mid-flight (e.g. a crash) by
     // moving it back onto the ready queue before we start draining.
     try {
-      while ((await redis.rpoplpush(PROCESSING, JOBS)) !== null) { /* re-queued */ }
+      while ((await redis.rpoplpush(PROCESSING, JOBS)) !== null) {
+        /* re-queued */
+      }
     } catch (err) {
       console.error("queue: worker recovery scan failed:", err);
     }
@@ -161,7 +165,9 @@ export function startJobWorker(): void {
         if (raw !== null) {
           try {
             await redis.lrem(PROCESSING, 1, raw);
-          } catch { /* best-effort cleanup */ }
+          } catch {
+            /* best-effort cleanup */
+          }
         }
       }
     }
@@ -177,13 +183,12 @@ async function onJobFailure(
   // Remove the in-flight copy from PROCESSING before deciding its fate.
   try {
     await redis.lrem(PROCESSING, 1, raw);
-  } catch { /* best-effort */ }
+  } catch {
+    /* best-effort */
+  }
   const attempts = job.attempts + 1;
   if (attempts >= MAX_ATTEMPTS) {
-    console.error(
-      `queue: job "${job.name}" failed ${attempts}x, dead-lettering:`,
-      err,
-    );
+    console.error(`queue: job "${job.name}" failed ${attempts}x, dead-lettering:`, err);
     await redis.lpush(DEAD, JSON.stringify({ ...job, attempts })).catch(() => {});
     return;
   }

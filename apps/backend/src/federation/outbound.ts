@@ -12,11 +12,11 @@ import {
   Reject,
   Undo,
 } from "@fedify/fedify/vocab";
-import { getFederation } from "@/federation/mod.ts";
 import { origin } from "@/config.ts";
-import * as usersRepo from "@/db/repositories/users.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
+import * as usersRepo from "@/db/repositories/users.ts";
+import { getFederation } from "@/federation/mod.ts";
 
 // Outbound Follow / Undo(Follow) to a remote actor URI. Wired for future use
 // when the UI lets users follow remote handles; the call site already enqueues
@@ -177,9 +177,8 @@ export async function sendRecommend(userId: string, postId: string): Promise<voi
   const recipients = await followerRecipients(ctx, user.id);
   if (recipients.length === 0) return;
 
-  const objectUri = row.post.remote && row.post.apId
-    ? new URL(row.post.apId)
-    : new URL(`/posts/${row.post.id}`, origin);
+  const objectUri =
+    row.post.remote && row.post.apId ? new URL(row.post.apId) : new URL(`/posts/${row.post.id}`, origin);
   const actorUri = ctx.getActorUri(user.username);
 
   await ctx.sendActivity(

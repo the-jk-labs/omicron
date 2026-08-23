@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { assert, assertEquals, assertStringIncludes, assertThrows } from "@std/assert";
+import { expect, test } from "vitest";
+import { HttpError } from "@/lib/http.ts";
+import { renderMarkdown } from "@/lib/markdown.ts";
 import {
   externalKey,
   generateToken,
@@ -13,8 +15,6 @@ import {
   SUMMARY_LENGTH,
   TOKEN_PREFIX,
 } from "@/lib/webhook.ts";
-import { renderMarkdown } from "@/lib/markdown.ts";
-import { HttpError } from "@/lib/http.ts";
 
 // The ingestion webhook is the one write path with no human and no session
 // behind it: whatever a CMS sends lands in a published, federating post. These
@@ -23,167 +23,170 @@ import { HttpError } from "@/lib/http.ts";
 
 const SECRET = "s3cret-token-long-enough-to-pass";
 
+// Runs `fn`, asserts it threw an HttpError, and hands the error back so the
+// caller can pin its status and message.
+function caught(fn: () => unknown): HttpError {
+  let caughtErr: unknown;
+  let threw = false;
+  try {
+    fn();
+  } catch (err) {
+    threw = true;
+    caughtErr = err;
+  }
+  expect(threw, "expected the call to throw").toBe(true);
+  expect(caughtErr).toBeInstanceOf(HttpError);
+  return caughtErr as HttpError;
+}
+
 // ── Credentials ─────────────────────────────────────────────────────────────
 
-Deno.test("secretMatches: accepts the exact secret", async () => {
-  assertEquals(await secretMatches(SECRET, SECRET), true);
+test("secretMatches: accepts the exact secret", async () => {
+  expect(await secretMatches(SECRET, SECRET)).toBe(true);
 });
 
-Deno.test("secretMatches: rejects a wrong, truncated, or extended token", async () => {
-  assertEquals(await secretMatches("wrong", SECRET), false);
-  assertEquals(await secretMatches(SECRET.slice(0, -1), SECRET), false);
-  assertEquals(await secretMatches(SECRET + "x", SECRET), false);
+test("secretMatches: rejects a wrong, truncated, or extended token", async () => {
+  expect(await secretMatches("wrong", SECRET)).toBe(false);
+  expect(await secretMatches(SECRET.slice(0, -1), SECRET)).toBe(false);
+  expect(await secretMatches(SECRET + "x", SECRET)).toBe(false);
   // A near-miss in the last byte must fail as surely as a wholly different one.
-  assertEquals(await secretMatches(SECRET.slice(0, -1) + "T", SECRET), false);
+  expect(await secretMatches(SECRET.slice(0, -1) + "T", SECRET)).toBe(false);
 });
 
-Deno.test("secretMatches: rejects a missing or empty token", async () => {
-  assertEquals(await secretMatches(null, SECRET), false);
-  assertEquals(await secretMatches("", SECRET), false);
+test("secretMatches: rejects a missing or empty token", async () => {
+  expect(await secretMatches(null, SECRET)).toBe(false);
+  expect(await secretMatches("", SECRET)).toBe(false);
 });
 
-Deno.test("presentedSecret: reads both accepted headers", () => {
-  assertEquals(
-    presentedSecret(new Headers({ "x-webhook-secret": SECRET })),
-    SECRET,
-  );
-  assertEquals(
-    presentedSecret(new Headers({ authorization: `Bearer ${SECRET}` })),
-    SECRET,
-  );
+test("presentedSecret: reads both accepted headers", () => {
+  expect(presentedSecret(new Headers({ "x-webhook-secret": SECRET }))).toBe(SECRET);
+  expect(presentedSecret(new Headers({ authorization: `Bearer ${SECRET}` }))).toBe(SECRET);
   // Case-insensitive scheme, surrounding whitespace trimmed.
-  assertEquals(
-    presentedSecret(new Headers({ authorization: `bearer   ${SECRET}  ` })),
-    SECRET,
-  );
+  expect(presentedSecret(new Headers({ authorization: `bearer   ${SECRET}  ` }))).toBe(SECRET);
 });
 
-Deno.test("presentedSecret: null when no credential is offered", () => {
-  assertEquals(presentedSecret(new Headers()), null);
-  assertEquals(presentedSecret(new Headers({ authorization: "Basic abc" })), null);
-  assertEquals(presentedSecret(new Headers({ "x-webhook-secret": "   " })), null);
+test("presentedSecret: null when no credential is offered", () => {
+  expect(presentedSecret(new Headers())).toBe(null);
+  expect(presentedSecret(new Headers({ authorization: "Basic abc" }))).toBe(null);
+  expect(presentedSecret(new Headers({ "x-webhook-secret": "   " }))).toBe(null);
 });
 
 // ── Per-user tokens ─────────────────────────────────────────────────────────
 
-Deno.test("generateToken: prefixed, and unique across mints", () => {
+test("generateToken: prefixed, and unique across mints", () => {
   const a = generateToken();
   const b = generateToken();
-  assert(a.startsWith(TOKEN_PREFIX), `missing prefix: ${a}`);
-  assertEquals(a === b, false);
+  expect(a.startsWith(TOKEN_PREFIX), `missing prefix: ${a}`).toBe(true);
+  expect(a).not.toBe(b);
   // 32 random bytes as hex, after the prefix.
-  assertEquals(a.length, TOKEN_PREFIX.length + 64);
-  assert(/^[0-9a-f]{64}$/.test(a.slice(TOKEN_PREFIX.length)), "body is not 64 hex chars");
+  expect(a.length).toBe(TOKEN_PREFIX.length + 64);
+  expect(/^[0-9a-f]{64}$/.test(a.slice(TOKEN_PREFIX.length)), "body is not 64 hex chars").toBe(true);
 });
 
-Deno.test("looksLikeToken: separates user tokens from the instance secret", () => {
-  assertEquals(looksLikeToken(generateToken()), true);
+test("looksLikeToken: separates user tokens from the instance secret", () => {
+  expect(looksLikeToken(generateToken())).toBe(true);
   // A WEBHOOK_SECRET is an operator-chosen string with no prefix; it must not be
   // mistaken for a token, or it would be looked up in the tokens table and fail.
-  assertEquals(looksLikeToken("a-long-instance-wide-secret-value"), false);
-  assertEquals(looksLikeToken(""), false);
+  expect(looksLikeToken("a-long-instance-wide-secret-value")).toBe(false);
+  expect(looksLikeToken("")).toBe(false);
 });
 
-Deno.test("hashToken: stable, and never returns the token itself", async () => {
+test("hashToken: stable, and never returns the token itself", async () => {
   const token = generateToken();
   const hash = await hashToken(token);
-  assertEquals(await hashToken(token), hash); // deterministic — the lookup key
-  assertEquals(hash.includes(token), false);
-  assertEquals(hash, hash.toLowerCase());
-  assertEquals(hash.length, 64); // SHA-256, hex
+  expect(await hashToken(token)).toBe(hash); // deterministic — the lookup key
+  expect(hash.includes(token)).toBe(false);
+  expect(hash).toBe(hash.toLowerCase());
+  expect(hash.length).toBe(64); // SHA-256, hex
   // A different token must not collide.
-  assertEquals(await hashToken(generateToken()) === hash, false);
+  expect(await hashToken(generateToken())).not.toBe(hash);
 });
 
-Deno.test("hashToken: a one-character difference changes the whole hash", async () => {
+test("hashToken: a one-character difference changes the whole hash", async () => {
   const token = generateToken();
   const a = await hashToken(token);
   const b = await hashToken(token.slice(0, -1) + (token.endsWith("a") ? "b" : "a"));
-  assertEquals(a === b, false);
+  expect(a).not.toBe(b);
 });
 
 // ── Payload validation ──────────────────────────────────────────────────────
 
 const valid = { title: "Hello world", body: "# Hello\n\nSome **words**." };
 
-Deno.test("parseContent: accepts the minimal payload", () => {
+test("parseContent: accepts the minimal payload", () => {
   const out = parseContent(valid);
-  assertEquals(out.title, "Hello world");
-  assertEquals(out.description, undefined);
-  assertEquals(out.banner, undefined);
+  expect(out.title).toBe("Hello world");
+  expect(out.description).toBe(undefined);
+  expect(out.banner).toBe(undefined);
 });
 
-Deno.test("parseContent: rejects a present-but-empty field", () => {
+test("parseContent: rejects a present-but-empty field", () => {
   // Absent is legal — that is a partial update. Present and empty is a mistake.
   for (const body of [{ title: "  ", body: "x" }, { ...valid, body: "" }, null, 7]) {
-    assertThrows(() => parseContent(body), HttpError);
+    expect(() => parseContent(body)).toThrow(HttpError);
   }
   // The error names the offending field so the sender can fix it.
-  const err = assertThrows(() => parseContent({ title: "   " }), HttpError);
-  assertStringIncludes(err.message, "title");
-  assertEquals(err.status, 400);
+  const err = caught(() => parseContent({ title: "   " }));
+  expect(err.message).toContain("title");
+  expect(err.status).toBe(400);
 });
 
-Deno.test("parseContent: accepts a partial update carrying one field", () => {
+test("parseContent: accepts a partial update carrying one field", () => {
   // The shape a CMS sends when only the status moved: no title, no body.
-  assertEquals(parseContent({ slug: "doc-42", status: "draft" }).status, "draft");
-  assertEquals(parseContent({ slug: "doc-42", title: "Renamed" }).title, "Renamed");
+  expect(parseContent({ slug: "doc-42", status: "draft" }).status).toBe("draft");
+  expect(parseContent({ slug: "doc-42", title: "Renamed" }).title).toBe("Renamed");
   // …and the empty payload, which addresses nothing and is caught by
   // `externalKey` rather than the schema.
-  assertEquals(parseContent({}).title, undefined);
+  expect(parseContent({}).title).toBe(undefined);
 });
 
-Deno.test("parseContent: keeps an explicit null distinct from an absent field", () => {
+test("parseContent: keeps an explicit null distinct from an absent field", () => {
   // `null` clears the stored value; leaving the key out preserves it. The two
   // must survive parsing as different things or the service cannot tell them
   // apart.
   const cleared = parseContent({ slug: "doc-42", banner: null, description: null });
-  assertEquals(cleared.banner, null);
-  assertEquals(cleared.description, null);
+  expect(cleared.banner).toBe(null);
+  expect(cleared.description).toBe(null);
 
   const absent = parseContent({ slug: "doc-42" });
-  assertEquals(absent.banner, undefined);
-  assertEquals(absent.description, undefined);
+  expect(absent.banner).toBe(undefined);
+  expect(absent.description).toBe(undefined);
 });
 
-Deno.test("requireCreateFields: demanded on a create, waived on an update", () => {
+test("requireCreateFields: demanded on a create, waived on an update", () => {
   // A first delivery has no row to merge into, so it must carry both.
   for (const payload of [{ body: "x" }, { title: "x" }, {}]) {
-    const err = assertThrows(() => requireCreateFields(parseContent(payload)), HttpError);
-    assertEquals(err.status, 400);
+    const err = caught(() => requireCreateFields(parseContent(payload)));
+    expect(err.status).toBe(400);
   }
-  assertStringIncludes(
-    assertThrows(() => requireCreateFields(parseContent({ body: "x" })), HttpError).message,
-    "title",
-  );
+  expect(caught(() => requireCreateFields(parseContent({ body: "x" }))).message).toContain("title");
   // A full payload passes; an update never reaches this check at all.
   requireCreateFields(parseContent(valid));
 });
 
-Deno.test("parseContent: rejects a banner that is not an absolute http(s) URL", () => {
+test("parseContent: rejects a banner that is not an absolute http(s) URL", () => {
   for (const banner of ["/local/cover.png", "javascript:alert(1)", "data:image/png;base64,AA"]) {
-    const err = assertThrows(() => parseContent({ ...valid, banner }), HttpError);
-    assertStringIncludes(err.message, "banner");
+    const err = caught(() => parseContent({ ...valid, banner }));
+    expect(err.message).toContain("banner");
   }
-  assertEquals(
-    parseContent({ ...valid, banner: "https://cdn.example.com/a.png" }).banner,
+  expect(parseContent({ ...valid, banner: "https://cdn.example.com/a.png" }).banner).toBe(
     "https://cdn.example.com/a.png",
   );
 });
 
-Deno.test("parseContent: rejects an unknown status", () => {
-  assertThrows(() => parseContent({ ...valid, status: "archived" }), HttpError);
-  assertEquals(parseContent({ ...valid, status: "draft" }).status, "draft");
+test("parseContent: rejects an unknown status", () => {
+  expect(() => parseContent({ ...valid, status: "archived" })).toThrow(HttpError);
+  expect(parseContent({ ...valid, status: "draft" }).status).toBe("draft");
 });
 
 // ── Derived fields ──────────────────────────────────────────────────────────
 
-Deno.test("summarize: returns short text whole, without an ellipsis", () => {
+test("summarize: returns short text whole, without an ellipsis", () => {
   const out = summarize(renderMarkdown("Just a line."));
-  assertEquals(out, "Just a line.");
+  expect(out).toBe("Just a line.");
 });
 
-Deno.test("summarize: strips markup and truncates on a word boundary", () => {
+test("summarize: strips markup and truncates on a word boundary", () => {
   const html = renderMarkdown(
     "## A heading\n\nThe **quick** brown [fox](https://example.com) jumps over the lazy dog, " +
       "and then keeps right on running well past any reasonable preview length so that we " +
@@ -191,83 +194,77 @@ Deno.test("summarize: strips markup and truncates on a word boundary", () => {
   );
   const out = summarize(html);
 
-  assert(out.length <= SUMMARY_LENGTH + 1, `too long: ${out.length}`);
-  assert(out.endsWith("…"), `expected an ellipsis, got: ${out}`);
+  expect(out.length, `too long: ${out.length}`).toBeLessThanOrEqual(SUMMARY_LENGTH + 1);
+  expect(out.endsWith("…"), `expected an ellipsis, got: ${out}`).toBe(true);
   // No markup, no Markdown syntax, and no mid-word cut.
-  assertEquals(out.includes("<"), false);
-  assertEquals(out.includes("**"), false);
-  assertEquals(out.includes("]("), false);
-  assertStringIncludes(out, "A heading The quick brown fox");
+  expect(out.includes("<")).toBe(false);
+  expect(out.includes("**")).toBe(false);
+  expect(out.includes("](")).toBe(false);
+  expect(out).toContain("A heading The quick brown fox");
 });
 
-Deno.test("summarize: clips a single unbroken run rather than emptying it", () => {
+test("summarize: clips a single unbroken run rather than emptying it", () => {
   const out = summarize(renderMarkdown("x".repeat(400)), 20);
-  assertEquals(out, "x".repeat(20) + "…");
+  expect(out).toBe("x".repeat(20) + "…");
 });
 
-Deno.test("summarize: drops a heading marker markdown leaves literal", () => {
+test("summarize: drops a heading marker markdown leaves literal", () => {
   const out = summarize(renderMarkdown("#UserID The user ID from our entry in the password file"));
-  assertEquals(out, "UserID The user ID from our entry in the password file");
+  expect(out).toBe("UserID The user ID from our entry in the password file");
 });
 
-Deno.test("summarize: drops the marker on every section, not just the first", () => {
-  const out = summarize(
-    renderMarkdown("#UserID The user id\n\n#ProcandprocID An executing instance\n\nBody text."),
-  );
-  assert(!out.includes("#"), `still has a hash: ${out}`);
-  assertStringIncludes(out, "UserID The user id");
-  assertStringIncludes(out, "ProcandprocID An executing instance");
+test("summarize: drops the marker on every section, not just the first", () => {
+  const out = summarize(renderMarkdown("#UserID The user id\n\n#ProcandprocID An executing instance\n\nBody text."));
+  expect(out.includes("#"), `still has a hash: ${out}`).toBe(false);
+  expect(out).toContain("UserID The user id");
+  expect(out).toContain("ProcandprocID An executing instance");
 });
 
-Deno.test("summarize: leaves a hash inside a code fence alone", () => {
+test("summarize: leaves a hash inside a code fence alone", () => {
   const out = summarize(renderMarkdown("#NAME proc\n\n```c\n#include <sys/types.h>\n```\n"), 200);
-  assertStringIncludes(out, "#include <sys/types.h>");
+  expect(out).toContain("#include <sys/types.h>");
 });
 
-Deno.test("externalKey: prefers the sender's slug over the title", () => {
-  assertEquals(externalKey({ title: "Hello world", slug: "cms-doc-42" }), "cms-doc-42");
+test("externalKey: prefers the sender's slug over the title", () => {
+  expect(externalKey({ title: "Hello world", slug: "cms-doc-42" })).toBe("cms-doc-42");
 });
 
-Deno.test("externalKey: falls back to the title's slug, matching the reader's URL", () => {
-  assertEquals(
-    externalKey({ title: "It's a Big Step — Really!", slug: undefined }),
-    "its-a-big-step-really",
-  );
+test("externalKey: falls back to the title's slug, matching the reader's URL", () => {
+  expect(externalKey({ title: "It's a Big Step — Really!", slug: undefined })).toBe("its-a-big-step-really");
 });
 
-Deno.test("externalKey: demands an explicit slug when the title derives to nothing", () => {
-  const err = assertThrows(() => externalKey({ title: "日本語", slug: undefined }), HttpError);
-  assertEquals(err.status, 400);
-  assertStringIncludes(err.message, "slug");
+test("externalKey: demands an explicit slug when the title derives to nothing", () => {
+  const err = caught(() => externalKey({ title: "日本語", slug: undefined }));
+  expect(err.status).toBe(400);
+  expect(err.message).toContain("slug");
   // …and is satisfied once the sender supplies one.
-  assertEquals(externalKey({ title: "日本語", slug: "doc-7" }), "doc-7");
+  expect(externalKey({ title: "日本語", slug: "doc-7" })).toBe("doc-7");
 });
 
-Deno.test("externalKey: a titleless partial update is addressed by its slug alone", () => {
-  assertEquals(externalKey({ title: undefined, slug: "doc-42" }), "doc-42");
+test("externalKey: a titleless partial update is addressed by its slug alone", () => {
+  expect(externalKey({ title: undefined, slug: "doc-42" })).toBe("doc-42");
   // With neither, nothing names the post — that has to be a 400, not a write
   // against an empty key.
-  const err = assertThrows(() => externalKey({ title: undefined, slug: undefined }), HttpError);
-  assertEquals(err.status, 400);
-  assertStringIncludes(err.message, "slug");
+  const err = caught(() => externalKey({ title: undefined, slug: undefined }));
+  expect(err.status).toBe(400);
+  expect(err.message).toContain("slug");
 });
 
 // ── Storage safety ──────────────────────────────────────────────────────────
 
-Deno.test("ingested Markdown is sanitized before it can reach a row", () => {
+test("ingested Markdown is sanitized before it can reach a row", () => {
   // The service stores `renderMarkdown(body)`, so the sanitizer is what stands
   // between an untrusted webhook and every reader's browser. Mirror of the
   // guarantees in sanitize_test.ts, asserted at this entry point.
   const html = renderMarkdown(
-    "Hi\n\n<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>\n\n" +
-      "[click](javascript:alert(1))",
+    "Hi\n\n<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>\n\n[click](javascript:alert(1))",
   );
-  assertEquals(html.includes("<script"), false);
-  assertEquals(html.includes("onerror"), false);
+  expect(html.includes("<script")).toBe(false);
+  expect(html.includes("onerror")).toBe(false);
   // A `javascript:` target never becomes a link. markdown-it declines to build
   // the anchor at all and leaves the source as inert text, so assert on the
   // attribute rather than the substring.
-  assertEquals(/href\s*=\s*["']?\s*javascript:/i.test(html), false);
-  assertEquals(html.includes("<a "), false);
-  assertStringIncludes(html, "Hi");
+  expect(/href\s*=\s*["']?\s*javascript:/i.test(html)).toBe(false);
+  expect(html.includes("<a ")).toBe(false);
+  expect(html).toContain("Hi");
 });

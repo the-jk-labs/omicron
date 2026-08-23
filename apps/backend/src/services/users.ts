@@ -1,23 +1,18 @@
+import { config } from "@/config.ts";
+import * as followsRepo from "@/db/repositories/follows.ts";
+import * as linksRepo from "@/db/repositories/profileLinks.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as usersRepo from "@/db/repositories/users.ts";
-import * as tagsRepo from "@/db/repositories/tags.ts";
-import * as linksRepo from "@/db/repositories/profileLinks.ts";
-import * as followsRepo from "@/db/repositories/follows.ts";
-import * as followRequests from "@/services/followRequests.ts";
-import { relationActorLocal } from "@/routes/serializers.ts";
-import { config } from "@/config.ts";
+import type { ProfileLink, User } from "@/db/schema.ts";
 import { badRequest } from "@/lib/http.ts";
 import { renderMarkdown } from "@/lib/markdown.ts";
-import { sniffMatches } from "@/services/media.ts";
+import { isLinkPlatform, MAX_LINK_LABEL_LEN, MAX_PROFILE_LINKS, normalizeLinkUrl } from "@/lib/profileLinks.ts";
 import { MAX_PROFILE_TAGS, normalizeTags } from "@/lib/tags.ts";
 import { queue } from "@/queue/queue.ts";
-import {
-  isLinkPlatform,
-  MAX_LINK_LABEL_LEN,
-  MAX_PROFILE_LINKS,
-  normalizeLinkUrl,
-} from "@/lib/profileLinks.ts";
-import type { ProfileLink, User } from "@/db/schema.ts";
+import { relationActorLocal } from "@/routes/serializers.ts";
+import * as followRequests from "@/services/followRequests.ts";
+import { sniffMatches } from "@/services/media.ts";
 
 // Business logic for editing one's own profile. Routes stay HTTP-only and call
 // into here; all disk + DB access is funnelled through the repository / services.
@@ -43,9 +38,7 @@ export type ProfileLinkInput = { platform?: string; url?: string; label?: string
 
 // Validates and normalizes a list of profile links, throwing on bad input.
 // Returns the clean rows ready to persist (order preserved from the input).
-function sanitizeLinks(
-  input: ProfileLinkInput[],
-): { platform: string; url: string; label: string }[] {
+function sanitizeLinks(input: ProfileLinkInput[]): { platform: string; url: string; label: string }[] {
   if (input.length > MAX_PROFILE_LINKS) {
     throw badRequest(`A profile can have at most ${MAX_PROFILE_LINKS} links.`);
   }
@@ -105,11 +98,7 @@ export async function updateProfile(
   if (input.customSection !== undefined) {
     const source = input.customSection.trim();
     if (source.length > MAX_CUSTOM_SECTION_LEN) {
-      throw badRequest(
-        `Custom section must be ${
-          MAX_CUSTOM_SECTION_LEN.toLocaleString("en-US")
-        } characters or fewer.`,
-      );
+      throw badRequest(`Custom section must be ${MAX_CUSTOM_SECTION_LEN.toLocaleString("en-US")} characters or fewer.`);
     }
     // Render + sanitize once, here, so the reader is only ever handed HTML that
     // has already been through the allowlist (see lib/markdown.ts).
@@ -131,9 +120,8 @@ export async function updateProfile(
 
   // A tags/links-only update touches no user columns; drizzle rejects an empty
   // SET, so only call update when there's something to change.
-  const user = Object.keys(patch).length > 0
-    ? await usersRepo.update(userId, patch)
-    : (await usersRepo.findById(userId))!;
+  const user =
+    Object.keys(patch).length > 0 ? await usersRepo.update(userId, patch) : (await usersRepo.findById(userId))!;
 
   // Any of these fields (name/bio/email/tags/links) surface on the federated
   // actor, so push it to remote followers who already cached the old one. The
@@ -203,11 +191,7 @@ export function profileLinks(userId: string): Promise<ProfileLink[]> {
 
 // Persists an uploaded avatar to local disk and stores its public URL. The URL
 // is served back through `mediaRoutes` (mounted at /api/uploads).
-export async function setAvatar(
-  userId: string,
-  bytes: Uint8Array,
-  contentType: string,
-): Promise<User> {
+export async function setAvatar(userId: string, bytes: Uint8Array, contentType: string): Promise<User> {
   const ext = AVATAR_TYPES[contentType];
   if (!ext) throw badRequest("Unsupported image type. Use PNG, JPEG, WebP, or GIF.");
   if (bytes.byteLength === 0) throw badRequest("The uploaded file is empty.");

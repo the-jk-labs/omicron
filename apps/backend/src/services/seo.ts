@@ -80,13 +80,11 @@ export async function getSeoSettings(): Promise<SeoSettings> {
 
 // Partial update: only the keys present in `patch` are written, so toggling
 // indexing never clobbers the verification tokens and vice versa.
-export async function setSeoSettings(
-  patch: {
-    indexingEnabled?: boolean;
-    verification?: SeoVerification;
-    indexNowEnabled?: boolean;
-  },
-): Promise<void> {
+export async function setSeoSettings(patch: {
+  indexingEnabled?: boolean;
+  verification?: SeoVerification;
+  indexNowEnabled?: boolean;
+}): Promise<void> {
   if (patch.indexingEnabled !== undefined) {
     await settingsRepo.set(KEYS.indexingEnabled, patch.indexingEnabled);
   }

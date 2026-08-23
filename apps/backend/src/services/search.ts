@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as postsRepo from "@/db/repositories/posts.ts";
-import * as usersRepo from "@/db/repositories/users.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
+import * as usersRepo from "@/db/repositories/users.ts";
 import { normalizeTag } from "@/lib/tags.ts";
 import { relationActorLocal, relationActorRemote } from "@/routes/serializers.ts";
 
@@ -15,11 +15,7 @@ const MAX_POSTS = 20;
 const MAX_PEOPLE = 10;
 const MAX_TAGS = 10;
 
-export async function searchPosts(
-  viewerId: string | null,
-  query: string,
-  opts?: { tag?: string; author?: string },
-) {
+export async function searchPosts(viewerId: string | null, query: string, opts?: { tag?: string; author?: string }) {
   // Normalize tag if provided — empty after normalization means "no tag filter".
   const normalizedTag = opts?.tag ? normalizeTag(opts.tag) : undefined;
   const tag = normalizedTag || undefined;

@@ -2,16 +2,16 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { config } from "@/config.ts";
-import { federationRunning } from "@/services/federationState.ts";
 import { handleError } from "@/lib/http.ts";
-import { sessionMiddleware } from "@/routes/middleware.ts";
-import { healthRoutes } from "@/routes/health.ts";
-import { wellKnownRoutes } from "@/routes/wellKnown.ts";
-import { apiRoutes } from "@/routes/index.ts";
-import { registerJobHandlers } from "@/queue/handlers.ts";
-import { checkRateLimit, clientIp, rateLimit } from "@/lib/rateLimit.ts";
 import { readCappedBody } from "@/lib/inboxBody.ts";
+import { checkRateLimit, clientIp, rateLimit } from "@/lib/rateLimit.ts";
+import { registerJobHandlers } from "@/queue/handlers.ts";
+import { healthRoutes } from "@/routes/health.ts";
+import { apiRoutes } from "@/routes/index.ts";
+import { sessionMiddleware } from "@/routes/middleware.ts";
 import type { AppEnv } from "@/routes/types.ts";
+import { wellKnownRoutes } from "@/routes/wellKnown.ts";
+import { federationRunning } from "@/services/federationState.ts";
 
 // Read-only requests are cheap and safe; the general limiter targets mutations.
 const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -32,6 +32,11 @@ const apiWriteLimiter = rateLimit({
 // cap per source IP so a hostile peer can't flood it. Generous, since a busy
 // instance legitimately delivers many activities.
 const INBOX_LIMIT = { name: "inbox", windowMs: 60_000, max: config.RL_INBOX_MAX };
+
+// The bare actor document (`/users/{username}`, no sub-collection) is the one
+// place we splice in Mastodon's `attributionDomains` so shared articles render
+// an author byline on the link card. See federation/attribution.ts.
+const isActorDoc = (method: string, path: string) => method === "GET" && /^\/users\/[^/]+$/.test(path);
 
 // Caddy terminates TLS and proxies to this container over plain HTTP, so the
 // request Fedify sees is always "http://...". Fedify builds every actor/object
@@ -99,11 +104,6 @@ export async function buildApp() {
     const { withAttributionDomains } = await import("@/federation/attribution.ts");
     const fed = getFederation();
     const fedPrefixes = ["/.well-known/", "/users/", "/inbox", "/nodeinfo"];
-    // The bare actor document (`/users/{username}`, no sub-collection) is the
-    // one place we splice in Mastodon's `attributionDomains` so shared articles
-    // render an author byline on the link card. See federation/attribution.ts.
-    const isActorDoc = (method: string, path: string) =>
-      method === "GET" && /^\/users\/[^/]+$/.test(path);
     app.use("*", async (c, next) => {
       const path = new URL(c.req.url).pathname;
       if (fedPrefixes.some((p) => path === p || path.startsWith(p))) {
@@ -142,9 +142,7 @@ export async function buildApp() {
           contextData: undefined,
           onNotAcceptable,
         });
-        return isActorDoc(c.req.method, path)
-          ? await withAttributionDomains(res, config.APP_DOMAIN)
-          : res;
+        return isActorDoc(c.req.method, path) ? await withAttributionDomains(res, config.APP_DOMAIN) : res;
       }
       await next();
     });
@@ -156,10 +154,7 @@ export async function buildApp() {
   // Session resolution applies to the JSON API.
   app.use("/api/*", sessionMiddleware);
   // General write throttle, after session resolution so it can key by user.
-  app.use(
-    "/api/*",
-    (c, next) => READ_METHODS.has(c.req.method) ? next() : apiWriteLimiter(c, next),
-  );
+  app.use("/api/*", (c, next) => (READ_METHODS.has(c.req.method) ? next() : apiWriteLimiter(c, next)));
   app.route("/api", apiRoutes);
 
   return app;

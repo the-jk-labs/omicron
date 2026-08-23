@@ -1,3 +1,4 @@
+import { sql } from "@/db/client.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // One-time backfill: re-render posts whose Markdown was stored as literal text
 // by the pre-Markdown editor (headings, lists and quotes showing their raw
@@ -11,7 +12,6 @@
 // transform.
 import * as postsRepo from "@/db/repositories/posts.ts";
 import { upgradeLegacyMarkdown } from "@/lib/legacyMarkdown.ts";
-import { sql } from "@/db/client.ts";
 
 const dryRun = Deno.args.includes("--dry-run");
 

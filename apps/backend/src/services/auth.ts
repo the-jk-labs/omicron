@@ -1,15 +1,15 @@
+import { config } from "@/config.ts";
+import * as authTokensRepo from "@/db/repositories/authTokens.ts";
+import * as sessionsRepo from "@/db/repositories/sessions.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as usersRepo from "@/db/repositories/users.ts";
-import * as sessionsRepo from "@/db/repositories/sessions.ts";
-import * as authTokensRepo from "@/db/repositories/authTokens.ts";
+import type { User } from "@/db/schema.ts";
+import { isPwnedPassword } from "@/lib/hibp.ts";
+import { badRequest, conflict, forbidden, notFound, unauthorized } from "@/lib/http.ts";
 import { hashPassword, verifyDummy, verifyPassword } from "@/lib/password.ts";
 import { newSessionToken, sessionExpiry } from "@/lib/session.ts";
 import { hashToken, newToken } from "@/lib/tokens.ts";
-import { badRequest, conflict, forbidden, notFound, unauthorized } from "@/lib/http.ts";
-import { config } from "@/config.ts";
 import { queue } from "@/queue/queue.ts";
-import { isPwnedPassword } from "@/lib/hibp.ts";
-import type { User } from "@/db/schema.ts";
 
 // Business logic for authentication. First registered user becomes admin.
 
@@ -40,19 +40,13 @@ function assertPasswordLength(pw: string): void {
 async function assertNotPwned(pw: string): Promise<void> {
   if (!config.HIBP_CHECK_ENABLED) return;
   if (await isPwnedPassword(pw)) {
-    throw badRequest(
-      "This password has appeared in a data breach — please choose a different one.",
-    );
+    throw badRequest("This password has appeared in a data breach — please choose a different one.");
   }
 }
 
 // Issues a fresh single-use token of a purpose (invalidating any prior ones),
 // stores only its hash, and returns the raw token for the emailed link.
-async function issueToken(
-  userId: string,
-  purpose: authTokensRepo.AuthTokenPurpose,
-  ttlMs: number,
-): Promise<string> {
+async function issueToken(userId: string, purpose: authTokensRepo.AuthTokenPurpose, ttlMs: number): Promise<string> {
   await authTokensRepo.deleteForUser(userId, purpose);
   const raw = newToken();
   await authTokensRepo.create(userId, purpose, await hashToken(raw), new Date(Date.now() + ttlMs));
@@ -117,15 +111,16 @@ async function sendVerificationEmail(user: User): Promise<void> {
 }
 
 // Verifies credentials and returns a fresh session token (caller sets cookie).
-export async function login(identifier: string, password: string): Promise<{
+export async function login(
+  identifier: string,
+  password: string,
+): Promise<{
   user: User;
   token: string;
   expiresAt: Date;
 }> {
   const id = identifier.trim().toLowerCase();
-  const user = id.includes("@")
-    ? await usersRepo.findByEmail(id)
-    : await usersRepo.findByUsername(id);
+  const user = id.includes("@") ? await usersRepo.findByEmail(id) : await usersRepo.findByUsername(id);
   // Always spend the cost of a bcrypt comparison, even when the account doesn't
   // exist, so response timing can't distinguish "no such user" from "wrong
   // password" (account enumeration). Same generic error either way.
@@ -161,9 +156,7 @@ export function logout(token: string): Promise<void> {
 export async function requestPasswordReset(identifier: string): Promise<void> {
   const id = identifier.trim().toLowerCase();
   if (!id) return;
-  const user = id.includes("@")
-    ? await usersRepo.findByEmail(id)
-    : await usersRepo.findByUsername(id);
+  const user = id.includes("@") ? await usersRepo.findByEmail(id) : await usersRepo.findByUsername(id);
   if (!user) return;
   const token = await issueToken(user.id, "password_reset", PASSWORD_RESET_TTL_MS);
   queue.add("send_password_reset", { to: user.email, token });
@@ -183,11 +176,7 @@ export async function resetPassword(rawToken: string, newPassword: string): Prom
 
 // Changes the password of a signed-in user after confirming their current one.
 // The active session is left intact (the user stays logged in where they are).
-export async function changePassword(
-  userId: string,
-  currentPassword: string,
-  newPassword: string,
-): Promise<void> {
+export async function changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
   assertPasswordLength(newPassword);
   await assertNotPwned(newPassword);
   const user = await usersRepo.findById(userId);

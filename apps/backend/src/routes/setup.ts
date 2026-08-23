@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { setCookie } from "hono/cookie";
 import { z } from "zod";
-import * as authService from "@/services/auth.ts";
-import * as setup from "@/services/instanceSetup.ts";
-import * as emailSettings from "@/services/emailSettings.ts";
-import { sendTestEmail } from "@/services/email.ts";
-import { cookieSecure, SESSION_COOKIE, SESSION_TTL_MS } from "@/lib/session.ts";
 import { config } from "@/config.ts";
 import { badRequest, conflict } from "@/lib/http.ts";
+import { cookieSecure, SESSION_COOKIE, SESSION_TTL_MS } from "@/lib/session.ts";
 import { privateUser } from "@/routes/serializers.ts";
-import type { Context } from "hono";
 import type { AppEnv } from "@/routes/types.ts";
+import * as authService from "@/services/auth.ts";
+import { sendTestEmail } from "@/services/email.ts";
+import * as emailSettings from "@/services/emailSettings.ts";
+import * as setup from "@/services/instanceSetup.ts";
 
 // Session cookie attributes (kept in sync with routes/auth.ts). `secure` is
 // decided per request from the forwarded scheme (lib/session.ts cookieSecure),
@@ -50,21 +50,27 @@ export const setupRoutes = new Hono<AppEnv>();
 
 // Web-managed email settings the wizard collects (mirrors the admin page). All
 // fields optional: `console` needs none; `smtp` fills the connection details.
-const emailInputSchema = z.object({
-  mode: z.enum(["console", "smtp", "relay", "direct"]).optional(),
-  from: z.string().trim().max(200).optional(),
-  smtp: z.object({
-    host: z.string().trim().max(255).optional(),
-    port: z.coerce.number().int().positive().max(65535).optional(),
-    username: z.string().trim().max(255).optional(),
-    password: z.string().max(1024).optional(),
-    tls: z.boolean().optional(),
-  }).optional(),
-  relay: z.object({
-    provider: z.enum(["resend"]).optional(),
-    apiKey: z.string().max(1024).optional(),
-  }).optional(),
-}).optional();
+const emailInputSchema = z
+  .object({
+    mode: z.enum(["console", "smtp", "relay", "direct"]).optional(),
+    from: z.string().trim().max(200).optional(),
+    smtp: z
+      .object({
+        host: z.string().trim().max(255).optional(),
+        port: z.coerce.number().int().positive().max(65535).optional(),
+        username: z.string().trim().max(255).optional(),
+        password: z.string().max(1024).optional(),
+        tls: z.boolean().optional(),
+      })
+      .optional(),
+    relay: z
+      .object({
+        provider: z.enum(["resend"]).optional(),
+        apiKey: z.string().max(1024).optional(),
+      })
+      .optional(),
+  })
+  .optional();
 
 const setupSchema = z.object({
   appName: z.string().trim().min(1, "An instance name is required.").max(100),
@@ -123,9 +129,7 @@ setupRoutes.post("/test-email", async (c) => {
   try {
     await sendTestEmail(parsed.data.to, candidate);
   } catch (err) {
-    throw badRequest(
-      `Could not send the test email: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    throw badRequest(`Could not send the test email: ${err instanceof Error ? err.message : String(err)}`);
   }
   return c.json({ ok: true });
 });

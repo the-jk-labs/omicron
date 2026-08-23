@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { z } from "zod";
-import { badRequest } from "@/lib/http.ts";
 import { htmlToText } from "@/lib/html.ts";
+import { badRequest } from "@/lib/http.ts";
 import { slugify } from "@/lib/slug.ts";
 
 // Pure rules for the content-ingestion webhook (POST /api/webhooks/content):
@@ -26,10 +26,7 @@ function sha256(s: string): Promise<ArrayBuffer> {
  * sent, so a `===`-style early exit can't be timed to recover the secret byte
  * by byte.
  */
-export async function secretMatches(
-  presented: string | null,
-  expected: string,
-): Promise<boolean> {
+export async function secretMatches(presented: string | null, expected: string): Promise<boolean> {
   if (!presented) return false;
   const [a, b] = await Promise.all([sha256(presented), sha256(expected)]);
   const av = new Uint8Array(a);
@@ -214,9 +211,7 @@ function stripHeadingMarkers(html: string): string {
 export function externalKey(payload: Pick<ContentPayload, "slug" | "title">): string {
   const key = payload.slug?.trim() || (payload.title ? slugify(payload.title) : "");
   if (!key) {
-    throw badRequest(
-      "`slug` is required: no key could be derived from this payload.",
-    );
+    throw badRequest("`slug` is required: no key could be derived from this payload.");
   }
   return key;
 }

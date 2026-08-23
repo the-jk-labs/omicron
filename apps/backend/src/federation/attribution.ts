@@ -20,10 +20,7 @@ const ATTRIBUTION_CONTEXT = {
 // Wraps a served actor document, adding `attributionDomains: [domain]`. Returns
 // the response untouched if it isn't a JSON-LD Person (e.g. an error, or a
 // collection sharing the /users/ prefix), so the caller can apply it blindly.
-export async function withAttributionDomains(
-  res: Response,
-  domain: string,
-): Promise<Response> {
+export async function withAttributionDomains(res: Response, domain: string): Promise<Response> {
   const contentType = res.headers.get("content-type") ?? "";
   if (!res.ok || !contentType.includes("json")) return res;
 
@@ -39,8 +36,8 @@ export async function withAttributionDomains(
   doc["@context"] = Array.isArray(ctx)
     ? [...ctx, ATTRIBUTION_CONTEXT]
     : ctx
-    ? [ctx, ATTRIBUTION_CONTEXT]
-    : [ATTRIBUTION_CONTEXT];
+      ? [ctx, ATTRIBUTION_CONTEXT]
+      : [ATTRIBUTION_CONTEXT];
   doc.attributionDomains = [domain];
 
   const headers = new Headers(res.headers);

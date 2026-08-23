@@ -44,8 +44,7 @@ export function upgradeLegacyMarkdown(html: string): string {
   );
   out = out.replace(
     /(?:<!bq>[\s\S]*?<!\/bq>)+/g,
-    (run) =>
-      "<blockquote>" + run.replace(/<!bq>/g, "<p>").replace(/<!\/bq>/g, "</p>") + "</blockquote>",
+    (run) => "<blockquote>" + run.replace(/<!bq>/g, "<p>").replace(/<!\/bq>/g, "</p>") + "</blockquote>",
   );
 
   return out;
