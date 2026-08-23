@@ -1,3 +1,4 @@
+import { sql } from "@/db/client.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // One-time backfill: canonicalise stored login emails to lowercase.
 //
@@ -19,7 +20,6 @@
 // survive is not something a backfill should guess. Resolve those by hand (e.g.
 // suspend or delete the duplicate) and re-run.
 import * as usersRepo from "@/db/repositories/users.ts";
-import { sql } from "@/db/client.ts";
 
 const dryRun = Deno.args.includes("--dry-run");
 
@@ -53,8 +53,7 @@ for (const [canonical, bucket] of byCanonical) {
   // duplicate mailbox. Never merge; report every row and touch none of them.
   collisions++;
   console.warn(
-    `! COLLISION on ${canonical}: ${bucket.length} accounts share this mailbox — ` +
-      `left unchanged, resolve by hand:`,
+    `! COLLISION on ${canonical}: ${bucket.length} accounts share this mailbox — left unchanged, resolve by hand:`,
   );
   for (const row of bucket) console.warn(`    ${row.id}  (stored as ${row.email})`);
 }

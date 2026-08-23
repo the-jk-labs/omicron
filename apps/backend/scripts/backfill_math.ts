@@ -1,3 +1,4 @@
+import { sql } from "@/db/client.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // One-time backfill: typeset the maths in posts written before `$…$` was
 // rendered, which still show their TeX as literal text in the reader.
@@ -10,7 +11,6 @@
 // transform. New posts need none of this — they are rendered on write.
 import * as postsRepo from "@/db/repositories/posts.ts";
 import { upgradeLegacyMath } from "@/lib/legacyMath.ts";
-import { sql } from "@/db/client.ts";
 
 const dryRun = Deno.args.includes("--dry-run");
 

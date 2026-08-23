@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as notificationsRepo from "@/db/repositories/notifications.ts";
-import { notificationView } from "@/routes/serializers.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
+import { notificationView } from "@/routes/serializers.ts";
 
 // Business logic for in-app notifications. `notify`/`unnotify` are the single
 // entry points other services (follows, likes, comments, comment-likes) and the
@@ -71,12 +71,13 @@ export async function list(recipientId: string, cursor: Cursor | null) {
   const hasMore = rows.length > DEFAULT_PAGE_SIZE;
   const page = hasMore ? rows.slice(0, DEFAULT_PAGE_SIZE) : rows;
   const last = page.at(-1);
-  const nextCursor = hasMore && last
-    ? encodeCursor({
-      createdAt: last.notification.createdAt.toISOString(),
-      id: last.notification.id,
-    })
-    : null;
+  const nextCursor =
+    hasMore && last
+      ? encodeCursor({
+          createdAt: last.notification.createdAt.toISOString(),
+          id: last.notification.id,
+        })
+      : null;
   return { items: page.map(notificationView), nextCursor };
 }
 

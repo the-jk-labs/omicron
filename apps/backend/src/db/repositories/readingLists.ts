@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, desc, eq, getTableColumns, inArray, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
+import { isPublished, notHidden, notSuspended, type PostWithAuthor, visibleToViewer } from "@/db/repositories/posts.ts";
 import {
   type NewReadingList,
   posts,
@@ -10,13 +11,6 @@ import {
   remoteActors,
   users,
 } from "@/db/schema.ts";
-import {
-  isPublished,
-  notHidden,
-  notSuspended,
-  type PostWithAuthor,
-  visibleToViewer,
-} from "@/db/repositories/posts.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
 
 // Reading-list DB access. Adding a post is idempotent via the unique
@@ -58,27 +52,17 @@ export async function ensureReadLater(userId: string): Promise<ReadingList> {
 // negligible for a single instance; we deterministically return the oldest match.
 export function findById(id: string): Promise<ReadingList | undefined> {
   const isFullUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-  const match = isFullUuid
-    ? eq(readingLists.id, id)
-    : sql`${readingLists.id}::text like ${`${id.toLowerCase()}%`}`;
+  const match = isFullUuid ? eq(readingLists.id, id) : sql`${readingLists.id}::text like ${`${id.toLowerCase()}%`}`;
   return db.query.readingLists.findFirst({ where: match, orderBy: readingLists.createdAt });
 }
 
 // A user's lists, read-later pinned first, then newest first. `onlyPublic`
 // restricts to public lists (viewing someone else's profile).
-export async function listForUser(
-  userId: string,
-  onlyPublic: boolean,
-): Promise<ReadingList[]> {
+export async function listForUser(userId: string, onlyPublic: boolean): Promise<ReadingList[]> {
   return await db
     .select()
     .from(readingLists)
-    .where(
-      and(
-        eq(readingLists.userId, userId),
-        onlyPublic ? eq(readingLists.visibility, "public") : undefined,
-      ),
-    )
+    .where(and(eq(readingLists.userId, userId), onlyPublic ? eq(readingLists.visibility, "public") : undefined))
     .orderBy(desc(readingLists.isReadLater), desc(readingLists.createdAt));
 }
 
@@ -113,7 +97,7 @@ export function listSitemapLists(): Promise<{ id: string; title: string; lastIte
     .innerJoin(users, and(eq(users.id, readingLists.userId), sql`${users.suspendedAt} is null`))
     .where(and(eq(readingLists.visibility, "public"), eq(readingLists.isReadLater, false)))
     .groupBy(readingLists.id)
-    .limit(10000) as Promise<{ id: string; title: string; lastItemAt: Date }[]>;
+    .limit(10000);
 }
 
 // ── items ──────────────────────────────────────────────────────────────
@@ -135,10 +119,7 @@ export async function removeItem(listId: string, postId: string): Promise<void> 
 // allowed to see — a list showing "5 posts" and returning 4 tells a stranger a
 // hidden post exists, which is a smaller version of the disclosure the filter
 // on the read path closes.
-export async function itemCountsFor(
-  listIds: string[],
-  viewerId: string | null,
-): Promise<Map<string, number>> {
+export async function itemCountsFor(listIds: string[], viewerId: string | null): Promise<Map<string, number>> {
   const map = new Map<string, number>();
   if (listIds.length === 0) return map;
   const rows = await db
@@ -161,10 +142,7 @@ export async function itemCountsFor(
 }
 
 // Which of `listIds` already contain `postId` — powers the save menu's checks.
-export async function listIdsContaining(
-  listIds: string[],
-  postId: string,
-): Promise<Set<string>> {
+export async function listIdsContaining(listIds: string[], postId: string): Promise<Set<string>> {
   const set = new Set<string>();
   if (listIds.length === 0) return set;
   const rows = await db
@@ -190,16 +168,9 @@ export async function itemRefs(listId: string): Promise<ItemRef[]> {
     .from(readingListItems)
     .innerJoin(posts, eq(readingListItems.postId, posts.id))
     .leftJoin(users, eq(posts.authorId, users.id))
-    .where(
-      and(
-        eq(readingListItems.listId, listId),
-        isPublished,
-        notSuspended,
-        visibleToViewer(null),
-      ),
-    )
+    .where(and(eq(readingListItems.listId, listId), isPublished, notSuspended, visibleToViewer(null)))
     .orderBy(desc(readingListItems.createdAt), desc(readingListItems.id));
-  return rows as ItemRef[];
+  return rows;
 }
 
 // A row carries its post (with author) plus the join row's id/createdAt, which
@@ -270,5 +241,5 @@ export async function listItems(
     )
     .orderBy(desc(readingListItems.createdAt), desc(readingListItems.id))
     .limit(limit + 1);
-  return rows as unknown as ListItemRow[];
+  return rows;
 }

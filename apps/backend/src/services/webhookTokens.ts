@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as tokensRepo from "@/db/repositories/webhookTokens.ts";
+import type { WebhookToken } from "@/db/schema.ts";
 import { badRequest, notFound } from "@/lib/http.ts";
 import { generateToken, hashToken } from "@/lib/webhook.ts";
-import type { WebhookToken } from "@/db/schema.ts";
 
 // Per-user publishing tokens for the content webhook. A writer mints one per
 // external system from Settings, pastes it into that system, and revokes it
@@ -16,7 +16,10 @@ import type { WebhookToken } from "@/db/schema.ts";
 /** How many live tokens one account may hold. */
 export const MAX_TOKENS_PER_USER = 10;
 
-export async function mint(userId: string, rawLabel: unknown): Promise<{
+export async function mint(
+  userId: string,
+  rawLabel: unknown,
+): Promise<{
   token: string;
   row: WebhookToken;
 }> {
@@ -24,10 +27,8 @@ export async function mint(userId: string, rawLabel: unknown): Promise<{
   if (!label) throw badRequest("Give the token a name so you can recognise it later.");
   if (label.length > 60) throw badRequest("That name is too long (60 characters max).");
 
-  if (await tokensRepo.countForUser(userId) >= MAX_TOKENS_PER_USER) {
-    throw badRequest(
-      `You already have ${MAX_TOKENS_PER_USER} tokens. Revoke one before creating another.`,
-    );
+  if ((await tokensRepo.countForUser(userId)) >= MAX_TOKENS_PER_USER) {
+    throw badRequest(`You already have ${MAX_TOKENS_PER_USER} tokens. Revoke one before creating another.`);
   }
 
   const token = generateToken();
@@ -47,5 +48,5 @@ export async function revoke(userId: string, id: string): Promise<void> {
   if (!UUID.test(id)) throw notFound("Token not found.");
   // Scoped to the owner inside the repository, so a wrong id and someone else's
   // id are indistinguishable from out here — both are simply "not found".
-  if (!await tokensRepo.revoke(userId, id)) throw notFound("Token not found.");
+  if (!(await tokensRepo.revoke(userId, id))) throw notFound("Token not found.");
 }

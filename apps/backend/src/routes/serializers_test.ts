@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { assertEquals } from "@std/assert";
+import { expect, test } from "vitest";
+import type { User } from "@/db/schema.ts";
 import { publicUser, webhookTokenView } from "@/routes/serializers.ts";
-import type { User, WebhookToken } from "@/db/schema.ts";
 
 // The serializers decide what leaves the server. These tests pin the parts that
 // are privacy decisions rather than plumbing.
@@ -25,29 +25,29 @@ const user = {
   createdAt: new Date(),
 } as User;
 
-Deno.test("publicUser: never leaks credentials or the login email", () => {
+test("publicUser: never leaks credentials or the login email", () => {
   const out = publicUser(user) as Record<string, unknown>;
-  assertEquals("passwordHash" in out, false);
-  assertEquals("email" in out, false);
-  assertEquals("actorKeyPair" in out, false);
+  expect("passwordHash" in out).toBe(false);
+  expect("email" in out).toBe(false);
+  expect("actorKeyPair" in out).toBe(false);
 });
 
-Deno.test("publicUser: withholds the custom section on a locked profile", () => {
+test("publicUser: withholds the custom section on a locked profile", () => {
   const out = publicUser(user, [], [], { locked: true });
-  assertEquals(out.customSection, "");
-  assertEquals(out.customSectionHtml, "");
+  expect(out.customSection).toBe("");
+  expect(out.customSectionHtml).toBe("");
   // The header still renders, so a stranger can decide whether to follow.
-  assertEquals(out.bio, "Mathematician");
-  assertEquals(out.displayName, "Ada");
+  expect(out.bio).toBe("Mathematician");
+  expect(out.displayName).toBe("Ada");
 });
 
-Deno.test("publicUser: serves the custom section when not locked", () => {
+test("publicUser: serves the custom section when not locked", () => {
   const out = publicUser(user);
-  assertEquals(out.customSection, "# Secret plans");
-  assertEquals(out.customSectionHtml, "<h1>Secret plans</h1>");
+  expect(out.customSection).toBe("# Secret plans");
+  expect(out.customSectionHtml).toBe("<h1>Secret plans</h1>");
 });
 
-Deno.test("webhookTokenView: never returns the token hash", () => {
+test("webhookTokenView: never returns the token hash", () => {
   const out = webhookTokenView({
     id: "t1",
     userId: "u1",
@@ -56,12 +56,12 @@ Deno.test("webhookTokenView: never returns the token hash", () => {
     lastUsedAt: null,
     revokedAt: null,
     createdAt: new Date(),
-  } as WebhookToken) as Record<string, unknown>;
+  }) as Record<string, unknown>;
 
   // The hash is the credential's only stored form. It is useless to its owner
   // and dangerous everywhere else, so it must not appear on any surface.
-  assertEquals("tokenHash" in out, false);
+  expect("tokenHash" in out).toBe(false);
   // The owning account is implied by the session; echoing it back is noise.
-  assertEquals("userId" in out, false);
-  assertEquals(out.label, "Sanity");
+  expect("userId" in out).toBe(false);
+  expect(out.label).toBe("Sanity");
 });

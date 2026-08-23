@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { assert, assertEquals } from "@std/assert";
+import { expect, test } from "vitest";
 import { toShareJpeg } from "@/lib/shareImage.ts";
 
 // The share image exists for one reason: a link-preview scraper — WhatsApp
@@ -40,19 +40,19 @@ function jpegSize(bytes: Uint8Array): { width: number; height: number } | null {
   return null;
 }
 
-Deno.test("toShareJpeg: returns JPEG bytes, whatever went in", async () => {
+test("toShareJpeg: returns JPEG bytes, whatever went in", async () => {
   const jpeg = await toShareJpeg(TRANSPARENT_PNG);
   // SOI + the first marker: what a scraper sniffs for.
-  assertEquals([jpeg[0], jpeg[1], jpeg[2]], [0xff, 0xd8, 0xff]);
+  expect([jpeg[0], jpeg[1], jpeg[2]]).toEqual([0xff, 0xd8, 0xff]);
 });
 
-Deno.test("toShareJpeg: an image already inside the card box is not upscaled", async () => {
+test("toShareJpeg: an image already inside the card box is not upscaled", async () => {
   // 400x200 fits within 1200x630, so enlarging it would only ship a blurry
   // upscale to save nobody anything.
-  assertEquals(jpegSize(await toShareJpeg(TRANSPARENT_PNG)), { width: 400, height: 200 });
+  expect(jpegSize(await toShareJpeg(TRANSPARENT_PNG))).toEqual({ width: 400, height: 200 });
 });
 
-Deno.test("toShareJpeg: stays well under WhatsApp's ~600KB ceiling", async () => {
+test("toShareJpeg: stays well under WhatsApp's ~600KB ceiling", async () => {
   const jpeg = await toShareJpeg(TRANSPARENT_PNG);
-  assert(jpeg.length < 600 * 1024, `share image was ${jpeg.length} bytes`);
+  expect(jpeg.length, `share image was ${jpeg.length} bytes`).toBeLessThan(600 * 1024);
 });

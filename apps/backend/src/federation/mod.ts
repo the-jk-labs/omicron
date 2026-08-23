@@ -10,8 +10,6 @@ import {
   MemoryKvStore,
   type MessageQueue,
 } from "@fedify/fedify";
-import { RedisKvStore, RedisMessageQueue } from "@fedify/redis";
-import { getRedis, redisEnabled, redisFactory } from "@/lib/redis.ts";
 import type { Context } from "@fedify/fedify";
 import {
   Accept,
@@ -28,25 +26,27 @@ import {
   Undo,
   Update,
 } from "@fedify/fedify/vocab";
-import * as usersRepo from "@/db/repositories/users.ts";
+import { RedisKvStore, RedisMessageQueue } from "@fedify/redis";
+import { origin } from "@/config.ts";
+import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
-import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
-import * as recommendationsRepo from "@/db/repositories/recommendations.ts";
-import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as listsRepo from "@/db/repositories/readingLists.ts";
-import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
+import * as recommendationsRepo from "@/db/repositories/recommendations.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
-import * as notifications from "@/services/notifications.ts";
-import { articleLanguage, buildArticle } from "@/federation/article.ts";
-import { buildPerson } from "@/federation/actor.ts";
-import { cacheActor } from "@/federation/remote.ts";
-import { setupNodeInfo } from "@/federation/nodeinfo.ts";
-import { origin } from "@/config.ts";
-import { normalizeTags } from "@/lib/tags.ts";
-import { sanitizePostHtml } from "@/lib/sanitize.ts";
-import { sameOrigin } from "@/lib/domain.ts";
+import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
+import * as usersRepo from "@/db/repositories/users.ts";
 import type { Post } from "@/db/schema.ts";
+import { buildPerson } from "@/federation/actor.ts";
+import { articleLanguage, buildArticle } from "@/federation/article.ts";
+import { setupNodeInfo } from "@/federation/nodeinfo.ts";
+import { cacheActor } from "@/federation/remote.ts";
+import { sameOrigin } from "@/lib/domain.ts";
+import { getRedis, redisEnabled, redisFactory } from "@/lib/redis.ts";
+import { sanitizePostHtml } from "@/lib/sanitize.ts";
+import { normalizeTags } from "@/lib/tags.ts";
+import * as notifications from "@/services/notifications.ts";
 
 // ── ActivityPub wiring (isolated) ────────────────────────────────────────
 // This module is only imported when FEDERATION_ENABLED=true (see app.ts), so a
@@ -96,10 +96,8 @@ function createFederationInstance(): Federation<ContextData> {
     // pinned in lib/redis.ts) and API, but TypeScript sees two structurally
     // distinct `Redis` classes from the two package copies. Verified
     // functionally identical against a live Redis instance.
-    kv = new RedisKvStore(getRedis()! as unknown as ConstructorParameters<typeof RedisKvStore>[0]);
-    queue = new RedisMessageQueue(
-      redisFactory() as unknown as ConstructorParameters<typeof RedisMessageQueue>[0],
-    );
+    kv = new RedisKvStore(getRedis()!);
+    queue = new RedisMessageQueue(redisFactory());
     console.log("✔ Federation using Redis-backed KV + message queue (durable).");
   } else {
     kv = new MemoryKvStore();
@@ -112,10 +110,7 @@ function createFederationInstance(): Federation<ContextData> {
     // Transient delivery failures are retried per the backoff schedule; surface
     // each attempt so operators can see a struggling peer.
     onOutboxError: (error, activity) => {
-      console.error(
-        `federation: outbound delivery error for ${activity?.id?.href ?? "<unknown>"}:`,
-        error,
-      );
+      console.error(`federation: outbound delivery error for ${activity?.id?.href ?? "<unknown>"}:`, error);
     },
   });
   // Dead-letter visibility: fired once Fedify gives up on an inbox (a permanent
@@ -151,10 +146,12 @@ function setupActor(f: Federation<ContextData>) {
         });
         return [{ privateKey, publicKey }];
       }
-      return [{
-        privateKey: await importJwk(user.actorKeyPair.privateKey, "private"),
-        publicKey: await importJwk(user.actorKeyPair.publicKey, "public"),
-      }];
+      return [
+        {
+          privateKey: await importJwk(user.actorKeyPair.privateKey, "private"),
+          publicKey: await importJwk(user.actorKeyPair.publicKey, "public"),
+        },
+      ];
     });
 }
 
@@ -195,9 +192,7 @@ function setupLists(f: Federation<ContextData>) {
       if (!list || list.userId !== user.id || list.visibility !== "public") return null;
 
       const refs = await listsRepo.itemRefs(list.id);
-      const items = refs.map((r) =>
-        r.remote && r.apId ? new URL(r.apId) : new URL(`/posts/${r.id}`, origin)
-      );
+      const items = refs.map((r) => (r.remote && r.apId ? new URL(r.apId) : new URL(`/posts/${r.id}`, origin)));
       return new OrderedCollection({
         id: ctx.getObjectUri(OrderedCollection, { identifier, listId }),
         name: list.title,
@@ -226,10 +221,7 @@ async function fromBlockedDomain(actorId: URL | null | undefined): Promise<boole
 // article's *attributed author*, not the wrapping activity's actor, since
 // those two differ for an Announce (the booster isn't the writer). Returns the
 // existing cached row without refetching anything if we already have it.
-async function ingestArticle(
-  ctx: Context<ContextData>,
-  article: Article,
-): Promise<Post | undefined> {
+async function ingestArticle(ctx: Context<ContextData>, article: Article): Promise<Post | undefined> {
   if (!article.id) return undefined;
   const existing = await postsRepo.findByApId(article.id.href);
   if (existing) return existing;
@@ -285,9 +277,7 @@ function setupInbox(f: Federation<ContextData>) {
       // If the local user has blocked this remote actor, ignore the follow —
       // a blocked account can't re-follow (Mastodon semantics).
       const cachedFollower = await remoteActorsRepo.findByApId(follower.id.href);
-      if (
-        cachedFollower && await relationsRepo.hasRemote("block", followee.id, cachedFollower.id)
-      ) {
+      if (cachedFollower && (await relationsRepo.hasRemote("block", followee.id, cachedFollower.id))) {
         return;
       }
 
@@ -299,12 +289,7 @@ function setupInbox(f: Federation<ContextData>) {
         // Follow activity id so a later approve can Accept it) and notify the
         // owner. Do NOT auto-Accept — the owner approves/rejects (see
         // services/followRequests.ts), which sends the Accept/Reject.
-        await followsRepo.createRemoteFollower(
-          followee.id,
-          follower.id.href,
-          false,
-          follow.id?.href ?? null,
-        );
+        await followsRepo.createRemoteFollower(followee.id, follower.id.href, false, follow.id?.href ?? null);
         await notifications.notify({
           recipientId: followee.id,
           type: "follow_request",
@@ -493,13 +478,14 @@ function setupOutbox(f: Federation<ContextData>) {
     const rows: postsRepo.PostWithAuthor[] = await postsRepo.listByAuthor(user.id, null, null, 20);
     const page = rows.slice(0, 20);
     const tagsByPost = await tagsRepo.tagsForPosts(page.map(({ post }) => post.id));
-    const items = page.map(({ post }) =>
-      new Create({
-        id: new URL(`${post.id}/activity`, ctx.getOutboxUri(identifier)),
-        actor: ctx.getActorUri(identifier),
-        object: buildArticle(ctx, identifier, post, tagsByPost.get(post.id) ?? []),
-        tos: [PUBLIC_COLLECTION],
-      })
+    const items = page.map(
+      ({ post }) =>
+        new Create({
+          id: new URL(`${post.id}/activity`, ctx.getOutboxUri(identifier)),
+          actor: ctx.getActorUri(identifier),
+          object: buildArticle(ctx, identifier, post, tagsByPost.get(post.id) ?? []),
+          tos: [PUBLIC_COLLECTION],
+        }),
     );
     return { items };
   });

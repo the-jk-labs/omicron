@@ -1,11 +1,6 @@
+import { readFile } from "node:fs/promises";
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import {
-  Drawables,
-  Magick,
-  MagickColor,
-  MagickFormat,
-  MagickImage,
-} from "@imagemagick/magick-wasm";
+import { Drawables, Magick, MagickColor, MagickFormat, MagickImage } from "@imagemagick/magick-wasm";
 import { coveredCodepoints } from "@/lib/fontCoverage.ts";
 import { initializeMagick } from "@/lib/magick.ts";
 
@@ -80,7 +75,7 @@ function loadFont(): Promise<Set<number>> {
   if (!fontReady) {
     fontReady = (async () => {
       await initializeMagick();
-      const font = await Deno.readFile(FONT_PATH);
+      const font = await readFile(FONT_PATH);
       Magick.addFont(FONT, font);
       return coveredCodepoints(font);
     })().catch((err) => {
@@ -221,11 +216,7 @@ export async function renderOgCard(text: CardText): Promise<Uint8Array<ArrayBuff
   lines.forEach((line, i) => draw.text(PAD, firstBaseline + i * lineHeight, line));
 
   if (byline) {
-    draw.fontPointSize(31).fillColor(new MagickColor(BYLINE_COLOR)).text(
-      PAD,
-      BYLINE_BASELINE,
-      byline,
-    );
+    draw.fontPointSize(31).fillColor(new MagickColor(BYLINE_COLOR)).text(PAD, BYLINE_BASELINE, byline);
   }
   if (site) {
     draw.fontPointSize(26).fillColor(new MagickColor(SITE_COLOR)).text(PAD, SITE_BASELINE, site);

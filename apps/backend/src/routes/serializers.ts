@@ -1,17 +1,10 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-import type {
-  Post,
-  ProfileLink,
-  ReadingList as ReadingListRow,
-  RemoteActor,
-  User,
-  WebhookToken,
-} from "@/db/schema.ts";
-import type { PostWithAuthor } from "@/db/repositories/posts.ts";
 import type { CommentWithAuthor } from "@/db/repositories/comments.ts";
 import type { NotificationRow } from "@/db/repositories/notifications.ts";
-import { htmlToText } from "@/lib/html.ts";
+import type { PostWithAuthor } from "@/db/repositories/posts.ts";
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import type { Post, ProfileLink, ReadingList as ReadingListRow, RemoteActor, User, WebhookToken } from "@/db/schema.ts";
 import { bannerOf } from "@/lib/cover.ts";
+import { htmlToText } from "@/lib/html.ts";
 
 // Minimal API payloads — never leak password hashes, keys, or emails publicly.
 
@@ -212,9 +205,12 @@ export function remoteProfile(
 // Uniform actor summary for the relation-management lists (following / muted /
 // blocked). Shaped so the frontend's `/@${username}` links resolve to either a
 // local or remote profile, mirroring `postAuthor`.
-export function relationActorLocal(
-  row: { id: string; username: string; displayName: string; avatarUrl: string | null },
-) {
+export function relationActorLocal(row: {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+}) {
   return {
     id: row.id,
     username: row.username,
@@ -224,9 +220,12 @@ export function relationActorLocal(
   };
 }
 
-export function relationActorRemote(
-  row: { id: string; handle: string; displayName: string; avatarUrl: string | null },
-) {
+export function relationActorRemote(row: {
+  id: string;
+  handle: string;
+  displayName: string;
+  avatarUrl: string | null;
+}) {
   return {
     id: row.id,
     username: row.handle,
@@ -278,8 +277,8 @@ export function notificationView(row: NotificationRow) {
   const actor = row.actor
     ? relationActorLocal(row.actor)
     : row.remoteActor
-    ? relationActorRemote(row.remoteActor)
-    : null;
+      ? relationActorRemote(row.remoteActor)
+      : null;
   const snippet = row.commentContent ? htmlToText(row.commentContent).slice(0, 140) : null;
   return {
     id: n.id,
@@ -335,18 +334,16 @@ export function barePost(p: Omit<Post, "searchVector">) {
 
 // Reading-list payload. `itemCount` is the number of saved posts; `contains` is
 // present only in the save-menu payload (whether the post in question is in it).
-export function readingListView(
-  list: {
-    id: string;
-    title: string;
-    description: string;
-    visibility: ReadingListRow["visibility"];
-    isReadLater: boolean;
-    createdAt: Date;
-    itemCount: number;
-    contains?: boolean;
-  },
-) {
+export function readingListView(list: {
+  id: string;
+  title: string;
+  description: string;
+  visibility: ReadingListRow["visibility"];
+  isReadLater: boolean;
+  createdAt: Date;
+  itemCount: number;
+  contains?: boolean;
+}) {
   return {
     id: list.id,
     title: list.title,

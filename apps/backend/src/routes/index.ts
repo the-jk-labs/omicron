@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
-import { authRoutes } from "@/routes/auth.ts";
-import { postRoutes } from "@/routes/posts.ts";
-import { ogRoutes } from "@/routes/og.ts";
-import { feedRoutes } from "@/routes/feed.ts";
-import { userRoutes } from "@/routes/users.ts";
-import { mediaRoutes } from "@/routes/media.ts";
-import { remoteRoutes } from "@/routes/remote.ts";
-import { searchRoutes } from "@/routes/search.ts";
-import { tagRoutes } from "@/routes/tags.ts";
-import { listRoutes } from "@/routes/lists.ts";
-import { dashboardRoutes } from "@/routes/dashboard.ts";
 import { adminRoutes } from "@/routes/admin.ts";
-import { reportRoutes } from "@/routes/reports.ts";
+import { authRoutes } from "@/routes/auth.ts";
+import { dashboardRoutes } from "@/routes/dashboard.ts";
+import { feedRoutes } from "@/routes/feed.ts";
+import { listRoutes } from "@/routes/lists.ts";
+import { mediaRoutes } from "@/routes/media.ts";
 import { notificationRoutes } from "@/routes/notifications.ts";
-import { instanceRoutes, setupRoutes } from "@/routes/setup.ts";
-import { seoRoutes } from "@/routes/seo.ts";
+import { ogRoutes } from "@/routes/og.ts";
 import { photoRoutes } from "@/routes/photos.ts";
-import { webhookRoutes } from "@/routes/webhooks.ts";
+import { postRoutes } from "@/routes/posts.ts";
+import { remoteRoutes } from "@/routes/remote.ts";
+import { reportRoutes } from "@/routes/reports.ts";
+import { searchRoutes } from "@/routes/search.ts";
+import { seoRoutes } from "@/routes/seo.ts";
+import { instanceRoutes, setupRoutes } from "@/routes/setup.ts";
+import { tagRoutes } from "@/routes/tags.ts";
 import type { AppEnv } from "@/routes/types.ts";
+import { userRoutes } from "@/routes/users.ts";
+import { webhookRoutes } from "@/routes/webhooks.ts";
 
 // Mounts the JSON API under /api.
 export const apiRoutes = new Hono<AppEnv>();

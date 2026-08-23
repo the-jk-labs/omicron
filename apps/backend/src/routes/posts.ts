@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { type Context, Hono } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
-import * as postsService from "@/services/posts.ts";
-import * as likesService from "@/services/likes.ts";
-import * as recommendationsService from "@/services/recommendations.ts";
-import * as commentsService from "@/services/comments.ts";
-import * as commentLikesService from "@/services/commentLikes.ts";
-import { enrichPost, enrichPosts } from "@/services/engagement.ts";
-import * as analyticsService from "@/services/analytics.ts";
+import { z } from "zod";
+import { config } from "@/config.ts";
 import { isBot, readerOptedOut, VIEW_COOKIE, VIEW_COOKIE_TTL_MS } from "@/lib/analytics.ts";
-import { cookieSecure } from "@/lib/session.ts";
-import { decodeCursor } from "@/lib/pagination.ts";
 import { parseLanguageFilter } from "@/lib/languages.ts";
+import { decodeCursor } from "@/lib/pagination.ts";
+import { cookieSecure } from "@/lib/session.ts";
+import { jsonBody } from "@/lib/validate.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import { barePost, commentView } from "@/routes/serializers.ts";
-import { config } from "@/config.ts";
-import { jsonBody } from "@/lib/validate.ts";
-import { z } from "zod";
 import type { AppEnv } from "@/routes/types.ts";
+import * as analyticsService from "@/services/analytics.ts";
+import * as commentLikesService from "@/services/commentLikes.ts";
+import * as commentsService from "@/services/comments.ts";
+import { enrichPost, enrichPosts } from "@/services/engagement.ts";
+import * as likesService from "@/services/likes.ts";
+import * as postsService from "@/services/posts.ts";
+import * as recommendationsService from "@/services/recommendations.ts";
 
 export const postRoutes = new Hono<AppEnv>();
 
@@ -41,9 +41,10 @@ postRoutes.get("/", async (c) => {
   const cursor = decodeCursor(c.req.query("cursor"));
   // Optional reader-supplied language filter (`?langMode=show|hide&langs=en,tr`).
   const langFilter = parseLanguageFilter(c.req.query("langMode"), c.req.query("langs"));
-  const { items, nextCursor } = c.req.query("scope") === "local"
-    ? await postsService.localTimeline(cursor, viewer?.id ?? null, langFilter)
-    : await postsService.globalTimeline(cursor, viewer?.id ?? null, langFilter);
+  const { items, nextCursor } =
+    c.req.query("scope") === "local"
+      ? await postsService.localTimeline(cursor, viewer?.id ?? null, langFilter)
+      : await postsService.globalTimeline(cursor, viewer?.id ?? null, langFilter);
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
 });
 
@@ -125,15 +126,11 @@ function countView(c: Context<AppEnv>, row: { post: { id: string } }) {
   // Only issue the anonymous reader cookie to readers who could actually be
   // counted — never to an opted-out or bot request, so nothing is set for
   // traffic we're not going to track anyway.
-  if (
-    !viewer && !anonCookie && !readerOptedOut(headers) && !isBot(headers.get("user-agent") ?? "")
-  ) {
+  if (!viewer && !anonCookie && !readerOptedOut(headers) && !isBot(headers.get("user-agent") ?? "")) {
     anonCookie = crypto.randomUUID() + crypto.randomUUID();
     setCookie(c, VIEW_COOKIE, anonCookie, viewCookieOpts(c));
   }
-  analyticsService.recordPostView(row.post.id, headers, viewer?.id ?? null, anonCookie).catch(
-    () => {},
-  );
+  analyticsService.recordPostView(row.post.id, headers, viewer?.id ?? null, anonCookie).catch(() => {});
 }
 
 // A post by its permalink, `/@username/<slug>` (public). Resolves the live
@@ -143,11 +140,7 @@ function countView(c: Context<AppEnv>, row: { post: { id: string } }) {
 // a post id.
 postRoutes.get("/by/:username/:slug", async (c) => {
   const viewer = c.get("user");
-  const row = await postsService.getPostBySlug(
-    c.req.param("username"),
-    c.req.param("slug"),
-    viewer?.id ?? null,
-  );
+  const row = await postsService.getPostBySlug(c.req.param("username"), c.req.param("slug"), viewer?.id ?? null);
   if (row.post.authorId && row.post.status === "published") countView(c, row);
   return c.json({ post: await enrichPost(row, viewer?.id ?? null) });
 });
@@ -219,11 +212,7 @@ postRoutes.delete("/:id/recommend", async (c) => {
 postRoutes.get("/:id/comments", async (c) => {
   const viewer = c.get("user");
   const cursor = decodeCursor(c.req.query("cursor"));
-  const { items, nextCursor } = await commentsService.list(
-    c.req.param("id"),
-    cursor,
-    viewer?.id ?? null,
-  );
+  const { items, nextCursor } = await commentsService.list(c.req.param("id"), cursor, viewer?.id ?? null);
   return c.json({ items: items.map(commentView), nextCursor });
 });
 
@@ -236,39 +225,29 @@ const createCommentSchema = z.object({
 postRoutes.post("/:id/comments", jsonBody(createCommentSchema), async (c) => {
   const user = requireUser(c);
   const body = c.req.valid("json");
-  const comment = await commentsService.create(
-    user.id,
-    c.req.param("id"),
-    body.content,
-    body.parentId ?? null,
+  const comment = await commentsService.create(user.id, c.req.param("id"), body.content, body.parentId ?? null);
+  return c.json(
+    {
+      comment: commentView({
+        comment,
+        author: {
+          id: user.id,
+          username: user.username,
+          displayName: user.displayName,
+          avatarUrl: user.avatarUrl,
+        },
+      }),
+    },
+    201,
   );
-  return c.json({
-    comment: commentView({
-      comment,
-      author: {
-        id: user.id,
-        username: user.username,
-        displayName: user.displayName,
-        avatarUrl: user.avatarUrl,
-      },
-    }),
-  }, 201);
 });
 
 // Edit a comment (auth required; author only).
-postRoutes.patch(
-  "/:id/comments/:commentId",
-  jsonBody(z.object({ content: z.string() })),
-  async (c) => {
-    const user = requireUser(c);
-    const comment = await commentsService.edit(
-      user.id,
-      c.req.param("commentId"),
-      c.req.valid("json").content,
-    );
-    return c.json({ comment: { id: comment.id, content: comment.content } });
-  },
-);
+postRoutes.patch("/:id/comments/:commentId", jsonBody(z.object({ content: z.string() })), async (c) => {
+  const user = requireUser(c);
+  const comment = await commentsService.edit(user.id, c.req.param("commentId"), c.req.valid("json").content);
+  return c.json({ comment: { id: comment.id, content: comment.content } });
+});
 
 // Delete a comment (auth required; author or admin only).
 postRoutes.delete("/:id/comments/:commentId", async (c) => {

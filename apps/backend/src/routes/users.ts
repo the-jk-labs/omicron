@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
-import * as followsService from "@/services/follows.ts";
-import * as followRequestsService from "@/services/followRequests.ts";
-import * as postsService from "@/services/posts.ts";
-import * as usersService from "@/services/users.ts";
-import * as recommendationsService from "@/services/recommendations.ts";
-import * as relationsService from "@/services/relations.ts";
-import * as usersRepo from "@/db/repositories/users.ts";
+import { z } from "zod";
 import * as tagsRepo from "@/db/repositories/tags.ts";
-import { enrichPosts } from "@/services/engagement.ts";
-import { decodeCursor } from "@/lib/pagination.ts";
-import { requireUser } from "@/routes/middleware.ts";
-import { profileLinkView, publicUser } from "@/routes/serializers.ts";
+import * as usersRepo from "@/db/repositories/users.ts";
 import { badRequest, notFound } from "@/lib/http.ts";
 import { renderMarkdown } from "@/lib/markdown.ts";
-import { MAX_CUSTOM_SECTION_LEN } from "@/services/users.ts";
+import { decodeCursor } from "@/lib/pagination.ts";
 import { jsonBody } from "@/lib/validate.ts";
-import { z } from "zod";
+import { requireUser } from "@/routes/middleware.ts";
+import { profileLinkView, publicUser } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
+import { enrichPosts } from "@/services/engagement.ts";
+import * as followRequestsService from "@/services/followRequests.ts";
+import * as followsService from "@/services/follows.ts";
+import * as postsService from "@/services/posts.ts";
+import * as recommendationsService from "@/services/recommendations.ts";
+import * as relationsService from "@/services/relations.ts";
+import * as usersService from "@/services/users.ts";
+import { MAX_CUSTOM_SECTION_LEN } from "@/services/users.ts";
 
 export const userRoutes = new Hono<AppEnv>();
 
@@ -30,13 +30,15 @@ const updateProfileSchema = z.object({
   publicEmail: z.string().optional(),
   customSection: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  links: z.array(
-    z.object({
-      platform: z.string().optional(),
-      url: z.string().optional(),
-      label: z.string().optional(),
-    }),
-  ).optional(),
+  links: z
+    .array(
+      z.object({
+        platform: z.string().optional(),
+        url: z.string().optional(),
+        label: z.string().optional(),
+      }),
+    )
+    .optional(),
 });
 
 // Update the signed-in user's own profile (display name, bio). Registered
@@ -50,22 +52,14 @@ userRoutes.patch("/me", jsonBody(updateProfileSchema), async (c) => {
 // Live preview for the profile's custom Markdown section. Goes through the very
 // same render + sanitize path as saving, so what the editor shows is exactly
 // what will be stored — no second Markdown implementation in the frontend.
-userRoutes.post(
-  "/me/custom-section/preview",
-  jsonBody(z.object({ customSection: z.string() })),
-  (c) => {
-    requireUser(c);
-    const source = c.req.valid("json").customSection;
-    if (source.length > MAX_CUSTOM_SECTION_LEN) {
-      throw badRequest(
-        `Custom section must be ${
-          MAX_CUSTOM_SECTION_LEN.toLocaleString("en-US")
-        } characters or fewer.`,
-      );
-    }
-    return c.json({ html: renderMarkdown(source) });
-  },
-);
+userRoutes.post("/me/custom-section/preview", jsonBody(z.object({ customSection: z.string() })), (c) => {
+  requireUser(c);
+  const source = c.req.valid("json").customSection;
+  if (source.length > MAX_CUSTOM_SECTION_LEN) {
+    throw badRequest(`Custom section must be ${MAX_CUSTOM_SECTION_LEN.toLocaleString("en-US")} characters or fewer.`);
+  }
+  return c.json({ html: renderMarkdown(source) });
+});
 
 // Toggle the signed-in user's private/public account state. Going public
 // auto-approves pending follow requests (handled in the service).
@@ -139,12 +133,10 @@ userRoutes.get("/suggested", async (c) => {
 // Public profile + the viewer's follow/mute/block state.
 userRoutes.get("/:username", async (c) => {
   const viewer = c.get("user");
-  const { user, counts, followState, isFollowing, isMuted, isBlocked, locked } =
-    await followsService
-      .profile(
-        c.req.param("username"),
-        viewer?.id ?? null,
-      );
+  const { user, counts, followState, isFollowing, isMuted, isBlocked, locked } = await followsService.profile(
+    c.req.param("username"),
+    viewer?.id ?? null,
+  );
   const tags = await tagsRepo.tagsForUser(user.id);
   const links = await usersService.profileLinks(user.id);
   return c.json({
@@ -179,11 +171,7 @@ userRoutes.get("/:username/posts", async (c) => {
   const user = await usersRepo.findByUsername(c.req.param("username"));
   if (!user) throw notFound("User not found.");
   const cursor = decodeCursor(c.req.query("cursor"));
-  const { items, nextCursor } = await postsService.listByAuthor(
-    user.id,
-    cursor,
-    viewer?.id ?? null,
-  );
+  const { items, nextCursor } = await postsService.listByAuthor(user.id, cursor, viewer?.id ?? null);
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
 });
 
@@ -195,11 +183,7 @@ userRoutes.get("/:username/recommendations", async (c) => {
   const user = await usersRepo.findByUsername(c.req.param("username"));
   if (!user) throw notFound("User not found.");
   const cursor = decodeCursor(c.req.query("cursor"));
-  const { items, nextCursor } = await recommendationsService.listByUser(
-    user.id,
-    viewer?.id ?? null,
-    cursor,
-  );
+  const { items, nextCursor } = await recommendationsService.listByUser(user.id, viewer?.id ?? null, cursor);
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
 });
 

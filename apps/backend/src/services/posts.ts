@@ -1,19 +1,19 @@
+import * as followsRepo from "@/db/repositories/follows.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as postsRepo from "@/db/repositories/posts.ts";
-import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
-import * as followsRepo from "@/db/repositories/follows.ts";
-import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
+import { normalizeCoverCredit, normalizeCoverUrl } from "@/lib/cover.ts";
 import { diversify, freshDiversityState } from "@/lib/feedDiversity.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";
-import { MAX_TAGS_PER_POST, normalizeTags } from "@/lib/tags.ts";
 import { type LanguageFilter, normalizeLanguage } from "@/lib/languages.ts";
+import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
-import { normalizeCoverCredit, normalizeCoverUrl } from "@/lib/cover.ts";
+import { MAX_TAGS_PER_POST, normalizeTags } from "@/lib/tags.ts";
 import { SUMMARY_LENGTH as MAX_SUMMARY } from "@/lib/webhook.ts";
-import { syncSlug } from "@/services/postSlugs.ts";
 import { queue } from "@/queue/queue.ts";
+import { syncSlug } from "@/services/postSlugs.ts";
 
 // Business logic for posts. Creating a local post enqueues federation delivery.
 
@@ -31,9 +31,7 @@ const MAX_POST_HTML_LEN = 1_000_000;
 // count against the author.
 function assertBodyWithinLimit(html: string): void {
   if (html.length > MAX_POST_HTML_LEN) {
-    throw badRequest(
-      `Post content is too large (limit ${MAX_POST_HTML_LEN.toLocaleString("en-US")} characters).`,
-    );
+    throw badRequest(`Post content is too large (limit ${MAX_POST_HTML_LEN.toLocaleString("en-US")} characters).`);
   }
 }
 
@@ -66,10 +64,7 @@ export function normalizeSummary(raw: string | null | undefined): string | null 
 // (which needs no attribution) drops the photographer's name with it. Sending
 // one without the other could otherwise leave a post crediting someone for a
 // picture it no longer shows.
-function coverFields(
-  coverUrl: string | null | undefined,
-  coverCredit: Record<string, unknown> | null | undefined,
-) {
+function coverFields(coverUrl: string | null | undefined, coverCredit: Record<string, unknown> | null | undefined) {
   const url = normalizeCoverUrl(coverUrl);
   return { coverUrl: url, coverCredit: url ? normalizeCoverCredit(coverCredit) : null };
 }
@@ -157,18 +152,21 @@ export function firstPublicationFields(
   return next === "published" && previous !== "published" ? { createdAt: new Date() } : {};
 }
 
-export async function createPost(authorId: string, input: {
-  title?: string;
-  contentHtml: string;
-  contentJson?: unknown;
-  status?: string;
-  publishAt?: string | null;
-  language?: string | null;
-  summary?: string | null;
-  coverUrl?: string | null;
-  coverCredit?: Record<string, unknown> | null;
-  tags?: string[];
-}) {
+export async function createPost(
+  authorId: string,
+  input: {
+    title?: string;
+    contentHtml: string;
+    contentJson?: unknown;
+    status?: string;
+    publishAt?: string | null;
+    language?: string | null;
+    summary?: string | null;
+    coverUrl?: string | null;
+    coverCredit?: Record<string, unknown> | null;
+    tags?: string[];
+  },
+) {
   const status = resolveStatus(input.status, "published");
   const publishAt = resolvePublishAt(status, input.publishAt, null) ?? null;
 
@@ -247,11 +245,7 @@ const TRAILING_SHORT_ID = /(?:^|-)([0-9a-f]{8,})$/i;
  * path and redirects when they differ, which is what turns (2) and (3) into
  * permanent redirects to the current URL.
  */
-export async function getPostBySlug(
-  username: string,
-  slug: string,
-  viewerId: string | null = null,
-) {
+export async function getPostBySlug(username: string, slug: string, viewerId: string | null = null) {
   const bySlug = await postsRepo.findByAuthorSlug(username, slug);
   if (bySlug) return assertVisible(bySlug, viewerId);
 
@@ -284,8 +278,8 @@ async function assertVisible(row: postsRepo.PostWithAuthor, viewerId: string | n
     const blocked = row.post.authorId
       ? await relationsRepo.localBlockExists(viewerId, row.post.authorId)
       : row.post.remoteActorId
-      ? await relationsRepo.hasRemote("block", viewerId, row.post.remoteActorId)
-      : false;
+        ? await relationsRepo.hasRemote("block", viewerId, row.post.remoteActorId)
+        : false;
     if (blocked) throw notFound("Post not found.");
   }
   // Private accounts: a post by a private local author is visible only to the
@@ -353,18 +347,22 @@ export function listOwn(authorId: string, status: PostStatus, cursor: Cursor | n
 
 // Edits a post. Only the author may edit, and only local posts (remote posts
 // are owned by their origin instance). Re-enqueues federation for the update.
-export async function updatePost(authorId: string, id: string, input: {
-  title?: string;
-  contentHtml?: string;
-  contentJson?: unknown;
-  status?: string;
-  publishAt?: string | null;
-  language?: string | null;
-  summary?: string | null;
-  coverUrl?: string | null;
-  coverCredit?: Record<string, unknown> | null;
-  tags?: string[];
-}) {
+export async function updatePost(
+  authorId: string,
+  id: string,
+  input: {
+    title?: string;
+    contentHtml?: string;
+    contentJson?: unknown;
+    status?: string;
+    publishAt?: string | null;
+    language?: string | null;
+    summary?: string | null;
+    coverUrl?: string | null;
+    coverCredit?: Record<string, unknown> | null;
+    tags?: string[];
+  },
+) {
   const row = await postsRepo.findById(id);
   if (!row) throw notFound("Post not found.");
   if (row.post.remote) throw forbidden("Federated posts cannot be edited here.");
@@ -381,18 +379,14 @@ export async function updatePost(authorId: string, id: string, input: {
   // which needs somewhere to keep the revision and is a separate feature.
   // Refusing plainly beats silently pulling a published post off the site.
   if (previous === "published" && status === "scheduled") {
-    throw badRequest(
-      "This post is already published. Turn it back into a draft first if you want to schedule it.",
-    );
+    throw badRequest("This post is already published. Turn it back into a draft first if you want to schedule it.");
   }
 
   const publishAt = resolvePublishAt(status, input.publishAt, row.post.publishAt);
 
   // Only sanitize when new content is supplied; an omitted field leaves the
   // existing (already-sanitized) body untouched.
-  const html = input.contentHtml !== undefined
-    ? sanitizePostHtml(input.contentHtml).trim()
-    : undefined;
+  const html = input.contentHtml !== undefined ? sanitizePostHtml(input.contentHtml).trim() : undefined;
   if (input.contentHtml !== undefined && !html) throw badRequest("Post content cannot be empty.");
   if (html !== undefined) assertBodyWithinLimit(html);
 
@@ -400,7 +394,7 @@ export async function updatePost(authorId: string, id: string, input: {
   // Untitled drafts are allowed, but a post must have a title to be published —
   // and a scheduled post is held to the same rule, since by the time it
   // publishes there is nobody around to be told it could not.
-  const resolvedTitle = input.title !== undefined ? (title || null) : row.post.title;
+  const resolvedTitle = input.title !== undefined ? title || null : row.post.title;
   if (status !== "draft" && !resolvedTitle) {
     throw badRequest("A blog post must have a title.");
   }
@@ -492,9 +486,8 @@ export function pageOf(
   const last = items.at(-1);
   return {
     items,
-    nextCursor: hasMore && last
-      ? encodeCursor({ createdAt: last.post.createdAt.toISOString(), id: last.post.id })
-      : null,
+    nextCursor:
+      hasMore && last ? encodeCursor({ createdAt: last.post.createdAt.toISOString(), id: last.post.id }) : null,
   };
 }
 
@@ -511,17 +504,14 @@ export function pageOfDue(
   const last = items.at(-1);
   return {
     items,
-    nextCursor: hasMore && last?.post.publishAt
-      ? encodeCursor({ createdAt: last.post.publishAt.toISOString(), id: last.post.id })
-      : null,
+    nextCursor:
+      hasMore && last?.post.publishAt
+        ? encodeCursor({ createdAt: last.post.publishAt.toISOString(), id: last.post.id })
+        : null,
   };
 }
 
-export async function listByAuthor(
-  authorId: string,
-  cursor: Cursor | null,
-  viewerId: string | null = null,
-) {
+export async function listByAuthor(authorId: string, cursor: Cursor | null, viewerId: string | null = null) {
   const rows = await postsRepo.listByAuthor(authorId, viewerId, cursor, DEFAULT_PAGE_SIZE);
   return pageOf(rows, DEFAULT_PAGE_SIZE);
 }
@@ -548,9 +538,14 @@ async function diversifiedTimelinePage(
     // Repos fetch limit+1; the overflow only signals "more in the DB".
     const rows = await fetchRows(cursor, FEED_WINDOW);
     if (!rows.length) return { items, nextCursor: null };
-    const result = diversify(rows, DEFAULT_PAGE_SIZE - items.length, (row) => {
-      return row.post.authorId ?? row.post.remoteActorId ?? "";
-    }, state);
+    const result = diversify(
+      rows,
+      DEFAULT_PAGE_SIZE - items.length,
+      (row) => {
+        return row.post.authorId ?? row.post.remoteActorId ?? "";
+      },
+      state,
+    );
     state = result.state;
     items.push(...result.kept);
     const lastScanned = rows[result.scanned - 1];
@@ -574,10 +569,7 @@ export function globalTimeline(
   viewerId: string | null = null,
   langFilter: LanguageFilter | null = null,
 ) {
-  return diversifiedTimelinePage(
-    (c, limit) => postsRepo.listGlobal(viewerId, c, limit, langFilter),
-    cursor,
-  );
+  return diversifiedTimelinePage((c, limit) => postsRepo.listGlobal(viewerId, c, limit, langFilter), cursor);
 }
 
 export function localTimeline(
@@ -585,10 +577,7 @@ export function localTimeline(
   viewerId: string | null = null,
   langFilter: LanguageFilter | null = null,
 ) {
-  return diversifiedTimelinePage(
-    (c, limit) => postsRepo.listLocal(viewerId, c, limit, langFilter),
-    cursor,
-  );
+  return diversifiedTimelinePage((c, limit) => postsRepo.listLocal(viewerId, c, limit, langFilter), cursor);
 }
 
 // The discovery rail's "Trending" list — "Last 7 days": a short, unpaginated set of

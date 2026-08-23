@@ -6,11 +6,7 @@ import { follows, remoteActors, users } from "@/db/schema.ts";
 // Follow-edge DB access. Supports local↔local and remote↔local rows.
 
 export async function createLocal(followerId: string, followeeId: string, approved = true) {
-  const [row] = await db
-    .insert(follows)
-    .values({ followerId, followeeId, approved })
-    .onConflictDoNothing()
-    .returning();
+  const [row] = await db.insert(follows).values({ followerId, followeeId, approved }).onConflictDoNothing().returning();
   return row;
 }
 
@@ -20,45 +16,36 @@ export async function createRemoteFollower(
   approved = true,
   followActivityId: string | null = null,
 ) {
-  const [row] = await db
-    .insert(follows)
-    .values({ followeeId, remoteActor, approved, followActivityId })
-    .returning();
+  const [row] = await db.insert(follows).values({ followeeId, remoteActor, approved, followActivityId }).returning();
   return row;
 }
 
 export async function removeLocal(followerId: string, followeeId: string) {
-  await db
-    .delete(follows)
-    .where(and(eq(follows.followerId, followerId), eq(follows.followeeId, followeeId)));
+  await db.delete(follows).where(and(eq(follows.followerId, followerId), eq(follows.followeeId, followeeId)));
 }
 
 // Removes any follow edge between two local users in EITHER direction. A block
 // severs the follow relationship both ways (Mastodon/Instagram), so blocking
 // someone you follow — or who follows you — drops both edges at once.
 export async function severLocal(a: string, b: string) {
-  await db.delete(follows).where(
-    or(
-      and(eq(follows.followerId, a), eq(follows.followeeId, b)),
-      and(eq(follows.followerId, b), eq(follows.followeeId, a)),
-    ),
-  );
+  await db
+    .delete(follows)
+    .where(
+      or(
+        and(eq(follows.followerId, a), eq(follows.followeeId, b)),
+        and(eq(follows.followerId, b), eq(follows.followeeId, a)),
+      ),
+    );
 }
 
 export async function removeRemoteFollower(followeeId: string, remoteActor: string) {
-  await db
-    .delete(follows)
-    .where(and(eq(follows.followeeId, followeeId), eq(follows.remoteActor, remoteActor)));
+  await db.delete(follows).where(and(eq(follows.followeeId, followeeId), eq(follows.remoteActor, remoteActor)));
 }
 
 // True only for an *approved* follow edge — a pending request is not following.
 export async function isFollowing(followerId: string, followeeId: string): Promise<boolean> {
   const row = await db.query.follows.findFirst({
-    where: and(
-      eq(follows.followerId, followerId),
-      eq(follows.followeeId, followeeId),
-      eq(follows.approved, true),
-    ),
+    where: and(eq(follows.followerId, followerId), eq(follows.followeeId, followeeId), eq(follows.approved, true)),
   });
   return !!row;
 }
@@ -66,10 +53,7 @@ export async function isFollowing(followerId: string, followeeId: string): Promi
 // The viewer's follow relationship to a local user: no edge, a pending request
 // (private account awaiting approval), or an approved follow. Drives the profile
 // Follow / Requested / Following button state.
-export async function followState(
-  followerId: string,
-  followeeId: string,
-): Promise<"none" | "requested" | "following"> {
+export async function followState(followerId: string, followeeId: string): Promise<"none" | "requested" | "following"> {
   const row = await db.query.follows.findFirst({
     where: and(eq(follows.followerId, followerId), eq(follows.followeeId, followeeId)),
   });
@@ -91,20 +75,12 @@ export async function createRemoteFollowing(followerId: string, remoteFolloweeId
 export async function removeRemoteFollowing(followerId: string, remoteFolloweeId: string) {
   await db
     .delete(follows)
-    .where(
-      and(eq(follows.followerId, followerId), eq(follows.remoteFolloweeId, remoteFolloweeId)),
-    );
+    .where(and(eq(follows.followerId, followerId), eq(follows.remoteFolloweeId, remoteFolloweeId)));
 }
 
-export async function isFollowingRemote(
-  followerId: string,
-  remoteFolloweeId: string,
-): Promise<boolean> {
+export async function isFollowingRemote(followerId: string, remoteFolloweeId: string): Promise<boolean> {
   const row = await db.query.follows.findFirst({
-    where: and(
-      eq(follows.followerId, followerId),
-      eq(follows.remoteFolloweeId, remoteFolloweeId),
-    ),
+    where: and(eq(follows.followerId, followerId), eq(follows.remoteFolloweeId, remoteFolloweeId)),
   });
   return !!row;
 }
@@ -114,9 +90,7 @@ export async function approveRemoteFollowing(followerId: string, remoteFolloweeI
   await db
     .update(follows)
     .set({ approved: true })
-    .where(
-      and(eq(follows.followerId, followerId), eq(follows.remoteFolloweeId, remoteFolloweeId)),
-    );
+    .where(and(eq(follows.followerId, followerId), eq(follows.remoteFolloweeId, remoteFolloweeId)));
 }
 
 // Remote follower actor URIs — used for federated delivery of new posts. Only
@@ -126,13 +100,7 @@ export async function remoteFollowerActors(followeeId: string): Promise<string[]
   const rows = await db
     .select({ actor: follows.remoteActor })
     .from(follows)
-    .where(
-      and(
-        eq(follows.followeeId, followeeId),
-        isNotNull(follows.remoteActor),
-        eq(follows.approved, true),
-      ),
-    );
+    .where(and(eq(follows.followeeId, followeeId), isNotNull(follows.remoteActor), eq(follows.approved, true)));
   return rows.map((r: { actor: string | null }) => r.actor!).filter(Boolean);
 }
 
@@ -141,12 +109,8 @@ export async function remoteFollowerActors(followeeId: string): Promise<string[]
 export async function counts(userId: string) {
   const [row] = await db
     .select({
-      followers: sql<
-        number
-      >`count(*) filter (where ${follows.followeeId} = ${userId} and ${follows.approved})::int`,
-      following: sql<
-        number
-      >`count(*) filter (where ${follows.followerId} = ${userId} and ${follows.approved})::int`,
+      followers: sql<number>`count(*) filter (where ${follows.followeeId} = ${userId} and ${follows.approved})::int`,
+      following: sql<number>`count(*) filter (where ${follows.followerId} = ${userId} and ${follows.approved})::int`,
     })
     .from(follows);
   return { followers: row?.followers ?? 0, following: row?.following ?? 0 };
@@ -197,13 +161,7 @@ export function listLocalFollowing(followerId: string, viewerId: string | null =
     })
     .from(follows)
     .innerJoin(users, eq(follows.followeeId, users.id))
-    .where(
-      and(
-        eq(follows.followerId, followerId),
-        eq(follows.approved, true),
-        notBlockedLocal(viewerId),
-      ),
-    )
+    .where(and(eq(follows.followerId, followerId), eq(follows.approved, true), notBlockedLocal(viewerId)))
     .orderBy(follows.createdAt);
 }
 
@@ -218,13 +176,7 @@ export function listLocalFollowers(followeeId: string, viewerId: string | null =
     })
     .from(follows)
     .innerJoin(users, eq(follows.followerId, users.id))
-    .where(
-      and(
-        eq(follows.followeeId, followeeId),
-        eq(follows.approved, true),
-        notBlockedLocal(viewerId),
-      ),
-    )
+    .where(and(eq(follows.followeeId, followeeId), eq(follows.approved, true), notBlockedLocal(viewerId)))
     .orderBy(follows.createdAt);
 }
 
@@ -240,13 +192,7 @@ export function listRemoteFollowers(followeeId: string, viewerId: string | null 
     })
     .from(follows)
     .innerJoin(remoteActors, eq(follows.remoteActor, remoteActors.apId))
-    .where(
-      and(
-        eq(follows.followeeId, followeeId),
-        eq(follows.approved, true),
-        notBlockedRemote(viewerId),
-      ),
-    )
+    .where(and(eq(follows.followeeId, followeeId), eq(follows.approved, true), notBlockedRemote(viewerId)))
     .orderBy(follows.createdAt);
 }
 
@@ -261,13 +207,7 @@ export function listRemoteFollowing(followerId: string, viewerId: string | null 
     })
     .from(follows)
     .innerJoin(remoteActors, eq(follows.remoteFolloweeId, remoteActors.id))
-    .where(
-      and(
-        eq(follows.followerId, followerId),
-        eq(follows.approved, true),
-        notBlockedRemote(viewerId),
-      ),
-    )
+    .where(and(eq(follows.followerId, followerId), eq(follows.approved, true), notBlockedRemote(viewerId)))
     .orderBy(follows.createdAt);
 }
 
@@ -314,11 +254,7 @@ export function listRemoteFollowRequests(followeeId: string) {
 // Scoped to the owner so one user can't approve/reject another's requests.
 export function findInboundRequest(followeeId: string, followId: string) {
   return db.query.follows.findFirst({
-    where: and(
-      eq(follows.id, followId),
-      eq(follows.followeeId, followeeId),
-      eq(follows.approved, false),
-    ),
+    where: and(eq(follows.id, followId), eq(follows.followeeId, followeeId), eq(follows.approved, false)),
   });
 }
 

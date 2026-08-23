@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as followsRepo from "@/db/repositories/follows.ts";
-import * as usersRepo from "@/db/repositories/users.ts";
-import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
-import * as notifications from "@/services/notifications.ts";
-import { relationActorLocal, relationActorRemote } from "@/routes/serializers.ts";
-import { badRequest, forbidden, notFound } from "@/lib/http.ts";
+import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
+import * as usersRepo from "@/db/repositories/users.ts";
 import { isRemoteHandle } from "@/lib/handles.ts";
+import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import { queue } from "@/queue/queue.ts";
+import { relationActorLocal, relationActorRemote } from "@/routes/serializers.ts";
+import * as notifications from "@/services/notifications.ts";
 
 // Business logic for the follow system. Remote actors (federation) are handled
 // elsewhere; this covers local user → local user follows.
@@ -90,13 +90,11 @@ export async function profile(username: string, viewerId: string | null) {
   // A block (either direction) makes the two users invisible to each other, so
   // the blocked profile reads as not-found rather than rendering the header,
   // counts and bio. Unblocking is done from the Connections settings, not here.
-  if (viewerId && viewerId !== user.id && await relationsRepo.localBlockExists(viewerId, user.id)) {
+  if (viewerId && viewerId !== user.id && (await relationsRepo.localBlockExists(viewerId, user.id))) {
     throw notFound("User not found.");
   }
   const counts = await followsRepo.counts(user.id);
-  const state = viewerId && viewerId !== user.id
-    ? await followsRepo.followState(viewerId, user.id)
-    : "none";
+  const state = viewerId && viewerId !== user.id ? await followsRepo.followState(viewerId, user.id) : "none";
   const isFollowing = state === "following";
   const isMuted = viewerId ? await relationsRepo.hasLocal("mute", viewerId, user.id) : false;
   const isBlocked = viewerId ? await relationsRepo.hasLocal("block", viewerId, user.id) : false;
@@ -122,7 +120,7 @@ export async function followersOf(username: string, viewerId: string | null = nu
   const user = await usersRepo.findByUsername(username);
   if (!user) throw notFound("User not found.");
   // A locked private profile hides its follower list from non-followers.
-  if (!await canViewPrivate(user, viewerId)) return [];
+  if (!(await canViewPrivate(user, viewerId))) return [];
   const [local, remote] = await Promise.all([
     followsRepo.listLocalFollowers(user.id, viewerId),
     followsRepo.listRemoteFollowers(user.id, viewerId),
@@ -134,7 +132,7 @@ export async function followingOf(username: string, viewerId: string | null = nu
   const user = await usersRepo.findByUsername(username);
   if (!user) throw notFound("User not found.");
   // A locked private profile hides its following list from non-followers.
-  if (!await canViewPrivate(user, viewerId)) return [];
+  if (!(await canViewPrivate(user, viewerId))) return [];
   const [local, remote] = await Promise.all([
     followsRepo.listLocalFollowing(user.id, viewerId),
     followsRepo.listRemoteFollowing(user.id, viewerId),

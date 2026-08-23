@@ -10,9 +10,9 @@
 // `windowMs`; the window resets wholesale when it expires. This is coarser than
 // a sliding window but cheap and more than adequate for abuse throttling.
 
-import { createMiddleware } from "hono/factory";
-import { getConnInfo } from "hono/deno";
 import type { Context } from "hono";
+import { getConnInfo } from "hono/deno";
+import { createMiddleware } from "hono/factory";
 import { config } from "@/config.ts";
 import { getRedis } from "@/lib/redis.ts";
 import type { AppEnv } from "@/routes/types.ts";
@@ -67,7 +67,7 @@ async function hitRedis(key: string, windowMs: number, max: number): Promise<Hit
   const redis = getRedis();
   if (!redis) return hitInProcess(key, windowMs, max);
   try {
-    const [count, ttl] = await redis.eval(HIT_LUA, 1, `rl:${key}`, windowMs) as [number, number];
+    const [count, ttl] = (await redis.eval(HIT_LUA, 1, `rl:${key}`, windowMs)) as [number, number];
     // PTTL returns -1 (no expiry) or -2 (no key) in edge races; fall back to a
     // full window so resetAt stays sane.
     const resetAt = Date.now() + (ttl >= 0 ? ttl : windowMs);
@@ -84,9 +84,7 @@ async function hitRedis(key: string, windowMs: number, max: number): Promise<Hit
 // metadata needed for RateLimit / Retry-After headers. Uses Redis when
 // configured, otherwise the in-process Map.
 function hit(key: string, windowMs: number, max: number): Promise<HitResult> {
-  return config.REDIS_URL
-    ? hitRedis(key, windowMs, max)
-    : Promise.resolve(hitInProcess(key, windowMs, max));
+  return config.REDIS_URL ? hitRedis(key, windowMs, max) : Promise.resolve(hitInProcess(key, windowMs, max));
 }
 
 // Resolves the caller's IP from `x-forwarded-for`, trusting only the value added
@@ -101,7 +99,10 @@ function hit(key: string, windowMs: number, max: number): Promise<HitResult> {
 export function clientIp(c: Context): string {
   const xff = c.req.header("x-forwarded-for");
   if (xff) {
-    const parts = xff.split(",").map((p) => p.trim()).filter(Boolean);
+    const parts = xff
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
     if (parts.length > 0) return parts[parts.length - 1];
   }
   const real = c.req.header("x-real-ip");

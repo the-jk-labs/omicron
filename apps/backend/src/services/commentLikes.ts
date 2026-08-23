@@ -2,8 +2,8 @@
 import * as commentLikesRepo from "@/db/repositories/commentLikes.ts";
 import * as commentsRepo from "@/db/repositories/comments.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
-import * as notifications from "@/services/notifications.ts";
 import { forbidden, notFound } from "@/lib/http.ts";
+import * as notifications from "@/services/notifications.ts";
 
 // Business logic for comment likes. Returns fresh stats so the client can
 // update the count + toggle state without a second request.

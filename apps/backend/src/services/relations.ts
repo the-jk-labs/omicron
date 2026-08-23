@@ -1,13 +1,13 @@
+import * as followsRepo from "@/db/repositories/follows.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as relationsRepo from "@/db/repositories/relations.ts";
 import type { RelationKind } from "@/db/repositories/relations.ts";
-import * as usersRepo from "@/db/repositories/users.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
-import * as followsRepo from "@/db/repositories/follows.ts";
-import { getProfile as getRemoteActor } from "@/services/remoteProfiles.ts";
-import { relationActorLocal, relationActorRemote } from "@/routes/serializers.ts";
+import * as usersRepo from "@/db/repositories/users.ts";
 import { badRequest, notFound } from "@/lib/http.ts";
 import { queue } from "@/queue/queue.ts";
+import { relationActorLocal, relationActorRemote } from "@/routes/serializers.ts";
+import { getProfile as getRemoteActor } from "@/services/remoteProfiles.ts";
 
 // Business logic for the personal-moderation edges (mute / block). Both kinds
 // share this code; only the table differs. Targets may be a local user (by
@@ -18,12 +18,7 @@ import { queue } from "@/queue/queue.ts";
 // an ActivityPub Block to the actor's instance (Undo(Block) on unblock). A MUTE
 // is the soft, silent edge and touches neither follows nor federation.
 
-export async function setLocal(
-  kind: RelationKind,
-  viewerId: string,
-  username: string,
-  on: boolean,
-) {
+export async function setLocal(kind: RelationKind, viewerId: string, username: string, on: boolean) {
   const target = await usersRepo.findByUsername(username);
   if (!target) throw notFound("User not found.");
   if (target.id === viewerId) throw badRequest(`You cannot ${kind} yourself.`);
@@ -36,12 +31,7 @@ export async function setLocal(
   }
 }
 
-export async function setRemote(
-  kind: RelationKind,
-  viewerId: string,
-  handle: string,
-  on: boolean,
-) {
+export async function setRemote(kind: RelationKind, viewerId: string, handle: string, on: boolean) {
   // Resolve (and cache) the actor so we have a stable id to reference.
   const actor = on ? await getRemoteActor(handle) : await remoteActorsRepo.findByHandle(handle);
   if (!actor) throw notFound("Remote user not found.");

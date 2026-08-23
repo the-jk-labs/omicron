@@ -34,10 +34,7 @@ export function findByApId(apId: string) {
 // cascade via FKs). Used by the inbound Delete(Actor) handler. Returns whether a
 // row was removed.
 export async function removeByApId(apId: string): Promise<boolean> {
-  const rows = await db
-    .delete(remoteActors)
-    .where(eq(remoteActors.apId, apId))
-    .returning({ id: remoteActors.id });
+  const rows = await db.delete(remoteActors).where(eq(remoteActors.apId, apId)).returning({ id: remoteActors.id });
   return rows.length > 0;
 }
 

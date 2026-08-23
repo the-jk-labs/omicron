@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
-import * as feedService from "@/services/feed.ts";
-import { enrichPosts } from "@/services/engagement.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import type { AppEnv } from "@/routes/types.ts";
+import { enrichPosts } from "@/services/engagement.ts";
+import * as feedService from "@/services/feed.ts";
 
 export const feedRoutes = new Hono<AppEnv>();
 

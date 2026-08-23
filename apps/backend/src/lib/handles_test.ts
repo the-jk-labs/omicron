@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { assertEquals } from "@std/assert";
+import { expect, test } from "vitest";
 import { isRemoteHandle } from "@/lib/handles.ts";
 
 // removeFollower (and other relation actions) route by this predicate: a local
@@ -7,18 +7,18 @@ import { isRemoteHandle } from "@/lib/handles.ts";
 // If it misclassified, a removal would silently target the wrong path — so pin
 // both sides.
 
-Deno.test("isRemoteHandle: local usernames are not remote", () => {
+test("isRemoteHandle: local usernames are not remote", () => {
   for (const local of ["alice", "bob_123", "a_b_c", "user30chars_0000000000000000"]) {
-    assertEquals(isRemoteHandle(local), false, `${local} should be local`);
+    expect(isRemoteHandle(local), `${local} should be local`).toBe(false);
   }
 });
 
-Deno.test("isRemoteHandle: user@host handles are remote", () => {
+test("isRemoteHandle: user@host handles are remote", () => {
   for (const remote of ["alice@fosstodon.org", "bob@mastodon.social", "x@a.b.example.com"]) {
-    assertEquals(isRemoteHandle(remote), true, `${remote} should be remote`);
+    expect(isRemoteHandle(remote), `${remote} should be remote`).toBe(true);
   }
 });
 
-Deno.test("isRemoteHandle: a leading-@ handle is still remote", () => {
-  assertEquals(isRemoteHandle("@alice@fosstodon.org"), true);
+test("isRemoteHandle: a leading-@ handle is still remote", () => {
+  expect(isRemoteHandle("@alice@fosstodon.org")).toBe(true);
 });

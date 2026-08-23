@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
 import { z } from "zod";
-import * as settings from "@/services/settings.ts";
-import * as anubis from "@/services/anubisProtection.ts";
-import * as seo from "@/services/seo.ts";
-import * as unsplash from "@/services/unsplash.ts";
-import * as moderation from "@/services/moderation.ts";
-import * as tagsService from "@/services/tags.ts";
-import * as emailSettings from "@/services/emailSettings.ts";
-import * as setup from "@/services/instanceSetup.ts";
-import * as mediaService from "@/services/media.ts";
-import { sendTestEmail } from "@/services/email.ts";
-import { dnsRecords } from "@/services/dkim.ts";
-import { checkOutboundPort25, verifyRecords } from "@/services/emailDns.ts";
+import { rotateSessionSecret, sessionSecretManaged } from "@/config.ts";
+import { badRequest } from "@/lib/http.ts";
+import { jsonBody } from "@/lib/validate.ts";
 import { requireAdmin } from "@/routes/middleware.ts";
 import { adminUserView } from "@/routes/serializers.ts";
-import { badRequest } from "@/lib/http.ts";
-import { rotateSessionSecret, sessionSecretManaged } from "@/config.ts";
-import { federationRunning } from "@/services/federationState.ts";
-import { jsonBody } from "@/lib/validate.ts";
 import type { AppEnv } from "@/routes/types.ts";
+import * as anubis from "@/services/anubisProtection.ts";
+import { dnsRecords } from "@/services/dkim.ts";
+import { sendTestEmail } from "@/services/email.ts";
+import { checkOutboundPort25, verifyRecords } from "@/services/emailDns.ts";
+import * as emailSettings from "@/services/emailSettings.ts";
+import { federationRunning } from "@/services/federationState.ts";
+import * as setup from "@/services/instanceSetup.ts";
+import * as mediaService from "@/services/media.ts";
+import * as moderation from "@/services/moderation.ts";
+import * as seo from "@/services/seo.ts";
+import * as settings from "@/services/settings.ts";
+import * as tagsService from "@/services/tags.ts";
+import * as unsplash from "@/services/unsplash.ts";
 
 export const adminRoutes = new Hono<AppEnv>();
 
@@ -67,21 +67,15 @@ const securitySchema = z.object({ anubisProtection: z.boolean() });
 // Flip the scraper shield on/off. Applied live via Caddy's admin API (no
 // restart); federation and the API are never routed through it. A failure to
 // reach/reconfigure Caddy is surfaced verbatim and nothing is persisted.
-adminRoutes.put(
-  "/security/anubis",
-  jsonBody(securitySchema, "Expected { anubisProtection: boolean }."),
-  async (c) => {
-    requireAdmin(c);
-    try {
-      await anubis.setAnubisProtectionEnabled(c.req.valid("json").anubisProtection);
-    } catch (err) {
-      throw badRequest(
-        err instanceof Error ? err.message : "Could not update scraper protection.",
-      );
-    }
-    return c.json(await securitySnapshot());
-  },
-);
+adminRoutes.put("/security/anubis", jsonBody(securitySchema, "Expected { anubisProtection: boolean }."), async (c) => {
+  requireAdmin(c);
+  try {
+    await anubis.setAnubisProtectionEnabled(c.req.valid("json").anubisProtection);
+  } catch (err) {
+    throw badRequest(err instanceof Error ? err.message : "Could not update scraper protection.");
+  }
+  return c.json(await securitySnapshot());
+});
 
 // ── Discoverability / SEO ────────────────────────────────────────────────────
 
@@ -119,15 +113,11 @@ adminRoutes.get("/unsplash", async (c) => {
 // A blank (or omitted) key clears it, which is how the feature is turned off.
 const unsplashSchema = z.object({ accessKey: z.string().trim().max(200).nullish() });
 
-adminRoutes.put(
-  "/unsplash",
-  jsonBody(unsplashSchema, "Expected { accessKey: string | null }."),
-  async (c) => {
-    requireAdmin(c);
-    await unsplash.setAccessKey(c.req.valid("json").accessKey ?? null);
-    return c.json({ configured: await unsplash.configured() });
-  },
-);
+adminRoutes.put("/unsplash", jsonBody(unsplashSchema, "Expected { accessKey: string | null }."), async (c) => {
+  requireAdmin(c);
+  await unsplash.setAccessKey(c.req.valid("json").accessKey ?? null);
+  return c.json({ configured: await unsplash.configured() });
+});
 
 // ── Instance identity (runtime config) ──────────────────────────────────────
 
@@ -222,19 +212,23 @@ adminRoutes.get("/email", async (c) => {
 const emailUpdateSchema = z.object({
   mode: z.enum(["console", "smtp", "relay", "direct"]).optional(),
   from: z.string().trim().max(200).optional(),
-  smtp: z.object({
-    host: z.string().trim().max(255).optional(),
-    port: z.coerce.number().int().positive().max(65535).optional(),
-    username: z.string().trim().max(255).optional(),
-    // Blank/omitted = leave the stored password unchanged.
-    password: z.string().max(1024).optional(),
-    tls: z.boolean().optional(),
-  }).optional(),
-  relay: z.object({
-    provider: z.enum(["resend"]).optional(),
-    // Blank/omitted = leave the stored API key unchanged.
-    apiKey: z.string().max(1024).optional(),
-  }).optional(),
+  smtp: z
+    .object({
+      host: z.string().trim().max(255).optional(),
+      port: z.coerce.number().int().positive().max(65535).optional(),
+      username: z.string().trim().max(255).optional(),
+      // Blank/omitted = leave the stored password unchanged.
+      password: z.string().max(1024).optional(),
+      tls: z.boolean().optional(),
+    })
+    .optional(),
+  relay: z
+    .object({
+      provider: z.enum(["resend"]).optional(),
+      // Blank/omitted = leave the stored API key unchanged.
+      apiKey: z.string().max(1024).optional(),
+    })
+    .optional(),
 });
 
 // Update email settings. Partial: only the keys present are written, so toggling
@@ -291,9 +285,7 @@ adminRoutes.post("/email/test", jsonBody(emailTestSchema), async (c) => {
   try {
     await sendTestEmail(c.req.valid("json").to);
   } catch (err) {
-    throw badRequest(
-      `Could not send the test email: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    throw badRequest(`Could not send the test email: ${err instanceof Error ? err.message : String(err)}`);
   }
   return c.json({ ok: true });
 });
@@ -310,15 +302,11 @@ adminRoutes.get("/users", async (c) => {
 const suspendSchema = z.object({ suspend: z.boolean() });
 
 // Suspend or reinstate a local account.
-adminRoutes.post(
-  "/users/:id/suspend",
-  jsonBody(suspendSchema, "Expected { suspend: boolean }."),
-  async (c) => {
-    const admin = requireAdmin(c);
-    await moderation.setSuspended(admin.id, c.req.param("id"), c.req.valid("json").suspend);
-    return c.json({ ok: true });
-  },
-);
+adminRoutes.post("/users/:id/suspend", jsonBody(suspendSchema, "Expected { suspend: boolean }."), async (c) => {
+  const admin = requireAdmin(c);
+  await moderation.setSuspended(admin.id, c.req.param("id"), c.req.valid("json").suspend);
+  return c.json({ ok: true });
+});
 
 // ── Posts ────────────────────────────────────────────────────────────────
 
@@ -336,10 +324,7 @@ adminRoutes.get("/reports", async (c) => {
   requireAdmin(c);
   const status = c.req.query("status");
   const filter = status === "open" || status === "resolved" ? status : undefined;
-  const [reports, openCount] = await Promise.all([
-    moderation.listReports(filter),
-    moderation.openReportCount(),
-  ]);
+  const [reports, openCount] = await Promise.all([moderation.listReports(filter), moderation.openReportCount()]);
   return c.json({ reports, openCount });
 });
 
@@ -365,16 +350,12 @@ const blockDomainSchema = z.object({ domain: z.string().min(1), reason: z.string
 
 // Defederate a domain. Returns the normalized domain and how many cached actors
 // were purged as a result.
-adminRoutes.post(
-  "/domains",
-  jsonBody(blockDomainSchema, "Expected { domain, reason? }."),
-  async (c) => {
-    requireAdmin(c);
-    const { domain, reason } = c.req.valid("json");
-    const result = await moderation.blockDomain(domain, reason ?? "");
-    return c.json(result, 201);
-  },
-);
+adminRoutes.post("/domains", jsonBody(blockDomainSchema, "Expected { domain, reason? }."), async (c) => {
+  requireAdmin(c);
+  const { domain, reason } = c.req.valid("json");
+  const result = await moderation.blockDomain(domain, reason ?? "");
+  return c.json(result, 201);
+});
 
 // Re-federate a domain. The param is the normalized domain (its primary key).
 adminRoutes.delete("/domains/:domain", async (c) => {

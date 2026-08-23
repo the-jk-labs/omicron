@@ -22,12 +22,7 @@ export function search(query: string, limit = 10) {
       avatarUrl: users.avatarUrl,
     })
     .from(users)
-    .where(
-      and(
-        sql`${users.suspendedAt} is null`,
-        or(ilike(users.username, term), ilike(users.displayName, term)),
-      ),
-    )
+    .where(and(sql`${users.suspendedAt} is null`, or(ilike(users.username, term), ilike(users.displayName, term))))
     .orderBy(users.displayName)
     .limit(limit);
 }
@@ -41,20 +36,20 @@ export function suggested(viewerId: string | null, limit = 5) {
   const notSuspended = sql`${users.suspendedAt} is null`;
   const exclude = viewerId
     ? and(
-      notSuspended,
-      ne(users.id, viewerId),
-      sql`${users.id} not in (
+        notSuspended,
+        ne(users.id, viewerId),
+        sql`${users.id} not in (
         select followee_id from follows
         where follower_id = ${viewerId} and followee_id is not null
       )`,
-      // Never suggest someone the viewer has blocked, or who has blocked them.
-      sql`${users.id} not in (
+        // Never suggest someone the viewer has blocked, or who has blocked them.
+        sql`${users.id} not in (
         select target_user_id from blocks
           where user_id = ${viewerId} and target_user_id is not null
         union
         select user_id from blocks where target_user_id = ${viewerId}
       )`,
-    )
+      )
     : notSuspended;
   return db
     .select({
@@ -134,9 +129,9 @@ export async function remove(id: string) {
 export function listForAdmin(query = "", limit = 100) {
   const where = query.trim()
     ? (() => {
-      const term = `%${query.replace(/[%_\\]/g, "\\$&")}%`;
-      return or(ilike(users.username, term), ilike(users.displayName, term));
-    })()
+        const term = `%${query.replace(/[%_\\]/g, "\\$&")}%`;
+        return or(ilike(users.username, term), ilike(users.displayName, term));
+      })()
     : undefined;
   return db.select().from(users).where(where).orderBy(desc(users.createdAt)).limit(limit);
 }

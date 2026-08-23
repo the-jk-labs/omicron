@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
-import * as analyticsService from "@/services/analytics.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import type { AppEnv } from "@/routes/types.ts";
+import * as analyticsService from "@/services/analytics.ts";
 
 export const dashboardRoutes = new Hono<AppEnv>();
 

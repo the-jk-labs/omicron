@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as followsRepo from "@/db/repositories/follows.ts";
-import * as notifications from "@/services/notifications.ts";
-import { relationActorLocal, relationActorRemote } from "@/routes/serializers.ts";
 import { notFound } from "@/lib/http.ts";
 import { queue } from "@/queue/queue.ts";
+import { relationActorLocal, relationActorRemote } from "@/routes/serializers.ts";
+import * as notifications from "@/services/notifications.ts";
 
 // Business logic for the follow-request inbox of a private account. A request is
 // an unapproved inbound follow edge (see follows.approved). The owner approves

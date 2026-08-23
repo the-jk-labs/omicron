@@ -1,14 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { aliasedTable, and, type Column, desc, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import {
-  comments,
-  type NewNotification,
-  notifications,
-  posts,
-  remoteActors,
-  users,
-} from "@/db/schema.ts";
+import { comments, type NewNotification, notifications, posts, remoteActors, users } from "@/db/schema.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
 
 // Notification DB access. Services/routes never touch `db`.
@@ -55,19 +48,12 @@ export type NotificationRow = Awaited<ReturnType<typeof listFor>>[number];
 function beforeCursor(cursor: Cursor | null) {
   if (!cursor) return undefined;
   const ts = new Date(cursor.createdAt);
-  return or(
-    lt(notifications.createdAt, ts),
-    and(eq(notifications.createdAt, ts), lt(notifications.id, cursor.id)),
-  );
+  return or(lt(notifications.createdAt, ts), and(eq(notifications.createdAt, ts), lt(notifications.id, cursor.id)));
 }
 
 // A recipient's notifications, newest first, cursor-paginated (limit + 1 so the
 // service can derive the next cursor without a second query).
-export function listFor(
-  recipientId: string,
-  cursor: Cursor | null,
-  limit = DEFAULT_PAGE_SIZE,
-) {
+export function listFor(recipientId: string, cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
   return selectNotifications()
     .where(and(eq(notifications.recipientId, recipientId), beforeCursor(cursor)))
     .orderBy(desc(notifications.createdAt), desc(notifications.id))
@@ -81,6 +67,8 @@ export async function create(data: NewNotification) {
   return row ?? null;
 }
 
+const eqOrNull = (col: Column, val: string | null | undefined) => (val == null ? isNull(col) : eq(col, val));
+
 // Undo path: delete the row matching an action that was reversed (unlike,
 // unfollow) so the bell never shows a stale "X liked your post". Matches on the
 // same tuple the dedupe UNIQUE is built from; null target columns match null.
@@ -92,18 +80,18 @@ export async function removeMatching(match: {
   postId?: string | null;
   commentId?: string | null;
 }) {
-  const eqOrNull = (col: Column, val: string | null | undefined) =>
-    val == null ? isNull(col) : eq(col, val);
-  await db.delete(notifications).where(
-    and(
-      eq(notifications.recipientId, match.recipientId),
-      eq(notifications.type, match.type),
-      eqOrNull(notifications.actorId, match.actorId),
-      eqOrNull(notifications.remoteActorId, match.remoteActorId),
-      eqOrNull(notifications.postId, match.postId),
-      eqOrNull(notifications.commentId, match.commentId),
-    ),
-  );
+  await db
+    .delete(notifications)
+    .where(
+      and(
+        eq(notifications.recipientId, match.recipientId),
+        eq(notifications.type, match.type),
+        eqOrNull(notifications.actorId, match.actorId),
+        eqOrNull(notifications.remoteActorId, match.remoteActorId),
+        eqOrNull(notifications.postId, match.postId),
+        eqOrNull(notifications.commentId, match.commentId),
+      ),
+    );
 }
 
 export async function unreadCount(recipientId: string): Promise<number> {

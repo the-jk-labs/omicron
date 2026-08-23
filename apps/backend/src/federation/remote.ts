@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { DocumentLoader } from "@fedify/fedify";
 import { type Actor, Article, Create, Hashtag, isActor } from "@fedify/fedify/vocab";
-import { getFederation } from "@/federation/mod.ts";
-import { articleLanguage } from "@/federation/article.ts";
 import { origin } from "@/config.ts";
-import * as usersRepo from "@/db/repositories/users.ts";
-import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
-import * as postsRepo from "@/db/repositories/posts.ts";
-import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
-import { normalizeTags } from "@/lib/tags.ts";
-import { sanitizePostHtml } from "@/lib/sanitize.ts";
-import { sameOrigin } from "@/lib/domain.ts";
+import * as postsRepo from "@/db/repositories/posts.ts";
+import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
+import * as usersRepo from "@/db/repositories/users.ts";
 import type { RemoteActor } from "@/db/schema.ts";
+import { articleLanguage } from "@/federation/article.ts";
+import { getFederation } from "@/federation/mod.ts";
+import { sameOrigin } from "@/lib/domain.ts";
+import { sanitizePostHtml } from "@/lib/sanitize.ts";
+import { normalizeTags } from "@/lib/tags.ts";
 
 // Resolving and caching remote fediverse actors + their posts. This is the
 // read-side counterpart to outbound.ts: we fetch foreign actor documents and
@@ -105,9 +105,8 @@ export async function fetchOutboxPosts(handle: string, remoteActorId: string): P
     if (!outbox) return;
     // Paged collections keep items on their first page; inline ones expose them
     // directly. Try the first page, then fall back to the collection itself.
-    const page = "getFirst" in outbox && outbox.firstId
-      ? (await outbox.getFirst({ documentLoader })) ?? outbox
-      : outbox;
+    const page =
+      "getFirst" in outbox && outbox.firstId ? ((await outbox.getFirst({ documentLoader })) ?? outbox) : outbox;
 
     let count = 0;
     for await (const item of page.getItems({ documentLoader })) {

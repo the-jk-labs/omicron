@@ -1,10 +1,10 @@
+import * as postsRepo from "@/db/repositories/posts.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as tagsRepo from "@/db/repositories/tags.ts";
-import * as postsRepo from "@/db/repositories/posts.ts";
-import { pageOf } from "@/services/posts.ts";
-import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
 import { badRequest, notFound } from "@/lib/http.ts";
+import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
 import { normalizeTag } from "@/lib/tags.ts";
+import { pageOf } from "@/services/posts.ts";
 
 // Business logic for tags: browsing a tag's posts, following, search, trending.
 

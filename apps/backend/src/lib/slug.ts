@@ -21,18 +21,18 @@
  * short id, which is a working URL rather than a wrong one.
  */
 const TRANSLITERATIONS: Record<string, string> = {
-  "ə": "e",
-  "ı": "i",
-  "ø": "o",
-  "đ": "d",
-  "ð": "d",
-  "ħ": "h",
-  "ŋ": "n",
-  "ł": "l",
-  "ß": "ss",
-  "æ": "ae",
-  "œ": "oe",
-  "þ": "th",
+  ə: "e",
+  ı: "i",
+  ø: "o",
+  đ: "d",
+  ð: "d",
+  ħ: "h",
+  ŋ: "n",
+  ł: "l",
+  ß: "ss",
+  æ: "ae",
+  œ: "oe",
+  þ: "th",
 };
 
 const TRANSLITERATE_RE = new RegExp(`[${Object.keys(TRANSLITERATIONS).join("")}]`, "g");

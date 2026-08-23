@@ -3,9 +3,9 @@ import { Hono } from "hono";
 import { config } from "@/config.ts";
 import { notFound } from "@/lib/http.ts";
 import { requireUser } from "@/routes/middleware.ts";
+import type { AppEnv } from "@/routes/types.ts";
 import * as mediaService from "@/services/media.ts";
 import * as shareImageService from "@/services/shareImage.ts";
-import type { AppEnv } from "@/routes/types.ts";
 
 // Serves and accepts user-uploaded media (avatars, post images) on local disk.
 // Mounted at /api/uploads so it flows through the same SvelteKit → backend proxy
@@ -47,7 +47,7 @@ mediaRoutes.get("/og/:file", async (c) => {
     // A share image is a nicety; an image the encoder chokes on must not be a
     // 500 in a scraper's face. Log it and let the platform fall back to the
     // instance's brand image.
-    console.warn(`Share image failed for ${id}: ${err instanceof Error ? err.message : err}`);
+    console.warn(`Share image failed for ${id}: ${err instanceof Error ? err.message : JSON.stringify(err)}`);
     throw notFound("File not found.");
   }
   if (!jpeg) throw notFound("File not found.");

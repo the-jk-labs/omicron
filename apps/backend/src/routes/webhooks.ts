@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
-import * as webhooks from "@/services/webhooks.ts";
-import * as webhookTokens from "@/services/webhookTokens.ts";
+import { z } from "zod";
+import { config } from "@/config.ts";
+import { badRequest } from "@/lib/http.ts";
+import { readCappedBody } from "@/lib/inboxBody.ts";
+import { rateLimit } from "@/lib/rateLimit.ts";
+import { jsonBody } from "@/lib/validate.ts";
 import { parseContent } from "@/lib/webhook.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import { webhookTokenView } from "@/routes/serializers.ts";
-import { badRequest } from "@/lib/http.ts";
-import { rateLimit } from "@/lib/rateLimit.ts";
-import { readCappedBody } from "@/lib/inboxBody.ts";
-import { config } from "@/config.ts";
-import { jsonBody } from "@/lib/validate.ts";
-import { z } from "zod";
 import type { AppEnv } from "@/routes/types.ts";
+import * as webhooks from "@/services/webhooks.ts";
+import * as webhookTokens from "@/services/webhookTokens.ts";
 
 export const webhookRoutes = new Hono<AppEnv>();
 

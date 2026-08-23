@@ -30,46 +30,50 @@ const tsvector = customType<{ data: string }>({
 // ── users ──────────────────────────────────────────────────────────────
 // The first registered user becomes admin. `actor_key_pair` holds the
 // ActivityPub RSA key pair (JWK) used by Fedify for HTTP signatures.
-export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  username: text("username").notNull(),
-  email: text("email").notNull(),
-  passwordHash: text("password_hash").notNull(),
-  displayName: text("display_name").notNull(),
-  bio: text("bio").notNull().default(""),
-  // Optional contact address the user chooses to show on their public profile.
-  // Distinct from `email` (the private login address); empty means "not shown".
-  publicEmail: text("public_email").notNull().default(""),
-  // Free-form Markdown section shown at the top of the profile's About tab —
-  // a GitHub-README-style space the author lays out however they like.
-  // `customSection` is the Markdown they wrote (the editable source of truth);
-  // `customSectionHtml` is the rendered + sanitized HTML we serve, so readers
-  // never pay to re-render and the sanitizer runs exactly once, on write.
-  customSection: text("custom_section").notNull().default(""),
-  customSectionHtml: text("custom_section_html").notNull().default(""),
-  avatarUrl: text("avatar_url"),
-  isAdmin: boolean("is_admin").notNull().default(false),
-  // Private account (Instagram-style). Public by default: anyone reads the
-  // posts and follows instantly. When private, posts are visible only to
-  // approved followers and following requires approval (see follows.approved);
-  // federated via the actor's `manuallyApprovesFollowers` flag.
-  isPrivate: boolean("is_private").notNull().default(false),
-  // When the user confirmed their login email. Null until verified. Only gates
-  // sign-in when EMAIL_VERIFICATION_REQUIRED is set (see services/auth.ts).
-  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
-  // When an admin suspended this account (null = active). A suspended user is
-  // blocked from signing in and has their sessions cleared (see services/auth.ts
-  // and services/moderation.ts).
-  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
-  actorKeyPair: jsonb("actor_key_pair").$type<ActorKeyPair | null>(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  uniqueIndex("users_username_idx").on(t.username),
-  uniqueIndex("users_email_idx").on(t.email),
-  // Trigram indexes for people search (ILIKE '%term%' on handle / display name).
-  index("users_username_trgm_idx").using("gin", sql`${t.username} gin_trgm_ops`),
-  index("users_display_name_trgm_idx").using("gin", sql`${t.displayName} gin_trgm_ops`),
-]);
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    username: text("username").notNull(),
+    email: text("email").notNull(),
+    passwordHash: text("password_hash").notNull(),
+    displayName: text("display_name").notNull(),
+    bio: text("bio").notNull().default(""),
+    // Optional contact address the user chooses to show on their public profile.
+    // Distinct from `email` (the private login address); empty means "not shown".
+    publicEmail: text("public_email").notNull().default(""),
+    // Free-form Markdown section shown at the top of the profile's About tab —
+    // a GitHub-README-style space the author lays out however they like.
+    // `customSection` is the Markdown they wrote (the editable source of truth);
+    // `customSectionHtml` is the rendered + sanitized HTML we serve, so readers
+    // never pay to re-render and the sanitizer runs exactly once, on write.
+    customSection: text("custom_section").notNull().default(""),
+    customSectionHtml: text("custom_section_html").notNull().default(""),
+    avatarUrl: text("avatar_url"),
+    isAdmin: boolean("is_admin").notNull().default(false),
+    // Private account (Instagram-style). Public by default: anyone reads the
+    // posts and follows instantly. When private, posts are visible only to
+    // approved followers and following requires approval (see follows.approved);
+    // federated via the actor's `manuallyApprovesFollowers` flag.
+    isPrivate: boolean("is_private").notNull().default(false),
+    // When the user confirmed their login email. Null until verified. Only gates
+    // sign-in when EMAIL_VERIFICATION_REQUIRED is set (see services/auth.ts).
+    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    // When an admin suspended this account (null = active). A suspended user is
+    // blocked from signing in and has their sessions cleared (see services/auth.ts
+    // and services/moderation.ts).
+    suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+    actorKeyPair: jsonb("actor_key_pair").$type<ActorKeyPair | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("users_username_idx").on(t.username),
+    uniqueIndex("users_email_idx").on(t.email),
+    // Trigram indexes for people search (ILIKE '%term%' on handle / display name).
+    index("users_username_trgm_idx").using("gin", sql`${t.username} gin_trgm_ops`),
+    index("users_display_name_trgm_idx").using("gin", sql`${t.displayName} gin_trgm_ops`),
+  ],
+);
 
 export type ActorKeyPair = {
   privateKey: JsonWebKey;
@@ -80,44 +84,52 @@ export type ActorKeyPair = {
 // Cached fediverse Person objects, resolved on demand via WebFinger when a
 // viewer opens /@user@host. Distinct from `users` (which are local accounts
 // with credentials) so local identity stays free of federated junk.
-export const remoteActors = pgTable("remote_actors", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  apId: text("ap_id").notNull(),
-  handle: text("handle").notNull(), // "user@host"
-  username: text("username").notNull(), // preferredUsername
-  host: text("host").notNull(),
-  displayName: text("display_name").notNull().default(""),
-  bio: text("bio").notNull().default(""),
-  avatarUrl: text("avatar_url"),
-  inboxUrl: text("inbox_url"),
-  sharedInboxUrl: text("shared_inbox_url"),
-  outboxUrl: text("outbox_url"),
-  followersCount: integer("followers_count"),
-  followingCount: integer("following_count"),
-  fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  uniqueIndex("remote_actors_ap_id_idx").on(t.apId),
-  uniqueIndex("remote_actors_handle_idx").on(t.handle),
-  // Trigram indexes for people search (ILIKE '%term%' on handle / display name).
-  index("remote_actors_handle_trgm_idx").using("gin", sql`${t.handle} gin_trgm_ops`),
-  index("remote_actors_display_name_trgm_idx").using("gin", sql`${t.displayName} gin_trgm_ops`),
-]);
+export const remoteActors = pgTable(
+  "remote_actors",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    apId: text("ap_id").notNull(),
+    handle: text("handle").notNull(), // "user@host"
+    username: text("username").notNull(), // preferredUsername
+    host: text("host").notNull(),
+    displayName: text("display_name").notNull().default(""),
+    bio: text("bio").notNull().default(""),
+    avatarUrl: text("avatar_url"),
+    inboxUrl: text("inbox_url"),
+    sharedInboxUrl: text("shared_inbox_url"),
+    outboxUrl: text("outbox_url"),
+    followersCount: integer("followers_count"),
+    followingCount: integer("following_count"),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("remote_actors_ap_id_idx").on(t.apId),
+    uniqueIndex("remote_actors_handle_idx").on(t.handle),
+    // Trigram indexes for people search (ILIKE '%term%' on handle / display name).
+    index("remote_actors_handle_trgm_idx").using("gin", sql`${t.handle} gin_trgm_ops`),
+    index("remote_actors_display_name_trgm_idx").using("gin", sql`${t.displayName} gin_trgm_ops`),
+  ],
+);
 
 // ── profile links ──────────────────────────────────────────────────────
 // External links a local user features on their profile (website, GitHub,
 // Mastodon, …). `platform` is a key from a fixed whitelist that drives the
 // brand icon and label; `position` preserves the user's chosen order.
-export const profileLinks = pgTable("profile_links", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  platform: text("platform").notNull(),
-  url: text("url").notNull(),
-  label: text("label").notNull().default(""),
-  position: integer("position").notNull().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  index("profile_links_user_position_idx").on(t.userId, t.position),
-]);
+export const profileLinks = pgTable(
+  "profile_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    platform: text("platform").notNull(),
+    url: text("url").notNull(),
+    label: text("label").notNull().default(""),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("profile_links_user_position_idx").on(t.userId, t.position)],
+);
 
 export type ProfileLink = typeof profileLinks.$inferSelect;
 export type NewProfileLink = typeof profileLinks.$inferInsert;
@@ -127,115 +139,118 @@ export type NewProfileLink = typeof profileLinks.$inferInsert;
 // Local posts carry `author_id`; remote posts (ingested via federation or
 // fetched from a remote outbox) set `remote=true`, carry `ap_id`, and reference
 // `remote_actor_id`. Exactly one of the two author columns is set (DB CHECK).
-export const posts = pgTable("posts", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  authorId: uuid("author_id").references(() => users.id, { onDelete: "cascade" }),
-  remoteActorId: uuid("remote_actor_id").references(() => remoteActors.id, { onDelete: "cascade" }),
-  title: text("title"),
-  // The post's share of its canonical URL: `/@author/<slug>`, derived from the
-  // title (see lib/slug.ts) and unique within the author. Null for a remote
-  // post (addressed by its origin's URL) and for an untitled draft (nothing to
-  // derive one from), both of which fall back to the post's short id. A retitle
-  // mints a new slug and files the old one in `post_slug_history`, so links
-  // already shared keep resolving.
-  slug: text("slug"),
-  contentHtml: text("content_html").notNull(),
-  contentJson: jsonb("content_json"),
-  apId: text("ap_id"),
-  // ActivityPub object type. Long-form blog content is "Article" (what Omicron,
-  // Ghost, WriteFreely publish); microblog content is "Note" (Mastodon, etc.).
-  // Drives the Global feed, which surfaces blogs only.
-  apType: text("ap_type").notNull().default("Article"),
-  remote: boolean("remote").notNull().default(false),
-  // Publication state. `draft` and `scheduled` posts are private to their author
-  // (never federated, never surfaced in any public feed or profile) until they
-  // go live; a `scheduled` one differs only in that the instance publishes it
-  // on a timer rather than waiting for a button. Remote posts are always
-  // `published`. Existing rows default to `published` on migration.
-  //
-  // Every listing that can reach another user's post filters on
-  // `status = 'published'` — see `isPublished` in repositories/posts.ts — which
-  // is what lets a new state be added here without auditing them all again.
-  status: text("status")
-    .$type<"draft" | "scheduled" | "published">()
-    .notNull()
-    .default("published"),
-  // When a `scheduled` post is due to go live, and null on every other post.
-  // The two halves of that are a database CHECK (`posts_publish_at_status_ck`),
-  // because both ways of breaking it are silent: a scheduled post with no due
-  // time is never claimed and simply never publishes, and a published post that
-  // still claims to be due would be re-federated on the next sweeper tick.
-  // Cleared as the post publishes — see `claimDue` in repositories/posts.ts.
-  publishAt: timestamp("publish_at", { withTimezone: true }),
-  // BCP-47 primary language subtag the author wrote this post in (e.g. "en",
-  // "tr"), lowercased, or null when unspecified. Drives the reader's per-language
-  // feed filter and federates as the Article content's language tag. Remote posts
-  // inherit the language declared on the incoming Article (null if none).
-  language: text("language"),
-  // Short plain-text preview of the post. Supplied by an ingesting CMS, or
-  // derived from the body on ingest. Federates as the Article `summary` (what
-  // Mastodon shows above a long-form link). Null for human-authored posts,
-  // whose preview the reader derives from the body at render time.
-  summary: text("summary"),
-  // The post's banner image: the author's explicit choice, and null when they
-  // made none — in which case the first image in the body stands in wherever a
-  // banner is shown (see lib/cover.ts). Either an absolute http(s) URL (an
-  // ingested post's, or a photo picked from Unsplash) or a root-relative
-  // `/api/uploads/…` path for one uploaded here. Federates as the Article
-  // `image`, and is the post's Open Graph share image.
-  coverUrl: text("cover_url"),
-  // Attribution for the banner: the photographer, the page the photo came from
-  // and, for a Creative Commons image, its licence — see lib/cover.ts for the
-  // shape. Required by the terms the stock providers serve photos under, and
-  // null for an uploaded banner, which needs none. Written as a unit with
-  // `cover_url`, so a row never holds a credit for a banner it no longer shows.
-  coverCredit: jsonb("cover_credit").$type<CoverCredit>(),
-  // Stable key from the external system that ingested this post (see
-  // services/webhooks.ts) — a CMS slug or document id. Present only on
-  // machine-ingested posts, and what makes re-delivery of the same content
-  // update the existing post instead of publishing a duplicate.
-  externalId: text("external_id"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  // Last time the post's own content changed — the body, title, tags, cover or
-  // language, not a like or a comment. Drives `<lastmod>` in the sitemap, which
-  // is how a search engine learns an article is worth re-reading; without it an
-  // edited post keeps its publish date forever and the stale copy stays in
-  // results until a crawler happens back. Backfilled to created_at, so an
-  // untouched post reports the truth rather than the migration date.
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  // Precomputed full-text search document: title (weight A) + tag-stripped body
-  // (weight B). STORED + GIN-indexed, so search is an index lookup instead of a
-  // per-row recompute. Always database-generated; excluded from feed selects
-  // (see selectPosts) so timelines never ship the vector over the wire.
-  searchVector: tsvector("search_vector").generatedAlwaysAs(
-    sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', regexp_replace(content_html, '<[^>]+>', ' ', 'g')), 'B')`,
-  ),
-}, (t) => [
-  // Keyset pagination of the global/profile timelines.
-  index("posts_created_at_idx").on(t.createdAt.desc(), t.id.desc()),
-  // Backs full-text search (websearch_to_tsquery `@@` + ts_rank).
-  index("posts_search_idx").using("gin", t.searchVector),
-  index("posts_author_created_idx").on(t.authorId, t.createdAt.desc()),
-  // Drafts listing: an author's posts filtered by status, newest first.
-  index("posts_author_status_created_idx").on(t.authorId, t.status, t.createdAt.desc()),
-  // The scheduling sweeper's only query, run every 30 seconds forever. Partial,
-  // so it holds one entry per pending post rather than one per post here.
-  index("posts_due_idx").on(t.publishAt).where(sql`${t.status} = 'scheduled'`),
-  // The author's Scheduled tab: soonest first, the opposite order to drafts.
-  index("posts_author_due_idx")
-    .on(t.authorId, t.publishAt)
-    .where(sql`${t.status} = 'scheduled'`),
-  index("posts_remote_actor_created_idx").on(t.remoteActorId, t.createdAt.desc()),
-  uniqueIndex("posts_ap_id_idx").on(t.apId),
-  // One post per external key *per author* — each writer's tokens address their
-  // own posts, so two of them can both publish a "hello-world" slug. NULLs are
-  // distinct in a Postgres unique index, so this constrains ingested rows only.
-  uniqueIndex("posts_author_external_idx").on(t.authorId, t.externalId),
-  // One live slug per author, and the lookup behind every `/@author/<slug>`
-  // read. NULLs are distinct in Postgres, so remote and untitled rows are
-  // unconstrained.
-  uniqueIndex("posts_author_slug_idx").on(t.authorId, t.slug),
-]);
+export const posts = pgTable(
+  "posts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    authorId: uuid("author_id").references(() => users.id, { onDelete: "cascade" }),
+    remoteActorId: uuid("remote_actor_id").references(() => remoteActors.id, { onDelete: "cascade" }),
+    title: text("title"),
+    // The post's share of its canonical URL: `/@author/<slug>`, derived from the
+    // title (see lib/slug.ts) and unique within the author. Null for a remote
+    // post (addressed by its origin's URL) and for an untitled draft (nothing to
+    // derive one from), both of which fall back to the post's short id. A retitle
+    // mints a new slug and files the old one in `post_slug_history`, so links
+    // already shared keep resolving.
+    slug: text("slug"),
+    contentHtml: text("content_html").notNull(),
+    contentJson: jsonb("content_json"),
+    apId: text("ap_id"),
+    // ActivityPub object type. Long-form blog content is "Article" (what Omicron,
+    // Ghost, WriteFreely publish); microblog content is "Note" (Mastodon, etc.).
+    // Drives the Global feed, which surfaces blogs only.
+    apType: text("ap_type").notNull().default("Article"),
+    remote: boolean("remote").notNull().default(false),
+    // Publication state. `draft` and `scheduled` posts are private to their author
+    // (never federated, never surfaced in any public feed or profile) until they
+    // go live; a `scheduled` one differs only in that the instance publishes it
+    // on a timer rather than waiting for a button. Remote posts are always
+    // `published`. Existing rows default to `published` on migration.
+    //
+    // Every listing that can reach another user's post filters on
+    // `status = 'published'` — see `isPublished` in repositories/posts.ts — which
+    // is what lets a new state be added here without auditing them all again.
+    status: text("status").$type<"draft" | "scheduled" | "published">().notNull().default("published"),
+    // When a `scheduled` post is due to go live, and null on every other post.
+    // The two halves of that are a database CHECK (`posts_publish_at_status_ck`),
+    // because both ways of breaking it are silent: a scheduled post with no due
+    // time is never claimed and simply never publishes, and a published post that
+    // still claims to be due would be re-federated on the next sweeper tick.
+    // Cleared as the post publishes — see `claimDue` in repositories/posts.ts.
+    publishAt: timestamp("publish_at", { withTimezone: true }),
+    // BCP-47 primary language subtag the author wrote this post in (e.g. "en",
+    // "tr"), lowercased, or null when unspecified. Drives the reader's per-language
+    // feed filter and federates as the Article content's language tag. Remote posts
+    // inherit the language declared on the incoming Article (null if none).
+    language: text("language"),
+    // Short plain-text preview of the post. Supplied by an ingesting CMS, or
+    // derived from the body on ingest. Federates as the Article `summary` (what
+    // Mastodon shows above a long-form link). Null for human-authored posts,
+    // whose preview the reader derives from the body at render time.
+    summary: text("summary"),
+    // The post's banner image: the author's explicit choice, and null when they
+    // made none — in which case the first image in the body stands in wherever a
+    // banner is shown (see lib/cover.ts). Either an absolute http(s) URL (an
+    // ingested post's, or a photo picked from Unsplash) or a root-relative
+    // `/api/uploads/…` path for one uploaded here. Federates as the Article
+    // `image`, and is the post's Open Graph share image.
+    coverUrl: text("cover_url"),
+    // Attribution for the banner: the photographer, the page the photo came from
+    // and, for a Creative Commons image, its licence — see lib/cover.ts for the
+    // shape. Required by the terms the stock providers serve photos under, and
+    // null for an uploaded banner, which needs none. Written as a unit with
+    // `cover_url`, so a row never holds a credit for a banner it no longer shows.
+    coverCredit: jsonb("cover_credit").$type<CoverCredit>(),
+    // Stable key from the external system that ingested this post (see
+    // services/webhooks.ts) — a CMS slug or document id. Present only on
+    // machine-ingested posts, and what makes re-delivery of the same content
+    // update the existing post instead of publishing a duplicate.
+    externalId: text("external_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // Last time the post's own content changed — the body, title, tags, cover or
+    // language, not a like or a comment. Drives `<lastmod>` in the sitemap, which
+    // is how a search engine learns an article is worth re-reading; without it an
+    // edited post keeps its publish date forever and the stale copy stays in
+    // results until a crawler happens back. Backfilled to created_at, so an
+    // untouched post reports the truth rather than the migration date.
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    // Precomputed full-text search document: title (weight A) + tag-stripped body
+    // (weight B). STORED + GIN-indexed, so search is an index lookup instead of a
+    // per-row recompute. Always database-generated; excluded from feed selects
+    // (see selectPosts) so timelines never ship the vector over the wire.
+    searchVector: tsvector("search_vector").generatedAlwaysAs(
+      sql`setweight(to_tsvector('english', coalesce(title, '')), 'A') || setweight(to_tsvector('english', regexp_replace(content_html, '<[^>]+>', ' ', 'g')), 'B')`,
+    ),
+  },
+  (t) => [
+    // Keyset pagination of the global/profile timelines.
+    index("posts_created_at_idx").on(t.createdAt.desc(), t.id.desc()),
+    // Backs full-text search (websearch_to_tsquery `@@` + ts_rank).
+    index("posts_search_idx").using("gin", t.searchVector),
+    index("posts_author_created_idx").on(t.authorId, t.createdAt.desc()),
+    // Drafts listing: an author's posts filtered by status, newest first.
+    index("posts_author_status_created_idx").on(t.authorId, t.status, t.createdAt.desc()),
+    // The scheduling sweeper's only query, run every 30 seconds forever. Partial,
+    // so it holds one entry per pending post rather than one per post here.
+    index("posts_due_idx")
+      .on(t.publishAt)
+      .where(sql`${t.status} = 'scheduled'`),
+    // The author's Scheduled tab: soonest first, the opposite order to drafts.
+    index("posts_author_due_idx")
+      .on(t.authorId, t.publishAt)
+      .where(sql`${t.status} = 'scheduled'`),
+    index("posts_remote_actor_created_idx").on(t.remoteActorId, t.createdAt.desc()),
+    uniqueIndex("posts_ap_id_idx").on(t.apId),
+    // One post per external key *per author* — each writer's tokens address their
+    // own posts, so two of them can both publish a "hello-world" slug. NULLs are
+    // distinct in a Postgres unique index, so this constrains ingested rows only.
+    uniqueIndex("posts_author_external_idx").on(t.authorId, t.externalId),
+    // One live slug per author, and the lookup behind every `/@author/<slug>`
+    // read. NULLs are distinct in Postgres, so remote and untitled rows are
+    // unconstrained.
+    uniqueIndex("posts_author_slug_idx").on(t.authorId, t.slug),
+  ],
+);
 
 // ── post slug history ──────────────────────────────────────────────────
 // Slugs a post used to live at. Renaming a published post changes its URL, and
@@ -246,52 +261,64 @@ export const posts = pgTable("posts", {
 // Unique per author for the same reason `posts.slug` is: a retired slug must
 // not be handed to a new post, or an old link would silently land on different
 // writing. Allocation checks both tables (see services/postSlugs.ts).
-export const postSlugHistory = pgTable("post_slug_history", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
-  authorId: uuid("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  slug: text("slug").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  uniqueIndex("post_slug_history_author_slug_idx").on(t.authorId, t.slug),
-  index("post_slug_history_post_idx").on(t.postId),
-]);
+export const postSlugHistory = pgTable(
+  "post_slug_history",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("post_slug_history_author_slug_idx").on(t.authorId, t.slug),
+    index("post_slug_history_post_idx").on(t.postId),
+  ],
+);
 
 // ── follows ────────────────────────────────────────────────────────────
 // Three edge shapes share this table:
 //   local → local:   follower_id + followee_id
 //   remote → local:   followee_id + remote_actor (inbound; the remote follower URI)
 //   local → remote:   follower_id + remote_followee_id (outbound; FK to remote_actors)
-export const follows = pgTable("follows", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  followerId: uuid("follower_id").references(() => users.id, { onDelete: "cascade" }),
-  followeeId: uuid("followee_id").references(() => users.id, { onDelete: "cascade" }),
-  remoteActor: text("remote_actor"),
-  remoteFolloweeId: uuid("remote_followee_id").references(() => remoteActors.id, {
-    onDelete: "cascade",
-  }),
-  // Follow-edge approval. Public accounts approve instantly (default true). For
-  // a private followee the edge starts unapproved (a follow request) until the
-  // owner approves it; for outbound local→remote follows it's false until the
-  // remote instance sends back Accept.
-  approved: boolean("approved").notNull().default(true),
-  // For an inbound *remote* follow request, the original Follow activity's URI.
-  // Stored so a later approve can send a correct Accept(Follow) referencing it.
-  // Null for local edges and for auto-accepted public follows.
-  followActivityId: text("follow_activity_id"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  // Prevent duplicate local follow edges.
-  uniqueIndex("follows_local_unique_idx")
-    .on(t.followerId, t.followeeId)
-    .where(sql`${t.followerId} is not null and ${t.followeeId} is not null`),
-  // Prevent duplicate outbound local→remote follow edges.
-  uniqueIndex("follows_remote_followee_unique_idx")
-    .on(t.followerId, t.remoteFolloweeId)
-    .where(sql`${t.followerId} is not null and ${t.remoteFolloweeId} is not null`),
-  index("follows_follower_idx").on(t.followerId),
-  index("follows_followee_idx").on(t.followeeId),
-]);
+export const follows = pgTable(
+  "follows",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    followerId: uuid("follower_id").references(() => users.id, { onDelete: "cascade" }),
+    followeeId: uuid("followee_id").references(() => users.id, { onDelete: "cascade" }),
+    remoteActor: text("remote_actor"),
+    remoteFolloweeId: uuid("remote_followee_id").references(() => remoteActors.id, {
+      onDelete: "cascade",
+    }),
+    // Follow-edge approval. Public accounts approve instantly (default true). For
+    // a private followee the edge starts unapproved (a follow request) until the
+    // owner approves it; for outbound local→remote follows it's false until the
+    // remote instance sends back Accept.
+    approved: boolean("approved").notNull().default(true),
+    // For an inbound *remote* follow request, the original Follow activity's URI.
+    // Stored so a later approve can send a correct Accept(Follow) referencing it.
+    // Null for local edges and for auto-accepted public follows.
+    followActivityId: text("follow_activity_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Prevent duplicate local follow edges.
+    uniqueIndex("follows_local_unique_idx")
+      .on(t.followerId, t.followeeId)
+      .where(sql`${t.followerId} is not null and ${t.followeeId} is not null`),
+    // Prevent duplicate outbound local→remote follow edges.
+    uniqueIndex("follows_remote_followee_unique_idx")
+      .on(t.followerId, t.remoteFolloweeId)
+      .where(sql`${t.followerId} is not null and ${t.remoteFolloweeId} is not null`),
+    index("follows_follower_idx").on(t.followerId),
+    index("follows_followee_idx").on(t.followeeId),
+  ],
+);
 
 // ── mutes & blocks ───────────────────────────────────────────────────────
 // Personal moderation edges. Both share the same shape as a follow edge: an
@@ -306,23 +333,29 @@ export const follows = pgTable("follows", {
 // user. Blocks are NOT federated (no ActivityPub Block is sent) — they only
 // affect what this instance shows.
 function relationTable(name: string) {
-  return pgTable(name, {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    targetUserId: uuid("target_user_id").references(() => users.id, { onDelete: "cascade" }),
-    targetRemoteActorId: uuid("target_remote_actor_id").references(() => remoteActors.id, {
-      onDelete: "cascade",
-    }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  }, (t) => [
-    uniqueIndex(`${name}_local_unique_idx`)
-      .on(t.userId, t.targetUserId)
-      .where(sql`${t.targetUserId} is not null`),
-    uniqueIndex(`${name}_remote_unique_idx`)
-      .on(t.userId, t.targetRemoteActorId)
-      .where(sql`${t.targetRemoteActorId} is not null`),
-    index(`${name}_user_idx`).on(t.userId),
-  ]);
+  return pgTable(
+    name,
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      userId: uuid("user_id")
+        .notNull()
+        .references(() => users.id, { onDelete: "cascade" }),
+      targetUserId: uuid("target_user_id").references(() => users.id, { onDelete: "cascade" }),
+      targetRemoteActorId: uuid("target_remote_actor_id").references(() => remoteActors.id, {
+        onDelete: "cascade",
+      }),
+      createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [
+      uniqueIndex(`${name}_local_unique_idx`)
+        .on(t.userId, t.targetUserId)
+        .where(sql`${t.targetUserId} is not null`),
+      uniqueIndex(`${name}_remote_unique_idx`)
+        .on(t.userId, t.targetRemoteActorId)
+        .where(sql`${t.targetRemoteActorId} is not null`),
+      index(`${name}_user_idx`).on(t.userId),
+    ],
+  );
 }
 
 export const mutes = relationTable("mutes");
@@ -331,15 +364,20 @@ export const blocks = relationTable("blocks");
 // ── likes ──────────────────────────────────────────────────────────────
 // One row per (post, user). The unique index makes liking idempotent and lets
 // us derive counts + the viewer's own like state with a single grouped query.
-export const likes = pgTable("likes", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  uniqueIndex("likes_post_user_idx").on(t.postId, t.userId),
-  index("likes_post_idx").on(t.postId),
-]);
+export const likes = pgTable(
+  "likes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("likes_post_user_idx").on(t.postId, t.userId), index("likes_post_idx").on(t.postId)],
+);
 
 // ── recommendations ("repost", federates as ActivityPub Announce) ───────
 // A recommender announcing a post (their own, another local post, or a cached
@@ -351,72 +389,97 @@ export const likes = pgTable("likes", {
 // publish time, unaffected by this table) — only on the recommender's
 // followers' "For you" feed and the recommender's profile "Recommendations"
 // tab (see db/repositories/recommendations.ts).
-export const recommendations = pgTable("recommendations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
-  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
-  remoteActorId: uuid("remote_actor_id").references(() => remoteActors.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  // Recommending is idempotent per (post, recommender), local or remote.
-  uniqueIndex("recommendations_post_user_idx")
-    .on(t.postId, t.userId)
-    .where(sql`${t.userId} is not null`),
-  uniqueIndex("recommendations_post_remote_actor_idx")
-    .on(t.postId, t.remoteActorId)
-    .where(sql`${t.remoteActorId} is not null`),
-  index("recommendations_post_idx").on(t.postId),
-  // A recommender's own "Recommendations" tab, newest first.
-  index("recommendations_user_created_idx").on(t.userId, t.createdAt.desc(), t.id.desc()),
-  index("recommendations_remote_actor_created_idx")
-    .on(t.remoteActorId, t.createdAt.desc(), t.id.desc()),
-]);
+export const recommendations = pgTable(
+  "recommendations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    remoteActorId: uuid("remote_actor_id").references(() => remoteActors.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Recommending is idempotent per (post, recommender), local or remote.
+    uniqueIndex("recommendations_post_user_idx")
+      .on(t.postId, t.userId)
+      .where(sql`${t.userId} is not null`),
+    uniqueIndex("recommendations_post_remote_actor_idx")
+      .on(t.postId, t.remoteActorId)
+      .where(sql`${t.remoteActorId} is not null`),
+    index("recommendations_post_idx").on(t.postId),
+    // A recommender's own "Recommendations" tab, newest first.
+    index("recommendations_user_created_idx").on(t.userId, t.createdAt.desc(), t.id.desc()),
+    index("recommendations_remote_actor_created_idx").on(t.remoteActorId, t.createdAt.desc(), t.id.desc()),
+  ],
+);
 
 // ── comments ───────────────────────────────────────────────────────────
 // Single-level threaded comments. `content` is plain text — rendered escaped
 // on the client, never as HTML. `parentId` is null for top-level comments and
 // points at the top-level comment a reply belongs to (replies are not nested
 // beyond one level — replying to a reply attaches to its top-level parent).
-export const comments = pgTable("comments", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
-  authorId: uuid("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  parentId: uuid("parent_id").references((): AnyPgColumn => comments.id, { onDelete: "cascade" }),
-  content: text("content").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  index("comments_post_created_idx").on(t.postId, t.createdAt.desc(), t.id.desc()),
-  index("comments_parent_idx").on(t.parentId, t.createdAt, t.id),
-]);
+export const comments = pgTable(
+  "comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    parentId: uuid("parent_id").references((): AnyPgColumn => comments.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("comments_post_created_idx").on(t.postId, t.createdAt.desc(), t.id.desc()),
+    index("comments_parent_idx").on(t.parentId, t.createdAt, t.id),
+  ],
+);
 
 // ── comment likes ──────────────────────────────────────────────────────
 // One row per (comment, user); mirrors `likes` for posts. The unique index
 // makes liking idempotent and powers batched count + viewer-state queries.
-export const commentLikes = pgTable("comment_likes", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  commentId: uuid("comment_id").notNull().references(() => comments.id, { onDelete: "cascade" }),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  uniqueIndex("comment_likes_comment_user_idx").on(t.commentId, t.userId),
-  index("comment_likes_comment_idx").on(t.commentId),
-]);
+export const commentLikes = pgTable(
+  "comment_likes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    commentId: uuid("comment_id")
+      .notNull()
+      .references(() => comments.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("comment_likes_comment_user_idx").on(t.commentId, t.userId),
+    index("comment_likes_comment_idx").on(t.commentId),
+  ],
+);
 
 // ── tags ───────────────────────────────────────────────────────────────
 // Topical hashtags attached to posts. `slug` is the normalized key (lowercase,
 // `#` stripped — see lib/tags.ts) used for uniqueness, URLs and matching;
 // `name` keeps the display form as first written. Tags federate as ActivityPub
 // Hashtag objects on a post's `tag` property.
-export const tags = pgTable("tags", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  slug: text("slug").notNull(),
-  name: text("name").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  uniqueIndex("tags_slug_idx").on(t.slug),
-  // Trigram index for tag search (ILIKE '%term%' on the slug).
-  index("tags_slug_trgm_idx").using("gin", sql`${t.slug} gin_trgm_ops`),
-]);
+export const tags = pgTable(
+  "tags",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("tags_slug_idx").on(t.slug),
+    // Trigram index for tag search (ILIKE '%term%' on the slug).
+    index("tags_slug_trgm_idx").using("gin", sql`${t.slug} gin_trgm_ops`),
+  ],
+);
 
 // ── tag aliases ────────────────────────────────────────────────────────
 // Alias slug -> canonical tag. Writing a post with an aliased tag resolves to
@@ -425,71 +488,104 @@ export const tags = pgTable("tags", {
 // systemprogramming...) and fix typos (perceid -> perseid) without editing
 // every post. The alias row is the source of truth; no post_tags ever points
 // at an alias slug.
-export const tagAliases = pgTable("tag_aliases", {
-  aliasSlug: text("alias_slug").primaryKey(),
-  tagId: uuid("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  index("tag_aliases_tag_idx").on(t.tagId),
-]);
+export const tagAliases = pgTable(
+  "tag_aliases",
+  {
+    aliasSlug: text("alias_slug").primaryKey(),
+    tagId: uuid("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("tag_aliases_tag_idx").on(t.tagId)],
+);
 
 // ── post ↔ tag join ──────────────────────────────────────────────────────
 // One row per (post, tag). The unique index makes tagging idempotent; the
 // tag-keyed index backs tag-feed lookups and the post-keyed index backs the
 // batched tag load that enriches timelines.
-export const postTags = pgTable("post_tags", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
-  tagId: uuid("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  uniqueIndex("post_tags_unique_idx").on(t.postId, t.tagId),
-  index("post_tags_tag_idx").on(t.tagId),
-  index("post_tags_post_idx").on(t.postId),
-]);
+export const postTags = pgTable(
+  "post_tags",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    tagId: uuid("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("post_tags_unique_idx").on(t.postId, t.tagId),
+    index("post_tags_tag_idx").on(t.tagId),
+    index("post_tags_post_idx").on(t.postId),
+  ],
+);
 
 // ── user ↔ tag join (profile tags) ───────────────────────────────────────
 // Topic tags a local user features on their profile (like Mastodon's featured
 // hashtags). One row per (user, tag); federated out on the actor's `tag`.
-export const userTags = pgTable("user_tags", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  tagId: uuid("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  uniqueIndex("user_tags_unique_idx").on(t.userId, t.tagId),
-  index("user_tags_user_idx").on(t.userId),
-]);
+export const userTags = pgTable(
+  "user_tags",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tagId: uuid("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("user_tags_unique_idx").on(t.userId, t.tagId), index("user_tags_user_idx").on(t.userId)],
+);
 
 // ── remote actor ↔ tag join (cached profile tags) ────────────────────────
 // Profile tags parsed from a cached remote actor's Person `tag` Hashtags, so
 // federated profiles display their tags too. Refreshed when the actor is
 // re-cached (see federation/remote.ts).
-export const remoteActorTags = pgTable("remote_actor_tags", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  remoteActorId: uuid("remote_actor_id").notNull().references(() => remoteActors.id, {
-    onDelete: "cascade",
-  }),
-  tagId: uuid("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  uniqueIndex("remote_actor_tags_unique_idx").on(t.remoteActorId, t.tagId),
-  index("remote_actor_tags_actor_idx").on(t.remoteActorId),
-]);
+export const remoteActorTags = pgTable(
+  "remote_actor_tags",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    remoteActorId: uuid("remote_actor_id")
+      .notNull()
+      .references(() => remoteActors.id, {
+        onDelete: "cascade",
+      }),
+    tagId: uuid("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("remote_actor_tags_unique_idx").on(t.remoteActorId, t.tagId),
+    index("remote_actor_tags_actor_idx").on(t.remoteActorId),
+  ],
+);
 
 // ── tag follows ──────────────────────────────────────────────────────────
 // A local user following a tag. Posts carrying a followed tag surface in the
 // follower's personalized ("For you") feed, alongside followed authors.
-export const tagFollows = pgTable("tag_follows", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  tagId: uuid("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  uniqueIndex("tag_follows_unique_idx").on(t.userId, t.tagId),
-  index("tag_follows_user_idx").on(t.userId),
-  index("tag_follows_tag_idx").on(t.tagId),
-]);
+export const tagFollows = pgTable(
+  "tag_follows",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tagId: uuid("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("tag_follows_unique_idx").on(t.userId, t.tagId),
+    index("tag_follows_user_idx").on(t.userId),
+    index("tag_follows_tag_idx").on(t.tagId),
+  ],
+);
 
 // ── reading lists ────────────────────────────────────────────────────────
 // User-curated collections of posts, like YouTube playlists. A user can own
@@ -501,51 +597,69 @@ export const tagFollows = pgTable("tag_follows", {
 // YouTube's Watch Later. It cannot be deleted or renamed (enforced in the
 // service); its visibility is the only editable field. A partial unique index
 // guarantees at most one read-later list per user.
-export const readingLists = pgTable("reading_lists", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  description: text("description").notNull().default(""),
-  visibility: text("visibility").$type<"public" | "private">().notNull().default("public"),
-  isReadLater: boolean("is_read_later").notNull().default(false),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  // The owner's lists, newest first (lists management + profile tab).
-  index("reading_lists_user_created_idx").on(t.userId, t.createdAt.desc()),
-  // At most one read-later list per user.
-  uniqueIndex("reading_lists_read_later_idx")
-    .on(t.userId)
-    .where(sql`${t.isReadLater}`),
-]);
+export const readingLists = pgTable(
+  "reading_lists",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    visibility: text("visibility").$type<"public" | "private">().notNull().default("public"),
+    isReadLater: boolean("is_read_later").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // The owner's lists, newest first (lists management + profile tab).
+    index("reading_lists_user_created_idx").on(t.userId, t.createdAt.desc()),
+    // At most one read-later list per user.
+    uniqueIndex("reading_lists_read_later_idx")
+      .on(t.userId)
+      .where(sql`${t.isReadLater}`),
+  ],
+);
 
 // ── reading list ↔ post join ──────────────────────────────────────────────
 // One row per (list, post). The unique index makes adding idempotent; rows are
 // ordered by `created_at` so the most recently added post shows first (like a
 // playlist's "date added" order). Keyset-paginated on (created_at, id).
-export const readingListItems = pgTable("reading_list_items", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  listId: uuid("list_id").notNull().references(() => readingLists.id, { onDelete: "cascade" }),
-  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  uniqueIndex("reading_list_items_unique_idx").on(t.listId, t.postId),
-  // A list's items, newest-added first.
-  index("reading_list_items_list_created_idx").on(t.listId, t.createdAt.desc(), t.id.desc()),
-  // "Which of my lists contain this post" lookup for the save menu.
-  index("reading_list_items_post_idx").on(t.postId),
-]);
+export const readingListItems = pgTable(
+  "reading_list_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    listId: uuid("list_id")
+      .notNull()
+      .references(() => readingLists.id, { onDelete: "cascade" }),
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("reading_list_items_unique_idx").on(t.listId, t.postId),
+    // A list's items, newest-added first.
+    index("reading_list_items_list_created_idx").on(t.listId, t.createdAt.desc(), t.id.desc()),
+    // "Which of my lists contain this post" lookup for the save menu.
+    index("reading_list_items_post_idx").on(t.postId),
+  ],
+);
 
 // ── sessions ───────────────────────────────────────────────────────────
 // Server-side sessions (cookie holds the opaque token = id). Keeps the app
 // stateless; all session state lives in Postgres.
-export const sessions = pgTable("sessions", {
-  id: text("id").primaryKey(),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  index("sessions_user_idx").on(t.userId),
-]);
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("sessions_user_idx").on(t.userId)],
+);
 
 // ── auth tokens ──────────────────────────────────────────────────────────
 // Single-use, expiring tokens for out-of-band auth flows: password reset and
@@ -553,18 +667,24 @@ export const sessions = pgTable("sessions", {
 // token is stored — the raw token lives only in the emailed link, so a database
 // read can't be replayed into a valid link. `used_at` marks a token spent so it
 // can't be reused; expired/used rows are swept opportunistically on issue.
-export const authTokens = pgTable("auth_tokens", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  purpose: text("purpose").notNull(), // "password_reset" | "email_verify"
-  tokenHash: text("token_hash").notNull(),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  usedAt: timestamp("used_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  uniqueIndex("auth_tokens_hash_idx").on(t.tokenHash),
-  index("auth_tokens_user_purpose_idx").on(t.userId, t.purpose),
-]);
+export const authTokens = pgTable(
+  "auth_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    purpose: text("purpose").notNull(), // "password_reset" | "email_verify"
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("auth_tokens_hash_idx").on(t.tokenHash),
+    index("auth_tokens_user_purpose_idx").on(t.userId, t.purpose),
+  ],
+);
 
 // ── webhook tokens ─────────────────────────────────────────────────────
 // Per-user publishing credentials for the content webhook. One row is one
@@ -575,19 +695,25 @@ export const authTokens = pgTable("auth_tokens", {
 // for years shouldn't break on a timer. Revocation is explicit, and
 // `revoked_at` retires a token without deleting the row so `last_used_at`
 // stays legible when working out what a leaked token did.
-export const webhookTokens = pgTable("webhook_tokens", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  // The owner's own name for it ("Sanity", "build hook") — display only.
-  label: text("label").notNull(),
-  tokenHash: text("token_hash").notNull(),
-  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
-  revokedAt: timestamp("revoked_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  uniqueIndex("webhook_tokens_hash_idx").on(t.tokenHash),
-  index("webhook_tokens_user_created_idx").on(t.userId, t.createdAt),
-]);
+export const webhookTokens = pgTable(
+  "webhook_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // The owner's own name for it ("Sanity", "build hook") — display only.
+    label: text("label").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("webhook_tokens_hash_idx").on(t.tokenHash),
+    index("webhook_tokens_user_created_idx").on(t.userId, t.createdAt),
+  ],
+);
 
 // ── reports (moderation queue) ─────────────────────────────────────────
 // User-submitted flags against a post or an account, worked through the admin
@@ -595,22 +721,26 @@ export const webhookTokens = pgTable("webhook_tokens", {
 // `reporter_id` and `handled_by` survive account deletion (set null) so the
 // audit trail isn't lost; the subject rows cascade (a removed post/user clears
 // its reports). `status` moves open -> resolved; `resolution` is the admin note.
-export const reports = pgTable("reports", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  reporterId: uuid("reporter_id").references(() => users.id, { onDelete: "set null" }),
-  subjectType: text("subject_type").notNull(), // "post" | "user"
-  postId: uuid("post_id").references(() => posts.id, { onDelete: "cascade" }),
-  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
-  reason: text("reason").notNull().default(""),
-  status: text("status").notNull().default("open"), // "open" | "resolved"
-  resolution: text("resolution").notNull().default(""),
-  handledBy: uuid("handled_by").references(() => users.id, { onDelete: "set null" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
-}, (t) => [
-  // Backs the queue: open reports first, newest first.
-  index("reports_status_created_idx").on(t.status, t.createdAt),
-]);
+export const reports = pgTable(
+  "reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    reporterId: uuid("reporter_id").references(() => users.id, { onDelete: "set null" }),
+    subjectType: text("subject_type").notNull(), // "post" | "user"
+    postId: uuid("post_id").references(() => posts.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    reason: text("reason").notNull().default(""),
+    status: text("status").notNull().default("open"), // "open" | "resolved"
+    resolution: text("resolution").notNull().default(""),
+    handledBy: uuid("handled_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  },
+  (t) => [
+    // Backs the queue: open reports first, newest first.
+    index("reports_status_created_idx").on(t.status, t.createdAt),
+  ],
+);
 
 // ── blocked domains (defederation) ─────────────────────────────────────
 // Hostnames this instance refuses to federate with. Inbound activities from a
@@ -642,14 +772,17 @@ export const instanceSettings = pgTable("instance_settings", {
 // view count can never be reversed into "who read this." Covers only pages
 // served by this instance; federated reads are invisible by design. See
 // ANALYTICS.md.
-export const postViews = pgTable("post_views", {
-  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
-  day: date("day").notNull(),
-  views: integer("views").notNull().default(0),
-}, (t) => [
-  primaryKey({ columns: [t.postId, t.day] }),
-  index("post_views_post_idx").on(t.postId),
-]);
+export const postViews = pgTable(
+  "post_views",
+  {
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    day: date("day").notNull(),
+    views: integer("views").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.postId, t.day] }), index("post_views_post_idx").on(t.postId)],
+);
 
 // ── post view de-duplication (permanent, pseudonymous) ──────────────────
 // Makes a view count one reader per post, once, ever — not once per day. The
@@ -661,12 +794,16 @@ export const postViews = pgTable("post_views", {
 //     "the same browser came back," nothing else. A different browser/device
 //     is, by design, a different reader (see lib/analytics.ts).
 // Rows are never pruned: permanence is the point. See ANALYTICS.md.
-export const postViewSeen = pgTable("post_view_seen", {
-  postId: uuid("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
-  visitorKey: text("visitor_key").notNull(),
-}, (t) => [
-  primaryKey({ columns: [t.postId, t.visitorKey] }),
-]);
+export const postViewSeen = pgTable(
+  "post_view_seen",
+  {
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    visitorKey: text("visitor_key").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.postId, t.visitorKey] })],
+);
 
 // ── notifications ──────────────────────────────────────────────────────
 // One row per interaction a local user should be told about: a new follower, a
@@ -676,32 +813,38 @@ export const postViewSeen = pgTable("post_view_seen", {
 // only remote follows are ingested, so remote actors appear only on `follow`
 // rows; the remote columns exist so remote like/reply notifications slot in for
 // free if those inbox listeners are ever added. `readAt` is null until seen.
-export const notifications = pgTable("notifications", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  recipientId: uuid("recipient_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  // "follow" | "like" | "comment" | "reply" | "comment_like"
-  type: text("type").notNull(),
-  actorId: uuid("actor_id").references(() => users.id, { onDelete: "cascade" }),
-  remoteActorId: uuid("remote_actor_id").references(() => remoteActors.id, { onDelete: "cascade" }),
-  postId: uuid("post_id").references(() => posts.id, { onDelete: "cascade" }),
-  commentId: uuid("comment_id").references(() => comments.id, { onDelete: "cascade" }),
-  readAt: timestamp("read_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  // Backs the list + keyset pagination: a recipient's newest first.
-  index("notifications_recipient_created_idx").on(t.recipientId, t.createdAt.desc(), t.id.desc()),
-  // Fast unread count for the bell badge.
-  index("notifications_recipient_unread_idx")
-    .on(t.recipientId)
-    .where(sql`${t.readAt} is null`),
-  // Dedupe: one row per (recipient, type, actor, target). Repeating an action
-  // (re-like after unlike) is idempotent via onConflictDoNothing. NULLS NOT
-  // DISTINCT so rows whose target columns are null (e.g. a follow, which has no
-  // post/comment) still collide instead of every insert being treated as unique.
-  unique("notifications_dedupe_idx")
-    .on(t.recipientId, t.type, t.actorId, t.remoteActorId, t.postId, t.commentId)
-    .nullsNotDistinct(),
-]);
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    recipientId: uuid("recipient_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // "follow" | "like" | "comment" | "reply" | "comment_like"
+    type: text("type").notNull(),
+    actorId: uuid("actor_id").references(() => users.id, { onDelete: "cascade" }),
+    remoteActorId: uuid("remote_actor_id").references(() => remoteActors.id, { onDelete: "cascade" }),
+    postId: uuid("post_id").references(() => posts.id, { onDelete: "cascade" }),
+    commentId: uuid("comment_id").references(() => comments.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Backs the list + keyset pagination: a recipient's newest first.
+    index("notifications_recipient_created_idx").on(t.recipientId, t.createdAt.desc(), t.id.desc()),
+    // Fast unread count for the bell badge.
+    index("notifications_recipient_unread_idx")
+      .on(t.recipientId)
+      .where(sql`${t.readAt} is null`),
+    // Dedupe: one row per (recipient, type, actor, target). Repeating an action
+    // (re-like after unlike) is idempotent via onConflictDoNothing. NULLS NOT
+    // DISTINCT so rows whose target columns are null (e.g. a follow, which has no
+    // post/comment) still collide instead of every insert being treated as unique.
+    unique("notifications_dedupe_idx")
+      .on(t.recipientId, t.type, t.actorId, t.remoteActorId, t.postId, t.commentId)
+      .nullsNotDistinct(),
+  ],
+);
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;

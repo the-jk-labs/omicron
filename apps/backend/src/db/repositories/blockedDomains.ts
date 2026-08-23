@@ -31,10 +31,7 @@ export function list() {
 // Adds a (already-normalized) domain. Idempotent — re-blocking is a no-op that
 // leaves the original reason intact.
 export async function add(domain: string, reason: string) {
-  await db
-    .insert(blockedDomains)
-    .values({ domain, reason })
-    .onConflictDoNothing({ target: blockedDomains.domain });
+  await db.insert(blockedDomains).values({ domain, reason }).onConflictDoNothing({ target: blockedDomains.domain });
   bust();
 }
 

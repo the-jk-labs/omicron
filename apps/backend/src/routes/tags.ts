@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
-import * as tagsService from "@/services/tags.ts";
-import { enrichPosts } from "@/services/engagement.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import type { AppEnv } from "@/routes/types.ts";
+import { enrichPosts } from "@/services/engagement.ts";
+import * as tagsService from "@/services/tags.ts";
 
 export const tagRoutes = new Hono<AppEnv>();
 
@@ -43,11 +43,7 @@ tagRoutes.get("/:slug", async (c) => {
 tagRoutes.get("/:slug/posts", async (c) => {
   const viewer = c.get("user");
   const cursor = decodeCursor(c.req.query("cursor"));
-  const { items, nextCursor } = await tagsService.tagPosts(
-    c.req.param("slug"),
-    cursor,
-    viewer?.id ?? null,
-  );
+  const { items, nextCursor } = await tagsService.tagPosts(c.req.param("slug"), cursor, viewer?.id ?? null);
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
 });
 

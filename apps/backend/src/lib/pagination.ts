@@ -31,8 +31,6 @@ export function paginate<T extends { createdAt: Date; id: string }>(
   const last = items.at(-1);
   return {
     items,
-    nextCursor: hasMore && last
-      ? encodeCursor({ createdAt: last.createdAt.toISOString(), id: last.id })
-      : null,
+    nextCursor: hasMore && last ? encodeCursor({ createdAt: last.createdAt.toISOString(), id: last.id }) : null,
   };
 }

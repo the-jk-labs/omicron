@@ -28,14 +28,12 @@ export async function runMigrations() {
   console.log(`▶ Omicron v${APP_VERSION}: applying migrations...`);
   const start = Date.now();
 
-  const journal = JSON.parse(
-    await Deno.readTextFile(new URL("meta/_journal.json", drizzleDir)),
-  ) as { entries: JournalEntry[] };
+  const journal = JSON.parse(await Deno.readTextFile(new URL("meta/_journal.json", drizzleDir))) as {
+    entries: JournalEntry[];
+  };
 
   const done = await appliedTags();
-  const pending = journal.entries
-    .sort((a, b) => a.idx - b.idx)
-    .filter((e) => !done.has(e.tag));
+  const pending = journal.entries.toSorted((a, b) => a.idx - b.idx).filter((e) => !done.has(e.tag));
 
   for (const entry of pending) {
     const file = await Deno.readTextFile(new URL(`${entry.tag}.sql`, drizzleDir));

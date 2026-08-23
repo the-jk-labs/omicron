@@ -34,9 +34,7 @@ export function firstBodyImage(html: string): string | null {
  * The banner to show for a post: the author's cover, else the first image in
  * the body, else nothing.
  */
-export function bannerOf(
-  post: { coverUrl: string | null; contentHtml: string },
-): string | null {
+export function bannerOf(post: { coverUrl: string | null; contentHtml: string }): string | null {
   return post.coverUrl ?? firstBodyImage(post.contentHtml);
 }
 
@@ -155,9 +153,7 @@ export function normalizeCoverCredit(
   if (!name && !nameUrl && !source && !sourceUrl && !license && !licenseUrl) return null;
 
   if (!name || !nameUrl || !source || !sourceUrl) {
-    throw badRequest(
-      "A banner credit needs a creator and a source, each with a link.",
-    );
+    throw badRequest("A banner credit needs a creator and a source, each with a link.");
   }
   if (Boolean(license) !== Boolean(licenseUrl)) {
     throw badRequest("A banner credit's licence needs both a name and a link.");

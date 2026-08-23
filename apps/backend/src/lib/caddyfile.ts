@@ -26,8 +26,7 @@ export function routeThroughAnubis(caddyfile: string): string {
   const found = caddyfile.split(DIRECT_UPSTREAM).length - 1;
   if (found !== 1) {
     throw new Error(
-      `Caddyfile must contain "${DIRECT_UPSTREAM}" exactly once to route through ` +
-        `Anubis; found ${found}.`,
+      `Caddyfile must contain "${DIRECT_UPSTREAM}" exactly once to route through Anubis; found ${found}.`,
     );
   }
   return caddyfile.replace(DIRECT_UPSTREAM, ANUBIS_UPSTREAM);

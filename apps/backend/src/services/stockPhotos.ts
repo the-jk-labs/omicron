@@ -43,7 +43,7 @@ export type StockPhoto = {
 };
 
 export const PROVIDERS = ["openverse", "unsplash"] as const;
-export type Provider = typeof PROVIDERS[number];
+export type Provider = (typeof PROVIDERS)[number];
 
 export function isProvider(value: unknown): value is Provider {
   return typeof value === "string" && (PROVIDERS as readonly string[]).includes(value);
@@ -55,14 +55,10 @@ export function isProvider(value: unknown): value is Provider {
  * empty and the picker is never offered with nothing behind it.
  */
 export async function available(): Promise<Provider[]> {
-  return await unsplash.configured() ? ["openverse", "unsplash"] : ["openverse"];
+  return (await unsplash.configured()) ? ["openverse", "unsplash"] : ["openverse"];
 }
 
-export async function search(
-  provider: Provider,
-  query: string,
-  page = 1,
-): Promise<StockPhoto[]> {
+export async function search(provider: Provider, query: string, page = 1): Promise<StockPhoto[]> {
   const q = query.trim();
   if (!q) return [];
   // Clamped here rather than in each provider: they agree on 1-based paging,

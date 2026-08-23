@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
-import * as stockPhotos from "@/services/stockPhotos.ts";
-import { requireUser } from "@/routes/middleware.ts";
+import { z } from "zod";
 import { rateLimit } from "@/lib/rateLimit.ts";
 import { jsonBody } from "@/lib/validate.ts";
-import { z } from "zod";
+import { requireUser } from "@/routes/middleware.ts";
 import type { AppEnv } from "@/routes/types.ts";
+import * as stockPhotos from "@/services/stockPhotos.ts";
 
 // Free-photo search for the editor's banner picker. Every route is
 // signed-in-only: an anonymous visitor has no post to put a banner on, and one
@@ -36,11 +36,7 @@ photoRoutes.get("/search", searchLimiter, async (c) => {
   requireUser(c);
   const provider = stockPhotos.requireProvider(c.req.query("provider"));
   const page = Number(c.req.query("page") ?? "1");
-  const items = await stockPhotos.search(
-    provider,
-    c.req.query("q") ?? "",
-    Number.isFinite(page) ? page : 1,
-  );
+  const items = await stockPhotos.search(provider, c.req.query("q") ?? "", Number.isFinite(page) ? page : 1);
   return c.json({ items });
 });
 

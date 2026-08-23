@@ -36,20 +36,14 @@ async function txt(host: string): Promise<string[]> {
 
 async function mxHosts(domain: string): Promise<string[]> {
   try {
-    return (await Deno.resolveDns(domain, "MX"))
-      .sort((a, b) => a.preference - b.preference)
-      .map((r) => r.exchange);
+    return (await Deno.resolveDns(domain, "MX")).toSorted((a, b) => a.preference - b.preference).map((r) => r.exchange);
   } catch {
     return [];
   }
 }
 
 /** Look up and validate the records for `domain` / `selector` / `publicKey`. */
-export async function verifyRecords(
-  domain: string,
-  selector: string,
-  publicKey: string,
-): Promise<DnsReport> {
+export async function verifyRecords(domain: string, selector: string, publicKey: string): Promise<DnsReport> {
   const want = dnsRecords(domain, selector, publicKey);
 
   const [spfTxt, dkimTxt, dmarcTxt, mx] = await Promise.all([
@@ -103,9 +97,11 @@ export async function checkOutboundPort25(): Promise<{ ok: boolean; detail: stri
   let hosts: string[] = [];
   try {
     hosts = (await Deno.resolveDns("gmail.com", "MX"))
-      .sort((a, b) => a.preference - b.preference)
+      .toSorted((a, b) => a.preference - b.preference)
       .map((r) => r.exchange);
-  } catch { /* fall through to a hardcoded target */ }
+  } catch {
+    /* fall through to a hardcoded target */
+  }
   const host = hosts[0] ?? "gmail-smtp-in.l.google.com";
 
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -121,7 +117,8 @@ export async function checkOutboundPort25(): Promise<{ ok: boolean; detail: stri
   } catch (err) {
     return {
       ok: false,
-      detail: `Could not reach ${host}:25 (${err instanceof Error ? err.message : err}). ` +
+      detail:
+        `Could not reach ${host}:25 (${err instanceof Error ? err.message : JSON.stringify(err)}). ` +
         `Your host most likely blocks outbound port 25 — use the API relay or an SMTP provider instead.`,
     };
   } finally {

@@ -59,7 +59,10 @@ async function importPublic(spkib64: string): Promise<CryptoKey> {
 
 function canonHeader(name: string, value: string): string {
   const n = name.toLowerCase().trimEnd();
-  const v = value.replace(/\r\n/g, "").replace(/[ \t]+/g, " ").trim();
+  const v = value
+    .replace(/\r\n/g, "")
+    .replace(/[ \t]+/g, " ")
+    .trim();
   return `${n}:${v}${CRLF}`;
 }
 
@@ -101,11 +104,7 @@ const SIGNED_HEADERS = [
  * Produce the `DKIM-Signature` header value for a message. Returns the full
  * header line (`DKIM-Signature: v=1; ...`) to prepend to the message.
  */
-export async function signMessage(
-  headers: [string, string][],
-  body: string,
-  opts: DkimSignOptions,
-): Promise<string> {
+export async function signMessage(headers: [string, string][], body: string, opts: DkimSignOptions): Promise<string> {
   const enc = new TextEncoder();
   const bodyHash = b64(await sha256(enc.encode(canonBody(body))));
 
@@ -116,7 +115,8 @@ export async function signMessage(
   const signedHeaderBlock = present.map((h) => canonHeader(h, lower.get(h)!)).join("");
 
   const t = Math.floor(Date.now() / 1000);
-  const base = `v=1; a=rsa-sha256; c=relaxed/relaxed; d=${opts.domain}; s=${opts.selector}; ` +
+  const base =
+    `v=1; a=rsa-sha256; c=relaxed/relaxed; d=${opts.domain}; s=${opts.selector}; ` +
     `t=${t}; bh=${bodyHash}; h=${present.join(":")}; b=`;
 
   // The DKIM-Signature header signs itself with an empty b= and no trailing CRLF.
@@ -143,7 +143,8 @@ export async function verifyOwn(
   // Tag-boundary anchored so `h=` doesn't match inside `bh=`.
   const sig = unb64(value.match(/(?:^|;)\s*b=([^;]+)\s*$/)![1].replace(/\s+/g, ""));
   const bh = value.match(/(?:^|;)\s*bh=([^;]+)/)![1].replace(/\s+/g, "");
-  const hTags = value.match(/(?:^|;)\s*h=([^;]+)/)![1]
+  const hTags = value
+    .match(/(?:^|;)\s*h=([^;]+)/)![1]
     .split(":")
     .map((h) => h.trim().toLowerCase());
 

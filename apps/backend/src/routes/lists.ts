@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
-import * as listsService from "@/services/readingLists.ts";
-import { enrichPosts } from "@/services/engagement.ts";
+import { z } from "zod";
 import { decodeCursor } from "@/lib/pagination.ts";
+import { jsonBody } from "@/lib/validate.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import { readingListView } from "@/routes/serializers.ts";
-import { jsonBody } from "@/lib/validate.ts";
-import { z } from "zod";
 import type { AppEnv } from "@/routes/types.ts";
+import { enrichPosts } from "@/services/engagement.ts";
+import * as listsService from "@/services/readingLists.ts";
 
 export const listRoutes = new Hono<AppEnv>();
 
@@ -62,10 +62,7 @@ listRoutes.get("/for-post/:postId", async (c) => {
 // List meta + owner + whether the viewer owns it (public, or owner-only).
 listRoutes.get("/:id", async (c) => {
   const viewer = c.get("user");
-  const { list, isOwner, owner } = await listsService.getList(
-    c.req.param("id"),
-    viewer?.id ?? null,
-  );
+  const { list, isOwner, owner } = await listsService.getList(c.req.param("id"), viewer?.id ?? null);
   return c.json({ list: readingListView(list), isOwner, owner });
 });
 
@@ -73,11 +70,7 @@ listRoutes.get("/:id", async (c) => {
 listRoutes.get("/:id/items", async (c) => {
   const viewer = c.get("user");
   const cursor = decodeCursor(c.req.query("cursor"));
-  const { items, nextCursor } = await listsService.listItems(
-    c.req.param("id"),
-    viewer?.id ?? null,
-    cursor,
-  );
+  const { items, nextCursor } = await listsService.listItems(c.req.param("id"), viewer?.id ?? null, cursor);
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
 });
 

@@ -66,9 +66,7 @@ function shape(r: Awaited<ReturnType<ReturnType<typeof baseQuery>["execute"]>>[n
     resolution: r.resolution,
     createdAt: r.createdAt,
     resolvedAt: r.resolvedAt,
-    reporter: r.reporterUsername
-      ? { username: r.reporterUsername, displayName: r.reporterDisplayName ?? "" }
-      : null,
+    reporter: r.reporterUsername ? { username: r.reporterUsername, displayName: r.reporterDisplayName ?? "" } : null,
     postId: r.postId,
     postTitle: r.postTitle,
     postAuthor: r.postAuthor,
@@ -81,9 +79,7 @@ function shape(r: Awaited<ReturnType<ReturnType<typeof baseQuery>["execute"]>>[n
 // The queue: open reports first, newest first, capped.
 export async function list(status?: "open" | "resolved", limit = 200): Promise<ReportRow[]> {
   const q = baseQuery();
-  const rows = await (status ? q.where(eq(reports.status, status)) : q)
-    .orderBy(desc(reports.createdAt))
-    .limit(limit);
+  const rows = await (status ? q.where(eq(reports.status, status)) : q).orderBy(desc(reports.createdAt)).limit(limit);
   return rows.map(shape);
 }
 

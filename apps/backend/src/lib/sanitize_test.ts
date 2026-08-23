@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { expect, test } from "vitest";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
 
 // This is the ONLY trusted gateway for rich-text content (local + remote), and
@@ -7,94 +7,92 @@ import { sanitizePostHtml } from "@/lib/sanitize.ts";
 // any regression here is a live vulnerability, so they guard the highest-risk
 // surface in the app.
 
-Deno.test("sanitize: strips <script> and its text content entirely", () => {
+test("sanitize: strips <script> and its text content entirely", () => {
   const out = sanitizePostHtml(`<p>ok</p><script>alert('xss')</script>`);
-  assertStringIncludes(out, "<p>ok</p>");
-  assertEquals(out.includes("alert"), false);
-  assertEquals(out.includes("<script"), false);
+  expect(out).toContain("<p>ok</p>");
+  expect(out.includes("alert")).toBe(false);
+  expect(out.includes("<script")).toBe(false);
 });
 
-Deno.test("sanitize: drops inline event handlers", () => {
+test("sanitize: drops inline event handlers", () => {
   const out = sanitizePostHtml(`<img src="https://x/y.png" onerror="alert(1)">`);
-  assertEquals(out.includes("onerror"), false);
-  assertEquals(out.includes("alert"), false);
+  expect(out.includes("onerror")).toBe(false);
+  expect(out.includes("alert")).toBe(false);
 });
 
-Deno.test("sanitize: drops javascript: URLs on links", () => {
+test("sanitize: drops javascript: URLs on links", () => {
   const out = sanitizePostHtml(`<a href="javascript:alert(1)">click</a>`);
-  assertEquals(out.toLowerCase().includes("javascript"), false);
+  expect(out.toLowerCase().includes("javascript")).toBe(false);
   // The text survives; only the dangerous href is removed.
-  assertStringIncludes(out, "click");
+  expect(out).toContain("click");
 });
 
-Deno.test("sanitize: rejects data: URIs (SVG script payloads)", () => {
-  const out = sanitizePostHtml(
-    `<img src="data:image/svg+xml,<svg onload=alert(1)>">`,
-  );
-  assertEquals(out.includes("data:"), false);
-  assertEquals(out.includes("onload"), false);
+test("sanitize: rejects data: URIs (SVG script payloads)", () => {
+  const out = sanitizePostHtml(`<img src="data:image/svg+xml,<svg onload=alert(1)>">`);
+  expect(out.includes("data:")).toBe(false);
+  expect(out.includes("onload")).toBe(false);
 });
 
-Deno.test("sanitize: rejects protocol-relative URLs", () => {
+test("sanitize: rejects protocol-relative URLs", () => {
   const out = sanitizePostHtml(`<a href="//evil.example/phish">x</a>`);
-  assertEquals(out.includes("evil.example"), false);
+  expect(out.includes("evil.example")).toBe(false);
 });
 
-Deno.test("sanitize: drops disallowed elements (iframe/style/form)", () => {
-  const out = sanitizePostHtml(
-    `<iframe src="https://evil"></iframe><style>*{}</style><form></form><p>keep</p>`,
-  );
-  assertStringIncludes(out, "<p>keep</p>");
+test("sanitize: drops disallowed elements (iframe/style/form)", () => {
+  const out = sanitizePostHtml(`<iframe src="https://evil"></iframe><style>*{}</style><form></form><p>keep</p>`);
+  expect(out).toContain("<p>keep</p>");
   for (const tag of ["<iframe", "<style", "<form"]) {
-    assertEquals(out.includes(tag), false, `${tag} should be dropped`);
+    expect(out.includes(tag), `${tag} should be dropped`).toBe(false);
   }
 });
 
-Deno.test("sanitize: keeps allowed rich-text markup", () => {
-  const input = `<p>Hi <strong>bold</strong> <em>italic</em></p>` +
+test("sanitize: keeps allowed rich-text markup", () => {
+  const input =
+    `<p>Hi <strong>bold</strong> <em>italic</em></p>` +
     `<ul><li>one</li></ul><blockquote>q</blockquote><pre><code>x</code></pre>`;
   const out = sanitizePostHtml(input);
   for (const frag of ["<strong>bold</strong>", "<em>italic</em>", "<li>one</li>", "<blockquote>"]) {
-    assertStringIncludes(out, frag);
+    expect(out).toContain(frag);
   }
 });
 
-Deno.test("sanitize: hardens surviving links (nofollow, noopener, _blank)", () => {
+test("sanitize: hardens surviving links (nofollow, noopener, _blank)", () => {
   const out = sanitizePostHtml(`<a href="https://ok.example">x</a>`);
-  assertStringIncludes(out, `href="https://ok.example"`);
-  assertStringIncludes(out, "nofollow");
-  assertStringIncludes(out, "noopener");
-  assertStringIncludes(out, `target="_blank"`);
+  expect(out).toContain(`href="https://ok.example"`);
+  expect(out).toContain("nofollow");
+  expect(out).toContain("noopener");
+  expect(out).toContain(`target="_blank"`);
 });
 
-Deno.test("sanitize: is idempotent on already-clean output", () => {
+test("sanitize: is idempotent on already-clean output", () => {
   const once = sanitizePostHtml(`<p>Hi <a href="https://ok.example">link</a></p>`);
   const twice = sanitizePostHtml(once);
-  assertEquals(twice, once);
+  expect(twice).toBe(once);
 });
 
-Deno.test("sanitize: null/undefined/empty become empty string", () => {
-  assertEquals(sanitizePostHtml(null), "");
-  assertEquals(sanitizePostHtml(undefined), "");
-  assertEquals(sanitizePostHtml(""), "");
+test("sanitize: null/undefined/empty become empty string", () => {
+  expect(sanitizePostHtml(null)).toBe("");
+  expect(sanitizePostHtml(undefined)).toBe("");
+  expect(sanitizePostHtml("")).toBe("");
 });
 
-Deno.test("sanitize: keeps a MathML formula whole", () => {
+test("sanitize: keeps a MathML formula whole", () => {
   // A remote Article's maths arrives as MathML, same as ours (lib/markdown.ts).
   // Structure and layout attributes both have to survive — a dropped <mfrac> is
   // a formula that reads as its own numerator.
-  const math = '<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">' +
+  const math =
+    '<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">' +
     "<mfrac><mi>a</mi><msub><mi>b</mi><mn>2</mn></msub></mfrac>" +
     '<mo stretchy="false">)</mo></math>';
-  assertEquals(sanitizePostHtml(math), math);
+  expect(sanitizePostHtml(math)).toBe(math);
 });
 
-Deno.test("sanitize: MathML is not a way in for script", () => {
+test("sanitize: MathML is not a way in for script", () => {
   const out = sanitizePostHtml(
     '<math><mtext onmouseover="alert(1)" href="javascript:alert(1)">x</mtext>' +
       '<maction actiontype="statusline">y</maction>' +
       "<mi><script>alert(1)</script></mi></math>",
   );
-  assertEquals(/onmouseover|javascript:|maction|<script/i.test(out), false);
-  assertStringIncludes(out, "<mtext>x</mtext>");
+  expect(/onmouseover|javascript:|maction|<script/i.test(out)).toBe(false);
+  expect(out).toContain("<mtext>x</mtext>");
 });

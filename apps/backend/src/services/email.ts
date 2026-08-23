@@ -17,11 +17,11 @@
 // made in the setup wizard or admin page takes effect immediately — no restart,
 // no config file to edit.
 
+import { buildMessage, domainOf, extractAddress, serializeMessage } from "@/lib/mime.ts";
+import { sendSmtp } from "@/lib/smtp.ts";
+import { signMessage } from "@/services/dkim.ts";
 import { type EmailConfig, getEmailConfig } from "@/services/emailSettings.ts";
 import { getOrigin } from "@/services/instanceSetup.ts";
-import { sendSmtp } from "@/lib/smtp.ts";
-import { buildMessage, domainOf, extractAddress, serializeMessage } from "@/lib/mime.ts";
-import { signMessage } from "@/services/dkim.ts";
 
 export type EmailMessage = {
   to: string;
@@ -62,7 +62,10 @@ function consoleTransport(cfg: EmailConfig): Transport {
 
 // Build the raw message bytes for one recipient, DKIM-signing it when a key is
 // configured for the From domain (so `smtp` and `direct` both authenticate).
-async function buildSigned(cfg: EmailConfig, msg: EmailMessage): Promise<{
+async function buildSigned(
+  cfg: EmailConfig,
+  msg: EmailMessage,
+): Promise<{
   fromAddress: string;
   data: Uint8Array;
 }> {
@@ -95,15 +98,18 @@ function smtpTransport(cfg: EmailConfig): Transport {
         throw new Error("Email mode is SMTP but no SMTP host is configured.");
       }
       const { fromAddress, data } = await buildSigned(cfg, msg);
-      await sendSmtp({
-        hostname: cfg.smtp.host,
-        port: cfg.smtp.port,
-        implicitTls: cfg.smtp.tls,
-        starttls: cfg.smtp.tls ? "never" : "require",
-        username: cfg.smtp.username,
-        password: cfg.smtp.password,
-        heloName: domainOf(fromAddress) || undefined,
-      }, { from: fromAddress, to: extractAddress(msg.to), data });
+      await sendSmtp(
+        {
+          hostname: cfg.smtp.host,
+          port: cfg.smtp.port,
+          implicitTls: cfg.smtp.tls,
+          starttls: cfg.smtp.tls ? "never" : "require",
+          username: cfg.smtp.username,
+          password: cfg.smtp.password,
+          heloName: domainOf(fromAddress) || undefined,
+        },
+        { from: fromAddress, to: extractAddress(msg.to), data },
+      );
     },
   };
 }
@@ -116,12 +122,12 @@ function relayTransport(cfg: EmailConfig): Transport {
         throw new Error("Email mode is relay but no API key is configured.");
       }
       if (cfg.relay.provider !== "resend") {
-        throw new Error(`Unsupported relay provider: ${cfg.relay.provider}`);
+        throw new Error(`Unsupported relay provider: ${JSON.stringify(cfg.relay.provider)}`);
       }
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
-          "authorization": `Bearer ${cfg.relay.apiKey}`,
+          authorization: `Bearer ${cfg.relay.apiKey}`,
           "content-type": "application/json",
         },
         body: JSON.stringify({
@@ -154,26 +160,27 @@ function directTransport(cfg: EmailConfig): Transport {
       try {
         mx = await Deno.resolveDns(domain, "MX");
       } catch (err) {
-        throw new Error(
-          `No MX records for ${domain}: ${err instanceof Error ? err.message : err}`,
-        );
+        throw new Error(`No MX records for ${domain}: ${err instanceof Error ? err.message : JSON.stringify(err)}`);
       }
-      const hosts = mx.sort((a, b) => a.preference - b.preference).map((r) => r.exchange);
+      const hosts = mx.toSorted((a, b) => a.preference - b.preference).map((r) => r.exchange);
       if (hosts.length === 0) throw new Error(`No MX records for ${domain}`);
 
       const errors: string[] = [];
       for (const host of hosts) {
         try {
-          await sendSmtp({
-            hostname: host,
-            port: 25,
-            implicitTls: false,
-            starttls: "opportunistic",
-            heloName: domainOf(fromAddress) || undefined,
-          }, { from: fromAddress, to: extractAddress(msg.to), data });
+          await sendSmtp(
+            {
+              hostname: host,
+              port: 25,
+              implicitTls: false,
+              starttls: "opportunistic",
+              heloName: domainOf(fromAddress) || undefined,
+            },
+            { from: fromAddress, to: extractAddress(msg.to), data },
+          );
           return; // delivered to the first MX that accepts
         } catch (err) {
-          errors.push(`${host}: ${err instanceof Error ? err.message : err}`);
+          errors.push(`${host}: ${err instanceof Error ? err.message : JSON.stringify(err)}`);
         }
       }
       throw new Error(`Direct delivery to ${domain} failed. Tried: ${errors.join("; ")}`);
@@ -206,12 +213,11 @@ export async function sendMail(msg: EmailMessage): Promise<void> {
  * surface the transport error verbatim.
  */
 export async function sendTestEmail(to: string, override?: EmailConfig): Promise<void> {
-  const cfg = override ?? await getEmailConfig();
+  const cfg = override ?? (await getEmailConfig());
   await transportFor(cfg).send({
     to,
     subject: "Omicron email test",
-    text:
-      "This is a test message from your Omicron instance.\n\nIf you received it, outbound email is working.",
+    text: "This is a test message from your Omicron instance.\n\nIf you received it, outbound email is working.",
     html: layout(
       "Email is working",
       "This is a test message from your Omicron instance. If you received it, outbound email is working.",
@@ -245,8 +251,7 @@ export async function sendPasswordReset(to: string, token: string): Promise<void
   return sendMail({
     to,
     subject: "Reset your Omicron password",
-    text:
-      `Someone requested a password reset for your account.\n\nReset it here (valid for 1 hour):\n${url}\n\nIf you didn't request this, you can safely ignore this email.`,
+    text: `Someone requested a password reset for your account.\n\nReset it here (valid for 1 hour):\n${url}\n\nIf you didn't request this, you can safely ignore this email.`,
     html: layout(
       "Reset your password",
       "Someone requested a password reset for your account. This link is valid for one hour. If you didn't request it, you can safely ignore this email.",
@@ -261,8 +266,7 @@ export async function sendEmailVerification(to: string, token: string): Promise<
   return sendMail({
     to,
     subject: "Confirm your Omicron email",
-    text:
-      `Welcome to Omicron! Confirm your email address to finish setting up your account (valid for 24 hours):\n${url}\n\nIf you didn't create this account, you can ignore this email.`,
+    text: `Welcome to Omicron! Confirm your email address to finish setting up your account (valid for 24 hours):\n${url}\n\nIf you didn't create this account, you can ignore this email.`,
     html: layout(
       "Confirm your email",
       "Welcome to Omicron! Confirm your email address to finish setting up your account. This link is valid for 24 hours.",

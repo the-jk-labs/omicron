@@ -142,7 +142,7 @@ export async function search(query: string, page = 1): Promise<StockPhoto[]> {
 
   let res: Response;
   try {
-    res = await call(`${API}/search/photos?${params}`, key);
+    res = await call(`${API}/search/photos?${params.toString()}`, key);
   } catch {
     throw badRequest("Couldn't reach Unsplash. Try again in a moment.");
   }
@@ -153,7 +153,7 @@ export async function search(query: string, page = 1): Promise<StockPhoto[]> {
   }
   if (!res.ok) throw badRequest("Unsplash search failed. Try again in a moment.");
 
-  const body = await res.json().catch(() => null) as { results?: RawPhoto[] } | null;
+  const body = (await res.json().catch(() => null)) as { results?: RawPhoto[] } | null;
   return (body?.results ?? []).map(toPhoto).filter((p): p is StockPhoto => p !== null);
 }
 

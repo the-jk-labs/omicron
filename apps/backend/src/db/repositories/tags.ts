@@ -1,17 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, desc, eq, gt, inArray, notInArray, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import {
-  posts,
-  postTags,
-  remoteActorTags,
-  tagAliases,
-  tagFollows,
-  tags,
-  users,
-  userTags,
-} from "@/db/schema.ts";
 import { isPublished, notSuspended, visibleToViewer } from "@/db/repositories/posts.ts";
+import { posts, postTags, remoteActorTags, tagAliases, tagFollows, tags, users, userTags } from "@/db/schema.ts";
 
 // Tag DB access. Callers pass already-normalized slugs (see lib/tags.ts); the
 // stored `name` mirrors the slug so display and matching stay consistent.
@@ -33,9 +24,10 @@ async function resolveSlugs(slugs: string[]): Promise<string[]> {
   const aliases = await db.select().from(tagAliases).where(inArray(tagAliases.aliasSlug, slugs));
   if (aliases.length === 0) return slugs;
   const map = new Map(aliases.map((a) => [a.aliasSlug, a.tagId] as const));
-  const targets = await db.select({ id: tags.id, slug: tags.slug }).from(tags).where(
-    inArray(tags.id, [...map.values()]),
-  );
+  const targets = await db
+    .select({ id: tags.id, slug: tags.slug })
+    .from(tags)
+    .where(inArray(tags.id, [...map.values()]));
   const idToSlug = new Map(targets.map((t) => [t.id, t.slug] as const));
   return slugs.map((s) => {
     const tagId = map.get(s);
@@ -58,9 +50,7 @@ export async function setPostTags(postId: string, slugs: string[]): Promise<void
       .insert(tags)
       .values(deduped.map((slug) => ({ slug, name: slug })))
       .onConflictDoNothing({ target: tags.slug });
-    const rows = await tx.select({ id: tags.id, slug: tags.slug }).from(tags).where(
-      inArray(tags.slug, deduped),
-    );
+    const rows = await tx.select({ id: tags.id, slug: tags.slug }).from(tags).where(inArray(tags.slug, deduped));
     await tx
       .insert(postTags)
       .values(rows.map((r: { id: string }) => ({ postId, tagId: r.id })))
@@ -103,12 +93,16 @@ export function findAlias(aliasSlug: string) {
 }
 
 export function listAliases() {
-  return db.select({
-    aliasSlug: tagAliases.aliasSlug,
-    tagId: tagAliases.tagId,
-    slug: tags.slug,
-    name: tags.name,
-  }).from(tagAliases).innerJoin(tags, eq(tags.id, tagAliases.tagId)).orderBy(tagAliases.aliasSlug);
+  return db
+    .select({
+      aliasSlug: tagAliases.aliasSlug,
+      tagId: tagAliases.tagId,
+      slug: tags.slug,
+      name: tags.name,
+    })
+    .from(tagAliases)
+    .innerJoin(tags, eq(tags.id, tagAliases.tagId))
+    .orderBy(tagAliases.aliasSlug);
 }
 
 // Count of published Article posts carrying a tag, as the viewer may see them.
@@ -122,13 +116,7 @@ export async function postCount(tagId: string, viewerId: string | null): Promise
     .innerJoin(posts, eq(posts.id, postTags.postId))
     .leftJoin(users, eq(posts.authorId, users.id))
     .where(
-      and(
-        eq(postTags.tagId, tagId),
-        eq(posts.apType, "Article"),
-        isPublished,
-        notSuspended,
-        visibleToViewer(viewerId),
-      ),
+      and(eq(postTags.tagId, tagId), eq(posts.apType, "Article"), isPublished, notSuspended, visibleToViewer(viewerId)),
     );
   return row?.count ?? 0;
 }
@@ -156,7 +144,7 @@ export function search(query: string, limit: number): Promise<TagWithCount[]> {
     .where(sql`${tags.slug} ilike ${term}`)
     .groupBy(tags.id)
     .orderBy(desc(sql`count(${postTags.postId})`))
-    .limit(limit) as Promise<TagWithCount[]>;
+    .limit(limit);
 }
 
 // Autocomplete / similar-tag suggestion for the composer.
@@ -176,7 +164,7 @@ export function suggest(query: string, limit: number): Promise<TagWithCount[]> {
     .where(sql`${tags.slug} % ${query} or ${tags.slug} ilike ${term}`)
     .groupBy(tags.id)
     .orderBy(desc(sql`similarity(${tags.slug}, ${query})`), desc(sql`count(${postTags.postId})`))
-    .limit(limit) as Promise<TagWithCount[]>;
+    .limit(limit);
 }
 
 // Create an alias slug -> target tag. The alias slug must not already be a
@@ -200,9 +188,7 @@ export async function mergeTags(fromSlug: string, toSlug: string): Promise<void>
   if (!to) throw new Error(`Target tag "${toSlug}" not found`);
   await db.transaction(async (tx) => {
     // Move post tags
-    const fromPostTags = await tx.select({ postId: postTags.postId }).from(postTags).where(
-      eq(postTags.tagId, from.id),
-    );
+    const fromPostTags = await tx.select({ postId: postTags.postId }).from(postTags).where(eq(postTags.tagId, from.id));
     for (const { postId } of fromPostTags) {
       await tx.insert(postTags).values({ postId, tagId: to.id }).onConflictDoNothing();
     }
@@ -219,12 +205,9 @@ export async function mergeTags(fromSlug: string, toSlug: string): Promise<void>
       await tx.insert(userTags).values({ userId: ut.userId, tagId: to.id }).onConflictDoNothing();
     }
     await tx.delete(userTags).where(eq(userTags.tagId, from.id));
-    const fromRemoteTags = await tx.select().from(remoteActorTags).where(
-      eq(remoteActorTags.tagId, from.id),
-    );
+    const fromRemoteTags = await tx.select().from(remoteActorTags).where(eq(remoteActorTags.tagId, from.id));
     for (const rt of fromRemoteTags) {
-      await tx.insert(remoteActorTags).values({ remoteActorId: rt.remoteActorId, tagId: to.id })
-        .onConflictDoNothing();
+      await tx.insert(remoteActorTags).values({ remoteActorId: rt.remoteActorId, tagId: to.id }).onConflictDoNothing();
     }
     await tx.delete(remoteActorTags).where(eq(remoteActorTags.tagId, from.id));
     // Alias for future writes and tag-page redirects
@@ -240,12 +223,7 @@ export async function mergeTags(fromSlug: string, toSlug: string): Promise<void>
 // distinct-author and minimum-use thresholds below. Keep lowercase slugs only.
 // Managed in code for now; a future admin panel could move this to
 // instance_settings (trending_blocked_tags).
-const TRENDING_BLOCKED_SLUGS = new Set([
-  "larp",
-  "idk",
-  "khazar",
-  "divineintellect",
-]);
+const TRENDING_BLOCKED_SLUGS = new Set(["larp", "idk", "khazar", "divineintellect"]);
 
 // Trending tags: most-used across posts published in the last 7 days
 // (matches the "Last 7 days" window used for trending posts).
@@ -257,36 +235,38 @@ const TRENDING_BLOCKED_SLUGS = new Set([
 export function trending(limit: number, sinceDays = 7): Promise<TagWithCount[]> {
   const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
   const blocked = [...TRENDING_BLOCKED_SLUGS];
-  return db
-    .select({
-      slug: tags.slug,
-      name: tags.name,
-      postCount: sql<number>`count(${postTags.postId})::int`,
-    })
-    .from(tags)
-    .innerJoin(postTags, eq(postTags.tagId, tags.id))
-    .innerJoin(posts, eq(posts.id, postTags.postId))
-    .leftJoin(users, eq(posts.authorId, users.id))
-    // Ranked over what a logged-out reader can see. Trending is a global
-    // ranking, not a personalized one, so it is computed as anonymous rather
-    // than threaded with a viewer — and a suspended or private author must not
-    // push a tag up a board that everyone sees.
-    .where(
-      and(
-        eq(posts.apType, "Article"),
-        gt(posts.createdAt, since),
-        isPublished,
-        notSuspended,
-        visibleToViewer(null),
-        blocked.length ? notInArray(tags.slug, blocked) : undefined,
-      ),
-    )
-    .groupBy(tags.id)
-    .having(
-      sql`count(${postTags.postId}) >= 3 and count(distinct coalesce(${posts.authorId}::text, ${posts.remoteActorId}::text)) >= 3`,
-    )
-    .orderBy(desc(sql`count(${postTags.postId})`))
-    .limit(limit) as Promise<TagWithCount[]>;
+  return (
+    db
+      .select({
+        slug: tags.slug,
+        name: tags.name,
+        postCount: sql<number>`count(${postTags.postId})::int`,
+      })
+      .from(tags)
+      .innerJoin(postTags, eq(postTags.tagId, tags.id))
+      .innerJoin(posts, eq(posts.id, postTags.postId))
+      .leftJoin(users, eq(posts.authorId, users.id))
+      // Ranked over what a logged-out reader can see. Trending is a global
+      // ranking, not a personalized one, so it is computed as anonymous rather
+      // than threaded with a viewer — and a suspended or private author must not
+      // push a tag up a board that everyone sees.
+      .where(
+        and(
+          eq(posts.apType, "Article"),
+          gt(posts.createdAt, since),
+          isPublished,
+          notSuspended,
+          visibleToViewer(null),
+          blocked.length ? notInArray(tags.slug, blocked) : undefined,
+        ),
+      )
+      .groupBy(tags.id)
+      .having(
+        sql`count(${postTags.postId}) >= 3 and count(distinct coalesce(${posts.authorId}::text, ${posts.remoteActorId}::text)) >= 3`,
+      )
+      .orderBy(desc(sql`count(${postTags.postId})`))
+      .limit(limit)
+  );
 }
 
 // Tag pages for the XML sitemap: the slug, plus the newest post carrying it as
@@ -299,23 +279,25 @@ export function trending(limit: number, sinceDays = 7): Promise<TagWithCount[]> 
 // thin pages accumulate. The threshold is a judgement, not a standard; two is
 // the smallest number at which the page is genuinely an index of something.
 export function listSitemapTags(): Promise<{ slug: string; lastPostAt: Date }[]> {
-  return db
-    .select({
-      slug: tags.slug,
-      lastPostAt: sql<Date>`max(${posts.createdAt})`,
-    })
-    .from(tags)
-    .innerJoin(postTags, eq(postTags.tagId, tags.id))
-    .innerJoin(posts, eq(posts.id, postTags.postId))
-    .leftJoin(users, eq(posts.authorId, users.id))
-    // A crawler is anonymous, so the ">1 post" threshold below has to be
-    // counted over posts a crawler can actually reach — otherwise a tag whose
-    // only visible post is one becomes exactly the thin page the threshold
-    // exists to keep out of the sitemap.
-    .where(and(eq(posts.remote, false), isPublished, notSuspended, visibleToViewer(null)))
-    .groupBy(tags.id)
-    .having(sql`count(${postTags.postId}) > 1`)
-    .limit(10000) as Promise<{ slug: string; lastPostAt: Date }[]>;
+  return (
+    db
+      .select({
+        slug: tags.slug,
+        lastPostAt: sql<Date>`max(${posts.createdAt})`,
+      })
+      .from(tags)
+      .innerJoin(postTags, eq(postTags.tagId, tags.id))
+      .innerJoin(posts, eq(posts.id, postTags.postId))
+      .leftJoin(users, eq(posts.authorId, users.id))
+      // A crawler is anonymous, so the ">1 post" threshold below has to be
+      // counted over posts a crawler can actually reach — otherwise a tag whose
+      // only visible post is one becomes exactly the thin page the threshold
+      // exists to keep out of the sitemap.
+      .where(and(eq(posts.remote, false), isPublished, notSuspended, visibleToViewer(null)))
+      .groupBy(tags.id)
+      .having(sql`count(${postTags.postId}) > 1`)
+      .limit(10000)
+  );
 }
 
 // ── tag follows ──────────────────────────────────────────────────────────
@@ -325,9 +307,7 @@ export async function follow(userId: string, tagId: string): Promise<void> {
 }
 
 export async function unfollow(userId: string, tagId: string): Promise<void> {
-  await db.delete(tagFollows).where(
-    and(eq(tagFollows.userId, userId), eq(tagFollows.tagId, tagId)),
-  );
+  await db.delete(tagFollows).where(and(eq(tagFollows.userId, userId), eq(tagFollows.tagId, tagId)));
 }
 
 export async function isFollowing(userId: string, tagId: string): Promise<boolean> {
@@ -405,5 +385,5 @@ export function listFollowedByUser(userId: string): Promise<TagWithCount[]> {
     .leftJoin(postTags, eq(postTags.tagId, tags.id))
     .where(eq(tagFollows.userId, userId))
     .groupBy(tags.id, tagFollows.createdAt)
-    .orderBy(desc(tagFollows.createdAt)) as Promise<TagWithCount[]>;
+    .orderBy(desc(tagFollows.createdAt));
 }

@@ -32,6 +32,7 @@ const CRLF = "\r\n";
 // inputs; this is the last-line guard that turns a slip into a thrown error
 // rather than a smuggled header. Matches C0 controls and DEL.
 // deno-lint-ignore no-control-regex
+// oxlint-disable-next-line no-control-regex
 const HEADER_UNSAFE = /[\x00-\x1f\x7f]/;
 
 function assertHeaderSafe(value: string, field: string): void {

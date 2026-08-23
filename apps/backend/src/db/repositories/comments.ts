@@ -43,10 +43,7 @@ export async function remove(id: string) {
 function beforeCursor(cursor: Cursor | null) {
   if (!cursor) return undefined;
   const ts = new Date(cursor.createdAt);
-  return or(
-    lt(comments.createdAt, ts),
-    and(eq(comments.createdAt, ts), lt(comments.id, cursor.id)),
-  );
+  return or(lt(comments.createdAt, ts), and(eq(comments.createdAt, ts), lt(comments.id, cursor.id)));
 }
 
 // Hides comments whose (always-local) author the viewer has blocked, or who has
@@ -63,24 +60,12 @@ function notBlocked(viewerId: string | null) {
 }
 
 // Top-level comments only (parentId is null), newest first.
-export function listByPost(
-  postId: string,
-  cursor: Cursor | null,
-  viewerId: string | null,
-  limit = DEFAULT_PAGE_SIZE,
-) {
+export function listByPost(postId: string, cursor: Cursor | null, viewerId: string | null, limit = DEFAULT_PAGE_SIZE) {
   return db
     .select({ comment: comments, author: authorColumns })
     .from(comments)
     .innerJoin(users, eq(comments.authorId, users.id))
-    .where(
-      and(
-        eq(comments.postId, postId),
-        isNull(comments.parentId),
-        notBlocked(viewerId),
-        beforeCursor(cursor),
-      ),
-    )
+    .where(and(eq(comments.postId, postId), isNull(comments.parentId), notBlocked(viewerId), beforeCursor(cursor)))
     .orderBy(desc(comments.createdAt), desc(comments.id))
     .limit(limit + 1);
 }

@@ -50,12 +50,7 @@ function findTable(font: Uint8Array, dv: DataView, tag: string): number | null {
   const count = dv.getUint16(4);
   for (let i = 0; i < count; i++) {
     const record = 12 + i * 16;
-    const name = String.fromCharCode(
-      font[record],
-      font[record + 1],
-      font[record + 2],
-      font[record + 3],
-    );
+    const name = String.fromCharCode(font[record], font[record + 1], font[record + 2], font[record + 3]);
     if (name === tag) return dv.getUint32(record + 8);
   }
   return null;
@@ -75,21 +70,21 @@ function readFormat4(dv: DataView, offset: number, into: Set<number>): void {
     const end = dv.getUint16(ends + seg * 2);
     const start = dv.getUint16(starts + seg * 2);
     // The final segment is a required 0xFFFF sentinel, not real coverage.
-    if (start > end || start === 0xFFFF) continue;
+    if (start > end || start === 0xffff) continue;
     const delta = dv.getInt16(deltas + seg * 2);
     const rangeOffset = dv.getUint16(rangeOffsets + seg * 2);
 
     for (let code = start; code <= end; code++) {
       let glyph: number;
       if (rangeOffset === 0) {
-        glyph = (code + delta) & 0xFFFF;
+        glyph = (code + delta) & 0xffff;
       } else {
         // The spec's pointer arithmetic: the offset is counted in bytes from
         // the position of the rangeOffset entry itself.
         const at = rangeOffsets + seg * 2 + rangeOffset + (code - start) * 2;
         if (at + 1 >= dv.byteLength) continue;
         glyph = dv.getUint16(at);
-        if (glyph !== 0) glyph = (glyph + delta) & 0xFFFF;
+        if (glyph !== 0) glyph = (glyph + delta) & 0xffff;
       }
       if (glyph !== 0) into.add(code);
     }

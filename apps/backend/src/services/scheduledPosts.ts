@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as postsRepo from "@/db/repositories/posts.ts";
-import * as notificationsService from "@/services/notifications.ts";
 import { queue } from "@/queue/queue.ts";
+import * as notificationsService from "@/services/notifications.ts";
 
 // Publishes posts whose scheduled moment has arrived.
 //

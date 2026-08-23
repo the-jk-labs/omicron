@@ -5,7 +5,10 @@ import { HTTPException } from "hono/http-exception";
 // Thin HTTP helpers so routes stay terse and consistent.
 
 export class HttpError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
     super(message);
   }
 }

@@ -55,14 +55,17 @@ export async function closeDb(): Promise<void> {
 export type UserOpts = { isPrivate?: boolean; suspended?: boolean };
 
 export async function mkUser(username: string, opts: UserOpts = {}) {
-  const [row] = await db.insert(users).values({
-    username,
-    email: `${username}@example.test`,
-    passwordHash: "not-a-real-hash",
-    displayName: username,
-    isPrivate: opts.isPrivate ?? false,
-    suspendedAt: opts.suspended ? new Date() : null,
-  }).returning();
+  const [row] = await db
+    .insert(users)
+    .values({
+      username,
+      email: `${username}@example.test`,
+      passwordHash: "not-a-real-hash",
+      displayName: username,
+      isPrivate: opts.isPrivate ?? false,
+      suspendedAt: opts.suspended ? new Date() : null,
+    })
+    .returning();
   return row;
 }
 
@@ -81,19 +84,22 @@ export type PostOpts = {
 
 export async function mkPost(authorId: string, slug: string, opts: PostOpts = {}) {
   const status = opts.status ?? "published";
-  const [row] = await db.insert(posts).values({
-    authorId,
-    title: slug,
-    contentHtml: `<p>${slug}</p>`,
-    slug,
-    status,
-    // The database enforces that these two agree; supplying a time on a
-    // non-scheduled post would be rejected rather than ignored.
-    publishAt: status === "scheduled" ? (opts.publishAt ?? new Date(Date.now() + 3_600_000)) : null,
-    apType: opts.apType ?? "Article",
-    remote: opts.remote ?? false,
-    ...(opts.createdAt ? { createdAt: opts.createdAt, updatedAt: opts.createdAt } : {}),
-  }).returning();
+  const [row] = await db
+    .insert(posts)
+    .values({
+      authorId,
+      title: slug,
+      contentHtml: `<p>${slug}</p>`,
+      slug,
+      status,
+      // The database enforces that these two agree; supplying a time on a
+      // non-scheduled post would be rejected rather than ignored.
+      publishAt: status === "scheduled" ? (opts.publishAt ?? new Date(Date.now() + 3_600_000)) : null,
+      apType: opts.apType ?? "Article",
+      remote: opts.remote ?? false,
+      ...(opts.createdAt ? { createdAt: opts.createdAt, updatedAt: opts.createdAt } : {}),
+    })
+    .returning();
   return row;
 }
 
