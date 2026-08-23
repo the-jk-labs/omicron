@@ -33,7 +33,9 @@ export async function getTag(rawSlug: string, viewerId: string | null) {
 export async function tagPosts(rawSlug: string, cursor: Cursor | null, viewerId: string | null) {
   const slug = normalizeTag(rawSlug);
   if (!slug) return { items: [], nextCursor: null };
-  const rows = await postsRepo.listByTag(slug, viewerId, cursor, DEFAULT_PAGE_SIZE);
+  const tag = await tagsRepo.findBySlug(slug);
+  const canonical = tag?.slug ?? slug;
+  const rows = await postsRepo.listByTag(canonical, viewerId, cursor, DEFAULT_PAGE_SIZE);
   return pageOf(rows, DEFAULT_PAGE_SIZE);
 }
 
@@ -58,7 +60,15 @@ export async function unfollow(userId: string, rawSlug: string) {
 }
 
 export function search(query: string) {
-  return tagsRepo.search(query, MAX_RESULTS);
+  const slug = normalizeTag(query);
+  if (!slug) return Promise.resolve([]);
+  return tagsRepo.search(slug, MAX_RESULTS);
+}
+
+export function suggest(query: string) {
+  const slug = normalizeTag(query);
+  if (!slug) return Promise.resolve([]);
+  return tagsRepo.suggest(slug, MAX_RESULTS);
 }
 
 export function trending() {
@@ -67,4 +77,32 @@ export function trending() {
 
 export function followed(userId: string) {
   return tagsRepo.listFollowedByUser(userId);
+}
+
+export async function createAlias(aliasRaw: string, targetRaw: string) {
+  const alias = normalizeTag(aliasRaw);
+  const target = normalizeTag(targetRaw);
+  if (!alias || !target) throw badRequest("Invalid tag.");
+  if (alias === target) throw badRequest("Alias and target are the same.");
+  try {
+    await tagsRepo.createAlias(alias, target);
+  } catch (e) {
+    throw badRequest(e instanceof Error ? e.message : "Could not create alias.");
+  }
+}
+
+export async function merge(fromRaw: string, toRaw: string) {
+  const from = normalizeTag(fromRaw);
+  const to = normalizeTag(toRaw);
+  if (!from || !to) throw badRequest("Invalid tag.");
+  if (from === to) throw badRequest("Source and target are the same.");
+  try {
+    await tagsRepo.mergeTags(from, to);
+  } catch (e) {
+    throw badRequest(e instanceof Error ? e.message : "Could not merge tags.");
+  }
+}
+
+export function listAliases() {
+  return tagsRepo.listAliases();
 }

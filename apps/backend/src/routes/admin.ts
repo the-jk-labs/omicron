@@ -6,6 +6,7 @@ import * as anubis from "@/services/anubisProtection.ts";
 import * as seo from "@/services/seo.ts";
 import * as unsplash from "@/services/unsplash.ts";
 import * as moderation from "@/services/moderation.ts";
+import * as tagsService from "@/services/tags.ts";
 import * as emailSettings from "@/services/emailSettings.ts";
 import * as setup from "@/services/instanceSetup.ts";
 import * as mediaService from "@/services/media.ts";
@@ -379,5 +380,30 @@ adminRoutes.post(
 adminRoutes.delete("/domains/:domain", async (c) => {
   requireAdmin(c);
   await moderation.unblockDomain(c.req.param("domain"));
+  return c.json({ ok: true });
+});
+
+// ── Tags (alias + merge for fragmented / misspelled tags) ────────────────────
+
+adminRoutes.get("/tags/aliases", async (c) => {
+  requireAdmin(c);
+  return c.json({ aliases: await tagsService.listAliases() });
+});
+
+const tagAliasSchema = z.object({ alias: z.string().min(1), target: z.string().min(1) });
+
+adminRoutes.post("/tags/alias", jsonBody(tagAliasSchema), async (c) => {
+  requireAdmin(c);
+  const { alias, target } = c.req.valid("json");
+  await tagsService.createAlias(alias, target);
+  return c.json({ ok: true }, 201);
+});
+
+const tagMergeSchema = z.object({ from: z.string().min(1), to: z.string().min(1) });
+
+adminRoutes.post("/tags/merge", jsonBody(tagMergeSchema), async (c) => {
+  requireAdmin(c);
+  const { from, to } = c.req.valid("json");
+  await tagsService.merge(from, to);
   return c.json({ ok: true });
 });

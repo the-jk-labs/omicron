@@ -193,6 +193,12 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     unfollowTag: (slug: string) => api.del<{ ok: true }>(`/tags/${encodeURIComponent(slug)}/follow`),
     trendingTags: () => api.get<{ tags: TagWithCount[] }>("/tags"),
     followedTags: () => api.get<{ tags: TagWithCount[] }>("/tags/following"),
+    suggestTags: (q: string) => api.get<{ tags: TagWithCount[] }>(`/tags/suggest?q=${encodeURIComponent(q)}`),
+    searchTags: (q: string) => api.get<{ tags: TagWithCount[] }>(`/tags/search?q=${encodeURIComponent(q)}`),
+    adminTagAliases: () =>
+      api.get<{ aliases: { aliasSlug: string; slug: string; name: string }[] }>("/admin/tags/aliases"),
+    createTagAlias: (alias: string, target: string) => api.post<{ ok: true }>("/admin/tags/alias", { alias, target }),
+    mergeTags: (from: string, to: string) => api.post<{ ok: true }>("/admin/tags/merge", { from, to }),
 
     // publishing tokens for the content webhook (Settings -> Integrations).
     // `createWebhookToken` returns the plaintext token once and never again.
