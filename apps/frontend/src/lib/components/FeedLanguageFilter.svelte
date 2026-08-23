@@ -8,8 +8,8 @@
   let { compact = false }: { compact?: boolean } = $props();
 
   const langModeOptions: { value: FeedLangMode; label: string }[] = [
-    { value: "hide", label: "Hide these" },
     { value: "show", label: "Show only these" },
+    { value: "hide", label: "Hide these" },
   ];
   const availableLanguages = $derived(LANGUAGES.filter((l) => !reading.feedLangs.includes(l.code)));
   let addLangValue = $state("");
@@ -23,7 +23,7 @@
   <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
     <div>
       <p class="flex items-center gap-1.5 text-sm font-medium text-foreground">
-        <Icon name="languages" size={15} /> Oxuduğum dillər · Feed languages
+        <Icon name="languages" size={15} /> Feed languages
       </p>
       <p class="text-xs text-muted-foreground">
         Filter which languages appear in your Local and Global feeds. Articles with no set language are always shown.
