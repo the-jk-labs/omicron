@@ -14,7 +14,7 @@
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "test": "vitest run src/",
-    "test:integration": "deno run -A npm:vitest run tests/integration/",
+    "test:integration": "deno run -A npm:vitest run tests/integration/ --no-file-parallelism",
     "backfill:markdown": "deno run -A scripts/backfill_markdown.ts",
     "backfill:sanitize": "deno run -A scripts/backfill_sanitize.ts",
     "backfill:math": "deno run -A scripts/backfill_math.ts",
