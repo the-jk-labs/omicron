@@ -40,8 +40,15 @@
                 href={`/@${post.author.username}`}
                 class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
               >
-                <Avatar name={post.author.displayName} src={post.author.avatarUrl ?? undefined} size={18} />
-                <span class="truncate text-xs font-medium">{post.author.displayName}</span>
+                <Avatar
+                  name={post.author.displayName}
+                  src={post.author.avatarUrl ?? undefined}
+                  size={18}
+                  class="shrink-0"
+                />
+                <span class="truncate text-xs font-medium" title={post.author.displayName}
+                  >{post.author.displayName}</span
+                >
               </a>
               <a
                 href={postPath(post)}
@@ -72,7 +79,9 @@
             <a href={`/@${person.username}`} class="flex min-w-0 items-center gap-2.5 hover:opacity-80">
               <Avatar name={person.displayName} src={person.avatarUrl ?? undefined} size={36} />
               <span class="min-w-0">
-                <span class="block truncate font-semibold text-foreground">{person.displayName}</span>
+                <span class="block truncate font-semibold text-foreground" title={person.displayName}
+                  >{person.displayName}</span
+                >
                 <span class="block truncate text-xs text-muted-foreground">
                   {person.followerCount}
                   {person.followerCount === 1 ? "follower" : "followers"}

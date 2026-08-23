@@ -15,6 +15,8 @@
   const instance = $derived(page.data.instance as InstanceInfo | null);
   const appName = $derived(instance?.name || env.PUBLIC_APP_NAME || "Omicron");
 
+  const MAX_DISPLAY_NAME_LEN = 60;
+
   let username = $state("");
   let email = $state("");
   let displayName = $state("");
@@ -118,6 +120,10 @@
   async function submit(e: SubmitEvent) {
     e.preventDefault();
     touched = { username: true, email: true, password: true, confirm: true, terms: true };
+    if (displayName.trim().length > MAX_DISPLAY_NAME_LEN) {
+      error = `Display name must be at most ${MAX_DISPLAY_NAME_LEN} characters.`;
+      return;
+    }
     if (!acceptTerms) {
       error = "Please accept the Terms to create an account.";
       return;
@@ -167,7 +173,24 @@
     <Label.Root for="displayName" class={labelClass}
       >Display name <span class="font-normal text-muted-foreground">(optional)</span></Label.Root
     >
-    <input id="displayName" bind:value={displayName} autocomplete="name" placeholder="Ada Lovelace" class={field} />
+    <input
+      id="displayName"
+      bind:value={displayName}
+      autocomplete="name"
+      placeholder="Ada Lovelace"
+      maxlength={MAX_DISPLAY_NAME_LEN}
+      aria-describedby="displayName-hint"
+      class={field}
+    />
+    <p id="displayName-hint" class="text-xs text-muted-foreground">
+      {displayName.length}/{MAX_DISPLAY_NAME_LEN} — shown on posts and your profile. Long names are truncated with an ellipsis;
+      hover to see the full name.
+    </p>
+    {#if displayName.length > MAX_DISPLAY_NAME_LEN}
+      <p class="text-xs text-destructive" aria-live="polite">
+        Display name must be at most {MAX_DISPLAY_NAME_LEN} characters.
+      </p>
+    {/if}
   </div>
 
   <div class="flex flex-col gap-1.5">

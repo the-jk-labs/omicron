@@ -19,6 +19,8 @@
   let step = $state(0);
   const steps = ["Instance", "Admin", "Email"];
 
+  const MAX_DISPLAY_NAME_LEN = 60;
+
   let appName = $state(instance?.name && instance.name !== "Omicron" ? instance.name : "");
   let appDomain = $state(suggestedDomain);
   let displayName = $state("");
@@ -183,7 +185,10 @@
   {:else if step === 1}
     <div class="flex flex-col gap-1.5">
       <Label.Root for="displayName" class={labelClass}>Display name</Label.Root>
-      <input id="displayName" bind:value={displayName} class={field} />
+      <input id="displayName" bind:value={displayName} maxlength={MAX_DISPLAY_NAME_LEN} class={field} />
+      <p class="text-xs text-muted-foreground">
+        {displayName.length}/{MAX_DISPLAY_NAME_LEN} — truncated with ellipsis in the feed; full name shows on hover.
+      </p>
     </div>
     <div class="flex flex-col gap-1.5">
       <Label.Root for="username" class={labelClass}>Username</Label.Root>

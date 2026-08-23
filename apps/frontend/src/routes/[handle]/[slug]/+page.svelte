@@ -263,9 +263,14 @@
   {/if}
 
   <div class="flex items-start gap-3 pb-8">
-    <Avatar name={post.author.displayName} src={post.author.avatarUrl ?? undefined} size={44} />
-    <div class="min-w-0 flex-1 text-sm">
-      <Button href={`/@${post.author.username}`} variant="plain" class="font-medium text-foreground hover:underline">
+    <Avatar name={post.author.displayName} src={post.author.avatarUrl ?? undefined} size={44} class="shrink-0" />
+    <div class="min-w-0 flex-1 overflow-hidden text-sm">
+      <Button
+        href={`/@${post.author.username}`}
+        variant="plain"
+        class="block max-w-full truncate font-medium text-foreground hover:underline"
+        title={post.author.displayName}
+      >
         {post.author.displayName}
       </Button>
       <div class="flex flex-col gap-1 text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
