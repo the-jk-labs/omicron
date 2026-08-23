@@ -185,6 +185,13 @@ const schema = z.object({
     .string()
     .transform((v) => v.toLowerCase() === "true")
     .default(false),
+
+  // Have I Been Pwned k-anonymity check. When false, leaked-password checks are
+  // skipped entirely (air-gapped installs).
+  HIBP_CHECK_ENABLED: z
+    .string()
+    .transform((v) => v.toLowerCase() !== "false")
+    .default(true),
 });
 
 function load() {
@@ -214,6 +221,7 @@ function load() {
     SMTP_PASSWORD: Deno.env.get("SMTP_PASSWORD"),
     SMTP_TLS: Deno.env.get("SMTP_TLS"),
     EMAIL_VERIFICATION_REQUIRED: Deno.env.get("EMAIL_VERIFICATION_REQUIRED"),
+    HIBP_CHECK_ENABLED: Deno.env.get("HIBP_CHECK_ENABLED"),
   });
 
   if (!parsed.success) {
