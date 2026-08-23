@@ -28,7 +28,16 @@
     <section>
       <h2 class="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
         <Icon name="trending" size={18} /> Trending
+        <span
+          class="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+          title="Ranking: likes×1 + comments×2, then divided by (hours+2)^1.5 for recency decay — author's own likes/comments excluded"
+          >Last 7 days</span
+        >
       </h2>
+      <p class="-mt-1 mb-3 text-xs leading-relaxed text-muted-foreground">
+        Ranking: <span class="font-medium text-foreground">likes×1 + comments×2</span> ÷ (hours+2)<sup>1.5</sup> — author's
+        own votes excluded, older posts decay gradually.
+      </p>
       <ol class="space-y-4">
         {#each posts as post, i (post.id)}
           <li class="flex gap-3">

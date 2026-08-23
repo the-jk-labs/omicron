@@ -112,8 +112,9 @@ export function search(query: string, limit: number): Promise<TagWithCount[]> {
     .limit(limit) as Promise<TagWithCount[]>;
 }
 
-// Trending tags: most-used across posts published in the recent window.
-export function trending(limit: number, sinceDays = 14): Promise<TagWithCount[]> {
+// Trending tags: most-used across posts published in the last 7 days
+// (matches the "Last 7 days" window used for trending posts).
+export function trending(limit: number, sinceDays = 7): Promise<TagWithCount[]> {
   const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
   return db
     .select({

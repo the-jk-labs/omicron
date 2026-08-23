@@ -543,8 +543,11 @@ export async function localTimeline(
   return pageOf(rows, DEFAULT_PAGE_SIZE);
 }
 
-// The discovery rail's "Trending" list — a short, unpaginated set of the most
-// engaged recent posts, filtered by the viewer's mutes/blocks.
+// The discovery rail's "Trending" list — "Last 7 days": a short, unpaginated set of
+// the most engaged posts from the last 7 days, filtered by the viewer's
+// mutes/blocks. Rank = (likes×1 + comments×2, without self-votes) /
+// (hours+2)^1.5 so fresh engagement outranks stale bulk. See
+// db/repositories/posts.ts:listTrending for the documented formula.
 export function trending(viewerId: string | null = null, limit = 5) {
   return postsRepo.listTrending(viewerId, limit);
 }
