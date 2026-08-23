@@ -46,32 +46,42 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - name: Type-check
-        run: deno task check
-      - name: Lint
-        run: deno lint
-      # The frontend job already enforces its own formatting (greenly runs
-      # `pnpm fmt:check`); the backend had no equivalent gate, so a file could —
-      # and did — sit unformatted on main indefinitely.
-      - name: Format
-        run: deno fmt --check
-      - name: Test
-        run: deno task test
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          package_json_file: apps/frontend/package.json
+          version: 11.x
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          # Keep in step with apps/frontend/Dockerfile, so CI checks the same
+          # Node major that the runtime image ships.
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/backend/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Run Checks
+        run: pnpm check
+
       # Runs the committed migrations against the service container above, then
       # asserts on who can see what. Every case is a leak that shipped.
       - name: Integration tests (visibility)
         env:
           DATABASE_URL: postgres://omicron:omicron@localhost:5432/omicron_test
           SESSION_SECRET: ci-integration-test-secret-not-a-real-key
-        run: deno task test:integration
+        run: pnpm test:integration
       - name: Audit dependencies
         # Surface every advisory in the log for visibility, then fail only on a
         # high/critical one — so a serious CVE in a dependency blocks the merge,
         # while an unfixable low can't wedge the pipeline. Runs against the deps
         # the steps above already resolved.
         run: |
-          deno audit || true
-          deno audit --level=high
+          pnpm audit || true
+          pnpm audit --audit-level high
 
   frontend:
     name: Frontend (svelte-check)
