@@ -28,7 +28,16 @@
     <section>
       <h2 class="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
         <Icon name="trending" size={18} /> Trending
+        <span
+          class="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+          title="Sıralama: bəyənmə×1 + cavab×2, sonra (saat+2)^1.5 ilə köhnəlməyə görə bölünür — müəllifin öz bəyənmə/cavabları sayılmır"
+          >Son 7 gün</span
+        >
       </h2>
+      <p class="-mt-1 mb-3 text-xs leading-relaxed text-muted-foreground">
+        Sıralama: <span class="font-medium text-foreground">bəyənmə×1 + cavab×2</span> ÷ (saat+2)<sup>1.5</sup> — müəllifin
+        öz səsləri sayılmır, köhnə yazılar tədricən aşağı düşür.
+      </p>
       <ol class="space-y-4">
         {#each posts as post, i (post.id)}
           <li class="flex gap-3">

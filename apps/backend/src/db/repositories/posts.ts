@@ -622,15 +622,40 @@ export function searchPosts(
     .limit(limit);
 }
 
-// Trending: the most-engaged published Article posts from a recent window
-// (local + cached remote). Score is likes + comments; correlated subqueries keep
-// it a single round-trip and it degrades gracefully to recency when nothing in
-// the window has engagement yet. No pagination — this is a short discovery list.
-export function listTrending(viewerId: string | null, limit = 5, sinceDays = 14) {
+// Trending: the most-engaged published Article posts from the last 7 days.
+// The UI shows "Son 7 gün" so the window must match what the reader sees; a
+// post older than that never appears, no matter how many likes it once had.
+// Score is intentionally documented here so the ranking is not a black box:
+//
+//   weighted = likes*1 + comments*2   (comments signal deeper engagement, so
+//                                     they outweigh a tap; both counted without
+//                                     the author's own actions — see below)
+//   ageHours = extract(epoch from now() - createdAt)/3600
+//   score    = weighted / power(ageHours + 2, 1.5)
+//
+// The denominator is the Hacker-News-style gravity: a fresh post with a few
+// interactions outranks a week-old one with many, without ever letting a
+// brand-new empty post beat a recent engaged one. When weighted is 0 the score
+// is 0 and the tie-break is simply recency (createdAt desc), so the list still
+// degrades gracefully when nothing in the window has engagement.
+//
+// Bot/self-vote protection: likes/comments where the actor is the post's own
+// author are excluded from the counts (self-like / self-reply would otherwise
+// let an author push their own post). Remote posts have no local authorId and
+// are counted as-is. No pagination — this is a short discovery list.
+export function listTrending(viewerId: string | null, limit = 5, sinceDays = 7) {
   const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
   const score = sql<number>`(
-    (select count(*) from likes where likes.post_id = ${posts.id})
-    + (select count(*) from comments where comments.post_id = ${posts.id})
+    (
+      (select count(*) from likes
+        where likes.post_id = ${posts.id}
+          and (${posts.authorId} is null or likes.user_id != ${posts.authorId}))
+      * 1
+      + (select count(*) from comments
+        where comments.post_id = ${posts.id}
+          and (${posts.authorId} is null or comments.author_id != ${posts.authorId}))
+      * 2
+    ) / power(extract(epoch from (now() - ${posts.createdAt})) / 3600 + 2, 1.5)
   )`;
   return selectPosts()
     .where(
