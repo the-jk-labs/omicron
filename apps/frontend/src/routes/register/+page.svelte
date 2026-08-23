@@ -249,9 +249,12 @@
         type="button"
         onclick={() => (showPassword = !showPassword)}
         aria-label={showPassword ? "Hide password" : "Show password"}
+        aria-pressed={showPassword}
+        aria-controls="password"
+        title={showPassword ? "Hide password" : "Show password"}
         class="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
       >
-        <Icon name={showPassword ? "eye" : "eye"} size={16} />
+        <Icon name="eye" size={16} />
       </button>
     </div>
 
@@ -311,6 +314,9 @@
         type="button"
         onclick={() => (showConfirm = !showConfirm)}
         aria-label={showConfirm ? "Hide password" : "Show password"}
+        aria-pressed={showConfirm}
+        aria-controls="confirmPassword"
+        title={showConfirm ? "Hide password" : "Show password"}
         class="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
       >
         <Icon name="eye" size={16} />

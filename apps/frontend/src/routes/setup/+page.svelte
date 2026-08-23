@@ -27,6 +27,7 @@
   let username = $state("");
   let email = $state("");
   let password = $state("");
+  let showPassword = $state(false);
 
   // Email step. `console` is zero-config; `smtp` collects connection details the
   // operator can verify with a live test before finishing — so they never hand-
@@ -200,14 +201,27 @@
     </div>
     <div class="flex flex-col gap-1.5">
       <Label.Root for="password" class={labelClass}>Password</Label.Root>
-      <input
-        id="password"
-        type="password"
-        bind:value={password}
-        autocomplete="new-password"
-        placeholder="at least 12 characters"
-        class={field}
-      />
+      <div class="relative">
+        <input
+          id="password"
+          type={showPassword ? "text" : "password"}
+          bind:value={password}
+          autocomplete="new-password"
+          placeholder="at least 12 characters"
+          class={`${field} w-full pr-10`}
+        />
+        <button
+          type="button"
+          onclick={() => (showPassword = !showPassword)}
+          aria-label={showPassword ? "Hide password" : "Show password"}
+          aria-pressed={showPassword}
+          aria-controls="password"
+          title={showPassword ? "Hide password" : "Show password"}
+          class="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <Icon name="eye" size={16} />
+        </button>
+      </div>
     </div>
     <p class="text-xs text-muted-foreground">
       At least 12 characters. Checked against known breaches on submit. This first account is the instance admin.
