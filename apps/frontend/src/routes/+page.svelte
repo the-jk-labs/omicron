@@ -57,15 +57,16 @@
     preload: personalized ? preload : undefined,
   });
 
-  // Local & global honour the reader's language filter (read live at call time,
-  // so a preference change is picked up on the next fetch). "For you" is left
+  // Local & global honour the signed-in reader's language filter (read live
+  // at call time, so a preference change is picked up on the next fetch).
+  // Guests are unfiltered — filter UI is signed-in only. "For you" is left
   // unfiltered — following an author is an explicit choice.
   const local = makeFeed({
     value: "local",
     label: "Local",
     icon: "users",
     empty: "No articles on this instance yet.",
-    fetch: (c) => api.localTimeline(c, reading.feedLangQuery()),
+    fetch: (c) => api.localTimeline(c, personalized ? reading.feedLangQuery() : null),
   });
 
   const global = makeFeed({
@@ -73,7 +74,7 @@
     label: "Global",
     icon: "globe",
     empty: "No federated articles yet.",
-    fetch: (c) => api.globalTimeline(c, reading.feedLangQuery()),
+    fetch: (c) => api.globalTimeline(c, personalized ? reading.feedLangQuery() : null),
     preload: personalized ? undefined : preload,
   });
 
@@ -92,15 +93,18 @@
       ensureLoaded(pref);
     }
     // The SSR-preloaded feed (Global for guests) is fetched without the reader's
-    // language filter — localStorage isn't readable on the server. If a filter
-    // is set, refetch the active feed client-side so it applies immediately.
-    if (reading.feedLangQuery() && activeTab !== "for-you") refetch(activeTab);
+    // language filter — localStorage isn't readable on the server. If a signed-in
+    // reader has a filter, refetch the active feed client-side so it applies
+    // immediately. Guests stay unfiltered.
+    if (personalized && reading.feedLangQuery() && activeTab !== "for-you") refetch(activeTab);
   });
 
-  // When the reader changes their language filter in the header or in settings,
-  // reload the currently visible timeline (Local/Global) so the mixed AZ/EN/PL/IT
-  // feed immediately reflects the choice. For-you is excluded — it is personal.
+  // When a signed-in reader changes their language filter (home card or
+  // settings), reload the currently visible timeline (Local/Global) so the mixed
+  // AZ/EN/PL/IT feed immediately reflects the choice. For-you is excluded — it
+  // is personal; guests have no filter UI and stay unfiltered.
   $effect(() => {
+    if (!personalized) return;
     // track
     void reading.feedLangs;
     void reading.feedLangMode;
@@ -191,10 +195,12 @@
   {/if}
 {/snippet}
 
-<!-- Feed language filter — visible inline so AZ/EN/PL/IT posts are not a mixed wall. Saved in localStorage via reading prefs; Local/Global honour it, For you stays personal. Detailed control lives in Settings. -->
-<div class="mb-6 rounded-card border border-border bg-background p-4">
-  <FeedLanguageFilter compact />
-</div>
+{#if data.personalized}
+  <!-- Feed language filter — signed-in only. Guests see an unfiltered Global/Local wall; logged-in readers can curate Local/Global. Saved in localStorage via reading prefs; For you stays personal. -->
+  <div class="mb-6 rounded-card border border-border bg-background p-4">
+    <FeedLanguageFilter compact />
+  </div>
+{/if}
 
 <Tabs.Root bind:value={activeTab} onValueChange={ensureLoaded} class="w-full">
   <Tabs.List class="mb-2 flex items-center gap-6 text-sm font-medium">

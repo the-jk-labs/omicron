@@ -1,15 +1,15 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import Icon from "$lib/components/Icon.svelte";
+  import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import { LANGUAGES, languageLabel } from "$lib/languages";
   import { reading, type FeedLangMode } from "$lib/prefs.svelte";
   import { Button as ButtonPrimitive, Select } from "bits-ui";
 
   let { compact = false }: { compact?: boolean } = $props();
 
-  const langModeOptions: { value: FeedLangMode; label: string }[] = [
+  const langModeOptions: { value: FeedLangMode; label: string; icon?: IconName }[] = [
     { value: "show", label: "Show only these" },
-    { value: "hide", label: "Hide these" },
+    { value: "hide", label: "Hide these", icon: "close" },
   ];
   const availableLanguages = $derived(LANGUAGES.filter((l) => !reading.feedLangs.includes(l.code)));
   let addLangValue = $state("");
@@ -36,12 +36,13 @@
         <ButtonPrimitive.Root
           onclick={() => reading.setFeedLangMode(opt.value)}
           aria-pressed={reading.feedLangMode === opt.value}
-          class={`inline-flex h-8 items-center rounded-button px-3 text-sm font-medium whitespace-nowrap active:scale-[0.98] ${
+          class={`inline-flex h-8 items-center gap-1 rounded-button px-3 text-sm font-medium whitespace-nowrap active:scale-[0.98] ${
             reading.feedLangMode === opt.value
               ? "bg-background text-foreground shadow-mini"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
+          {#if opt.icon}<Icon name={opt.icon} size={13} />{/if}
           {opt.label}
         </ButtonPrimitive.Root>
       {/each}
