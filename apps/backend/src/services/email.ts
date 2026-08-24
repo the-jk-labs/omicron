@@ -160,7 +160,9 @@ function directTransport(cfg: EmailConfig): Transport {
       try {
         mx = await Deno.resolveDns(domain, "MX");
       } catch (err) {
-        throw new Error(`No MX records for ${domain}: ${err instanceof Error ? err.message : JSON.stringify(err)}`);
+        throw new Error(`No MX records for ${domain}: ${err instanceof Error ? err.message : JSON.stringify(err)}`, {
+          cause: err,
+        });
       }
       const hosts = mx.toSorted((a, b) => a.preference - b.preference).map((r) => r.exchange);
       if (hosts.length === 0) throw new Error(`No MX records for ${domain}`);

@@ -31,6 +31,14 @@
 
   const api = endpoints();
 
+  // The feed is keyed by `post.id`; a repeat is fatal (`each_key_duplicate`).
+  // The backend dedupes per page — this catches the same post arriving across
+  // two "load more" pages, which only the accumulated client list sees.
+  function dedupById(items: Post[]): Post[] {
+    const seen = new Set<string>();
+    return items.filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)));
+  }
+
   // The feed set and its preloaded payload are fixed for the life of this
   // component instance (a change in sign-in state triggers a full reload), so
   // read the loaded data once when building them.
@@ -40,7 +48,7 @@
   function makeFeed(init: Pick<Feed, "value" | "label" | "icon" | "empty" | "fetch"> & { preload?: Page<Post> }): Feed {
     return {
       ...init,
-      items: init.preload?.items ?? [],
+      items: dedupById(init.preload?.items ?? []),
       cursor: init.preload?.nextCursor ?? null,
       loaded: !!init.preload,
       loading: false,
@@ -132,7 +140,7 @@
     feed.loading = true;
     try {
       const next = await feed.fetch(feed.cursor);
-      feed.items = [...feed.items, ...next.items];
+      feed.items = dedupById([...feed.items, ...next.items]);
       feed.cursor = next.nextCursor;
     } finally {
       feed.loading = false;
@@ -145,7 +153,7 @@
     feed.loading = true;
     try {
       const res = await feed.fetch();
-      feed.items = res.items;
+      feed.items = dedupById(res.items);
       feed.cursor = res.nextCursor;
       feed.loaded = true;
     } finally {

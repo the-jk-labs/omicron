@@ -80,7 +80,18 @@ export async function homeFeed(userId: string, cursorRaw: string | null) {
     })),
   ].toSorted((a, b) => b.feedAt.getTime() - a.feedAt.getTime());
 
-  const page = merged.slice(0, limit);
+  // A post in both streams (followed author + followed recommender) would key
+  // two cards by the same `post.id` — fatal on the client (`each_key_duplicate`).
+  // Cross-page duplicates are the client's to catch; it alone holds both pages.
+  const seen = new Set<string>();
+  const deduped = merged.filter((row) => {
+    const id = row.raw.post.id;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+
+  const page = deduped.slice(0, limit);
 
   // The index of the last (lowest-ranked) row from each source that made it
   // into this page — a forward scan keeping the latest match lands on it,

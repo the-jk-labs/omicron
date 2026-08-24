@@ -175,6 +175,7 @@ export async function sendSmtp(opts: SmtpOptions, env: SmtpEnvelope): Promise<vo
   } catch (err) {
     throw new Error(
       `Could not connect to ${opts.hostname}:${opts.port} — ${err instanceof Error ? err.message : JSON.stringify(err)}`,
+      { cause: err },
     );
   }
 
@@ -204,12 +205,14 @@ export async function sendSmtp(opts: SmtpOptions, env: SmtpEnvelope): Promise<vo
           if (opts.starttls === "require") {
             throw new Error(
               `TLS negotiation with ${opts.hostname} failed: ${err instanceof Error ? err.message : JSON.stringify(err)}`,
+              { cause: err },
             );
           }
           // Opportunistic: the TLS session is unusable; nothing more we can do on
           // this socket, so surface it (the caller may retry a next MX).
           throw new Error(
             `STARTTLS with ${opts.hostname} failed (opportunistic): ${err instanceof Error ? err.message : JSON.stringify(err)}`,
+            { cause: err },
           );
         }
       } else if (opts.starttls === "require") {
