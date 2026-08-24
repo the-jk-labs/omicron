@@ -583,9 +583,8 @@ export function searchPosts(
     .limit(limit);
 }
 
-// Trending: the most-engaged published Article posts from the last 7 days.
-// The UI shows "Last 7 days" so the window must match what the reader sees; a
-// post older than that never appears, no matter how many likes it once had.
+// Trending: the most-engaged published Article posts from the last 30 days.
+// A post older than that never appears, no matter how many likes it once had.
 // Score is intentionally documented here so the ranking is not a black box:
 //
 //   weighted = likes*1 + comments*2   (comments signal deeper engagement, so
@@ -604,7 +603,7 @@ export function searchPosts(
 // author are excluded from the counts (self-like / self-reply would otherwise
 // let an author push their own post). Remote posts have no local authorId and
 // are counted as-is. No pagination — this is a short discovery list.
-export function listTrending(viewerId: string | null, limit = 5, sinceDays = 7) {
+export function listTrending(viewerId: string | null, limit = 5, sinceDays = 30) {
   const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
   const score = sql<number>`(
     (

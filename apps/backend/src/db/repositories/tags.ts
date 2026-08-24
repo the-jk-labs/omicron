@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, desc, eq, gt, inArray, notInArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { isPublished, notSuspended, visibleToViewer } from "@/db/repositories/posts.ts";
 import { posts, postTags, remoteActorTags, tagAliases, tagFollows, tags, users, userTags } from "@/db/schema.ts";
@@ -217,56 +217,26 @@ export async function mergeTags(fromSlug: string, toSlug: string): Promise<void>
   });
 }
 
-// Tags that should never appear in trending — personal/joke tags that were
-// surfacing at the top (e.g. larp, idk, khazar, divineintellect). The list is
-// intentionally small and explicit; broader moderation is handled by the
-// distinct-author and minimum-use thresholds below. Keep lowercase slugs only.
-// Managed in code for now; a future admin panel could move this to
-// instance_settings (trending_blocked_tags).
-const TRENDING_BLOCKED_SLUGS = new Set(["larp", "idk", "khazar", "divineintellect"]);
-
-// Trending tags: most-used across posts published in the last 7 days
-// (matches the "Last 7 days" window used for trending posts).
-//
-// Quality gates: a tag must appear on at least 3 posts by at least 3 distinct
-// authors in the window to be eligible. This prevents a single author's
-// personal or joke tag from dominating the discovery rail. Blocklisted slugs
-// are excluded in the WHERE clause before aggregation.
-export function trending(limit: number, sinceDays = 7): Promise<TagWithCount[]> {
-  const since = new Date(Date.now() - sinceDays * 24 * 60 * 60 * 1000);
-  const blocked = [...TRENDING_BLOCKED_SLUGS];
-  return (
-    db
-      .select({
-        slug: tags.slug,
-        name: tags.name,
-        postCount: sql<number>`count(${postTags.postId})::int`,
-      })
-      .from(tags)
-      .innerJoin(postTags, eq(postTags.tagId, tags.id))
-      .innerJoin(posts, eq(posts.id, postTags.postId))
-      .leftJoin(users, eq(posts.authorId, users.id))
-      // Ranked over what a logged-out reader can see. Trending is a global
-      // ranking, not a personalized one, so it is computed as anonymous rather
-      // than threaded with a viewer — and a suspended or private author must not
-      // push a tag up a board that everyone sees.
-      .where(
-        and(
-          eq(posts.apType, "Article"),
-          gt(posts.createdAt, since),
-          isPublished,
-          notSuspended,
-          visibleToViewer(null),
-          blocked.length ? notInArray(tags.slug, blocked) : undefined,
-        ),
-      )
-      .groupBy(tags.id)
-      .having(
-        sql`count(${postTags.postId}) >= 3 and count(distinct coalesce(${posts.authorId}::text, ${posts.remoteActorId}::text)) >= 3`,
-      )
-      .orderBy(desc(sql`count(${postTags.postId})`))
-      .limit(limit)
-  );
+// Trending tags: the most-used tags across published posts, no time window
+// and no quality gates — raw usage is the ranking. Visibility still applies
+// (only published articles by non-suspended authors, as an anonymous reader
+// sees them), so a private or suspended post never pushes a tag up a board
+// that everyone sees.
+export function trending(limit: number): Promise<TagWithCount[]> {
+  return db
+    .select({
+      slug: tags.slug,
+      name: tags.name,
+      postCount: sql<number>`count(${postTags.postId})::int`,
+    })
+    .from(tags)
+    .innerJoin(postTags, eq(postTags.tagId, tags.id))
+    .innerJoin(posts, eq(posts.id, postTags.postId))
+    .leftJoin(users, eq(posts.authorId, users.id))
+    .where(and(eq(posts.apType, "Article"), isPublished, notSuspended, visibleToViewer(null)))
+    .groupBy(tags.id)
+    .orderBy(desc(sql`count(${postTags.postId})`))
+    .limit(limit);
 }
 
 // Tag pages for the XML sitemap: the slug, plus the newest post carrying it as
