@@ -580,8 +580,8 @@ export function localTimeline(
   return diversifiedTimelinePage((c, limit) => postsRepo.listLocal(viewerId, c, limit, langFilter), cursor);
 }
 
-// The discovery rail's "Trending" list — "Last 7 days": a short, unpaginated set of
-// the most engaged posts from the last 7 days, filtered by the viewer's
+// The discovery rail's "Trending" list: a short, unpaginated set of
+// the most engaged posts from the last 30 days, filtered by the viewer's
 // mutes/blocks. Rank = (likes×1 + comments×2, without self-votes) /
 // (hours+2)^1.5 so fresh engagement outranks stale bulk. See
 // db/repositories/posts.ts:listTrending for the documented formula.
