@@ -16,7 +16,6 @@ export default defineConfig({
     "typescript/consistent-type-imports": "warn",
     // FIX THESE INCREMENTALLY - NOTE from Yusif, Not AI
     "typescript/no-unsafe-type-assertion": "off",
-    "eslint/preserve-caught-error": "off",
     "typescript/consistent-return": "off",
   },
 });
