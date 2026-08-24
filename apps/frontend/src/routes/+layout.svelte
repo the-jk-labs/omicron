@@ -20,6 +20,12 @@
 
   let { data, children }: { data: LayoutData; children: import("svelte").Snippet } = $props();
 
+  // A render-time throw (which SvelteKit's load-error handling misses) otherwise
+  // unmounts the whole app to an empty <body>; the boundary below contains it.
+  function reportRenderError(error: unknown) {
+    console.error("Unhandled render error:", error);
+  }
+
   // Hand the reader's timezone/locale to the server for the *next* render, and
   // switch this one over to it now that we're past hydration. On every visit
   // but the very first the cookies are already there and this changes nothing on
@@ -340,6 +346,31 @@
   {/if}
 </svelte:head>
 
+<!-- Fallback for the render boundaries below; `reset` re-attempts the render. -->
+{#snippet failed(error: unknown, reset: () => void)}
+  <div class="mx-auto flex max-w-md flex-col items-center px-4 py-16 text-center">
+    <h1 class="text-lg font-semibold text-foreground">This page didn't load</h1>
+    <p class="mt-2 text-sm text-muted-foreground">
+      Something went wrong while rendering it. The rest of the site is still working — you can try again or head back
+      home.
+    </p>
+    <div class="mt-6 flex items-center gap-2">
+      <button
+        onclick={reset}
+        class="inline-flex h-9 items-center rounded-input border border-border bg-background px-4 text-sm font-medium text-foreground shadow-btn hover:bg-muted"
+      >
+        Try again
+      </button>
+      <a
+        href="/"
+        class="inline-flex h-9 items-center rounded-input px-4 text-sm font-medium text-muted-foreground hover:text-foreground"
+      >
+        Go home
+      </a>
+    </div>
+  </div>
+{/snippet}
+
 <div class="min-h-screen bg-background text-foreground">
   <!-- The one thing a reader with JavaScript off can usefully be told. Every
        form in this app posts through fetch (the `submit` handlers on the auth
@@ -371,7 +402,9 @@
         ? 'max-w-xl'
         : 'max-w-sm'}"
     >
-      {@render children()}
+      <svelte:boundary onerror={reportRenderError} {failed}>
+        {@render children()}
+      </svelte:boundary>
     </main>
   {:else}
     <div
@@ -390,7 +423,9 @@
 
       <!-- Center: page content -->
       <main class="min-w-0">
-        {@render children()}
+        <svelte:boundary onerror={reportRenderError} {failed}>
+          {@render children()}
+        </svelte:boundary>
       </main>
 
       <!-- Right rail: discovery (home feed and profile pages only) -->

@@ -7,6 +7,7 @@ export default defineConfig({
   },
   options: {
     typeAware: true,
+    typeCheck: true,
   },
   rules: {
     "no-throw-literal": "warn",
