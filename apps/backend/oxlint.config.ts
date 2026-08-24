@@ -14,8 +14,5 @@ export default defineConfig({
     "vitest/expect-expect": ["warn", { assertFunctionNames: ["expect", "rejects", "drawn"] }],
     "unicorn/prefer-node-protocol": "warn",
     "typescript/consistent-type-imports": "warn",
-    // FIX THESE INCREMENTALLY - NOTE from Yusif, Not AI
-    "typescript/no-unsafe-type-assertion": "off",
-    "typescript/consistent-return": "off",
   },
 });

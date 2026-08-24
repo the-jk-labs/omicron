@@ -144,7 +144,7 @@ export async function buildApp() {
         });
         return isActorDoc(c.req.method, path) ? await withAttributionDomains(res, config.APP_DOMAIN) : res;
       }
-      await next();
+      return await next();
     });
     console.log("✔ Federation enabled (ActivityPub).");
   }
