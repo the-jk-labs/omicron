@@ -113,15 +113,22 @@
   // is personal; guests have no filter UI and stay unfiltered.
   $effect(() => {
     if (!personalized) return;
-    // track
+    // Only the language prefs are tracked. Everything else — the active tab and
+    // the feeds' loaded/loading flags — must stay untracked: those flags are
+    // written when a fetch settles, and a tracked write here re-runs the effect,
+    // which refetches, which writes them again… an endless loop that kept the
+    // tab on "Loading…" forever. Tab loads don't need this effect anyway —
+    // `onValueChange={ensureLoaded}` handles them, and the fetch closures read
+    // the filter live at call time.
     void reading.feedLangs;
     void reading.feedLangMode;
-    if (activeTab === "for-you") return;
-    // don't refetch before the initial tab's first load has settled
-    const feed = feeds.find((f) => f.value === activeTab);
-    if (!feed?.loaded || feed.loading) return;
-    // use untrack to avoid re-triggering on feed mutation
-    untrack(() => refetch(activeTab));
+    untrack(() => {
+      if (activeTab === "for-you") return;
+      // don't refetch before the tab's first load has settled
+      const feed = feeds.find((f) => f.value === activeTab);
+      if (!feed?.loaded || feed.loading) return;
+      refetch(activeTab);
+    });
   });
 
   // Discards a feed's cached page and reloads it (used when the language filter
