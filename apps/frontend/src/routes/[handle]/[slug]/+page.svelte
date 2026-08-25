@@ -274,7 +274,15 @@
         {post.author.displayName}
       </Button>
       <div class="flex flex-col gap-1 text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-        <Time iso={post.createdAt} />
+        <!-- Every row shares one structure — icon, gap, text — so the stacked
+             mobile layout lines up in two clean columns instead of the date's
+             text sitting flush while the icon rows' text hangs indented. The
+             calendar icon is mobile-only: on sm+ the meta is a single wrapped
+             line where the bare date reads fine. -->
+        <span class="flex items-center gap-1">
+          <Icon name="calendar" size={13} class="sm:hidden" />
+          <Time iso={post.createdAt} />
+        </span>
         <Separator.Root orientation="vertical" class="hidden shrink-0 bg-border sm:block sm:h-3 sm:w-px" />
         <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
         {#if post.remote && originInstance}
