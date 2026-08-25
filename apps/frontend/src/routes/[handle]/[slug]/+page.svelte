@@ -264,37 +264,40 @@
 
   <div class="flex items-start gap-3 pb-8">
     <Avatar name={post.author.displayName} src={post.author.avatarUrl ?? undefined} size={44} class="shrink-0" />
-    <div class="min-w-0 flex-1 overflow-hidden text-sm">
+    <div class="min-w-0 flex-1 overflow-hidden">
       <Button
         href={`/@${post.author.username}`}
         variant="plain"
-        class="block max-w-full truncate font-medium text-foreground hover:underline"
+        class="block max-w-full truncate text-sm font-medium text-foreground hover:underline"
         title={post.author.displayName}
       >
         {post.author.displayName}
       </Button>
-      <div class="flex flex-col gap-1 text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-        <!-- Mobile stacks the meta under the name as plain text: icons are
-             hidden there because anything in front of the text pushes that
-             row out of the shared left edge. On sm+ the meta is a single
-             wrapped line, where the icons read as inline decoration. -->
-        <Time iso={post.createdAt} />
-        <Separator.Root orientation="vertical" class="hidden shrink-0 bg-border sm:block sm:h-3 sm:w-px" />
-        <span class="flex items-center gap-1">
-          <Icon name="clock" size={13} class="hidden sm:inline" />
+      <!-- One wrapping line under the name, never a stacked list: every item
+           shares the column's left edge, and a wrapped second row lands there
+           too. Meta runs a step smaller than the name for hierarchy; each item
+           leads with its icon at a shared size and gap, separators between. -->
+      <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
+        <span class="flex items-center gap-1.5">
+          <Icon name="calendar" size={14} />
+          <Time iso={post.createdAt} />
+        </span>
+        <Separator.Root orientation="vertical" class="h-3 w-px shrink-0 bg-border" />
+        <span class="flex items-center gap-1.5">
+          <Icon name="clock" size={14} />
           {minutes} min read
         </span>
         {#if post.remote && originInstance}
-          <Separator.Root orientation="vertical" class="hidden shrink-0 bg-border sm:block sm:h-3 sm:w-px" />
-          <span class="flex items-center gap-1">
-            <Icon name="globe" size={13} class="hidden sm:inline" />
+          <Separator.Root orientation="vertical" class="h-3 w-px shrink-0 bg-border" />
+          <span class="flex items-center gap-1.5">
+            <Icon name="globe" size={14} />
             {originInstance}
           </span>
         {/if}
         {#if post.language}
-          <Separator.Root orientation="vertical" class="hidden shrink-0 bg-border sm:block sm:h-3 sm:w-px" />
-          <span class="flex items-center gap-1">
-            <Icon name="languages" size={13} class="hidden sm:inline" />
+          <Separator.Root orientation="vertical" class="h-3 w-px shrink-0 bg-border" />
+          <span class="flex items-center gap-1.5">
+            <Icon name="languages" size={14} />
             {languageLabel(post.language)}
           </span>
         {/if}
