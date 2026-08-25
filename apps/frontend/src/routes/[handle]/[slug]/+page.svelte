@@ -274,25 +274,29 @@
         {post.author.displayName}
       </Button>
       <div class="flex flex-col gap-1 text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-        <!-- Every row shares one structure — icon, gap, text — so the stacked
-             mobile layout lines up in two clean columns instead of the date's
-             text sitting flush while the icon rows' text hangs indented. The
-             calendar icon is mobile-only: on sm+ the meta is a single wrapped
-             line where the bare date reads fine. -->
-        <span class="flex items-center gap-1">
-          <Icon name="calendar" size={13} class="sm:hidden" />
-          <Time iso={post.createdAt} />
-        </span>
+        <!-- Mobile stacks the meta under the name as plain text: icons are
+             hidden there because anything in front of the text pushes that
+             row out of the shared left edge. On sm+ the meta is a single
+             wrapped line, where the icons read as inline decoration. -->
+        <Time iso={post.createdAt} />
         <Separator.Root orientation="vertical" class="hidden shrink-0 bg-border sm:block sm:h-3 sm:w-px" />
-        <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
+        <span class="flex items-center gap-1">
+          <Icon name="clock" size={13} class="hidden sm:inline" />
+          {minutes} min read
+        </span>
         {#if post.remote && originInstance}
           <Separator.Root orientation="vertical" class="hidden shrink-0 bg-border sm:block sm:h-3 sm:w-px" />
-          <span class="flex items-center gap-1"><Icon name="globe" size={13} /> {originInstance}</span>
+          <span class="flex items-center gap-1">
+            <Icon name="globe" size={13} class="hidden sm:inline" />
+            {originInstance}
+          </span>
         {/if}
         {#if post.language}
           <Separator.Root orientation="vertical" class="hidden shrink-0 bg-border sm:block sm:h-3 sm:w-px" />
-          <span class="flex items-center gap-1"><Icon name="languages" size={13} /> {languageLabel(post.language)}</span
-          >
+          <span class="flex items-center gap-1">
+            <Icon name="languages" size={13} class="hidden sm:inline" />
+            {languageLabel(post.language)}
+          </span>
         {/if}
       </div>
     </div>
