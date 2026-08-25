@@ -12,9 +12,10 @@
  * Each value is a name highlight.js knows (it is what ends up in
  * `class="language-…"` and what the reader highlights with) and that
  * lib/fileIcons.ts can resolve to a mark. The list is the common bundle's
- * useful half rather than all ~190: an author whose language is missing can
- * still name the file `main.nim` and get both the highlighting and the mark
- * from the extension.
+ * useful half plus the handful the reader registers on top (see
+ * lib/highlight.ts), rather than all ~190: an author whose language is still
+ * missing can name the file `main.nim` and get both the highlighting and the
+ * mark from the extension.
  */
 export const CODE_LANGUAGES: ReadonlyArray<{ value: string; label: string }> = [
   { value: "typescript", label: "TypeScript" },
