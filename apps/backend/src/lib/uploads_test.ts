@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from "vitest";
-import { uploadFilenameFromUrl, uploadFilenamesInText } from "@/lib/uploads.ts";
+import { quotaVerdict, uploadFilenameFromUrl, uploadFilenamesInText } from "@/lib/uploads.ts";
 
 // The GC decides what to delete from what these helpers accept as a
 // reference. A false positive reaps a file still in use; a false negative
@@ -47,4 +47,30 @@ test("uploadFilenamesInText: deduplicates and tolerates empty input", () => {
   expect(uploadFilenamesInText("<p>no images here</p>")).toEqual([]);
   expect(uploadFilenamesInText("")).toEqual([]);
   expect(uploadFilenamesInText(null)).toEqual([]);
+});
+
+// The quota decision gates every upload, so its boundaries are pinned exactly:
+// a cap that rejects at equality would break the last upload that fits, and
+// one that accepts past the cap would quietly un-do the storage bound.
+test("quotaVerdict: allows uploads that fit exactly", () => {
+  expect(quotaVerdict(90, 10, 1000, 100, 2000)).toBe("ok");
+  expect(quotaVerdict(199, 1, 1000, 200, 2000)).toBe("ok");
+});
+
+test("quotaVerdict: names the per-user cap when it breaches", () => {
+  expect(quotaVerdict(200, 1, 1000, 200, 2000)).toBe("user");
+  expect(quotaVerdict(150, 51, 1000, 200, 2000)).toBe("user");
+});
+
+test("quotaVerdict: names the global cap when only it breaches", () => {
+  expect(quotaVerdict(10, 1, 2000, 200, 2000)).toBe("total");
+  expect(quotaVerdict(10, 100, 1901, 200, 2000)).toBe("total");
+  // Both breached: the per-user message is the one the uploader can act on.
+  expect(quotaVerdict(200, 1, 2000, 200, 2000)).toBe("user");
+});
+
+test("quotaVerdict: a cap of 0 is disabled", () => {
+  expect(quotaVerdict(10_000_000, 1, 10_000_000, 0, 0)).toBe("ok");
+  expect(quotaVerdict(0, 1, 5000, 100, 0)).toBe("ok");
+  expect(quotaVerdict(0, 1, 5000, 0, 100)).toBe("total");
 });

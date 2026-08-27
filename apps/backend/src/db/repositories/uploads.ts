@@ -2,23 +2,72 @@
 import { eq, inArray, like, lt, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { posts, uploads, users } from "@/db/schema.ts";
+import { quotaVerdict } from "@/lib/uploads.ts";
 
 // Upload-record DB access. Services never touch `db` directly. One row per
 // accepted media upload, mirroring the file on disk (see db/schema.ts for why
 // the row and the file are deliberately decoupled).
 
-export async function create(ownerId: string, filename: string, bytes: number) {
+export type QuotaResult = { ok: true } | { ok: false; reason: "user" | "total" };
+
+async function create(ownerId: string, filename: string, bytes: number) {
   await db.insert(uploads).values({ ownerId, filename, bytes });
+}
+
+// Records an upload and enforces the storage quotas in one transaction, so a
+// cap cannot be raced past by two uploads landing together. The sums are
+// computed rather than kept as counters: slower on huge tables, but immune to
+// drift when rows leave outside this path (GC reaps, account deletion
+// cascades) — a quota that silently over-counts locks users out forever, and
+// that failure mode is far worse than the scan. Locking (advisory lock for the
+// global sum, the owner row for the per-user sum) is what makes check + insert
+// atomic; uploads are rare relative to reads, so the coarse global lock costs
+// nothing. A cap of 0 disables its check entirely.
+export async function createWithinQuota(
+  ownerId: string,
+  filename: string,
+  bytes: number,
+  maxUserBytes: number,
+  maxTotalBytes: number,
+): Promise<QuotaResult> {
+  if (maxUserBytes <= 0 && maxTotalBytes <= 0) {
+    await create(ownerId, filename, bytes);
+    return { ok: true };
+  }
+  return await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(745220011)`);
+    // Locking the owner's row serializes that user's uploads and tells us
+    // whether they still exist — a vanished owner must not reserve storage.
+    const owner = await tx.select({ id: users.id }).from(users).where(eq(users.id, ownerId)).for("update");
+    if (owner.length === 0) return { ok: false, reason: "user" };
+    const [userSum, totalSum] = await Promise.all([
+      tx
+        .select({ total: sql<number>`coalesce(sum(${uploads.bytes}), 0)::double precision` })
+        .from(uploads)
+        .where(eq(uploads.ownerId, ownerId)),
+      tx.select({ total: sql<number>`coalesce(sum(${uploads.bytes}), 0)::double precision` }).from(uploads),
+    ]);
+    const verdict = quotaVerdict(userSum[0]?.total ?? 0, bytes, totalSum[0]?.total ?? 0, maxUserBytes, maxTotalBytes);
+    if (verdict !== "ok") return { ok: false, reason: verdict };
+    await tx.insert(uploads).values({ ownerId, filename, bytes });
+    return { ok: true };
+  });
 }
 
 // Total bytes a user has uploaded. Read-only today (abuse inspection), and the
 // natural hook for per-user quotas if those land later.
 export async function sumBytesForUser(userId: string): Promise<number> {
   const [row] = await db
-    .select({ total: sql<number>`coalesce(sum(${uploads.bytes}), 0)::bigint` })
+    .select({ total: sql<number>`coalesce(sum(${uploads.bytes}), 0)::double precision` })
     .from(uploads)
     .where(eq(uploads.ownerId, userId));
   return row?.total ?? 0;
+}
+
+// Forgets a reserved upload whose file never made it to disk (see
+// services/media.ts, which compensates when the disk write fails).
+export async function removeByFilename(filename: string) {
+  await db.delete(uploads).where(eq(uploads.filename, filename));
 }
 
 // ── reference scan + garbage collection ───────────────────────────────

@@ -157,6 +157,13 @@ const schema = z.object({
   // URL have had a fair chance to move on.
   UPLOAD_GC_GRACE_DAYS: z.coerce.number().int().min(1).default(30),
 
+  // Upload storage quotas, enforced transactionally at upload time (see
+  // repositories/uploads.ts createWithinQuota): the quota check and the upload
+  // record commit together under locks, so concurrent uploads cannot race past
+  // a cap. Per account / per instance, in megabytes; 0 disables a cap.
+  UPLOAD_QUOTA_USER_MB: z.coerce.number().int().min(0).default(200),
+  UPLOAD_QUOTA_TOTAL_MB: z.coerce.number().int().min(0).default(2048),
+
   // Content ingestion webhook (POST /api/webhooks/content). Unset — the default
   // — means the endpoint is disabled entirely and answers 503; there is no
   // "empty secret" state in which it would accept anything. Set it to a long
@@ -220,6 +227,8 @@ function load() {
     RL_WEBHOOK_MAX: Deno.env.get("RL_WEBHOOK_MAX"),
     INBOX_MAX_BODY_BYTES: Deno.env.get("INBOX_MAX_BODY_BYTES"),
     UPLOAD_GC_GRACE_DAYS: Deno.env.get("UPLOAD_GC_GRACE_DAYS"),
+    UPLOAD_QUOTA_USER_MB: Deno.env.get("UPLOAD_QUOTA_USER_MB"),
+    UPLOAD_QUOTA_TOTAL_MB: Deno.env.get("UPLOAD_QUOTA_TOTAL_MB"),
     WEBHOOK_SECRET: Deno.env.get("WEBHOOK_SECRET")?.trim() || undefined,
     WEBHOOK_AUTHOR: Deno.env.get("WEBHOOK_AUTHOR")?.trim() || undefined,
     WEBHOOK_MAX_BODY_BYTES: Deno.env.get("WEBHOOK_MAX_BODY_BYTES"),
