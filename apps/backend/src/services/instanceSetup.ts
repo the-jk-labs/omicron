@@ -141,8 +141,9 @@ export async function getBannerImageUrl(): Promise<string | null> {
 }
 
 // Persist (or, with `null`, clear) the banner image URL. Clearing only drops
-// the setting — the uploaded file itself is left on disk, same as removing an
-// avatar, since nothing else references it for cleanup.
+// the setting — the uploaded file itself stays on disk until the upload GC
+// reaps it after the grace period (see services/uploadGc.ts), since federated
+// copies may still reference the URL.
 export async function setBannerImageUrl(url: string | null): Promise<void> {
   await settingsRepo.set(SETUP_KEYS.bannerImageUrl, url ?? "");
 }

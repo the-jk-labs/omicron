@@ -160,10 +160,15 @@ services:
       HOST_HEADER: x-forwarded-host
       ADDRESS_HEADER: x-forwarded-for
       # Exactly one trusted proxy (Caddy) sits in front, so getClientAddress()
-      # reads the client IP that Caddy appended — not a value the client may have
-      # spoofed. Required whenever ADDRESS_HEADER is x-forwarded-for; without it
+      # reads the client IP that Caddy appended — not a value the client may
+      # have spoofed. Required whenever ADDRESS_HEADER is x-forwarded-for; without it
       # per-IP rate limiting keys on the wrong hop.
       XFF_DEPTH: "1"
+      # Align the proxy's request-body cap with the backend's advertised upload
+      # limit (MAX_IMAGE_BYTES = 5 MB). Left at adapter-node's 512 KB default,
+      # any upload over 512 KB is rejected here before the backend ever sees it.
+      # The backend enforces per-file caps and an upload rate limiter of its own.
+      BODY_SIZE_LIMIT: "5m"
     ports:
       # Loopback only: production traffic goes through Caddy. Exposed on the host
       # just for local debugging, not on the public interface.

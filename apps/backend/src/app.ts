@@ -28,6 +28,21 @@ const apiWriteLimiter = rateLimit({
   },
 });
 
+// Uploads persist image bytes to durable storage (see db/schema.ts `uploads`),
+// so they layer a much tighter budget on top of the general write limiter —
+// without it, one account could spend its whole write budget on 5 MB images
+// every minute. Keyed per signed-in user; both upload endpoints are auth-only,
+// but the IP fallback keeps the key well-formed if session resolution changes.
+const uploadLimiter = rateLimit({
+  name: "upload",
+  windowMs: 60_000,
+  max: config.RL_UPLOAD_MAX,
+  key: (c) => {
+    const user = c.get("user");
+    return user ? `u:${user.id}` : `ip:${clientIp(c)}`;
+  },
+});
+
 // The federation inbox accepts unauthenticated POSTs from arbitrary instances;
 // cap per source IP so a hostile peer can't flood it. Generous, since a busy
 // instance legitimately delivers many activities.
@@ -155,6 +170,13 @@ export async function buildApp() {
   app.use("/api/*", sessionMiddleware);
   // General write throttle, after session resolution so it can key by user.
   app.use("/api/*", (c, next) => (READ_METHODS.has(c.req.method) ? next() : apiWriteLimiter(c, next)));
+  // Upload-specific throttle on the three endpoints that persist media bytes
+  // (post images, avatars, and the instance banner). Each file is capped (2 MB
+  // avatars, 5 MB the rest), but without this limiter one account could spend
+  // its whole write budget on new files every minute.
+  app.use("/api/uploads", (c, next) => (c.req.method === "POST" ? uploadLimiter(c, next) : next()));
+  app.use("/api/users/me/avatar", (c, next) => (c.req.method === "POST" ? uploadLimiter(c, next) : next()));
+  app.use("/api/admin/instance/banner", (c, next) => (c.req.method === "POST" ? uploadLimiter(c, next) : next()));
   app.route("/api", apiRoutes);
 
   return app;

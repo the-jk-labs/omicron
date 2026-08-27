@@ -2,6 +2,7 @@ import { config } from "@/config.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as linksRepo from "@/db/repositories/profileLinks.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
+import * as uploadsRepo from "@/db/repositories/uploads.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as usersRepo from "@/db/repositories/users.ts";
 import type { ProfileLink, User } from "@/db/schema.ts";
@@ -12,7 +13,7 @@ import { MAX_PROFILE_TAGS, normalizeTags } from "@/lib/tags.ts";
 import { queue } from "@/queue/queue.ts";
 import { relationActorLocal } from "@/routes/serializers.ts";
 import * as followRequests from "@/services/followRequests.ts";
-import { sniffMatches } from "@/services/media.ts";
+import { quotaError, sniffMatches, UPLOAD_TOTAL_QUOTA_BYTES, UPLOAD_USER_QUOTA_BYTES } from "@/services/media.ts";
 
 // Business logic for editing one's own profile. Routes stay HTTP-only and call
 // into here; all disk + DB access is funnelled through the repository / services.
@@ -203,18 +204,36 @@ export async function setAvatar(userId: string, bytes: Uint8Array, contentType: 
     throw badRequest("The file contents don't match a PNG, JPEG, WebP, or GIF image.");
   }
 
-  await Deno.mkdir(config.UPLOADS_DIR, { recursive: true });
+  // Same reserve-then-write flow as saveImage: the quota (shared with post
+  // images — an avatar is storage too) is committed before the file lands, and
+  // a failed disk write releases the reservation.
   const filename = `${crypto.randomUUID()}.${ext}`;
-  await Deno.writeFile(`${config.UPLOADS_DIR}/${filename}`, bytes);
+  const verdict = await uploadsRepo.createWithinQuota(
+    userId,
+    filename,
+    bytes.byteLength,
+    UPLOAD_USER_QUOTA_BYTES,
+    UPLOAD_TOTAL_QUOTA_BYTES,
+  );
+  if (!verdict.ok) throw quotaError(verdict.reason);
+
+  await Deno.mkdir(config.UPLOADS_DIR, { recursive: true });
+  try {
+    await Deno.writeFile(`${config.UPLOADS_DIR}/${filename}`, bytes);
+  } catch (err) {
+    await uploadsRepo.removeByFilename(filename).catch(() => {});
+    throw err;
+  }
 
   const user = await usersRepo.update(userId, { avatarUrl: `/api/uploads/${filename}` });
   queue.add("federate_actor_update", { userId });
   return user;
 }
 
-// Clears the avatar so the profile falls back to initials. The previous file is
-// left on disk (it may still be referenced by federated copies), matching how
-// `setAvatar` doesn't prune the prior image.
+// Clears the avatar so the profile falls back to initials. The previous file
+// is left on disk for the upload GC to reap once it has been unreferenced past
+// the grace period (see services/uploadGc.ts); federated copies may still
+// reference it in the meantime.
 export async function removeAvatar(userId: string): Promise<User> {
   const user = await usersRepo.update(userId, { avatarUrl: null });
   queue.add("federate_actor_update", { userId });

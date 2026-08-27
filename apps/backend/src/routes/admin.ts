@@ -172,10 +172,10 @@ adminRoutes.put("/instance", jsonBody(instanceSchema), async (c) => {
 // re-encoded the image before it reaches here (see lib/editor/image.ts), so
 // this layer only validates and persists.
 adminRoutes.post("/instance/banner", async (c) => {
-  requireAdmin(c);
+  const viewer = requireAdmin(c);
   const contentType = (c.req.header("content-type") ?? "").split(";")[0].trim();
   const bytes = new Uint8Array(await c.req.arrayBuffer());
-  const url = await mediaService.saveImage(bytes, contentType);
+  const url = await mediaService.saveImage(viewer.id, bytes, contentType);
   await setup.setBannerImageUrl(url);
   return c.json(await instanceSnapshot(), 201);
 });

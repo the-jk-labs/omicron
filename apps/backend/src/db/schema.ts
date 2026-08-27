@@ -846,6 +846,39 @@ export const notifications = pgTable(
   ],
 );
 
+// ── uploads ────────────────────────────────────────────────────────────
+// One row per accepted media upload (post images via POST /api/uploads,
+// avatars, and the instance banner). The file itself lives on disk under
+// UPLOADS_DIR; this table records who owns it and how large it is, so storage
+// use is attributable and unreferenced files are garbage-collected once they
+// have been unreferenced for a full grace period (see services/uploadGc.ts).
+// The file's name on disk is `filename`, uniquely indexed here as the lookup
+// key. Deleting a row never deletes the file directly — and deleting a user
+// cascades these rows while their files stay behind for the GC, which is
+// deliberate: federated copies may still reference the URLs.
+export const uploads = pgTable(
+  "uploads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    filename: text("filename").notNull(),
+    bytes: integer("bytes").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // Refreshed by every GC sweep for as long as the file is referenced by
+    // anything (see services/uploadGc.ts). The reap step only takes rows this
+    // has lagged behind by the full grace period, which is what makes
+    // replacement safe: an avatar replaced after years still gets its grace.
+    lastReferencedAt: timestamp("last_referenced_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uploads_filename_idx").on(t.filename),
+    // Owner storage totals / future per-user quotas scan newest-first.
+    index("uploads_owner_created_idx").on(t.ownerId, t.createdAt.desc()),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Post = typeof posts.$inferSelect;
@@ -864,6 +897,8 @@ export type Session = typeof sessions.$inferSelect;
 export type AuthToken = typeof authTokens.$inferSelect;
 export type NewAuthToken = typeof authTokens.$inferInsert;
 export type WebhookToken = typeof webhookTokens.$inferSelect;
+export type Upload = typeof uploads.$inferSelect;
+export type NewUpload = typeof uploads.$inferInsert;
 export type Tag = typeof tags.$inferSelect;
 export type NewTag = typeof tags.$inferInsert;
 export type TagAlias = typeof tagAliases.$inferSelect;

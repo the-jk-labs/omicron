@@ -142,10 +142,27 @@ const schema = z.object({
   RL_LOGIN_MAX: z.coerce.number().int().positive().default(15),
   RL_REGISTER_MAX: z.coerce.number().int().positive().default(5),
   RL_API_WRITE_MAX: z.coerce.number().int().positive().default(120),
+  // Uploads write image bytes to durable disk storage, so they get their own,
+  // much tighter budget than the general write limiter above — otherwise one
+  // account could persist its full write budget in 5 MB images every minute.
+  RL_UPLOAD_MAX: z.coerce.number().int().positive().default(10),
   RL_INBOX_MAX: z.coerce.number().int().positive().default(300),
   RL_WEBHOOK_MAX: z.coerce.number().int().positive().default(30),
   // Reject federation inbox POSTs whose declared body exceeds this many bytes.
   INBOX_MAX_BODY_BYTES: z.coerce.number().int().positive().default(1_000_000),
+
+  // Delayed garbage collection for uploaded media (see services/uploadGc.ts).
+  // A file is deleted only once a daily sweep has seen nothing referencing it
+  // for this many days — long enough that federated instances which cached the
+  // URL have had a fair chance to move on.
+  UPLOAD_GC_GRACE_DAYS: z.coerce.number().int().min(1).default(30),
+
+  // Upload storage quotas, enforced transactionally at upload time (see
+  // repositories/uploads.ts createWithinQuota): the quota check and the upload
+  // record commit together under locks, so concurrent uploads cannot race past
+  // a cap. Per account / per instance, in megabytes; 0 disables a cap.
+  UPLOAD_QUOTA_USER_MB: z.coerce.number().int().min(0).default(200),
+  UPLOAD_QUOTA_TOTAL_MB: z.coerce.number().int().min(0).default(2048),
 
   // Content ingestion webhook (POST /api/webhooks/content). Unset — the default
   // — means the endpoint is disabled entirely and answers 503; there is no
@@ -205,9 +222,13 @@ function load() {
     RL_LOGIN_MAX: Deno.env.get("RL_LOGIN_MAX"),
     RL_REGISTER_MAX: Deno.env.get("RL_REGISTER_MAX"),
     RL_API_WRITE_MAX: Deno.env.get("RL_API_WRITE_MAX"),
+    RL_UPLOAD_MAX: Deno.env.get("RL_UPLOAD_MAX"),
     RL_INBOX_MAX: Deno.env.get("RL_INBOX_MAX"),
     RL_WEBHOOK_MAX: Deno.env.get("RL_WEBHOOK_MAX"),
     INBOX_MAX_BODY_BYTES: Deno.env.get("INBOX_MAX_BODY_BYTES"),
+    UPLOAD_GC_GRACE_DAYS: Deno.env.get("UPLOAD_GC_GRACE_DAYS"),
+    UPLOAD_QUOTA_USER_MB: Deno.env.get("UPLOAD_QUOTA_USER_MB"),
+    UPLOAD_QUOTA_TOTAL_MB: Deno.env.get("UPLOAD_QUOTA_TOTAL_MB"),
     WEBHOOK_SECRET: Deno.env.get("WEBHOOK_SECRET")?.trim() || undefined,
     WEBHOOK_AUTHOR: Deno.env.get("WEBHOOK_AUTHOR")?.trim() || undefined,
     WEBHOOK_MAX_BODY_BYTES: Deno.env.get("WEBHOOK_MAX_BODY_BYTES"),
