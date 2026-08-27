@@ -214,9 +214,10 @@ export async function setAvatar(userId: string, bytes: Uint8Array, contentType: 
   return user;
 }
 
-// Clears the avatar so the profile falls back to initials. The previous file is
-// left on disk (it may still be referenced by federated copies), matching how
-// `setAvatar` doesn't prune the prior image.
+// Clears the avatar so the profile falls back to initials. The previous file
+// is left on disk for the upload GC to reap once it has been unreferenced past
+// the grace period (see services/uploadGc.ts); federated copies may still
+// reference it in the meantime.
 export async function removeAvatar(userId: string): Promise<User> {
   const user = await usersRepo.update(userId, { avatarUrl: null });
   queue.add("federate_actor_update", { userId });

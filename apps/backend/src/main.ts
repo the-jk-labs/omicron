@@ -8,6 +8,7 @@ import { seedFederationRunning } from "@/services/federationState.ts";
 import { getFederationEnabled } from "@/services/instanceSetup.ts";
 import { backfillSlugs } from "@/services/postSlugs.ts";
 import { startScheduleSweeper } from "@/services/scheduledPosts.ts";
+import { startUploadGcSweeper } from "@/services/uploadGc.ts";
 import { APP_VERSION } from "@/version.ts";
 
 // Entry point: migrate → build app → serve. Stateless; all data in Postgres.
@@ -31,6 +32,12 @@ async function main() {
   // run on every node — see services/scheduledPosts.ts. Started after the
   // worker so its first sweep has somewhere to enqueue federation.
   startScheduleSweeper();
+
+  // Reap uploaded files nothing references anymore, once they have been
+  // unreferenced for a full grace period (long enough for federated copies
+  // that cached the URL to move on). Same database-backed pattern as the
+  // schedule sweeper — see services/uploadGc.ts.
+  startUploadGcSweeper();
 
   // `onListen` overrides Deno's own "Listening on http://0.0.0.0:8000/" banner,
   // which otherwise prints alongside ours and announces the same thing twice —

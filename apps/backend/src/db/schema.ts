@@ -850,10 +850,11 @@ export const notifications = pgTable(
 // One row per accepted media upload (post images via POST /api/uploads,
 // avatars, and the instance banner). The file itself lives on disk under
 // UPLOADS_DIR; this table records who owns it and how large it is, so storage
-// use is attributable and unreferenced files can one day be garbage-collected
-// (the file's name on disk is `filename`, uniquely indexed here as the lookup
-// key). Deleting a row never deletes the file — and deleting a user cascades
-// these rows while their files stay behind for delayed GC, which is
+// use is attributable and unreferenced files are garbage-collected once they
+// have been unreferenced for a full grace period (see services/uploadGc.ts).
+// The file's name on disk is `filename`, uniquely indexed here as the lookup
+// key. Deleting a row never deletes the file directly — and deleting a user
+// cascades these rows while their files stay behind for the GC, which is
 // deliberate: federated copies may still reference the URLs.
 export const uploads = pgTable(
   "uploads",
@@ -865,6 +866,11 @@ export const uploads = pgTable(
     filename: text("filename").notNull(),
     bytes: integer("bytes").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // Refreshed by every GC sweep for as long as the file is referenced by
+    // anything (see services/uploadGc.ts). The reap step only takes rows this
+    // has lagged behind by the full grace period, which is what makes
+    // replacement safe: an avatar replaced after years still gets its grace.
+    lastReferencedAt: timestamp("last_referenced_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("uploads_filename_idx").on(t.filename),

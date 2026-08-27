@@ -151,6 +151,12 @@ const schema = z.object({
   // Reject federation inbox POSTs whose declared body exceeds this many bytes.
   INBOX_MAX_BODY_BYTES: z.coerce.number().int().positive().default(1_000_000),
 
+  // Delayed garbage collection for uploaded media (see services/uploadGc.ts).
+  // A file is deleted only once a daily sweep has seen nothing referencing it
+  // for this many days — long enough that federated instances which cached the
+  // URL have had a fair chance to move on.
+  UPLOAD_GC_GRACE_DAYS: z.coerce.number().int().min(1).default(30),
+
   // Content ingestion webhook (POST /api/webhooks/content). Unset — the default
   // — means the endpoint is disabled entirely and answers 503; there is no
   // "empty secret" state in which it would accept anything. Set it to a long
@@ -213,6 +219,7 @@ function load() {
     RL_INBOX_MAX: Deno.env.get("RL_INBOX_MAX"),
     RL_WEBHOOK_MAX: Deno.env.get("RL_WEBHOOK_MAX"),
     INBOX_MAX_BODY_BYTES: Deno.env.get("INBOX_MAX_BODY_BYTES"),
+    UPLOAD_GC_GRACE_DAYS: Deno.env.get("UPLOAD_GC_GRACE_DAYS"),
     WEBHOOK_SECRET: Deno.env.get("WEBHOOK_SECRET")?.trim() || undefined,
     WEBHOOK_AUTHOR: Deno.env.get("WEBHOOK_AUTHOR")?.trim() || undefined,
     WEBHOOK_MAX_BODY_BYTES: Deno.env.get("WEBHOOK_MAX_BODY_BYTES"),
