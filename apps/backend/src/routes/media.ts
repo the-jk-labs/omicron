@@ -15,10 +15,10 @@ export const mediaRoutes = new Hono<AppEnv>();
 // Upload a post image (raw image body; content-type identifies the format).
 // Auth-only; returns the public URL the editor inserts into the document.
 mediaRoutes.post("/", async (c) => {
-  requireUser(c);
+  const viewer = requireUser(c);
   const contentType = (c.req.header("content-type") ?? "").split(";")[0].trim();
   const bytes = new Uint8Array(await c.req.arrayBuffer());
-  const url = await mediaService.saveImage(bytes, contentType);
+  const url = await mediaService.saveImage(viewer.id, bytes, contentType);
   return c.json({ url }, 201);
 });
 

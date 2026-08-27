@@ -2,6 +2,7 @@ import { config } from "@/config.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as linksRepo from "@/db/repositories/profileLinks.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
+import * as uploadsRepo from "@/db/repositories/uploads.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as usersRepo from "@/db/repositories/users.ts";
 import type { ProfileLink, User } from "@/db/schema.ts";
@@ -206,6 +207,7 @@ export async function setAvatar(userId: string, bytes: Uint8Array, contentType: 
   await Deno.mkdir(config.UPLOADS_DIR, { recursive: true });
   const filename = `${crypto.randomUUID()}.${ext}`;
   await Deno.writeFile(`${config.UPLOADS_DIR}/${filename}`, bytes);
+  await uploadsRepo.create(userId, filename, bytes.byteLength);
 
   const user = await usersRepo.update(userId, { avatarUrl: `/api/uploads/${filename}` });
   queue.add("federate_actor_update", { userId });

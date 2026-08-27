@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { config } from "@/config.ts";
+import * as uploadsRepo from "@/db/repositories/uploads.ts";
 import { badRequest } from "@/lib/http.ts";
 
 // Business logic for user-uploaded post media. Images are downscaled and
@@ -69,8 +70,10 @@ export function sniffMatches(bytes: Uint8Array, ext: string): boolean {
 }
 
 // Persists an uploaded image to local disk and returns its public URL, served
-// back through `mediaRoutes` (mounted at /api/uploads).
-export async function saveImage(bytes: Uint8Array, contentType: string): Promise<string> {
+// back through `mediaRoutes` (mounted at /api/uploads). `ownerId` records who
+// made the upload (see db/schema.ts `uploads`) so storage use is attributable —
+// a DB failure here leaves an orphaned file behind, which delayed GC will reap.
+export async function saveImage(ownerId: string, bytes: Uint8Array, contentType: string): Promise<string> {
   const ext = IMAGE_TYPES[contentType];
   if (!ext) throw badRequest("Unsupported image type. Use PNG, JPEG, WebP, or GIF.");
   if (bytes.byteLength === 0) throw badRequest("The uploaded file is empty.");
@@ -82,5 +85,6 @@ export async function saveImage(bytes: Uint8Array, contentType: string): Promise
   await Deno.mkdir(config.UPLOADS_DIR, { recursive: true });
   const filename = `${crypto.randomUUID()}.${ext}`;
   await Deno.writeFile(`${config.UPLOADS_DIR}/${filename}`, bytes);
+  await uploadsRepo.create(ownerId, filename, bytes.byteLength);
   return `/api/uploads/${filename}`;
 }

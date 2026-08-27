@@ -142,6 +142,10 @@ const schema = z.object({
   RL_LOGIN_MAX: z.coerce.number().int().positive().default(15),
   RL_REGISTER_MAX: z.coerce.number().int().positive().default(5),
   RL_API_WRITE_MAX: z.coerce.number().int().positive().default(120),
+  // Uploads write image bytes to durable disk storage, so they get their own,
+  // much tighter budget than the general write limiter above — otherwise one
+  // account could persist its full write budget in 5 MB images every minute.
+  RL_UPLOAD_MAX: z.coerce.number().int().positive().default(10),
   RL_INBOX_MAX: z.coerce.number().int().positive().default(300),
   RL_WEBHOOK_MAX: z.coerce.number().int().positive().default(30),
   // Reject federation inbox POSTs whose declared body exceeds this many bytes.
@@ -205,6 +209,7 @@ function load() {
     RL_LOGIN_MAX: Deno.env.get("RL_LOGIN_MAX"),
     RL_REGISTER_MAX: Deno.env.get("RL_REGISTER_MAX"),
     RL_API_WRITE_MAX: Deno.env.get("RL_API_WRITE_MAX"),
+    RL_UPLOAD_MAX: Deno.env.get("RL_UPLOAD_MAX"),
     RL_INBOX_MAX: Deno.env.get("RL_INBOX_MAX"),
     RL_WEBHOOK_MAX: Deno.env.get("RL_WEBHOOK_MAX"),
     INBOX_MAX_BODY_BYTES: Deno.env.get("INBOX_MAX_BODY_BYTES"),
