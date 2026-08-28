@@ -175,8 +175,14 @@ export async function resetPassword(rawToken: string, newPassword: string): Prom
 }
 
 // Changes the password of a signed-in user after confirming their current one.
-// The active session is left intact (the user stays logged in where they are).
-export async function changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+// Every existing session is revoked (so a stolen cookie can't outlive the
+// change) and a fresh session is returned for the browser that made the change,
+// keeping that user logged in. Mirrors resetPassword's session invalidation.
+export async function changePassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ token: string; expiresAt: Date }> {
   assertPasswordLength(newPassword);
   await assertNotPwned(newPassword);
   const user = await usersRepo.findById(userId);
@@ -185,6 +191,11 @@ export async function changePassword(userId: string, currentPassword: string, ne
     throw unauthorized("Current password is incorrect.");
   }
   await usersRepo.update(userId, { passwordHash: await hashPassword(newPassword) });
+  await sessionsRepo.removeAllForUser(userId);
+  const token = newSessionToken();
+  const expiresAt = sessionExpiry();
+  await sessionsRepo.create(token, userId, expiresAt);
+  return { token, expiresAt };
 }
 
 // ── Email verification ─────────────────────────────────────────────────────
