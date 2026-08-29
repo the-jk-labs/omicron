@@ -765,12 +765,14 @@ export function claimDue(limit = 50, now = new Date()) {
     .returning({ id: posts.id, authorId: posts.authorId });
 }
 
-// An author's published posts as lightweight (id, title, createdAt) rows — the
-// spine of the writer dashboard, which then attaches per-post engagement and
-// view stats. No pagination: an author's own catalogue, newest first.
+// An author's published posts as lightweight (id, title, slug, createdAt) rows —
+// the spine of the writer dashboard, which then attaches per-post engagement and
+// view stats. The slug is included so the dashboard can link each post straight
+// to its canonical /@author/<slug> URL instead of round-tripping through the
+// legacy id permalink. No pagination: an author's own catalogue, newest first.
 export function publishedBriefByAuthor(authorId: string) {
   return db
-    .select({ id: posts.id, title: posts.title, createdAt: posts.createdAt })
+    .select({ id: posts.id, title: posts.title, slug: posts.slug, createdAt: posts.createdAt })
     .from(posts)
     .where(and(eq(posts.authorId, authorId), eq(posts.status, "published")))
     .orderBy(desc(posts.createdAt), desc(posts.id));

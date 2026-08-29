@@ -292,6 +292,10 @@ export type SearchResults = {
 export type PostStat = {
   postId: string;
   title: string | null;
+  // The post's slug (null for an untitled post), so the dashboard can link each
+  // row straight to its canonical /@author/<slug> URL instead of resolving it
+  // through the legacy id permalink on every navigation.
+  slug: string | null;
   createdAt: string;
   views: number;
   likes: number;
