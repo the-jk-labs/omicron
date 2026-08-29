@@ -27,7 +27,6 @@ import {
   Update,
 } from "@fedify/fedify/vocab";
 import { RedisKvStore, RedisMessageQueue } from "@fedify/redis";
-import { origin } from "@/config.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
@@ -46,6 +45,7 @@ import { sameOrigin } from "@/lib/domain.ts";
 import { getRedis, redisEnabled, redisFactory } from "@/lib/redis.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
 import { normalizeTags } from "@/lib/tags.ts";
+import { federationOrigin } from "@/services/federationState.ts";
 import * as notifications from "@/services/notifications.ts";
 
 // ── ActivityPub wiring (isolated) ────────────────────────────────────────
@@ -192,7 +192,9 @@ function setupLists(f: Federation<ContextData>) {
       if (!list || list.userId !== user.id || list.visibility !== "public") return null;
 
       const refs = await listsRepo.itemRefs(list.id);
-      const items = refs.map((r) => (r.remote && r.apId ? new URL(r.apId) : new URL(`/posts/${r.id}`, origin)));
+      const items = refs.map((r) =>
+        r.remote && r.apId ? new URL(r.apId) : new URL(`/posts/${r.id}`, federationOrigin()),
+      );
       return new OrderedCollection({
         id: ctx.getObjectUri(OrderedCollection, { identifier, listId }),
         name: list.title,

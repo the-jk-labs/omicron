@@ -2,7 +2,6 @@
 import type { Context } from "@fedify/fedify";
 import type { Actor } from "@fedify/fedify/vocab";
 import { Create, Delete, isActor, PUBLIC_COLLECTION, Tombstone, Update } from "@fedify/fedify/vocab";
-import { origin } from "@/config.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
@@ -11,6 +10,7 @@ import * as usersRepo from "@/db/repositories/users.ts";
 import { buildPerson } from "@/federation/actor.ts";
 import { buildArticle, type ArticleAudience } from "@/federation/article.ts";
 import { getFederation } from "@/federation/mod.ts";
+import { federationOrigin } from "@/services/federationState.ts";
 
 // Resolves a local author's remote followers into deliverable actor objects,
 // skipping any on a defederated domain (exact host or subdomain). Shared by
@@ -42,7 +42,7 @@ export async function deliverPost(postId: string, action: "create" | "update" = 
   const author = await usersRepo.findById(row.post.authorId);
   if (!author) return;
 
-  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
   const recipients = await remoteRecipients(ctx, author.id);
   if (recipients.length === 0) return;
 
@@ -89,7 +89,7 @@ export async function deliverActorUpdate(userId: string): Promise<void> {
   const user = await usersRepo.findById(userId);
   if (!user) return;
 
-  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
   const recipients = await remoteRecipients(ctx, user.id);
   if (recipients.length === 0) return;
 
@@ -119,7 +119,7 @@ export async function deliverPostDelete(postId: string, authorId: string): Promi
   const author = await usersRepo.findById(authorId);
   if (!author) return;
 
-  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
   const recipients = await remoteRecipients(ctx, author.id);
   if (recipients.length === 0) return;
 

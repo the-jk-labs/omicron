@@ -4,8 +4,8 @@ import { config } from "@/config.ts";
 import { runMigrations } from "@/db/migrate.ts";
 import { startJobWorker } from "@/queue/queue.ts";
 import { reconcileAnubisInBackground } from "@/services/anubisProtection.ts";
-import { seedFederationRunning } from "@/services/federationState.ts";
-import { getFederationEnabled } from "@/services/instanceSetup.ts";
+import { seedFederationOrigin, seedFederationRunning } from "@/services/federationState.ts";
+import { getFederationEnabled, getOrigin } from "@/services/instanceSetup.ts";
 import { backfillSlugs } from "@/services/postSlugs.ts";
 import { startScheduleSweeper } from "@/services/scheduledPosts.ts";
 import { startUploadGcSweeper } from "@/services/uploadGc.ts";
@@ -21,6 +21,11 @@ async function main() {
   // Resolve the effective federation state (admin toggle → env → default) before
   // the app binds its ActivityPub routes; the value is fixed for this process.
   seedFederationRunning(await getFederationEnabled());
+  // Resolve the effective federation origin (wizard-persisted domain → env →
+  // default) the same way before the app binds, so ActivityPub actor/activity
+  // identities and outbound deliveries use the domain configured by the setup
+  // wizard instead of the boot-time APP_DOMAIN default (#122).
+  seedFederationOrigin(await getOrigin());
   const app = await buildApp();
 
   // Drain durable jobs when Redis is configured; no-op in-process otherwise.

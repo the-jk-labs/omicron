@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Context } from "@fedify/fedify";
 import { Article, Hashtag, Image, LanguageString, PUBLIC_COLLECTION } from "@fedify/fedify/vocab";
-import { origin } from "@/config.ts";
 import type { TagSummary } from "@/db/repositories/tags.ts";
 import type { Post } from "@/db/schema.ts";
 import { absoluteBanner, bannerOf } from "@/lib/cover.ts";
 import { normalizeLanguage } from "@/lib/languages.ts";
+import { federationOrigin } from "@/services/federationState.ts";
 
 // The post's banner as an ActivityPub Image.
 //
@@ -14,7 +14,7 @@ import { normalizeLanguage } from "@/lib/languages.ts";
 // against ours first. Anything still unparseable is dropped rather than
 // federated as a broken attachment.
 function coverImage(url: string | null): Image | undefined {
-  const absolute = absoluteBanner(url, origin);
+  const absolute = absoluteBanner(url, federationOrigin());
   if (!absolute) return undefined;
   try {
     return new Image({ url: new URL(absolute) });
@@ -94,7 +94,7 @@ export function buildArticle(
     to,
     cc,
     url: new URL(`/posts/${post.id}`, ctx.getActorUri(identifier)),
-    tags: tags.map((t) => new Hashtag({ name: `#${t.name}`, href: new URL(`/tags/${t.slug}`, origin) })),
+    tags: tags.map((t) => new Hashtag({ name: `#${t.name}`, href: new URL(`/tags/${t.slug}`, federationOrigin()) })),
   });
 }
 
