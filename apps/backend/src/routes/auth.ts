@@ -124,7 +124,9 @@ authRoutes.post(
   async (c) => {
     const user = requireUser(c);
     const { currentPassword, newPassword } = c.req.valid("json");
-    await authService.changePassword(user.id, currentPassword, newPassword);
+    const { token } = await authService.changePassword(user.id, currentPassword, newPassword);
+    // The change rotates sessions: re-issue the cookie for the current browser.
+    setCookie(c, SESSION_COOKIE, token, cookieOpts(c));
     return c.json({ ok: true });
   },
 );
