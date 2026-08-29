@@ -8,7 +8,7 @@ import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import type { RemoteActor } from "@/db/schema.ts";
-import { articleLanguage } from "@/federation/article.ts";
+import { articleLanguage, isPubliclyAddressed } from "@/federation/article.ts";
 import { getFederation } from "@/federation/mod.ts";
 import { sameOrigin } from "@/lib/domain.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
@@ -120,6 +120,11 @@ export async function fetchOutboxPosts(handle: string, remoteActorId: string): P
       // otherwise let us store that post under this actor's name — the same
       // cross-origin impersonation the inbox path guards against.
       if (!sameOrigin(obj.id, actor.id)) continue;
+      // Privacy/security (#123): only cache Articles addressed to the Public
+      // collection. A followers-only post fetched from an outbox must not be
+      // persisted and surfaced on public read paths; an actor's public outbox
+      // normally lists public posts, so this just drops the exceptions.
+      if (!isPubliclyAddressed(obj)) continue;
       await postsRepo.upsertRemotePost({
         remoteActorId,
         apId: obj.id.href,

@@ -39,7 +39,7 @@ import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import type { Post } from "@/db/schema.ts";
 import { buildPerson } from "@/federation/actor.ts";
-import { articleLanguage, buildArticle } from "@/federation/article.ts";
+import { articleLanguage, buildArticle, isPubliclyAddressed } from "@/federation/article.ts";
 import { setupNodeInfo } from "@/federation/nodeinfo.ts";
 import { cacheActor } from "@/federation/remote.ts";
 import { sameOrigin } from "@/lib/domain.ts";
@@ -225,6 +225,14 @@ async function ingestArticle(ctx: Context<ContextData>, article: Article): Promi
   if (!article.id) return undefined;
   const existing = await postsRepo.findByApId(article.id.href);
   if (existing) return existing;
+
+  // Privacy/security (#123): we only persist remote posts that were addressed to
+  // the ActivityStreams Public collection. A followers-only or direct-message
+  // Article has no local author (author_id null) and would otherwise be treated
+  // as visible to everyone on the global feed and other anonymous read paths.
+  // We don't persist remote recipient ACLs, so refusing to cache anything that
+  // wasn't plainly public is the safe choice.
+  if (!isPubliclyAddressed(article)) return undefined;
 
   if (!article.attributionId) return undefined;
   const author = await ctx.lookupObject(article.attributionId);
