@@ -9,7 +9,7 @@ import * as postsRepo from "@/db/repositories/posts.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { buildPerson } from "@/federation/actor.ts";
-import { buildArticle } from "@/federation/article.ts";
+import { buildArticle, type ArticleAudience } from "@/federation/article.ts";
 import { getFederation } from "@/federation/mod.ts";
 
 // Resolves a local author's remote followers into deliverable actor objects,
@@ -48,12 +48,18 @@ export async function deliverPost(postId: string, action: "create" | "update" = 
 
   const tags = await tagsRepo.tagsForPost(row.post.id);
   const actorUri = ctx.getActorUri(author.username);
-  const article = buildArticle(ctx, author.username, row.post, tags);
+  const followersUri = ctx.getFollowersUri(author.username);
 
-  // A private author's posts are followers-only: address the followers
-  // collection, not the public one, so receiving instances keep them off public
-  // timelines. (Delivery already targets only approved remote followers.)
-  const audience = author.isPrivate ? ctx.getFollowersUri(author.username) : PUBLIC_COLLECTION;
+  // A private author's posts are followers-only: address the wrapping activity
+  // (and the Article inside it) to the followers collection, not the public one,
+  // so receiving instances keep them off public timelines. Public authors get
+  // the normal `to: Public, cc: followers`. (Delivery already targets only
+  // approved remote followers for either case.)
+  const activityAudience = author.isPrivate ? followersUri : PUBLIC_COLLECTION;
+  const articleAudience: ArticleAudience = author.isPrivate
+    ? { to: followersUri }
+    : { to: PUBLIC_COLLECTION, cc: followersUri };
+  const article = buildArticle(ctx, author.username, row.post, tags, articleAudience);
 
   const activity =
     action === "update"
@@ -62,13 +68,13 @@ export async function deliverPost(postId: string, action: "create" | "update" = 
           id: new URL(`/posts/${row.post.id}/updates/${crypto.randomUUID()}`, actorUri),
           actor: actorUri,
           object: article,
-          tos: [audience],
+          tos: [activityAudience],
         })
       : new Create({
           id: new URL(`/posts/${row.post.id}/activity`, actorUri),
           actor: actorUri,
           object: article,
-          tos: [audience],
+          tos: [activityAudience],
         });
 
   await ctx.sendActivity({ identifier: author.username }, recipients, activity);
