@@ -3,6 +3,7 @@
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import Time from "$lib/components/Time.svelte";
+  import { postPath } from "$lib/links";
   import { locale } from "$lib/locale";
   import { timeZone } from "$lib/timezone";
   import type { DashboardSummary, PostStat } from "$lib/types";
@@ -318,7 +319,14 @@
                       >Top</span
                     >
                   {/if}
-                  <a href="/posts/{p.postId}" class="font-medium text-foreground hover:underline">
+                  <!-- Link straight to the post's canonical /@author/<slug> URL.
+                       Going through the legacy id permalink would add a server
+                       round-trip + redirect on every navigation, which is what
+                       made the blog page feel intermittently slow to open. -->
+                  <a
+                    href={postPath({ id: p.postId, slug: p.slug, author: { username: data.username } })}
+                    class="font-medium text-foreground hover:underline"
+                  >
                     {p.title || "Untitled"}
                   </a>
                 </div>

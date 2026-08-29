@@ -46,6 +46,10 @@ export async function recordPostView(
 export type PostStat = {
   postId: string;
   title: string | null;
+  // The post's slug (null for an untitled post), so the dashboard can link each
+  // row straight to its canonical /@author/<slug> URL rather than resolving it
+  // through the legacy id permalink on every navigation.
+  slug: string | null;
   createdAt: Date;
   views: number;
   likes: number;
@@ -87,6 +91,7 @@ export async function dashboardFor(authorId: string, sinceDays = 30): Promise<Da
   const stats: PostStat[] = posts.map((p) => ({
     postId: p.id,
     title: p.title,
+    slug: p.slug,
     createdAt: p.createdAt,
     views: viewTotals.get(p.id) ?? 0,
     likes: likeStats.get(p.id)?.count ?? 0,
