@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { ActorKeyPair as FedifyActorKeyPair, Context } from "@fedify/fedify";
 import { Endpoints, Hashtag, Image, OrderedCollection, Person, PropertyValue } from "@fedify/fedify/vocab";
-import { origin } from "@/config.ts";
 import * as linksRepo from "@/db/repositories/profileLinks.ts";
 import * as listsRepo from "@/db/repositories/readingLists.ts";
 import type { TagSummary } from "@/db/repositories/tags.ts";
 import type { User } from "@/db/schema.ts";
 import { escapeHtml } from "@/lib/html.ts";
 import { linkDisplayText, linkLabel } from "@/lib/profileLinks.ts";
+import { federationOrigin } from "@/services/federationState.ts";
 
 // Builds the ActivityPub Person for a local user. Shared by the actor
 // dispatcher (mod.ts, serving GET /users/{id}) and the outbound Update sender
@@ -66,12 +66,12 @@ export async function buildPerson(
     // answer, and it negotiates back to this actor for anything that asks for
     // JSON-LD (see the frontend's hooks.server.ts). Same split Mastodon draws
     // between /users/<name> and /@<name>.
-    url: new URL(`/@${identifier}`, origin),
-    icon: user.avatarUrl ? new Image({ url: new URL(user.avatarUrl, origin) }) : undefined,
+    url: new URL(`/@${identifier}`, federationOrigin()),
+    icon: user.avatarUrl ? new Image({ url: new URL(user.avatarUrl, federationOrigin()) }) : undefined,
     publicKey: keys[0]?.cryptographicKey,
     assertionMethods: keys.map((k) => k.multikey),
     // Profile tags, federated as Hashtags (like Mastodon's featured tags).
-    tags: tags.map((t) => new Hashtag({ name: `#${t.name}`, href: new URL(`/tags/${t.slug}`, origin) })),
+    tags: tags.map((t) => new Hashtag({ name: `#${t.name}`, href: new URL(`/tags/${t.slug}`, federationOrigin()) })),
     streams: publicLists.map((l) => ctx.getObjectUri(OrderedCollection, { identifier, listId: l.id })),
     attachments,
   });

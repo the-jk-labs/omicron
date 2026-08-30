@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { DocumentLoader } from "@fedify/fedify";
 import { type Actor, Article, Create, Hashtag, isActor } from "@fedify/fedify/vocab";
-import { origin } from "@/config.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
@@ -13,6 +12,7 @@ import { getFederation } from "@/federation/mod.ts";
 import { sameOrigin } from "@/lib/domain.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
 import { normalizeTags } from "@/lib/tags.ts";
+import { federationOrigin } from "@/services/federationState.ts";
 
 // Resolving and caching remote fediverse actors + their posts. This is the
 // read-side counterpart to outbound.ts: we fetch foreign actor documents and
@@ -39,7 +39,7 @@ function handleHost(handle: string): string {
 // require authorized fetch / secure mode still serve us their documents. Falls
 // back to the default loader when there is no local user yet.
 async function signedLoader(): Promise<DocumentLoader | undefined> {
-  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
   const user = await usersRepo.firstUser();
   if (!user) return undefined;
   return await ctx.getDocumentLoader({ identifier: user.username });
@@ -49,7 +49,7 @@ async function signedLoader(): Promise<DocumentLoader | undefined> {
 export async function resolveActor(handle: string): Promise<RemoteActor | null> {
   // Never reach out to a defederated domain.
   if (await blockedDomainsRepo.isBlocked(handleHost(handle))) return null;
-  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
   const documentLoader = await signedLoader();
   const object = await ctx.lookupObject(fediHandle(handle), { documentLoader });
   if (!isActor(object) || !object.id) return null;
@@ -96,7 +96,7 @@ export async function cacheActor(actor: Actor, handle?: string): Promise<RemoteA
 export async function fetchOutboxPosts(handle: string, remoteActorId: string): Promise<void> {
   try {
     if (await blockedDomainsRepo.isBlocked(handleHost(handle))) return;
-    const ctx = getFederation().createContext(new URL(origin), undefined);
+    const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
     const documentLoader = await signedLoader();
     const actor = await ctx.lookupObject(fediHandle(handle), { documentLoader });
     if (!isActor(actor)) return;

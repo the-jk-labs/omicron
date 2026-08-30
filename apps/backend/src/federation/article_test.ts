@@ -4,10 +4,13 @@ import { PUBLIC_COLLECTION } from "@fedify/fedify/vocab";
 // addressed to the ActivityStreams Public collection may be cached, so a
 // followers-only or direct-message post is never persisted and surfaced on
 // anonymous read paths. The module under test imports config (which needs a
-// Deno runtime for env access), so it is mocked; the logic tested is real.
+// Deno runtime for env access), so it is mocked; the logic tested is real. No
+// origin is provided: article.ts reads the federation origin from
+// federationState, which falls back to its own config-derived default — and
+// isPubliclyAddressed never consults it.
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/config.ts", () => ({ config: {}, origin: "https://omicron.example" }));
+vi.mock("@/config.ts", () => ({ config: {} }));
 
 import { isPubliclyAddressed } from "@/federation/article.ts";
 

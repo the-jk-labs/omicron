@@ -258,6 +258,3 @@ function load() {
 }
 
 export const config = load();
-
-// The instance origin (scheme + domain). https unless a localhost dev domain.
-export const origin = `${config.APP_DOMAIN.startsWith("localhost") ? "http" : "https"}://${config.APP_DOMAIN}`;

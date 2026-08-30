@@ -12,11 +12,11 @@ import {
   Reject,
   Undo,
 } from "@fedify/fedify/vocab";
-import { origin } from "@/config.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { getFederation } from "@/federation/mod.ts";
+import { federationOrigin } from "@/services/federationState.ts";
 
 // Outbound Follow / Undo(Follow) to a remote actor URI. Wired for future use
 // when the UI lets users follow remote handles; the call site already enqueues
@@ -25,7 +25,7 @@ import { getFederation } from "@/federation/mod.ts";
 export async function sendFollow(followerId: string, targetActor: string): Promise<void> {
   const user = await usersRepo.findById(followerId);
   if (!user) return;
-  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
   const actor = await ctx.lookupObject(targetActor);
   if (!isActor(actor)) return;
   await ctx.sendActivity(
@@ -42,7 +42,7 @@ export async function sendFollow(followerId: string, targetActor: string): Promi
 export async function sendUnfollow(followerId: string, targetActor: string): Promise<void> {
   const user = await usersRepo.findById(followerId);
   if (!user) return;
-  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
   const actor = await ctx.lookupObject(targetActor);
   if (!isActor(actor)) return;
   await ctx.sendActivity(
@@ -63,7 +63,7 @@ export async function sendUnfollow(followerId: string, targetActor: string): Pro
 export async function sendBlock(blockerId: string, targetActor: string): Promise<void> {
   const user = await usersRepo.findById(blockerId);
   if (!user) return;
-  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
   const actor = await ctx.lookupObject(targetActor);
   if (!isActor(actor)) return;
   await ctx.sendActivity(
@@ -80,7 +80,7 @@ export async function sendBlock(blockerId: string, targetActor: string): Promise
 export async function sendUndoBlock(blockerId: string, targetActor: string): Promise<void> {
   const user = await usersRepo.findById(blockerId);
   if (!user) return;
-  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
   const actor = await ctx.lookupObject(targetActor);
   if (!isActor(actor)) return;
   await ctx.sendActivity(
@@ -101,7 +101,7 @@ export async function sendUndoBlock(blockerId: string, targetActor: string): Pro
 export async function sendRejectFollow(userId: string, targetActor: string): Promise<void> {
   const user = await usersRepo.findById(userId);
   if (!user) return;
-  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
   const actor = await ctx.lookupObject(targetActor);
   if (!isActor(actor) || !actor.id) return;
   const actorUri = ctx.getActorUri(user.username);
@@ -128,7 +128,7 @@ export async function sendAcceptFollow(
 ): Promise<void> {
   const user = await usersRepo.findById(userId);
   if (!user) return;
-  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
   const actor = await ctx.lookupObject(targetActor);
   if (!isActor(actor) || !actor.id) return;
   const actorUri = ctx.getActorUri(user.username);
@@ -173,12 +173,12 @@ export async function sendRecommend(userId: string, postId: string): Promise<voi
   const row = await postsRepo.findById(postId);
   if (!row) return;
 
-  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
   const recipients = await followerRecipients(ctx, user.id);
   if (recipients.length === 0) return;
 
   const objectUri =
-    row.post.remote && row.post.apId ? new URL(row.post.apId) : new URL(`/posts/${row.post.id}`, origin);
+    row.post.remote && row.post.apId ? new URL(row.post.apId) : new URL(`/posts/${row.post.id}`, federationOrigin());
   const actorUri = ctx.getActorUri(user.username);
 
   await ctx.sendActivity(
@@ -201,7 +201,7 @@ export async function sendUnrecommend(userId: string, postId: string): Promise<v
   const user = await usersRepo.findById(userId);
   if (!user) return;
 
-  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
   const recipients = await followerRecipients(ctx, user.id);
   if (recipients.length === 0) return;
 
@@ -228,7 +228,7 @@ export async function sendActorDelete(userId: string): Promise<void> {
   const followerUris = await followsRepo.remoteFollowerActors(user.id);
   if (followerUris.length === 0) return;
 
-  const ctx = getFederation().createContext(new URL(origin), undefined);
+  const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
   const recipients = [];
   for (const uri of followerUris) {
     const actor = await ctx.lookupObject(uri);
