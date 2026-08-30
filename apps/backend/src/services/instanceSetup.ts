@@ -36,9 +36,10 @@ export async function getAppName(): Promise<string> {
 }
 
 // Effective public domain: wizard → APP_DOMAIN env/default (config.APP_DOMAIN).
-// Note: federation actor identity is bound to config.APP_DOMAIN at boot, so a
-// domain change here applies to app-level URLs immediately but only reaches
-// ActivityPub after a restart (which enabling federation requires anyway).
+// Note: the federation origin is seeded once at boot from this same effective
+// domain (see main.ts / federationState.ts), so a domain change here applies to
+// app-level URLs immediately but only reaches ActivityPub after a restart
+// (which enabling federation requires anyway).
 export async function getAppDomain(): Promise<string> {
   const fromDb = await settingsRepo.get<string>(SETUP_KEYS.appDomain);
   return fromDb?.trim() || config.APP_DOMAIN;
