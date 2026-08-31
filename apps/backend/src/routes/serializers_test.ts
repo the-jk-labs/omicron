@@ -19,10 +19,12 @@ const user = {
   avatarUrl: null,
   isAdmin: false,
   isPrivate: true,
-  emailVerifiedAt: null,
+  emailVerified: false,
   suspendedAt: null,
   actorKeyPair: null,
+  displayUsername: "ada",
   createdAt: new Date(),
+  updatedAt: new Date(),
 } as User;
 
 test("publicUser: never leaks credentials or the login email", () => {

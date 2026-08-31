@@ -247,9 +247,8 @@ function layout(heading: string, body: string, cta: { label: string; url: string
 </body></html>`;
 }
 
-/** Password-reset mail with a tokened link. */
-export async function sendPasswordReset(to: string, token: string): Promise<void> {
-  const url = `${await getOrigin()}/reset-password?token=${encodeURIComponent(token)}`;
+/** Password-reset mail with a Better Auth link. */
+export function sendPasswordReset(to: string, url: string): Promise<void> {
   return sendMail({
     to,
     subject: "Reset your Omicron password",
@@ -262,9 +261,8 @@ export async function sendPasswordReset(to: string, token: string): Promise<void
   });
 }
 
-/** Email-verification mail with a tokened link. */
-export async function sendEmailVerification(to: string, token: string): Promise<void> {
-  const url = `${await getOrigin()}/verify-email?token=${encodeURIComponent(token)}`;
+/** Email-verification mail with a Better Auth link. */
+export function sendEmailVerification(to: string, url: string): Promise<void> {
   return sendMail({
     to,
     subject: "Confirm your Omicron email",

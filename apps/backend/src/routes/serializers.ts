@@ -75,7 +75,7 @@ export function privateUser(u: User, tags: TagSummary[] = [], links: LinkSummary
   return {
     ...publicUser(u, tags, links),
     email: u.email,
-    emailVerified: u.emailVerifiedAt !== null,
+    emailVerified: u.emailVerified,
   };
 }
 
@@ -90,7 +90,7 @@ export function adminUserView(u: User) {
     avatarUrl: u.avatarUrl,
     isAdmin: u.isAdmin,
     email: u.email,
-    emailVerified: u.emailVerifiedAt !== null,
+    emailVerified: u.emailVerified,
     suspended: u.suspendedAt !== null,
     createdAt: u.createdAt,
   };

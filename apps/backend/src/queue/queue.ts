@@ -23,7 +23,6 @@ export type JobName =
   | "send_accept_follow"
   | "send_recommend"
   | "send_unrecommend"
-  | "delete_actor"
   | "send_password_reset"
   | "send_email_verification";
 
@@ -41,9 +40,8 @@ export type JobPayloads = {
   send_accept_follow: { userId: string; targetActor: string; followActivityId: string | null };
   send_recommend: { userId: string; postId: string };
   send_unrecommend: { userId: string; postId: string };
-  delete_actor: { userId: string };
-  send_password_reset: { to: string; token: string };
-  send_email_verification: { to: string; token: string };
+  send_password_reset: { to: string; url: string };
+  send_email_verification: { to: string; url: string };
 };
 
 type Handler<N extends JobName> = (payload: JobPayloads[N]) => Promise<void>;

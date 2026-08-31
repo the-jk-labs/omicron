@@ -1,4 +1,3 @@
-import * as usersRepo from "@/db/repositories/users.ts";
 import { registerHandler } from "@/queue/queue.ts";
 import { sendEmailVerification, sendPasswordReset } from "@/services/email.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
@@ -100,23 +99,12 @@ export function registerJobHandlers() {
     await sendUnrecommend(userId, postId);
   });
 
-  // Account deletion. Broadcast a Delete(actor) to remote followers first (so
-  // other instances tombstone us) while the key pair still exists, then remove
-  // the user — FK cascades wipe their posts, follows, sessions, mutes & blocks.
-  registerHandler("delete_actor", async ({ userId }) => {
-    if (federationRunning()) {
-      try {
-        const { sendActorDelete } = await import("@/federation/outbound.ts");
-        await sendActorDelete(userId);
-      } catch (err) {
-        console.error("delete_actor: federated Delete failed (continuing):", err);
-      }
-    }
-    await usersRepo.remove(userId);
-  });
+  // Account deletion is owned by Better Auth (auth/auth.ts): its beforeDelete
+  // hook broadcasts the federated Delete(actor) while the key pair still exists,
+  // then Better Auth removes the row and FK cascades wipe the rest.
 
   // Transactional email is delivered off the request path so response latency
   // (and timing) doesn't depend on the mail server or whether an account exists.
-  registerHandler("send_password_reset", ({ to, token }) => sendPasswordReset(to, token));
-  registerHandler("send_email_verification", ({ to, token }) => sendEmailVerification(to, token));
+  registerHandler("send_password_reset", ({ to, url }) => sendPasswordReset(to, url));
+  registerHandler("send_email_verification", ({ to, url }) => sendEmailVerification(to, url));
 }
