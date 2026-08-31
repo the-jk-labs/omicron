@@ -70,7 +70,7 @@ export function publicUser(
 
 // Self-view payload: everything in `publicUser` plus the private account fields
 // (login email + verification state). Only ever returned to the authenticated
-// account owner (their own /auth/me, login, register) — never for other users.
+// account owner (their own /api/me) — never for other users.
 export function privateUser(u: User, tags: TagSummary[] = [], links: LinkSummary[] = []) {
   return {
     ...publicUser(u, tags, links),

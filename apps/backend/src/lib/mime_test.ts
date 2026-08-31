@@ -3,8 +3,8 @@ import { expect, test } from "vitest";
 import { buildMessage, extractAddress } from "@/lib/mime.ts";
 
 // Header injection: a CR/LF in an address or subject must be refused, never
-// serialized into a header line. This is the defense-in-depth backing the
-// address validation in services/auth.ts.
+// serialized into a header line. Defense-in-depth backing the email validation
+// upstream (Better Auth's sign-up, the setup wizard).
 test("buildMessage rejects a newline in the recipient", () => {
   expect(() =>
     buildMessage({

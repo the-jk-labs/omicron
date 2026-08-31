@@ -10,7 +10,10 @@ import type { AppEnv } from "@/routes/types.ts";
 // shape — isAdmin, isPrivate, suspendedAt, actorKeyPair — available downstream.
 export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  c.set("user", session ? ((await usersRepo.findById(session.user.id)) ?? null) : null);
+  const user = session ? await usersRepo.findById(session.user.id) : null;
+  // A suspended account is treated as signed out at once, regardless of the
+  // session cookie cache (its sign-in is also blocked in auth/auth.ts).
+  c.set("user", user && !user.suspendedAt ? user : null);
   await next();
 });
 

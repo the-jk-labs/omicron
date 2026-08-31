@@ -118,12 +118,6 @@ export async function update(id: string, data: Partial<NewUser>) {
   return row;
 }
 
-// Permanently deletes a user. FK cascades remove their posts, follows, likes,
-// comments, sessions, mutes and blocks.
-export async function remove(id: string) {
-  await db.delete(users).where(eq(users.id, id));
-}
-
 // Local accounts for the admin user table: newest first, optional handle /
 // name substring filter. Returns full rows (the admin serializer picks fields).
 export function listForAdmin(query = "", limit = 100) {

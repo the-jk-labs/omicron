@@ -53,8 +53,8 @@
         return;
       }
       view = "resent";
-    } catch {
-      resendError = "Something went wrong.";
+    } catch (err) {
+      resendError = err instanceof Error ? err.message : "Something went wrong.";
     } finally {
       busy = false;
     }

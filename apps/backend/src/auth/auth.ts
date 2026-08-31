@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { APIError } from "better-auth/api";
 import { haveIBeenPwned, username } from "better-auth/plugins";
 import { config } from "@/config.ts";
 import { db } from "@/db/client.ts";
@@ -59,7 +60,13 @@ export const auth = betterAuth({
       },
     },
   },
-  session: { expiresIn: SESSION_TTL_S },
+  session: {
+    expiresIn: SESSION_TTL_S,
+    // Serve the session from a short-lived signed cookie to avoid a DB read on
+    // every getSession. Revocation (suspend, password change) still takes effect
+    // at once: the session middleware re-checks the user row and gates suspension.
+    cookieCache: { enabled: true, maxAge: 5 * 60 },
+  },
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 12,
@@ -94,6 +101,17 @@ export const auth = betterAuth({
         before: async (user) => {
           const isFirst = (await usersRepo.countUsers()) === 0;
           return isFirst ? { data: { ...user, isAdmin: true, emailVerified: true } } : { data: user };
+        },
+      },
+    },
+    session: {
+      create: {
+        // Block sign-in for suspended accounts (Better Auth has no such gate).
+        // Runs after credential verification, so it can't be used to enumerate.
+        before: async (session) => {
+          const user = await usersRepo.findById(session.userId);
+          if (user?.suspendedAt) throw new APIError("FORBIDDEN", { message: "This account has been suspended." });
+          return { data: session };
         },
       },
     },

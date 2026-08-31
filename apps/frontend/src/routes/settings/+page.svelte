@@ -313,8 +313,8 @@
       }
       pwSaved = true;
       pwOpen = false;
-    } catch {
-      pwError = "Failed to change password.";
+    } catch (err) {
+      pwError = err instanceof Error ? err.message : "Failed to change password.";
     } finally {
       pwBusy = false;
     }
@@ -346,8 +346,8 @@
       }
       await invalidateAll();
       goto("/");
-    } catch {
-      deleteError = "Failed to delete account.";
+    } catch (err) {
+      deleteError = err instanceof Error ? err.message : "Failed to delete account.";
       deleting = false;
     }
   }

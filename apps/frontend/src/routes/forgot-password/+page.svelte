@@ -40,8 +40,8 @@
         return;
       }
       sent = true;
-    } catch {
-      error = "Something went wrong.";
+    } catch (err) {
+      error = err instanceof Error ? err.message : "Something went wrong.";
     } finally {
       busy = false;
     }

@@ -62,8 +62,8 @@ export const users = pgTable(
     // Better Auth's `emailVerified`. Gates sign-in only when EMAIL_VERIFICATION_REQUIRED is set.
     emailVerified: boolean("email_verified").notNull().default(false),
     // When an admin suspended this account (null = active). A suspended user is
-    // blocked from signing in and has their sessions cleared (see services/auth.ts
-    // and services/moderation.ts).
+    // blocked from signing in and treated as signed out (see auth/auth.ts and
+    // routes/middleware.ts).
     suspendedAt: timestamp("suspended_at", { withTimezone: true }),
     actorKeyPair: jsonb("actor_key_pair").$type<ActorKeyPair | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

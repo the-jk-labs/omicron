@@ -21,7 +21,7 @@ import * as recommendationsService from "@/services/recommendations.ts";
 
 export const postRoutes = new Hono<AppEnv>();
 
-// `secure` is decided per request from the forwarded scheme (lib/session.ts
+// `secure` is decided per request from the forwarded scheme (lib/cookies.ts
 // cookieSecure), matching the session cookie, so this is Secure on a
 // wizard-configured HTTPS instance rather than keyed to the boot-time domain.
 function viewCookieOpts(c: Context<AppEnv>) {
