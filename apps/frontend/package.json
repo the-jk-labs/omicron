@@ -29,6 +29,7 @@
     "@tiptap/extension-table": "3.30.1",
     "@tiptap/pm": "3.30.1",
     "@tiptap/starter-kit": "3.30.1",
+    "better-auth": "1.7.2",
     "bits-ui": "2.18.1",
     "compression": "1.8.1",
     "emoji-picker-element": "1.29.1",

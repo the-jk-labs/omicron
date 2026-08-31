@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { page } from "$app/stores";
-  import { endpoints, ApiError } from "$lib/api";
   import logo from "$lib/assets/omicron.svg";
+  import { authClient } from "$lib/auth-client";
   import Icon from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -43,10 +43,14 @@
     }
     busy = true;
     try {
-      await endpoints().resetPassword(token, password);
+      const res = await authClient.resetPassword({ newPassword: password, token });
+      if (res.error) {
+        error = res.error.message ?? "This reset link is invalid or has expired.";
+        return;
+      }
       done = true;
-    } catch (err) {
-      error = err instanceof ApiError ? err.message : "Something went wrong.";
+    } catch {
+      error = "Something went wrong.";
     } finally {
       busy = false;
     }

@@ -78,20 +78,9 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // Send a wizard test email with not-yet-saved details (open pre-setup).
     testSetupEmail: (body: { to: string; email?: EmailInput }) => api.post<{ ok: true }>("/setup/test-email", body),
 
-    // auth
-    me: () => api.get<{ user: User | null }>("/auth/me"),
-    register: (body: { username: string; email: string; password: string; displayName?: string }) =>
-      api.post<{ user: User }>("/auth/register", body),
-    login: (body: { identifier: string; password: string }) => api.post<{ user: User }>("/auth/login", body),
-    logout: () => api.post<{ ok: true }>("/auth/logout"),
-    forgotPassword: (identifier: string) => api.post<{ ok: true }>("/auth/password/forgot", { identifier }),
-    resetPassword: (token: string, password: string) =>
-      api.post<{ ok: true }>("/auth/password/reset", { token, password }),
-    verifyEmail: (token: string) => api.post<{ ok: true }>("/auth/email/verify", { token }),
-    resendVerification: (email: string) => api.post<{ ok: true }>("/auth/email/resend", { email }),
-    changePassword: (currentPassword: string, newPassword: string) =>
-      api.post<{ ok: true }>("/auth/password/change", { currentPassword, newPassword }),
-    deleteAccount: (password: string) => api.del<{ ok: true }>("/auth/me", { password }),
+    // The signed-in user's rich self-view (profile tags + links). Authentication
+    // itself is Better Auth ($lib/auth-client); this is the app profile payload.
+    me: () => api.get<{ user: User | null }>("/me"),
 
     // writer dashboard (own analytics) + moderator instance settings
     dashboard: (days?: number) => api.get<DashboardSummary>(`/dashboard${days ? `?days=${days}` : ""}`),

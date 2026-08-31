@@ -3,8 +3,8 @@
   import { goto, invalidateAll } from "$app/navigation";
   import { page } from "$app/state";
   import { env } from "$env/dynamic/public";
-  import { endpoints, ApiError } from "$lib/api";
   import logo from "$lib/assets/omicron.svg";
+  import { authClient } from "$lib/auth-client";
   import Icon from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -143,11 +143,20 @@
         busy = false;
         return;
       }
-      await endpoints().register({ username, email, password, displayName });
+      const res = await authClient.signUp.email({
+        email,
+        password,
+        name: displayName.trim() || username,
+        username,
+      });
+      if (res.error) {
+        error = res.error.message ?? "Something went wrong.";
+        return;
+      }
       await invalidateAll();
       goto("/");
-    } catch (err) {
-      error = err instanceof ApiError ? err.message : "Something went wrong.";
+    } catch {
+      error = "Something went wrong.";
     } finally {
       busy = false;
     }

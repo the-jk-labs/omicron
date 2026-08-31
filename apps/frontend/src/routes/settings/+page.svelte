@@ -2,6 +2,7 @@
 <script lang="ts">
   import { goto, invalidateAll } from "$app/navigation";
   import { endpoints, ApiError } from "$lib/api";
+  import { authClient } from "$lib/auth-client";
   import AvatarCropper from "$lib/components/AvatarCropper.svelte";
   import ConnectionsManager from "$lib/components/ConnectionsManager.svelte";
   import CustomSectionEditor from "$lib/components/CustomSectionEditor.svelte";
@@ -231,7 +232,7 @@
   }
 
   async function logout() {
-    await endpoints().logout();
+    await authClient.signOut();
     await invalidateAll();
     goto("/");
   }
@@ -260,7 +261,7 @@
     if (!data.user.email) return;
     resending = true;
     try {
-      await endpoints().resendVerification(data.user.email);
+      await authClient.sendVerificationEmail({ email: data.user.email, callbackURL: "/verify-email" });
       resendDone = true;
     } catch {
       // No-op surface: the endpoint never reveals account state; nothing to show.
@@ -305,11 +306,15 @@
     }
     pwBusy = true;
     try {
-      await endpoints().changePassword(currentPassword, newPassword);
+      const res = await authClient.changePassword({ currentPassword, newPassword, revokeOtherSessions: true });
+      if (res.error) {
+        pwError = res.error.message ?? "Failed to change password.";
+        return;
+      }
       pwSaved = true;
       pwOpen = false;
-    } catch (err) {
-      pwError = err instanceof ApiError ? err.message : "Failed to change password.";
+    } catch {
+      pwError = "Failed to change password.";
     } finally {
       pwBusy = false;
     }
@@ -333,11 +338,16 @@
     deleteError = "";
     deleting = true;
     try {
-      await endpoints().deleteAccount(deletePassword);
+      const res = await authClient.deleteUser({ password: deletePassword });
+      if (res.error) {
+        deleteError = res.error.message ?? "Failed to delete account.";
+        deleting = false;
+        return;
+      }
       await invalidateAll();
       goto("/");
-    } catch (err) {
-      deleteError = err instanceof ApiError ? err.message : "Failed to delete account.";
+    } catch {
+      deleteError = "Failed to delete account.";
       deleting = false;
     }
   }

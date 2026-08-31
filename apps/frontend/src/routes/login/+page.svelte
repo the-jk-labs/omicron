@@ -3,8 +3,8 @@
   import { goto, invalidateAll } from "$app/navigation";
   import { page } from "$app/state";
   import { env } from "$env/dynamic/public";
-  import { endpoints, ApiError } from "$lib/api";
   import logo from "$lib/assets/omicron.svg";
+  import { authClient } from "$lib/auth-client";
   import Icon from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -30,11 +30,19 @@
     error = "";
     busy = true;
     try {
-      await endpoints().login({ identifier, password });
+      // The single field accepts a username or an email; route to the matching
+      // Better Auth sign-in.
+      const res = identifier.includes("@")
+        ? await authClient.signIn.email({ email: identifier, password })
+        : await authClient.signIn.username({ username: identifier, password });
+      if (res.error) {
+        error = res.error.message ?? "Invalid username or password.";
+        return;
+      }
       await invalidateAll();
       goto("/");
-    } catch (err) {
-      error = err instanceof ApiError ? err.message : "Something went wrong.";
+    } catch {
+      error = "Something went wrong.";
     } finally {
       busy = false;
     }

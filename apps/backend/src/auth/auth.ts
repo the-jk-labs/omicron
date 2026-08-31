@@ -29,6 +29,15 @@ export const auth = betterAuth({
     trustedProxyHeaders: true,
     cookiePrefix: "omicron",
   },
+  // The CSRF origin check must trust the real public origin, which on a
+  // wizard-configured instance differs from the boot-time APP_DOMAIN. Derive it
+  // per request from the forwarded headers (Caddy sets them, the SvelteKit proxy
+  // passes them through), the same signal cookieSecure and federation use.
+  trustedOrigins: (request) => {
+    const proto = request?.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+    const host = request?.headers.get("x-forwarded-host") ?? request?.headers.get("host");
+    return host ? [`${proto || "https"}://${host}`] : [];
+  },
   user: {
     fields: { name: "displayName", image: "avatarUrl" },
     // Server-managed; declared so the first-user hook below can persist it.
@@ -68,8 +77,13 @@ export const auth = betterAuth({
   },
   emailVerification: {
     sendOnSignUp: true,
-    sendVerificationEmail: ({ user, url }) => {
-      queue.add("send_email_verification", { to: user.email, url });
+    // Link to the frontend verify page (which confirms client-side via
+    // authClient.verifyEmail), not Better Auth's redirect endpoint.
+    sendVerificationEmail: ({ user, token }) => {
+      queue.add("send_email_verification", {
+        to: user.email,
+        url: `${baseURL}/verify-email?token=${encodeURIComponent(token)}`,
+      });
       return Promise.resolve();
     },
   },

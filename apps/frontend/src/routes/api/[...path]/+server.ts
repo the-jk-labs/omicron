@@ -52,8 +52,10 @@ const proxy: RequestHandler = async ({ request, params, url, getClientAddress })
   // sets on static media (cache-control etc.) — without forwarding these,
   // uploaded images re-download on every visit.
   const out = new Headers();
-  const setCookie = res.headers.get("set-cookie");
-  if (setCookie) out.set("set-cookie", setCookie);
+  // Forward each Set-Cookie separately: a response can carry more than one (Better
+  // Auth's session cookie et al.), and `get("set-cookie")` merges them into one
+  // corrupt value. getSetCookie() preserves them as distinct headers.
+  for (const cookie of res.headers.getSetCookie()) out.append("set-cookie", cookie);
   for (const h of [
     "content-type",
     "cache-control",
