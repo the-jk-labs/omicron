@@ -101,8 +101,8 @@
       // the rest of this form (name/domain/banner text) may hold unsaved edits
       // that a full `apply()` here would silently overwrite.
       bannerImageUrl = (await endpoints().uploadInstanceBanner(blob, type)).bannerImageUrl;
-    } catch (e) {
-      bannerError = e instanceof ApiError ? e.message : "Failed to upload the banner image.";
+    } catch (err) {
+      bannerError = err instanceof ApiError ? err.message : "Failed to upload the banner image.";
     } finally {
       bannerUploading = false;
     }

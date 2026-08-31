@@ -5,6 +5,7 @@
   import { LANGUAGES, languageLabel } from "$lib/languages";
   import { reading, type FeedLangMode } from "$lib/prefs.svelte";
   import { Button as ButtonPrimitive, Select } from "bits-ui";
+  import { onMount } from "svelte";
 
   let { compact = false }: { compact?: boolean } = $props();
 
@@ -14,7 +15,12 @@
   ];
 
   const DISMISSED_KEY = "feed-lang-card-dismissed";
-  let dismissed = $state(browser ? localStorage.getItem(DISMISSED_KEY) === "1" : false);
+  // Optimistically hidden (dismissed for most readers, and SSR can't read
+  // localStorage) — reveal after mount only when not dismissed, avoiding a flash.
+  let dismissed = $state(true);
+  onMount(() => {
+    if (localStorage.getItem(DISMISSED_KEY) !== "1") dismissed = false;
+  });
   function dismiss() {
     dismissed = true;
     if (browser) localStorage.setItem(DISMISSED_KEY, "1");

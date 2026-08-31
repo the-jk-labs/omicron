@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
 import { logger } from "hono/logger";
+import { auth } from "@/auth/auth.ts";
 import { config } from "@/config.ts";
 import { handleError } from "@/lib/http.ts";
 import { readCappedBody } from "@/lib/inboxBody.ts";
@@ -165,6 +166,10 @@ export async function buildApp() {
   }
 
   app.route("/", healthRoutes);
+
+  // Better Auth owns /api/auth/*. Mounted before the /api/* middlewares below so
+  // it runs with its own session + rate limiting, bypassing them.
+  app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
   // Session resolution applies to the JSON API.
   app.use("/api/*", sessionMiddleware);

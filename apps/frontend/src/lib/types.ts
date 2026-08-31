@@ -22,7 +22,7 @@ export type User = {
   tags: Tag[];
   links: ProfileLink[];
   // Private account fields — present only on the signed-in user's own record
-  // (from /auth/me, login, register), never on other users' public profiles.
+  // (from /api/me), never on other users' public profiles.
   email?: string;
   emailVerified?: boolean;
 };

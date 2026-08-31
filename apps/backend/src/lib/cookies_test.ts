@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from "vitest";
-import { cookieSecure } from "@/lib/session.ts";
+import { cookieSecure } from "@/lib/cookies.ts";
 
 // Minimal Context stub: cookieSecure only reads one request header.
 function ctx(proto?: string): Context {

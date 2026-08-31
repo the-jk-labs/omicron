@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { page } from "$app/stores";
-  import { endpoints, ApiError } from "$lib/api";
   import logo from "$lib/assets/omicron.svg";
+  import { authClient } from "$lib/auth-client";
   import Icon from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -33,12 +33,12 @@
 
   onMount(async () => {
     if (!token) return;
-    try {
-      await endpoints().verifyEmail(token);
-      view = "success";
-    } catch (err) {
-      errorMsg = err instanceof ApiError ? err.message : "Something went wrong.";
+    const res = await authClient.verifyEmail({ query: { token } });
+    if (res.error) {
+      errorMsg = res.error.message ?? "This verification link is invalid or has expired.";
       view = "error";
+    } else {
+      view = "success";
     }
   });
 
@@ -47,10 +47,14 @@
     resendError = "";
     busy = true;
     try {
-      await endpoints().resendVerification(email);
+      const res = await authClient.sendVerificationEmail({ email, callbackURL: "/verify-email" });
+      if (res.error) {
+        resendError = res.error.message ?? "Something went wrong.";
+        return;
+      }
       view = "resent";
     } catch (err) {
-      resendError = err instanceof ApiError ? err.message : "Something went wrong.";
+      resendError = err instanceof Error ? err.message : "Something went wrong.";
     } finally {
       busy = false;
     }

@@ -1,31 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
-import type { Context } from "hono";
-import { setCookie } from "hono/cookie";
 import { z } from "zod";
-import { config } from "@/config.ts";
+import { auth } from "@/auth/auth.ts";
+import * as usersRepo from "@/db/repositories/users.ts";
 import { badRequest, conflict } from "@/lib/http.ts";
-import { cookieSecure, SESSION_COOKIE, SESSION_TTL_MS } from "@/lib/session.ts";
 import { privateUser } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
-import * as authService from "@/services/auth.ts";
 import { sendTestEmail } from "@/services/email.ts";
 import * as emailSettings from "@/services/emailSettings.ts";
 import * as setup from "@/services/instanceSetup.ts";
-
-// Session cookie attributes (kept in sync with routes/auth.ts). `secure` is
-// decided per request from the forwarded scheme (lib/session.ts cookieSecure),
-// so a wizard-configured HTTPS instance gets a Secure cookie even while
-// APP_DOMAIN still holds its localhost default.
-function cookieOpts(c: Context) {
-  return {
-    httpOnly: true,
-    sameSite: "Lax" as const,
-    path: "/",
-    secure: cookieSecure(c, config.APP_DOMAIN),
-    maxAge: SESSION_TTL_MS / 1000,
-  };
-}
 
 // Public, unauthenticated snapshot of the instance's identity. Drives the
 // frontend chrome (app name) and the first-run setup gate.
@@ -97,15 +80,28 @@ setupRoutes.post("/", async (c) => {
   }
   const { appName, appDomain, email, admin } = parsed.data;
 
-  // Create the owner account. As the first user, register() marks it admin and
-  // treats its email as verified, so the owner can never be locked out.
-  const user = await authService.register(admin);
-  const { token } = await authService.login(user.username, admin.password);
-  setCookie(c, SESSION_COOKIE, token, cookieOpts(c));
+  // Create the owner via Better Auth. As the first user, the create hook marks
+  // it admin and verified, so the owner can never be locked out. autoSignIn sets
+  // the session cookie on the response, which we forward to the client.
+  // Declared as a variable so the username plugin's extra field isn't rejected
+  // by TypeScript's excess-property check on the signUpEmail body literal.
+  const signupBody = {
+    email: admin.email,
+    password: admin.password,
+    name: admin.displayName || admin.username,
+    username: admin.username,
+  };
+  const res = await auth.api.signUpEmail({ body: signupBody, asResponse: true });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw badRequest(body?.message ?? "Could not create the admin account.");
+  }
+  for (const cookie of res.headers.getSetCookie()) c.header("set-cookie", cookie, { append: true });
 
   await setup.completeSetup({ appName, appDomain, email });
 
-  return c.json({ user: privateUser(user) }, 201);
+  const user = await usersRepo.findByUsername(admin.username.trim().toLowerCase());
+  return c.json({ user: user ? privateUser(user) : null }, 201);
 });
 
 // Send a test email during the wizard so the operator can confirm SMTP works

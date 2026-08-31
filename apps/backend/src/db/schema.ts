@@ -35,8 +35,11 @@ export const users = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     username: text("username").notNull(),
+    // Better Auth username plugin's `displayUsername` (original casing).
+    displayUsername: text("display_username"),
     email: text("email").notNull(),
-    passwordHash: text("password_hash").notNull(),
+    // Legacy bcrypt hash; only kept so the migration can backfill account.password. Dropped a release later.
+    passwordHash: text("password_hash"),
     displayName: text("display_name").notNull(),
     bio: text("bio").notNull().default(""),
     // Optional contact address the user chooses to show on their public profile.
@@ -56,15 +59,15 @@ export const users = pgTable(
     // approved followers and following requires approval (see follows.approved);
     // federated via the actor's `manuallyApprovesFollowers` flag.
     isPrivate: boolean("is_private").notNull().default(false),
-    // When the user confirmed their login email. Null until verified. Only gates
-    // sign-in when EMAIL_VERIFICATION_REQUIRED is set (see services/auth.ts).
-    emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    // Better Auth's `emailVerified`. Gates sign-in only when EMAIL_VERIFICATION_REQUIRED is set.
+    emailVerified: boolean("email_verified").notNull().default(false),
     // When an admin suspended this account (null = active). A suspended user is
-    // blocked from signing in and has their sessions cleared (see services/auth.ts
-    // and services/moderation.ts).
+    // blocked from signing in and treated as signed out (see auth/auth.ts and
+    // routes/middleware.ts).
     suspendedAt: timestamp("suspended_at", { withTimezone: true }),
     actorKeyPair: jsonb("actor_key_pair").$type<ActorKeyPair | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("users_username_idx").on(t.username),
@@ -645,45 +648,69 @@ export const readingListItems = pgTable(
   ],
 );
 
-// ── sessions ───────────────────────────────────────────────────────────
-// Server-side sessions (cookie holds the opaque token = id). Keeps the app
-// stateless; all session state lives in Postgres.
+// ── sessions (Better Auth) ───────────────────────────────────────────────
+// Cookie carries `token`. Migration drops old rows, so everyone signs in once.
 export const sessions = pgTable(
   "sessions",
-  {
-    id: text("id").primaryKey(),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [index("sessions_user_idx").on(t.userId)],
-);
-
-// ── auth tokens ──────────────────────────────────────────────────────────
-// Single-use, expiring tokens for out-of-band auth flows: password reset and
-// email verification (`purpose` distinguishes them). Only a SHA-256 hash of the
-// token is stored — the raw token lives only in the emailed link, so a database
-// read can't be replayed into a valid link. `used_at` marks a token spent so it
-// can't be reused; expired/used rows are swept opportunistically on issue.
-export const authTokens = pgTable(
-  "auth_tokens",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    purpose: text("purpose").notNull(), // "password_reset" | "email_verify"
-    tokenHash: text("token_hash").notNull(),
+    token: text("token").notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-    usedAt: timestamp("used_at", { withTimezone: true }),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("sessions_token_idx").on(t.token), index("sessions_user_idx").on(t.userId)],
+);
+
+// ── accounts (Better Auth) ───────────────────────────────────────────────
+// One auth method per row. Email+password is providerId "credential" with the
+// bcrypt hash in `password` (migrated from users.password_hash). OAuth columns
+// stay null until a social provider is added.
+export const accounts = pgTable(
+  "accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    // 1.7 identity namespace (identityStrategy "provider-id"); "local:credential" for credentials.
+    issuer: text("issuer").notNull(),
+    password: text("password"),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
+    scope: text("scope"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex("auth_tokens_hash_idx").on(t.tokenHash),
-    index("auth_tokens_user_purpose_idx").on(t.userId, t.purpose),
+    index("accounts_user_idx").on(t.userId),
+    uniqueIndex("accounts_issuer_account_idx").on(t.issuer, t.accountId),
   ],
+);
+
+// ── verifications (Better Auth) ──────────────────────────────────────────
+// Short-lived tokens for email verification and password reset.
+export const verifications = pgTable(
+  "verifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("verifications_identifier_idx").on(t.identifier)],
 );
 
 // ── webhook tokens ─────────────────────────────────────────────────────
@@ -894,8 +921,8 @@ export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;
 export type CommentLike = typeof commentLikes.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
-export type AuthToken = typeof authTokens.$inferSelect;
-export type NewAuthToken = typeof authTokens.$inferInsert;
+export type Account = typeof accounts.$inferSelect;
+export type Verification = typeof verifications.$inferSelect;
 export type WebhookToken = typeof webhookTokens.$inferSelect;
 export type Upload = typeof uploads.$inferSelect;
 export type NewUpload = typeof uploads.$inferInsert;

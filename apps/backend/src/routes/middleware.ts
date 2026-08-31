@@ -1,15 +1,19 @@
-import { getCookie } from "hono/cookie";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { createMiddleware } from "hono/factory";
-import * as sessionsRepo from "@/db/repositories/sessions.ts";
+import { auth } from "@/auth/auth.ts";
+import * as usersRepo from "@/db/repositories/users.ts";
 import { forbidden, unauthorized } from "@/lib/http.ts";
-import { SESSION_COOKIE } from "@/lib/session.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
-// Resolves the session cookie → user on every request (null if none).
+// Resolves the Better Auth session → full user row on every request (null if
+// none). Loading the row (not just the session's user) keeps the whole `User`
+// shape — isAdmin, isPrivate, suspendedAt, actorKeyPair — available downstream.
 export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
-  const token = getCookie(c, SESSION_COOKIE);
-  c.set("user", token ? await sessionsRepo.findUser(token) : null);
+  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  const user = session ? await usersRepo.findById(session.user.id) : null;
+  // A suspended account is treated as signed out at once, regardless of the
+  // session cookie cache (its sign-in is also blocked in auth/auth.ts).
+  c.set("user", user && !user.suspendedAt ? user : null);
   await next();
 });
 

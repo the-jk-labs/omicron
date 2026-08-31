@@ -17,6 +17,7 @@ const localLocale = writable<string | null>(null);
 
 /** The locale every date on the page is formatted with. Falls back to en-US. */
 export const locale: Readable<string> = derived([page, localLocale], ([$page, $local]) => {
+  // oxlint-disable-next-line no-unsafe-type-assertion
   const fromPage = ($page.data as { locale?: string | null }).locale;
   return $local ?? fromPage ?? FALLBACK;
 });
@@ -40,7 +41,7 @@ export function validLocale(value: string | undefined | null): string | null {
   try {
     const canonical = Intl.getCanonicalLocales(value)[0];
     // Also ensure DateTimeFormat accepts it (e.g. "en-US" does, "xx" throws).
-    new Intl.DateTimeFormat(canonical);
+    Intl.DateTimeFormat(canonical);
     return canonical;
   } catch {
     return null;
@@ -57,12 +58,12 @@ export function localeFromAcceptLanguage(header: string | null | undefined): str
         .trim()
         .split(";")
         .map((p) => p.trim());
-      const qMatch = params.map((p) => /^q=([\d.]+)$/i.exec(p)).find((m) => m != null);
+      const qMatch = params.map((p) => /^q=([\d.]+)$/i.exec(p)).find((m) => m !== null);
       const q = qMatch ? Number(qMatch[1]) : 1;
       return { tag, q, index };
     })
     .filter((e) => e.tag && Number.isFinite(e.q) && e.q > 0)
-    .sort((a, b) => b.q - a.q || a.index - b.index);
+    .toSorted((a, b) => b.q - a.q || a.index - b.index);
   for (const { tag } of parts) {
     const v = validLocale(tag);
     if (v) return v;

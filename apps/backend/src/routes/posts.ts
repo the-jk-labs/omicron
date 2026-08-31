@@ -4,9 +4,9 @@ import { getCookie, setCookie } from "hono/cookie";
 import { z } from "zod";
 import { config } from "@/config.ts";
 import { isBot, readerOptedOut, VIEW_COOKIE, VIEW_COOKIE_TTL_MS } from "@/lib/analytics.ts";
+import { cookieSecure } from "@/lib/cookies.ts";
 import { parseLanguageFilter } from "@/lib/languages.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
-import { cookieSecure } from "@/lib/session.ts";
 import { jsonBody } from "@/lib/validate.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import { barePost, commentView } from "@/routes/serializers.ts";
@@ -21,7 +21,7 @@ import * as recommendationsService from "@/services/recommendations.ts";
 
 export const postRoutes = new Hono<AppEnv>();
 
-// `secure` is decided per request from the forwarded scheme (lib/session.ts
+// `secure` is decided per request from the forwarded scheme (lib/cookies.ts
 // cookieSecure), matching the session cookie, so this is Secure on a
 // wizard-configured HTTPS instance rather than keyed to the boot-time domain.
 function viewCookieOpts(c: Context<AppEnv>) {

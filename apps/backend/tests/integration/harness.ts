@@ -112,9 +112,10 @@ export async function mkComment(postId: string, authorId: string, content = "hi"
 // publishes are windows on this column — so it is required rather than defaulted.
 export async function mkSession(userId: string, createdAt: Date) {
   await db.insert(sessions).values({
-    id: `session-${userId}-${createdAt.getTime()}`,
     userId,
+    token: `tok-${userId}-${createdAt.getTime()}`,
     createdAt,
+    updatedAt: createdAt,
     expiresAt: new Date(createdAt.getTime() + 30 * 24 * 3_600_000),
   });
 }

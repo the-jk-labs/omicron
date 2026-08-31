@@ -4,6 +4,7 @@
   import { env } from "$env/dynamic/public";
   import { endpoints } from "$lib/api";
   import logo from "$lib/assets/omicron.svg";
+  import { authClient } from "$lib/auth-client";
   import Icon from "$lib/components/Icon.svelte";
   import {
     notificationAction,
@@ -41,7 +42,7 @@
   onMount(() => (ready = true));
 
   async function logout() {
-    await endpoints().logout();
+    await authClient.signOut();
     await invalidateAll();
     goto("/");
   }

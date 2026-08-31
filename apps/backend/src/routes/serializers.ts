@@ -70,12 +70,12 @@ export function publicUser(
 
 // Self-view payload: everything in `publicUser` plus the private account fields
 // (login email + verification state). Only ever returned to the authenticated
-// account owner (their own /auth/me, login, register) — never for other users.
+// account owner (their own /api/me) — never for other users.
 export function privateUser(u: User, tags: TagSummary[] = [], links: LinkSummary[] = []) {
   return {
     ...publicUser(u, tags, links),
     email: u.email,
-    emailVerified: u.emailVerifiedAt !== null,
+    emailVerified: u.emailVerified,
   };
 }
 
@@ -90,7 +90,7 @@ export function adminUserView(u: User) {
     avatarUrl: u.avatarUrl,
     isAdmin: u.isAdmin,
     email: u.email,
-    emailVerified: u.emailVerifiedAt !== null,
+    emailVerified: u.emailVerified,
     suspended: u.suspendedAt !== null,
     createdAt: u.createdAt,
   };
