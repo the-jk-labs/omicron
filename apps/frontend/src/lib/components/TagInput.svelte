@@ -49,6 +49,7 @@
         const filtered = data.tags.filter((t) => !tags.includes(t.slug) && t.slug !== slug);
         suggestions = filtered.slice(0, 6);
         suggestionsOpen = suggestions.length > 0;
+        return;
       })
       .catch(() => {
         suggestions = [];

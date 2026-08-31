@@ -64,7 +64,7 @@ function topMediaType(accept: string | null): string | null {
     .filter((entry) => entry.type && Number.isFinite(entry.q) && entry.q > 0)
     // Equal weights keep the order the client wrote them in, which is the
     // convention every ActivityPub implementation relies on.
-    .sort((a, b) => b.q - a.q || a.index - b.index);
+    .toSorted((a, b) => b.q - a.q || a.index - b.index);
   return ranked[0]?.type ?? null;
 }
 

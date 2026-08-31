@@ -137,7 +137,7 @@ describe("the reference scan", () => {
     // The body's second and third images must NOT appear: one is the derived
     // share image, the other is on someone else's host. Neither is a reference
     // to a stored file, and treating them as one would hide real orphans.
-    expect(referenced.sort()).toEqual(["avatar.png", "body.png", "cover.png"]);
+    expect(referenced.toSorted()).toEqual(["avatar.png", "body.png", "cover.png"]);
     expect(referenced).not.toContain("unreferenced.png");
   });
 });
