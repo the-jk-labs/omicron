@@ -14,8 +14,7 @@ const BCRYPT_COST = 12;
 const SESSION_TTL_S = 60 * 60 * 24 * 30;
 const USERNAME_RE = /^[a-z0-9_]{3,30}$/;
 
-// Public origin where /api/auth is reachable (the frontend host). The wizard can
-// override APP_DOMAIN at runtime; per-request forwarded headers (trustedProxyHeaders) cover that.
+// Public origin for /api/auth; a wizard-changed domain is covered by forwarded headers below.
 const baseURL = `${config.APP_DOMAIN.startsWith("localhost") ? "http" : "https"}://${config.APP_DOMAIN}`;
 
 export const auth = betterAuth({
@@ -25,47 +24,31 @@ export const auth = betterAuth({
     provider: "pg",
     schema: { user: users, session: sessions, account: accounts, verification: verifications },
   }),
+  plugins: [
+    username({
+      minUsernameLength: 3,
+      maxUsernameLength: 30,
+      usernameValidator: (value) => USERNAME_RE.test(value),
+    }),
+    ...(config.HIBP_CHECK_ENABLED ? [haveIBeenPwned()] : []),
+  ],
   advanced: {
     database: { generateId: "uuid" },
     trustedProxyHeaders: true,
     cookiePrefix: "omicron",
   },
-  // The CSRF origin check must trust the real public origin, which on a
-  // wizard-configured instance differs from the boot-time APP_DOMAIN. Derive it
-  // per request from the forwarded headers (Caddy sets them, the SvelteKit proxy
-  // passes them through), the same signal cookieSecure and federation use.
+  rateLimit: {
+    storage: "memory",
+  },
+  // Trust the real public origin (a wizard-set domain ≠ APP_DOMAIN) from forwarded headers.
   trustedOrigins: (request) => {
     const proto = request?.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
     const host = request?.headers.get("x-forwarded-host") ?? request?.headers.get("host");
     return host ? [`${proto || "https"}://${host}`] : [];
   },
-  user: {
-    fields: { name: "displayName", image: "avatarUrl" },
-    // Server-managed; declared so the first-user hook below can persist it.
-    additionalFields: {
-      isAdmin: { type: "boolean", required: false, input: false, defaultValue: false },
-    },
-    deleteUser: {
-      enabled: true,
-      // Broadcast the federated Delete(actor) while the key pair + followers still
-      // exist; Better Auth then removes the row and FK cascades wipe the rest.
-      beforeDelete: async (user) => {
-        if (!(await import("@/services/federationState.ts")).federationRunning()) return;
-        try {
-          const { sendActorDelete } = await import("@/federation/outbound.ts");
-          await sendActorDelete(user.id);
-        } catch (err) {
-          console.error("deleteUser: federated Delete failed (continuing):", err);
-        }
-      },
-    },
-  },
   session: {
     expiresIn: SESSION_TTL_S,
-    // Serve the session from a short-lived signed cookie to avoid a DB read on
-    // every getSession. Revocation (suspend, password change) still takes effect
-    // at once: the session middleware re-checks the user row and gates suspension.
-    cookieCache: { enabled: true, maxAge: 5 * 60 },
+    cookieCache: { enabled: true, maxAge: 5 * 60, strategy: "jwe" },
   },
   emailAndPassword: {
     enabled: true,
@@ -84,8 +67,6 @@ export const auth = betterAuth({
   },
   emailVerification: {
     sendOnSignUp: true,
-    // Link to the frontend verify page (which confirms client-side via
-    // authClient.verifyEmail), not Better Auth's redirect endpoint.
     sendVerificationEmail: ({ user, token }) => {
       queue.add("send_email_verification", {
         to: user.email,
@@ -94,10 +75,30 @@ export const auth = betterAuth({
       return Promise.resolve();
     },
   },
+  user: {
+    fields: { name: "displayName", image: "avatarUrl" },
+    // Declared so the create hook can persist it.
+    additionalFields: {
+      isAdmin: { type: "boolean", required: false, input: false, defaultValue: false },
+    },
+    deleteUser: {
+      enabled: true,
+      // Federate Delete(actor) before Better Auth removes the row (cascades wipe the rest).
+      beforeDelete: async (user) => {
+        if (!(await import("@/services/federationState.ts")).federationRunning()) return;
+        try {
+          const { sendActorDelete } = await import("@/federation/outbound.ts");
+          await sendActorDelete(user.id);
+        } catch (err) {
+          console.error("deleteUser: federated Delete failed (continuing):", err);
+        }
+      },
+    },
+  },
   databaseHooks: {
     user: {
       create: {
-        // First account becomes admin and is trusted as verified (owner can't be locked out).
+        // First account becomes admin, trusted as verified.
         before: async (user) => {
           const isFirst = (await usersRepo.countUsers()) === 0;
           return isFirst ? { data: { ...user, isAdmin: true, emailVerified: true } } : { data: user };
@@ -106,8 +107,7 @@ export const auth = betterAuth({
     },
     session: {
       create: {
-        // Block sign-in for suspended accounts (Better Auth has no such gate).
-        // Runs after credential verification, so it can't be used to enumerate.
+        // Block suspended accounts (runs after credential check, so no enumeration).
         before: async (session) => {
           const user = await usersRepo.findById(session.userId);
           if (user?.suspendedAt) throw new APIError("FORBIDDEN", { message: "This account has been suspended." });
@@ -116,12 +116,4 @@ export const auth = betterAuth({
       },
     },
   },
-  plugins: [
-    username({
-      minUsernameLength: 3,
-      maxUsernameLength: 30,
-      usernameValidator: (value) => USERNAME_RE.test(value),
-    }),
-    ...(config.HIBP_CHECK_ENABLED ? [haveIBeenPwned()] : []),
-  ],
 });
