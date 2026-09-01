@@ -151,6 +151,22 @@ const schema = z.object({
   // Reject federation inbox POSTs whose declared body exceeds this many bytes.
   INBOX_MAX_BODY_BYTES: z.coerce.number().int().positive().default(1_000_000),
 
+  // Public remote-discovery browsing (GET /api/remote/*). These GETs can trigger
+  // outbound federation requests and DB writes, so they get their own per-IP
+  // budget instead of riding the general read-through limiter.
+  RL_REMOTE_MAX: z.coerce.number().int().positive().default(30),
+  // Outbound concurrency ceilings for remote lookups: the global ceiling caps
+  // total simultaneous federation requests, the per-origin ceiling caps how many
+  // a single host can occupy (otherwise one slow host monopolizes the budget).
+  RL_REMOTE_MAX_OUTBOUND: z.coerce.number().int().positive().default(10),
+  RL_REMOTE_MAX_PER_ORIGIN: z.coerce.number().int().positive().default(3),
+  // Total deadline for a single remote lookup (WebFinger + actor + outbox),
+  // after which the request is aborted so a slow origin can't pin a handler.
+  REMOTE_LOOKUP_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+  // How long a failed/not-found resolution is negatively cached so repeated
+  // requests for a missing handle don't re-do the same outbound work.
+  REMOTE_NEGATIVE_CACHE_TTL_MS: z.coerce.number().int().positive().default(60_000),
+
   // Delayed garbage collection for uploaded media (see services/uploadGc.ts).
   // A file is deleted only once a daily sweep has seen nothing referencing it
   // for this many days — long enough that federated instances which cached the
@@ -226,6 +242,11 @@ function load() {
     RL_INBOX_MAX: Deno.env.get("RL_INBOX_MAX"),
     RL_WEBHOOK_MAX: Deno.env.get("RL_WEBHOOK_MAX"),
     INBOX_MAX_BODY_BYTES: Deno.env.get("INBOX_MAX_BODY_BYTES"),
+    RL_REMOTE_MAX: Deno.env.get("RL_REMOTE_MAX"),
+    RL_REMOTE_MAX_OUTBOUND: Deno.env.get("RL_REMOTE_MAX_OUTBOUND"),
+    RL_REMOTE_MAX_PER_ORIGIN: Deno.env.get("RL_REMOTE_MAX_PER_ORIGIN"),
+    REMOTE_LOOKUP_TIMEOUT_MS: Deno.env.get("REMOTE_LOOKUP_TIMEOUT_MS"),
+    REMOTE_NEGATIVE_CACHE_TTL_MS: Deno.env.get("REMOTE_NEGATIVE_CACHE_TTL_MS"),
     UPLOAD_GC_GRACE_DAYS: Deno.env.get("UPLOAD_GC_GRACE_DAYS"),
     UPLOAD_QUOTA_USER_MB: Deno.env.get("UPLOAD_QUOTA_USER_MB"),
     UPLOAD_QUOTA_TOTAL_MB: Deno.env.get("UPLOAD_QUOTA_TOTAL_MB"),
