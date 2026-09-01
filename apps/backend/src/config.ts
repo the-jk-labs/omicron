@@ -166,6 +166,10 @@ const schema = z.object({
   // How long a failed/not-found resolution is negatively cached so repeated
   // requests for a missing handle don't re-do the same outbound work.
   REMOTE_NEGATIVE_CACHE_TTL_MS: z.coerce.number().int().positive().default(60_000),
+  // How long a cached remote actor (and its posts) survives once nothing
+  // re-fetches it and no local user has an active edge against it. The
+  // remote-cache GC sweeper prunes actors older than this. 0 disables pruning.
+  REMOTE_CACHE_RETENTION_DAYS: z.coerce.number().int().min(0).default(30),
 
   // Delayed garbage collection for uploaded media (see services/uploadGc.ts).
   // A file is deleted only once a daily sweep has seen nothing referencing it
@@ -247,6 +251,7 @@ function load() {
     RL_REMOTE_MAX_PER_ORIGIN: Deno.env.get("RL_REMOTE_MAX_PER_ORIGIN"),
     REMOTE_LOOKUP_TIMEOUT_MS: Deno.env.get("REMOTE_LOOKUP_TIMEOUT_MS"),
     REMOTE_NEGATIVE_CACHE_TTL_MS: Deno.env.get("REMOTE_NEGATIVE_CACHE_TTL_MS"),
+    REMOTE_CACHE_RETENTION_DAYS: Deno.env.get("REMOTE_CACHE_RETENTION_DAYS"),
     UPLOAD_GC_GRACE_DAYS: Deno.env.get("UPLOAD_GC_GRACE_DAYS"),
     UPLOAD_QUOTA_USER_MB: Deno.env.get("UPLOAD_QUOTA_USER_MB"),
     UPLOAD_QUOTA_TOTAL_MB: Deno.env.get("UPLOAD_QUOTA_TOTAL_MB"),
