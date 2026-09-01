@@ -9,6 +9,7 @@ import * as usersRepo from "@/db/repositories/users.ts";
 import type { RemoteActor } from "@/db/schema.ts";
 import { articleLanguage, isPubliclyAddressed } from "@/federation/article.ts";
 import { getFederation } from "@/federation/mod.ts";
+import { runOutbound } from "@/federation/outboundGuard.ts";
 import { sameOrigin } from "@/lib/domain.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
 import { normalizeTags } from "@/lib/tags.ts";
@@ -45,15 +46,27 @@ async function signedLoader(): Promise<DocumentLoader | undefined> {
   return await ctx.getDocumentLoader({ identifier: user.username });
 }
 
-// Resolves `user@host` via WebFinger, then caches the actor document.
+// Resolves `user@host` via WebFinger, then caches the actor document. Runs under
+// the global + per-origin outbound semaphores and a total deadline so a slow or
+// hostile remote cannot occupy a request handler indefinitely. Returns null on
+// any failure (blocked domain, timeout, non-actor) — the caller negative-caches.
 export async function resolveActor(handle: string): Promise<RemoteActor | null> {
   // Never reach out to a defederated domain.
   if (await blockedDomainsRepo.isBlocked(handleHost(handle))) return null;
-  const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
-  const documentLoader = await signedLoader();
-  const object = await ctx.lookupObject(fediHandle(handle), { documentLoader });
-  if (!isActor(object) || !object.id) return null;
-  return await cacheActor(object, handle);
+  return await runOutbound(handleHost(handle), async (signal) => {
+    try {
+      const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
+      const documentLoader = await signedLoader();
+      if (signal.aborted) return null;
+      const object = await ctx.lookupObject(fediHandle(handle), { documentLoader, signal });
+      if (!isActor(object) || !object.id) return null;
+      return await cacheActor(object, handle);
+    } catch {
+      // A timeout/cancellation surfaces as an AbortError; treat every failure as
+      // "not resolvable right now" rather than crashing the request.
+      return null;
+    }
+  });
 }
 
 // Persists (or refreshes) a resolved actor. `handle` is optional because the
@@ -96,48 +109,53 @@ export async function cacheActor(actor: Actor, handle?: string): Promise<RemoteA
 export async function fetchOutboxPosts(handle: string, remoteActorId: string): Promise<void> {
   try {
     if (await blockedDomainsRepo.isBlocked(handleHost(handle))) return;
-    const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
-    const documentLoader = await signedLoader();
-    const actor = await ctx.lookupObject(fediHandle(handle), { documentLoader });
-    if (!isActor(actor)) return;
+    await runOutbound(handleHost(handle), async (signal) => {
+      if (signal.aborted) return;
+      const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
+      const documentLoader = await signedLoader();
+      if (signal.aborted) return;
+      const actor = await ctx.lookupObject(fediHandle(handle), { documentLoader, signal });
+      if (!isActor(actor)) return;
 
-    const outbox = await actor.getOutbox({ documentLoader });
-    if (!outbox) return;
-    // Paged collections keep items on their first page; inline ones expose them
-    // directly. Try the first page, then fall back to the collection itself.
-    const page =
-      "getFirst" in outbox && outbox.firstId ? ((await outbox.getFirst({ documentLoader })) ?? outbox) : outbox;
+      const outbox = await actor.getOutbox({ documentLoader });
+      if (!outbox) return;
+      // Paged collections keep items on their first page; inline ones expose them
+      // directly. Try the first page, then fall back to the collection itself.
+      const page =
+        "getFirst" in outbox && outbox.firstId ? ((await outbox.getFirst({ documentLoader })) ?? outbox) : outbox;
 
-    let count = 0;
-    for await (const item of page.getItems({ documentLoader })) {
-      if (count >= MAX_OUTBOX_POSTS) break;
-      const obj = item instanceof Create ? await item.getObject({ documentLoader }) : item;
-      // Long-form only: keep Articles, skip microblog Notes (Mastodon, …).
-      if (!(obj instanceof Article)) continue;
-      if (!obj.id) continue;
-      // Authority check: only cache a post whose id shares the actor's origin.
-      // An actor's outbox listing a post on another server's domain would
-      // otherwise let us store that post under this actor's name — the same
-      // cross-origin impersonation the inbox path guards against.
-      if (!sameOrigin(obj.id, actor.id)) continue;
-      // Privacy/security (#123): only cache Articles addressed to the Public
-      // collection. A followers-only post fetched from an outbox must not be
-      // persisted and surfaced on public read paths; an actor's public outbox
-      // normally lists public posts, so this just drops the exceptions.
-      if (!isPubliclyAddressed(obj)) continue;
-      await postsRepo.upsertRemotePost({
-        remoteActorId,
-        apId: obj.id.href,
-        title: obj.name ? text(obj.name) : null,
-        // Untrusted remote HTML, rendered with {@html} by the reader — sanitize
-        // before store (same as the inbox Create path).
-        contentHtml: sanitizePostHtml(text(obj.content)),
-        apType: "Article",
-        language: articleLanguage(obj),
-        createdAt: obj.published ? new Date(obj.published.epochMilliseconds) : undefined,
-      });
-      count++;
-    }
+      let count = 0;
+      for await (const item of page.getItems({ documentLoader })) {
+        if (signal.aborted) break;
+        if (count >= MAX_OUTBOX_POSTS) break;
+        const obj = item instanceof Create ? await item.getObject({ documentLoader }) : item;
+        // Long-form only: keep Articles, skip microblog Notes (Mastodon, …).
+        if (!(obj instanceof Article)) continue;
+        if (!obj.id) continue;
+        // Authority check: only cache a post whose id shares the actor's origin.
+        // An actor's outbox listing a post on another server's domain would
+        // otherwise let us store that post under this actor's name — the same
+        // cross-origin impersonation the inbox path guards against.
+        if (!sameOrigin(obj.id, actor.id)) continue;
+        // Privacy/security (#123): only cache Articles addressed to the Public
+        // collection. A followers-only post fetched from an outbox must not be
+        // persisted and surfaced on public read paths; an actor's public outbox
+        // normally lists public posts, so this just drops the exceptions.
+        if (!isPubliclyAddressed(obj)) continue;
+        await postsRepo.upsertRemotePost({
+          remoteActorId,
+          apId: obj.id.href,
+          title: obj.name ? text(obj.name) : null,
+          // Untrusted remote HTML, rendered with {@html} by the reader — sanitize
+          // before store (same as the inbox Create path).
+          contentHtml: sanitizePostHtml(text(obj.content)),
+          apType: "Article",
+          language: articleLanguage(obj),
+          createdAt: obj.published ? new Date(obj.published.epochMilliseconds) : undefined,
+        });
+        count++;
+      }
+    });
   } catch (err) {
     console.warn(`[federation] outbox fetch failed for ${handle}:`, err);
   }

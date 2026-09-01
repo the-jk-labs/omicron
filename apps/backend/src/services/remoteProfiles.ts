@@ -5,6 +5,7 @@ import * as relationsRepo from "@/db/repositories/relations.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import type { RemoteActor } from "@/db/schema.ts";
+import { negativeCached, setNegativeCached, singleFlight } from "@/federation/outboundGuard.ts";
 import { fetchOutboxPosts, resolveActor } from "@/federation/remote.ts";
 import { forbidden, notFound } from "@/lib/http.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
@@ -21,12 +22,26 @@ function isFresh(actor: RemoteActor): boolean {
 }
 
 // Returns the cached actor, resolving (or refreshing) it as needed.
+//
+// Resolution is coalesced per normalized handle (single-flight) so concurrent
+// requests for the same uncached handle share one lookup, and failures are
+// negatively cached for a short window so a missing/slow handle isn't re-resolved
+// on every request.
 export async function getProfile(handle: string): Promise<RemoteActor> {
   const cached = await remoteActorsRepo.findByHandle(handle);
   if (cached && isFresh(cached)) return cached;
-  const resolved = await resolveActor(handle);
+
+  // A recent failed resolution: serve stale data if we have it, otherwise fail
+  // fast without burning another outbound lookup.
+  if (negativeCached(handle)) {
+    if (cached) return cached;
+    throw notFound("Remote user not found.");
+  }
+
+  const resolved = await singleFlight(handle, () => resolveActor(handle));
   if (resolved) return resolved;
   if (cached) return cached; // serve stale data rather than fail
+  setNegativeCached(handle);
   throw notFound("Remote user not found.");
 }
 

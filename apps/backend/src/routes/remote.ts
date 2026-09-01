@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
+import { config } from "@/config.ts";
 import { notFound } from "@/lib/http.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
+import { clientIp, rateLimit } from "@/lib/rateLimit.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import { remoteProfile } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
@@ -20,6 +22,21 @@ remoteRoutes.use("*", async (_c, next) => {
   if (!federationRunning()) throw notFound("Federation is disabled.");
   await next();
 });
+
+// The three GET discovery routes below can reach out to remote servers and write
+// rows on a cache miss, so unlike the general READ_METHODS bypass (which assumes
+// reads are cheap) anonymous callers to them get a per-IP budget. Auth-gated
+// mutation routes (follow/mute/block) already ride the general write limiter.
+const discoveryLimiter = rateLimit({
+  name: "remote-discovery",
+  windowMs: 60_000,
+  max: config.RL_REMOTE_MAX,
+  key: (c) => `ip:${clientIp(c)}`,
+});
+
+remoteRoutes.use("/users/:handle", (c, next) =>
+  c.req.method === "GET" && !c.get("user") ? discoveryLimiter(c, next) : next(),
+);
 
 // Remote profile by `user@host` handle (includes follow/mute/block state).
 remoteRoutes.get("/users/:handle", async (c) => {
