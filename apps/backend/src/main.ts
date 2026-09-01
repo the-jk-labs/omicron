@@ -7,6 +7,7 @@ import { reconcileAnubisInBackground } from "@/services/anubisProtection.ts";
 import { seedFederationOrigin, seedFederationRunning } from "@/services/federationState.ts";
 import { getFederationEnabled, getOrigin } from "@/services/instanceSetup.ts";
 import { backfillSlugs } from "@/services/postSlugs.ts";
+import { startRemoteCacheGcSweeper } from "@/services/remoteCacheGc.ts";
 import { startScheduleSweeper } from "@/services/scheduledPosts.ts";
 import { startUploadGcSweeper } from "@/services/uploadGc.ts";
 import { APP_VERSION } from "@/version.ts";
@@ -43,6 +44,12 @@ async function main() {
   // that cached the URL to move on). Same database-backed pattern as the
   // schedule sweeper — see services/uploadGc.ts.
   startUploadGcSweeper();
+
+  // Prune cached remote actors (and their posts) that are stale and no longer
+  // referenced by any local follow/mute/block/recommendation/notification edge,
+  // so a hostile instance can't grow the remote tables without bound by serving
+  // many distinct actors. Safe to run on every node — see services/remoteCacheGc.ts.
+  startRemoteCacheGcSweeper();
 
   // `onListen` overrides Deno's own "Listening on http://0.0.0.0:8000/" banner,
   // which otherwise prints alongside ours and announces the same thing twice —
