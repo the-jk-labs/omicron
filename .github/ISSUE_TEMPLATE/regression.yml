@@ -1,0 +1,97 @@
+name: Regression report
+description: Something that used to work is now broken after an update.
+title: "regression: "
+labels: ["bug", "regression"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template when something **worked before and stopped working** after
+        upgrading. If you never saw it work, use the Bug report template instead.
+
+        Before opening, please search existing issues to avoid duplicates.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A clear, one-paragraph description of what regressed.
+    validations:
+      required: true
+  - type: input
+    id: last-good
+    attributes:
+      label: Last known good version
+      description: Release tag or commit where this still worked.
+      placeholder: "e.g. v0.3.0 or c1fb54f"
+    validations:
+      required: true
+  - type: input
+    id: first-bad
+    attributes:
+      label: First broken version
+      description: Release tag or commit where the problem appeared.
+      placeholder: "e.g. v0.4.0 or 2e876f4"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps that produce the regression.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Previous (correct) behaviour
+      description: What happened on the last known good version.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Current (broken) behaviour
+      description: What happens now. Include full error messages, stack traces, and logs.
+      render: shell
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      description: Which part of the platform regressed?
+      options:
+        - Backend (Hono / services / routes)
+        - Database (Drizzle / PostgreSQL)
+        - Federation (ActivityPub / Fedify)
+        - Frontend (SvelteKit / UI)
+        - Editor (Tiptap)
+        - Setup / deployment / upgrade
+        - Documentation
+        - Other / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Relevant details of where this runs.
+      placeholder: |
+        - Deployment: Docker Compose / bare metal / other
+        - OS: Ubuntu 24.04
+        - Deno version:
+        - PostgreSQL version:
+        - Browser (for frontend regressions): Firefox 129
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots, related issues, or anything else that helps.
+    validations:
+      required: false

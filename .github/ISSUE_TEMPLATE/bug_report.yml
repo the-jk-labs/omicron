@@ -1,0 +1,90 @@
+name: Bug report
+description: Something is broken or behaves incorrectly.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please fill in as much as you can —
+        the more precise the reproduction, the faster it gets fixed.
+
+        Before opening, please search existing issues to avoid duplicates.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A clear, one-paragraph description of the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps someone else can follow to see the bug.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What actually happened. Include full error messages, stack traces, and logs.
+      render: shell
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      description: Which part of the platform is involved?
+      options:
+        - Backend (Hono / services / routes)
+        - Database (Drizzle / PostgreSQL)
+        - Federation (ActivityPub / Fedify)
+        - Frontend (SvelteKit / UI)
+        - Editor (Tiptap)
+        - Setup / deployment / upgrade
+        - Documentation
+        - Other / not sure
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: Release tag or `git rev-parse HEAD` of the instance you are running.
+      placeholder: "e.g. v0.4.1 or 2e876f4"
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Relevant details of where this runs.
+      placeholder: |
+        - Deployment: Docker Compose / bare metal / other
+        - OS: Ubuntu 24.04
+        - Deno version:
+        - PostgreSQL version:
+        - Browser (for frontend bugs): Firefox 129
+        - Federation peer (for federation bugs): Mastodon 4.3
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots, related issues, or anything else that helps.
+    validations:
+      required: false

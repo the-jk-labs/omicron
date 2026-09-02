@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/the-jk-labs/omicron-docs
+    about: Setup, deployment, upgrade, and usage guides.
+  - name: Questions & discussion
+    url: https://github.com/yusifaliyevpro/omicron/discussions
+    about: Ask questions or discuss ideas that aren't yet a concrete bug or feature request.
