@@ -1,0 +1,66 @@
+name: Feature request
+description: Suggest a new capability or an improvement.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Please describe the problem you want solved before the
+        solution — it helps us find the best fit for the platform's goals
+        (clean architecture, no vendor lock-in, self-hostable, high performance).
+
+        Before opening, please search existing issues to avoid duplicates.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What problem does this solve? Who is affected and when?
+      placeholder: "As an instance admin, I can't ... which means ..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe what you'd like to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you thought about, and why they fall short.
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      description: Which part of the platform would this touch?
+      options:
+        - Backend (Hono / services / routes)
+        - Database (Drizzle / PostgreSQL)
+        - Federation (ActivityPub / Fedify)
+        - Frontend (SvelteKit / UI)
+        - Editor (Tiptap)
+        - Setup / deployment / upgrade
+        - Documentation
+        - Other / not sure
+    validations:
+      required: true
+  - type: checkboxes
+    id: federation-impact
+    attributes:
+      label: Federation impact
+      description: Does this change behaviour visible to other ActivityPub instances?
+      options:
+        - label: This may affect how other instances see or interact with this one.
+          required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Mockups, links to prior art, related issues, or anything else.
+    validations:
+      required: false
