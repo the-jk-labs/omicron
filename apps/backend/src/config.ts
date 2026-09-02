@@ -155,6 +155,12 @@ const schema = z.object({
   // outbound federation requests and DB writes, so they get their own per-IP
   // budget instead of riding the general read-through limiter.
   RL_REMOTE_MAX: z.coerce.number().int().positive().default(30),
+  // Stricter per-IP budget for the operations that actually miss the local
+  // cache and perform outbound work. A cached read is cheap and counts only
+  // against RL_REMOTE_MAX; an outbound lookup (WebFinger + actor + outbox)
+  // also consumes this tighter cap, so a caller can't burn the full discovery
+  // budget on expensive remote resolutions.
+  RL_REMOTE_MISS_MAX: z.coerce.number().int().positive().default(20),
   // Outbound concurrency ceilings for remote lookups: the global ceiling caps
   // total simultaneous federation requests, the per-origin ceiling caps how many
   // a single host can occupy (otherwise one slow host monopolizes the budget).
@@ -247,6 +253,7 @@ function load() {
     RL_WEBHOOK_MAX: Deno.env.get("RL_WEBHOOK_MAX"),
     INBOX_MAX_BODY_BYTES: Deno.env.get("INBOX_MAX_BODY_BYTES"),
     RL_REMOTE_MAX: Deno.env.get("RL_REMOTE_MAX"),
+    RL_REMOTE_MISS_MAX: Deno.env.get("RL_REMOTE_MISS_MAX"),
     RL_REMOTE_MAX_OUTBOUND: Deno.env.get("RL_REMOTE_MAX_OUTBOUND"),
     RL_REMOTE_MAX_PER_ORIGIN: Deno.env.get("RL_REMOTE_MAX_PER_ORIGIN"),
     REMOTE_LOOKUP_TIMEOUT_MS: Deno.env.get("REMOTE_LOOKUP_TIMEOUT_MS"),

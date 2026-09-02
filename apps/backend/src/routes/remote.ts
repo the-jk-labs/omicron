@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { config } from "@/config.ts";
 import { notFound } from "@/lib/http.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
@@ -38,13 +38,22 @@ remoteRoutes.use("/users/:handle", (c, next) =>
   c.req.method === "GET" && !c.get("user") ? discoveryLimiter(c, next) : next(),
 );
 
-// Remote profile by `user@host` handle (includes follow/mute/block state).
+// A stable per-caller key for the stricter cache-miss budget: signed-in users
+// keyed by id, anonymous callers by IP — the same convention as the general
+// write limiter, so a signed-in user and an anonymous browser never share a
+// bucket.
+function callerKey(c: Context): string {
+  const user = c.get("user");
+  return user ? `u:${user.id}` : `ip:${clientIp(c)}`;
+}
+
 remoteRoutes.get("/users/:handle", async (c) => {
   const viewer = c.get("user");
   const handle = c.req.param("handle");
   const { actor, isFollowing, isMuted, isBlocked, tags } = await remoteProfilesService.getProfileView(
     handle,
     viewer?.id ?? null,
+    callerKey(c),
   );
   return c.json(remoteProfile(actor, isFollowing, { isMuted, isBlocked }, tags));
 });
@@ -93,7 +102,7 @@ remoteRoutes.get("/users/:handle/posts", async (c) => {
   const viewer = c.get("user");
   const handle = c.req.param("handle");
   const cursor = decodeCursor(c.req.query("cursor"));
-  const { items, nextCursor } = await remoteProfilesService.getPosts(handle, cursor, viewer?.id ?? null);
+  const { items, nextCursor } = await remoteProfilesService.getPosts(handle, cursor, viewer?.id ?? null, callerKey(c));
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
 });
 
@@ -103,7 +112,7 @@ remoteRoutes.get("/users/:handle/recommendations", async (c) => {
   const viewer = c.get("user");
   const handle = c.req.param("handle");
   const cursor = decodeCursor(c.req.query("cursor"));
-  const actor = await remoteProfilesService.getProfile(handle);
+  const actor = await remoteProfilesService.getProfile(handle, callerKey(c));
   const { items, nextCursor } = await recommendationsService.listByRemoteActor(actor.id, viewer?.id ?? null, cursor);
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
 });
