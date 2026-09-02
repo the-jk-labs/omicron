@@ -78,13 +78,7 @@ body:
         - Deno version:
         - PostgreSQL version:
         - Browser (for frontend bugs): Firefox 129
-    validations:
-      required: false
-  - type: input
-    id: federation-peer
-    attributes:
-      label: Federation peer (if relevant)
-      description: For federation bugs, the software/version of the other instance (e.g. Mastodon 4.3).
+        - Federation peer (for federation bugs): Mastodon 4.3
     validations:
       required: false
   - type: textarea

@@ -76,13 +76,6 @@ body:
     validations:
       required: true
   - type: textarea
-    id: suspected-change
-    attributes:
-      label: Suspected cause
-      description: If you have bisected or have a hunch (a specific PR, commit, or migration), note it here.
-    validations:
-      required: false
-  - type: textarea
     id: environment
     attributes:
       label: Environment

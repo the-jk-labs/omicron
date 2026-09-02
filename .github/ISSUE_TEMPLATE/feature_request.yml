@@ -49,14 +49,6 @@ body:
         - Other / not sure
     validations:
       required: true
-  - type: checkboxes
-    id: federation-impact
-    attributes:
-      label: Federation impact
-      description: Does this change behaviour visible to other ActivityPub instances?
-      options:
-        - label: This may affect how other instances see or interact with this one.
-          required: false
   - type: textarea
     id: context
     attributes:
