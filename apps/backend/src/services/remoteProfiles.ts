@@ -1,14 +1,16 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { config } from "@/config.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
-// SPDX-License-Identifier: AGPL-3.0-or-later
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import type { RemoteActor } from "@/db/schema.ts";
 import { negativeCached, setNegativeCached, singleFlight } from "@/federation/outboundGuard.ts";
 import { fetchOutboxPosts, resolveActor } from "@/federation/remote.ts";
-import { forbidden, notFound } from "@/lib/http.ts";
+import { forbidden, notFound, tooManyRequests } from "@/lib/http.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
+import { checkRateLimitKey } from "@/lib/rateLimitCore.ts";
 import { queue } from "@/queue/queue.ts";
 
 // Read-side federation: resolve `user@host`, cache the actor + their outbox,
@@ -21,13 +23,25 @@ function isFresh(actor: RemoteActor): boolean {
   return Date.now() - actor.fetchedAt.getTime() < STALE_AFTER_MS;
 }
 
+// Charges the stricter cache-miss budget against `callerKey` before any
+// outbound work. A fresh cache hit never reaches this; an outbound WebFinger +
+// actor + outbox fetch does, so repeated anonymous lookups burn through a
+// tighter cap than plain (cached) reads. `callerKey` is undefined for internal
+// callers that are already metered elsewhere (e.g. the signed-in follow path
+// rides the general write limiter).
+async function chargeMiss(callerKey: string | undefined): Promise<void> {
+  if (!callerKey) return;
+  const { allowed } = await checkRateLimitKey(callerKey, "remote-miss", 60_000, config.RL_REMOTE_MISS_MAX);
+  if (!allowed) throw tooManyRequests("Too many remote lookups; try again shortly.");
+}
+
 // Returns the cached actor, resolving (or refreshing) it as needed.
 //
 // Resolution is coalesced per normalized handle (single-flight) so concurrent
 // requests for the same uncached handle share one lookup, and failures are
 // negatively cached for a short window so a missing/slow handle isn't re-resolved
 // on every request.
-export async function getProfile(handle: string): Promise<RemoteActor> {
+export async function getProfile(handle: string, callerKey?: string): Promise<RemoteActor> {
   const cached = await remoteActorsRepo.findByHandle(handle);
   if (cached && isFresh(cached)) return cached;
 
@@ -38,6 +52,7 @@ export async function getProfile(handle: string): Promise<RemoteActor> {
     throw notFound("Remote user not found.");
   }
 
+  await chargeMiss(callerKey);
   const resolved = await singleFlight(handle, () => resolveActor(handle));
   if (resolved) return resolved;
   if (cached) return cached; // serve stale data rather than fail
@@ -46,8 +61,8 @@ export async function getProfile(handle: string): Promise<RemoteActor> {
 }
 
 // Profile plus whether `viewerId` follows this remote actor.
-export async function getProfileView(handle: string, viewerId: string | null) {
-  const actor = await getProfile(handle);
+export async function getProfileView(handle: string, viewerId: string | null, callerKey?: string) {
+  const actor = await getProfile(handle, callerKey);
   // A blocked remote actor is invisible to the viewer, same as a blocked local
   // user — the profile reads as not-found. Unblock from Connections settings.
   if (viewerId && (await relationsRepo.hasRemote("block", viewerId, actor.id))) {
@@ -80,17 +95,26 @@ export async function unfollow(viewerId: string, handle: string): Promise<void> 
   queue.add("send_unfollow", { followerId: viewerId, targetActor: actor.apId });
 }
 
-export async function getPosts(handle: string, cursor: Cursor | null, viewerId: string | null = null) {
-  const actor = await getProfile(handle);
+export async function getPosts(
+  handle: string,
+  cursor: Cursor | null,
+  viewerId: string | null = null,
+  callerKey?: string,
+) {
+  const actor = await getProfile(handle, callerKey);
   // Only re-crawl the outbox on the first page, and only when stale, so
   // pagination stays cheap and stable.
   if (!cursor && !isFresh(actor)) {
+    await chargeMiss(callerKey);
     await fetchOutboxPosts(handle, actor.id);
   } else if (!cursor) {
     // Fresh-but-empty (e.g. first ever view in the same TTL window): ensure we
     // have at least crawled once.
     const existing = await postsRepo.listByRemoteActor(actor.id, null, null, 1);
-    if (existing.length === 0) await fetchOutboxPosts(handle, actor.id);
+    if (existing.length === 0) {
+      await chargeMiss(callerKey);
+      await fetchOutboxPosts(handle, actor.id);
+    }
   }
 
   const rows = await postsRepo.listByRemoteActor(actor.id, viewerId, cursor, DEFAULT_PAGE_SIZE);
