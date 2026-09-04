@@ -24,7 +24,7 @@
   "dependencies": {
     "@fedify/fedify": "2.3.6",
     "@fedify/redis": "2.3.6",
-    "@hono/zod-validator": "0.9.0",
+    "@hono/zod-validator": "0.9.1",
     "@imagemagick/magick-wasm": "0.0.43",
     "@vscode/markdown-it-katex": "1.1.2",
     "bcryptjs": "3.0.3",
@@ -32,7 +32,7 @@
     "drizzle-orm": "0.45.2",
     "hono": "4.13.5",
     "ioredis": "6.0.0",
-    "katex": "0.18.4",
+    "katex": "0.18.5",
     "markdown-it": "15.0.1",
     "postgres": "3.4.9",
     "sanitize-html": "2.17.7",
@@ -40,13 +40,13 @@
   },
   "devDependencies": {
     "@types/deno": "2.7.0",
-    "@types/node": "26.4.0",
+    "@types/node": "26.4.1",
     "@types/sanitize-html": "2.16.1",
     "drizzle-kit": "0.31.10",
     "greenly": "1.1.6",
-    "oxfmt": "0.65.0",
-    "oxlint": "1.80.0",
+    "oxfmt": "0.66.0",
+    "oxlint": "1.81.0",
     "oxlint-tsgolint": "7.0.2001",
-    "vitest": "4.1.11"
+    "vitest": "5.0.0"
   }
 }
