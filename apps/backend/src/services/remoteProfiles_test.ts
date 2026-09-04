@@ -30,7 +30,7 @@ vi.mock("@/federation/remote.ts", () => ({
   fetchOutboxPosts: () => Promise.resolve(),
 }));
 
-vi.mock("@/queue/queue.ts", () => ({ queue: { add: vi.fn() } }));
+vi.mock("@/queue/queue.ts", () => ({ queue: { add: vi.fn<() => void>() } }));
 
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import { getProfile } from "@/services/remoteProfiles.ts";
