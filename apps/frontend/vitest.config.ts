@@ -21,6 +21,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
+    fsModuleCache: true,
     include: ["src/**/*.test.ts"],
     // Tailwind/theme CSS is irrelevant to these assertions and slows the run.
     css: false,

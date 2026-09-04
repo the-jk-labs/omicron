@@ -9,5 +9,7 @@ export default defineConfig({
   },
   test: {
     include: ["src/**/*_test.ts", "tests/**/*_test.ts"],
+    fsModuleCache: true,
+    slowTestThreshold: 2000,
   },
 });
