@@ -155,8 +155,10 @@ ${items}
 `;
 }
 
-/** Response headers shared by both feeds. */
+/** Response headers shared by both feeds. Feeds are public syndication, so
+ *  cross-origin reads are allowed for feed readers and embeds. */
 export const FEED_HEADERS = {
   "content-type": "application/rss+xml; charset=utf-8",
   "cache-control": "public, max-age=3600",
+  "access-control-allow-origin": "*",
 };
