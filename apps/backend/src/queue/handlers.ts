@@ -29,6 +29,22 @@ export function registerJobHandlers() {
     await deliverPostDelete(postId, authorId);
   });
 
+  // A local comment was created or edited; fan out a Create(Note) /
+  // Update(Note) so it threads under the post on remote instances.
+  registerHandler("federate_comment", async ({ commentId, action }) => {
+    if (!federationRunning()) return;
+    const { deliverComment } = await import("@/federation/deliver.ts");
+    await deliverComment(commentId, action ?? "create");
+  });
+
+  // A local comment was deleted; tombstone the Note on remote instances. The
+  // row is already gone, so the payload carries the former author + post ids.
+  registerHandler("federate_comment_delete", async ({ commentId, authorId, postId }) => {
+    if (!federationRunning()) return;
+    const { deliverCommentDelete } = await import("@/federation/deliver.ts");
+    await deliverCommentDelete(commentId, authorId, postId);
+  });
+
   // A user edited their own profile (name/bio/email/links/avatar); push an
   // Update(Person) so instances that already cached the old actor refresh it.
   registerHandler("federate_actor_update", async ({ userId }) => {

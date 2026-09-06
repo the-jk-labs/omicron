@@ -16,19 +16,28 @@ async function statsOf(commentId: string, viewerId: string): Promise<commentLike
 export async function like(userId: string, commentId: string) {
   const comment = await commentsRepo.findById(commentId);
   if (!comment) throw notFound("Comment not found.");
-  // A block forbids liking a blocked user's comment (either direction). Comment
-  // authors are always local.
-  if (await relationsRepo.localBlockExists(userId, comment.authorId)) {
+  // A block forbids liking a blocked user's comment (either direction for a
+  // local author; outgoing only for a remote one — inbound remote blocks are
+  // invisible here, same as the comment listing).
+  if (comment.authorId) {
+    if (await relationsRepo.localBlockExists(userId, comment.authorId)) {
+      throw forbidden("You cannot like this comment.");
+    }
+  } else if (comment.remoteActorId && (await relationsRepo.hasRemote("block", userId, comment.remoteActorId))) {
     throw forbidden("You cannot like this comment.");
   }
   await commentLikesRepo.add(commentId, userId);
-  await notifications.notify({
-    recipientId: comment.authorId,
-    type: "comment_like",
-    actorId: userId,
-    postId: comment.postId,
-    commentId,
-  });
+  // Only a local author can receive an in-app notification; a remote one has
+  // no inbox here. (The Like itself stays local-only — it never federates.)
+  if (comment.authorId) {
+    await notifications.notify({
+      recipientId: comment.authorId,
+      type: "comment_like",
+      actorId: userId,
+      postId: comment.postId,
+      commentId,
+    });
+  }
   return statsOf(commentId, userId);
 }
 
@@ -36,12 +45,14 @@ export async function unlike(userId: string, commentId: string) {
   const comment = await commentsRepo.findById(commentId);
   if (!comment) throw notFound("Comment not found.");
   await commentLikesRepo.remove(commentId, userId);
-  await notifications.unnotify({
-    recipientId: comment.authorId,
-    type: "comment_like",
-    actorId: userId,
-    postId: comment.postId,
-    commentId,
-  });
+  if (comment.authorId) {
+    await notifications.unnotify({
+      recipientId: comment.authorId,
+      type: "comment_like",
+      actorId: userId,
+      postId: comment.postId,
+      commentId,
+    });
+  }
   return statsOf(commentId, userId);
 }

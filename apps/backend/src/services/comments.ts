@@ -6,6 +6,7 @@ import * as postsRepo from "@/db/repositories/posts.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
+import { queue } from "@/queue/queue.ts";
 import * as notifications from "@/services/notifications.ts";
 
 // Business logic for comments. Content is plain text (max 2 000 chars); the
@@ -80,6 +81,10 @@ export async function create(authorId: string, postId: string, content: string, 
     });
   }
 
+  // Federate the response out as a Note (no-op unless the post is public and
+  // someone remote follows the thread — see deliverComment).
+  queue.add("federate_comment", { commentId: comment.id });
+
   return comment;
 }
 
@@ -96,11 +101,15 @@ export async function edit(userId: string, commentId: string, content: string) {
   if (!comment) throw notFound("Comment not found.");
   if (comment.authorId !== userId) throw forbidden("You can only edit your own comments.");
 
-  return commentsRepo.update(commentId, text);
+  const updated = await commentsRepo.update(commentId, text);
+  queue.add("federate_comment", { commentId, action: "update" });
+  return updated;
 }
 
 // Deletes a comment (and its replies, via cascade). Only the comment's author
-// or an admin may delete it.
+// or an admin may delete it. A deleted local comment federates a Delete(Note)
+// so remote threads drop it too; a removed remote reply just disappears here
+// (the original still lives on its home instance).
 export async function remove(userId: string, isAdmin: boolean, commentId: string) {
   const comment = await commentsRepo.findById(commentId);
   if (!comment) throw notFound("Comment not found.");
@@ -108,6 +117,13 @@ export async function remove(userId: string, isAdmin: boolean, commentId: string
     throw forbidden("You can only delete your own comments.");
   }
   await commentsRepo.remove(commentId);
+  if (comment.authorId) {
+    queue.add("federate_comment_delete", {
+      commentId: comment.id,
+      authorId: comment.authorId,
+      postId: comment.postId,
+    });
+  }
 }
 
 export async function list(

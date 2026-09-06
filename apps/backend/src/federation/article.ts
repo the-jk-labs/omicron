@@ -82,6 +82,14 @@ export function buildArticle(
     to: PUBLIC_COLLECTION,
     cc: ctx.getFollowersUri(identifier),
   };
+  // Thread discovery: points at this post's Replies collection (see
+  // federation/mod.ts), so Mastodon renders the local + federated Responses
+  // under the post instead of an empty thread. Omitted for followers-only
+  // posts — that collection is served publicly, so it must never name them.
+  const replies =
+    to.href === PUBLIC_COLLECTION.href
+      ? new URL(`/users/${identifier}/posts/${post.id}/replies`, federationOrigin())
+      : undefined;
   return new Article({
     id: new URL(`/posts/${post.id}`, ctx.getActorUri(identifier)),
     attribution: ctx.getActorUri(identifier),
@@ -95,6 +103,7 @@ export function buildArticle(
     cc,
     url: new URL(`/posts/${post.id}`, ctx.getActorUri(identifier)),
     tags: tags.map((t) => new Hashtag({ name: `#${t.name}`, href: new URL(`/tags/${t.slug}`, federationOrigin()) })),
+    replies,
   });
 }
 

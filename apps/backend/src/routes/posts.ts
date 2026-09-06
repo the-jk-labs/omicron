@@ -236,6 +236,7 @@ postRoutes.post("/:id/comments", jsonBody(createCommentSchema), async (c) => {
           displayName: user.displayName,
           avatarUrl: user.avatarUrl,
         },
+        remoteActor: null,
       }),
     },
     201,
