@@ -10,6 +10,7 @@ import type { RemoteActor } from "@/db/schema.ts";
 import { articleLanguage, isPubliclyAddressed } from "@/federation/article.ts";
 import { getFederation } from "@/federation/mod.ts";
 import { runOutbound } from "@/federation/outboundGuard.ts";
+import { extractHandleHost, isBlockedHandle, isHostAllowed } from "@/federation/ssrf.ts";
 import { sameOrigin } from "@/lib/domain.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
 import { normalizeTags } from "@/lib/tags.ts";
@@ -32,8 +33,24 @@ function fediHandle(handle: string): string {
 }
 
 // The host portion of a `user@host` (or `@user@host`) handle, for blocklist checks.
+// Port-stripped and normalized via the SSRF guard so `user@127.0.0.1:8000`
+// keys the per-origin budget by `127.0.0.1`, not the raw `127.0.0.1:8000`.
 function handleHost(handle: string): string {
-  return handle.replace(/^@/, "").split("@").pop() ?? "";
+  return extractHandleHost(handle) ?? handle.replace(/^@/, "").split("@").pop() ?? "";
+}
+
+// SSRF gate: syntactically-blocked handles (private IPs, localhost,
+// single-label docker names, malformed shapes) are refused without any I/O.
+// Handles that look public still need the DNS check below, which fails closed.
+function handleBlockedSync(handle: string): boolean {
+  return isBlockedHandle(handle);
+}
+
+async function handleAllowed(handle: string): Promise<boolean> {
+  if (handleBlockedSync(handle)) return false;
+  const host = extractHandleHost(handle);
+  if (host === null) return false;
+  return await isHostAllowed(host);
 }
 
 // A signed document loader (keyed to the oldest local user) so instances that
@@ -49,8 +66,15 @@ async function signedLoader(): Promise<DocumentLoader | undefined> {
 // Resolves `user@host` via WebFinger, then caches the actor document. Runs under
 // the global + per-origin outbound semaphores and a total deadline so a slow or
 // hostile remote cannot occupy a request handler indefinitely. Returns null on
-// any failure (blocked domain, timeout, non-actor) — the caller negative-caches.
+// any failure (blocked domain, SSRF-denied host, timeout, non-actor) — the
+// caller negative-caches.
 export async function resolveActor(handle: string): Promise<RemoteActor | null> {
+  // SSRF guard first (no I/O on the fast path): never emit WebFinger/actor
+  // fetches toward loopback, RFC1918, link-local, or other private hosts from
+  // an unauthenticated handle. Fedify's own validatePublicUrl enforces the same
+  // at the fetch layer; this makes the property explicit and testable here.
+  if (handleBlockedSync(handle)) return null;
+  if (!(await handleAllowed(handle))) return null;
   // Never reach out to a defederated domain.
   if (await blockedDomainsRepo.isBlocked(handleHost(handle))) return null;
   return await runOutbound(handleHost(handle), async (signal) => {
@@ -108,6 +132,8 @@ export async function cacheActor(actor: Actor, handle?: string): Promise<RemoteA
 // profile still renders from whatever is cached.
 export async function fetchOutboxPosts(handle: string, remoteActorId: string): Promise<void> {
   try {
+    if (handleBlockedSync(handle)) return;
+    if (!(await handleAllowed(handle))) return;
     if (await blockedDomainsRepo.isBlocked(handleHost(handle))) return;
     await runOutbound(handleHost(handle), async (signal) => {
       if (signal.aborted) return;
