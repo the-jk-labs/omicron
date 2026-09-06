@@ -239,7 +239,9 @@ type LikeStats = { count: number; liked: boolean };
 
 // Accepts a plain author row plus optional like stats and nested replies (only
 // top-level comments carry replies). Replies are themselves rendered via
-// commentView so the shape is uniform at every level.
+// commentView so the shape is uniform at every level. The author is whichever
+// kind the row carries — a local user, or a cached remote actor shaped exactly
+// like `relationActorRemote` so `/@${username}` links resolve either way.
 export function commentView(
   row: CommentWithAuthor & {
     likeStats?: LikeStats;
@@ -249,17 +251,22 @@ export function commentView(
   id: string;
   content: string;
   createdAt: Date;
-  author: CommentWithAuthor["author"];
+  // Non-null: exactly one join hits per row (see `comments_author_kind_ck`),
+  // and the throw below turns the impossible neither-side case into a 500
+  // instead of a malformed payload.
+  author: Exclude<CommentWithAuthor["author"], null> | ReturnType<typeof relationActorRemote>;
   parentId: string | null;
   likeCount: number;
   liked: boolean;
   replies: ReturnType<typeof commentView>[];
 } {
+  const author = row.author ?? (row.remoteActor ? relationActorRemote(row.remoteActor) : null);
+  if (!author) throw new Error("commentView: comment has neither local nor remote author");
   return {
     id: row.comment.id,
     content: row.comment.content,
     createdAt: row.comment.createdAt,
-    author: row.author,
+    author,
     parentId: row.comment.parentId,
     likeCount: row.likeStats?.count ?? 0,
     liked: row.likeStats?.liked ?? false,

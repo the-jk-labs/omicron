@@ -13,6 +13,8 @@ export type JobName =
   | "federate_post"
   | "indexnow_submit"
   | "federate_post_delete"
+  | "federate_comment"
+  | "federate_comment_delete"
   | "federate_actor_update"
   | "federate_list_item"
   | "send_follow"
@@ -30,6 +32,8 @@ export type JobPayloads = {
   federate_post: { postId: string; action?: "create" | "update" };
   indexnow_submit: { postId: string };
   federate_post_delete: { postId: string; authorId: string };
+  federate_comment: { commentId: string; action?: "create" | "update" };
+  federate_comment_delete: { commentId: string; authorId: string; postId: string };
   federate_actor_update: { userId: string };
   federate_list_item: { listId: string; postId: string; action: "add" | "remove" };
   send_follow: { followerId: string; targetActor: string };

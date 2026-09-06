@@ -51,3 +51,16 @@ export function htmlToText(html: string): string {
     .replace(/[ \t]*\n[ \t]*/g, "\n")
     .trim();
 }
+
+// The inverse of `htmlToText` for outbound federation: a local comment is
+// plain text, but an ActivityPub Note's `content` is HTML. Each paragraph is
+// escaped (never trusted as markup) and wrapped in `<p>`, so what a Mastodon
+// reader renders matches the escaped rendering here.
+export function textToNoteHtml(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => `<p>${escapeHtml(line)}</p>`)
+    .join("");
+}

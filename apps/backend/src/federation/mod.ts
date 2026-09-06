@@ -21,6 +21,7 @@ import {
   Follow,
   Hashtag,
   isActor,
+  Note,
   OrderedCollection,
   PUBLIC_COLLECTION,
   Undo,
@@ -28,6 +29,7 @@ import {
 } from "@fedify/fedify/vocab";
 import { RedisKvStore, RedisMessageQueue } from "@fedify/redis";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
+import * as commentsRepo from "@/db/repositories/comments.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as listsRepo from "@/db/repositories/readingLists.ts";
@@ -40,8 +42,19 @@ import type { Post } from "@/db/schema.ts";
 import { buildPerson } from "@/federation/actor.ts";
 import { articleLanguage, buildArticle, isPubliclyAddressed } from "@/federation/article.ts";
 import { setupNodeInfo } from "@/federation/nodeinfo.ts";
+import {
+  buildNote,
+  commentApUri,
+  ingestNote,
+  ingestNoteDelete,
+  ingestNoteUpdate,
+  isCommentFederable,
+  noteContext,
+  postApUri,
+} from "@/federation/note.ts";
 import { cacheActor } from "@/federation/remote.ts";
 import { sameOrigin } from "@/lib/domain.ts";
+import { textToNoteHtml } from "@/lib/html.ts";
 import { getRedis, redisEnabled, redisFactory } from "@/lib/redis.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
 import { normalizeTags } from "@/lib/tags.ts";
@@ -66,6 +79,7 @@ export function getFederation(): Federation<ContextData> {
   setupActor(f);
   setupFollowers(f);
   setupLists(f);
+  setupNotes(f);
   setupInbox(f);
   setupOutbox(f);
   federation = f;
@@ -200,6 +214,84 @@ function setupLists(f: Federation<ContextData>) {
         name: list.title,
         summary: list.description || undefined,
         totalItems: items.length,
+        items,
+      });
+    },
+  );
+}
+
+// ── Replies: local comments as Notes + the per-post Replies collection ────
+// A local comment is fetchable as a Note at
+// /users/{identifier}/comments/{commentId} (author-scoped like the outbox, so
+// it stays inside the already-proxied /users/* prefix), and every public post
+// advertises /users/{identifier}/posts/{postId}/replies from its Article (see
+// buildArticle). Together they are what lets Mastodon thread both directions:
+// our responses render under the remote copy of the post, and remote replies
+// already ingested here re-federate as part of the thread.
+function setupNotes(f: Federation<ContextData>) {
+  f.setObjectDispatcher(Note, "/users/{identifier}/comments/{commentId}", async (ctx, { identifier, commentId }) => {
+    const nctx = await noteContext(federationOrigin(), identifier, commentId);
+    if (!nctx) return null;
+    return buildNote(identifier, {
+      id: new URL(nctx.noteId),
+      attribution: ctx.getActorUri(identifier),
+      contentHtml: textToNoteHtml(nctx.comment.content),
+      published: nctx.comment.createdAt,
+      inReplyTo: new URL(nctx.inReplyTo),
+      url: new URL(`${nctx.postUrl}#comment-${nctx.comment.id}`),
+      audience: { to: PUBLIC_COLLECTION, cc: ctx.getFollowersUri(identifier) },
+    });
+  });
+
+  f.setObjectDispatcher(
+    OrderedCollection,
+    "/users/{identifier}/posts/{postId}/replies",
+    async (ctx, { identifier, postId }) => {
+      const user = await usersRepo.findByUsername(identifier);
+      if (!user) return null;
+      const post = await postsRepo.findById(postId);
+      if (!post || post.post.authorId !== user.id) return null;
+      // Served to the whole internet, so private authors' posts 404 here —
+      // the same line isCommentFederable draws for ingest and delivery.
+      if (!isCommentFederable(post.post, user.isPrivate)) return null;
+
+      const origin = federationOrigin();
+      const postUri = postApUri(origin, post.post);
+      const rows = await commentsRepo.listForReplies(post.post.id);
+      const items = rows.map((row) => {
+        const inReplyTo = new URL(postUri);
+        const url = new URL(`${postUri}#comment-${row.comment.id}`);
+        const audience = { to: PUBLIC_COLLECTION, cc: ctx.getFollowersUri(identifier) };
+        if (row.author) {
+          return buildNote(identifier, {
+            id: new URL(row.comment.apId ?? commentApUri(origin, row.author.username, row.comment.id)),
+            attribution: ctx.getActorUri(row.author.username),
+            contentHtml: textToNoteHtml(row.comment.content),
+            published: row.comment.createdAt,
+            inReplyTo,
+            url,
+            audience,
+          });
+        }
+        // An ingested remote reply, re-served so the thread is complete for
+        // whoever fetches the collection. Attribution stays the original
+        // actor's id — we are not its author.
+        return buildNote(identifier, {
+          id: new URL(row.comment.apId!),
+          attribution: new URL(row.remoteActor!.apId),
+          contentHtml: textToNoteHtml(row.comment.content),
+          published: row.comment.createdAt,
+          inReplyTo,
+          url,
+          audience,
+        });
+      });
+
+      return new OrderedCollection({
+        id: ctx.getObjectUri(OrderedCollection, { identifier, postId }),
+        totalItems: await commentsRepo.countTopLevel(post.post.id),
+        // Capped at the oldest 20 (see listForReplies): enough for a thread
+        // view without turning one popular post into a megabyte.
         items,
       });
     },
@@ -390,10 +482,17 @@ function setupInbox(f: Federation<ContextData>) {
     })
     .on(Create, async (ctx, create) => {
       if (await fromBlockedDomain(create.actorId)) return;
+      const object = await create.getObject(ctx);
+      // A remote actor replied to one of our posts (or to a known reply) —
+      // ingest the Note as a response. Any other Note is ordinary microblog
+      // traffic and stays out, matching the long-form-only stance below.
+      if (object instanceof Note) {
+        await ingestNote(ctx, object);
+        return;
+      }
       // Ingest a remote post. This is a long-form blogging platform, so we only
       // accept ActivityPub Articles (Omicron, WriteFreely, Ghost, Plume, …) and
       // ignore microblog Notes (Mastodon, Pixelfed, …) outright.
-      const object = await create.getObject(ctx);
       if (!(object instanceof Article)) return;
       await ingestArticle(ctx, object);
     })
@@ -431,9 +530,14 @@ function setupInbox(f: Federation<ContextData>) {
     })
     .on(Update, async (ctx, update) => {
       if (await fromBlockedDomain(update.actorId)) return;
+      const object = await update.getObject(ctx);
+      // A remote author edited their reply — refresh the cached copy.
+      if (object instanceof Note) {
+        await ingestNoteUpdate(ctx, object);
+        return;
+      }
       // A remote author edited one of their Articles. Re-sanitize and update the
       // cached copy in place. Only Articles we already cache are touched.
-      const object = await update.getObject(ctx);
       if (!(object instanceof Article) || !object.id || !update.actorId) return;
       const existing = await postsRepo.findByApId(object.id.href);
       if (!existing) return;
@@ -470,7 +574,12 @@ function setupInbox(f: Federation<ContextData>) {
 
       // Delete(post): drop the cached copy, but only when the deleter owns it.
       const post = await postsRepo.findByApId(objectId);
-      if (!post) return;
+      if (!post) {
+        // Not a cached post — maybe a cached reply. ingestNoteDelete no-ops
+        // unless the row exists and the deleter wrote it.
+        if (del.actorId) await ingestNoteDelete(objectId, del.actorId.href);
+        return;
+      }
       const actor = await remoteActorsRepo.findByApId(del.actorId.href);
       if (!actor || actor.id !== post.remoteActorId) return;
       await postsRepo.removeByApId(objectId);

@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
   boolean,
+  check,
   customType,
   date,
   index,
@@ -423,6 +424,14 @@ export const recommendations = pgTable(
 // on the client, never as HTML. `parentId` is null for top-level comments and
 // points at the top-level comment a reply belongs to (replies are not nested
 // beyond one level — replying to a reply attaches to its top-level parent).
+//
+// A comment has exactly one author of two kinds: a local user (`authorId`) or
+// a cached remote actor (`remoteActorId`) whose Note reply arrived over
+// federation (Mastodon, …). Remote bodies arrive as HTML and are flattened to
+// plain text on ingest (see federation/note.ts), so the escaped-render
+// invariant holds for both kinds. `apId` is the comment's ActivityPub URI —
+// the canonical Note id for a remote reply (dedupe + Update/Delete routing),
+// minted lazily for a local comment on its first outbound federation.
 export const comments = pgTable(
   "comments",
   {
@@ -430,16 +439,19 @@ export const comments = pgTable(
     postId: uuid("post_id")
       .notNull()
       .references(() => posts.id, { onDelete: "cascade" }),
-    authorId: uuid("author_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    authorId: uuid("author_id").references(() => users.id, { onDelete: "cascade" }),
+    remoteActorId: uuid("remote_actor_id").references(() => remoteActors.id, { onDelete: "cascade" }),
     parentId: uuid("parent_id").references((): AnyPgColumn => comments.id, { onDelete: "cascade" }),
     content: text("content").notNull(),
+    apId: text("ap_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index("comments_post_created_idx").on(t.postId, t.createdAt.desc(), t.id.desc()),
     index("comments_parent_idx").on(t.parentId, t.createdAt, t.id),
+    uniqueIndex("comments_ap_id_idx").on(t.apId),
+    // Exactly one author kind per row: local XOR remote.
+    check("comments_author_kind_ck", sql`(${t.authorId} is null) <> (${t.remoteActorId} is null)`),
   ],
 );
 
