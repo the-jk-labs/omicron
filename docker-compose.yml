@@ -24,7 +24,7 @@ services:
       - -c
       - |
         set -e
-        for name in db_password session_secret anubis_ed25519_key; do
+        for name in db_password session_secret anubis_ed25519_key backup_password; do
           f="/secrets/$$name"
           if [ ! -s "$$f" ]; then
             head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' > "$$f"
@@ -174,6 +174,60 @@ services:
       # just for local debugging, not on the public interface.
       - "127.0.0.1:5173:3000"
 
+  # Encrypted daily backups (database dump + uploads + state + secrets) with
+  # restic. Enabled out of the box and local-only by default — snapshots land
+  # in the `backups` volume, so a fresh `up` needs no config for basic safety
+  # against accidental deletes. Point BACKUP_REPOSITORY at an S3-compatible
+  # backend (Cloudflare R2, AWS S3, MinIO, Backblaze B2, …) to also survive
+  # disk loss; only the endpoint + keys change (no vendor lock-in, open format).
+  #   Manual run:  docker compose exec backup backup-now
+  #   List:        docker compose exec backup restic snapshots
+  #   Restore:     ./backup/restore.sh [snapshot-id]
+  backup:
+    build: ./backup
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      init-secrets:
+        condition: service_completed_successfully
+    environment:
+      BACKUP_ENABLED: ${BACKUP_ENABLED:-true}
+      BACKUP_SCHEDULE: "${BACKUP_SCHEDULE:-0 2 * * *}"
+      BACKUP_REPOSITORY: ${BACKUP_REPOSITORY:-/backups/restic}
+      BACKUP_KEEP_DAILY: ${BACKUP_KEEP_DAILY:-3}
+      BACKUP_KEEP_WEEKLY: ${BACKUP_KEEP_WEEKLY:-1}
+      BACKUP_KEEP_MONTHLY: ${BACKUP_KEEP_MONTHLY:-0}
+      BACKUP_PASSWORD_FILE: /run/secrets/backup_password
+      # Direct restic bindings so `docker compose exec backup restic …` works too.
+      RESTIC_REPOSITORY: ${BACKUP_REPOSITORY:-/backups/restic}
+      RESTIC_PASSWORD_FILE: /run/secrets/backup_password
+      DATABASE_URL: ${DATABASE_URL:-}
+      POSTGRES_USER: ${POSTGRES_USER:-omicron}
+      POSTGRES_DB: ${POSTGRES_DB:-omicron}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      BACKUP_S3_REGION: ${BACKUP_S3_REGION:-auto}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-}
+    volumes:
+      # Uploads/state are writable here only so restore.sh can copy files back;
+      # daily backups only ever read. Secrets stay read-only (restored by hand).
+      - backups:/backups
+      - uploads:/data/uploads
+      - state:/data/state
+      - secrets:/run/secrets:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./botPolicy.yaml:/data/cfg/botPolicy.yaml:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pidof crond"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+
   # AI-scraper shield. A proof-of-work challenge that browser-like scrapers
   # can't pass but real browsers solve in ~1s. It always runs but only sits in
   # the request path when an admin enables protection (Admin → Security), which
@@ -263,6 +317,7 @@ volumes:
   uploads:
   state:
   secrets:
+  backups:
   redis_data:
   caddy_data:
   caddy_config:

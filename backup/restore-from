@@ -1,0 +1,40 @@
+#!/bin/sh
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Restore database + uploads + state from a staging dir populated by
+# `restic restore --target <staging-dir>`. Runs inside the backup container
+# (it has the DB credentials and writable uploads/state mounts). Called by
+# backup/restore.sh — never run by hand against a live instance.
+set -eu
+
+STAGE="${1:?usage: restore-from <staging-dir>}"
+DUMP="$STAGE/tmp/omicron-backup/db.dump"
+
+if [ ! -f "$DUMP" ]; then
+  echo "restore-from: database dump not found: $DUMP" >&2
+  exit 1
+fi
+
+# shellcheck disable=SC1091
+. /usr/local/bin/db-env.sh
+
+echo "restore-from: restoring database…"
+if [ -n "${DATABASE_URL:-}" ]; then
+  pg_restore --clean --if-exists --no-owner --dbname="$DATABASE_URL" "$DUMP"
+else
+  pg_restore --clean --if-exists --no-owner --dbname="$PGDATABASE" "$DUMP"
+fi
+
+restore_dir() {
+  if [ -d "$STAGE/$1" ]; then
+    cp -a "$STAGE/$1/." "/$1/"
+    echo "restore-from: restored $1"
+  else
+    echo "restore-from: not in snapshot, skipping: $1"
+  fi
+}
+restore_dir data/uploads
+restore_dir data/state
+
+rm -rf "$STAGE"
+echo "restore-from: done."

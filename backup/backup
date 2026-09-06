@@ -1,0 +1,79 @@
+#!/bin/sh
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# One backup run: pg_dump → restic backup → forget/prune → check.
+# Usage: backup [tag]   (tag defaults to "manual"; the daily cron passes
+# "scheduled", the entrypoint passes "boot"). Also available as `backup-now`.
+set -eu
+
+TAG="${1:-manual}"
+
+# shellcheck disable=SC1091
+. /usr/local/bin/db-env.sh
+
+export RESTIC_REPOSITORY="${RESTIC_REPOSITORY:-${BACKUP_REPOSITORY:-/backups/restic}}"
+export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-${BACKUP_PASSWORD_FILE:-/run/secrets/backup_password}}"
+# One knob for the region (R2 wants "auto"); an explicit AWS_DEFAULT_REGION wins.
+if [ -z "${AWS_DEFAULT_REGION:-}" ] && [ -n "${BACKUP_S3_REGION:-}" ]; then
+  export AWS_DEFAULT_REGION="$BACKUP_S3_REGION"
+fi
+
+if [ ! -s "$RESTIC_PASSWORD_FILE" ]; then
+  echo "backup: password file missing or empty: $RESTIC_PASSWORD_FILE" >&2
+  exit 1
+fi
+
+# Fixed staging path (not mktemp): restic records absolute source paths, so a
+# stable path keeps the dump at the same location in every snapshot, which is
+# what restore-from relies on.
+STAGE=/tmp/omicron-backup
+mkdir -p "$STAGE"
+DUMP="$STAGE/db.dump"
+
+echo "backup [$TAG]: dumping database…"
+if [ -n "${DATABASE_URL:-}" ]; then
+  pg_dump --dbname="$DATABASE_URL" --format=custom --file="$DUMP"
+else
+  pg_dump --format=custom --dbname="$PGDATABASE" --file="$DUMP"
+fi
+
+echo "backup [$TAG]: opening repository $RESTIC_REPOSITORY…"
+if ! restic snapshots >/dev/null 2>&1; then
+  echo "backup [$TAG]: initialising new repository…"
+  restic init
+fi
+
+# Only back up sources that exist right now (config mounts may be absent on
+# exotic setups); a missing path would fail the whole run.
+SOURCES="$DUMP"
+for path in /data/uploads /data/state /run/secrets /etc/caddy/Caddyfile /data/cfg/botPolicy.yaml; do
+  if [ -e "$path" ]; then
+    SOURCES="$SOURCES $path"
+  fi
+done
+
+echo "backup [$TAG]: storing snapshot…"
+# shellcheck disable=SC2086
+restic backup --host omicron --tag "$TAG" $SOURCES
+
+echo "backup [$TAG]: pruning…"
+FORGET_ARGS=""
+for spec in "DAILY:${BACKUP_KEEP_DAILY:-3}:--keep-daily" \
+            "WEEKLY:${BACKUP_KEEP_WEEKLY:-1}:--keep-weekly" \
+            "MONTHLY:${BACKUP_KEEP_MONTHLY:-0}:--keep-monthly"; do
+  value="${spec#*:}"; value="${value%%:*}"
+  flag="${spec##*:}"
+  case "$value" in
+    ''|*[!0-9]*) echo "backup [$TAG]: ignoring non-numeric retention: $value" ;;
+    0) ;;
+    *) FORGET_ARGS="$FORGET_ARGS $flag $value" ;;
+  esac
+done
+# shellcheck disable=SC2086
+restic forget --prune $FORGET_ARGS
+
+echo "backup [$TAG]: checking repository…"
+restic check
+
+echo "backup [$TAG]: done."
+restic snapshots --compact
