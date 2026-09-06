@@ -29,7 +29,6 @@ import {
 } from "@fedify/fedify/vocab";
 import { RedisKvStore, RedisMessageQueue } from "@fedify/redis";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
-import * as commentsRepo from "@/db/repositories/comments.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as listsRepo from "@/db/repositories/readingLists.ts";
@@ -42,16 +41,7 @@ import type { Post } from "@/db/schema.ts";
 import { buildPerson } from "@/federation/actor.ts";
 import { articleLanguage, buildArticle, isPubliclyAddressed } from "@/federation/article.ts";
 import { setupNodeInfo } from "@/federation/nodeinfo.ts";
-import {
-  buildNote,
-  commentApUri,
-  ingestNote,
-  ingestNoteDelete,
-  ingestNoteUpdate,
-  isCommentFederable,
-  noteContext,
-  postApUri,
-} from "@/federation/note.ts";
+import { buildNote, ingestNote, ingestNoteDelete, ingestNoteUpdate, noteContext } from "@/federation/note.ts";
 import { cacheActor } from "@/federation/remote.ts";
 import { sameOrigin } from "@/lib/domain.ts";
 import { textToNoteHtml } from "@/lib/html.ts";
@@ -220,14 +210,17 @@ function setupLists(f: Federation<ContextData>) {
   );
 }
 
-// ── Replies: local comments as Notes + the per-post Replies collection ────
-// A local comment is fetchable as a Note at
-// /users/{identifier}/comments/{commentId} (author-scoped like the outbox, so
-// it stays inside the already-proxied /users/* prefix), and every public post
-// advertises /users/{identifier}/posts/{postId}/replies from its Article (see
-// buildArticle). Together they are what lets Mastodon thread both directions:
-// our responses render under the remote copy of the post, and remote replies
-// already ingested here re-federate as part of the thread.
+// ── Notes: local comments fetchable as ActivityPub objects ───────────────
+// A local comment answers at /users/{identifier}/comments/{commentId}
+// (author-scoped like the outbox, so it stays inside the already-proxied
+// /users/* prefix). The per-post Replies collection advertised from every
+// public Article is NOT a second Fedify dispatcher — Fedify allows exactly one
+// object dispatcher per class and reading lists already own OrderedCollection
+// (a second registration throws RouterError and crashes the backend at boot)
+// — so it is a plain Hono route instead (see routes/replies.ts), mounted ahead
+// of the federation middleware. Together they are what lets Mastodon thread
+// both directions: our responses render under the remote copy of the post, and
+// remote replies already ingested here re-federate as part of the thread.
 function setupNotes(f: Federation<ContextData>) {
   f.setObjectDispatcher(Note, "/users/{identifier}/comments/{commentId}", async (ctx, { identifier, commentId }) => {
     const nctx = await noteContext(federationOrigin(), identifier, commentId);
@@ -242,60 +235,6 @@ function setupNotes(f: Federation<ContextData>) {
       audience: { to: PUBLIC_COLLECTION, cc: ctx.getFollowersUri(identifier) },
     });
   });
-
-  f.setObjectDispatcher(
-    OrderedCollection,
-    "/users/{identifier}/posts/{postId}/replies",
-    async (ctx, { identifier, postId }) => {
-      const user = await usersRepo.findByUsername(identifier);
-      if (!user) return null;
-      const post = await postsRepo.findById(postId);
-      if (!post || post.post.authorId !== user.id) return null;
-      // Served to the whole internet, so private authors' posts 404 here —
-      // the same line isCommentFederable draws for ingest and delivery.
-      if (!isCommentFederable(post.post, user.isPrivate)) return null;
-
-      const origin = federationOrigin();
-      const postUri = postApUri(origin, post.post);
-      const rows = await commentsRepo.listForReplies(post.post.id);
-      const items = rows.map((row) => {
-        const inReplyTo = new URL(postUri);
-        const url = new URL(`${postUri}#comment-${row.comment.id}`);
-        const audience = { to: PUBLIC_COLLECTION, cc: ctx.getFollowersUri(identifier) };
-        if (row.author) {
-          return buildNote(identifier, {
-            id: new URL(row.comment.apId ?? commentApUri(origin, row.author.username, row.comment.id)),
-            attribution: ctx.getActorUri(row.author.username),
-            contentHtml: textToNoteHtml(row.comment.content),
-            published: row.comment.createdAt,
-            inReplyTo,
-            url,
-            audience,
-          });
-        }
-        // An ingested remote reply, re-served so the thread is complete for
-        // whoever fetches the collection. Attribution stays the original
-        // actor's id — we are not its author.
-        return buildNote(identifier, {
-          id: new URL(row.comment.apId!),
-          attribution: new URL(row.remoteActor!.apId),
-          contentHtml: textToNoteHtml(row.comment.content),
-          published: row.comment.createdAt,
-          inReplyTo,
-          url,
-          audience,
-        });
-      });
-
-      return new OrderedCollection({
-        id: ctx.getObjectUri(OrderedCollection, { identifier, postId }),
-        totalItems: await commentsRepo.countTopLevel(post.post.id),
-        // Capped at the oldest 20 (see listForReplies): enough for a thread
-        // view without turning one popular post into a megabyte.
-        items,
-      });
-    },
-  );
 }
 
 // Drops inbound activities whose sender is on a defederated domain (exact host

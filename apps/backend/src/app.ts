@@ -10,6 +10,7 @@ import { registerJobHandlers } from "@/queue/handlers.ts";
 import { healthRoutes } from "@/routes/health.ts";
 import { apiRoutes } from "@/routes/index.ts";
 import { sessionMiddleware } from "@/routes/middleware.ts";
+import { repliesRoutes } from "@/routes/replies.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import { wellKnownRoutes } from "@/routes/wellKnown.ts";
 import { federationRunning } from "@/services/federationState.ts";
@@ -115,6 +116,12 @@ export async function buildApp() {
     // lets the NodeInfo JRD here take the path back from Fedify's own
     // single-version one. See routes/wellKnown.ts.
     app.route("/", wellKnownRoutes);
+    // The per-post Replies collection. A plain Hono route rather than a Fedify
+    // object dispatcher — Fedify allows one dispatcher per object class and
+    // reading lists already own OrderedCollection — mounted here for the same
+    // reason: anything under /users/* would otherwise 404 inside Fedify before
+    // Hono routes run. See routes/replies.ts.
+    app.route("/", repliesRoutes);
 
     const { getFederation } = await import("@/federation/mod.ts");
     const { withAttributionDomains } = await import("@/federation/attribution.ts");
