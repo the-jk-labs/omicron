@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Context } from "@fedify/fedify";
-import { isActor, Note } from "@fedify/fedify/vocab";
+import { isActor, Note, OrderedCollection, PUBLIC_COLLECTION } from "@fedify/fedify/vocab";
 import * as commentsRepo from "@/db/repositories/comments.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import type { PostWithAuthor } from "@/db/repositories/posts.ts";
@@ -11,7 +11,7 @@ import type { Comment, Post } from "@/db/schema.ts";
 import { isPubliclyAddressed } from "@/federation/article.ts";
 import { cacheActor } from "@/federation/remote.ts";
 import { sameOrigin } from "@/lib/domain.ts";
-import { htmlToText } from "@/lib/html.ts";
+import { htmlToText, textToNoteHtml } from "@/lib/html.ts";
 import { federationOrigin } from "@/services/federationState.ts";
 import * as notifications from "@/services/notifications.ts";
 
@@ -347,6 +347,63 @@ export async function ingestNoteDelete(objectHref: string, actorHref: string): P
   const actor = await remoteActorsRepo.findByApId(actorHref);
   if (!actor || actor.id !== existing.remoteActorId) return;
   await commentsRepo.remove(existing.id);
+}
+
+// Builds the post's Replies collection payload (plain JSON-LD, ready to
+// serve): the oldest 20 top-level responses — local and ingested remote alike
+// — with an honest `totalItems`. Served by a plain Hono route (see
+// routes/replies.ts), not a Fedify object dispatcher: Fedify allows exactly
+// one dispatcher per object class and reading lists already own
+// OrderedCollection, so a second registration crashes the backend at boot.
+// Null when the post isn't local, is unpublished, or belongs to a private
+// author — the collection is public, so it must never name those.
+export async function repliesPayload(
+  origin: string,
+  identifier: string,
+  postId: string,
+): Promise<Record<string, unknown> | null> {
+  const user = await usersRepo.findByUsername(identifier);
+  if (!user) return null;
+  const post = await postsRepo.findById(postId);
+  if (!post || post.post.authorId !== user.id) return null;
+  if (!isCommentFederable(post.post, user.isPrivate)) return null;
+
+  const postUri = postApUri(origin, post.post);
+  const followersUri = `${origin}/users/${identifier}/followers`;
+  const rows = await commentsRepo.listForReplies(post.post.id);
+  const items = rows.map((row) => {
+    const common = {
+      contentHtml: textToNoteHtml(row.comment.content),
+      published: row.comment.createdAt,
+      inReplyTo: new URL(postUri),
+      url: new URL(`${postUri}#comment-${row.comment.id}`),
+      audience: { to: PUBLIC_COLLECTION, cc: new URL(followersUri) },
+    };
+    if (row.author) {
+      return buildNote(identifier, {
+        ...common,
+        id: new URL(row.comment.apId ?? commentApUri(origin, row.author.username, row.comment.id)),
+        attribution: new URL(`${origin}/users/${row.author.username}`),
+      });
+    }
+    // An ingested remote reply, re-served so the thread is complete for
+    // whoever fetches the collection. Attribution stays the original actor's
+    // id — we are not its author. Remote rows always carry an apId.
+    return buildNote(identifier, {
+      ...common,
+      id: new URL(row.comment.apId!),
+      attribution: new URL(row.remoteActor!.apId),
+    });
+  });
+
+  const collection = new OrderedCollection({
+    id: new URL(`${origin}/users/${identifier}/posts/${post.post.id}/replies`),
+    totalItems: await commentsRepo.countTopLevel(post.post.id),
+    // Capped at the oldest 20 (see listForReplies): enough for a thread view
+    // without turning one popular post into a megabyte.
+    items,
+  });
+  return (await collection.toJsonLd()) as Record<string, unknown>;
 }
 
 // Finds a comment by ActivityPub URI: exact `apId` match first (remote Notes
