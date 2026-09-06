@@ -27,9 +27,20 @@
 # order, so the federation paths win and all other paths fall through.
 (routes) {
 	# Security hardening applied to every response: stop browsers from MIME
-	# sniffing and trust the declared Content-Type instead.
+	# sniffing and trust the declared Content-Type instead, and switch off the
+	# powerful browser APIs a blogging platform never uses (camera, microphone,
+	# geolocation, …) so an XSS hole can't reach for them.
+	#
+	# `>` defers the set until the response is being written, *replacing* any
+	# value the upstream already sent. A plain `header` here runs before the
+	# proxy and is *added* alongside the app's own header — the same doubling
+	# the @anubis_boot block below documents — which is exactly the duplicate
+	# X-Content-Type-Options a headers scan flags. The values below intentionally
+	# match apps/frontend/src/hooks.server.ts so direct-to-app dev traffic and
+	# Caddy-served prod traffic carry identical headers.
 	header {
-		X-Content-Type-Options nosniff
+		>X-Content-Type-Options nosniff
+		>Permissions-Policy "accelerometer=(), ambient-light-sensor=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(), usb=(), xr-spatial-tracking=()"
 	}
 
 	# Anubis reads the client IP from X-Real-IP and refuses the request outright
