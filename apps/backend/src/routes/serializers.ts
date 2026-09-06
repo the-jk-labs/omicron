@@ -251,7 +251,10 @@ export function commentView(
   id: string;
   content: string;
   createdAt: Date;
-  author: CommentWithAuthor["author"] | ReturnType<typeof relationActorRemote>;
+  // Non-null: exactly one join hits per row (see `comments_author_kind_ck`),
+  // and the throw below turns the impossible neither-side case into a 500
+  // instead of a malformed payload.
+  author: Exclude<CommentWithAuthor["author"], null> | ReturnType<typeof relationActorRemote>;
   parentId: string | null;
   likeCount: number;
   liked: boolean;
