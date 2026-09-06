@@ -119,6 +119,15 @@ const schema = z.object({
     .string()
     .transform((v) => v.toLowerCase() !== "false")
     .default(true),
+  // LAN / integration-test escape hatch for federation egress. When false
+  // (the default) remote handles that resolve to loopback, RFC1918, link-local,
+  // or other private hosts are refused before any outbound fetch. Set to "true"
+  // only for local development against instances on a private network — never
+  // on an internet-reachable host.
+  ALLOW_PRIVATE_FEDERATION: z
+    .string()
+    .transform((v) => v.toLowerCase() === "true")
+    .default(false),
   SESSION_SECRET: z.string().min(8),
   PORT: z.coerce.number().int().positive().default(8000),
   UPLOADS_DIR: z.string().min(1).default("./uploads"),
@@ -240,6 +249,7 @@ function load() {
     DATABASE_URL: resolveDatabaseUrl(),
     APP_DOMAIN: Deno.env.get("APP_DOMAIN"),
     FEDERATION_ENABLED: Deno.env.get("FEDERATION_ENABLED"),
+    ALLOW_PRIVATE_FEDERATION: Deno.env.get("ALLOW_PRIVATE_FEDERATION"),
     SESSION_SECRET: resolveSessionSecret(),
     PORT: Deno.env.get("PORT"),
     UPLOADS_DIR: Deno.env.get("UPLOADS_DIR"),

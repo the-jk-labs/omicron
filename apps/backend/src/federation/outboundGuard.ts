@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { config } from "@/config.ts";
+import { isBlockedHostSyntax } from "@/federation/ssrf.ts";
 
 // Outbound federation guards shared by the read-side resolution paths (remote
 // profile / posts / recommendations browsing). Those paths make requests that
@@ -80,7 +81,15 @@ function sweepOrigins(now: number) {
 
 // Runs an outbound action under the global and per-origin semaphores, returning
 // its result or null on abort/timeout. `host` keys the per-origin budget.
+//
+// Second-layer SSRF gate: syntactically-private hosts (loopback, RFC1918,
+// localhost, …) are refused before a permit is even acquired, so a caller that
+// bypasses the handle-level check in federation/remote.ts still cannot burn
+// outbound budget toward them. DNS-level checks live in federation/ssrf.ts (and
+// in Fedify's own fetch layer); this stays syntactic so unit tests with fake
+// hosts never touch the network.
 export async function runOutbound<T>(host: string, action: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  if (isBlockedHostSyntax(host)) throw new Error(`Refusing outbound federation to blocked host: ${host}`);
   sweepOrigins(Date.now());
   const deadline = AbortSignal.timeout(config.REMOTE_LOOKUP_TIMEOUT_MS);
   const releaseGlobal = await GLOBAL_SEMAPHORE.acquire();
