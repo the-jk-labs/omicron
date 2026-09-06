@@ -1,0 +1,41 @@
+#!/bin/sh
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Backup sidecar entrypoint: snapshot the environment for cron jobs, run one
+# backup at boot (fail fast on bad config), then serve the daily schedule.
+set -eu
+
+if [ "${BACKUP_ENABLED:-true}" != "true" ]; then
+  echo "backup: BACKUP_ENABLED is not 'true' — sleeping (no backups will run)."
+  exec sleep infinity
+fi
+
+SCHEDULE="${BACKUP_SCHEDULE:-0 2 * * *}"
+REPO="${BACKUP_REPOSITORY:-/backups/restic}"
+
+mkdir -p /backups /etc/backup
+touch /var/log/backup.log
+
+# BusyBox crond does not pass the container environment to its jobs, so
+# persist the backup-relevant variables for db-env.sh to re-import. Values are
+# single-quoted (awk printf has no sed-& pitfall); none of these are multiline.
+env | grep -E '^(BACKUP_|RESTIC_|AWS_|DATABASE_URL|POSTGRES_|PG)' \
+  | awk -F= '{ v = substr($0, length($1) + 2); gsub(/\x27/, "\x27\\\x27\x27", v); printf "export %s=\x27%s\x27\n", $1, v }' \
+  > /etc/backup/env.sh || true
+chmod 600 /etc/backup/env.sh
+
+echo "backup: repository: $REPO"
+echo "backup: schedule (UTC): $SCHEDULE"
+
+echo "backup: running initial backup…"
+if /usr/local/bin/backup boot >>/var/log/backup.log 2>&1; then
+  echo "backup: initial backup OK."
+else
+  echo "backup: initial backup FAILED (see /var/log/backup.log) — keeping the schedule so it retries."
+fi
+
+printf '%s . /etc/backup/env.sh; /usr/local/bin/backup scheduled >> /var/log/backup.log 2>&1\n' \
+  "$SCHEDULE" > /etc/crontabs/root
+
+echo "backup: schedule installed; waiting."
+exec crond -f -d 8
