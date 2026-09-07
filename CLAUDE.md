@@ -171,6 +171,10 @@ shows.
 Never credit an AI assistant as author, co-author, or contributor. No
 `Co-Authored-By` trailers, no "generated with" footers, in commits or PRs.
 
+Do not push AI checkpoint refs (`refs/claude/*`, `refs/cline/*`). They are
+authored as `Claude Code <noreply@anthropic.com>` and add a stale `claude`
+contributor on GitHub. Delete them locally if created.
+
 ### Pull request descriptions
 
 Write them for someone who has not seen the bug. A good one covers:
