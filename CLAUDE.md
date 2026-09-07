@@ -1,5 +1,17 @@
 # CLAUDE.md
 
+## Safety (STRICT)
+
+Before any dangerous operation — migrations, upgrades, restores, manual DB
+writes, volume deletes — take a backup first and confirm the snapshot exists:
+
+```sh
+docker compose exec backup backup-now
+docker compose exec backup restic snapshots
+```
+
+No user data is ever lost to an untested change.
+
 ## Project Overview
 
 This is a **federated blogging platform** (Medium-like, ActivityPub-powered).
