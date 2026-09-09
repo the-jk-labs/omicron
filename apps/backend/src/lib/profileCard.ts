@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { readFile } from "node:fs/promises";
 import {
+  AlphaAction,
   CompositeOperator,
   Drawables,
   Gravity,
@@ -48,9 +49,6 @@ const SITE_BASELINE = 578;
 // stays inside the wasm boundary with no per-pixel loop.
 const AVATAR = 232;
 const AVATAR_X = PAD;
-// A subtle ring around the photo, echoing the border the site's Avatar wears.
-const AVATAR_RING = 4;
-const AVATAR_RING_COLOR = "#3f3f46";
 const AVATAR_FALLBACK_BG = "#27272a";
 
 // The text column starts right of the avatar.
@@ -316,6 +314,12 @@ export async function renderProfileCard(
         cut.fillColor(new MagickColor("white")).roundRectangle(0, 0, AVATAR, AVATAR, AVATAR / 2, AVATAR / 2);
         cut.draw(mask);
         avatar.composite(mask, CompositeOperator.DstIn);
+        // Flatten what the mask cut away onto the card ground. The corners are
+        // card-coloured opaque pixels rather than transparency, so no
+        // compositor quirk can ever land them as a visible square — the seam
+        // is seamless by construction, not by alpha handling.
+        avatar.backgroundColor = new MagickColor(BACKGROUND);
+        avatar.alpha(AlphaAction.Remove);
         // Copied out of the callback: the buffer magick hands over is only
         // valid for the duration of the call.
         avatar.write(MagickFormat.Png, (bytes) => {
@@ -335,20 +339,9 @@ export async function renderProfileCard(
   // carries, so the two are recognisable as coming from the same place.
   draw.fillColor(new MagickColor(NAME_COLOR)).rectangle(PAD, 74, PAD + 56, 80);
 
-  if (clipped) {
-    // The ring sits behind the disc, peeking out around it — the border the
-    // site's own Avatar wears.
-    draw
-      .fillColor(new MagickColor(AVATAR_RING_COLOR))
-      .roundRectangle(
-        AVATAR_X - AVATAR_RING,
-        avatarY - AVATAR_RING,
-        AVATAR_X + AVATAR + AVATAR_RING,
-        avatarY + AVATAR + AVATAR_RING,
-        AVATAR / 2 + AVATAR_RING,
-        AVATAR / 2 + AVATAR_RING,
-      );
-  } else {
+  // A photo disc draws straight onto the card ground, ringless. Only the
+  // initials fallback paints anything here.
+  if (!clipped) {
     draw
       .fillColor(new MagickColor(AVATAR_FALLBACK_BG))
       .roundRectangle(AVATAR_X, avatarY, AVATAR_X + AVATAR, avatarY + AVATAR, AVATAR / 2, AVATAR / 2);
