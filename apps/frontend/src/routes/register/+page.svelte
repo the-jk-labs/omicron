@@ -14,6 +14,9 @@
 
   const instance = $derived(page.data.instance as InstanceInfo | null);
   const appName = $derived(instance?.name || env.PUBLIC_APP_NAME || "Omicron");
+  // Fail closed on stale data: an instance that does not advertise the flag
+  // is treated as requiring confirmation (the backend default).
+  const verificationRequired = $derived(instance?.emailVerificationRequired !== false);
 
   const MAX_DISPLAY_NAME_LEN = 60;
 
@@ -27,6 +30,10 @@
   let showConfirm = $state(false);
   let error = $state("");
   let busy = $state(false);
+  let registeredEmail = $state("");
+  let resending = $state(false);
+  let resent = $state(false);
+  let resendError = $state("");
   let touched = $state({ username: false, email: false, password: false, confirm: false, terms: false });
 
   let pwned = $state<boolean | null>(null);
@@ -153,6 +160,14 @@
         error = res.error.message ?? "Something went wrong.";
         return;
       }
+      // With confirmation required the account exists but has no session yet
+      // (Better Auth returns token: null) — Mastodon parity: end at
+      // "check your inbox", never signed in. Without it, keep the instant
+      // sign-in.
+      if (verificationRequired) {
+        registeredEmail = email.trim();
+        return;
+      }
       await invalidateAll();
       goto("/");
     } catch (err) {
@@ -161,223 +176,269 @@
       busy = false;
     }
   }
+
+  async function resendConfirmation() {
+    resendError = "";
+    resending = true;
+    try {
+      const res = await authClient.sendVerificationEmail({ email: registeredEmail, callbackURL: "/verify-email" });
+      if (res.error) {
+        resendError = res.error.message ?? "Something went wrong.";
+        return;
+      }
+      resent = true;
+    } catch (err) {
+      resendError = err instanceof Error ? err.message : "Something went wrong.";
+    } finally {
+      resending = false;
+    }
+  }
 </script>
 
 <PageTitle text="Create account" />
 
-<div class="mb-8 text-center">
-  <div class="mb-4 flex justify-center"><img src={logo} alt="" class="h-12 w-auto" /></div>
-  <h1 class="text-2xl font-bold tracking-tight text-foreground">Create your account</h1>
-  <p class="mt-1.5 text-sm text-muted-foreground">
-    {#if instance?.federationEnabled}
-      Join {appName} and follow writers across the fediverse.
-    {:else}
-      Join {appName} and start writing.
-    {/if}
-  </p>
-</div>
-
-<form onsubmit={submit} class="flex flex-col gap-4" novalidate>
-  <div class="flex flex-col gap-1.5">
-    <Label.Root for="displayName" class={labelClass}
-      >Display name <span class="font-normal text-muted-foreground">(optional)</span></Label.Root
-    >
-    <input
-      id="displayName"
-      bind:value={displayName}
-      autocomplete="name"
-      placeholder="Ada Lovelace"
-      maxlength={MAX_DISPLAY_NAME_LEN}
-      aria-describedby="displayName-hint"
-      class={field}
-    />
-    <p id="displayName-hint" class="text-xs text-muted-foreground">
-      {displayName.length}/{MAX_DISPLAY_NAME_LEN} — shown on posts and your profile. Long names are truncated with an ellipsis;
-      hover to see the full name.
+{#if registeredEmail}
+  <div class="flex flex-col items-center text-center">
+    <div class="mb-5 flex size-14 items-center justify-center rounded-full bg-muted text-foreground">
+      <Icon name="mail" size={26} />
+    </div>
+    <h1 class="text-2xl font-bold tracking-tight text-foreground">Check your inbox</h1>
+    <p class="mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
+      Your account is created. Click the confirmation link we sent to
+      <span class="font-medium text-foreground">{registeredEmail}</span> to activate it, then sign in. The link expires in
+      24 hours.
     </p>
-    {#if displayName.length > MAX_DISPLAY_NAME_LEN}
-      <p class="text-xs text-destructive" aria-live="polite">
-        Display name must be at most {MAX_DISPLAY_NAME_LEN} characters.
-      </p>
+    {#if resent}
+      <p class="mt-3 text-xs text-muted-foreground" aria-live="polite">A fresh link is on its way.</p>
     {/if}
+    {#if resendError}<p class="mt-3 text-sm text-destructive" role="alert">{resendError}</p>{/if}
+    <Button onclick={resendConfirmation} disabled={resending} variant="outline" class="mt-6 h-11 w-full">
+      {resending ? "Sending…" : "Resend confirmation link"}
+    </Button>
+    <Button href="/login" variant="solid" class="mt-2 h-11 w-full">Back to sign in</Button>
+  </div>
+{:else}
+  <div class="mb-8 text-center">
+    <div class="mb-4 flex justify-center"><img src={logo} alt="" class="h-12 w-auto" /></div>
+    <h1 class="text-2xl font-bold tracking-tight text-foreground">Create your account</h1>
+    <p class="mt-1.5 text-sm text-muted-foreground">
+      {#if instance?.federationEnabled}
+        Join {appName} and follow writers across the fediverse.
+      {:else}
+        Join {appName} and start writing.
+      {/if}
+    </p>
   </div>
 
-  <div class="flex flex-col gap-1.5">
-    <Label.Root for="username" class={labelClass}>Username</Label.Root>
-    <input
-      id="username"
-      bind:value={username}
-      onblur={() => (touched.username = true)}
-      autocomplete="username"
-      autocapitalize="off"
-      spellcheck={false}
-      placeholder="a-z, 0-9, _"
-      aria-invalid={!!usernameError}
-      aria-describedby={usernameError ? "username-error" : undefined}
-      class={field}
-    />
-    <p id="username-error" class={errClass} aria-live="polite">{usernameError}</p>
-  </div>
-
-  <div class="flex flex-col gap-1.5">
-    <Label.Root for="email" class={labelClass}>Email</Label.Root>
-    <input
-      id="email"
-      type="email"
-      bind:value={email}
-      onblur={() => (touched.email = true)}
-      autocomplete="email"
-      spellcheck={false}
-      placeholder="ada@example.com"
-      aria-invalid={!!emailError}
-      aria-describedby={emailError ? "email-error" : "email-hint"}
-      class={field}
-    />
-    {#if emailError}
-      <p id="email-error" class={errClass} aria-live="polite">{emailError}</p>
-    {:else}
-      <p id="email-hint" class="text-xs text-muted-foreground">We’ll send a verification link to this address.</p>
-    {/if}
-  </div>
-
-  <div class="flex flex-col gap-1.5">
-    <Label.Root for="password" class={labelClass}>Password</Label.Root>
-    <div class="relative">
-      <input
-        id="password"
-        type={showPassword ? "text" : "password"}
-        bind:value={password}
-        onblur={() => (touched.password = true)}
-        autocomplete="new-password"
-        placeholder={`At least ${MIN_PASSWORD_LEN} characters`}
-        aria-invalid={!!passwordError}
-        aria-describedby="password-error password-reqs password-strength"
-        class={`${field} w-full pr-10`}
-      />
-      <button
-        type="button"
-        onclick={() => (showPassword = !showPassword)}
-        aria-label={showPassword ? "Hide password" : "Show password"}
-        aria-pressed={showPassword}
-        aria-controls="password"
-        title={showPassword ? "Hide password" : "Show password"}
-        class="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+  <form onsubmit={submit} class="flex flex-col gap-4" novalidate>
+    <div class="flex flex-col gap-1.5">
+      <Label.Root for="displayName" class={labelClass}
+        >Display name <span class="font-normal text-muted-foreground">(optional)</span></Label.Root
       >
-        <Icon name="eye" size={16} />
-      </button>
+      <input
+        id="displayName"
+        bind:value={displayName}
+        autocomplete="name"
+        placeholder="Ada Lovelace"
+        maxlength={MAX_DISPLAY_NAME_LEN}
+        aria-describedby="displayName-hint"
+        class={field}
+      />
+      <p id="displayName-hint" class="text-xs text-muted-foreground">
+        {displayName.length}/{MAX_DISPLAY_NAME_LEN} — shown on posts and your profile. Long names are truncated with an ellipsis;
+        hover to see the full name.
+      </p>
+      {#if displayName.length > MAX_DISPLAY_NAME_LEN}
+        <p class="text-xs text-destructive" aria-live="polite">
+          Display name must be at most {MAX_DISPLAY_NAME_LEN} characters.
+        </p>
+      {/if}
     </div>
 
-    {#if password}
-      <div id="password-strength" class="flex items-center gap-1.5">
-        <div class="flex flex-1 gap-1">
-          {#each [1, 2, 3, 4] as i (i)}
-            <div
-              class={`h-1.5 flex-1 rounded-full transition-colors ${i <= strength.score ? (strength.score <= 1 ? "bg-destructive" : strength.score === 2 ? "bg-tertiary" : strength.score === 3 ? "bg-foreground/60" : "bg-foreground") : "bg-muted"}`}
-            ></div>
-          {/each}
-        </div>
-        <span
-          class={`min-w-12 text-right text-xs font-medium ${strength.score <= 1 ? "text-destructive" : strength.score === 2 ? "text-tertiary" : "text-muted-foreground"}`}
+    <div class="flex flex-col gap-1.5">
+      <Label.Root for="username" class={labelClass}>Username</Label.Root>
+      <input
+        id="username"
+        bind:value={username}
+        onblur={() => (touched.username = true)}
+        autocomplete="username"
+        autocapitalize="off"
+        spellcheck={false}
+        placeholder="a-z, 0-9, _"
+        aria-invalid={!!usernameError}
+        aria-describedby={usernameError ? "username-error" : undefined}
+        class={field}
+      />
+      <p id="username-error" class={errClass} aria-live="polite">{usernameError}</p>
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+      <Label.Root for="email" class={labelClass}>Email</Label.Root>
+      <input
+        id="email"
+        type="email"
+        bind:value={email}
+        onblur={() => (touched.email = true)}
+        autocomplete="email"
+        spellcheck={false}
+        placeholder="ada@example.com"
+        aria-invalid={!!emailError}
+        aria-describedby={emailError ? "email-error" : "email-hint"}
+        class={field}
+      />
+      {#if emailError}
+        <p id="email-error" class={errClass} aria-live="polite">{emailError}</p>
+      {:else}
+        <p id="email-hint" class="text-xs text-muted-foreground">
+          {#if verificationRequired}We’ll send a confirmation link to this address — you’ll need it to sign in.{:else}We’ll
+            send a verification link to this address.{/if}
+        </p>
+      {/if}
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+      <Label.Root for="password" class={labelClass}>Password</Label.Root>
+      <div class="relative">
+        <input
+          id="password"
+          type={showPassword ? "text" : "password"}
+          bind:value={password}
+          onblur={() => (touched.password = true)}
+          autocomplete="new-password"
+          placeholder={`At least ${MIN_PASSWORD_LEN} characters`}
+          aria-invalid={!!passwordError}
+          aria-describedby="password-error password-reqs password-strength"
+          class={`${field} w-full pr-10`}
+        />
+        <button
+          type="button"
+          onclick={() => (showPassword = !showPassword)}
+          aria-label={showPassword ? "Hide password" : "Show password"}
+          aria-pressed={showPassword}
+          aria-controls="password"
+          title={showPassword ? "Hide password" : "Show password"}
+          class="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
         >
-          {#if pwnedChecking}Checking…{:else}{strength.label}{/if}
-        </span>
+          <Icon name="eye" size={16} />
+        </button>
       </div>
-    {/if}
 
-    <ul id="password-reqs" class="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
-      {#each reqs as r (r.id)}
-        <li class={`flex items-center gap-1.5 ${r.ok ? "text-foreground" : "text-muted-foreground"}`}>
+      {#if password}
+        <div id="password-strength" class="flex items-center gap-1.5">
+          <div class="flex flex-1 gap-1">
+            {#each [1, 2, 3, 4] as i (i)}
+              <div
+                class={`h-1.5 flex-1 rounded-full transition-colors ${i <= strength.score ? (strength.score <= 1 ? "bg-destructive" : strength.score === 2 ? "bg-tertiary" : strength.score === 3 ? "bg-foreground/60" : "bg-foreground") : "bg-muted"}`}
+              ></div>
+            {/each}
+          </div>
           <span
-            class={`inline-flex size-4 items-center justify-center rounded-full border text-[10px] ${r.ok ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}
+            class={`min-w-12 text-right text-xs font-medium ${strength.score <= 1 ? "text-destructive" : strength.score === 2 ? "text-tertiary" : "text-muted-foreground"}`}
           >
-            {#if r.ok}<Icon name="check" size={10} />{/if}
+            {#if pwnedChecking}Checking…{:else}{strength.label}{/if}
           </span>
-          {r.label}
-        </li>
-      {/each}
-    </ul>
-    {#if pwned === true}
-      <p class="text-xs font-medium text-destructive" aria-live="polite">
-        This password was found in a breach — choose a different one.
-      </p>
-    {:else if pwned === false && password.length >= MIN_PASSWORD_LEN}
-      <p class="text-xs text-muted-foreground" aria-live="polite">Not found in known breaches.</p>
-    {/if}
-    {#if passwordError}<p id="password-error" class={errClass} aria-live="polite">{passwordError}</p>{/if}
-  </div>
+        </div>
+      {/if}
 
-  <div class="flex flex-col gap-1.5">
-    <Label.Root for="confirmPassword" class={labelClass}>Confirm password</Label.Root>
-    <div class="relative">
-      <input
-        id="confirmPassword"
-        type={showConfirm ? "text" : "password"}
-        bind:value={confirmPassword}
-        onblur={() => (touched.confirm = true)}
-        autocomplete="new-password"
-        aria-invalid={!!confirmError}
-        aria-describedby={confirmError ? "confirm-error" : undefined}
-        class={`${field} w-full pr-10`}
-      />
-      <button
-        type="button"
-        onclick={() => (showConfirm = !showConfirm)}
-        aria-label={showConfirm ? "Hide password" : "Show password"}
-        aria-pressed={showConfirm}
-        aria-controls="confirmPassword"
-        title={showConfirm ? "Hide password" : "Show password"}
-        class="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-      >
-        <Icon name="eye" size={16} />
-      </button>
+      <ul id="password-reqs" class="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
+        {#each reqs as r (r.id)}
+          <li class={`flex items-center gap-1.5 ${r.ok ? "text-foreground" : "text-muted-foreground"}`}>
+            <span
+              class={`inline-flex size-4 items-center justify-center rounded-full border text-[10px] ${r.ok ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`}
+            >
+              {#if r.ok}<Icon name="check" size={10} />{/if}
+            </span>
+            {r.label}
+          </li>
+        {/each}
+      </ul>
+      {#if pwned === true}
+        <p class="text-xs font-medium text-destructive" aria-live="polite">
+          This password was found in a breach — choose a different one.
+        </p>
+      {:else if pwned === false && password.length >= MIN_PASSWORD_LEN}
+        <p class="text-xs text-muted-foreground" aria-live="polite">Not found in known breaches.</p>
+      {/if}
+      {#if passwordError}<p id="password-error" class={errClass} aria-live="polite">{passwordError}</p>{/if}
     </div>
-    {#if confirmError}<p id="confirm-error" class={errClass} aria-live="polite">{confirmError}</p>{/if}
-  </div>
 
-  <label class="flex items-start gap-2.5 rounded-input border border-border bg-muted/30 p-3">
-    <Checkbox.Root
-      bind:checked={acceptTerms}
-      onCheckedChange={() => (touched.terms = true)}
-      id="terms"
-      aria-invalid={!!termsError}
-      aria-describedby={termsError ? "terms-error" : undefined}
-      class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border border-input bg-background shadow-btn data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
-    >
-      {#snippet children({ checked })}
-        {#if checked}<Icon name="check" size={12} />{/if}
-      {/snippet}
-    </Checkbox.Root>
-    <span class="text-sm leading-snug text-foreground">
-      I agree to the <a href="/privacy" class="underline underline-offset-4 hover:text-muted-foreground"
-        >Privacy Policy</a
+    <div class="flex flex-col gap-1.5">
+      <Label.Root for="confirmPassword" class={labelClass}>Confirm password</Label.Root>
+      <div class="relative">
+        <input
+          id="confirmPassword"
+          type={showConfirm ? "text" : "password"}
+          bind:value={confirmPassword}
+          onblur={() => (touched.confirm = true)}
+          autocomplete="new-password"
+          aria-invalid={!!confirmError}
+          aria-describedby={confirmError ? "confirm-error" : undefined}
+          class={`${field} w-full pr-10`}
+        />
+        <button
+          type="button"
+          onclick={() => (showConfirm = !showConfirm)}
+          aria-label={showConfirm ? "Hide password" : "Show password"}
+          aria-pressed={showConfirm}
+          aria-controls="confirmPassword"
+          title={showConfirm ? "Hide password" : "Show password"}
+          class="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <Icon name="eye" size={16} />
+        </button>
+      </div>
+      {#if confirmError}<p id="confirm-error" class={errClass} aria-live="polite">{confirmError}</p>{/if}
+    </div>
+
+    <label class="flex items-start gap-2.5 rounded-input border border-border bg-muted/30 p-3">
+      <Checkbox.Root
+        bind:checked={acceptTerms}
+        onCheckedChange={() => (touched.terms = true)}
+        id="terms"
+        aria-invalid={!!termsError}
+        aria-describedby={termsError ? "terms-error" : undefined}
+        class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border border-input bg-background shadow-btn data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
       >
-      and <a href="/contact" class="underline underline-offset-4 hover:text-muted-foreground">Terms</a>.
-    </span>
-  </label>
-  {#if termsError}<p id="terms-error" class={errClass} aria-live="polite">{termsError}</p>{/if}
+        {#snippet children({ checked })}
+          {#if checked}<Icon name="check" size={12} />{/if}
+        {/snippet}
+      </Checkbox.Root>
+      <span class="text-sm leading-snug text-foreground">
+        I agree to the <a href="/privacy" class="underline underline-offset-4 hover:text-muted-foreground"
+          >Privacy Policy</a
+        >
+        and <a href="/contact" class="underline underline-offset-4 hover:text-muted-foreground">Terms</a>.
+      </span>
+    </label>
+    {#if termsError}<p id="terms-error" class={errClass} aria-live="polite">{termsError}</p>{/if}
 
-  <div class="rounded-input border border-border bg-background px-3 py-2.5">
-    <p class="flex items-center gap-1.5 text-xs font-medium text-foreground">
-      <Icon name="shieldOff" size={14} /> Bot protection
+    <div class="rounded-input border border-border bg-background px-3 py-2.5">
+      <p class="flex items-center gap-1.5 text-xs font-medium text-foreground">
+        <Icon name="shieldOff" size={14} /> Bot protection
+      </p>
+      <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
+        This form is protected by Anubis proof-of-work. Most visitors see no challenge; automated abuse is slowed at the
+        edge.
+      </p>
+    </div>
+
+    {#if error}<p class="text-sm font-medium text-destructive" role="alert" aria-live="assertive">{error}</p>{/if}
+
+    <Button type="submit" disabled={!canSubmit} variant="solid" class="mt-1 h-11" aria-disabled={!canSubmit}>
+      {busy ? "Creating…" : "Create account"}
+    </Button>
+    <p class="text-center text-xs leading-relaxed text-muted-foreground">
+      {#if verificationRequired}
+        After signing up, we’ll email you a confirmation link. Click it to activate your account, then sign in.
+      {:else}
+        After signing up, we’ll email you a verification link. You can sign in right away; verified email may be
+        required later depending on this instance’s settings.
+      {/if}
     </p>
-    <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
-      This form is protected by Anubis proof-of-work. Most visitors see no challenge; automated abuse is slowed at the
-      edge.
-    </p>
-  </div>
+  </form>
 
-  {#if error}<p class="text-sm font-medium text-destructive" role="alert" aria-live="assertive">{error}</p>{/if}
-
-  <Button type="submit" disabled={!canSubmit} variant="solid" class="mt-1 h-11" aria-disabled={!canSubmit}>
-    {busy ? "Creating…" : "Create account"}
-  </Button>
-  <p class="text-center text-xs leading-relaxed text-muted-foreground">
-    After signing up, we’ll email you a verification link. You can sign in right away; verified email may be required
-    later depending on this instance’s settings.
+  <p class="mt-8 text-center text-sm text-muted-foreground">
+    Already have an account?
+    <Button href="/login" variant="link">Sign in</Button>
   </p>
-</form>
-
-<p class="mt-8 text-center text-sm text-muted-foreground">
-  Already have an account?
-  <Button href="/login" variant="link">Sign in</Button>
-</p>
+{/if}

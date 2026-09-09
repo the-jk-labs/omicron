@@ -54,6 +54,10 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: 12,
     maxPasswordLength: 128,
+    // When EMAIL_VERIFICATION_REQUIRED is set (the default), Better Auth skips
+    // the session here and returns { token: null, user } — the account row
+    // exists but cannot sign in until the confirmation link is clicked. This
+    // is Mastodon parity: register → "check your inbox" → click → sign in.
     autoSignIn: true,
     requireEmailVerification: config.EMAIL_VERIFICATION_REQUIRED,
     password: {
@@ -67,6 +71,12 @@ export const auth = betterAuth({
   },
   emailVerification: {
     sendOnSignUp: true,
+    // Mastodon parity: a sign-in attempt with an unverified address re-sends
+    // the confirmation mail (rate-limited by the login limiter), the link
+    // lives 24 hours, and clicking it signs the user straight in.
+    sendOnSignIn: true,
+    autoSignInAfterVerification: true,
+    expiresIn: 60 * 60 * 24,
     sendVerificationEmail: ({ user, token }) => {
       queue.add("send_email_verification", {
         to: user.email,

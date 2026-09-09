@@ -164,6 +164,10 @@ export async function publicInfo(): Promise<{
   federationEnabled: boolean;
   setupComplete: boolean;
   emailEnabled: boolean;
+  // Whether a new account must confirm its email before it can sign in
+  // (EMAIL_VERIFICATION_REQUIRED). The register page reads this to decide
+  // between "check your inbox" and an instant sign-in.
+  emailVerificationRequired: boolean;
   bannerText: string | null;
   bannerImageUrl: string | null;
 }> {
@@ -181,6 +185,7 @@ export async function publicInfo(): Promise<{
     federationEnabled: federationRunning(),
     setupComplete,
     emailEnabled: emailMode !== "console",
+    emailVerificationRequired: config.EMAIL_VERIFICATION_REQUIRED,
     bannerText,
     bannerImageUrl,
   };
