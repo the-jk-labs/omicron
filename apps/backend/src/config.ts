@@ -228,13 +228,17 @@ const schema = z.object({
     .transform((v) => v.toLowerCase() === "true")
     .default(false),
 
-  // When true, new accounts must confirm their email before they can sign in
-  // (the gate for closed/invite instances). When false, verification mail is
-  // still sent as a courtesy but never blocks access.
+  // When true (the default), new accounts must confirm their email before
+  // they can sign in — Mastodon parity: register creates the account but no
+  // session, and sign-in stays blocked until the link is clicked. Set to
+  // "false" only for local development without working email (the
+  // verification link is then only in the backend log via the `console`
+  // transport). The setup-wizard admin is always auto-verified, so the owner
+  // can never be locked out.
   EMAIL_VERIFICATION_REQUIRED: z
     .string()
-    .transform((v) => v.toLowerCase() === "true")
-    .default(false),
+    .transform((v) => v.toLowerCase() !== "false")
+    .default(true),
 
   // Have I Been Pwned k-anonymity check. When false, leaked-password checks are
   // skipped entirely (air-gapped installs).

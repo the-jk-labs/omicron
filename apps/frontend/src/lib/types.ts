@@ -403,6 +403,10 @@ export type InstanceInfo = {
   // "check your inbox" — password reset, email verification — have to say so
   // rather than promising a message that will never arrive.
   emailEnabled: boolean;
+  // True when the instance blocks sign-in until the confirmation link is
+  // clicked (EMAIL_VERIFICATION_REQUIRED). Register then ends at
+  // "check your inbox" instead of an instant sign-in.
+  emailVerificationRequired: boolean;
   // Admin-customizable signed-out visitor card; null means "use the built-in
   // default" (a generated sentence / the bundled artwork).
   bannerText: string | null;

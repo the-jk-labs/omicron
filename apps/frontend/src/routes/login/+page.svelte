@@ -20,6 +20,13 @@
   let showPassword = $state(false);
   let error = $state("");
   let busy = $state(false);
+  // Set when sign-in is refused because the address is not confirmed yet.
+  // Better Auth answers 403 EMAIL_NOT_VERIFIED (and re-sends the link when
+  // sendOnSignIn is on); we surface a resend action rather than a dead end.
+  let needsVerification = $state(false);
+  let resending = $state(false);
+  let resent = $state(false);
+  let resendError = $state("");
 
   const field =
     "h-11 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus:border-foreground";
@@ -28,6 +35,9 @@
   async function submit(e: SubmitEvent) {
     e.preventDefault();
     error = "";
+    needsVerification = false;
+    resent = false;
+    resendError = "";
     busy = true;
     try {
       // The single field accepts a username or an email; route to the matching
@@ -36,6 +46,12 @@
         ? await authClient.signIn.email({ email: identifier, password })
         : await authClient.signIn.username({ username: identifier, password });
       if (res.error) {
+        const code = (res.error as { code?: string }).code ?? "";
+        if (code === "EMAIL_NOT_VERIFIED" || /verif|confirm/i.test(res.error.message ?? "")) {
+          needsVerification = true;
+          error = "Check your inbox to confirm your email before signing in — a fresh link is on its way.";
+          return;
+        }
         error = res.error.message ?? "Invalid username or password.";
         return;
       }
@@ -45,6 +61,29 @@
       error = err instanceof Error ? err.message : "Something went wrong.";
     } finally {
       busy = false;
+    }
+  }
+
+  async function resendConfirmation() {
+    // Resending needs the login email; a username alone cannot address it.
+    const addr = identifier.includes("@") ? identifier.trim() : "";
+    if (!addr) {
+      resendError = "Enter your email address above to resend the confirmation link.";
+      return;
+    }
+    resendError = "";
+    resending = true;
+    try {
+      const res = await authClient.sendVerificationEmail({ email: addr, callbackURL: "/verify-email" });
+      if (res.error) {
+        resendError = res.error.message ?? "Something went wrong.";
+        return;
+      }
+      resent = true;
+    } catch (err) {
+      resendError = err instanceof Error ? err.message : "Something went wrong.";
+    } finally {
+      resending = false;
     }
   }
 </script>
@@ -100,7 +139,26 @@
       </button>
     </div>
   </div>
-  {#if error}<p class="text-sm text-destructive" role="alert">{error}</p>{/if}
+  {#if error}
+    <p class="text-sm text-destructive" role="alert">{error}</p>
+    {#if needsVerification}
+      <div class="flex flex-col gap-2">
+        {#if resent}
+          <p class="text-xs text-muted-foreground" aria-live="polite">
+            A fresh link is on its way — it expires in 24 hours.
+          </p>
+        {/if}
+        {#if resendError}<p class="text-xs text-destructive" role="alert">{resendError}</p>{/if}
+        <div class="flex items-center gap-2 text-sm">
+          <Button onclick={resendConfirmation} disabled={resending} variant="link" class="px-0">
+            {resending ? "Sending…" : "Resend confirmation link"}
+          </Button>
+          <span class="text-muted-foreground">·</span>
+          <Button href="/verify-email" variant="link" class="px-0">Enter a different email</Button>
+        </div>
+      </div>
+    {/if}
+  {/if}
   <Button type="submit" disabled={busy} variant="solid" class="mt-1 h-11">
     {busy ? "Signing in…" : "Sign in"}
   </Button>

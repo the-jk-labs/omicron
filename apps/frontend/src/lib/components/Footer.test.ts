@@ -14,6 +14,7 @@ describe("Footer", () => {
           federationEnabled: true,
           setupComplete: true,
           emailEnabled: false,
+          emailVerificationRequired: true,
           bannerText: null,
           bannerImageUrl: null,
         },

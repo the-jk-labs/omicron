@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { invalidateAll } from "$app/navigation";
   import { page } from "$app/stores";
   import logo from "$lib/assets/omicron.svg";
   import { authClient } from "$lib/auth-client";
@@ -38,6 +39,9 @@
       errorMsg = res.error.message ?? "This verification link is invalid or has expired.";
       view = "error";
     } else {
+      // With autoSignInAfterVerification the click also signs the user in —
+      // refresh the session so the nav lands in the signed-in state.
+      await invalidateAll();
       view = "success";
     }
   });
@@ -78,9 +82,9 @@
     </div>
     <h1 class="text-2xl font-bold tracking-tight text-foreground">Email confirmed</h1>
     <p class="mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
-      Your email address is verified. You're all set.
+      Your email address is verified. You're signed in and all set.
     </p>
-    <Button href="/login" variant="solid" class="mt-6 h-11 w-full">Continue to sign in</Button>
+    <Button href="/" variant="solid" class="mt-6 h-11 w-full">Continue</Button>
   </div>
 {:else if view === "error"}
   <div class="flex flex-col items-center text-center">
