@@ -3,6 +3,7 @@
   import "../app.css";
   import { page } from "$app/stores";
   import { env } from "$env/dynamic/public";
+  import { noPageScroll } from "$lib/actions/noPageScroll";
   import { canonicalOrigin } from "$lib/canonical";
   import Discover from "$lib/components/Discover.svelte";
   import Footer from "$lib/components/Footer.svelte";
@@ -414,8 +415,13 @@
     >
       <!-- Left rail: primary navigation. Pinned under the nav (sticky + self-start
            on the grid item itself) with no scroll of its own — only the center
-           column scrolls with the page. -->
-      <aside class="hidden lg:sticky lg:top-24 lg:block lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-hidden">
+           column scrolls with the page. `use:noPageScroll` stops wheel/touch
+           gestures that start here from bubbling into page scroll, so hovering
+           the rail and scrolling moves nothing at all. -->
+      <aside
+        use:noPageScroll
+        class="hidden lg:sticky lg:top-24 lg:block lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-hidden"
+      >
         <SideNav user={data.user} {appName} instance={data.instance} />
       </aside>
 
