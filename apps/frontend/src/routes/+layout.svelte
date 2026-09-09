@@ -11,7 +11,7 @@
   import Nav from "$lib/components/Nav.svelte";
   import SideNav from "$lib/components/SideNav.svelte";
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
-  import { absoluteBanner, postCardUrl } from "$lib/cover";
+  import { absoluteBanner, postCardUrl, profileCardUrl } from "$lib/cover";
   import { excerpt } from "$lib/format";
   import { rememberLocale } from "$lib/locale";
   import { blogPostingLd, breadcrumbLd, profilePageLd, serializeJsonLd, webSiteLd } from "$lib/seo";
@@ -109,6 +109,11 @@
     return description;
   });
   const ogType = $derived(post ? "article" : "website");
+  // A profile page's share image: the generated profile card (avatar, name,
+  // handle, bio, stats). Local profiles only — a remote `user@host` handle
+  // fails the username check in `profileCardUrl` and keeps the brand tile,
+  // since the card is the origin instance's to draw.
+  const profile = $derived($page.route.id === "/[handle]" ? ($page.data as { profile?: Profile }).profile : undefined);
   // A post's banner becomes its share image, falling back to the instance's
   // brand image. `bannerUrl` rather than `coverUrl`, so a post whose banner is
   // simply its first picture still gets a picture on the link card instead of
@@ -118,7 +123,9 @@
   // stored root-relative (`/api/uploads/…`) and a scraper would resolve that
   // against itself. An unparseable URL falls back rather than emitting a broken
   // og:image.
-  const shareImage = $derived(absoluteBanner(post?.bannerUrl, origin) ?? postCardUrl(post, origin) ?? ogImage);
+  const shareImage = $derived(
+    absoluteBanner(post?.bannerUrl, origin) ?? postCardUrl(post, origin) ?? profileCardUrl(profile, origin) ?? ogImage,
+  );
 
   // RSS auto-discovery: a reader pointed at a profile, an article or a
   // reading-list page finds the feed from this tag alone — which is how Feedly,
@@ -323,7 +330,7 @@
     <link rel="alternate" hreflang="x-default" href={canonical} />
   {/if}
   <!-- Screen readers reach a shared link through the card, not the page. -->
-  <meta property="og:image:alt" content={post?.title ?? appName} />
+  <meta property="og:image:alt" content={post?.title ?? profile?.user.displayName ?? appName} />
   {#if feedLink}
     <link rel="alternate" type="application/rss+xml" title={feedLink.title} href={feedLink.href} />
   {/if}

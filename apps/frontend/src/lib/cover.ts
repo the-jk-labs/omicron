@@ -95,3 +95,31 @@ export function postCardUrl(
   const version = Number.isFinite(changed) ? changed : 0;
   return `${origin}/api/og/posts/${post.id}.jpg?v=${version}`;
 }
+
+/**
+ * The generated share card for a profile, or undefined when there will not be one.
+ *
+ * The card is what a link-preview scraper gets for a profile page — the avatar,
+ * display name, handle, bio and a stats line, drawn by the backend (its
+ * lib/profileCard.ts). Before it existed, every profile shared as the same
+ * brand tile, so a shared author link said nothing about the author.
+ *
+ * Local profiles only. A remote `user@host` handle is another instance's to
+ * illustrate, and keeps the brand tile — which only the username pattern
+ * below can know, so that case is decided here rather than by the backend.
+ *
+ * The `v` parameter is the profile's own last-changed time. Scrapers cache a
+ * share image by URL and for far longer than any header asks, so without it an
+ * edited profile would keep showing its old name and bio on every platform
+ * that had already seen the link.
+ */
+export function profileCardUrl(
+  profile: { user: { username: string; updatedAt?: string; createdAt?: string } } | null | undefined,
+  origin: string,
+): string | undefined {
+  if (!profile) return undefined;
+  if (!/^[a-z0-9_]{3,30}$/.test(profile.user.username)) return undefined;
+  const changed = Date.parse(profile.user.updatedAt ?? profile.user.createdAt ?? "");
+  const version = Number.isFinite(changed) ? changed : 0;
+  return `${origin}/api/og/profiles/${profile.user.username}.jpg?v=${version}`;
+}
