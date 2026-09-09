@@ -63,6 +63,10 @@ export function publicUser(
     isAdmin: u.isAdmin,
     isPrivate: u.isPrivate,
     createdAt: u.createdAt,
+    // When the profile last changed. Versions the profile's share card, so an
+    // edited profile is a new `og:image` URL for scrapers to fetch (see
+    // frontend lib/cover.ts `profileCardUrl`).
+    updatedAt: u.updatedAt,
     tags,
     links,
   };

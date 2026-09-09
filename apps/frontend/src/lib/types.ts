@@ -19,6 +19,9 @@ export type User = {
   // followers and following requires approval. Public by default.
   isPrivate: boolean;
   createdAt: string;
+  // When the profile last changed. Versions the profile's share card, so an
+  // edited profile is a new `og:image` URL for scrapers to fetch.
+  updatedAt: string;
   tags: Tag[];
   links: ProfileLink[];
   // Private account fields — present only on the signed-in user's own record

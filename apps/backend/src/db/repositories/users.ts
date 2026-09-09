@@ -112,9 +112,14 @@ export async function setKeyPair(id: string, keyPair: ActorKeyPair) {
 }
 
 // Partial update of mutable profile fields (display name, bio, avatar). Returns
-// the updated row.
+// the updated row. Stamps `updatedAt`, which versions the profile's share card
+// (see services/profileCard.ts) — any profile change is a new card URL.
 export async function update(id: string, data: Partial<NewUser>) {
-  const [row] = await db.update(users).set(data).where(eq(users.id, id)).returning();
+  const [row] = await db
+    .update(users)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(users.id, id))
+    .returning();
   return row;
 }
 
