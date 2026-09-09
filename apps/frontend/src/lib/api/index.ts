@@ -132,7 +132,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
 
     // admin moderation
     adminUsers: (q?: string) =>
-      api.get<{ users: AdminUser[] }>(`/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+      api.get<{ users: AdminUser[]; total: number }>(`/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`),
     suspendUser: (id: string, suspend: boolean) => api.post<{ ok: true }>(`/admin/users/${id}/suspend`, { suspend }),
     adminRemovePost: (id: string) => api.del<{ ok: true }>(`/admin/posts/${id}`),
     adminReports: (status?: "open" | "resolved") =>

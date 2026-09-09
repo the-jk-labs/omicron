@@ -13,6 +13,7 @@
   let { selfId }: { selfId: string } = $props();
 
   let users = $state<AdminUser[]>([]);
+  let total = $state(0);
   let loading = $state(true);
   let error = $state("");
   let query = $state("");
@@ -24,6 +25,7 @@
     try {
       const res = await endpoints().adminUsers(query.trim() || undefined);
       users = res.users;
+      total = res.total;
     } catch (e) {
       error = e instanceof ApiError ? e.message : "Failed to load users.";
     } finally {
@@ -67,6 +69,17 @@
 </script>
 
 <div class="flex flex-col gap-4">
+  <div class="flex items-center gap-2 text-sm text-muted-foreground">
+    <Icon name="users" size={16} />
+    {#if loading}
+      <span>Loading accounts…</span>
+    {:else if query.trim()}
+      <span>{users.length} of {total} {total === 1 ? "account" : "accounts"}</span>
+    {:else}
+      <span>{total} {total === 1 ? "account" : "accounts"} total</span>
+    {/if}
+  </div>
+
   <div class="relative">
     <span class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">
       <Icon name="search" size={16} />

@@ -75,6 +75,13 @@ export function listUsers(query = ""): Promise<Awaited<ReturnType<typeof usersRe
   return usersRepo.listForAdmin(query);
 }
 
+// Total local accounts, unfiltered — the admin user table's header count.
+// Returned alongside the (possibly filtered / capped) list so the UI can show
+// "N accounts" even while searching.
+export function countUsers(): Promise<number> {
+  return usersRepo.countUsers();
+}
+
 // Suspends or reinstates a local account. Admins cannot suspend themselves or
 // other admins (protects the moderator team from lock-out and abuse). Suspending
 // clears the target's sessions so the block takes effect immediately.
