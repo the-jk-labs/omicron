@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { ImageMagick, MagickColor, MagickFormat } from "@imagemagick/magick-wasm";
 import { describe, expect, test } from "vitest";
+import { initializeMagick } from "@/lib/magick.ts";
 import { profileInitials, renderProfileCard } from "@/lib/profileCard.ts";
 
 // What is asserted here is the promise the card makes to a link-preview
@@ -58,6 +60,22 @@ test("a corrupt avatar falls back to initials rather than failing the card", asy
   const card = await renderProfileCard(TEXT, new Uint8Array([0, 1, 2, 3, 4]));
   expect(card, "no card was drawn").not.toBeNull();
   expect(jpegSize(card!)).toEqual({ width: 1200, height: 630 });
+});
+
+test("a real avatar is clipped and composited onto the card", async () => {
+  // A wide photo, so the cover-crop path is exercised too.
+  await initializeMagick();
+  let png: Uint8Array<ArrayBuffer> | null = null;
+  ImageMagick.read(new MagickColor("#7c3aed"), 600, 400, (img) => {
+    img.write(MagickFormat.Png, (bytes) => {
+      png = new Uint8Array(bytes);
+    });
+  });
+  expect(png, "no avatar was built").not.toBeNull();
+  const card = await renderProfileCard(TEXT, png);
+  expect(card, "no card was drawn").not.toBeNull();
+  expect(jpegSize(card!)).toEqual({ width: 1200, height: 630 });
+  expect(card!.length, `card was ${card!.length} bytes`).toBeLessThan(600 * 1024);
 });
 
 describe("a name the bundled face cannot set draws no card at all", () => {

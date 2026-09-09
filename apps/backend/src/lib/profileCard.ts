@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { readFile } from "node:fs/promises";
 import {
+  CompositeOperator,
   Drawables,
   Gravity,
   ImageMagick,
@@ -40,14 +41,16 @@ const BAND_TOP = 132;
 const BAND_BOTTOM = 476;
 const SITE_BASELINE = 578;
 
-// The avatar is a square, cover-cropped: a banner is the author's composition,
-// but an avatar is an identity marker, and letterboxing it would shrink the
-// face it exists to show. Rounded-square fallback (not a circle): the wasm
-// build exposes no circle primitive, and a square photo beside a circle
-// fallback would read as two different designs.
+// The avatar is a circle, like the site's own Avatar — a square photo read as
+// an identity marker. Cover-cropped to the disc: letterboxing would shrink the
+// face the picture exists to show. Drawn via a mask (a max-radius rounded
+// rectangle is a true circle in this build) composited with DstIn, so the clip
+// stays inside the wasm boundary with no per-pixel loop.
 const AVATAR = 232;
 const AVATAR_X = PAD;
-const AVATAR_RADIUS = 48;
+// A subtle ring around the photo, echoing the border the site's Avatar wears.
+const AVATAR_RING = 4;
+const AVATAR_RING_COLOR = "#3f3f46";
 const AVATAR_FALLBACK_BG = "#27272a";
 
 // The text column starts right of the avatar.
@@ -288,9 +291,11 @@ export async function renderProfileCard(
   const image = MagickImage.create();
   image.read(new MagickColor(BACKGROUND), WIDTH, HEIGHT);
 
-  // The avatar first, so the text draws over nothing it needs.
+  // The avatar first, so the text draws over nothing it needs. Decoded,
+  // cover-cropped and clipped to the disc up front; composited onto the card
+  // below, once the ring behind it is drawn.
   const avatarY = Math.round(BAND_TOP + (band - AVATAR) / 2);
-  let avatarDrawn = false;
+  let clipped: Uint8Array<ArrayBuffer> | null = null;
   if (avatarBytes?.byteLength) {
     try {
       ImageMagick.read(avatarBytes, (avatar) => {
@@ -303,12 +308,25 @@ export async function renderProfileCard(
         const h = Math.max(AVATAR, Math.round(avatar.height * scale));
         if (w !== avatar.width || h !== avatar.height) avatar.resize(w, h);
         if (w !== AVATAR || h !== AVATAR) avatar.extent(AVATAR, AVATAR, Gravity.Center);
-        image.composite(avatar, new Point(AVATAR_X, avatarY));
+        // Clip to the disc: a white circle mask keeps the face and drops the
+        // corners. DstIn keeps the destination where the mask is opaque.
+        const mask = MagickImage.create();
+        mask.read(new MagickColor("transparent"), AVATAR, AVATAR);
+        const cut = new Drawables();
+        cut.fillColor(new MagickColor("white")).roundRectangle(0, 0, AVATAR, AVATAR, AVATAR / 2, AVATAR / 2);
+        cut.draw(mask);
+        avatar.composite(mask, CompositeOperator.DstIn);
+        // Copied out of the callback: the buffer magick hands over is only
+        // valid for the duration of the call.
+        avatar.write(MagickFormat.Png, (bytes) => {
+          clipped = new Uint8Array(bytes);
+        });
       });
-      avatarDrawn = true;
+      if (!clipped) throw new Error("Avatar could not be encoded.");
     } catch {
       // A corrupt or exotic avatar must not cost the caller their card — the
       // initials fallback below covers it.
+      clipped = null;
     }
   }
 
@@ -317,14 +335,33 @@ export async function renderProfileCard(
   // carries, so the two are recognisable as coming from the same place.
   draw.fillColor(new MagickColor(NAME_COLOR)).rectangle(PAD, 74, PAD + 56, 80);
 
-  if (!avatarDrawn) {
+  if (clipped) {
+    // The ring sits behind the disc, peeking out around it — the border the
+    // site's own Avatar wears.
+    draw
+      .fillColor(new MagickColor(AVATAR_RING_COLOR))
+      .roundRectangle(
+        AVATAR_X - AVATAR_RING,
+        avatarY - AVATAR_RING,
+        AVATAR_X + AVATAR + AVATAR_RING,
+        avatarY + AVATAR + AVATAR_RING,
+        AVATAR / 2 + AVATAR_RING,
+        AVATAR / 2 + AVATAR_RING,
+      );
+  } else {
     draw
       .fillColor(new MagickColor(AVATAR_FALLBACK_BG))
-      .roundRectangle(AVATAR_X, avatarY, AVATAR_X + AVATAR, avatarY + AVATAR, AVATAR_RADIUS, AVATAR_RADIUS);
+      .roundRectangle(AVATAR_X, avatarY, AVATAR_X + AVATAR, avatarY + AVATAR, AVATAR / 2, AVATAR / 2);
   }
   draw.draw(image);
 
-  if (!avatarDrawn) {
+  if (clipped) {
+    ImageMagick.read(clipped, (disc) => {
+      // Explicit Over: the two-argument overload drops the disc's alpha and
+      // lands it as a black square.
+      image.composite(disc, CompositeOperator.Over, new Point(AVATAR_X, avatarY));
+    });
+  } else {
     // The initials sit centred in the fallback tile. Measured rather than
     // gravity-placed: the tile's position on the canvas is known exactly.
     const initials = profileInitials(displayName);
