@@ -408,18 +408,16 @@
     </main>
   {:else}
     <div
-      class="mx-auto grid w-full max-w-6xl grid-cols-1 gap-8 px-4 py-6 sm:py-8 lg:grid-cols-[180px_minmax(0,1fr)] {showDiscover
+      class="mx-auto grid w-full max-w-6xl grid-cols-1 items-start gap-8 px-4 py-6 sm:py-8 lg:grid-cols-[180px_minmax(0,1fr)] {showDiscover
         ? 'xl:grid-cols-[180px_minmax(0,1fr)_260px]'
         : ''} {data.user ? 'pb-[calc(env(safe-area-inset-bottom)+5rem)] lg:pb-8' : ''}"
     >
-      <!-- Left rail: primary navigation. Sticky offset (top-24) sits at the rail's
-           natural position under the nav, so it pins from the first pixel of
-           scroll — fixed, with no pre-pin drift. -->
-      <div class="hidden lg:block">
-        <div class="sticky top-24">
-          <SideNav user={data.user} {appName} instance={data.instance} />
-        </div>
-      </div>
+      <!-- Left rail: primary navigation. Pinned under the nav (sticky + self-start
+           on the grid item itself) with no scroll of its own — only the center
+           column scrolls with the page. -->
+      <aside class="hidden lg:sticky lg:top-24 lg:block lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-hidden">
+        <SideNav user={data.user} {appName} instance={data.instance} />
+      </aside>
 
       <!-- Center: page content -->
       <main class="min-w-0">
@@ -428,12 +426,15 @@
         </svelte:boundary>
       </main>
 
-      <!-- Right rail: discovery (home feed and profile pages only) -->
-      <div class={showDiscover ? "hidden xl:block" : "hidden"}>
-        <div class="sticky top-24">
-          <Discover data={data.discover} />
-        </div>
-      </div>
+      <!-- Right rail: discovery (home feed and profile pages only). Pinned like the
+           left rail; scrolls internally only when taller than the viewport. -->
+      <aside
+        class={showDiscover
+          ? "hidden xl:sticky xl:top-24 xl:block xl:max-h-[calc(100vh-7rem)] xl:self-start xl:overflow-y-auto"
+          : "hidden"}
+      >
+        <Discover data={data.discover} />
+      </aside>
     </div>
   {/if}
 
