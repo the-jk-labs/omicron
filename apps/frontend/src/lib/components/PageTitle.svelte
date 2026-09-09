@@ -15,8 +15,8 @@
   without threading layout data down to it.
 
   Omit `text` on a page that is the site itself (the home feed) and the title is
-  the instance name plus its tagline — `Omicron: fediverse üzərində müstəqil
-  bloq platforması` — so the home tab, bookmark and search result carry the
+  the instance name plus its tagline — `Omicron: an independent blogging
+  platform on the fediverse` — so the home tab, bookmark and search result carry the
   same promise a reader sees in the hero.
 -->
 <script lang="ts">
@@ -29,7 +29,7 @@
   const appName = $derived(
     ($page.data as { instance?: InstanceInfo | null }).instance?.name || env.PUBLIC_APP_NAME || "Omicron",
   );
-  const homeTitle = $derived(`${appName}: fediverse üzərində müstəqil bloq platforması`);
+  const homeTitle = $derived(`${appName}: an independent blogging platform on the fediverse`);
 </script>
 
 <svelte:head>

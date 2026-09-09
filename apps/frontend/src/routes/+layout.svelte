@@ -42,11 +42,11 @@
   // name comes from the instance settings (wizard/admin), falling back to the
   // build-time env and then the default.
   const appName = $derived(data.instance?.name || env.PUBLIC_APP_NAME || "Omicron");
-  const homeTitle = $derived(`${appName}: fediverse üzərində müstəqil bloq platforması`);
-  // 155 chars for `Omicron` (adjusts with instance name): hits the 150–160 target
+  const homeTitle = $derived(`${appName}: an independent blogging platform on the fediverse`);
+  // 152 chars for `Omicron` (adjusts with instance name): hits the 150–160 target
   // search engines show without truncation and matches the hero.
   const description = $derived(
-    `${appName} — fediverse üzərində müstəqil bloq platforması. Yaz, paylaş, kəşf et. ActivityPub ilə birləş, məlumatların sənə aid olsun və öz instansiyanı işlət.`,
+    `${appName} — an independent blogging platform on the fediverse. Write, share, discover. Federate with ActivityPub and own your data. Run your own instance.`,
   );
   // Every absolute URL we publish — the canonical link, og:url, the share image
   // — is built on the instance's configured origin rather than the hostname this
