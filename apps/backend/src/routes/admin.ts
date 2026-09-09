@@ -293,10 +293,11 @@ adminRoutes.post("/email/test", jsonBody(emailTestSchema), async (c) => {
 // ── Users ──────────────────────────────────────────────────────────────────
 
 // The admin user table, with an optional handle / name filter (?q=).
+// `total` is the unfiltered local-account count for the header.
 adminRoutes.get("/users", async (c) => {
   requireAdmin(c);
-  const rows = await moderation.listUsers(c.req.query("q") ?? "");
-  return c.json({ users: rows.map(adminUserView) });
+  const [rows, total] = await Promise.all([moderation.listUsers(c.req.query("q") ?? ""), moderation.countUsers()]);
+  return c.json({ users: rows.map(adminUserView), total });
 });
 
 const suspendSchema = z.object({ suspend: z.boolean() });
