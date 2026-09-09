@@ -48,8 +48,13 @@
         <Icon name="close" size={13} />
       </ButtonPrimitive.Root>
     {/if}
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-      <div class={compact ? "min-w-0 flex-1 pr-8" : "min-w-0 flex-1"}>
+    <!-- Compact card: the dismiss button owns the top-right corner, so the
+         header row stays out of its lane — the text on stacked layouts, the
+         whole row (including the mode toggle) once it sits side by side. -->
+    <div
+      class={`flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 ${compact ? "sm:pr-8" : ""}`}
+    >
+      <div class={compact ? "min-w-0 flex-1 pr-8 sm:pr-0" : "min-w-0 flex-1"}>
         <p class="flex items-center gap-1.5 text-sm font-medium text-foreground">
           <Icon name="languages" size={15} /> Feed languages
         </p>
