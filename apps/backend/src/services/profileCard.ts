@@ -17,13 +17,19 @@ import { getAppDomain } from "@/services/instanceSetup.ts";
 
 const AVATAR_PATH = /^\/api\/uploads\/([A-Za-z0-9-]+\.(?:png|jpe?g|webp|gif))$/;
 
+// Bumped whenever the drawing in lib/profileCard.ts changes. The digest below
+// hashes what is drawn, not how — so without this, a renderer fix would keep
+// serving the old pixels under an unchanged hash until every profile is edited
+// or the cache directory is wiped by hand.
+const CARD_VERSION = 2;
+
 /**
  * Where a card is cached.
  *
  * The hash is of everything drawn, so a renamed author, an edited bio or a
  * swapped avatar writes a new file rather than serving a stale one. The
- * superseded file is left behind — a few tens of kilobytes per edit, against
- * the alternative of tracking which cards belong to which profile.
+ * superseded file is reaped below, on the request that rendered its
+ * replacement — nothing else watches this directory.
  */
 function cachePath(username: string, digest: string): string {
   return `${config.UPLOADS_DIR}/og-profiles/${username}-${digest.slice(0, 16)}.jpg`;
@@ -81,7 +87,7 @@ export async function profileCard(username: string): Promise<Uint8Array<ArrayBuf
   }
 
   const digest = await hashToken(
-    `${text.displayName}\n${text.handle}\n${text.bio}\n${text.stats}\n${text.site}\n${avatar ? await sha256Hex(avatar) : "-"}`,
+    `v${CARD_VERSION}\n${text.displayName}\n${text.handle}\n${text.bio}\n${text.stats}\n${text.site}\n${avatar ? await sha256Hex(avatar) : "-"}`,
   );
   const cached = cachePath(user.username, digest);
   try {
@@ -104,6 +110,22 @@ export async function profileCard(username: string): Promise<Uint8Array<ArrayBuf
     // A failed cache write costs a re-render next time; it must not cost the
     // caller their card.
     await Deno.remove(tmp).catch(() => {});
+  }
+  // Retire this profile's superseded renders — the file the rename above just
+  // replaced, plus any older generation a CARD_VERSION bump orphaned. Best
+  // effort: the worst a failure costs is a few tens of kilobytes left behind.
+  // Usernames never contain a path separator, so the prefix match cannot
+  // escape this profile's own files.
+  const fileName = cached.slice(cached.lastIndexOf("/") + 1);
+  try {
+    for await (const entry of Deno.readDir(`${config.UPLOADS_DIR}/og-profiles`)) {
+      if (entry.isFile && entry.name.startsWith(`${user.username}-`) && entry.name !== fileName) {
+        await Deno.remove(`${config.UPLOADS_DIR}/og-profiles/${entry.name}`).catch(() => {});
+      }
+    }
+  } catch {
+    // The directory was just created above; a read failure here is not worth
+    // failing the card over.
   }
   return jpeg;
 }
