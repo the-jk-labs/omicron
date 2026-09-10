@@ -26,7 +26,8 @@ export type JobName =
   | "send_recommend"
   | "send_unrecommend"
   | "send_password_reset"
-  | "send_email_verification";
+  | "send_email_verification"
+  | "send_account_deleted";
 
 export type JobPayloads = {
   federate_post: { postId: string; action?: "create" | "update" };
@@ -46,6 +47,9 @@ export type JobPayloads = {
   send_unrecommend: { userId: string; postId: string };
   send_password_reset: { to: string; url: string };
   send_email_verification: { to: string; url: string };
+  // A moderated account's deletion notice. `expiresAt` is an ISO instant (plain
+  // strings only — the payload crosses Redis as JSON).
+  send_account_deleted: { to: string; username: string; appName: string; origin: string; expiresAt: string };
 };
 
 type Handler<N extends JobName> = (payload: JobPayloads[N]) => Promise<void>;

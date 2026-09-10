@@ -15,6 +15,7 @@ import * as postsRepo from "@/db/repositories/posts.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { accounts, sessions } from "@/db/schema.ts";
 import { HttpError } from "@/lib/http.ts";
+import { registerHandler } from "@/queue/queue.ts";
 import { sweep as sweepDeletedUsers } from "@/services/deletedUsers.ts";
 import * as moderation from "@/services/moderation.ts";
 import { closeDb, includesPost, mkPost, mkSession, mkUser, resetDb } from "./harness.ts";
@@ -66,8 +67,15 @@ describe("admin delete user", () => {
   let victimId: string;
   let victimPostId: string;
 
+  // Captures the queued deletion notices instead of delivering them.
+  const deletionNotices: { to: string; username: string; appName: string; origin: string; expiresAt: string }[] = [];
+
   beforeAll(async () => {
     await resetDb();
+
+    registerHandler("send_account_deleted", async (payload) => {
+      deletionNotices.push(payload);
+    });
 
     const admin = await mkUser(adminName, { isAdmin: true });
     adminId = admin.id;
@@ -138,6 +146,17 @@ describe("admin delete user", () => {
 
     // …and the account's posts vanish from public listings.
     expect(includesPost(await globalPosts(), victimPostId)).toBe(false);
+
+    // The account is told what happened, off the request path — flush the
+    // queue microtask before asserting.
+    await new Promise((r) => setTimeout(r, 10));
+    expect(deletionNotices).toHaveLength(1);
+    expect(deletionNotices[0].to).toBe("victim@example.test");
+    expect(deletionNotices[0].username).toBe("victim");
+    expect(deletionNotices[0].appName).toBeTruthy();
+    expect(deletionNotices[0].origin).toMatch(/^https?:\/\//);
+    const noticeExpiry = new Date(deletionNotices[0].expiresAt).getTime();
+    expect(noticeExpiry - (row?.deletedAt?.getTime() ?? 0)).toBe(moderation.DELETED_USER_RETENTION_DAYS * 86_400_000);
   });
 
   test("a deleted account shows up on the restore list with its metadata", async () => {

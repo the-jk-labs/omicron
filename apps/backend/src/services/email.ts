@@ -274,3 +274,44 @@ export function sendEmailVerification(to: string, url: string): Promise<void> {
     ),
   });
 }
+
+// ── Account deletion notice ────────────────────────────────────────────────
+// `expiresAt` is an ISO instant; only its calendar day is shown, so the reader
+// gets an unambiguous date rather than a timestamp in the server's zone.
+
+export type AccountDeletedVars = {
+  username: string;
+  appName: string;
+  origin: string;
+  expiresAt: string;
+};
+
+/** Pure content builder, kept separate from sending so the wording is reviewable. */
+export function accountDeletedEmail(vars: AccountDeletedVars): Omit<EmailMessage, "to"> {
+  const expiryDay = vars.expiresAt.slice(0, 10);
+  return {
+    subject: `Your ${vars.appName} account has been deleted`,
+    text: [
+      `Your account (@${vars.username}) on ${vars.appName} has been deleted by the instance moderation team.`,
+      "",
+      "What this means:",
+      "- You are signed out and cannot sign in.",
+      "- Your profile, posts and lists are no longer served.",
+      "",
+      `Your data is kept until ${expiryDay}. If you believe this is a mistake, contact the instance administrator before then to ask for your account to be restored. After that date your account and all of its data are permanently erased.`,
+      "",
+      `— The ${vars.appName} team`,
+      vars.origin,
+    ].join("\n"),
+    html: layout(
+      "Your account has been deleted",
+      `Your account (@${vars.username}) on ${vars.appName} has been deleted by the instance moderation team. You are signed out and cannot sign in, and your profile, posts and lists are no longer served. Your data is kept until ${expiryDay}: contact the instance administrator before then if you believe this is a mistake. After that date your account and all of its data are permanently erased.`,
+      { label: `Open ${vars.appName}`, url: vars.origin },
+    ),
+  };
+}
+
+/** Account-deletion notice. Queued off the request path (see queue/handlers.ts). */
+export function sendAccountDeleted(to: string, vars: AccountDeletedVars): Promise<void> {
+  return sendMail({ to, ...accountDeletedEmail(vars) });
+}

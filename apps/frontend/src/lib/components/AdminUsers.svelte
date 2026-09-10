@@ -324,8 +324,8 @@
         Delete @{deleteTarget?.username}?
       </Dialog.Title>
       <Dialog.Description class="mt-1 text-sm text-muted-foreground">
-        This signs them out immediately and hides the account, its posts and its profile everywhere. The data is kept
-        for a limited time and can be restored from Recently deleted below.
+        This signs them out immediately and hides the account, its posts and its profile everywhere. They will be
+        notified by email. The data is kept for a limited time and can be restored from Recently deleted below.
       </Dialog.Description>
 
       <div class="mt-5 flex flex-col gap-4">
