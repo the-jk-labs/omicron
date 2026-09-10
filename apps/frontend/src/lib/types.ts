@@ -496,6 +496,21 @@ export type AdminUser = {
 // A defederated domain (admin only). Blocking a domain also blocks its subdomains.
 export type BlockedDomain = { domain: string; reason: string; createdAt: string };
 
+// A recently deleted account awaiting restore or expiry (admin only).
+// `deletedBy` is the deleting moderator's username (null when unknown);
+// `expiresAt` is when the retention window ends and the row is erased for good.
+export type DeletedUser = {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  email: string;
+  postCount: number;
+  deletedBy: string | null;
+  deletedAt: string;
+  expiresAt: string;
+};
+
 // A report in the moderation queue, enriched with light subject/reporter info.
 export type Report = {
   id: string;

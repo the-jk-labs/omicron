@@ -5,6 +5,7 @@ import type {
   Comment,
   CoverCredit,
   DashboardSummary,
+  DeletedUser,
   DkimGenerateResult,
   EmailDnsResult,
   EmailInput,
@@ -134,6 +135,16 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     adminUsers: (q?: string) =>
       api.get<{ users: AdminUser[]; total: number }>(`/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`),
     suspendUser: (id: string, suspend: boolean) => api.post<{ ok: true }>(`/admin/users/${id}/suspend`, { suspend }),
+    // Delete a local account. GitHub-style: the exact username plus the acting
+    // admin's own password travel with the request — the server re-verifies both.
+    deleteUser: (id: string, body: { username: string; password: string }) =>
+      api.post<{ ok: true }>(`/admin/users/${id}/delete`, body),
+    // Restore a deleted account within its retention window.
+    restoreUser: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/restore`, {}),
+    // Recently deleted accounts awaiting restore or expiry.
+    deletedUsers: () => api.get<{ users: DeletedUser[] }>("/admin/users/deleted"),
+    // Permanently erase a deleted account before its window ends.
+    purgeDeletedUser: (id: string) => api.del<{ ok: true }>(`/admin/users/deleted/${id}`),
     adminRemovePost: (id: string) => api.del<{ ok: true }>(`/admin/posts/${id}`),
     adminReports: (status?: "open" | "resolved") =>
       api.get<{ reports: Report[]; openCount: number }>(`/admin/reports${status ? `?status=${status}` : ""}`),
