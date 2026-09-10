@@ -529,3 +529,32 @@ export function accountVerifiedEmail(vars: AccountNoticeVars): Omit<EmailMessage
 export function sendAccountVerified(to: string, vars: AccountNoticeVars): Promise<void> {
   return sendMail({ to, ...accountVerifiedEmail(vars) });
 }
+
+export type AccountEmailChangedVars = AccountNoticeVars & { newEmail: string };
+
+/** Login-email-changed notice to the previous address. Pure content builder. */
+export function accountEmailChangedEmail(vars: AccountEmailChangedVars): Omit<EmailMessage, "to"> {
+  return {
+    subject: `Your ${vars.appName} email was changed`,
+    text: [
+      `The login email for your account (@${vars.username}) on ${vars.appName} was changed by an admin to ${vars.newEmail}.`,
+      "",
+      "Your old address can no longer sign in. A verification link was sent to the new address — the change is complete once it is confirmed.",
+      "",
+      "If this wasn't you, contact the instance administrator immediately — your account may be compromised.",
+      "",
+      `— The ${vars.appName} team`,
+      vars.origin,
+    ].join("\n"),
+    html: layout(
+      "Your email was changed",
+      `The login email for your account (@${vars.username}) on ${vars.appName} was changed by an admin to ${vars.newEmail}. Your old address can no longer sign in. A verification link was sent to the new address — the change is complete once it is confirmed. If this wasn't you, contact the instance administrator immediately — your account may be compromised.`,
+      { label: `Open ${vars.appName}`, url: vars.origin },
+    ),
+  };
+}
+
+/** Login-email-changed notice to the previous address. Queued off the request path. */
+export function sendAccountEmailChanged(to: string, vars: AccountEmailChangedVars): Promise<void> {
+  return sendMail({ to, ...accountEmailChangedEmail(vars) });
+}

@@ -12,3 +12,12 @@ export async function findCredentialHashByUserId(userId: string): Promise<string
   });
   return row?.password ?? null;
 }
+
+// Keeps the credential account's identifier in sync when an admin changes the
+// login email (users.email is the sign-in lookup, but accountId mirrors it).
+export async function setCredentialAccountId(userId: string, email: string): Promise<void> {
+  await db
+    .update(accounts)
+    .set({ accountId: email })
+    .where(and(eq(accounts.userId, userId), eq(accounts.providerId, "credential")));
+}

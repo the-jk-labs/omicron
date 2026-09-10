@@ -383,6 +383,35 @@ adminRoutes.get("/users/:id", async (c) => {
   return c.json(adminUserDetailView(await moderation.getUserDetail(c.req.param("id"))));
 });
 
+// Edit another account's profile + login email. Every field optional: the
+// admin form patches only what was touched. Profile validation lives in
+// services/users.ts (via moderation.updateUserDetails); the login email has
+// its own flow — it is stored unverified, a verification link goes to the new
+// address, and a security notice goes to the previous address.
+const adminUpdateUserSchema = z.object({
+  displayName: z.string().optional(),
+  bio: z.string().optional(),
+  publicEmail: z.string().optional(),
+  customSection: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  links: z
+    .array(
+      z.object({
+        platform: z.string().optional(),
+        url: z.string().optional(),
+        label: z.string().optional(),
+      }),
+    )
+    .optional(),
+  email: z.string().optional(),
+});
+
+adminRoutes.patch("/users/:id", jsonBody(adminUpdateUserSchema), async (c) => {
+  requireAdmin(c);
+  const user = await moderation.updateUserDetails(c.req.param("id"), c.req.valid("json"));
+  return c.json({ user: adminUserView(user) });
+});
+
 // Resend the verification email to an unverified account.
 adminRoutes.post("/users/:id/verification-email", async (c) => {
   requireAdmin(c);

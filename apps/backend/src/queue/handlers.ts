@@ -1,6 +1,7 @@
 import { registerHandler } from "@/queue/queue.ts";
 import {
   sendAccountDeleted,
+  sendAccountEmailChanged,
   sendAccountErased,
   sendAccountReinstated,
   sendAccountRestored,
@@ -167,5 +168,11 @@ export function registerJobHandlers() {
   // An admin manually verified the address, unblocking sign-in.
   registerHandler("send_account_verified", ({ to, username, appName, origin }) =>
     sendAccountVerified(to, { username, appName, origin }),
+  );
+  // An admin changed the login email: the previous address is told what
+  // happened and where to turn if it wasn't the owner. The verification link
+  // to the new address goes through the standard verification job.
+  registerHandler("send_account_email_changed", ({ to, username, appName, origin, newEmail }) =>
+    sendAccountEmailChanged(to, { username, appName, origin, newEmail }),
   );
 }

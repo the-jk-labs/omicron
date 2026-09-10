@@ -85,13 +85,17 @@ export function privateUser(u: User, tags: TagSummary[] = [], links: LinkSummary
 }
 
 // Admin user-table row: identity plus the moderation-relevant private fields
-// (login email, verification + suspension state). Only ever returned to admins
-// via the admin routes — never on any public surface.
+// (login email, verification + suspension state) and the editable profile
+// fields. Only ever returned to admins via the admin routes — never on any
+// public surface.
 export function adminUserView(u: User) {
   return {
     id: u.id,
     username: u.username,
     displayName: u.displayName,
+    bio: u.bio,
+    publicEmail: u.publicEmail,
+    customSection: u.customSection,
     avatarUrl: u.avatarUrl,
     isAdmin: u.isAdmin,
     email: u.email,
@@ -102,15 +106,18 @@ export function adminUserView(u: User) {
 }
 
 // Full admin user detail: the table row plus post/follow counts, the latest
-// posts and the reports filed against the account or its posts. The reports
-// already carry the queue's display shape, so they pass through untouched.
-// Only ever returned to admins via the admin routes.
+// posts, the profile tags/links for the edit form, and the reports filed
+// against the account or its posts. The reports already carry the queue's
+// display shape, so they pass through untouched. Only ever returned to admins
+// via the admin routes.
 export function adminUserDetailView(row: {
   user: User;
   postCounts: { draft: number; scheduled: number; published: number };
   followCounts: { followers: number; following: number };
   recentPosts: { id: string; title: string | null; slug: string | null; status: string; createdAt: Date }[];
   reports: ReportRow[];
+  tags?: TagSummary[];
+  links?: LinkSummary[];
 }) {
   return {
     user: adminUserView(row.user),
@@ -118,6 +125,8 @@ export function adminUserDetailView(row: {
     followCounts: row.followCounts,
     recentPosts: row.recentPosts,
     reports: row.reports,
+    tags: row.tags ?? [],
+    links: row.links ?? [],
   };
 }
 

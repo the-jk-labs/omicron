@@ -4,10 +4,12 @@ import * as accountsRepo from "@/db/repositories/accounts.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
+import * as linksRepo from "@/db/repositories/profileLinks.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as reportsRepo from "@/db/repositories/reports.ts";
 import type { ReportRow } from "@/db/repositories/reports.ts";
 import * as sessionsRepo from "@/db/repositories/sessions.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as usersRepo from "@/db/repositories/users.ts";
 import type { AdminUserFilter } from "@/db/repositories/users.ts";
@@ -18,6 +20,7 @@ import { queue } from "@/queue/queue.ts";
 import {
   notifyAdminGranted,
   notifyAdminRevoked,
+  notifyEmailChanged,
   notifyModeratorDeleted,
   notifyReinstated,
   notifyRestored,
@@ -25,6 +28,8 @@ import {
   notifyVerified,
 } from "@/services/accountNotices.ts";
 import { federationRunning } from "@/services/federationState.ts";
+import type { ProfileLinkInput } from "@/services/users.ts";
+import * as usersService from "@/services/users.ts";
 
 // Business logic for moderation. Admin authorization is enforced at the route
 // layer (requireAdmin); these functions assume the caller is a moderator except
@@ -152,8 +157,9 @@ export async function setAdminRole(
 // ── User detail (admin) ────────────────────────────────────────────────────
 
 // Everything the admin user detail shows: the table row plus post/follow
-// counts, the latest posts, and every report filed against the account or its
-// posts — the context behind a suspend/delete decision.
+// counts, the latest posts, the profile tags/links backing the edit form, and
+// every report filed against the account or its posts — the context behind a
+// suspend/delete decision.
 export async function getUserDetail(targetId: string) {
   const user = await usersRepo.findById(targetId);
   if (!user || user.deletedAt) throw notFound("Account not found.");
@@ -163,7 +169,16 @@ export async function getUserDetail(targetId: string) {
     postsRepo.listRecentByAuthor(user.id),
     reportsRepo.listAgainstUser(user.id),
   ]);
-  return { user, postCounts, followCounts, recentPosts, reports };
+  const [tags, linkRows] = await Promise.all([tagsRepo.tagsForUser(user.id), linksRepo.listForUser(user.id)]);
+  return {
+    user,
+    postCounts,
+    followCounts,
+    recentPosts,
+    reports,
+    tags,
+    links: linkRows.map((l) => ({ platform: l.platform, url: l.url, label: l.label })),
+  };
 }
 
 // How long a deleted account is kept restorable before the sweeper erases it
@@ -292,6 +307,71 @@ export async function resendVerification(targetId: string): Promise<void> {
   } catch (err) {
     throw badRequest(err instanceof Error ? err.message : "Could not send the verification email.");
   }
+}
+
+// ── User details (admin edit) ────────────────────────────────────────────
+
+export type AdminUpdateUserInput = {
+  displayName?: string;
+  bio?: string;
+  publicEmail?: string;
+  customSection?: string;
+  tags?: string[];
+  links?: ProfileLinkInput[];
+  email?: string;
+};
+
+// Edits another account's profile + login email. Profile fields reuse the
+// user's own update path (services/users.ts) so validation, tag/link caps and
+// federation stay in one place; the login email has its own flow: it is
+// normalized, checked for uniqueness, stored unverified, and the owner must
+// prove the new address via the standard verification link while the previous
+// address gets a security notice. Best-effort mail never fails the edit
+// itself, except the verification send, which the admin can retry via the
+// existing resend endpoint.
+export async function updateUserDetails(targetId: string, input: AdminUpdateUserInput) {
+  const target = await usersRepo.findById(targetId);
+  if (!target || target.deletedAt) throw notFound("Account not found.");
+
+  const { email, ...profileInput } = input;
+  if (Object.keys(profileInput).length > 0) {
+    await usersService.updateProfile(targetId, profileInput);
+  }
+
+  if (email !== undefined) {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) throw badRequest("Enter a valid email address.");
+    if (normalized.length > 254) throw badRequest("Email must be 254 characters or fewer.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+      throw badRequest("Enter a valid email address.");
+    }
+    // Case-only canonicalisation needs no verification round-trip.
+    if (normalized !== target.email) {
+      if (normalized === target.email.toLowerCase()) {
+        await usersRepo.update(targetId, { email: normalized });
+        await accountsRepo.setCredentialAccountId(targetId, normalized);
+      } else {
+        const existing = await usersRepo.findByEmail(normalized);
+        if (existing && existing.id !== targetId) throw badRequest("That email is already in use.");
+        const oldEmail = (await usersRepo.findById(targetId))?.email ?? target.email;
+        await usersRepo.update(targetId, { email: normalized, emailVerified: false });
+        await accountsRepo.setCredentialAccountId(targetId, normalized);
+        await notifyEmailChanged(oldEmail, target.username, normalized);
+        try {
+          const { auth } = await import("@/auth/auth.ts");
+          await auth.api.sendVerificationEmail({ body: { email: normalized }, headers: new Headers() });
+        } catch (err) {
+          throw badRequest(
+            `Email updated, but the verification email could not be sent: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+    }
+  }
+
+  const updated = await usersRepo.findById(targetId);
+  if (!updated) throw notFound("Account not found.");
+  return updated;
 }
 
 // ── Posts (admin) ──────────────────────────────────────────────────────────
