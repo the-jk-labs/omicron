@@ -23,7 +23,7 @@
   const tags = $derived(data?.tags ?? []);
 </script>
 
-<aside class="flex flex-col gap-6 text-sm">
+<div class="flex flex-col gap-6 text-sm">
   {#if posts.length}
     <section>
       <h2 class="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
@@ -122,4 +122,4 @@
       </div>
     </section>
   {/if}
-</aside>
+</div>
