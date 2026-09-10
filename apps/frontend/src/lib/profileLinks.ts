@@ -28,6 +28,9 @@ export type LinkPlatform =
 //  - "url":    a full web address (Website, Other) — stored as typed.
 //  - "fedi":   a fediverse handle "@user@instance" → https://instance/@user.
 //  - "handle": a bare username appended to `base` → e.g. github.com/<user>.
+//  - "linkedin": a person (`in/username`) or an organization (`company/slug`,
+//    `school/slug`, `showcase/slug`) → the matching linkedin.com section. A
+//    bare username keeps meaning `in/username` for backwards compatibility.
 //  - "matrix": a Matrix id "@user:server" → https://matrix.to/#/@user:server.
 //  - "xmpp":   a JID "user@server" → xmpp:user@server.
 //  - "irc":    an IRC address "host/#channel" → ircs://host/#channel.
@@ -35,6 +38,7 @@ export type LinkInput =
   | { kind: "url" }
   | { kind: "fedi" }
   | { kind: "handle"; base: string }
+  | { kind: "linkedin" }
   | { kind: "matrix" }
   | { kind: "xmpp" }
   | { kind: "irc" };
@@ -138,8 +142,8 @@ export const PLATFORMS: PlatformMeta[] = [
     key: "linkedin",
     label: "LinkedIn",
     brand: BRAND.linkedin,
-    input: { kind: "handle", base: "https://www.linkedin.com/in/" },
-    placeholder: "username",
+    input: { kind: "linkedin" },
+    placeholder: "in/username or company/name",
   },
   {
     key: "letterboxd",
@@ -187,13 +191,48 @@ export function platformMeta(key: string): PlatformMeta {
   return BY_KEY.get(key) ?? PLATFORMS[PLATFORMS.length - 1];
 }
 
-// The "base.com/" prefix shown muted before a handle field (handle kind only).
+// The "base.com/" prefix shown muted before a handle field (handle kind only,
+// plus LinkedIn's shared "linkedin.com/" root covering in/company/school).
 export function inputPrefix(meta: PlatformMeta): string {
+  if (meta.input.kind === "linkedin") return "linkedin.com/";
   return meta.input.kind === "handle" ? meta.input.base.replace(/^https?:\/\//, "").replace(/^www\./, "") : "";
 }
 
 function stripAt(s: string): string {
   return s.replace(/^@+/, "");
+}
+
+// LinkedIn hosts people (/in/) and organizations (/company/, /school/,
+// /showcase/) under one picker row. Accepts a pasted full URL, a bare
+// "linkedin.com/…", a section path ("in/foo", "company/bar"), or — for
+// backwards compatibility with the old /in/-only field — a bare username.
+
+function linkedinToUrl(value: string): string | null {
+  // Be forgiving: a pasted full URL always works.
+  if (looksLikeUrl(value)) return normalizeWebUrl(value);
+  // A pasted address without the scheme ("linkedin.com/in/foo").
+  if (/^(www\.)?linkedin\.com\//i.test(value)) return normalizeWebUrl(`https://${value}`);
+
+  const path = stripAt(value).replace(/^\/+|\/+$/g, "");
+  if (!path) return null;
+  const m = path.match(/^(in|company|school|showcase)\/([^/\s]+)\/?$/i);
+  if (m) return `https://www.linkedin.com/${m[1].toLowerCase()}/${m[2]}`;
+  // No section: the legacy bare username means a person.
+  if (/^[^/\s]+$/.test(path)) return `https://www.linkedin.com/in/${path}`;
+  return null;
+}
+
+function linkedinToIdentifier(url: string): string | null {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return null;
+  }
+  if (!/^(www\.)?linkedin\.com$/i.test(u.hostname)) return null;
+  const m = u.pathname.match(/^\/(in|company|school|showcase)\/([^/]+)\/?$/i);
+  if (!m) return null;
+  return `${m[1].toLowerCase()}/${m[2]}`;
 }
 
 function looksLikeUrl(s: string): boolean {
@@ -238,6 +277,8 @@ export function identifierToUrl(platform: string, raw: string): string | null {
     return rest.includes(".") ? `ircs://${rest}` : null;
   }
 
+  if (meta.input.kind === "linkedin") return linkedinToUrl(value);
+
   // handle: bare username appended to the base.
   const handle = stripAt(value).replace(/^\/+|\/+$/g, "");
   if (!handle) return null;
@@ -265,6 +306,7 @@ export function urlToIdentifier(platform: string, url: string): string {
     const user = u.pathname.replace(/^\/@?/, "").replace(/\/$/, "");
     return user ? `@${user}@${u.host}` : url;
   }
+  if (meta.input.kind === "linkedin") return linkedinToIdentifier(url) ?? url;
   // handle: strip the base prefix; fall back to the trailing path segment.
   const bare = url.replace(meta.input.base, "");
   if (bare && bare !== url) return bare.replace(/\/$/, "");

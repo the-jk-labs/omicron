@@ -86,7 +86,7 @@
         </Select.Portal>
       </Select.Root>
 
-      {#if meta.input.kind === "handle"}
+      {#if meta.input.kind === "handle" || meta.input.kind === "linkedin"}
         <div class={inputWrapClass}>
           <span class="shrink-0 text-muted-foreground select-none">{inputPrefix(meta)}</span>
           <input

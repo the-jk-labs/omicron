@@ -204,9 +204,11 @@
                   ? "address (user@server)"
                   : meta.input.kind === "irc"
                     ? "address (ircs://host/#channel)"
-                    : meta.input.kind === "handle"
-                      ? "username"
-                      : "web address";
+                    : meta.input.kind === "linkedin"
+                      ? "profile (in/username or company/name)"
+                      : meta.input.kind === "handle"
+                        ? "username"
+                        : "web address";
           error = `Enter a valid ${meta.label} ${what}.`;
           busy = false;
           return;
