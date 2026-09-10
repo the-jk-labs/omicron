@@ -1,6 +1,7 @@
 import type {
   AdminInstance,
   AdminUser,
+  AdminUserDetail,
   BlockedDomain,
   Comment,
   CoverCredit,
@@ -141,6 +142,12 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.post<{ ok: true }>(`/admin/users/${id}/delete`, body),
     // Restore a deleted account within its retention window.
     restoreUser: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/restore`, {}),
+    // Full detail for one account: counts, latest posts and reports against it.
+    adminUserDetail: (id: string) => api.get<AdminUserDetail>(`/admin/users/${id}`),
+    // Grant or revoke the admin role. The acting admin's own password travels
+    // with the request — the server re-verifies it.
+    setUserRole: (id: string, body: { makeAdmin: boolean; password: string }) =>
+      api.post<{ ok: true }>(`/admin/users/${id}/role`, body),
     // Recently deleted accounts awaiting restore or expiry.
     deletedUsers: () => api.get<{ users: DeletedUser[] }>("/admin/users/deleted"),
     // Permanently erase a deleted account before its window ends.
