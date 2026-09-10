@@ -13,8 +13,13 @@ import type { BlockedDomain } from "@/db/schema.ts";
 import { hostMatchesDomain, normalizeDomain } from "@/lib/domain.ts";
 import { badRequest, forbidden, notFound, unauthorized } from "@/lib/http.ts";
 import { queue } from "@/queue/queue.ts";
+import {
+  notifyModeratorDeleted,
+  notifyReinstated,
+  notifyRestored,
+  notifySuspended,
+} from "@/services/accountNotices.ts";
 import { federationRunning } from "@/services/federationState.ts";
-import { getAppName, getOrigin } from "@/services/instanceSetup.ts";
 
 // Business logic for moderation. Admin authorization is enforced at the route
 // layer (requireAdmin); these functions assume the caller is a moderator except
@@ -97,7 +102,12 @@ export async function setSuspended(adminId: string, targetId: string, suspend: b
   if (target.isAdmin) throw forbidden("You can't suspend another admin.");
 
   await usersRepo.setSuspended(targetId, suspend ? new Date() : null);
-  if (suspend) await sessionsRepo.removeAllForUser(targetId);
+  if (suspend) {
+    await sessionsRepo.removeAllForUser(targetId);
+    await notifySuspended(target.email, target.username);
+  } else {
+    await notifyReinstated(target.email, target.username);
+  }
 }
 
 // ── User deletion (admin, soft-delete with retention) ──────────────────────
@@ -146,21 +156,8 @@ export async function deleteUser(
   const deletedAt = new Date();
   await usersRepo.setDeleted(targetId, deletedAt, adminId);
   await sessionsRepo.removeAllForUser(targetId);
-
   // Tell the account what happened and until when restoration is possible.
-  // Best-effort: a mail failure must never fail (or roll back) the deletion.
-  try {
-    const [appName, origin] = await Promise.all([getAppName(), getOrigin()]);
-    queue.add("send_account_deleted", {
-      to: target.email,
-      username: target.username,
-      appName,
-      origin,
-      expiresAt: deletionExpiresAt(deletedAt).toISOString(),
-    });
-  } catch (err) {
-    console.error("deleteUser: failed to queue deletion notice (continuing):", err);
-  }
+  await notifyModeratorDeleted(target.email, target.username, deletionExpiresAt(deletedAt).toISOString());
 }
 
 // Restores a deleted account within its retention window. The username and
@@ -170,6 +167,7 @@ export async function restoreUser(targetId: string): Promise<void> {
   const target = await usersRepo.findById(targetId);
   if (!target || !target.deletedAt) throw notFound("Deleted account not found.");
   await usersRepo.setDeleted(targetId, null, null);
+  await notifyRestored(target.email, target.username);
   queue.add("federate_actor_update", { userId: targetId });
 }
 

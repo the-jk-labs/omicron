@@ -315,3 +315,142 @@ export function accountDeletedEmail(vars: AccountDeletedVars): Omit<EmailMessage
 export function sendAccountDeleted(to: string, vars: AccountDeletedVars): Promise<void> {
   return sendMail({ to, ...accountDeletedEmail(vars) });
 }
+
+// ── Account security + status notices ──────────────────────────────────────
+// One short template per account lifecycle event. All are best-effort and sent
+// off the request path — a mail failure must never fail the operation itself.
+
+export type AccountNoticeVars = {
+  username: string;
+  appName: string;
+  origin: string;
+};
+
+/** Password-changed security notice. Points at the reset flow in case it wasn't them. */
+export function accountPasswordChangedEmail(vars: AccountNoticeVars): Omit<EmailMessage, "to"> {
+  return {
+    subject: `Your ${vars.appName} password was changed`,
+    text: [
+      `The password for your account (@${vars.username}) on ${vars.appName} was just changed.`,
+      "",
+      "If this was you, you can ignore this email. If it wasn't, reset your password immediately — your account may be compromised.",
+      `${vars.origin}/forgot-password`,
+      "",
+      `— The ${vars.appName} team`,
+    ].join("\n"),
+    html: layout(
+      "Your password was changed",
+      `The password for your account (@${vars.username}) on ${vars.appName} was just changed. If this was you, you can ignore this email. If it wasn't, reset your password immediately — your account may be compromised.`,
+      { label: "Reset password", url: `${vars.origin}/forgot-password` },
+    ),
+  };
+}
+
+/** Password-changed security notice. Queued off the request path (see queue/handlers.ts). */
+export function sendPasswordChanged(to: string, vars: AccountNoticeVars): Promise<void> {
+  return sendMail({ to, ...accountPasswordChangedEmail(vars) });
+}
+
+/** Self-deletion receipt: the account and all its data are gone immediately. */
+export function accountErasedEmail(vars: AccountNoticeVars): Omit<EmailMessage, "to"> {
+  return {
+    subject: `Your ${vars.appName} account has been permanently deleted`,
+    text: [
+      `Your account (@${vars.username}) on ${vars.appName} has been permanently deleted, as requested.`,
+      "",
+      "Your profile, posts, lists and all other data were removed with it. This cannot be undone.",
+      "",
+      `— The ${vars.appName} team`,
+      vars.origin,
+    ].join("\n"),
+    html: layout(
+      "Your account has been permanently deleted",
+      `Your account (@${vars.username}) on ${vars.appName} has been permanently deleted, as requested. Your profile, posts, lists and all other data were removed with it. This cannot be undone.`,
+      { label: `Open ${vars.appName}`, url: vars.origin },
+    ),
+  };
+}
+
+/** Self-deletion receipt. Queued off the request path (see queue/handlers.ts). */
+export function sendAccountErased(to: string, vars: AccountNoticeVars): Promise<void> {
+  return sendMail({ to, ...accountErasedEmail(vars) });
+}
+
+/** Suspension notice: signed out, content unserved, with an appeal prompt. */
+export function accountSuspendedEmail(vars: AccountNoticeVars): Omit<EmailMessage, "to"> {
+  return {
+    subject: `Your ${vars.appName} account has been suspended`,
+    text: [
+      `Your account (@${vars.username}) on ${vars.appName} has been suspended by the instance moderation team.`,
+      "",
+      "What this means:",
+      "- You cannot sign in until the suspension is lifted.",
+      "- Your profile, posts and lists are no longer served.",
+      "",
+      "If you believe this is a mistake, contact the instance administrator.",
+      "",
+      `— The ${vars.appName} team`,
+      vars.origin,
+    ].join("\n"),
+    html: layout(
+      "Your account has been suspended",
+      `Your account (@${vars.username}) on ${vars.appName} has been suspended by the instance moderation team. You cannot sign in until the suspension is lifted, and your profile, posts and lists are no longer served. If you believe this is a mistake, contact the instance administrator.`,
+      { label: `Open ${vars.appName}`, url: vars.origin },
+    ),
+  };
+}
+
+/** Suspension notice. Queued off the request path (see queue/handlers.ts). */
+export function sendAccountSuspended(to: string, vars: AccountNoticeVars): Promise<void> {
+  return sendMail({ to, ...accountSuspendedEmail(vars) });
+}
+
+/** Reinstatement notice: the suspension was lifted. */
+export function accountReinstatedEmail(vars: AccountNoticeVars): Omit<EmailMessage, "to"> {
+  return {
+    subject: `Your ${vars.appName} account has been reinstated`,
+    text: [
+      `Good news — your account (@${vars.username}) on ${vars.appName} has been reinstated.`,
+      "",
+      "You can sign in again, and your profile, posts and lists are served as before.",
+      "",
+      `— The ${vars.appName} team`,
+      `${vars.origin}/login`,
+    ].join("\n"),
+    html: layout(
+      "Your account has been reinstated",
+      `Good news — your account (@${vars.username}) on ${vars.appName} has been reinstated. You can sign in again, and your profile, posts and lists are served as before.`,
+      { label: "Sign in", url: `${vars.origin}/login` },
+    ),
+  };
+}
+
+/** Reinstatement notice. Queued off the request path (see queue/handlers.ts). */
+export function sendAccountReinstated(to: string, vars: AccountNoticeVars): Promise<void> {
+  return sendMail({ to, ...accountReinstatedEmail(vars) });
+}
+
+/** Restore notice: a moderator-deleted account is back. */
+export function accountRestoredEmail(vars: AccountNoticeVars): Omit<EmailMessage, "to"> {
+  return {
+    subject: `Your ${vars.appName} account has been restored`,
+    text: [
+      `Good news — your deleted account (@${vars.username}) on ${vars.appName} has been restored.`,
+      "",
+      "You can sign in again, and your profile, posts and lists are back as they were.",
+      "",
+      `— The ${vars.appName} team`,
+      `${vars.origin}/login`,
+    ].join("\n"),
+    html: layout(
+      "Your account has been restored",
+      `Good news — your deleted account (@${vars.username}) on ${vars.appName} has been restored. You can sign in again, and your profile, posts and lists are back as they were.`,
+      { label: "Sign in", url: `${vars.origin}/login` },
+    ),
+  };
+}
+
+/** Restore notice. Queued off the request path (see queue/handlers.ts). */
+export function sendAccountRestored(to: string, vars: AccountNoticeVars): Promise<void> {
+  return sendMail({ to, ...accountRestoredEmail(vars) });
+}
