@@ -34,7 +34,8 @@ export type JobName =
   | "send_account_reinstated"
   | "send_account_restored"
   | "send_admin_granted"
-  | "send_admin_revoked";
+  | "send_admin_revoked"
+  | "send_account_verified";
 
 export type JobPayloads = {
   federate_post: { postId: string; action?: "create" | "update" };
@@ -65,6 +66,7 @@ export type JobPayloads = {
   send_account_restored: { to: string; username: string; appName: string; origin: string };
   send_admin_granted: { to: string; username: string; appName: string; origin: string };
   send_admin_revoked: { to: string; username: string; appName: string; origin: string };
+  send_account_verified: { to: string; username: string; appName: string; origin: string };
 };
 
 type Handler<N extends JobName> = (payload: JobPayloads[N]) => Promise<void>;

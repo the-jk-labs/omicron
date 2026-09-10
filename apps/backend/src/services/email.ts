@@ -504,3 +504,28 @@ export function accountAdminRevokedEmail(vars: AccountNoticeVars): Omit<EmailMes
 export function sendAdminRevoked(to: string, vars: AccountNoticeVars): Promise<void> {
   return sendMail({ to, ...accountAdminRevokedEmail(vars) });
 }
+
+/** Verified notice: an admin confirmed the address, so sign-in is unblocked. */
+export function accountVerifiedEmail(vars: AccountNoticeVars): Omit<EmailMessage, "to"> {
+  return {
+    subject: `Your ${vars.appName} email has been verified`,
+    text: [
+      `An admin on ${vars.appName} has verified the email address on your account (@${vars.username}).`,
+      "",
+      "You can sign in now — no further action needed.",
+      "",
+      `— The ${vars.appName} team`,
+      `${vars.origin}/login`,
+    ].join("\n"),
+    html: layout(
+      "Your email has been verified",
+      `An admin on ${vars.appName} has verified the email address on your account (@${vars.username}). You can sign in now — no further action needed.`,
+      { label: "Sign in", url: `${vars.origin}/login` },
+    ),
+  };
+}
+
+/** Verified notice. Queued off the request path (see queue/handlers.ts). */
+export function sendAccountVerified(to: string, vars: AccountNoticeVars): Promise<void> {
+  return sendMail({ to, ...accountVerifiedEmail(vars) });
+}

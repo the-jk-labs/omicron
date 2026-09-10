@@ -20,6 +20,11 @@
   let query = $state("");
   let busyId = $state<string | null>(null);
 
+  // Triage filters: each shows only matching accounts while on.
+  let fSuspended = $state(false);
+  let fAdmins = $state(false);
+  let fUnverified = $state(false);
+
   // Recently deleted accounts: the retention window's restore list.
   let deleted = $state<DeletedUser[]>([]);
   let deletedLoading = $state(true);
@@ -38,12 +43,17 @@
     loading = true;
     error = "";
     try {
-      const res = await endpoints().adminUsers(query.trim() || undefined);
+      const res = await endpoints().adminUsers(query.trim() || undefined, {
+        suspendedOnly: fSuspended || undefined,
+        adminsOnly: fAdmins || undefined,
+        unverifiedOnly: fUnverified || undefined,
+      });
       users = res.users;
       total = res.total;
       // Mutations may have changed what a detail shows; drop the cache so an
       // expansion always refetches.
       details = {};
+      detailNotice = "";
     } catch (e) {
       error = e instanceof ApiError ? e.message : "Failed to load users.";
     } finally {
@@ -181,6 +191,7 @@
       return;
     }
     expandedId = u.id;
+    detailNotice = "";
     if (details[u.id] || detailLoadingId === u.id) return;
     detailLoadingId = u.id;
     try {
@@ -190,6 +201,47 @@
       expandedId = null;
     } finally {
       detailLoadingId = null;
+    }
+  }
+
+  // Verification actions live in the expanded detail, next to the state they
+  // act on. Resending just sends mail; marking verified overrides a security
+  // gate, so it gets a confirmation dialog.
+  let verifyBusyId = $state<string | null>(null);
+  let detailNotice = $state("");
+
+  async function resendVerification(u: AdminUser) {
+    verifyBusyId = u.id;
+    detailNotice = "";
+    try {
+      await endpoints().resendVerification(u.id);
+      detailNotice = "Verification email sent.";
+    } catch (e) {
+      detailNotice = e instanceof ApiError ? e.message : "Sending failed.";
+    } finally {
+      verifyBusyId = null;
+    }
+  }
+
+  async function markVerified(u: AdminUser) {
+    const ok = await confirm({
+      title: `Mark @${u.username}'s email verified?`,
+      description:
+        "They will be able to sign in without clicking a link. Use this when instance mail was broken — not to skip ownership proof lightly.",
+      confirmText: "Mark verified",
+    });
+    if (!ok) return;
+    verifyBusyId = u.id;
+    detailNotice = "";
+    try {
+      await endpoints().verifyEmail(u.id);
+      users = users.map((x) => (x.id === u.id ? { ...x, emailVerified: true } : x));
+      if (details[u.id]) details[u.id] = { ...details[u.id], user: { ...details[u.id].user, emailVerified: true } };
+      detailNotice = "Email marked verified.";
+    } catch (e) {
+      detailNotice = e instanceof ApiError ? e.message : "Action failed.";
+    } finally {
+      verifyBusyId = null;
     }
   }
 
@@ -242,7 +294,7 @@
     <Icon name="users" size={16} />
     {#if loading}
       <span>Loading accounts…</span>
-    {:else if query.trim()}
+    {:else if query.trim() || fSuspended || fAdmins || fUnverified}
       <span>{users.length} of {total} {total === 1 ? "account" : "accounts"}</span>
     {:else}
       <span>{total} {total === 1 ? "account" : "accounts"} total</span>
@@ -259,6 +311,42 @@
       placeholder="Search by handle or name"
       class="w-full rounded-input border border-input bg-background py-2.5 pr-3.5 pl-9 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
     />
+  </div>
+
+  <div class="flex flex-wrap gap-2" role="group" aria-label="Filter accounts">
+    <Button
+      variant={fSuspended ? "solid" : "outline"}
+      size="sm"
+      aria-pressed={fSuspended}
+      onclick={() => {
+        fSuspended = !fSuspended;
+        load();
+      }}
+    >
+      Suspended
+    </Button>
+    <Button
+      variant={fAdmins ? "solid" : "outline"}
+      size="sm"
+      aria-pressed={fAdmins}
+      onclick={() => {
+        fAdmins = !fAdmins;
+        load();
+      }}
+    >
+      Admins
+    </Button>
+    <Button
+      variant={fUnverified ? "solid" : "outline"}
+      size="sm"
+      aria-pressed={fUnverified}
+      onclick={() => {
+        fUnverified = !fUnverified;
+        load();
+      }}
+    >
+      Unverified
+    </Button>
   </div>
 
   {#if error}<p class="text-sm text-destructive">{error}</p>{/if}
@@ -341,8 +429,31 @@
                   >
                   <span><strong class="text-foreground">{d.followCounts.followers}</strong> followers</span>
                   <span><strong class="text-foreground">{d.followCounts.following}</strong> following</span>
-                  <span>{d.user.emailVerified ? "Email verified" : "Email unverified"}</span>
+                  <span class="inline-flex flex-wrap items-center gap-2">
+                    <span>{d.user.emailVerified ? "Email verified" : "Email unverified"}</span>
+                    {#if !d.user.emailVerified}
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        disabled={verifyBusyId === u.id}
+                        onclick={() => resendVerification(u)}
+                      >
+                        <Icon name="mail" size={13} />
+                        Resend email
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        disabled={verifyBusyId === u.id}
+                        onclick={() => markVerified(u)}
+                      >
+                        <Icon name="check" size={13} />
+                        Mark verified
+                      </Button>
+                    {/if}
+                  </span>
                 </div>
+                {#if detailNotice}<p class="mt-1 text-xs text-muted-foreground">{detailNotice}</p>{/if}
                 <h4 class="mt-4 text-sm font-semibold text-foreground">Latest posts</h4>
                 {#if d.recentPosts.length === 0}
                   <p class="mt-1 text-sm text-muted-foreground">No posts yet.</p>
