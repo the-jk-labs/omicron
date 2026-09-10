@@ -10,6 +10,7 @@ import type { ReportRow } from "@/db/repositories/reports.ts";
 import * as sessionsRepo from "@/db/repositories/sessions.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as usersRepo from "@/db/repositories/users.ts";
+import type { AdminUserFilter } from "@/db/repositories/users.ts";
 import type { BlockedDomain } from "@/db/schema.ts";
 import { hostMatchesDomain, normalizeDomain } from "@/lib/domain.ts";
 import { badRequest, forbidden, notFound, unauthorized } from "@/lib/http.ts";
@@ -21,6 +22,7 @@ import {
   notifyReinstated,
   notifyRestored,
   notifySuspended,
+  notifyVerified,
 } from "@/services/accountNotices.ts";
 import { federationRunning } from "@/services/federationState.ts";
 
@@ -84,8 +86,11 @@ export async function resolveReport(adminId: string, reportId: string, resolutio
 
 // ── Users (admin) ──────────────────────────────────────────────────────────
 
-export function listUsers(query = ""): Promise<Awaited<ReturnType<typeof usersRepo.listForAdmin>>> {
-  return usersRepo.listForAdmin(query);
+export function listUsers(
+  query = "",
+  filter: AdminUserFilter = {},
+): Promise<Awaited<ReturnType<typeof usersRepo.listForAdmin>>> {
+  return usersRepo.listForAdmin(query, filter);
 }
 
 // Total local accounts, unfiltered — the admin user table's header count.
@@ -259,6 +264,34 @@ export async function purgeExpiredDeletedUsers(now = new Date(), limit = 100): P
     await usersRepo.hardRemove(id);
   }
   return expired.length;
+}
+
+// ── Email verification (admin) ───────────────────────────────────────────
+
+// Manually marks an account's email verified — the escape hatch for when
+// instance mail was misconfigured and the user can never receive the link.
+// Idempotent; the account is notified it can sign in.
+export async function verifyEmail(targetId: string): Promise<void> {
+  const target = await usersRepo.findById(targetId);
+  if (!target || target.deletedAt) throw notFound("Account not found.");
+  if (target.emailVerified) return;
+  await usersRepo.update(targetId, { emailVerified: true });
+  await notifyVerified(target.email, target.username);
+}
+
+// Resends the verification email to an unverified account. Goes through
+// Better Auth's own endpoint so token format and expiry stay in one place;
+// already-verified is a caller error, not a silent no-op.
+export async function resendVerification(targetId: string): Promise<void> {
+  const target = await usersRepo.findById(targetId);
+  if (!target || target.deletedAt) throw notFound("Account not found.");
+  if (target.emailVerified) throw badRequest("This account's email is already verified.");
+  try {
+    const { auth } = await import("@/auth/auth.ts");
+    await auth.api.sendVerificationEmail({ body: { email: target.email }, headers: new Headers() });
+  } catch (err) {
+    throw badRequest(err instanceof Error ? err.message : "Could not send the verification email.");
+  }
 }
 
 // ── Posts (admin) ──────────────────────────────────────────────────────────

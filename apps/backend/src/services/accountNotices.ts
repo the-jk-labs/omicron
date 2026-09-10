@@ -86,3 +86,12 @@ export async function notifyAdminRevoked(email: string, username: string): Promi
     console.error("accountNotices: failed to queue admin-revoked notice (continuing):", err);
   }
 }
+
+/** Verified notice after an admin manually confirms the address. */
+export async function notifyVerified(email: string, username: string): Promise<void> {
+  try {
+    queue.add("send_account_verified", { to: email, username, ...(await instanceVars()) });
+  } catch (err) {
+    console.error("accountNotices: failed to queue verified notice (continuing):", err);
+  }
+}

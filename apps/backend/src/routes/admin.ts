@@ -292,11 +292,26 @@ adminRoutes.post("/email/test", jsonBody(emailTestSchema), async (c) => {
 
 // ── Users ──────────────────────────────────────────────────────────────────
 
-// The admin user table, with an optional handle / name filter (?q=).
+// Parses an optional `true`/`false` query flag; anything else leaves the
+// dimension unfiltered.
+function flag(v: string | undefined): boolean | undefined {
+  return v === "true" ? true : v === "false" ? false : undefined;
+}
+
+// The admin user table, with an optional handle / name filter (?q=) and
+// triage filters (?suspended=&admin=&verified=true|false).
 // `total` is the unfiltered local-account count for the header.
 adminRoutes.get("/users", async (c) => {
   requireAdmin(c);
-  const [rows, total] = await Promise.all([moderation.listUsers(c.req.query("q") ?? ""), moderation.countUsers()]);
+  const filter = {
+    suspended: flag(c.req.query("suspended")),
+    admin: flag(c.req.query("admin")),
+    verified: flag(c.req.query("verified")),
+  };
+  const [rows, total] = await Promise.all([
+    moderation.listUsers(c.req.query("q") ?? "", filter),
+    moderation.countUsers(),
+  ]);
   return c.json({ users: rows.map(adminUserView), total });
 });
 
@@ -366,6 +381,21 @@ adminRoutes.post("/users/:id/role", jsonBody(roleSchema), async (c) => {
 adminRoutes.get("/users/:id", async (c) => {
   requireAdmin(c);
   return c.json(adminUserDetailView(await moderation.getUserDetail(c.req.param("id"))));
+});
+
+// Resend the verification email to an unverified account.
+adminRoutes.post("/users/:id/verification-email", async (c) => {
+  requireAdmin(c);
+  await moderation.resendVerification(c.req.param("id"));
+  return c.json({ ok: true });
+});
+
+// Manually mark an account's email verified — the escape hatch for when
+// instance mail was misconfigured and the link can never arrive.
+adminRoutes.post("/users/:id/verify", async (c) => {
+  requireAdmin(c);
+  await moderation.verifyEmail(c.req.param("id"));
+  return c.json({ ok: true });
 });
 
 // ── Posts ────────────────────────────────────────────────────────────────

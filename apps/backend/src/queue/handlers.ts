@@ -5,6 +5,7 @@ import {
   sendAccountReinstated,
   sendAccountRestored,
   sendAccountSuspended,
+  sendAccountVerified,
   sendAdminGranted,
   sendAdminRevoked,
   sendEmailVerification,
@@ -162,5 +163,9 @@ export function registerJobHandlers() {
   );
   registerHandler("send_admin_revoked", ({ to, username, appName, origin }) =>
     sendAdminRevoked(to, { username, appName, origin }),
+  );
+  // An admin manually verified the address, unblocking sign-in.
+  registerHandler("send_account_verified", ({ to, username, appName, origin }) =>
+    sendAccountVerified(to, { username, appName, origin }),
   );
 }

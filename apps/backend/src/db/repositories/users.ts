@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, desc, eq, gte, ilike, lt, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, lt, ne, or, type SQL, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db/client.ts";
 import { type ActorKeyPair, follows, type NewUser, sessions, users } from "@/db/schema.ts";
@@ -136,20 +136,34 @@ export async function update(id: string, data: Partial<NewUser>) {
   return row;
 }
 
+// Filter dimensions for the admin user table. Each is tri-state: true shows
+// only matching accounts, false only the rest, undefined leaves it unfiltered.
+export type AdminUserFilter = {
+  suspended?: boolean;
+  admin?: boolean;
+  verified?: boolean;
+};
+
 // Live local accounts for the admin user table: newest first, optional handle /
-// name substring filter. Deleted accounts are excluded — they have their own
-// restore list (listDeleted). Returns full rows (the admin serializer picks fields).
-export function listForAdmin(query = "", limit = 100) {
-  const match = query.trim()
-    ? (() => {
-        const term = `%${query.replace(/[%_\\]/g, "\\$&")}%`;
-        return or(ilike(users.username, term), ilike(users.displayName, term));
-      })()
-    : undefined;
+// name substring filter plus the triage filters. Deleted accounts are excluded
+// — they have their own restore list (listDeleted). Returns full rows (the
+// admin serializer picks fields).
+export function listForAdmin(query = "", filter: AdminUserFilter = {}, limit = 100) {
+  const conditions: (SQL | undefined)[] = [sql`${users.deletedAt} is null`];
+  if (query.trim()) {
+    const term = `%${query.replace(/[%_\\]/g, "\\$&")}%`;
+    conditions.push(or(ilike(users.username, term), ilike(users.displayName, term)));
+  }
+  if (filter.suspended !== undefined) {
+    conditions.push(filter.suspended ? sql`${users.suspendedAt} is not null` : sql`${users.suspendedAt} is null`);
+  }
+  if (filter.admin !== undefined) conditions.push(eq(users.isAdmin, filter.admin));
+  if (filter.verified !== undefined) conditions.push(eq(users.emailVerified, filter.verified));
+  // `and()` drops undefined operands, so unset dimensions stay unfiltered.
   return db
     .select()
     .from(users)
-    .where(and(sql`${users.deletedAt} is null`, match))
+    .where(and(...conditions))
     .orderBy(desc(users.createdAt))
     .limit(limit);
 }
