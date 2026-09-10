@@ -454,3 +454,53 @@ export function accountRestoredEmail(vars: AccountNoticeVars): Omit<EmailMessage
 export function sendAccountRestored(to: string, vars: AccountNoticeVars): Promise<void> {
   return sendMail({ to, ...accountRestoredEmail(vars) });
 }
+
+/** Admin-granted notice: the account can now moderate the instance. */
+export function accountAdminGrantedEmail(vars: AccountNoticeVars): Omit<EmailMessage, "to"> {
+  return {
+    subject: `You are now an admin on ${vars.appName}`,
+    text: [
+      `Your account (@${vars.username}) on ${vars.appName} has been given the admin role.`,
+      "",
+      "You can now open /admin: moderate reports and accounts, manage defederation, and change instance settings. With that comes access to other people's private data (login emails) — treat it accordingly.",
+      "",
+      `— The ${vars.appName} team`,
+      `${vars.origin}/admin`,
+    ].join("\n"),
+    html: layout(
+      "You are now an admin",
+      `Your account (@${vars.username}) on ${vars.appName} has been given the admin role. You can now open the admin panel: moderate reports and accounts, manage defederation, and change instance settings. With that comes access to other people's private data (login emails) — treat it accordingly.`,
+      { label: "Open the admin panel", url: `${vars.origin}/admin` },
+    ),
+  };
+}
+
+/** Admin-granted notice. Queued off the request path (see queue/handlers.ts). */
+export function sendAdminGranted(to: string, vars: AccountNoticeVars): Promise<void> {
+  return sendMail({ to, ...accountAdminGrantedEmail(vars) });
+}
+
+/** Admin-revoked notice: back to a regular account, everything else unchanged. */
+export function accountAdminRevokedEmail(vars: AccountNoticeVars): Omit<EmailMessage, "to"> {
+  return {
+    subject: `Your ${vars.appName} admin role has been removed`,
+    text: [
+      `Your account (@${vars.username}) on ${vars.appName} is no longer an admin.`,
+      "",
+      "Everything else is unchanged — your profile, posts and lists are exactly as they were, and you can sign in as usual.",
+      "",
+      `— The ${vars.appName} team`,
+      vars.origin,
+    ].join("\n"),
+    html: layout(
+      "Your admin role has been removed",
+      `Your account (@${vars.username}) on ${vars.appName} is no longer an admin. Everything else is unchanged — your profile, posts and lists are exactly as they were, and you can sign in as usual.`,
+      { label: `Open ${vars.appName}`, url: vars.origin },
+    ),
+  };
+}
+
+/** Admin-revoked notice. Queued off the request path (see queue/handlers.ts). */
+export function sendAdminRevoked(to: string, vars: AccountNoticeVars): Promise<void> {
+  return sendMail({ to, ...accountAdminRevokedEmail(vars) });
+}

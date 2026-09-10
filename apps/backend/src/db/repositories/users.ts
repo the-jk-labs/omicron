@@ -199,6 +199,23 @@ export async function setSuspended(id: string, at: Date | null) {
   return row;
 }
 
+// Grants or revokes the admin role. Returns the updated row.
+export async function setAdmin(id: string, isAdmin: boolean) {
+  const [row] = await db.update(users).set({ isAdmin }).where(eq(users.id, id)).returning();
+  return row;
+}
+
+// How many live admins exist — the demote guardrail (the last admin cannot be
+// removed). Deleted accounts cannot be admins (deletion refuses them), but the
+// filter keeps the count honest regardless.
+export async function countAdmins(): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(users)
+    .where(and(eq(users.isAdmin, true), sql`${users.deletedAt} is null`));
+  return row?.n ?? 0;
+}
+
 // Every account's id, email, and creation time — for the one-off email-lowercase
 // backfill (scripts/backfill_email_lowercase.ts), which canonicalises rows that
 // predate case-normalised registration. Oldest first, so a collision report is

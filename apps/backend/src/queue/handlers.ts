@@ -5,6 +5,8 @@ import {
   sendAccountReinstated,
   sendAccountRestored,
   sendAccountSuspended,
+  sendAdminGranted,
+  sendAdminRevoked,
   sendEmailVerification,
   sendPasswordChanged,
   sendPasswordReset,
@@ -153,5 +155,12 @@ export function registerJobHandlers() {
   );
   registerHandler("send_account_restored", ({ to, username, appName, origin }) =>
     sendAccountRestored(to, { username, appName, origin }),
+  );
+  // The admin role was granted or revoked; the affected account is told either way.
+  registerHandler("send_admin_granted", ({ to, username, appName, origin }) =>
+    sendAdminGranted(to, { username, appName, origin }),
+  );
+  registerHandler("send_admin_revoked", ({ to, username, appName, origin }) =>
+    sendAdminRevoked(to, { username, appName, origin }),
   );
 }

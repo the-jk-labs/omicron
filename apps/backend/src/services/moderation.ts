@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { config } from "@/config.ts";
 import * as accountsRepo from "@/db/repositories/accounts.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
+import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as reportsRepo from "@/db/repositories/reports.ts";
@@ -14,6 +15,8 @@ import { hostMatchesDomain, normalizeDomain } from "@/lib/domain.ts";
 import { badRequest, forbidden, notFound, unauthorized } from "@/lib/http.ts";
 import { queue } from "@/queue/queue.ts";
 import {
+  notifyAdminGranted,
+  notifyAdminRevoked,
   notifyModeratorDeleted,
   notifyReinstated,
   notifyRestored,
@@ -110,7 +113,53 @@ export async function setSuspended(adminId: string, targetId: string, suspend: b
   }
 }
 
-// ── User deletion (admin, soft-delete with retention) ──────────────────────
+// ── Admin role (promote / demote) ──────────────────────────────────────────
+
+// Grants or revokes the admin role. A stolen admin session must not be enough
+// to mint new admins, so the acting admin's own password is re-verified — the
+// same bar as deletion, minus the username typing (the target is already
+// picked, and the action is reversible). Guards: never self, never the last
+// admin. The affected account is notified either way.
+export async function setAdminRole(
+  adminId: string,
+  targetId: string,
+  input: { makeAdmin: boolean; password: string },
+): Promise<void> {
+  const target = await usersRepo.findById(targetId);
+  if (!target || target.deletedAt) throw notFound("Account not found.");
+  if (target.id === adminId) throw forbidden("You can't change your own role.");
+  const hash = await accountsRepo.findCredentialHashByUserId(adminId);
+  if (!hash || !(await bcrypt.compare(input.password, hash))) {
+    throw unauthorized("Incorrect password.");
+  }
+  if (target.isAdmin === input.makeAdmin) return;
+  if (!input.makeAdmin && (await usersRepo.countAdmins()) <= 1) {
+    throw forbidden("You can't remove the last admin.");
+  }
+  await usersRepo.setAdmin(targetId, input.makeAdmin);
+  if (input.makeAdmin) {
+    await notifyAdminGranted(target.email, target.username);
+  } else {
+    await notifyAdminRevoked(target.email, target.username);
+  }
+}
+
+// ── User detail (admin) ────────────────────────────────────────────────────
+
+// Everything the admin user detail shows: the table row plus post/follow
+// counts, the latest posts, and every report filed against the account or its
+// posts — the context behind a suspend/delete decision.
+export async function getUserDetail(targetId: string) {
+  const user = await usersRepo.findById(targetId);
+  if (!user || user.deletedAt) throw notFound("Account not found.");
+  const [postCounts, followCounts, recentPosts, reports] = await Promise.all([
+    postsRepo.countsByAuthor(user.id),
+    followsRepo.counts(user.id),
+    postsRepo.listRecentByAuthor(user.id),
+    reportsRepo.listAgainstUser(user.id),
+  ]);
+  return { user, postCounts, followCounts, recentPosts, reports };
+}
 
 // How long a deleted account is kept restorable before the sweeper erases it
 // for good. The admin UI shows the exact expiry per account.

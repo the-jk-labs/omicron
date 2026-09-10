@@ -68,3 +68,21 @@ export async function notifyModeratorDeleted(email: string, username: string, ex
     console.error("accountNotices: failed to queue deletion notice (continuing):", err);
   }
 }
+
+/** Admin-granted notice after a moderator promotes the account. */
+export async function notifyAdminGranted(email: string, username: string): Promise<void> {
+  try {
+    queue.add("send_admin_granted", { to: email, username, ...(await instanceVars()) });
+  } catch (err) {
+    console.error("accountNotices: failed to queue admin-granted notice (continuing):", err);
+  }
+}
+
+/** Admin-revoked notice after a moderator demotes the account. */
+export async function notifyAdminRevoked(email: string, username: string): Promise<void> {
+  try {
+    queue.add("send_admin_revoked", { to: email, username, ...(await instanceVars()) });
+  } catch (err) {
+    console.error("accountNotices: failed to queue admin-revoked notice (continuing):", err);
+  }
+}
