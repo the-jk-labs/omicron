@@ -95,3 +95,12 @@ export async function notifyVerified(email: string, username: string): Promise<v
     console.error("accountNotices: failed to queue verified notice (continuing):", err);
   }
 }
+
+/** Login-email-changed notice to the previous address. Best-effort. */
+export async function notifyEmailChanged(oldEmail: string, username: string, newEmail: string): Promise<void> {
+  try {
+    queue.add("send_account_email_changed", { to: oldEmail, username, newEmail, ...(await instanceVars()) });
+  } catch (err) {
+    console.error("accountNotices: failed to queue email-changed notice (continuing):", err);
+  }
+}

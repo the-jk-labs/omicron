@@ -66,7 +66,7 @@
     <section class="rounded-card border border-border bg-background p-6">
       <h2 class="text-lg font-semibold tracking-tight text-foreground">Users</h2>
       <p class="mt-1 text-sm text-muted-foreground">
-        Every local account on this instance. Expand a row for detail; suspend, delete, or change the admin role.
+        Every local account on this instance. Expand a row for detail; edit, suspend, delete, or change the admin role.
       </p>
       <div class="mt-5">
         <AdminUsers selfId={data.user.id} />

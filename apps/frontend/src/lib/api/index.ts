@@ -151,6 +151,22 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     restoreUser: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/restore`, {}),
     // Full detail for one account: counts, latest posts and reports against it.
     adminUserDetail: (id: string) => api.get<AdminUserDetail>(`/admin/users/${id}`),
+    // Edit another account's profile + login email. Every field optional; only
+    // the keys present are patched. Changing the login email stores it
+    // unverified, sends a verification link to the new address and a security
+    // notice to the previous one.
+    updateUserAsAdmin: (
+      id: string,
+      body: {
+        displayName?: string;
+        bio?: string;
+        publicEmail?: string;
+        customSection?: string;
+        tags?: string[];
+        links?: { platform: string; url: string; label: string }[];
+        email?: string;
+      },
+    ) => api.patch<{ user: AdminUser }>(`/admin/users/${id}`, body),
     // Resend the verification email, or manually mark the address verified.
     resendVerification: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/verification-email`, {}),
     verifyEmail: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/verify`, {}),

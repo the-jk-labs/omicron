@@ -480,11 +480,15 @@ export type AdminInstance = {
 
 // ── moderation (admin only) ──
 // A row in the admin user table. Exposes the moderation-relevant private fields
-// (login email, verification + suspension state) — admin surfaces only.
+// (login email, verification + suspension state) plus the editable profile
+// fields — admin surfaces only.
 export type AdminUser = {
   id: string;
   username: string;
   displayName: string;
+  bio: string;
+  publicEmail: string;
+  customSection: string;
   avatarUrl: string | null;
   isAdmin: boolean;
   email: string;
@@ -530,11 +534,14 @@ export type Report = {
 };
 
 // Full admin detail for one account: the table row plus post/follow counts,
-// the latest posts and the reports filed against the account or its posts.
+// the latest posts, the profile tags/links backing the edit form, and the
+// reports filed against the account or its posts.
 export type AdminUserDetail = {
   user: AdminUser;
   postCounts: { draft: number; scheduled: number; published: number };
   followCounts: { followers: number; following: number };
   recentPosts: { id: string; title: string | null; slug: string | null; status: string; createdAt: string }[];
   reports: Report[];
+  tags: Tag[];
+  links: ProfileLink[];
 };
