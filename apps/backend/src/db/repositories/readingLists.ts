@@ -94,7 +94,10 @@ export function listSitemapLists(): Promise<{ id: string; title: string; lastIte
     })
     .from(readingLists)
     .innerJoin(readingListItems, eq(readingListItems.listId, readingLists.id))
-    .innerJoin(users, and(eq(users.id, readingLists.userId), sql`${users.suspendedAt} is null`))
+    .innerJoin(
+      users,
+      and(eq(users.id, readingLists.userId), sql`${users.suspendedAt} is null`, sql`${users.deletedAt} is null`),
+    )
     .where(and(eq(readingLists.visibility, "public"), eq(readingLists.isReadLater, false)))
     .groupBy(readingLists.id)
     .limit(10000);

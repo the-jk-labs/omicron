@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from "vitest";
 import type { User } from "@/db/schema.ts";
-import { publicUser, webhookTokenView } from "@/routes/serializers.ts";
+import { deletedUserView, publicUser, webhookTokenView } from "@/routes/serializers.ts";
 
 // The serializers decide what leaves the server. These tests pin the parts that
 // are privacy decisions rather than plumbing.
@@ -21,6 +21,8 @@ const user = {
   isPrivate: true,
   emailVerified: false,
   suspendedAt: null,
+  deletedAt: null,
+  deletedBy: null,
   actorKeyPair: null,
   displayUsername: "ada",
   createdAt: new Date(),
@@ -66,4 +68,24 @@ test("webhookTokenView: never returns the token hash", () => {
   // The owning account is implied by the session; echoing it back is noise.
   expect("userId" in out).toBe(false);
   expect(out.label).toBe("Sanity");
+});
+
+test("deletedUserView: carries the restore metadata and no credentials", () => {
+  const deletedAt = new Date("2026-08-01T00:00:00.000Z");
+  const expiresAt = new Date("2026-08-31T00:00:00.000Z");
+  const out = deletedUserView({
+    user: { ...user, deletedAt, deletedBy: "admin-id" },
+    deletedByUsername: "root",
+    postCount: 7,
+    expiresAt,
+  }) as Record<string, unknown>;
+
+  expect(out.id).toBe("u1");
+  expect(out.username).toBe("ada");
+  expect(out.postCount).toBe(7);
+  expect(out.deletedBy).toBe("root");
+  expect(out.deletedAt).toEqual(deletedAt);
+  expect(out.expiresAt).toEqual(expiresAt);
+  expect("passwordHash" in out).toBe(false);
+  expect("actorKeyPair" in out).toBe(false);
 });

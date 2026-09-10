@@ -133,7 +133,9 @@ function createFederationInstance(): Federation<ContextData> {
 function setupActor(f: Federation<ContextData>) {
   f.setActorDispatcher("/users/{identifier}", async (ctx, identifier) => {
     const user = await usersRepo.findByUsername(identifier);
-    if (!user) return null;
+    // A deleted account reads as gone (its Delete was already federated at
+    // delete time), so remote instances tombstone rather than refetch it.
+    if (!user || user.deletedAt) return null;
     const keys = await ctx.getActorKeyPairs(identifier);
     const tags = await tagsRepo.tagsForUser(user.id);
     return await buildPerson(ctx, identifier, user, tags, keys);
@@ -166,7 +168,7 @@ function setupActor(f: Federation<ContextData>) {
 function setupFollowers(f: Federation<ContextData>) {
   f.setFollowersDispatcher("/users/{identifier}/followers", async (ctx, identifier) => {
     const user = await usersRepo.findByUsername(identifier);
-    if (!user) return null;
+    if (!user || user.deletedAt) return null;
     const [locals, remotes] = await Promise.all([
       followsRepo.localFollowerUsernames(user.id),
       followsRepo.remoteFollowerActors(user.id),

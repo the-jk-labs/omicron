@@ -4,6 +4,7 @@ import { config } from "@/config.ts";
 import { runMigrations } from "@/db/migrate.ts";
 import { startJobWorker } from "@/queue/queue.ts";
 import { reconcileAnubisInBackground } from "@/services/anubisProtection.ts";
+import { startDeletedUserSweeper } from "@/services/deletedUsers.ts";
 import { seedFederationOrigin, seedFederationRunning } from "@/services/federationState.ts";
 import { getFederationEnabled, getOrigin } from "@/services/instanceSetup.ts";
 import { backfillSlugs } from "@/services/postSlugs.ts";
@@ -46,10 +47,14 @@ async function main() {
   startUploadGcSweeper();
 
   // Prune cached remote actors (and their posts) that are stale and no longer
-  // referenced by any local follow/mute/block/recommendation/notification edge,
+  // referenced by any local follow/mute/block/recommendation edge,
   // so a hostile instance can't grow the remote tables without bound by serving
   // many distinct actors. Safe to run on every node — see services/remoteCacheGc.ts.
   startRemoteCacheGcSweeper();
+
+  // Erase soft-deleted accounts once their retention window ends. Same
+  // database-backed pattern as the sweepers above — see services/deletedUsers.ts.
+  startDeletedUserSweeper();
 
   // `onListen` overrides Deno's own "Listening on http://0.0.0.0:8000/" banner,
   // which otherwise prints alongside ours and announces the same thing twice —

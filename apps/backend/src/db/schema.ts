@@ -66,6 +66,17 @@ export const users = pgTable(
     // blocked from signing in and treated as signed out (see auth/auth.ts and
     // routes/middleware.ts).
     suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+    // When an admin deleted this account (null = live). A deleted account is a
+    // suspended account taken further: it cannot sign in, is treated as signed
+    // out, and vanishes from every listing, profile, feed and federated actor
+    // lookup. The row — posts, follows and all — is kept for the retention
+    // window so the deletion can be reverted, then hard-deleted by a sweeper
+    // (see services/moderation.ts and services/deletedUsers.ts).
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    // Which moderator deleted the account (null when unknown, or when that
+    // moderator's own account is gone). Shown in the admin "recently deleted"
+    // list; never a public surface.
+    deletedBy: uuid("deleted_by").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
     actorKeyPair: jsonb("actor_key_pair").$type<ActorKeyPair | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

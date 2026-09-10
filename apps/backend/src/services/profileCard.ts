@@ -47,7 +47,7 @@ async function sha256Hex(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
 /**
  * The share card for a local profile, generated on first request and cached.
  *
- * Throws 404 when no such user exists (or the account is suspended), so a
+ * Throws 404 when no such user exists (or the account is suspended or deleted), so a
  * card is no more reachable than the profile. Returns null when no card can
  * be drawn — a display name in a script the bundled face has no glyphs for —
  * and the caller falls back to the instance's brand image.
@@ -58,7 +58,7 @@ async function sha256Hex(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
  */
 export async function profileCard(username: string): Promise<Uint8Array<ArrayBuffer> | null> {
   const user = await usersRepo.findByUsername(username);
-  if (!user || user.suspendedAt) throw notFound("User not found.");
+  if (!user || user.suspendedAt || user.deletedAt) throw notFound("User not found.");
 
   const [counts, postCounts, site] = await Promise.all([
     followsRepo.counts(user.id),

@@ -5,7 +5,7 @@ import { rotateSessionSecret, sessionSecretManaged } from "@/config.ts";
 import { badRequest } from "@/lib/http.ts";
 import { jsonBody } from "@/lib/validate.ts";
 import { requireAdmin } from "@/routes/middleware.ts";
-import { adminUserView } from "@/routes/serializers.ts";
+import { adminUserView, deletedUserView } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import * as anubis from "@/services/anubisProtection.ts";
 import { dnsRecords } from "@/services/dkim.ts";
@@ -306,6 +306,43 @@ const suspendSchema = z.object({ suspend: z.boolean() });
 adminRoutes.post("/users/:id/suspend", jsonBody(suspendSchema, "Expected { suspend: boolean }."), async (c) => {
   const admin = requireAdmin(c);
   await moderation.setSuspended(admin.id, c.req.param("id"), c.req.valid("json").suspend);
+  return c.json({ ok: true });
+});
+
+const deleteUserSchema = z.object({
+  username: z.string().trim().min(1, "Type the account's username to confirm."),
+  password: z.string().min(1, "Your password is required."),
+});
+
+// Delete a local account (soft-delete with a retention window). GitHub-style:
+// the admin must type the account's exact username and re-enter their own
+// password — a stolen session alone cannot wipe accounts.
+adminRoutes.post("/users/:id/delete", jsonBody(deleteUserSchema), async (c) => {
+  const admin = requireAdmin(c);
+  const { username, password } = c.req.valid("json");
+  await moderation.deleteUser(admin.id, c.req.param("id"), { username, password });
+  return c.json({ ok: true });
+});
+
+// Restore a deleted account within its retention window.
+adminRoutes.post("/users/:id/restore", async (c) => {
+  requireAdmin(c);
+  await moderation.restoreUser(c.req.param("id"));
+  return c.json({ ok: true });
+});
+
+// Recently deleted accounts awaiting restore or expiry, newest deletion first.
+adminRoutes.get("/users/deleted", async (c) => {
+  requireAdmin(c);
+  const rows = await moderation.listDeletedUsers();
+  return c.json({ users: rows.map(deletedUserView) });
+});
+
+// Permanently erase a deleted account before its window ends (frees the handle
+// immediately; cannot be undone).
+adminRoutes.delete("/users/deleted/:id", async (c) => {
+  requireAdmin(c);
+  await moderation.purgeDeletedUser(c.req.param("id"));
   return c.json({ ok: true });
 });
 

@@ -117,9 +117,10 @@ export const auth = betterAuth({
     },
     session: {
       create: {
-        // Block suspended accounts (runs after credential check, so no enumeration).
+        // Block suspended and deleted accounts (runs after credential check, so no enumeration).
         before: async (session) => {
           const user = await usersRepo.findById(session.userId);
+          if (user?.deletedAt) throw new APIError("FORBIDDEN", { message: "This account no longer exists." });
           if (user?.suspendedAt) throw new APIError("FORBIDDEN", { message: "This account has been suspended." });
           return { data: session };
         },

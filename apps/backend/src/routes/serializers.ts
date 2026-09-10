@@ -100,6 +100,28 @@ export function adminUserView(u: User) {
   };
 }
 
+// A recently deleted account for the admin restore list: identity plus who
+// deleted it, how many posts are kept, and when the retention window ends
+// (computed by the service). Only ever returned to admins via the admin routes.
+export function deletedUserView(row: {
+  user: User;
+  deletedByUsername: string | null;
+  postCount: number;
+  expiresAt: Date;
+}) {
+  return {
+    id: row.user.id,
+    username: row.user.username,
+    displayName: row.user.displayName,
+    avatarUrl: row.user.avatarUrl,
+    email: row.user.email,
+    postCount: row.postCount,
+    deletedBy: row.deletedByUsername,
+    deletedAt: row.user.deletedAt ?? new Date(),
+    expiresAt: row.expiresAt,
+  };
+}
+
 // Coalesces the two possible author sources into one uniform shape. For remote
 // authors `username` is the full `user@host` handle, so the frontend's
 // `/@${author.username}` links resolve straight back to the remote profile.

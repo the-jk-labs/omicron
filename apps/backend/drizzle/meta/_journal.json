@@ -253,6 +253,13 @@
       "when": 1788708046999,
       "tag": "0035_remote_comments",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1788800000000,
+      "tag": "0036_user_soft_delete",
+      "breakpoints": true
     }
   ]
 }
