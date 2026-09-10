@@ -133,8 +133,15 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     checkPort25: () => api.get<{ ok: boolean; detail: string }>("/admin/email/port25"),
 
     // admin moderation
-    adminUsers: (q?: string) =>
-      api.get<{ users: AdminUser[]; total: number }>(`/admin/users${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+    adminUsers: (q?: string, filters?: { suspendedOnly?: boolean; adminsOnly?: boolean; unverifiedOnly?: boolean }) => {
+      const params = new URLSearchParams();
+      if (q) params.set("q", q);
+      if (filters?.suspendedOnly) params.set("suspended", "true");
+      if (filters?.adminsOnly) params.set("admin", "true");
+      if (filters?.unverifiedOnly) params.set("verified", "false");
+      const qs = params.toString();
+      return api.get<{ users: AdminUser[]; total: number }>(`/admin/users${qs ? `?${qs}` : ""}`);
+    },
     suspendUser: (id: string, suspend: boolean) => api.post<{ ok: true }>(`/admin/users/${id}/suspend`, { suspend }),
     // Delete a local account. GitHub-style: the exact username plus the acting
     // admin's own password travel with the request — the server re-verifies both.
@@ -144,6 +151,9 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     restoreUser: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/restore`, {}),
     // Full detail for one account: counts, latest posts and reports against it.
     adminUserDetail: (id: string) => api.get<AdminUserDetail>(`/admin/users/${id}`),
+    // Resend the verification email, or manually mark the address verified.
+    resendVerification: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/verification-email`, {}),
+    verifyEmail: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/verify`, {}),
     // Grant or revoke the admin role. The acting admin's own password travels
     // with the request — the server re-verifies it.
     setUserRole: (id: string, body: { makeAdmin: boolean; password: string }) =>
