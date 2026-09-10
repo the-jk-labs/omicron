@@ -1,4 +1,6 @@
+import bcrypt from "bcryptjs";
 import { config } from "@/config.ts";
+import * as accountsRepo from "@/db/repositories/accounts.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
@@ -9,7 +11,9 @@ import * as sessionsRepo from "@/db/repositories/sessions.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import type { BlockedDomain } from "@/db/schema.ts";
 import { hostMatchesDomain, normalizeDomain } from "@/lib/domain.ts";
-import { badRequest, forbidden, notFound } from "@/lib/http.ts";
+import { badRequest, forbidden, notFound, unauthorized } from "@/lib/http.ts";
+import { queue } from "@/queue/queue.ts";
+import { federationRunning } from "@/services/federationState.ts";
 
 // Business logic for moderation. Admin authorization is enforced at the route
 // layer (requireAdmin); these functions assume the caller is a moderator except
@@ -93,6 +97,104 @@ export async function setSuspended(adminId: string, targetId: string, suspend: b
 
   await usersRepo.setSuspended(targetId, suspend ? new Date() : null);
   if (suspend) await sessionsRepo.removeAllForUser(targetId);
+}
+
+// ── User deletion (admin, soft-delete with retention) ──────────────────────
+
+// How long a deleted account is kept restorable before the sweeper erases it
+// for good. The admin UI shows the exact expiry per account.
+export const DELETED_USER_RETENTION_DAYS = 30;
+
+export function deletionExpiresAt(deletedAt: Date): Date {
+  return new Date(deletedAt.getTime() + DELETED_USER_RETENTION_DAYS * 86_400_000);
+}
+
+// Deletes a local account. GitHub-style safety: the caller must supply the
+// target's exact username plus the acting admin's own password, re-verified
+// against the credential hash (a stolen admin session alone cannot wipe
+// accounts). Like self-deletion, this federates Delete(actor) first, then
+// soft-deletes: the row — posts, follows and all — is kept for the retention
+// window so the deletion can be reverted, while the account itself cannot sign
+// in and vanishes from every listing, profile, feed and actor lookup.
+// Admins cannot delete themselves or other admins.
+export async function deleteUser(
+  adminId: string,
+  targetId: string,
+  input: { username: string; password: string },
+): Promise<void> {
+  const target = await usersRepo.findById(targetId);
+  if (!target || target.deletedAt) throw notFound("Account not found.");
+  if (target.id === adminId) throw forbidden("You can't delete your own account.");
+  if (target.isAdmin) throw forbidden("You can't delete another admin.");
+  if (input.username.trim() !== target.username) {
+    throw badRequest("The typed username does not match this account.");
+  }
+  const hash = await accountsRepo.findCredentialHashByUserId(adminId);
+  if (!hash || !(await bcrypt.compare(input.password, hash))) {
+    throw unauthorized("Incorrect password.");
+  }
+
+  if (federationRunning()) {
+    try {
+      const { sendActorDelete } = await import("@/federation/outbound.ts");
+      await sendActorDelete(target.id);
+    } catch (err) {
+      console.error("deleteUser: federated Delete failed (continuing):", err);
+    }
+  }
+  await usersRepo.setDeleted(targetId, new Date(), adminId);
+  await sessionsRepo.removeAllForUser(targetId);
+}
+
+// Restores a deleted account within its retention window. The username and
+// email were never freed (the row was kept), so restoration cannot conflict.
+// Queues an actor update so instances that cached the Delete can refetch.
+export async function restoreUser(targetId: string): Promise<void> {
+  const target = await usersRepo.findById(targetId);
+  if (!target || !target.deletedAt) throw notFound("Deleted account not found.");
+  await usersRepo.setDeleted(targetId, null, null);
+  queue.add("federate_actor_update", { userId: targetId });
+}
+
+// Recently deleted accounts with the deleting moderator's username, each
+// account's kept post count, and when its retention window ends — the admin
+// restore list.
+export async function listDeletedUsers(): Promise<
+  {
+    user: NonNullable<Awaited<ReturnType<typeof usersRepo.findById>>>;
+    deletedByUsername: string | null;
+    postCount: number;
+    expiresAt: Date;
+  }[]
+> {
+  const rows = await usersRepo.listDeleted();
+  const counts = await postsRepo.countLocalByAuthors(rows.map((r) => r.user.id));
+  return rows.map((r) => ({
+    ...r,
+    postCount: counts.get(r.user.id) ?? 0,
+    // `deletedAt` is non-null: listDeleted only returns deleted accounts.
+    expiresAt: deletionExpiresAt(r.user.deletedAt!),
+  }));
+}
+
+// Permanently erases a deleted account before its window ends. The Delete was
+// already federated at delete time; this drops the row (cascades wipe the
+// account's posts, follows and the rest) so the handle is freed immediately.
+export async function purgeDeletedUser(targetId: string): Promise<void> {
+  const target = await usersRepo.findById(targetId);
+  if (!target || !target.deletedAt) throw notFound("Deleted account not found.");
+  await usersRepo.hardRemove(targetId);
+}
+
+// Hard-deletes every account whose retention window ended before now. Returns
+// how many were purged. Driven by the expiry sweeper (services/deletedUsers.ts).
+export async function purgeExpiredDeletedUsers(now = new Date(), limit = 100): Promise<number> {
+  const cutoff = new Date(now.getTime() - DELETED_USER_RETENTION_DAYS * 86_400_000);
+  const expired = await usersRepo.listExpiredDeletedIds(cutoff, limit);
+  for (const { id } of expired) {
+    await usersRepo.hardRemove(id);
+  }
+  return expired.length;
 }
 
 // ── Posts (admin) ──────────────────────────────────────────────────────────

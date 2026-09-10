@@ -65,7 +65,7 @@ export async function submitPost(postId: string): Promise<void> {
   if (!row.post.authorId) return;
 
   const author = await usersRepo.findById(row.post.authorId);
-  if (!author || author.suspendedAt || author.isPrivate) return;
+  if (!author || author.suspendedAt || author.deletedAt || author.isPrivate) return;
 
   await submit([`${site}${postPath(row.post, author.username)}`], site, seo.indexNowKey);
 }

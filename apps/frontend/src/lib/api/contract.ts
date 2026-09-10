@@ -31,6 +31,7 @@ import type {
   AdminUser,
   Comment,
   CoverCredit,
+  DeletedUser,
   Notification,
   Post,
   PostAuthor,
@@ -46,6 +47,7 @@ import type {
 import type {
   adminUserView,
   commentView,
+  deletedUserView,
   notificationView,
   postWithAuthor,
   profileLinkView,
@@ -100,6 +102,7 @@ type _CoverCredit = Assert<Fits<NonNullable<Wire<typeof postWithAuthor>["coverCr
 
 type _User = Assert<Fits<Wire<typeof publicUser>, User>>;
 type _AdminUser = Assert<Fits<Wire<typeof adminUserView>, AdminUser>>;
+type _DeletedUser = Assert<Fits<Wire<typeof deletedUserView>, DeletedUser>>;
 
 type _Post = Assert<Fits<Wire<typeof postWithAuthor>, Post>>;
 type _PostAuthor = Assert<Fits<Wire<typeof postWithAuthor>["author"], PostAuthor>>;

@@ -284,6 +284,7 @@ const publishedLocally = () =>
     eq(posts.remote, false),
     eq(posts.status, "published"),
     sql`${users.suspendedAt} is null`,
+    sql`${users.deletedAt} is null`,
     eq(users.isPrivate, false),
   );
 
@@ -348,7 +349,7 @@ export function listRelated(postId: string, limit = 3) {
       // A private author's posts are visible only to approved followers; a
       // suggestion rail has no viewer context to check that against, so they are
       // left out entirely rather than teased and then 404'd.
-      .where(and(sql`${users.isPrivate} = false`, sql`${users.suspendedAt} is null`))
+      .where(and(sql`${users.isPrivate} = false`, sql`${users.suspendedAt} is null`, sql`${users.deletedAt} is null`))
       .orderBy(desc(shared.overlap), desc(posts.createdAt))
       .limit(limit)
   );
@@ -366,6 +367,7 @@ export function listRecentExcluding(postId: string, limit = 4) {
         eq(posts.remote, false),
         sql`${users.isPrivate} = false`,
         sql`${users.suspendedAt} is null`,
+        sql`${users.deletedAt} is null`,
       ),
     )
     .orderBy(desc(posts.createdAt))
@@ -379,13 +381,13 @@ export function listRecentExcluding(postId: string, limit = 4) {
 // one asks what the node holds, and a private author's article is as much this
 // node's output as anyone's — only the count leaves, never a title or a body.
 // Drafts and scheduled posts are not published and never counted; a suspended
-// author's work is withdrawn, so it is not counted either.
+// or deleted author's work is withdrawn, so it is not counted either.
 export async function countLocalPublished(): Promise<number> {
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(posts)
     .innerJoin(users, eq(posts.authorId, users.id))
-    .where(and(eq(posts.remote, false), isPublished, isNull(users.suspendedAt)));
+    .where(and(eq(posts.remote, false), isPublished, isNull(users.suspendedAt), isNull(users.deletedAt)));
   return row?.n ?? 0;
 }
 
@@ -403,7 +405,7 @@ export async function countSitemapEntries(): Promise<number> {
 // crawler following a byline. `lastmod` is their newest post, since that is what
 // actually changes the page.
 //
-// Excluded: suspended accounts, private accounts (their posts are only visible
+// Excluded: suspended and deleted accounts, private accounts (their posts are only visible
 // to approved followers, so the page is empty to a crawler), and anyone with
 // nothing published, whose profile would be a thin page.
 export function listSitemapProfiles() {
@@ -414,7 +416,7 @@ export function listSitemapProfiles() {
     })
     .from(users)
     .innerJoin(posts, and(eq(posts.authorId, users.id), eq(posts.status, "published"), eq(posts.remote, false)))
-    .where(and(sql`${users.suspendedAt} is null`, eq(users.isPrivate, false)))
+    .where(and(sql`${users.suspendedAt} is null`, sql`${users.deletedAt} is null`, eq(users.isPrivate, false)))
     .groupBy(users.username)
     .limit(10000);
 }
@@ -440,11 +442,12 @@ function beforeCursor(cursor: Cursor | null) {
 // to their author (see listDraftsByAuthor).
 export const isPublished = eq(posts.status, "published");
 
-// A locally-suspended author vanishes from every public listing — feeds,
-// trending, search, tags and their own profile — until an admin reinstates them
-// (nothing is deleted). Remote posts have no local author (`authorId is null`)
+// A locally-suspended or deleted author vanishes from every public listing —
+// feeds, trending, search, tags and their own profile — until an admin
+// reinstates them (a suspension deletes nothing; a deletion keeps the row for
+// the retention window). Remote posts have no local author (`authorId is null`)
 // and are unaffected. Relies on every listing left-joining `users` on authorId.
-export const notSuspended = sql`(${posts.authorId} is null or ${users.suspendedAt} is null)`;
+export const notSuspended = sql`(${posts.authorId} is null or (${users.suspendedAt} is null and ${users.deletedAt} is null))`;
 
 // Gates posts by a *private* local author to approved followers only (plus the
 // author themselves). Public authors and remote posts (authorId null) are
@@ -715,6 +718,22 @@ export function listPublishedByAuthor(authorId: string, cursor: Cursor | null, l
     .where(and(eq(posts.authorId, authorId), eq(posts.status, "published"), beforeCursor(cursor)))
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
+}
+
+// How many local posts each of the given authors holds, for the admin
+// "recently deleted" list. One grouped scan rather than a count per row.
+export async function countLocalByAuthors(authorIds: string[]): Promise<Map<string, number>> {
+  if (authorIds.length === 0) return new Map();
+  const rows = await db
+    .select({ authorId: posts.authorId, n: count() })
+    .from(posts)
+    .where(and(eq(posts.remote, false), inArray(posts.authorId, authorIds)))
+    .groupBy(posts.authorId);
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    if (row.authorId) totals.set(row.authorId, row.n);
+  }
+  return totals;
 }
 
 // How many posts the author holds in each state, for the management page's tab

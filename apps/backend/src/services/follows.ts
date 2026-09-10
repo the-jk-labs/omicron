@@ -86,7 +86,7 @@ export async function removeFollower(userId: string, identifier: string) {
 // already follows them.
 export async function profile(username: string, viewerId: string | null) {
   const user = await usersRepo.findByUsername(username);
-  if (!user) throw notFound("User not found.");
+  if (!user || user.deletedAt) throw notFound("User not found.");
   // A block (either direction) makes the two users invisible to each other, so
   // the blocked profile reads as not-found rather than rendering the header,
   // counts and bio. Unblocking is done from the Connections settings, not here.
@@ -118,7 +118,7 @@ async function canViewPrivate(user: { id: string; isPrivate: boolean }, viewerId
 // accounts), as a flat, uniform actor list.
 export async function followersOf(username: string, viewerId: string | null = null) {
   const user = await usersRepo.findByUsername(username);
-  if (!user) throw notFound("User not found.");
+  if (!user || user.deletedAt) throw notFound("User not found.");
   // A locked private profile hides its follower list from non-followers.
   if (!(await canViewPrivate(user, viewerId))) return [];
   const [local, remote] = await Promise.all([
@@ -130,7 +130,7 @@ export async function followersOf(username: string, viewerId: string | null = nu
 
 export async function followingOf(username: string, viewerId: string | null = null) {
   const user = await usersRepo.findByUsername(username);
-  if (!user) throw notFound("User not found.");
+  if (!user || user.deletedAt) throw notFound("User not found.");
   // A locked private profile hides its following list from non-followers.
   if (!(await canViewPrivate(user, viewerId))) return [];
   const [local, remote] = await Promise.all([

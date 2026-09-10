@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, desc, eq, gte, ilike, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, lt, ne, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db/client.ts";
 import { type ActorKeyPair, follows, type NewUser, sessions, users } from "@/db/schema.ts";
 
@@ -22,7 +23,13 @@ export function search(query: string, limit = 10) {
       avatarUrl: users.avatarUrl,
     })
     .from(users)
-    .where(and(sql`${users.suspendedAt} is null`, or(ilike(users.username, term), ilike(users.displayName, term))))
+    .where(
+      and(
+        sql`${users.suspendedAt} is null`,
+        sql`${users.deletedAt} is null`,
+        or(ilike(users.username, term), ilike(users.displayName, term)),
+      ),
+    )
     .orderBy(users.displayName)
     .limit(limit);
 }
@@ -32,8 +39,8 @@ export function search(query: string, limit = 10) {
 // stay actionable; for a signed-out viewer it's just the most-followed accounts.
 export function suggested(viewerId: string | null, limit = 5) {
   const followerCount = sql<number>`count(${follows.followerId})::int`;
-  // Suspended accounts are never suggested (they can't be followed meaningfully).
-  const notSuspended = sql`${users.suspendedAt} is null`;
+  // Suspended and deleted accounts are never suggested (they can't be followed meaningfully).
+  const notSuspended = sql`${users.suspendedAt} is null and ${users.deletedAt} is null`;
   const exclude = viewerId
     ? and(
         notSuspended,
@@ -75,14 +82,20 @@ export function findByEmail(email: string) {
   return db.query.users.findFirst({ where: eq(users.email, email) });
 }
 
-// The oldest local account. Used as the signing identity for outbound fetches
+// The oldest live local account. Used as the signing identity for outbound fetches
 // (e.g. resolving remote actors on instances that require authorized fetch).
 export function firstUser() {
-  return db.query.users.findFirst({ orderBy: (u, { asc }) => asc(u.createdAt) });
+  return db.query.users.findFirst({
+    where: sql`${users.deletedAt} is null`,
+    orderBy: (u, { asc }) => asc(u.createdAt),
+  });
 }
 
 export async function countUsers(): Promise<number> {
-  const [row] = await db.select({ n: sql<number>`count(*)::int` }).from(users);
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(users)
+    .where(sql`${users.deletedAt} is null`);
   return row?.n ?? 0;
 }
 
@@ -123,16 +136,61 @@ export async function update(id: string, data: Partial<NewUser>) {
   return row;
 }
 
-// Local accounts for the admin user table: newest first, optional handle /
-// name substring filter. Returns full rows (the admin serializer picks fields).
+// Live local accounts for the admin user table: newest first, optional handle /
+// name substring filter. Deleted accounts are excluded — they have their own
+// restore list (listDeleted). Returns full rows (the admin serializer picks fields).
 export function listForAdmin(query = "", limit = 100) {
-  const where = query.trim()
+  const match = query.trim()
     ? (() => {
         const term = `%${query.replace(/[%_\\]/g, "\\$&")}%`;
         return or(ilike(users.username, term), ilike(users.displayName, term));
       })()
     : undefined;
-  return db.select().from(users).where(where).orderBy(desc(users.createdAt)).limit(limit);
+  return db
+    .select()
+    .from(users)
+    .where(and(sql`${users.deletedAt} is null`, match))
+    .orderBy(desc(users.createdAt))
+    .limit(limit);
+}
+
+// Recently deleted accounts, newest deletion first, with the deleting
+// moderator's username (null when unknown). The admin restore list — the
+// "backup" a deletion keeps for the retention window.
+export function listDeleted(limit = 100) {
+  const deleter = alias(users, "deleter");
+  return db
+    .select({ user: users, deletedByUsername: deleter.username })
+    .from(users)
+    .leftJoin(deleter, eq(users.deletedBy, deleter.id))
+    .where(sql`${users.deletedAt} is not null`)
+    .orderBy(desc(users.deletedAt))
+    .limit(limit);
+}
+
+// Ids of deleted accounts whose retention window ended before `cutoff` — the
+// expiry sweeper's claim list (see services/deletedUsers.ts).
+export function listExpiredDeletedIds(cutoff: Date, limit = 100) {
+  return db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(sql`${users.deletedAt} is not null`, lt(users.deletedAt, cutoff)))
+    .orderBy(users.deletedAt)
+    .limit(limit);
+}
+
+// Marks (a Date + moderator) or unmarks (null) an account as deleted. Returns
+// the updated row.
+export async function setDeleted(id: string, at: Date | null, by: string | null) {
+  const [row] = await db.update(users).set({ deletedAt: at, deletedBy: by }).where(eq(users.id, id)).returning();
+  return row;
+}
+
+// Irreversibly removes the row. Cascades wipe the account's posts, follows and
+// the rest (see db/schema.ts); the sweeper and the admin "delete forever"
+// action are the only callers.
+export async function hardRemove(id: string) {
+  await db.delete(users).where(eq(users.id, id));
 }
 
 // Sets (a Date) or clears (null) the suspension marker. Returns the updated row.

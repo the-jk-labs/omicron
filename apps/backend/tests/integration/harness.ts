@@ -52,7 +52,7 @@ export async function closeDb(): Promise<void> {
 // Deliberately terse: a visibility test should read as a sentence about who
 // can see what, not as twenty lines of insert boilerplate.
 
-export type UserOpts = { isPrivate?: boolean; suspended?: boolean };
+export type UserOpts = { isPrivate?: boolean; suspended?: boolean; isAdmin?: boolean; deleted?: boolean };
 
 export async function mkUser(username: string, opts: UserOpts = {}) {
   const [row] = await db
@@ -63,7 +63,9 @@ export async function mkUser(username: string, opts: UserOpts = {}) {
       passwordHash: "not-a-real-hash",
       displayName: username,
       isPrivate: opts.isPrivate ?? false,
+      isAdmin: opts.isAdmin ?? false,
       suspendedAt: opts.suspended ? new Date() : null,
+      deletedAt: opts.deleted ? new Date() : null,
     })
     .returning();
   return row;
