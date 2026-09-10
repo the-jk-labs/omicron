@@ -1,5 +1,5 @@
 import { registerHandler } from "@/queue/queue.ts";
-import { sendEmailVerification, sendPasswordReset } from "@/services/email.ts";
+import { sendAccountDeleted, sendEmailVerification, sendPasswordReset } from "@/services/email.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { federationRunning } from "@/services/federationState.ts";
 
@@ -123,4 +123,9 @@ export function registerJobHandlers() {
   // (and timing) doesn't depend on the mail server or whether an account exists.
   registerHandler("send_password_reset", ({ to, url }) => sendPasswordReset(to, url));
   registerHandler("send_email_verification", ({ to, url }) => sendEmailVerification(to, url));
+  // A moderated account's deletion notice: what happened, what it means, and
+  // until when restoration is possible.
+  registerHandler("send_account_deleted", ({ to, username, appName, origin, expiresAt }) =>
+    sendAccountDeleted(to, { username, appName, origin, expiresAt }),
+  );
 }

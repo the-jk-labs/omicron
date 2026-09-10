@@ -14,6 +14,7 @@ import { hostMatchesDomain, normalizeDomain } from "@/lib/domain.ts";
 import { badRequest, forbidden, notFound, unauthorized } from "@/lib/http.ts";
 import { queue } from "@/queue/queue.ts";
 import { federationRunning } from "@/services/federationState.ts";
+import { getAppName, getOrigin } from "@/services/instanceSetup.ts";
 
 // Business logic for moderation. Admin authorization is enforced at the route
 // layer (requireAdmin); these functions assume the caller is a moderator except
@@ -142,8 +143,24 @@ export async function deleteUser(
       console.error("deleteUser: federated Delete failed (continuing):", err);
     }
   }
-  await usersRepo.setDeleted(targetId, new Date(), adminId);
+  const deletedAt = new Date();
+  await usersRepo.setDeleted(targetId, deletedAt, adminId);
   await sessionsRepo.removeAllForUser(targetId);
+
+  // Tell the account what happened and until when restoration is possible.
+  // Best-effort: a mail failure must never fail (or roll back) the deletion.
+  try {
+    const [appName, origin] = await Promise.all([getAppName(), getOrigin()]);
+    queue.add("send_account_deleted", {
+      to: target.email,
+      username: target.username,
+      appName,
+      origin,
+      expiresAt: deletionExpiresAt(deletedAt).toISOString(),
+    });
+  } catch (err) {
+    console.error("deleteUser: failed to queue deletion notice (continuing):", err);
+  }
 }
 
 // Restores a deleted account within its retention window. The username and
