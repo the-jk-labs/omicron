@@ -9,6 +9,7 @@ import { db } from "@/db/client.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { accounts, sessions, users, verifications } from "@/db/schema.ts";
 import { queue } from "@/queue/queue.ts";
+import { notifyPasswordChanged, notifySelfDeleted } from "@/services/accountNotices.ts";
 
 const BCRYPT_COST = 12;
 const SESSION_TTL_S = 60 * 60 * 24 * 30;
@@ -112,6 +113,28 @@ export const auth = betterAuth({
         before: async (user) => {
           const isFirst = (await usersRepo.countUsers()) === 0;
           return isFirst ? { data: { ...user, isAdmin: true, emailVerified: true } } : { data: user };
+        },
+      },
+      delete: {
+        // Self-service deletion receipt. The row is already gone; the hook
+        // carries the address. (Moderator deletion is a soft-delete and never
+        // reaches this hook — see services/moderation.ts.)
+        after: async (user) => {
+          if (typeof user.email === "string" && typeof user.username === "string") {
+            await notifySelfDeleted(user.email, user.username);
+          }
+        },
+      },
+    },
+    account: {
+      update: {
+        // Any update to a credential account is a password change (change or
+        // reset — the only writes this app makes to those rows), so the owner
+        // gets a security notice pointing at the reset flow.
+        after: async (account) => {
+          if (account.providerId === "credential" && typeof account.userId === "string") {
+            await notifyPasswordChanged(account.userId);
+          }
         },
       },
     },

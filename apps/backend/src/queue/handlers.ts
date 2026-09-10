@@ -1,5 +1,14 @@
 import { registerHandler } from "@/queue/queue.ts";
-import { sendAccountDeleted, sendEmailVerification, sendPasswordReset } from "@/services/email.ts";
+import {
+  sendAccountDeleted,
+  sendAccountErased,
+  sendAccountReinstated,
+  sendAccountRestored,
+  sendAccountSuspended,
+  sendEmailVerification,
+  sendPasswordChanged,
+  sendPasswordReset,
+} from "@/services/email.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { federationRunning } from "@/services/federationState.ts";
 
@@ -127,5 +136,22 @@ export function registerJobHandlers() {
   // until when restoration is possible.
   registerHandler("send_account_deleted", ({ to, username, appName, origin, expiresAt }) =>
     sendAccountDeleted(to, { username, appName, origin, expiresAt }),
+  );
+  // Account lifecycle notices: each states what changed and what to do if it
+  // wasn't the owner.
+  registerHandler("send_password_changed", ({ to, username, appName, origin }) =>
+    sendPasswordChanged(to, { username, appName, origin }),
+  );
+  registerHandler("send_account_erased", ({ to, username, appName, origin }) =>
+    sendAccountErased(to, { username, appName, origin }),
+  );
+  registerHandler("send_account_suspended", ({ to, username, appName, origin }) =>
+    sendAccountSuspended(to, { username, appName, origin }),
+  );
+  registerHandler("send_account_reinstated", ({ to, username, appName, origin }) =>
+    sendAccountReinstated(to, { username, appName, origin }),
+  );
+  registerHandler("send_account_restored", ({ to, username, appName, origin }) =>
+    sendAccountRestored(to, { username, appName, origin }),
   );
 }

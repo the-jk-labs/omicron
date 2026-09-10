@@ -27,7 +27,12 @@ export type JobName =
   | "send_unrecommend"
   | "send_password_reset"
   | "send_email_verification"
-  | "send_account_deleted";
+  | "send_account_deleted"
+  | "send_password_changed"
+  | "send_account_erased"
+  | "send_account_suspended"
+  | "send_account_reinstated"
+  | "send_account_restored";
 
 export type JobPayloads = {
   federate_post: { postId: string; action?: "create" | "update" };
@@ -50,6 +55,12 @@ export type JobPayloads = {
   // A moderated account's deletion notice. `expiresAt` is an ISO instant (plain
   // strings only — the payload crosses Redis as JSON).
   send_account_deleted: { to: string; username: string; appName: string; origin: string; expiresAt: string };
+  // Account lifecycle notices. Plain strings only, same reason as above.
+  send_password_changed: { to: string; username: string; appName: string; origin: string };
+  send_account_erased: { to: string; username: string; appName: string; origin: string };
+  send_account_suspended: { to: string; username: string; appName: string; origin: string };
+  send_account_reinstated: { to: string; username: string; appName: string; origin: string };
+  send_account_restored: { to: string; username: string; appName: string; origin: string };
 };
 
 type Handler<N extends JobName> = (payload: JobPayloads[N]) => Promise<void>;
