@@ -29,6 +29,7 @@
 
 import type {
   AdminUser,
+  AdminUserDetail,
   Comment,
   CoverCredit,
   DeletedUser,
@@ -46,6 +47,7 @@ import type {
 } from "$lib/types";
 import type {
   adminUserView,
+  adminUserDetailView,
   commentView,
   deletedUserView,
   notificationView,
@@ -103,6 +105,12 @@ type _CoverCredit = Assert<Fits<NonNullable<Wire<typeof postWithAuthor>["coverCr
 type _User = Assert<Fits<Wire<typeof publicUser>, User>>;
 type _AdminUser = Assert<Fits<Wire<typeof adminUserView>, AdminUser>>;
 type _DeletedUser = Assert<Fits<Wire<typeof deletedUserView>, DeletedUser>>;
+// `reports` is omitted: the backend's ReportRow types status/subject as loose
+// strings while the frontend declares unions (the same looseness the reports
+// endpoint already lives with, and unasserted there too).
+type _AdminUserDetail = Assert<
+  Fits<Omit<Wire<typeof adminUserDetailView>, "reports">, Omit<AdminUserDetail, "reports">>
+>;
 
 type _Post = Assert<Fits<Wire<typeof postWithAuthor>, Post>>;
 type _PostAuthor = Assert<Fits<Wire<typeof postWithAuthor>["author"], PostAuthor>>;

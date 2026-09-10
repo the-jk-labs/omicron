@@ -6,11 +6,11 @@
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { confirm } from "$lib/components/ui/confirm";
-  import type { AdminUser, DeletedUser } from "$lib/types";
+  import type { AdminUser, AdminUserDetail, DeletedUser } from "$lib/types";
   import { Dialog, Label } from "bits-ui";
 
-  // The signed-in admin's own id, so the row for self can hide the suspend /
-  // delete actions (the server also forbids them).
+  // The signed-in admin's own id, so the row for self can hide every action
+  // (the server also forbids them).
   let { selfId }: { selfId: string } = $props();
 
   let users = $state<AdminUser[]>([]);
@@ -41,6 +41,9 @@
       const res = await endpoints().adminUsers(query.trim() || undefined);
       users = res.users;
       total = res.total;
+      // Mutations may have changed what a detail shows; drop the cache so an
+      // expansion always refetches.
+      details = {};
     } catch (e) {
       error = e instanceof ApiError ? e.message : "Failed to load users.";
     } finally {
@@ -129,6 +132,67 @@
     }
   }
 
+  // Admin-role change: password re-verified server-side, like deletion minus
+  // the username typing (the target is already picked, and it is reversible).
+  let roleTarget = $state<AdminUser | null>(null);
+  let rolePassword = $state("");
+  let roleError = $state("");
+  let roleBusy = $state(false);
+
+  function openRole(u: AdminUser) {
+    roleTarget = u;
+    rolePassword = "";
+    roleError = "";
+  }
+
+  function onRoleOpenChange(open: boolean) {
+    if (!open) roleTarget = null;
+  }
+
+  const roleReady = $derived(roleTarget !== null && rolePassword.length > 0);
+
+  async function confirmRole() {
+    if (!roleTarget || !roleReady || roleBusy) return;
+    const makeAdmin = !roleTarget.isAdmin;
+    roleBusy = true;
+    roleError = "";
+    try {
+      await endpoints().setUserRole(roleTarget.id, { makeAdmin, password: rolePassword });
+      const id = roleTarget.id;
+      users = users.map((x) => (x.id === id ? { ...x, isAdmin: makeAdmin } : x));
+      roleTarget = null;
+    } catch (e) {
+      roleError = e instanceof ApiError ? e.message : "Role change failed.";
+    } finally {
+      roleBusy = false;
+    }
+  }
+
+  // Expandable per-account detail: counts, latest posts and reports against
+  // the account or its posts. Loaded lazily on expand and cached until the
+  // next table reload.
+  let expandedId = $state<string | null>(null);
+  let details = $state<Record<string, AdminUserDetail>>({});
+  let detailLoadingId = $state<string | null>(null);
+
+  async function toggleDetail(u: AdminUser) {
+    if (expandedId === u.id) {
+      expandedId = null;
+      return;
+    }
+    expandedId = u.id;
+    if (details[u.id] || detailLoadingId === u.id) return;
+    detailLoadingId = u.id;
+    try {
+      details[u.id] = await endpoints().adminUserDetail(u.id);
+    } catch (e) {
+      error = e instanceof ApiError ? e.message : "Failed to load account detail.";
+      expandedId = null;
+    } finally {
+      detailLoadingId = null;
+    }
+  }
+
   async function restoreDeleted(d: DeletedUser) {
     busyId = d.id;
     error = "";
@@ -206,45 +270,126 @@
   {:else}
     <ul class="flex flex-col divide-y divide-border">
       {#each users as u (u.id)}
-        <li class="flex items-center gap-3 py-3">
-          <Avatar name={u.displayName} src={u.avatarUrl ?? undefined} size={40} />
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2">
-              <a href={`/@${u.username}`} class="truncate font-medium text-foreground hover:underline">
-                {u.displayName}
-              </a>
-              {#if u.isAdmin}
-                <span
-                  class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground"
-                >
-                  <Icon name="admin" size={12} /> Admin
-                </span>
-              {/if}
-              {#if u.suspended}
-                <span class="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
-                  Suspended
-                </span>
-              {/if}
+        <li class="py-3">
+          <div class="flex items-center gap-3">
+            <Button
+              variant="plain"
+              class="inline-flex size-7 shrink-0 items-center justify-center rounded-input text-muted-foreground hover:bg-muted"
+              onclick={() => toggleDetail(u)}
+              aria-expanded={expandedId === u.id}
+              aria-label={expandedId === u.id ? `Hide detail for @${u.username}` : `Show detail for @${u.username}`}
+            >
+              <Icon name="chevronDown" size={16} class={expandedId === u.id ? "rotate-180" : ""} />
+            </Button>
+            <Avatar name={u.displayName} src={u.avatarUrl ?? undefined} size={40} />
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <a href={`/@${u.username}`} class="truncate font-medium text-foreground hover:underline">
+                  {u.displayName}
+                </a>
+                {#if u.isAdmin}
+                  <span
+                    class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground"
+                  >
+                    <Icon name="admin" size={12} /> Admin
+                  </span>
+                {/if}
+                {#if u.suspended}
+                  <span class="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                    Suspended
+                  </span>
+                {/if}
+              </div>
+              <p class="truncate text-xs text-muted-foreground">
+                @{u.username} · {u.email} · joined <Time iso={u.createdAt} kind="date" />
+              </p>
             </div>
-            <p class="truncate text-xs text-muted-foreground">
-              @{u.username} · {u.email} · joined <Time iso={u.createdAt} kind="date" />
-            </p>
+            {#if u.id !== selfId}
+              <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                {#if !u.isAdmin}
+                  <Button
+                    variant={u.suspended ? "outline" : "destructive"}
+                    size="sm"
+                    disabled={busyId === u.id}
+                    onclick={() => toggleSuspend(u)}
+                  >
+                    <Icon name={u.suspended ? "check" : "shieldOff"} size={15} />
+                    {u.suspended ? "Reinstate" : "Suspend"}
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={busyId === u.id} onclick={() => openDelete(u)}>
+                    <Icon name="trash" size={15} />
+                    Delete
+                  </Button>
+                {/if}
+                <Button variant="outline" size="sm" disabled={busyId === u.id} onclick={() => openRole(u)}>
+                  <Icon name="admin" size={15} />
+                  {u.isAdmin ? "Remove admin" : "Make admin"}
+                </Button>
+              </div>
+            {/if}
           </div>
-          {#if u.id !== selfId && !u.isAdmin}
-            <div class="flex shrink-0 items-center gap-2">
-              <Button
-                variant={u.suspended ? "outline" : "destructive"}
-                size="sm"
-                disabled={busyId === u.id}
-                onclick={() => toggleSuspend(u)}
-              >
-                <Icon name={u.suspended ? "check" : "shieldOff"} size={15} />
-                {u.suspended ? "Reinstate" : "Suspend"}
-              </Button>
-              <Button variant="outline" size="sm" disabled={busyId === u.id} onclick={() => openDelete(u)}>
-                <Icon name="trash" size={15} />
-                Delete
-              </Button>
+          {#if expandedId === u.id}
+            <div class="mt-3 ml-10 rounded-card border border-border bg-background-alt p-4">
+              {#if detailLoadingId === u.id}
+                <p class="text-sm text-muted-foreground">Loading detail…</p>
+              {:else if details[u.id]}
+                {@const d = details[u.id]}
+                <div class="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
+                  <span><strong class="text-foreground">{d.postCounts.published}</strong> published</span>
+                  <span
+                    ><strong class="text-foreground">{d.postCounts.draft + d.postCounts.scheduled}</strong> drafts</span
+                  >
+                  <span><strong class="text-foreground">{d.followCounts.followers}</strong> followers</span>
+                  <span><strong class="text-foreground">{d.followCounts.following}</strong> following</span>
+                  <span>{d.user.emailVerified ? "Email verified" : "Email unverified"}</span>
+                </div>
+                <h4 class="mt-4 text-sm font-semibold text-foreground">Latest posts</h4>
+                {#if d.recentPosts.length === 0}
+                  <p class="mt-1 text-sm text-muted-foreground">No posts yet.</p>
+                {:else}
+                  <ul class="mt-1 flex flex-col gap-1">
+                    {#each d.recentPosts as p (p.id)}
+                      <li class="flex items-center gap-2 text-sm">
+                        <a href={`/posts/${p.id}`} class="truncate font-medium text-foreground hover:underline">
+                          {p.title ?? "Untitled"}
+                        </a>
+                        <span class="shrink-0 text-xs text-muted-foreground">
+                          {p.status} · <Time iso={p.createdAt} kind="date" />
+                        </span>
+                      </li>
+                    {/each}
+                  </ul>
+                {/if}
+                <h4 class="mt-4 text-sm font-semibold text-foreground">
+                  Reports {d.reports.length > 0 ? `(${d.reports.length})` : ""}
+                </h4>
+                {#if d.reports.length === 0}
+                  <p class="mt-1 text-sm text-muted-foreground">Nothing filed against this account.</p>
+                {:else}
+                  <ul class="mt-1 flex flex-col gap-2">
+                    {#each d.reports as r (r.id)}
+                      <li class="text-sm">
+                        <span
+                          class={r.status === "open"
+                            ? "rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"
+                            : "rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"}
+                        >
+                          {r.status}
+                        </span>
+                        <span class="text-foreground">
+                          {r.subjectType === "post" ? `Post “${r.postTitle ?? "untitled"}”` : "Account"}
+                        </span>
+                        <span class="text-muted-foreground">
+                          — {r.reason || "No reason given"} · by {r.reporter
+                            ? `@${r.reporter.username}`
+                            : "a deleted account"} ·
+                          <Time iso={r.createdAt} kind="date" />
+                        </span>
+                      </li>
+                    {/each}
+                  </ul>
+                {/if}
+              {/if}
             </div>
           {/if}
         </li>
@@ -364,6 +509,58 @@
         </Dialog.Close>
         <Button variant="destructive" disabled={!deleteReady || deleteBusy} onclick={confirmDelete}>
           {deleteBusy ? "Deleting…" : "Delete this account"}
+        </Button>
+      </div>
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
+
+<Dialog.Root open={roleTarget !== null} onOpenChange={onRoleOpenChange}>
+  <Dialog.Portal>
+    <Dialog.Overlay
+      class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
+    />
+    <Dialog.Content
+      class="fixed top-1/2 left-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[440px]"
+    >
+      <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">
+        {roleTarget?.isAdmin
+          ? `Remove @${roleTarget?.username}'s admin role?`
+          : `Make @${roleTarget?.username} an admin?`}
+      </Dialog.Title>
+      <Dialog.Description class="mt-1 text-sm text-muted-foreground">
+        {#if roleTarget?.isAdmin}
+          They lose access to the admin panel immediately. Everything else stays as is. They will be notified by email.
+        {:else}
+          They gain the admin panel: reports, accounts, defederation and instance settings — including other people's
+          login emails. They will be notified by email.
+        {/if}
+      </Dialog.Description>
+
+      <div class="mt-5 flex flex-col gap-1.5">
+        <Label.Root for="role-password" class={labelClass}>Your password</Label.Root>
+        <input
+          id="role-password"
+          type="password"
+          bind:value={rolePassword}
+          autocomplete="current-password"
+          class={field}
+        />
+        {#if roleError}<p class="text-sm text-destructive">{roleError}</p>{/if}
+      </div>
+
+      <div class="mt-6 flex justify-end gap-2">
+        <Dialog.Close
+          class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
+        >
+          Cancel
+        </Dialog.Close>
+        <Button
+          variant={roleTarget?.isAdmin ? "destructive" : "solid"}
+          disabled={!roleReady || roleBusy}
+          onclick={confirmRole}
+        >
+          {roleBusy ? "Saving…" : roleTarget?.isAdmin ? "Remove admin" : "Make admin"}
         </Button>
       </div>
     </Dialog.Content>

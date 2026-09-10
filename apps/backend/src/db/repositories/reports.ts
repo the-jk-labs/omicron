@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { aliasedTable, and, desc, eq, sql } from "drizzle-orm";
+import { aliasedTable, and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { type NewReport, posts, reports, users } from "@/db/schema.ts";
 
@@ -80,6 +80,17 @@ function shape(r: Awaited<ReturnType<ReturnType<typeof baseQuery>["execute"]>>[n
 export async function list(status?: "open" | "resolved", limit = 200): Promise<ReportRow[]> {
   const q = baseQuery();
   const rows = await (status ? q.where(eq(reports.status, status)) : q).orderBy(desc(reports.createdAt)).limit(limit);
+  return rows.map(shape);
+}
+
+// Everything filed against one account: direct account reports plus reports on
+// their posts. Newest first — the context behind a suspend/delete decision.
+export async function listAgainstUser(userId: string, limit = 20): Promise<ReportRow[]> {
+  const authoredPosts = db.select({ id: posts.id }).from(posts).where(eq(posts.authorId, userId));
+  const rows = await baseQuery()
+    .where(or(eq(reports.userId, userId), and(eq(reports.subjectType, "post"), inArray(reports.postId, authoredPosts))))
+    .orderBy(desc(reports.createdAt))
+    .limit(limit);
   return rows.map(shape);
 }
 

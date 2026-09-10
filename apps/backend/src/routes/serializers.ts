@@ -1,6 +1,7 @@
 import type { CommentWithAuthor } from "@/db/repositories/comments.ts";
 import type { NotificationRow } from "@/db/repositories/notifications.ts";
 import type { PostWithAuthor } from "@/db/repositories/posts.ts";
+import type { ReportRow } from "@/db/repositories/reports.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Post, ProfileLink, ReadingList as ReadingListRow, RemoteActor, User, WebhookToken } from "@/db/schema.ts";
 import { bannerOf } from "@/lib/cover.ts";
@@ -97,6 +98,26 @@ export function adminUserView(u: User) {
     emailVerified: u.emailVerified,
     suspended: u.suspendedAt !== null,
     createdAt: u.createdAt,
+  };
+}
+
+// Full admin user detail: the table row plus post/follow counts, the latest
+// posts and the reports filed against the account or its posts. The reports
+// already carry the queue's display shape, so they pass through untouched.
+// Only ever returned to admins via the admin routes.
+export function adminUserDetailView(row: {
+  user: User;
+  postCounts: { draft: number; scheduled: number; published: number };
+  followCounts: { followers: number; following: number };
+  recentPosts: { id: string; title: string | null; slug: string | null; status: string; createdAt: Date }[];
+  reports: ReportRow[];
+}) {
+  return {
+    user: adminUserView(row.user),
+    postCounts: row.postCounts,
+    followCounts: row.followCounts,
+    recentPosts: row.recentPosts,
+    reports: row.reports,
   };
 }
 

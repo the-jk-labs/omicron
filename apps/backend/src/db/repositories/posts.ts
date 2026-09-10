@@ -736,6 +736,23 @@ export async function countLocalByAuthors(authorIds: string[]): Promise<Map<stri
   return totals;
 }
 
+// An author's latest local posts in any state, newest first — the context
+// behind a moderation decision on the admin user detail.
+export function listRecentByAuthor(authorId: string, limit = 5) {
+  return db
+    .select({
+      id: posts.id,
+      title: posts.title,
+      slug: posts.slug,
+      status: posts.status,
+      createdAt: posts.createdAt,
+    })
+    .from(posts)
+    .where(and(eq(posts.authorId, authorId), eq(posts.remote, false)))
+    .orderBy(desc(posts.createdAt))
+    .limit(limit);
+}
+
 // How many posts the author holds in each state, for the management page's tab
 // badges. One grouped scan rather than three counts.
 export async function countsByAuthor(authorId: string) {

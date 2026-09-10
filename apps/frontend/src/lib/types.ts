@@ -528,3 +528,13 @@ export type Report = {
   userUsername: string | null;
   userDisplayName: string | null;
 };
+
+// Full admin detail for one account: the table row plus post/follow counts,
+// the latest posts and the reports filed against the account or its posts.
+export type AdminUserDetail = {
+  user: AdminUser;
+  postCounts: { draft: number; scheduled: number; published: number };
+  followCounts: { followers: number; following: number };
+  recentPosts: { id: string; title: string | null; slug: string | null; status: string; createdAt: string }[];
+  reports: Report[];
+};

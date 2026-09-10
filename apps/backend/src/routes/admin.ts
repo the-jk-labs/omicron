@@ -5,7 +5,7 @@ import { rotateSessionSecret, sessionSecretManaged } from "@/config.ts";
 import { badRequest } from "@/lib/http.ts";
 import { jsonBody } from "@/lib/validate.ts";
 import { requireAdmin } from "@/routes/middleware.ts";
-import { adminUserView, deletedUserView } from "@/routes/serializers.ts";
+import { adminUserDetailView, adminUserView, deletedUserView } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import * as anubis from "@/services/anubisProtection.ts";
 import { dnsRecords } from "@/services/dkim.ts";
@@ -344,6 +344,28 @@ adminRoutes.delete("/users/deleted/:id", async (c) => {
   requireAdmin(c);
   await moderation.purgeDeletedUser(c.req.param("id"));
   return c.json({ ok: true });
+});
+
+const roleSchema = z.object({
+  makeAdmin: z.boolean(),
+  password: z.string().min(1, "Your password is required."),
+});
+
+// Grant or revoke the admin role. The acting admin's own password is
+// re-verified — a stolen session alone must not mint new admins. Never self,
+// never the last admin.
+adminRoutes.post("/users/:id/role", jsonBody(roleSchema), async (c) => {
+  const admin = requireAdmin(c);
+  const { makeAdmin, password } = c.req.valid("json");
+  await moderation.setAdminRole(admin.id, c.req.param("id"), { makeAdmin, password });
+  return c.json({ ok: true });
+});
+
+// Full detail for one account: the table row plus counts, latest posts and
+// reports filed against the account or its posts.
+adminRoutes.get("/users/:id", async (c) => {
+  requireAdmin(c);
+  return c.json(adminUserDetailView(await moderation.getUserDetail(c.req.param("id"))));
 });
 
 // ── Posts ────────────────────────────────────────────────────────────────
