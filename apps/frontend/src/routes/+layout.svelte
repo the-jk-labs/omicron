@@ -439,10 +439,14 @@
         </svelte:boundary>
       </main>
 
-      <!-- Right rail: discovery (home feed and profile pages only). Scrolls with
-           the page — deliberately no max-height / internal scroll, so there is
-           never a nested scrollbar on short (e.g. 16:9 laptop) viewports. -->
-      <aside class={showDiscover ? "hidden min-w-0 xl:block" : "hidden"}>
+      <!-- Right rail: discovery (home feed and profile pages only). Pinned under
+           the nav like the left rail — stays visible while the feed scrolls,
+           with its own scroll only when taller than the viewport. -->
+      <aside
+        class={showDiscover
+          ? "hidden min-w-0 xl:sticky xl:top-24 xl:block xl:max-h-[calc(100vh-7rem)] xl:self-start xl:overflow-y-auto"
+          : "hidden"}
+      >
         <Discover data={data.discover} />
       </aside>
     </div>
