@@ -3,6 +3,7 @@ import { and, desc, eq, gte, ilike, lt, ne, or, type SQL, sql } from "drizzle-or
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db/client.ts";
 import { type ActorKeyPair, follows, type NewUser, sessions, users } from "@/db/schema.ts";
+import type { Cursor } from "@/lib/pagination.ts";
 
 // All user DB access lives here. Services/routes never touch `db` directly.
 
@@ -145,27 +146,59 @@ export type AdminUserFilter = {
 };
 
 // Live local accounts for the admin user table: newest first, optional handle /
-// name substring filter plus the triage filters. Deleted accounts are excluded
-// — they have their own restore list (listDeleted). Returns full rows (the
-// admin serializer picks fields).
-export function listForAdmin(query = "", filter: AdminUserFilter = {}, limit = 100) {
+// name / email substring filter plus the triage filters. Deleted accounts are
+// excluded — they have their own restore list (listDeleted). Keyset-paginated
+// over (created_at, id): pass the previous page's `nextCursor` to continue.
+// Fetches limit + 1 rows so the service can derive the next cursor without a
+// second query. Returns full rows (the admin serializer picks fields).
+export const ADMIN_USERS_PAGE_SIZE = 50;
+export const ADMIN_USERS_MAX_PAGE_SIZE = 100;
+
+function adminConditions(query = "", filter: AdminUserFilter = {}): (SQL | undefined)[] {
   const conditions: (SQL | undefined)[] = [sql`${users.deletedAt} is null`];
   if (query.trim()) {
     const term = `%${query.replace(/[%_\\]/g, "\\$&")}%`;
-    conditions.push(or(ilike(users.username, term), ilike(users.displayName, term)));
+    conditions.push(or(ilike(users.username, term), ilike(users.displayName, term), ilike(users.email, term)));
   }
   if (filter.suspended !== undefined) {
     conditions.push(filter.suspended ? sql`${users.suspendedAt} is not null` : sql`${users.suspendedAt} is null`);
   }
   if (filter.admin !== undefined) conditions.push(eq(users.isAdmin, filter.admin));
   if (filter.verified !== undefined) conditions.push(eq(users.emailVerified, filter.verified));
+  return conditions;
+}
+
+// Rows strictly older than the cursor in (created_at, id) order.
+function adminBeforeCursor(cursor: Cursor | null) {
+  if (!cursor) return undefined;
+  const ts = new Date(cursor.createdAt);
+  return or(lt(users.createdAt, ts), and(eq(users.createdAt, ts), lt(users.id, cursor.id)));
+}
+
+export function listForAdmin(
+  query = "",
+  filter: AdminUserFilter = {},
+  cursor: Cursor | null = null,
+  limit = ADMIN_USERS_PAGE_SIZE,
+) {
+  const capped = Math.min(Math.max(Math.trunc(limit) || ADMIN_USERS_PAGE_SIZE, 1), ADMIN_USERS_MAX_PAGE_SIZE);
   // `and()` drops undefined operands, so unset dimensions stay unfiltered.
   return db
     .select()
     .from(users)
-    .where(and(...conditions))
-    .orderBy(desc(users.createdAt))
-    .limit(limit);
+    .where(and(...adminConditions(query, filter), adminBeforeCursor(cursor)))
+    .orderBy(desc(users.createdAt), desc(users.id))
+    .limit(capped + 1);
+}
+
+// Filtered live-account count for the admin table header ("N of M accounts"
+// while searching). Uses the same conditions as listForAdmin, minus the cursor.
+export async function countFiltered(query = "", filter: AdminUserFilter = {}): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(users)
+    .where(and(...adminConditions(query, filter)));
+  return row?.n ?? 0;
 }
 
 // Recently deleted accounts, newest deletion first, with the deleting

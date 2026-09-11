@@ -16,6 +16,7 @@ import type { AdminUserFilter } from "@/db/repositories/users.ts";
 import type { BlockedDomain } from "@/db/schema.ts";
 import { hostMatchesDomain, normalizeDomain } from "@/lib/domain.ts";
 import { badRequest, forbidden, notFound, unauthorized } from "@/lib/http.ts";
+import { type Cursor, encodeCursor } from "@/lib/pagination.ts";
 import { queue } from "@/queue/queue.ts";
 import {
   notifyAdminGranted,
@@ -91,11 +92,33 @@ export async function resolveReport(adminId: string, reportId: string, resolutio
 
 // ── Users (admin) ──────────────────────────────────────────────────────────
 
-export function listUsers(
+// One page of the admin user table, newest first. The cursor is opaque —
+// pass back the previous page's `nextCursor`, or null for the first page.
+// `limit` is clamped to the repository's page bounds.
+export async function listUsers(
   query = "",
   filter: AdminUserFilter = {},
-): Promise<Awaited<ReturnType<typeof usersRepo.listForAdmin>>> {
-  return usersRepo.listForAdmin(query, filter);
+  cursor: Cursor | null = null,
+  limit = usersRepo.ADMIN_USERS_PAGE_SIZE,
+): Promise<{ users: Awaited<ReturnType<typeof usersRepo.listForAdmin>>; nextCursor: string | null }> {
+  const capped = Math.min(
+    Math.max(Math.trunc(limit) || usersRepo.ADMIN_USERS_PAGE_SIZE, 1),
+    usersRepo.ADMIN_USERS_MAX_PAGE_SIZE,
+  );
+  const rows = await usersRepo.listForAdmin(query, filter, cursor, capped);
+  const hasMore = rows.length > capped;
+  const page = hasMore ? rows.slice(0, capped) : rows;
+  const last = page.at(-1);
+  return {
+    users: page,
+    nextCursor: hasMore && last ? encodeCursor({ createdAt: last.createdAt.toISOString(), id: last.id }) : null,
+  };
+}
+
+// Live accounts matching the current table filter — the "N of M" header while
+// searching or paging. Equal to `countUsers()` when unfiltered.
+export function countFilteredUsers(query = "", filter: AdminUserFilter = {}): Promise<number> {
+  return usersRepo.countFiltered(query, filter);
 }
 
 // Total local accounts, unfiltered — the admin user table's header count.
