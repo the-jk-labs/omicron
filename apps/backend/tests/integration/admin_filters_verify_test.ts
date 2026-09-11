@@ -60,10 +60,14 @@ describe("admin user filters", () => {
   beforeAll(async () => {
     await resetDb();
 
-    await mkUser("alpha");
-    await mkUser("beta", { suspended: true });
-    await mkUser("gamma", { isAdmin: true });
-    const delta = await mkUser("delta");
+    // Distinct creation instants, oldest first: the time sorts then have a
+    // total order to assert on, instead of racing the clock and falling back
+    // to id order (see mkUser `createdAt`).
+    const base = Date.now();
+    await mkUser("alpha", { createdAt: new Date(base) });
+    await mkUser("beta", { suspended: true, createdAt: new Date(base + 1_000) });
+    await mkUser("gamma", { isAdmin: true, createdAt: new Date(base + 2_000) });
+    const delta = await mkUser("delta", { createdAt: new Date(base + 3_000) });
     await usersRepo.update(delta.id, { emailVerified: true });
   });
 
@@ -117,12 +121,13 @@ describe("admin user filters", () => {
     expect(new Set([...first.users, ...second.users].map((u) => u.id)).size).toBe(4);
   });
 
-  test("sort orders: oldest reverses newest, username lists A-Z", async () => {
+  test("sort orders: newest is reverse-chronological, oldest its mirror, username A-Z", async () => {
     const newest = await moderation.listUsers("", {}, null, 50, "newest");
     const oldest = await moderation.listUsers("", {}, null, 50, "oldest");
     const byName = await moderation.listUsers("", {}, null, 50, "username");
-    // Fixture creation order is alpha, beta, gamma, delta; id ties break time ties.
-    expect(oldest.users.map((u) => u.username)).toEqual(newest.users.map((u) => u.username).toReversed());
+    // Fixture creation order is alpha, beta, gamma, delta (distinct instants).
+    expect(newest.users.map((u) => u.username)).toEqual(["delta", "gamma", "beta", "alpha"]);
+    expect(oldest.users.map((u) => u.username)).toEqual(["alpha", "beta", "gamma", "delta"]);
     expect(byName.users.map((u) => u.username)).toEqual(["alpha", "beta", "delta", "gamma"]);
   });
 
@@ -137,11 +142,10 @@ describe("admin user filters", () => {
   });
 
   test("oldest pagination walks the whole table without overlap", async () => {
-    const newest = await moderation.listUsers("", {}, null, 50, "newest");
-    const expected = newest.users.map((u) => u.username).toReversed();
     const first = await moderation.listUsers("", {}, null, 2, "oldest");
+    expect(first.users.map((u) => u.username)).toEqual(["alpha", "beta"]);
     const second = await moderation.listUsers("", {}, decodeAdminCursor(first.nextCursor), 2, "oldest");
-    expect([...first.users, ...second.users].map((u) => u.username)).toEqual(expected);
+    expect(second.users.map((u) => u.username)).toEqual(["gamma", "delta"]);
     expect(second.nextCursor).toBeNull();
   });
 

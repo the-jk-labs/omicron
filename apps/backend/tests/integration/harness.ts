@@ -52,7 +52,16 @@ export async function closeDb(): Promise<void> {
 // Deliberately terse: a visibility test should read as a sentence about who
 // can see what, not as twenty lines of insert boilerplate.
 
-export type UserOpts = { isPrivate?: boolean; suspended?: boolean; isAdmin?: boolean; deleted?: boolean };
+export type UserOpts = {
+  isPrivate?: boolean;
+  suspended?: boolean;
+  isAdmin?: boolean;
+  deleted?: boolean;
+  // Explicit creation instant. Lets a test pin row order without racing the
+  // clock — rows minted in the same millisecond otherwise share a timestamp
+  // and fall back to id order, which can surprise an order assertion.
+  createdAt?: Date;
+};
 
 export async function mkUser(username: string, opts: UserOpts = {}) {
   const [row] = await db
@@ -66,6 +75,7 @@ export async function mkUser(username: string, opts: UserOpts = {}) {
       isAdmin: opts.isAdmin ?? false,
       suspendedAt: opts.suspended ? new Date() : null,
       deletedAt: opts.deleted ? new Date() : null,
+      ...(opts.createdAt ? { createdAt: opts.createdAt, updatedAt: opts.createdAt } : {}),
     })
     .returning();
   return row;
