@@ -23,9 +23,9 @@ function initialFeed(): FeedTab | null {
 }
 
 function initialLangMode(): FeedLangMode {
-  if (!browser) return "hide";
+  if (!browser) return "show";
   const v = localStorage.getItem(LANG_MODE_KEY);
-  return v === "show" ? "show" : "hide";
+  return v === "hide" ? "hide" : "show";
 }
 
 function initialLangs(): string[] {
