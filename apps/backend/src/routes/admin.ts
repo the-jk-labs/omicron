@@ -429,6 +429,24 @@ adminRoutes.patch("/users/:id", jsonBody(adminUpdateUserSchema), async (c) => {
   return c.json({ user: adminUserView(user) });
 });
 
+// Replace another account's avatar (raw image body; content-type identifies
+// the format). Same validation, quota and federation as the account's own
+// upload — the moderator override for an abusive photo.
+adminRoutes.post("/users/:id/avatar", async (c) => {
+  requireAdmin(c);
+  const contentType = (c.req.header("content-type") ?? "").split(";")[0].trim();
+  const bytes = new Uint8Array(await c.req.arrayBuffer());
+  const user = await moderation.setUserAvatar(c.req.param("id"), bytes, contentType);
+  return c.json({ user: adminUserView(user) });
+});
+
+// Clear another account's avatar so the profile falls back to initials.
+adminRoutes.delete("/users/:id/avatar", async (c) => {
+  requireAdmin(c);
+  const user = await moderation.removeUserAvatar(c.req.param("id"));
+  return c.json({ user: adminUserView(user) });
+});
+
 // Resend the verification email to an unverified account.
 adminRoutes.post("/users/:id/verification-email", async (c) => {
   requireAdmin(c);
