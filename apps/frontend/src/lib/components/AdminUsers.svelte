@@ -9,6 +9,7 @@
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { confirm } from "$lib/components/ui/confirm";
+  import { AVATAR_MAX_DIMENSION, prepareImage } from "$lib/editor/image";
   import { identifierToUrl, platformMeta, urlToIdentifier } from "$lib/profileLinks";
   import { MAX_PROFILE_TAGS } from "$lib/tags";
   import type { AdminUser, AdminUserDetail, DeletedUser, ProfileLink } from "$lib/types";
@@ -95,7 +96,12 @@
       total = res.total;
       filteredTotal = res.filteredTotal;
       nextCursor = res.nextCursor;
-      detailNotice = "";
+      // A fresh table resets per-row detail messages; appending more rows
+      // leaves whatever the admin is reading alone.
+      if (reset) {
+        detailNotices = {};
+        detailErrors = {};
+      }
     } catch (e) {
       if (my !== loadSeq) return;
       if (reset) users = [];
@@ -270,20 +276,45 @@
   let details = $state<Record<string, AdminUserDetail>>({});
   let detailLoadingId = $state<string | null>(null);
 
+  // Per-row detail messages, keyed by account id: expanding another row or
+  // paging the table must never steal or wipe what the admin is reading.
+  let detailNotices = $state<Record<string, string>>({});
+  let detailErrors = $state<Record<string, string>>({});
+
+  function clearDetailMsg(id: string) {
+    if (detailNotices[id] !== undefined) {
+      const { [id]: _, ...rest } = detailNotices;
+      detailNotices = rest;
+    }
+    if (detailErrors[id] !== undefined) {
+      const { [id]: _, ...rest } = detailErrors;
+      detailErrors = rest;
+    }
+  }
+
+  function setDetailNotice(id: string, msg: string) {
+    detailNotices = { ...detailNotices, [id]: msg };
+  }
+
+  function setDetailError(id: string, msg: string) {
+    detailErrors = { ...detailErrors, [id]: msg };
+  }
+
   async function toggleDetail(u: AdminUser) {
     if (expandedId === u.id) {
       expandedId = null;
       return;
     }
     expandedId = u.id;
-    detailNotice = "";
+    clearDetailMsg(u.id);
     if (details[u.id] || detailLoadingId === u.id) return;
     detailLoadingId = u.id;
     try {
       details[u.id] = await endpoints().adminUserDetail(u.id);
     } catch (e) {
-      error = e instanceof ApiError ? e.message : "Failed to load account detail.";
-      expandedId = null;
+      // Inline, panel stays open: collapsing would hide the failure and the
+      // row's toggle retries (nothing is cached).
+      setDetailError(u.id, e instanceof ApiError ? e.message : "Failed to load account detail.");
     } finally {
       detailLoadingId = null;
     }
@@ -293,16 +324,15 @@
   // act on. Resending just sends mail; marking verified overrides a security
   // gate, so it gets a confirmation dialog.
   let verifyBusyId = $state<string | null>(null);
-  let detailNotice = $state("");
 
   async function resendVerification(u: AdminUser) {
     verifyBusyId = u.id;
-    detailNotice = "";
+    clearDetailMsg(u.id);
     try {
       await endpoints().resendVerification(u.id);
-      detailNotice = "Verification email sent.";
+      setDetailNotice(u.id, "Verification email sent.");
     } catch (e) {
-      detailNotice = e instanceof ApiError ? e.message : "Sending failed.";
+      setDetailError(u.id, e instanceof ApiError ? e.message : "Sending failed.");
     } finally {
       verifyBusyId = null;
     }
@@ -317,7 +347,7 @@
     });
     if (!ok) return;
     verifyBusyId = u.id;
-    detailNotice = "";
+    clearDetailMsg(u.id);
     try {
       await endpoints().verifyEmail(u.id);
       // A verified account no longer matches the Verified "No" filter.
@@ -325,14 +355,13 @@
         users = users.filter((x) => x.id !== u.id);
         filteredTotal = Math.max(0, filteredTotal - 1);
         if (expandedId === u.id) expandedId = null;
-        detailNotice = "";
       } else {
         users = users.map((x) => (x.id === u.id ? { ...x, emailVerified: true } : x));
         if (details[u.id]) details[u.id] = { ...details[u.id], user: { ...details[u.id].user, emailVerified: true } };
-        detailNotice = "Email marked verified.";
+        setDetailNotice(u.id, "Email marked verified.");
       }
     } catch (e) {
-      detailNotice = e instanceof ApiError ? e.message : "Action failed.";
+      setDetailError(u.id, e instanceof ApiError ? e.message : "Action failed.");
     } finally {
       verifyBusyId = null;
     }
@@ -351,7 +380,7 @@
     });
     if (!ok) return;
     resolveBusyId = reportId;
-    detailNotice = "";
+    clearDetailMsg(u.id);
     try {
       await endpoints().resolveReport(reportId);
       if (details[u.id]) {
@@ -362,9 +391,9 @@
           ),
         };
       }
-      detailNotice = "Report resolved.";
+      setDetailNotice(u.id, "Report resolved.");
     } catch (e) {
-      detailNotice = e instanceof ApiError ? e.message : "Resolve failed.";
+      setDetailError(u.id, e instanceof ApiError ? e.message : "Resolve failed.");
     } finally {
       resolveBusyId = null;
     }
@@ -387,6 +416,81 @@
   let editError = $state("");
   let editBusy = $state(false);
 
+  // Avatar moderation: the dialog's photo section applies immediately (upload
+  // or clear), like Settings — it is not part of the dirty-tracked Save.
+  let editAvatarUrl = $state<string | null>(null);
+  let editAvatarBusy = $state(false);
+  let avatarInput = $state<HTMLInputElement | null>(null);
+  // Backend caps (services/users.ts) and the raw-pick sanity cap, mirroring
+  // the Settings form — the two apps don't share a constants module.
+  const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+  const AVATAR_RAW_MAX_BYTES = 25 * 1024 * 1024;
+
+  function applyAvatarToRow(user: AdminUser) {
+    users = users.map((x) => (x.id === user.id ? { ...x, ...user } : x));
+    if (details[user.id]) details[user.id] = { ...details[user.id], user: { ...details[user.id].user, ...user } };
+    editAvatarUrl = user.avatarUrl;
+  }
+
+  async function onAvatarPick(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const picked = input.files?.[0] ?? null;
+    // Reset so re-picking the same file fires change again.
+    input.value = "";
+    if (!picked || !editTarget) return;
+    if (!picked.type.startsWith("image/")) {
+      editError = "Please choose an image file.";
+      return;
+    }
+    if (picked.size > AVATAR_RAW_MAX_BYTES) {
+      editError = "Image too large. Please choose a file under 25 MB.";
+      return;
+    }
+    const target = editTarget;
+    editAvatarBusy = true;
+    editError = "";
+    try {
+      // Downscale before upload so moderator replacements aren't shipped at
+      // full photo resolution (GIFs pass through untouched).
+      const { blob, type } = await prepareImage(picked, AVATAR_MAX_DIMENSION, AVATAR_MAX_BYTES);
+      if (blob.size > AVATAR_MAX_BYTES) {
+        editError =
+          type === "image/gif"
+            ? "That GIF is too large (max 2 MB). Try a smaller GIF, or use PNG/JPEG/WebP."
+            : "Image too large (max 2 MB) even after compression. Please choose a different photo.";
+        return;
+      }
+      const { user } = await endpoints().uploadUserAvatarAsAdmin(target.id, blob, type);
+      applyAvatarToRow(user);
+    } catch (err) {
+      editError = err instanceof ApiError ? err.message : "Photo upload failed.";
+    } finally {
+      editAvatarBusy = false;
+    }
+  }
+
+  async function removeEditAvatar() {
+    if (!editTarget || !editAvatarUrl) return;
+    const target = editTarget;
+    const ok = await confirm({
+      title: `Remove @${target.username}'s photo?`,
+      description: "Their profile reverts to initials. They can upload a new photo themselves at any time.",
+      confirmText: "Remove photo",
+      destructive: true,
+    });
+    if (!ok) return;
+    editAvatarBusy = true;
+    editError = "";
+    try {
+      const { user } = await endpoints().removeUserAvatarAsAdmin(target.id);
+      applyAvatarToRow(user);
+    } catch (err) {
+      editError = err instanceof ApiError ? err.message : "Photo removal failed.";
+    } finally {
+      editAvatarBusy = false;
+    }
+  }
+
   async function openEdit(u: AdminUser) {
     editTarget = u;
     editError = "";
@@ -403,6 +507,7 @@
     }
     const d = details[u.id];
     const row = d?.user ?? u;
+    editAvatarUrl = row.avatarUrl ?? null;
     editDisplayName = row.displayName;
     editBio = row.bio ?? "";
     editEmail = row.email;
@@ -523,9 +628,12 @@
         };
       }
       editTarget = null;
-      detailNotice = emailChanged
-        ? "Saved. Login email updated — a verification link was sent to the new address and the previous address was notified."
-        : "Saved.";
+      setDetailNotice(
+        target.id,
+        emailChanged
+          ? "Saved. Login email updated — a verification link was sent to the new address and the previous address was notified."
+          : "Saved.",
+      );
       if (expandedId !== target.id) expandedId = target.id;
     } catch (e) {
       editError = e instanceof ApiError ? e.message : "Save failed.";
@@ -781,6 +889,8 @@
             <div class="mt-3 ml-10 rounded-card border border-border bg-background-alt p-4">
               {#if detailLoadingId === u.id}
                 <p class="text-sm text-muted-foreground">Loading detail…</p>
+              {:else if detailErrors[u.id] && !details[u.id]}
+                <p class="text-sm text-destructive">{detailErrors[u.id]}</p>
               {:else if details[u.id]}
                 {@const d = details[u.id]}
                 <div class="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
@@ -814,7 +924,8 @@
                     {/if}
                   </span>
                 </div>
-                {#if detailNotice}<p class="mt-1 text-xs text-muted-foreground">{detailNotice}</p>{/if}
+                {#if detailNotices[u.id]}<p class="mt-1 text-xs text-muted-foreground">{detailNotices[u.id]}</p>{/if}
+                {#if detailErrors[u.id]}<p class="mt-1 text-xs text-destructive">{detailErrors[u.id]}</p>{/if}
                 <h4 class="mt-4 text-sm font-semibold text-foreground">Latest posts</h4>
                 {#if d.recentPosts.length === 0}
                   <p class="mt-1 text-sm text-muted-foreground">No posts yet.</p>
@@ -1083,6 +1194,39 @@
       </Dialog.Description>
 
       <div class="mt-5 flex flex-col gap-4">
+        <div class="flex items-center gap-4">
+          <Avatar name={editTarget?.displayName ?? ""} src={editAvatarUrl ?? undefined} size={56} />
+          <div class="flex flex-col gap-1.5">
+            <div class="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" disabled={editAvatarBusy} onclick={() => avatarInput?.click()}>
+                <Icon name="camera" size={15} /> Change photo
+              </Button>
+              {#if editAvatarUrl}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={editAvatarBusy}
+                  onclick={removeEditAvatar}
+                  class="text-muted-foreground hover:text-destructive"
+                >
+                  <Icon name="trash" size={15} />
+                  {editAvatarBusy ? "Removing…" : "Remove"}
+                </Button>
+              {/if}
+            </div>
+            <p class="text-xs text-muted-foreground">
+              Applies immediately — not part of Save. PNG, JPEG, WebP or GIF · large photos are resized automatically
+            </p>
+          </div>
+          <input
+            bind:this={avatarInput}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            class="hidden"
+            onchange={onAvatarPick}
+            aria-label="Upload a new profile photo"
+          />
+        </div>
         <div class="flex flex-col gap-1.5">
           <Label.Root for="edit-displayName" class={labelClass}>Display name</Label.Root>
           <input id="edit-displayName" bind:value={editDisplayName} maxlength={60} class={field} />

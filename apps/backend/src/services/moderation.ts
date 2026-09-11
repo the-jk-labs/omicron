@@ -360,6 +360,23 @@ export async function resendVerification(targetId: string): Promise<void> {
 
 // ── User details (admin edit) ────────────────────────────────────────────
 
+// Replaces another account's avatar. Reuses the account's own upload path
+// (services/users.ts) so type/size validation, quota and federation stay in
+// one place — the typical use is clearing an abusive photo, with an optional
+// neutral replacement.
+export async function setUserAvatar(targetId: string, bytes: Uint8Array, contentType: string) {
+  const target = await usersRepo.findById(targetId);
+  if (!target || target.deletedAt) throw notFound("Account not found.");
+  return usersService.setAvatar(targetId, bytes, contentType);
+}
+
+// Clears another account's avatar so the profile falls back to initials.
+export async function removeUserAvatar(targetId: string) {
+  const target = await usersRepo.findById(targetId);
+  if (!target || target.deletedAt) throw notFound("Account not found.");
+  return usersService.removeAvatar(targetId);
+}
+
 export type AdminUpdateUserInput = {
   displayName?: string;
   bio?: string;

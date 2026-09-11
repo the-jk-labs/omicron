@@ -175,6 +175,11 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
         email?: string;
       },
     ) => api.patch<{ user: AdminUser }>(`/admin/users/${id}`, body),
+    // Replace another account's avatar (moderator override for an abusive
+    // photo), or clear it back to initials.
+    uploadUserAvatarAsAdmin: (id: string, blob: Blob, contentType: string) =>
+      api.postRaw<{ user: AdminUser }>(`/admin/users/${id}/avatar`, blob, contentType),
+    removeUserAvatarAsAdmin: (id: string) => api.del<{ user: AdminUser }>(`/admin/users/${id}/avatar`),
     // Resend the verification email, or manually mark the address verified.
     resendVerification: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/verification-email`, {}),
     verifyEmail: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/verify`, {}),

@@ -52,6 +52,14 @@ async function captureRejection(promise: Promise<unknown>): Promise<unknown> {
   return new Error("expected rejection, but the call succeeded");
 }
 
+// Leading bytes of a real PNG signature, zero-padded — enough to pass the
+// magic-byte check, mirroring uploads_test.ts.
+function pngBytes(size: number): Uint8Array {
+  const bytes = new Uint8Array(size);
+  bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  return bytes;
+}
+
 async function credentialAccountId(userId: string): Promise<string | null> {
   const rows = await db.select().from(accounts).where(eq(accounts.userId, userId));
   return rows.find((r) => r.providerId === "credential")?.accountId ?? null;
@@ -185,5 +193,46 @@ describe("admin edit user", () => {
     expect(mail.text).toContain("@member");
     expect(mail.text).toContain("new@example.test");
     expect(mail.html).toContain("new@example.test");
+  });
+
+  test("avatar replace stores the photo and federates", async () => {
+    const user = await moderation.setUserAvatar(memberId, pngBytes(64), "image/png");
+    await flush();
+
+    expect(user.avatarUrl).toMatch(/^\/api\/uploads\/.+\.png$/);
+    expect((await usersRepo.findById(memberId))?.avatarUrl).toBe(user.avatarUrl);
+    expect(actorUpdates.some((u) => u.userId === memberId)).toBe(true);
+  });
+
+  test("avatar remove clears back to initials", async () => {
+    await moderation.setUserAvatar(memberId, pngBytes(64), "image/png");
+    const user = await moderation.removeUserAvatar(memberId);
+
+    expect(user.avatarUrl).toBeNull();
+    expect((await usersRepo.findById(memberId))?.avatarUrl).toBeNull();
+  });
+
+  test("avatar rejects wrong types and mismatched bytes", async () => {
+    const before = (await usersRepo.findById(memberId))?.avatarUrl;
+    const typeErr = await captureRejection(moderation.setUserAvatar(memberId, pngBytes(64), "image/bmp"));
+    expect(typeErr).toBeInstanceOf(HttpError);
+    expect((typeErr as HttpError).status).toBe(400);
+
+    const sniffErr = await captureRejection(
+      moderation.setUserAvatar(memberId, new TextEncoder().encode("not an image"), "image/png"),
+    );
+    expect(sniffErr).toBeInstanceOf(HttpError);
+    expect((sniffErr as HttpError).status).toBe(400);
+
+    expect((await usersRepo.findById(memberId))?.avatarUrl).toBe(before);
+  });
+
+  test("avatar on a deleted account 404s", async () => {
+    const goneId = (await mkUser("gone-avatar")).id;
+    await usersRepo.setDeleted(goneId, new Date(), memberId);
+    const setErr = await captureRejection(moderation.setUserAvatar(goneId, pngBytes(64), "image/png"));
+    expect((setErr as HttpError).status).toBe(404);
+    const removeErr = await captureRejection(moderation.removeUserAvatar(goneId));
+    expect((removeErr as HttpError).status).toBe(404);
   });
 });
