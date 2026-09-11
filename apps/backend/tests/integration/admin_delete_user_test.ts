@@ -15,6 +15,7 @@ import * as postsRepo from "@/db/repositories/posts.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { accounts, sessions } from "@/db/schema.ts";
 import { HttpError } from "@/lib/http.ts";
+import { decodeCursor } from "@/lib/pagination.ts";
 import { registerHandler } from "@/queue/queue.ts";
 import { sweep as sweepDeletedUsers } from "@/services/deletedUsers.ts";
 import * as moderation from "@/services/moderation.ts";
@@ -160,7 +161,7 @@ describe("admin delete user", () => {
   });
 
   test("a deleted account shows up on the restore list with its metadata", async () => {
-    const deleted = await moderation.listDeletedUsers();
+    const { users: deleted } = await moderation.listDeletedUsers();
     expect(deleted).toHaveLength(1);
     expect(deleted[0].user.id).toBe(victimId);
     expect(deleted[0].deletedByUsername).toBe(adminName);
@@ -193,7 +194,7 @@ describe("admin delete user", () => {
     expect(row?.deletedBy).toBeNull();
 
     expect((await usersRepo.listForAdmin()).some((u) => u.id === victimId)).toBe(true);
-    expect(await moderation.listDeletedUsers()).toHaveLength(0);
+    expect((await moderation.listDeletedUsers()).users).toHaveLength(0);
     expect(includesPost(await globalPosts(), victimPostId)).toBe(true);
   });
 
@@ -209,7 +210,7 @@ describe("admin delete user", () => {
 
     expect(await usersRepo.findById(victimId)).toBeUndefined();
     expect(await postsRepo.findById(victimPostId)).toBeNull();
-    expect(await moderation.listDeletedUsers()).toHaveLength(0);
+    expect((await moderation.listDeletedUsers()).users).toHaveLength(0);
   });
 
   test("expiry purge only takes accounts past the retention window", async () => {
@@ -225,5 +226,34 @@ describe("admin delete user", () => {
 
     // The sweeper service surfaces the same pass without throwing.
     await expect(sweepDeletedUsers()).resolves.toBe(0);
+  });
+});
+
+describe("deleted restore list pagination", () => {
+  beforeAll(async () => {
+    await resetDb();
+
+    const admin = await mkUser("root2", { isAdmin: true });
+    await mkCredential(admin.id, ADMIN_PASSWORD);
+    // Deleted one after another so deleted_at ties (same millisecond) also
+    // exercise the id tiebreak in the keyset.
+    for (const name of ["gone-a", "gone-b", "gone-c"]) {
+      const u = await mkUser(name);
+      await moderation.deleteUser(admin.id, u.id, { username: name, password: ADMIN_PASSWORD });
+    }
+  });
+
+  test("pages cover every deleted account without overlap", async () => {
+    const first = await moderation.listDeletedUsers(null, 2);
+    expect(first.users).toHaveLength(2);
+    expect(first.nextCursor).not.toBeNull();
+
+    const second = await moderation.listDeletedUsers(decodeCursor(first.nextCursor), 2);
+    expect(second.users).toHaveLength(1);
+    expect(second.nextCursor).toBeNull();
+
+    const ids = [...first.users, ...second.users].map((r) => r.user.id);
+    expect(new Set(ids).size).toBe(3);
+    expect(await moderation.countDeletedUsers()).toBe(3);
   });
 });

@@ -12,7 +12,7 @@
   import { identifierToUrl, platformMeta, urlToIdentifier } from "$lib/profileLinks";
   import { MAX_PROFILE_TAGS } from "$lib/tags";
   import type { AdminUser, AdminUserDetail, DeletedUser, ProfileLink } from "$lib/types";
-  import { Dialog, DropdownMenu, Label } from "bits-ui";
+  import { Dialog, DropdownMenu, Label, ToggleGroup } from "bits-ui";
   import { onMount } from "svelte";
 
   // The signed-in admin's own id, so the row for self can hide every action
@@ -32,15 +32,33 @@
   // slow search can never overwrite a newer one.
   let loadSeq = 0;
 
-  // Triage filters: each shows only matching accounts while on.
-  let fSuspended = $state(false);
-  let fAdmins = $state(false);
-  let fUnverified = $state(false);
+  // Triage filters, tri-state: `undefined` shows all accounts, `true` only
+  // matching ones, `false` only the rest. The backend speaks the same shape.
+  type TriFilter = boolean | undefined;
+  let fSuspended = $state<TriFilter>(undefined);
+  let fAdmins = $state<TriFilter>(undefined);
+  let fVerified = $state<TriFilter>(undefined);
 
-  // Recently deleted accounts: the retention window's restore list.
+  function triValue(v: TriFilter): string {
+    return v === undefined ? "all" : v ? "yes" : "no";
+  }
+
+  function onTriChange(set: (v: TriFilter) => void, raw: string) {
+    // Single-select deselects to "" when the active option is clicked — that
+    // also means "all".
+    set(raw === "all" || raw === "" ? undefined : raw === "yes");
+    load(true);
+  }
+
+  // Recently deleted accounts: the retention window's restore list, newest
+  // deletion first, cursor-paginated like the live table.
   let deleted = $state<DeletedUser[]>([]);
+  let deletedTotal = $state(0);
+  let deletedNextCursor = $state<string | null>(null);
   let deletedLoading = $state(true);
+  let deletedLoadingMore = $state(false);
   let deletedError = $state("");
+  let deletedSeq = 0;
 
   // GitHub-style delete confirmation: type the account's username and re-enter
   // the admin's own password. Both travel with the request; the server
@@ -56,11 +74,7 @@
   // dropped via `loadSeq`, and the detail cache is kept — mutations update it
   // in place, so an expansion survives a reload.
   function filterParams() {
-    return {
-      suspendedOnly: fSuspended || undefined,
-      adminsOnly: fAdmins || undefined,
-      unverifiedOnly: fUnverified || undefined,
-    };
+    return { suspended: fSuspended, admin: fAdmins, verified: fVerified };
   }
 
   async function load(reset = true) {
@@ -95,15 +109,31 @@
     }
   }
 
-  async function loadDeleted() {
-    deletedLoading = true;
-    deletedError = "";
+  async function loadDeleted(reset = true) {
+    const my = ++deletedSeq;
+    if (reset) {
+      deletedLoading = true;
+      deletedNextCursor = null;
+      deletedError = "";
+    } else {
+      if (!deletedNextCursor || deletedLoadingMore) return;
+      deletedLoadingMore = true;
+    }
     try {
-      deleted = (await endpoints().deletedUsers()).users;
+      const res = await endpoints().deletedUsers(reset ? null : deletedNextCursor);
+      if (my !== deletedSeq) return;
+      deleted = reset ? res.users : [...deleted, ...res.users.filter((d) => !deleted.some((x) => x.id === d.id))];
+      deletedTotal = res.total;
+      deletedNextCursor = res.nextCursor;
     } catch (e) {
+      if (my !== deletedSeq) return;
+      if (reset) deleted = [];
       deletedError = e instanceof ApiError ? e.message : "Failed to load deleted accounts.";
     } finally {
-      deletedLoading = false;
+      if (my === deletedSeq) {
+        deletedLoading = false;
+        deletedLoadingMore = false;
+      }
     }
   }
 
@@ -132,9 +162,9 @@
     busyId = u.id;
     try {
       await endpoints().suspendUser(u.id, suspend);
-      // A reinstated account no longer matches the Suspended-only filter, so it
-      // leaves the listing; otherwise update the row in place.
-      if (fSuspended && !suspend) {
+      // The account leaves the listing when it no longer matches an active
+      // Suspended filter (reinstated under "Yes", suspended under "No").
+      if ((fSuspended === true && !suspend) || (fSuspended === false && suspend)) {
         users = users.filter((x) => x.id !== u.id);
         filteredTotal = Math.max(0, filteredTotal - 1);
         if (expandedId === u.id) expandedId = null;
@@ -217,8 +247,9 @@
     try {
       await endpoints().setUserRole(roleTarget.id, { makeAdmin, password: rolePassword });
       const id = roleTarget.id;
-      // A demoted account no longer matches the Admins-only filter.
-      if (fAdmins && !makeAdmin) {
+      // The account leaves the listing when it no longer matches an active
+      // Admin filter (demoted under "Yes", promoted under "No").
+      if ((fAdmins === true && !makeAdmin) || (fAdmins === false && makeAdmin)) {
         users = users.filter((x) => x.id !== id);
         filteredTotal = Math.max(0, filteredTotal - 1);
         if (expandedId === id) expandedId = null;
@@ -290,8 +321,8 @@
     detailNotice = "";
     try {
       await endpoints().verifyEmail(u.id);
-      // A verified account no longer matches the Unverified-only filter.
-      if (fUnverified) {
+      // A verified account no longer matches the Verified "No" filter.
+      if (fVerified === false) {
         users = users.filter((x) => x.id !== u.id);
         filteredTotal = Math.max(0, filteredTotal - 1);
         if (expandedId === u.id) expandedId = null;
@@ -478,6 +509,7 @@
     try {
       await endpoints().restoreUser(d.id);
       deleted = deleted.filter((x) => x.id !== d.id);
+      deletedTotal = Math.max(0, deletedTotal - 1);
       await load();
     } catch (e) {
       error = e instanceof ApiError ? e.message : "Restore failed.";
@@ -499,6 +531,7 @@
     try {
       await endpoints().purgeDeletedUser(d.id);
       deleted = deleted.filter((x) => x.id !== d.id);
+      deletedTotal = Math.max(0, deletedTotal - 1);
     } catch (e) {
       deletedError = e instanceof ApiError ? e.message : "Erase failed.";
     } finally {
@@ -518,7 +551,24 @@
     "flex h-10 cursor-pointer items-center gap-2 rounded-button px-3 text-sm font-medium text-foreground select-none data-highlighted:bg-muted focus-visible:outline-hidden";
   const destructiveItemClass = menuItemClass.replace("text-foreground", "text-destructive");
 
-  const isFiltering = $derived(query.trim() !== "" || fSuspended || fAdmins || fUnverified);
+  const isFiltering = $derived(
+    query.trim() !== "" || fSuspended !== undefined || fAdmins !== undefined || fVerified !== undefined,
+  );
+
+  // Tri-state filter segments (All / Yes / No), rendered from one config so
+  // the three dimensions stay visually identical.
+  const triOptions = [
+    { value: "all", label: "All" },
+    { value: "yes", label: "Yes" },
+    { value: "no", label: "No" },
+  ];
+  const triFilters = $derived([
+    { label: "Suspended", value: triValue(fSuspended), set: (v: TriFilter) => (fSuspended = v) },
+    { label: "Admin", value: triValue(fAdmins), set: (v: TriFilter) => (fAdmins = v) },
+    { label: "Verified", value: triValue(fVerified), set: (v: TriFilter) => (fVerified = v) },
+  ]);
+  const segItemClass =
+    "h-7 rounded-button px-2.5 text-xs font-medium text-muted-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-mini focus-visible:outline-hidden";
 </script>
 
 <div class="flex flex-col gap-4">
@@ -553,40 +603,24 @@
     />
   </div>
 
-  <div class="flex flex-wrap gap-2" role="group" aria-label="Filter accounts">
-    <Button
-      variant={fSuspended ? "solid" : "outline"}
-      size="sm"
-      aria-pressed={fSuspended}
-      onclick={() => {
-        fSuspended = !fSuspended;
-        load();
-      }}
-    >
-      Suspended
-    </Button>
-    <Button
-      variant={fAdmins ? "solid" : "outline"}
-      size="sm"
-      aria-pressed={fAdmins}
-      onclick={() => {
-        fAdmins = !fAdmins;
-        load();
-      }}
-    >
-      Admins
-    </Button>
-    <Button
-      variant={fUnverified ? "solid" : "outline"}
-      size="sm"
-      aria-pressed={fUnverified}
-      onclick={() => {
-        fUnverified = !fUnverified;
-        load();
-      }}
-    >
-      Unverified
-    </Button>
+  <div class="flex flex-wrap gap-x-5 gap-y-3" role="group" aria-label="Filter accounts">
+    {#each triFilters as f (f.label)}
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-medium text-muted-foreground">{f.label}</span>
+        <ToggleGroup.Root
+          type="single"
+          value={f.value}
+          onValueChange={(v) => onTriChange(f.set, v)}
+          class="inline-flex items-center gap-0.5 rounded-input border border-input bg-background-alt p-0.5 shadow-btn"
+        >
+          {#each triOptions as o (o.value)}
+            <ToggleGroup.Item value={o.value} aria-label={`${f.label}: ${o.label}`} class={segItemClass}>
+              {o.label}
+            </ToggleGroup.Item>
+          {/each}
+        </ToggleGroup.Root>
+      </div>
+    {/each}
   </div>
 
   {#if error}<p class="text-sm text-destructive">{error}</p>{/if}
@@ -790,7 +824,9 @@
         <span>Loading recently deleted…</span>
       {:else}
         <span>
-          Recently deleted{deleted.length > 0 ? ` (${deleted.length})` : ""} — restorable until the retention window ends
+          Recently deleted ({deletedTotal}) — restorable until the retention window ends{deletedNextCursor
+            ? ` · showing ${deleted.length}`
+            : ""}
         </span>
       {/if}
     </div>
@@ -838,6 +874,13 @@
             </li>
           {/each}
         </ul>
+        {#if deletedNextCursor}
+          <div class="mt-4 flex justify-center">
+            <Button variant="outline" size="sm" disabled={deletedLoadingMore} onclick={() => loadDeleted(false)}>
+              {deletedLoadingMore ? "Loading…" : `Load more (${deleted.length} of ${deletedTotal})`}
+            </Button>
+          </div>
+        {/if}
       {/if}
     {/if}
   </div>
