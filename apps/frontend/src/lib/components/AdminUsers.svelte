@@ -338,6 +338,38 @@
     }
   }
 
+  // Resolving a report from the account detail is the quick dismiss path —
+  // no resolution note. The full flow (note + context of the whole queue)
+  // stays in Admin → Reports.
+  let resolveBusyId = $state<string | null>(null);
+
+  async function resolveReportInline(u: AdminUser, reportId: string) {
+    const ok = await confirm({
+      title: "Resolve this report?",
+      description: "It leaves the moderation queue without a resolution note.",
+      confirmText: "Resolve",
+    });
+    if (!ok) return;
+    resolveBusyId = reportId;
+    detailNotice = "";
+    try {
+      await endpoints().resolveReport(reportId);
+      if (details[u.id]) {
+        details[u.id] = {
+          ...details[u.id],
+          reports: details[u.id].reports.map((r) =>
+            r.id === reportId ? { ...r, status: "resolved" as const, resolvedAt: new Date().toISOString() } : r,
+          ),
+        };
+      }
+      detailNotice = "Report resolved.";
+    } catch (e) {
+      detailNotice = e instanceof ApiError ? e.message : "Resolve failed.";
+    } finally {
+      resolveBusyId = null;
+    }
+  }
+
   // Admin edit: patch another account's profile + login email. Seeded from the
   // expanded detail when present (it carries tags/links), otherwise from the
   // table row. Links are edited as identifiers and converted back to canonical
@@ -808,7 +840,7 @@
                 {:else}
                   <ul class="mt-1 flex flex-col gap-2">
                     {#each d.reports as r (r.id)}
-                      <li class="text-sm">
+                      <li class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                         <span
                           class={r.status === "open"
                             ? "rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"
@@ -825,6 +857,17 @@
                             : "a deleted account"} ·
                           <Time iso={r.createdAt} kind="date" />
                         </span>
+                        {#if r.status === "open"}
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            disabled={resolveBusyId === r.id}
+                            onclick={() => resolveReportInline(u, r.id)}
+                          >
+                            <Icon name="check" size={13} />
+                            Resolve
+                          </Button>
+                        {/if}
                       </li>
                     {/each}
                   </ul>
