@@ -265,23 +265,49 @@ export async function restoreUser(targetId: string): Promise<void> {
 
 // Recently deleted accounts with the deleting moderator's username, each
 // account's kept post count, and when its retention window ends — the admin
-// restore list.
-export async function listDeletedUsers(): Promise<
-  {
-    user: NonNullable<Awaited<ReturnType<typeof usersRepo.findById>>>;
-    deletedByUsername: string | null;
-    postCount: number;
-    expiresAt: Date;
-  }[]
-> {
-  const rows = await usersRepo.listDeleted();
-  const counts = await postsRepo.countLocalByAuthors(rows.map((r) => r.user.id));
-  return rows.map((r) => ({
+// restore list. Keyset-paginated like the live table: pass back the previous
+// page's `nextCursor`, or null for the first page.
+export type DeletedUserRow = {
+  user: NonNullable<Awaited<ReturnType<typeof usersRepo.findById>>>;
+  deletedByUsername: string | null;
+  postCount: number;
+  expiresAt: Date;
+};
+
+export async function listDeletedUsers(
+  cursor: Cursor | null = null,
+  limit = usersRepo.DELETED_USERS_PAGE_SIZE,
+): Promise<{ users: DeletedUserRow[]; nextCursor: string | null }> {
+  const capped = Math.min(
+    Math.max(Math.trunc(limit) || usersRepo.DELETED_USERS_PAGE_SIZE, 1),
+    usersRepo.DELETED_USERS_MAX_PAGE_SIZE,
+  );
+  const rows = await usersRepo.listDeleted(cursor, capped);
+  const hasMore = rows.length > capped;
+  const page = hasMore ? rows.slice(0, capped) : rows;
+  const counts = await postsRepo.countLocalByAuthors(page.map((r) => r.user.id));
+  const users = page.map((r) => ({
     ...r,
     postCount: counts.get(r.user.id) ?? 0,
     // `deletedAt` is non-null: listDeleted only returns deleted accounts.
     expiresAt: deletionExpiresAt(r.user.deletedAt!),
   }));
+  const last = page.at(-1);
+  // The cursor is opaque: the deletion timestamp rides in the `createdAt`
+  // slot, since this listing orders by deleted_at rather than created_at.
+  return {
+    users,
+    nextCursor:
+      hasMore && last?.user.deletedAt
+        ? encodeCursor({ createdAt: last.user.deletedAt.toISOString(), id: last.user.id })
+        : null,
+  };
+}
+
+// How many deleted accounts await restore or expiry — the restore list's
+// header count.
+export function countDeletedUsers(): Promise<number> {
+  return usersRepo.countDeleted();
 }
 
 // Permanently erases a deleted account before its window ends. The Delete was

@@ -203,16 +203,40 @@ export async function countFiltered(query = "", filter: AdminUserFilter = {}): P
 
 // Recently deleted accounts, newest deletion first, with the deleting
 // moderator's username (null when unknown). The admin restore list — the
-// "backup" a deletion keeps for the retention window.
-export function listDeleted(limit = 100) {
+// "backup" a deletion keeps for the retention window. Keyset-paginated over
+// (deleted_at, id): pass the previous page's `nextCursor` to continue.
+// Fetches limit + 1 rows so the service can derive the next cursor without a
+// second query.
+export const DELETED_USERS_PAGE_SIZE = 50;
+export const DELETED_USERS_MAX_PAGE_SIZE = 100;
+
+// Rows strictly older than the cursor in (deleted_at, id) order.
+function deletedBeforeCursor(cursor: Cursor | null) {
+  if (!cursor) return undefined;
+  const ts = new Date(cursor.createdAt);
+  return or(lt(users.deletedAt, ts), and(eq(users.deletedAt, ts), lt(users.id, cursor.id)));
+}
+
+export function listDeleted(cursor: Cursor | null = null, limit = DELETED_USERS_PAGE_SIZE) {
+  const capped = Math.min(Math.max(Math.trunc(limit) || DELETED_USERS_PAGE_SIZE, 1), DELETED_USERS_MAX_PAGE_SIZE);
   const deleter = alias(users, "deleter");
   return db
     .select({ user: users, deletedByUsername: deleter.username })
     .from(users)
     .leftJoin(deleter, eq(users.deletedBy, deleter.id))
-    .where(sql`${users.deletedAt} is not null`)
-    .orderBy(desc(users.deletedAt))
-    .limit(limit);
+    .where(and(sql`${users.deletedAt} is not null`, deletedBeforeCursor(cursor)))
+    .orderBy(desc(users.deletedAt), desc(users.id))
+    .limit(capped + 1);
+}
+
+// How many deleted accounts are awaiting restore or expiry — the restore
+// list's header count.
+export async function countDeleted(): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(users)
+    .where(sql`${users.deletedAt} is not null`);
+  return row?.n ?? 0;
 }
 
 // Ids of deleted accounts whose retention window ended before `cutoff` — the

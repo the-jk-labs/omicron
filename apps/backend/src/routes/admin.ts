@@ -2,7 +2,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { rotateSessionSecret, sessionSecretManaged } from "@/config.ts";
-import { ADMIN_USERS_PAGE_SIZE } from "@/db/repositories/users.ts";
+import { ADMIN_USERS_PAGE_SIZE, DELETED_USERS_PAGE_SIZE } from "@/db/repositories/users.ts";
 import { badRequest } from "@/lib/http.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { jsonBody } from "@/lib/validate.ts";
@@ -355,11 +355,19 @@ adminRoutes.post("/users/:id/restore", async (c) => {
   return c.json({ ok: true });
 });
 
-// Recently deleted accounts awaiting restore or expiry, newest deletion first.
+// Recently deleted accounts awaiting restore or expiry, newest deletion
+// first. Keyset-paginated like the live table: `?cursor=` continues from the
+// previous page's `nextCursor`, `?limit=` sizes the page (1–100, default 50).
 adminRoutes.get("/users/deleted", async (c) => {
   requireAdmin(c);
-  const rows = await moderation.listDeletedUsers();
-  return c.json({ users: rows.map(deletedUserView) });
+  const cursor = decodeCursor(c.req.query("cursor"));
+  const limitRaw = Number.parseInt(c.req.query("limit") ?? "", 10);
+  const limit = Number.isFinite(limitRaw) ? limitRaw : DELETED_USERS_PAGE_SIZE;
+  const [{ users, nextCursor }, total] = await Promise.all([
+    moderation.listDeletedUsers(cursor, limit),
+    moderation.countDeletedUsers(),
+  ]);
+  return c.json({ users: users.map(deletedUserView), nextCursor, total });
 });
 
 // Permanently erase a deleted account before its window ends (frees the handle

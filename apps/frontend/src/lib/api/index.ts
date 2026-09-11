@@ -135,14 +135,14 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // admin moderation
     adminUsers: (
       q?: string,
-      filters?: { suspendedOnly?: boolean; adminsOnly?: boolean; unverifiedOnly?: boolean },
+      filters?: { suspended?: boolean; admin?: boolean; verified?: boolean },
       page?: { cursor?: string | null; limit?: number },
     ) => {
       const params = new URLSearchParams();
       if (q) params.set("q", q);
-      if (filters?.suspendedOnly) params.set("suspended", "true");
-      if (filters?.adminsOnly) params.set("admin", "true");
-      if (filters?.unverifiedOnly) params.set("verified", "false");
+      if (filters?.suspended !== undefined) params.set("suspended", String(filters.suspended));
+      if (filters?.admin !== undefined) params.set("admin", String(filters.admin));
+      if (filters?.verified !== undefined) params.set("verified", String(filters.verified));
       if (page?.cursor) params.set("cursor", page.cursor);
       if (page?.limit) params.set("limit", String(page.limit));
       const qs = params.toString();
@@ -182,8 +182,17 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // with the request — the server re-verifies it.
     setUserRole: (id: string, body: { makeAdmin: boolean; password: string }) =>
       api.post<{ ok: true }>(`/admin/users/${id}/role`, body),
-    // Recently deleted accounts awaiting restore or expiry.
-    deletedUsers: () => api.get<{ users: DeletedUser[] }>("/admin/users/deleted"),
+    // Recently deleted accounts awaiting restore or expiry, newest deletion
+    // first. Keyset-paginated like the live table.
+    deletedUsers: (cursor?: string | null, limit?: number) => {
+      const params = new URLSearchParams();
+      if (cursor) params.set("cursor", cursor);
+      if (limit) params.set("limit", String(limit));
+      const qs = params.toString();
+      return api.get<{ users: DeletedUser[]; nextCursor: string | null; total: number }>(
+        `/admin/users/deleted${qs ? `?${qs}` : ""}`,
+      );
+    },
     // Permanently erase a deleted account before its window ends.
     purgeDeletedUser: (id: string) => api.del<{ ok: true }>(`/admin/users/deleted/${id}`),
     adminRemovePost: (id: string) => api.del<{ ok: true }>(`/admin/posts/${id}`),
