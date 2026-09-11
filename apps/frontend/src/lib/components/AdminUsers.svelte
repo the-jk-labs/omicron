@@ -50,6 +50,24 @@
     load(true);
   }
 
+  // Table sort: newest (joined most recently first, the default), oldest
+  // (founding accounts first) and username (A–Z handle order). Changing it
+  // reloads from page one — cursors are minted per sort and don't transfer.
+  type UserSort = "newest" | "oldest" | "username";
+  let sort = $state<UserSort>("newest");
+  const sortOptions: { value: UserSort; label: string }[] = [
+    { value: "newest", label: "Newest" },
+    { value: "oldest", label: "Oldest" },
+    { value: "username", label: "Username" },
+  ];
+
+  function onSortChange(v: string) {
+    const next = sortOptions.find((o) => o.value === v)?.value ?? "newest";
+    if (next === sort) return;
+    sort = next;
+    load(true);
+  }
+
   // Recently deleted accounts: the retention window's restore list, newest
   // deletion first, cursor-paginated like the live table.
   let deleted = $state<DeletedUser[]>([]);
@@ -94,9 +112,14 @@
       loadingMore = true;
     }
     try {
-      const res = await endpoints().adminUsers(query.trim() || undefined, filterParams(), {
-        cursor: reset ? null : nextCursor,
-      });
+      const res = await endpoints().adminUsers(
+        query.trim() || undefined,
+        filterParams(),
+        {
+          cursor: reset ? null : nextCursor,
+        },
+        sort,
+      );
       if (my !== loadSeq) return;
       users = reset ? res.users : [...users, ...res.users.filter((u) => !users.some((x) => x.id === u.id))];
       total = res.total;
@@ -815,7 +838,23 @@
     {/if}
   </div>
 
-  <div class="flex flex-wrap gap-x-5 gap-y-3" role="group" aria-label="Filter accounts">
+  <div class="flex flex-wrap items-center gap-x-5 gap-y-3" role="group" aria-label="Filter accounts">
+    <div class="flex items-center gap-2">
+      <span class="text-xs font-medium text-muted-foreground">Sort</span>
+      <ToggleGroup.Root
+        type="single"
+        value={sort}
+        onValueChange={onSortChange}
+        class="inline-flex items-center gap-0.5 rounded-input border border-input bg-background-alt p-0.5 shadow-btn"
+        aria-label="Sort accounts"
+      >
+        {#each sortOptions as o (o.value)}
+          <ToggleGroup.Item value={o.value} aria-label={`Sort accounts: ${o.label}`} class={segItemClass}>
+            {o.label}
+          </ToggleGroup.Item>
+        {/each}
+      </ToggleGroup.Root>
+    </div>
     {#each triFilters as f (f.label)}
       <div class="flex items-center gap-2">
         <span class="text-xs font-medium text-muted-foreground">{f.label}</span>

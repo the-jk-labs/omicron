@@ -12,7 +12,7 @@ import * as sessionsRepo from "@/db/repositories/sessions.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as usersRepo from "@/db/repositories/users.ts";
-import type { AdminUserFilter } from "@/db/repositories/users.ts";
+import type { AdminCursor, AdminUserFilter, AdminUserSort } from "@/db/repositories/users.ts";
 import type { BlockedDomain } from "@/db/schema.ts";
 import { hostMatchesDomain, normalizeDomain } from "@/lib/domain.ts";
 import { badRequest, forbidden, notFound, unauthorized } from "@/lib/http.ts";
@@ -92,26 +92,35 @@ export async function resolveReport(adminId: string, reportId: string, resolutio
 
 // ── Users (admin) ──────────────────────────────────────────────────────────
 
-// One page of the admin user table, newest first. The cursor is opaque —
-// pass back the previous page's `nextCursor`, or null for the first page.
-// `limit` is clamped to the repository's page bounds.
+// One page of the admin user table. The cursor is opaque —
+// pass back the previous page's `nextCursor`, or null for the first page,
+// with the same `sort` it was minted for. `limit` is clamped to the
+// repository's page bounds.
 export async function listUsers(
   query = "",
   filter: AdminUserFilter = {},
-  cursor: Cursor | null = null,
+  cursor: AdminCursor | null = null,
   limit = usersRepo.ADMIN_USERS_PAGE_SIZE,
+  sort: AdminUserSort = "newest",
 ): Promise<{ users: Awaited<ReturnType<typeof usersRepo.listForAdmin>>; nextCursor: string | null }> {
   const capped = Math.min(
     Math.max(Math.trunc(limit) || usersRepo.ADMIN_USERS_PAGE_SIZE, 1),
     usersRepo.ADMIN_USERS_MAX_PAGE_SIZE,
   );
-  const rows = await usersRepo.listForAdmin(query, filter, cursor, capped);
+  const rows = await usersRepo.listForAdmin(query, filter, cursor, capped, sort);
   const hasMore = rows.length > capped;
   const page = hasMore ? rows.slice(0, capped) : rows;
   const last = page.at(-1);
   return {
     users: page,
-    nextCursor: hasMore && last ? encodeCursor({ createdAt: last.createdAt.toISOString(), id: last.id }) : null,
+    nextCursor:
+      hasMore && last
+        ? usersRepo.encodeAdminCursor(
+            sort === "username"
+              ? { v: "u", username: last.username, id: last.id }
+              : { v: "t", createdAt: last.createdAt.toISOString(), id: last.id },
+          )
+        : null,
   };
 }
 

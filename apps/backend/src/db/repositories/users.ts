@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, desc, eq, gte, ilike, lt, ne, or, type SQL, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, ilike, lt, ne, or, type SQL, sql } from "drizzle-orm";
+import { asc as ascCol } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db/client.ts";
 import { type ActorKeyPair, follows, type NewUser, sessions, users } from "@/db/schema.ts";
@@ -145,12 +146,53 @@ export type AdminUserFilter = {
   verified?: boolean;
 };
 
-// Live local accounts for the admin user table: newest first, optional handle /
+// Sort orders for the admin user table. `newest` is the historical default
+// (joined most recently first); `oldest` walks the same key the other way for
+// finding the founding accounts without paging to the end; `username` is an
+// A–Z handle listing for answering "is X on this instance?".
+export type AdminUserSort = "newest" | "oldest" | "username";
+
+// Opaque page token for the sortable admin list. The tuple mirrors the row's
+// position in the requested order: a (created_at, id) instant pair for the two
+// time orders, a (username, id) string pair for the handle order. Two shapes
+// are needed because SQL compares the time and handle keys with different
+// operators and collations; the `v` tag (`t` vs `u`) lets decode tell them
+// apart without probing. Legacy (created_at, id) tokens minted before sorting
+// existed decode as `{ v: "t", ... }` and keep working as `newest` cursors.
+export type AdminCursor = { v: "t"; createdAt: string; id: string } | { v: "u"; username: string; id: string };
+
+export function encodeAdminCursor(c: AdminCursor): string {
+  return btoa(c.v === "t" ? `t|${c.createdAt}|${c.id}` : `u|${c.username}|${c.id}`);
+}
+
+export function decodeAdminCursor(raw: string | undefined | null): AdminCursor | null {
+  if (!raw) return null;
+  try {
+    const parts = atob(raw).split("|");
+    // Legacy two-part `createdAt|id` token: a newest-order cursor.
+    if (parts.length === 2) {
+      const [createdAt, id] = parts;
+      if (!createdAt || !id) return null;
+      return { v: "t", createdAt, id };
+    }
+    if (parts.length !== 3) return null;
+    const [v, key, id] = parts;
+    if (!key || !id) return null;
+    if (v === "t") return { v: "t", createdAt: key, id };
+    if (v === "u") return { v: "u", username: key, id };
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Live local accounts for the admin user table, optional handle /
 // name / email substring filter plus the triage filters. Deleted accounts are
 // excluded — they have their own restore list (listDeleted). Keyset-paginated
-// over (created_at, id): pass the previous page's `nextCursor` to continue.
-// Fetches limit + 1 rows so the service can derive the next cursor without a
-// second query. Returns full rows (the admin serializer picks fields).
+// in `sort` order (see AdminUserSort): pass the previous page's `nextCursor`
+// to continue, with the same sort. Fetches limit + 1 rows so the service can
+// derive the next cursor without a second query. Returns full rows (the admin
+// serializer picks fields).
 export const ADMIN_USERS_PAGE_SIZE = 50;
 export const ADMIN_USERS_MAX_PAGE_SIZE = 100;
 
@@ -168,26 +210,47 @@ function adminConditions(query = "", filter: AdminUserFilter = {}): (SQL | undef
   return conditions;
 }
 
-// Rows strictly older than the cursor in (created_at, id) order.
-function adminBeforeCursor(cursor: Cursor | null) {
+// Rows strictly beyond the cursor in `sort` order. Each sort mirrors its
+// ORDER BY exactly (comparison direction + tiebreak), otherwise pages skip or
+// repeat rows. Time sorts tiebreak on id so rows sharing a timestamp still
+// page deterministically; the username sort tiebreaks on id too so a renamed
+// account that collides on handle cannot strand a row.
+function adminAfterCursor(cursor: AdminCursor | null, sort: AdminUserSort) {
   if (!cursor) return undefined;
+  if (sort === "username") {
+    if (cursor.v !== "u") return undefined;
+    return or(gt(users.username, cursor.username), and(eq(users.username, cursor.username), gt(users.id, cursor.id)));
+  }
+  if (cursor.v !== "t") return undefined;
   const ts = new Date(cursor.createdAt);
+  if (sort === "oldest") {
+    return or(gt(users.createdAt, ts), and(eq(users.createdAt, ts), gt(users.id, cursor.id)));
+  }
   return or(lt(users.createdAt, ts), and(eq(users.createdAt, ts), lt(users.id, cursor.id)));
 }
 
 export function listForAdmin(
   query = "",
   filter: AdminUserFilter = {},
-  cursor: Cursor | null = null,
+  cursor: AdminCursor | null = null,
   limit = ADMIN_USERS_PAGE_SIZE,
+  sort: AdminUserSort = "newest",
 ) {
   const capped = Math.min(Math.max(Math.trunc(limit) || ADMIN_USERS_PAGE_SIZE, 1), ADMIN_USERS_MAX_PAGE_SIZE);
   // `and()` drops undefined operands, so unset dimensions stay unfiltered.
+  // A cursor minted for another sort is ignored (restarts at page one) rather
+  // than applied against the wrong key, which would silently skip rows.
   return db
     .select()
     .from(users)
-    .where(and(...adminConditions(query, filter), adminBeforeCursor(cursor)))
-    .orderBy(desc(users.createdAt), desc(users.id))
+    .where(and(...adminConditions(query, filter), adminAfterCursor(cursor, sort)))
+    .orderBy(
+      ...(sort === "username"
+        ? [ascCol(users.username), ascCol(users.id)]
+        : sort === "oldest"
+          ? [ascCol(users.createdAt), ascCol(users.id)]
+          : [desc(users.createdAt), desc(users.id)]),
+    )
     .limit(capped + 1);
 }
 

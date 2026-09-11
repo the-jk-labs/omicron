@@ -2,7 +2,12 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { rotateSessionSecret, sessionSecretManaged } from "@/config.ts";
-import { ADMIN_USERS_PAGE_SIZE, DELETED_USERS_PAGE_SIZE } from "@/db/repositories/users.ts";
+import {
+  ADMIN_USERS_PAGE_SIZE,
+  type AdminUserSort,
+  DELETED_USERS_PAGE_SIZE,
+  decodeAdminCursor,
+} from "@/db/repositories/users.ts";
 import { badRequest } from "@/lib/http.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { jsonBody } from "@/lib/validate.ts";
@@ -300,11 +305,14 @@ function flag(v: string | undefined): boolean | undefined {
   return v === "true" ? true : v === "false" ? false : undefined;
 }
 
-// The admin user table, with an optional handle / name / email filter (?q=)
-// and triage filters (?suspended=&admin=&verified=true|false). Keyset-paginated
-// over (created_at, id): `?cursor=` continues from the previous page's
-// `nextCursor`, `?limit=` sizes the page (1–100, default 50). `total` is the
-// unfiltered local-account count; `filteredTotal` matches the current filter.
+// The admin user table, with an optional handle / name / email filter (?q=),
+// triage filters (?suspended=&admin=&verified=true|false) and a sort order
+// (?sort=newest|oldest|username, default newest). Keyset-paginated in that
+// order: `?cursor=` continues from the previous page's `nextCursor` (minted
+// for the same sort — a cursor from another sort restarts at page one),
+// `?limit=` sizes the page (1–100, default 50). Unknown `sort` values fall
+// back to newest so a stale bookmark still lists. `total` is the unfiltered
+// local-account count; `filteredTotal` matches the current filter.
 adminRoutes.get("/users", async (c) => {
   requireAdmin(c);
   const q = c.req.query("q") ?? "";
@@ -313,11 +321,13 @@ adminRoutes.get("/users", async (c) => {
     admin: flag(c.req.query("admin")),
     verified: flag(c.req.query("verified")),
   };
-  const cursor = decodeCursor(c.req.query("cursor"));
+  const rawSort = c.req.query("sort");
+  const sort: AdminUserSort = rawSort === "oldest" || rawSort === "username" ? rawSort : "newest";
+  const cursor = decodeAdminCursor(c.req.query("cursor"));
   const limitRaw = Number.parseInt(c.req.query("limit") ?? "", 10);
   const limit = Number.isFinite(limitRaw) ? limitRaw : ADMIN_USERS_PAGE_SIZE;
   const [{ users, nextCursor }, total, filteredTotal] = await Promise.all([
-    moderation.listUsers(q, filter, cursor, limit),
+    moderation.listUsers(q, filter, cursor, limit, sort),
     moderation.countUsers(),
     moderation.countFilteredUsers(q, filter),
   ]);

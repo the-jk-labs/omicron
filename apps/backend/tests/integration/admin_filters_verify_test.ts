@@ -8,8 +8,8 @@
 // through Better Auth's own endpoint; the test captures the queued mail job.
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import * as usersRepo from "@/db/repositories/users.ts";
+import { decodeAdminCursor } from "@/db/repositories/users.ts";
 import { HttpError } from "@/lib/http.ts";
-import { decodeCursor } from "@/lib/pagination.ts";
 import { registerHandler } from "@/queue/queue.ts";
 import * as moderation from "@/services/moderation.ts";
 import { closeDb, mkUser, resetDb } from "./harness.ts";
@@ -46,8 +46,9 @@ async function page(
   filter: Parameters<typeof moderation.listUsers>[1] = {},
   cursor: Parameters<typeof moderation.listUsers>[2] = null,
   limit: Parameters<typeof moderation.listUsers>[3] = 50,
+  sort: Parameters<typeof moderation.listUsers>[4] = "newest",
 ) {
-  const { users } = await moderation.listUsers(query, filter, cursor, limit);
+  const { users } = await moderation.listUsers(query, filter, cursor, limit, sort);
   return users;
 }
 
@@ -59,10 +60,14 @@ describe("admin user filters", () => {
   beforeAll(async () => {
     await resetDb();
 
-    await mkUser("alpha");
-    await mkUser("beta", { suspended: true });
-    await mkUser("gamma", { isAdmin: true });
-    const delta = await mkUser("delta");
+    // Distinct creation instants, oldest first: the time sorts then have a
+    // total order to assert on, instead of racing the clock and falling back
+    // to id order (see mkUser `createdAt`).
+    const base = Date.now();
+    await mkUser("alpha", { createdAt: new Date(base) });
+    await mkUser("beta", { suspended: true, createdAt: new Date(base + 1_000) });
+    await mkUser("gamma", { isAdmin: true, createdAt: new Date(base + 2_000) });
+    const delta = await mkUser("delta", { createdAt: new Date(base + 3_000) });
     await usersRepo.update(delta.id, { emailVerified: true });
   });
 
@@ -107,13 +112,49 @@ describe("admin user filters", () => {
     expect(first.users).toHaveLength(2);
     expect(first.nextCursor).not.toBeNull();
 
-    const second = await moderation.listUsers("", {}, decodeCursor(first.nextCursor), 2);
+    const second = await moderation.listUsers("", {}, decodeAdminCursor(first.nextCursor), 2);
     expect(second.users).toHaveLength(2);
     expect(second.nextCursor).toBeNull();
 
     const seen = usernames([...first.users, ...second.users]);
     expect(seen).toEqual(["alpha", "beta", "delta", "gamma"]);
     expect(new Set([...first.users, ...second.users].map((u) => u.id)).size).toBe(4);
+  });
+
+  test("sort orders: newest is reverse-chronological, oldest its mirror, username A-Z", async () => {
+    const newest = await moderation.listUsers("", {}, null, 50, "newest");
+    const oldest = await moderation.listUsers("", {}, null, 50, "oldest");
+    const byName = await moderation.listUsers("", {}, null, 50, "username");
+    // Fixture creation order is alpha, beta, gamma, delta (distinct instants).
+    expect(newest.users.map((u) => u.username)).toEqual(["delta", "gamma", "beta", "alpha"]);
+    expect(oldest.users.map((u) => u.username)).toEqual(["alpha", "beta", "gamma", "delta"]);
+    expect(byName.users.map((u) => u.username)).toEqual(["alpha", "beta", "delta", "gamma"]);
+  });
+
+  test("username pagination walks the whole table without overlap", async () => {
+    const first = await moderation.listUsers("", {}, null, 2, "username");
+    expect(first.users.map((u) => u.username)).toEqual(["alpha", "beta"]);
+    expect(first.nextCursor).not.toBeNull();
+
+    const second = await moderation.listUsers("", {}, decodeAdminCursor(first.nextCursor), 2, "username");
+    expect(second.users.map((u) => u.username)).toEqual(["delta", "gamma"]);
+    expect(second.nextCursor).toBeNull();
+  });
+
+  test("oldest pagination walks the whole table without overlap", async () => {
+    const first = await moderation.listUsers("", {}, null, 2, "oldest");
+    expect(first.users.map((u) => u.username)).toEqual(["alpha", "beta"]);
+    const second = await moderation.listUsers("", {}, decodeAdminCursor(first.nextCursor), 2, "oldest");
+    expect(second.users.map((u) => u.username)).toEqual(["gamma", "delta"]);
+    expect(second.nextCursor).toBeNull();
+  });
+
+  test("a cursor from another sort restarts at page one", async () => {
+    const newestFirst = await moderation.listUsers("", {}, null, 2, "newest");
+    expect(newestFirst.nextCursor).not.toBeNull();
+    // Reusing a newest cursor with the username sort must not skip rows.
+    const restarted = await moderation.listUsers("", {}, decodeAdminCursor(newestFirst.nextCursor), 2, "username");
+    expect(restarted.users.map((u) => u.username)).toEqual(["alpha", "beta"]);
   });
 });
 
