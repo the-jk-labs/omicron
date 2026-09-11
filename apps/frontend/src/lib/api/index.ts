@@ -137,12 +137,14 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       q?: string,
       filters?: { suspended?: boolean; admin?: boolean; verified?: boolean },
       page?: { cursor?: string | null; limit?: number },
+      sort?: "newest" | "oldest" | "username",
     ) => {
       const params = new URLSearchParams();
       if (q) params.set("q", q);
       if (filters?.suspended !== undefined) params.set("suspended", String(filters.suspended));
       if (filters?.admin !== undefined) params.set("admin", String(filters.admin));
       if (filters?.verified !== undefined) params.set("verified", String(filters.verified));
+      if (sort && sort !== "newest") params.set("sort", sort);
       if (page?.cursor) params.set("cursor", page.cursor);
       if (page?.limit) params.set("limit", String(page.limit));
       const qs = params.toString();

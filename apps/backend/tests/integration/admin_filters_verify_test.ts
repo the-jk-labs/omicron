@@ -8,8 +8,8 @@
 // through Better Auth's own endpoint; the test captures the queued mail job.
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import * as usersRepo from "@/db/repositories/users.ts";
+import { decodeAdminCursor } from "@/db/repositories/users.ts";
 import { HttpError } from "@/lib/http.ts";
-import { decodeCursor } from "@/lib/pagination.ts";
 import { registerHandler } from "@/queue/queue.ts";
 import * as moderation from "@/services/moderation.ts";
 import { closeDb, mkUser, resetDb } from "./harness.ts";
@@ -46,8 +46,9 @@ async function page(
   filter: Parameters<typeof moderation.listUsers>[1] = {},
   cursor: Parameters<typeof moderation.listUsers>[2] = null,
   limit: Parameters<typeof moderation.listUsers>[3] = 50,
+  sort: Parameters<typeof moderation.listUsers>[4] = "newest",
 ) {
-  const { users } = await moderation.listUsers(query, filter, cursor, limit);
+  const { users } = await moderation.listUsers(query, filter, cursor, limit, sort);
   return users;
 }
 
@@ -107,13 +108,49 @@ describe("admin user filters", () => {
     expect(first.users).toHaveLength(2);
     expect(first.nextCursor).not.toBeNull();
 
-    const second = await moderation.listUsers("", {}, decodeCursor(first.nextCursor), 2);
+    const second = await moderation.listUsers("", {}, decodeAdminCursor(first.nextCursor), 2);
     expect(second.users).toHaveLength(2);
     expect(second.nextCursor).toBeNull();
 
     const seen = usernames([...first.users, ...second.users]);
     expect(seen).toEqual(["alpha", "beta", "delta", "gamma"]);
     expect(new Set([...first.users, ...second.users].map((u) => u.id)).size).toBe(4);
+  });
+
+  test("sort orders: oldest reverses newest, username lists A-Z", async () => {
+    const newest = await moderation.listUsers("", {}, null, 50, "newest");
+    const oldest = await moderation.listUsers("", {}, null, 50, "oldest");
+    const byName = await moderation.listUsers("", {}, null, 50, "username");
+    // Fixture creation order is alpha, beta, gamma, delta; id ties break time ties.
+    expect(oldest.users.map((u) => u.username)).toEqual(newest.users.map((u) => u.username).toReversed());
+    expect(byName.users.map((u) => u.username)).toEqual(["alpha", "beta", "delta", "gamma"]);
+  });
+
+  test("username pagination walks the whole table without overlap", async () => {
+    const first = await moderation.listUsers("", {}, null, 2, "username");
+    expect(first.users.map((u) => u.username)).toEqual(["alpha", "beta"]);
+    expect(first.nextCursor).not.toBeNull();
+
+    const second = await moderation.listUsers("", {}, decodeAdminCursor(first.nextCursor), 2, "username");
+    expect(second.users.map((u) => u.username)).toEqual(["delta", "gamma"]);
+    expect(second.nextCursor).toBeNull();
+  });
+
+  test("oldest pagination walks the whole table without overlap", async () => {
+    const newest = await moderation.listUsers("", {}, null, 50, "newest");
+    const expected = newest.users.map((u) => u.username).toReversed();
+    const first = await moderation.listUsers("", {}, null, 2, "oldest");
+    const second = await moderation.listUsers("", {}, decodeAdminCursor(first.nextCursor), 2, "oldest");
+    expect([...first.users, ...second.users].map((u) => u.username)).toEqual(expected);
+    expect(second.nextCursor).toBeNull();
+  });
+
+  test("a cursor from another sort restarts at page one", async () => {
+    const newestFirst = await moderation.listUsers("", {}, null, 2, "newest");
+    expect(newestFirst.nextCursor).not.toBeNull();
+    // Reusing a newest cursor with the username sort must not skip rows.
+    const restarted = await moderation.listUsers("", {}, decodeAdminCursor(newestFirst.nextCursor), 2, "username");
+    expect(restarted.users.map((u) => u.username)).toEqual(["alpha", "beta"]);
   });
 });
 
