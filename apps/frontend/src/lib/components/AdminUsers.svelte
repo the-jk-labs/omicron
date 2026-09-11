@@ -34,19 +34,18 @@
 
   // Triage filters, tri-state: `undefined` shows all accounts, `true` only
   // matching ones, `false` only the rest. The backend speaks the same shape.
+  // Each dimension carries its own option labels ("Active" beats "Not
+  // suspended") so the segments read as plain language.
   type TriFilter = boolean | undefined;
+  type TriOption = { value: string; label: string; filter: TriFilter };
   let fSuspended = $state<TriFilter>(undefined);
   let fAdmins = $state<TriFilter>(undefined);
   let fVerified = $state<TriFilter>(undefined);
 
-  function triValue(v: TriFilter): string {
-    return v === undefined ? "all" : v ? "yes" : "no";
-  }
-
-  function onTriChange(set: (v: TriFilter) => void, raw: string) {
-    // Single-select deselects to "" when the active option is clicked — that
-    // also means "all".
-    set(raw === "all" || raw === "" ? undefined : raw === "yes");
+  function onTriChange(filter: { set: (v: TriFilter) => void; options: TriOption[] }, raw: string) {
+    // Single-select deselects to "" when the active option is clicked — no
+    // option matches, which also means "all".
+    filter.set(filter.options.find((o) => o.value === raw)?.filter);
     load(true);
   }
 
@@ -555,17 +554,45 @@
     query.trim() !== "" || fSuspended !== undefined || fAdmins !== undefined || fVerified !== undefined,
   );
 
-  // Tri-state filter segments (All / Yes / No), rendered from one config so
-  // the three dimensions stay visually identical.
-  const triOptions = [
-    { value: "all", label: "All" },
-    { value: "yes", label: "Yes" },
-    { value: "no", label: "No" },
-  ];
-  const triFilters = $derived([
-    { label: "Suspended", value: triValue(fSuspended), set: (v: TriFilter) => (fSuspended = v) },
-    { label: "Admin", value: triValue(fAdmins), set: (v: TriFilter) => (fAdmins = v) },
-    { label: "Verified", value: triValue(fVerified), set: (v: TriFilter) => (fVerified = v) },
+  // Tri-state filter segments, rendered from one config so the dimensions
+  // stay visually identical. Option values are local to their group, labels
+  // read as plain language ("Active" beats "Suspended: No").
+  const triFilters: {
+    label: string;
+    value: string;
+    set: (v: TriFilter) => void;
+    options: TriOption[];
+  }[] = $derived([
+    {
+      label: "Status",
+      value: fSuspended === undefined ? "all" : fSuspended ? "suspended" : "active",
+      set: (v: TriFilter) => (fSuspended = v),
+      options: [
+        { value: "all", label: "All", filter: undefined },
+        { value: "active", label: "Active", filter: false },
+        { value: "suspended", label: "Suspended", filter: true },
+      ],
+    },
+    {
+      label: "Role",
+      value: fAdmins === undefined ? "all" : fAdmins ? "admins" : "non-admins",
+      set: (v: TriFilter) => (fAdmins = v),
+      options: [
+        { value: "all", label: "All", filter: undefined },
+        { value: "admins", label: "Admins", filter: true },
+        { value: "non-admins", label: "Non-admins", filter: false },
+      ],
+    },
+    {
+      label: "Email",
+      value: fVerified === undefined ? "all" : fVerified ? "verified" : "unverified",
+      set: (v: TriFilter) => (fVerified = v),
+      options: [
+        { value: "all", label: "All", filter: undefined },
+        { value: "verified", label: "Verified", filter: true },
+        { value: "unverified", label: "Unverified", filter: false },
+      ],
+    },
   ]);
   const segItemClass =
     "h-7 rounded-button px-2.5 text-xs font-medium text-muted-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-mini focus-visible:outline-hidden";
@@ -610,10 +637,10 @@
         <ToggleGroup.Root
           type="single"
           value={f.value}
-          onValueChange={(v) => onTriChange(f.set, v)}
+          onValueChange={(v) => onTriChange(f, v)}
           class="inline-flex items-center gap-0.5 rounded-input border border-input bg-background-alt p-0.5 shadow-btn"
         >
-          {#each triOptions as o (o.value)}
+          {#each f.options as o (o.value)}
             <ToggleGroup.Item value={o.value} aria-label={`${f.label}: ${o.label}`} class={segItemClass}>
               {o.label}
             </ToggleGroup.Item>
