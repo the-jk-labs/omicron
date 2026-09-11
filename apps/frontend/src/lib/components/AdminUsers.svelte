@@ -54,11 +54,17 @@
   // deletion first, cursor-paginated like the live table.
   let deleted = $state<DeletedUser[]>([]);
   let deletedTotal = $state(0);
+  let deletedFilteredTotal = $state(0);
   let deletedNextCursor = $state<string | null>(null);
   let deletedLoading = $state(true);
   let deletedLoadingMore = $state(false);
   let deletedError = $state("");
+  let deletedQuery = $state("");
   let deletedSeq = 0;
+
+  // Ticking clock for the retention countdown (see onMount): a plain
+  // Date.now() call would freeze "N days left" at page-load time.
+  let now = $state(Date.now());
 
   // GitHub-style delete confirmation: type the account's username and re-enter
   // the admin's own password. Both travel with the request; the server
@@ -125,10 +131,15 @@
       deletedLoadingMore = true;
     }
     try {
-      const res = await endpoints().deletedUsers(reset ? null : deletedNextCursor);
+      const res = await endpoints().deletedUsers(
+        reset ? null : deletedNextCursor,
+        undefined,
+        deletedQuery.trim() || undefined,
+      );
       if (my !== deletedSeq) return;
       deleted = reset ? res.users : [...deleted, ...res.users.filter((d) => !deleted.some((x) => x.id === d.id))];
       deletedTotal = res.total;
+      deletedFilteredTotal = res.filteredTotal;
       deletedNextCursor = res.nextCursor;
     } catch (e) {
       if (my !== deletedSeq) return;
@@ -145,12 +156,36 @@
   onMount(() => {
     load();
     loadDeleted();
+    // The retention countdown reads this, so "N days left" rolls over while
+    // the tab sits open rather than freezing at load time.
+    const clock = setInterval(() => (now = Date.now()), 60_000);
+    return () => clearInterval(clock);
   });
 
   let searchTimer: ReturnType<typeof setTimeout>;
   function onSearch() {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => load(true), 250);
+  }
+
+  function clearSearch() {
+    if (!query) return;
+    clearTimeout(searchTimer);
+    query = "";
+    load(true);
+  }
+
+  let deletedSearchTimer: ReturnType<typeof setTimeout>;
+  function onDeletedSearch() {
+    clearTimeout(deletedSearchTimer);
+    deletedSearchTimer = setTimeout(() => loadDeleted(true), 250);
+  }
+
+  function clearDeletedSearch() {
+    if (!deletedQuery) return;
+    clearTimeout(deletedSearchTimer);
+    deletedQuery = "";
+    loadDeleted(true);
   }
 
   async function toggleSuspend(u: AdminUser) {
@@ -680,7 +715,7 @@
 
   // Whole days until the retention window ends, for the "expires in N days" label.
   function daysLeft(iso: string): number {
-    return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000));
+    return Math.max(0, Math.ceil((new Date(iso).getTime() - now) / 86_400_000));
   }
 
   const field =
@@ -766,8 +801,18 @@
       oninput={onSearch}
       placeholder="Search by handle, name, or email"
       aria-label="Search accounts by handle, name, or email"
-      class="w-full rounded-input border border-input bg-background py-2.5 pr-3.5 pl-9 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
+      class="w-full rounded-input border border-input bg-background py-2.5 pr-9 pl-9 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
     />
+    {#if query}
+      <button
+        type="button"
+        onclick={clearSearch}
+        aria-label="Clear search"
+        class="absolute top-1/2 right-2.5 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-input text-muted-foreground hover:bg-muted hover:text-foreground"
+      >
+        <Icon name="close" size={14} />
+      </button>
+    {/if}
   </div>
 
   <div class="flex flex-wrap gap-x-5 gap-y-3" role="group" aria-label="Filter accounts">
@@ -795,7 +840,9 @@
   {#if loading}
     <p class="py-8 text-center text-sm text-muted-foreground">Loading…</p>
   {:else if users.length === 0}
-    <p class="py-8 text-center text-sm text-muted-foreground">No accounts found.</p>
+    <p class="py-8 text-center text-sm text-muted-foreground">
+      {isFiltering ? "No accounts match." : "No accounts found."}
+    </p>
   {:else}
     <ul class="flex flex-col divide-y divide-border">
       {#each users as u (u.id)}
@@ -1003,6 +1050,11 @@
       <Icon name="clock" size={16} />
       {#if deletedLoading}
         <span>Loading recently deleted…</span>
+      {:else if deletedQuery.trim()}
+        <span>
+          {deletedFilteredTotal} of {deletedTotal}
+          {deletedTotal === 1 ? "account" : "accounts"} · showing {deleted.length}
+        </span>
       {:else}
         <span>
           Recently deleted ({deletedTotal}) — restorable until the retention window ends{deletedNextCursor
@@ -1012,11 +1064,37 @@
       {/if}
     </div>
 
+    <div class="relative mt-3">
+      <span class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground">
+        <Icon name="search" size={16} />
+      </span>
+      <input
+        type="search"
+        bind:value={deletedQuery}
+        oninput={onDeletedSearch}
+        placeholder="Search deleted by handle, name, or email"
+        aria-label="Search deleted accounts by handle, name, or email"
+        class="w-full rounded-input border border-input bg-background py-2.5 pr-9 pl-9 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
+      />
+      {#if deletedQuery}
+        <button
+          type="button"
+          onclick={clearDeletedSearch}
+          aria-label="Clear deleted search"
+          class="absolute top-1/2 right-2.5 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-input text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <Icon name="close" size={14} />
+        </button>
+      {/if}
+    </div>
+
     {#if deletedError}<p class="mt-2 text-sm text-destructive">{deletedError}</p>{/if}
 
     {#if !deletedLoading}
       {#if deleted.length === 0}
-        <p class="py-4 text-center text-sm text-muted-foreground">No deleted accounts.</p>
+        <p class="py-4 text-center text-sm text-muted-foreground">
+          {deletedQuery.trim() ? "No deleted accounts match." : "No deleted accounts."}
+        </p>
       {:else}
         <ul class="flex flex-col divide-y divide-border">
           {#each deleted as d (d.id)}
@@ -1058,7 +1136,7 @@
         {#if deletedNextCursor}
           <div class="mt-4 flex justify-center">
             <Button variant="outline" size="sm" disabled={deletedLoadingMore} onclick={() => loadDeleted(false)}>
-              {deletedLoadingMore ? "Loading…" : `Load more (${deleted.length} of ${deletedTotal})`}
+              {deletedLoadingMore ? "Loading…" : `Load more (${deleted.length} of ${deletedFilteredTotal})`}
             </Button>
           </div>
         {/if}

@@ -356,18 +356,22 @@ adminRoutes.post("/users/:id/restore", async (c) => {
 });
 
 // Recently deleted accounts awaiting restore or expiry, newest deletion
-// first. Keyset-paginated like the live table: `?cursor=` continues from the
-// previous page's `nextCursor`, `?limit=` sizes the page (1–100, default 50).
+// first. Optional handle / name / email filter (?q=), keyset-paginated like
+// the live table: `?cursor=` continues from the previous page's `nextCursor`,
+// `?limit=` sizes the page (1–100, default 50). `total` counts every deleted
+// account; `filteredTotal` matches the current search.
 adminRoutes.get("/users/deleted", async (c) => {
   requireAdmin(c);
+  const q = c.req.query("q") ?? "";
   const cursor = decodeCursor(c.req.query("cursor"));
   const limitRaw = Number.parseInt(c.req.query("limit") ?? "", 10);
   const limit = Number.isFinite(limitRaw) ? limitRaw : DELETED_USERS_PAGE_SIZE;
-  const [{ users, nextCursor }, total] = await Promise.all([
-    moderation.listDeletedUsers(cursor, limit),
+  const [{ users, nextCursor }, total, filteredTotal] = await Promise.all([
+    moderation.listDeletedUsers(cursor, limit, q),
     moderation.countDeletedUsers(),
+    moderation.countDeletedUsers(q),
   ]);
-  return c.json({ users: users.map(deletedUserView), nextCursor, total });
+  return c.json({ users: users.map(deletedUserView), nextCursor, total, filteredTotal });
 });
 
 // Permanently erase a deleted account before its window ends (frees the handle
