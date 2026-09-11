@@ -277,12 +277,13 @@ export type DeletedUserRow = {
 export async function listDeletedUsers(
   cursor: Cursor | null = null,
   limit = usersRepo.DELETED_USERS_PAGE_SIZE,
+  query = "",
 ): Promise<{ users: DeletedUserRow[]; nextCursor: string | null }> {
   const capped = Math.min(
     Math.max(Math.trunc(limit) || usersRepo.DELETED_USERS_PAGE_SIZE, 1),
     usersRepo.DELETED_USERS_MAX_PAGE_SIZE,
   );
-  const rows = await usersRepo.listDeleted(cursor, capped);
+  const rows = await usersRepo.listDeleted(query, cursor, capped);
   const hasMore = rows.length > capped;
   const page = hasMore ? rows.slice(0, capped) : rows;
   const counts = await postsRepo.countLocalByAuthors(page.map((r) => r.user.id));
@@ -305,9 +306,10 @@ export async function listDeletedUsers(
 }
 
 // How many deleted accounts await restore or expiry — the restore list's
-// header count.
-export function countDeletedUsers(): Promise<number> {
-  return usersRepo.countDeleted();
+// header count. Takes the same search filter so the header can show "N of
+// M" while searching.
+export function countDeletedUsers(query = ""): Promise<number> {
+  return usersRepo.countDeleted(query);
 }
 
 // Permanently erases a deleted account before its window ends. The Delete was

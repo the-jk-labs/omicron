@@ -188,13 +188,15 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     setUserRole: (id: string, body: { makeAdmin: boolean; password: string }) =>
       api.post<{ ok: true }>(`/admin/users/${id}/role`, body),
     // Recently deleted accounts awaiting restore or expiry, newest deletion
-    // first. Keyset-paginated like the live table.
-    deletedUsers: (cursor?: string | null, limit?: number) => {
+    // first. Optional handle / name / email filter, keyset-paginated like
+    // the live table.
+    deletedUsers: (cursor?: string | null, limit?: number, q?: string) => {
       const params = new URLSearchParams();
+      if (q) params.set("q", q);
       if (cursor) params.set("cursor", cursor);
       if (limit) params.set("limit", String(limit));
       const qs = params.toString();
-      return api.get<{ users: DeletedUser[]; nextCursor: string | null; total: number }>(
+      return api.get<{ users: DeletedUser[]; nextCursor: string | null; total: number; filteredTotal: number }>(
         `/admin/users/deleted${qs ? `?${qs}` : ""}`,
       );
     },

@@ -217,25 +217,37 @@ function deletedBeforeCursor(cursor: Cursor | null) {
   return or(lt(users.deletedAt, ts), and(eq(users.deletedAt, ts), lt(users.id, cursor.id)));
 }
 
-export function listDeleted(cursor: Cursor | null = null, limit = DELETED_USERS_PAGE_SIZE) {
+// Shared match for the restore list: handle / name / email substring, same
+// escaping as the live table.
+function deletedConditions(query = ""): (SQL | undefined)[] {
+  const conditions: (SQL | undefined)[] = [sql`${users.deletedAt} is not null`];
+  if (query.trim()) {
+    const term = `%${query.replace(/[%_\\]/g, "\\$&")}%`;
+    conditions.push(or(ilike(users.username, term), ilike(users.displayName, term), ilike(users.email, term)));
+  }
+  return conditions;
+}
+
+export function listDeleted(query = "", cursor: Cursor | null = null, limit = DELETED_USERS_PAGE_SIZE) {
   const capped = Math.min(Math.max(Math.trunc(limit) || DELETED_USERS_PAGE_SIZE, 1), DELETED_USERS_MAX_PAGE_SIZE);
   const deleter = alias(users, "deleter");
   return db
     .select({ user: users, deletedByUsername: deleter.username })
     .from(users)
     .leftJoin(deleter, eq(users.deletedBy, deleter.id))
-    .where(and(sql`${users.deletedAt} is not null`, deletedBeforeCursor(cursor)))
+    .where(and(...deletedConditions(query), deletedBeforeCursor(cursor)))
     .orderBy(desc(users.deletedAt), desc(users.id))
     .limit(capped + 1);
 }
 
 // How many deleted accounts are awaiting restore or expiry — the restore
-// list's header count.
-export async function countDeleted(): Promise<number> {
+// list's header count. Takes the same search filter, so the header can show
+// "N of M" while searching.
+export async function countDeleted(query = ""): Promise<number> {
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(users)
-    .where(sql`${users.deletedAt} is not null`);
+    .where(and(...deletedConditions(query)));
   return row?.n ?? 0;
 }
 

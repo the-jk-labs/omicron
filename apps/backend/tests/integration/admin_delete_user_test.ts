@@ -256,4 +256,11 @@ describe("deleted restore list pagination", () => {
     expect(new Set(ids).size).toBe(3);
     expect(await moderation.countDeletedUsers()).toBe(3);
   });
+
+  test("search matches handle, name, and login email", async () => {
+    const { users } = await moderation.listDeletedUsers(null, 50, "gone-b");
+    expect(users.map((r) => r.user.username)).toEqual(["gone-b"]);
+    expect(await moderation.countDeletedUsers("gone-c@example.test")).toBe(1);
+    expect(await moderation.countDeletedUsers("no-such-account")).toBe(0);
+  });
 });
