@@ -30,22 +30,22 @@
     "bcryptjs": "3.0.3",
     "better-auth": "1.7.2",
     "drizzle-orm": "0.45.2",
-    "hono": "4.13.5",
+    "hono": "4.13.7",
     "ioredis": "6.0.0",
-    "katex": "0.18.5",
-    "markdown-it": "15.0.1",
+    "katex": "0.18.7",
+    "markdown-it": "15.0.2",
     "postgres": "3.4.9",
     "sanitize-html": "2.17.7",
-    "zod": "4.5.4"
+    "zod": "4.6.2"
   },
   "devDependencies": {
     "@types/deno": "2.7.0",
-    "@types/node": "26.4.1",
+    "@types/node": "24.13.4",
     "@types/sanitize-html": "2.16.1",
     "drizzle-kit": "0.31.10",
     "greenly": "1.1.6",
-    "oxfmt": "0.66.0",
-    "oxlint": "1.81.0",
+    "oxfmt": "0.67.0",
+    "oxlint": "1.82.0",
     "oxlint-tsgolint": "7.0.2001",
     "vitest": "5.0.0"
   }
