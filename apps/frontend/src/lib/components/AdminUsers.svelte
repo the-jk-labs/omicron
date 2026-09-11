@@ -1376,3 +1376,11 @@
     </Dialog.Content>
   </Dialog.Portal>
 </Dialog.Root>
+
+<style>
+  /* The searches carry their own clear button (with empty-query handling),
+  so the browser-native one would double up in WebKit. */
+  input[type="search"]::-webkit-search-cancel-button {
+    display: none;
+  }
+</style>
