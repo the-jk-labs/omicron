@@ -12,7 +12,8 @@
   import { identifierToUrl, platformMeta, urlToIdentifier } from "$lib/profileLinks";
   import { MAX_PROFILE_TAGS } from "$lib/tags";
   import type { AdminUser, AdminUserDetail, DeletedUser, ProfileLink } from "$lib/types";
-  import { Dialog, Label } from "bits-ui";
+  import { Dialog, DropdownMenu, Label } from "bits-ui";
+  import { onMount } from "svelte";
 
   // The signed-in admin's own id, so the row for self can hide every action
   // (the server also forbids them).
@@ -20,10 +21,16 @@
 
   let users = $state<AdminUser[]>([]);
   let total = $state(0);
+  let filteredTotal = $state(0);
+  let nextCursor = $state<string | null>(null);
   let loading = $state(true);
+  let loadingMore = $state(false);
   let error = $state("");
   let query = $state("");
   let busyId = $state<string | null>(null);
+  // Monotonic request id: only the latest list response may write state, so a
+  // slow search can never overwrite a newer one.
+  let loadSeq = 0;
 
   // Triage filters: each shows only matching accounts while on.
   let fSuspended = $state(false);
@@ -44,25 +51,47 @@
   let deleteError = $state("");
   let deleteBusy = $state(false);
 
-  async function load() {
-    loading = true;
-    error = "";
+  // Cursor-paginated table load. `reset` fetches the first page (new search or
+  // filter change); otherwise appends the next page. Stale responses are
+  // dropped via `loadSeq`, and the detail cache is kept — mutations update it
+  // in place, so an expansion survives a reload.
+  function filterParams() {
+    return {
+      suspendedOnly: fSuspended || undefined,
+      adminsOnly: fAdmins || undefined,
+      unverifiedOnly: fUnverified || undefined,
+    };
+  }
+
+  async function load(reset = true) {
+    const my = ++loadSeq;
+    if (reset) {
+      loading = true;
+      nextCursor = null;
+      error = "";
+    } else {
+      if (!nextCursor || loadingMore) return;
+      loadingMore = true;
+    }
     try {
-      const res = await endpoints().adminUsers(query.trim() || undefined, {
-        suspendedOnly: fSuspended || undefined,
-        adminsOnly: fAdmins || undefined,
-        unverifiedOnly: fUnverified || undefined,
+      const res = await endpoints().adminUsers(query.trim() || undefined, filterParams(), {
+        cursor: reset ? null : nextCursor,
       });
-      users = res.users;
+      if (my !== loadSeq) return;
+      users = reset ? res.users : [...users, ...res.users.filter((u) => !users.some((x) => x.id === u.id))];
       total = res.total;
-      // Mutations may have changed what a detail shows; drop the cache so an
-      // expansion always refetches.
-      details = {};
+      filteredTotal = res.filteredTotal;
+      nextCursor = res.nextCursor;
       detailNotice = "";
     } catch (e) {
+      if (my !== loadSeq) return;
+      if (reset) users = [];
       error = e instanceof ApiError ? e.message : "Failed to load users.";
     } finally {
-      loading = false;
+      if (my === loadSeq) {
+        loading = false;
+        loadingMore = false;
+      }
     }
   }
 
@@ -78,7 +107,7 @@
     }
   }
 
-  $effect(() => {
+  onMount(() => {
     load();
     loadDeleted();
   });
@@ -86,7 +115,7 @@
   let searchTimer: ReturnType<typeof setTimeout>;
   function onSearch() {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(load, 250);
+    searchTimer = setTimeout(() => load(true), 250);
   }
 
   async function toggleSuspend(u: AdminUser) {
@@ -103,9 +132,15 @@
     busyId = u.id;
     try {
       await endpoints().suspendUser(u.id, suspend);
-      // Replace the row immutably rather than mutating the loop item in place,
-      // so the badge and button reliably re-render with the new state.
-      users = users.map((x) => (x.id === u.id ? { ...x, suspended: suspend } : x));
+      // A reinstated account no longer matches the Suspended-only filter, so it
+      // leaves the listing; otherwise update the row in place.
+      if (fSuspended && !suspend) {
+        users = users.filter((x) => x.id !== u.id);
+        filteredTotal = Math.max(0, filteredTotal - 1);
+        if (expandedId === u.id) expandedId = null;
+      } else {
+        users = users.map((x) => (x.id === u.id ? { ...x, suspended: suspend } : x));
+      }
     } catch (e) {
       error = e instanceof ApiError ? e.message : "Action failed.";
     } finally {
@@ -137,7 +172,15 @@
         username: deleteUsername.trim(),
         password: deletePassword,
       });
-      users = users.filter((x) => x.id !== deleteTarget!.id);
+      const goneId = deleteTarget.id;
+      users = users.filter((x) => x.id !== goneId);
+      total = Math.max(0, total - 1);
+      filteredTotal = Math.max(0, filteredTotal - 1);
+      if (expandedId === goneId) expandedId = null;
+      if (details[goneId]) {
+        const { [goneId]: _, ...rest } = details;
+        details = rest;
+      }
       deleteTarget = null;
       await loadDeleted();
     } catch (e) {
@@ -174,7 +217,14 @@
     try {
       await endpoints().setUserRole(roleTarget.id, { makeAdmin, password: rolePassword });
       const id = roleTarget.id;
-      users = users.map((x) => (x.id === id ? { ...x, isAdmin: makeAdmin } : x));
+      // A demoted account no longer matches the Admins-only filter.
+      if (fAdmins && !makeAdmin) {
+        users = users.filter((x) => x.id !== id);
+        filteredTotal = Math.max(0, filteredTotal - 1);
+        if (expandedId === id) expandedId = null;
+      } else {
+        users = users.map((x) => (x.id === id ? { ...x, isAdmin: makeAdmin } : x));
+      }
       roleTarget = null;
     } catch (e) {
       roleError = e instanceof ApiError ? e.message : "Role change failed.";
@@ -184,8 +234,8 @@
   }
 
   // Expandable per-account detail: counts, latest posts and reports against
-  // the account or its posts. Loaded lazily on expand and cached until the
-  // next table reload.
+  // the account or its posts. Loaded lazily on expand and cached; mutations
+  // update the cache in place, and reloads keep it.
   let expandedId = $state<string | null>(null);
   let details = $state<Record<string, AdminUserDetail>>({});
   let detailLoadingId = $state<string | null>(null);
@@ -240,9 +290,17 @@
     detailNotice = "";
     try {
       await endpoints().verifyEmail(u.id);
-      users = users.map((x) => (x.id === u.id ? { ...x, emailVerified: true } : x));
-      if (details[u.id]) details[u.id] = { ...details[u.id], user: { ...details[u.id].user, emailVerified: true } };
-      detailNotice = "Email marked verified.";
+      // A verified account no longer matches the Unverified-only filter.
+      if (fUnverified) {
+        users = users.filter((x) => x.id !== u.id);
+        filteredTotal = Math.max(0, filteredTotal - 1);
+        if (expandedId === u.id) expandedId = null;
+        detailNotice = "";
+      } else {
+        users = users.map((x) => (x.id === u.id ? { ...x, emailVerified: true } : x));
+        if (details[u.id]) details[u.id] = { ...details[u.id], user: { ...details[u.id].user, emailVerified: true } };
+        detailNotice = "Email marked verified.";
+      }
     } catch (e) {
       detailNotice = e instanceof ApiError ? e.message : "Action failed.";
     } finally {
@@ -456,6 +514,11 @@
   const field =
     "rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-hidden placeholder:text-muted-foreground focus:border-foreground";
   const labelClass = "text-sm font-medium leading-none";
+  const menuItemClass =
+    "flex h-10 cursor-pointer items-center gap-2 rounded-button px-3 text-sm font-medium text-foreground select-none data-highlighted:bg-muted focus-visible:outline-hidden";
+  const destructiveItemClass = menuItemClass.replace("text-foreground", "text-destructive");
+
+  const isFiltering = $derived(query.trim() !== "" || fSuspended || fAdmins || fUnverified);
 </script>
 
 <div class="flex flex-col gap-4">
@@ -463,10 +526,16 @@
     <Icon name="users" size={16} />
     {#if loading}
       <span>Loading accounts…</span>
-    {:else if query.trim() || fSuspended || fAdmins || fUnverified}
-      <span>{users.length} of {total} {total === 1 ? "account" : "accounts"}</span>
+    {:else if isFiltering}
+      <span>
+        {filteredTotal} of {total}
+        {total === 1 ? "account" : "accounts"} · showing {users.length}
+      </span>
     {:else}
-      <span>{total} {total === 1 ? "account" : "accounts"} total</span>
+      <span>
+        {total}
+        {total === 1 ? "account" : "accounts"} total{nextCursor ? ` · showing ${users.length}` : ""}
+      </span>
     {/if}
   </div>
 
@@ -475,9 +544,11 @@
       <Icon name="search" size={16} />
     </span>
     <input
+      type="search"
       bind:value={query}
       oninput={onSearch}
-      placeholder="Search by handle or name"
+      placeholder="Search by handle, name, or email"
+      aria-label="Search accounts by handle, name, or email"
       class="w-full rounded-input border border-input bg-background py-2.5 pr-3.5 pl-9 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
     />
   </div>
@@ -562,7 +633,7 @@
               </p>
             </div>
             {#if u.id !== selfId}
-              <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              <div class="flex shrink-0 items-center gap-2">
                 {#if !u.isAdmin}
                   <Button
                     variant={u.suspended ? "outline" : "destructive"}
@@ -573,19 +644,43 @@
                     <Icon name={u.suspended ? "check" : "shieldOff"} size={15} />
                     {u.suspended ? "Reinstate" : "Suspend"}
                   </Button>
-                  <Button variant="outline" size="sm" disabled={busyId === u.id} onclick={() => openDelete(u)}>
-                    <Icon name="trash" size={15} />
-                    Delete
-                  </Button>
                 {/if}
-                <Button variant="outline" size="sm" disabled={busyId === u.id} onclick={() => openEdit(u)}>
-                  <Icon name="edit" size={15} />
-                  Edit
-                </Button>
-                <Button variant="outline" size="sm" disabled={busyId === u.id} onclick={() => openRole(u)}>
-                  <Icon name="admin" size={15} />
-                  {u.isAdmin ? "Remove admin" : "Make admin"}
-                </Button>
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger disabled={busyId === u.id}>
+                    {#snippet child({ props })}
+                      <Button
+                        {...props}
+                        variant="outline"
+                        size="sm"
+                        aria-label={`More actions for @${u.username}`}
+                        class="px-2!"
+                      >
+                        <Icon name="more" size={16} />
+                      </Button>
+                    {/snippet}
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Portal>
+                    <DropdownMenu.Content
+                      align="end"
+                      sideOffset={6}
+                      class="z-50 w-52 rounded-card border border-border bg-background p-1 shadow-popover focus-visible:outline-hidden"
+                    >
+                      <DropdownMenu.Item onSelect={() => openEdit(u)} class={menuItemClass}>
+                        <Icon name="edit" size={16} /> Edit profile…
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Item onSelect={() => openRole(u)} class={menuItemClass}>
+                        <Icon name="admin" size={16} />
+                        {u.isAdmin ? "Remove admin…" : "Make admin…"}
+                      </DropdownMenu.Item>
+                      {#if !u.isAdmin}
+                        <DropdownMenu.Separator class="my-1 h-px bg-border" />
+                        <DropdownMenu.Item onSelect={() => openDelete(u)} class={destructiveItemClass}>
+                          <Icon name="trash" size={16} /> Delete…
+                        </DropdownMenu.Item>
+                      {/if}
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Portal>
+                </DropdownMenu.Root>
               </div>
             {/if}
           </div>
@@ -679,6 +774,13 @@
         </li>
       {/each}
     </ul>
+    {#if nextCursor}
+      <div class="mt-4 flex justify-center">
+        <Button variant="outline" size="sm" disabled={loadingMore} onclick={() => load(false)}>
+          {loadingMore ? "Loading…" : `Load more (${users.length} of ${filteredTotal})`}
+        </Button>
+      </div>
+    {/if}
   {/if}
 
   <div class="mt-4 border-t border-border pt-4">

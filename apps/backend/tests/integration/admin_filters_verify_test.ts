@@ -9,6 +9,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { HttpError } from "@/lib/http.ts";
+import { decodeCursor } from "@/lib/pagination.ts";
 import { registerHandler } from "@/queue/queue.ts";
 import * as moderation from "@/services/moderation.ts";
 import { closeDb, mkUser, resetDb } from "./harness.ts";
@@ -40,6 +41,16 @@ function usernames(rows: readonly { username: string }[]): string[] {
   return rows.map((r) => r.username).toSorted();
 }
 
+async function page(
+  query = "",
+  filter: Parameters<typeof moderation.listUsers>[1] = {},
+  cursor: Parameters<typeof moderation.listUsers>[2] = null,
+  limit: Parameters<typeof moderation.listUsers>[3] = 50,
+) {
+  const { users } = await moderation.listUsers(query, filter, cursor, limit);
+  return users;
+}
+
 afterAll(async () => {
   await closeDb();
 });
@@ -56,28 +67,53 @@ describe("admin user filters", () => {
   });
 
   test("no filter lists everyone live", async () => {
-    expect(usernames(await moderation.listUsers())).toEqual(["alpha", "beta", "delta", "gamma"]);
+    expect(usernames(await page())).toEqual(["alpha", "beta", "delta", "gamma"]);
   });
 
   test("suspended filter splits both ways", async () => {
-    expect(usernames(await moderation.listUsers("", { suspended: true }))).toEqual(["beta"]);
-    expect(usernames(await moderation.listUsers("", { suspended: false }))).toEqual(["alpha", "delta", "gamma"]);
+    expect(usernames(await page("", { suspended: true }))).toEqual(["beta"]);
+    expect(usernames(await page("", { suspended: false }))).toEqual(["alpha", "delta", "gamma"]);
   });
 
   test("admin filter splits both ways", async () => {
-    expect(usernames(await moderation.listUsers("", { admin: true }))).toEqual(["gamma"]);
-    expect(usernames(await moderation.listUsers("", { admin: false }))).toEqual(["alpha", "beta", "delta"]);
+    expect(usernames(await page("", { admin: true }))).toEqual(["gamma"]);
+    expect(usernames(await page("", { admin: false }))).toEqual(["alpha", "beta", "delta"]);
   });
 
   test("verified filter splits both ways", async () => {
-    expect(usernames(await moderation.listUsers("", { verified: true }))).toEqual(["delta"]);
-    expect(usernames(await moderation.listUsers("", { verified: false }))).toEqual(["alpha", "beta", "gamma"]);
+    expect(usernames(await page("", { verified: true }))).toEqual(["delta"]);
+    expect(usernames(await page("", { verified: false }))).toEqual(["alpha", "beta", "gamma"]);
   });
 
   test("filters combine with each other and with the search query", async () => {
-    expect(usernames(await moderation.listUsers("", { admin: false, verified: false }))).toEqual(["alpha", "beta"]);
-    expect(usernames(await moderation.listUsers("a", { verified: false }))).toEqual(["alpha", "beta", "gamma"]);
-    expect(usernames(await moderation.listUsers("amm", { admin: true }))).toEqual(["gamma"]);
+    expect(usernames(await page("", { admin: false, verified: false }))).toEqual(["alpha", "beta"]);
+    expect(usernames(await page("a", { verified: false }))).toEqual(["alpha", "beta", "gamma"]);
+    expect(usernames(await page("amm", { admin: true }))).toEqual(["gamma"]);
+  });
+
+  test("search matches the login email too", async () => {
+    expect(usernames(await page("beta@example.test"))).toEqual(["beta"]);
+    expect(usernames(await page("ALPHA@EXAMPLE.TEST"))).toEqual(["alpha"]);
+  });
+
+  test("filtered count matches the listing", async () => {
+    expect(await moderation.countFilteredUsers("", { suspended: true })).toBe(1);
+    expect(await moderation.countFilteredUsers("a", { verified: false })).toBe(3);
+    expect(await moderation.countUsers()).toBe(4);
+  });
+
+  test("cursor pagination walks the whole table without overlap", async () => {
+    const first = await moderation.listUsers("", {}, null, 2);
+    expect(first.users).toHaveLength(2);
+    expect(first.nextCursor).not.toBeNull();
+
+    const second = await moderation.listUsers("", {}, decodeCursor(first.nextCursor), 2);
+    expect(second.users).toHaveLength(2);
+    expect(second.nextCursor).toBeNull();
+
+    const seen = usernames([...first.users, ...second.users]);
+    expect(seen).toEqual(["alpha", "beta", "delta", "gamma"]);
+    expect(new Set([...first.users, ...second.users].map((u) => u.id)).size).toBe(4);
   });
 });
 

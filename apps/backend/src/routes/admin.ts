@@ -2,7 +2,9 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { rotateSessionSecret, sessionSecretManaged } from "@/config.ts";
+import { ADMIN_USERS_PAGE_SIZE } from "@/db/repositories/users.ts";
 import { badRequest } from "@/lib/http.ts";
+import { decodeCursor } from "@/lib/pagination.ts";
 import { jsonBody } from "@/lib/validate.ts";
 import { requireAdmin } from "@/routes/middleware.ts";
 import { adminUserDetailView, adminUserView, deletedUserView } from "@/routes/serializers.ts";
@@ -298,21 +300,28 @@ function flag(v: string | undefined): boolean | undefined {
   return v === "true" ? true : v === "false" ? false : undefined;
 }
 
-// The admin user table, with an optional handle / name filter (?q=) and
-// triage filters (?suspended=&admin=&verified=true|false).
-// `total` is the unfiltered local-account count for the header.
+// The admin user table, with an optional handle / name / email filter (?q=)
+// and triage filters (?suspended=&admin=&verified=true|false). Keyset-paginated
+// over (created_at, id): `?cursor=` continues from the previous page's
+// `nextCursor`, `?limit=` sizes the page (1–100, default 50). `total` is the
+// unfiltered local-account count; `filteredTotal` matches the current filter.
 adminRoutes.get("/users", async (c) => {
   requireAdmin(c);
+  const q = c.req.query("q") ?? "";
   const filter = {
     suspended: flag(c.req.query("suspended")),
     admin: flag(c.req.query("admin")),
     verified: flag(c.req.query("verified")),
   };
-  const [rows, total] = await Promise.all([
-    moderation.listUsers(c.req.query("q") ?? "", filter),
+  const cursor = decodeCursor(c.req.query("cursor"));
+  const limitRaw = Number.parseInt(c.req.query("limit") ?? "", 10);
+  const limit = Number.isFinite(limitRaw) ? limitRaw : ADMIN_USERS_PAGE_SIZE;
+  const [{ users, nextCursor }, total, filteredTotal] = await Promise.all([
+    moderation.listUsers(q, filter, cursor, limit),
     moderation.countUsers(),
+    moderation.countFilteredUsers(q, filter),
   ]);
-  return c.json({ users: rows.map(adminUserView), total });
+  return c.json({ users: users.map(adminUserView), nextCursor, total, filteredTotal });
 });
 
 const suspendSchema = z.object({ suspend: z.boolean() });

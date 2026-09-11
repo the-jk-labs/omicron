@@ -133,14 +133,22 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     checkPort25: () => api.get<{ ok: boolean; detail: string }>("/admin/email/port25"),
 
     // admin moderation
-    adminUsers: (q?: string, filters?: { suspendedOnly?: boolean; adminsOnly?: boolean; unverifiedOnly?: boolean }) => {
+    adminUsers: (
+      q?: string,
+      filters?: { suspendedOnly?: boolean; adminsOnly?: boolean; unverifiedOnly?: boolean },
+      page?: { cursor?: string | null; limit?: number },
+    ) => {
       const params = new URLSearchParams();
       if (q) params.set("q", q);
       if (filters?.suspendedOnly) params.set("suspended", "true");
       if (filters?.adminsOnly) params.set("admin", "true");
       if (filters?.unverifiedOnly) params.set("verified", "false");
+      if (page?.cursor) params.set("cursor", page.cursor);
+      if (page?.limit) params.set("limit", String(page.limit));
       const qs = params.toString();
-      return api.get<{ users: AdminUser[]; total: number }>(`/admin/users${qs ? `?${qs}` : ""}`);
+      return api.get<{ users: AdminUser[]; nextCursor: string | null; total: number; filteredTotal: number }>(
+        `/admin/users${qs ? `?${qs}` : ""}`,
+      );
     },
     suspendUser: (id: string, suspend: boolean) => api.post<{ ok: true }>(`/admin/users/${id}/suspend`, { suspend }),
     // Delete a local account. GitHub-style: the exact username plus the acting
