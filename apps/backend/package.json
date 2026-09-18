@@ -28,7 +28,7 @@
     "@imagemagick/magick-wasm": "0.0.43",
     "@vscode/markdown-it-katex": "1.1.2",
     "bcryptjs": "3.0.3",
-    "better-auth": "1.7.2",
+    "better-auth": "1.7.5",
     "drizzle-orm": "0.45.2",
     "hono": "4.13.8",
     "ioredis": "6.0.0",
@@ -46,7 +46,7 @@
     "greenly": "1.1.6",
     "oxfmt": "0.68.0",
     "oxlint": "1.83.0",
-    "oxlint-tsgolint": "7.0.2001",
+    "oxlint-tsgolint": "7.0.2002",
     "vitest": "5.0.1"
   }
 }

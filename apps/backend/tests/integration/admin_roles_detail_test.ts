@@ -26,7 +26,6 @@ async function mkCredential(userId: string, password: string) {
     userId,
     accountId: userId,
     providerId: "credential",
-    issuer: "local:credential",
     password: await bcrypt.hash(password, 4),
   });
 }

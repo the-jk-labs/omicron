@@ -260,6 +260,13 @@
       "when": 1788800000000,
       "tag": "0036_user_soft_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1789400000000,
+      "tag": "0037_drop_account_issuer",
+      "breakpoints": true
     }
   ]
 }

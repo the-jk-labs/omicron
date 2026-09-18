@@ -26,7 +26,6 @@ async function mkCredential(userId: string, email: string) {
     userId,
     accountId: email,
     providerId: "credential",
-    issuer: "local:credential",
     password: await bcrypt.hash("correct-horse-battery-staple-12", 4),
   });
 }
