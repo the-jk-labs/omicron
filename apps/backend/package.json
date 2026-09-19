@@ -22,31 +22,31 @@
     "backfill:email-lowercase": "deno run -A scripts/backfill_email_lowercase.ts"
   },
   "dependencies": {
-    "@fedify/fedify": "2.3.6",
-    "@fedify/redis": "2.3.6",
+    "@fedify/fedify": "2.3.7",
+    "@fedify/redis": "2.3.7",
     "@hono/zod-validator": "0.9.1",
     "@imagemagick/magick-wasm": "0.0.43",
     "@vscode/markdown-it-katex": "1.1.2",
     "bcryptjs": "3.0.3",
-    "better-auth": "1.7.2",
+    "better-auth": "1.7.5",
     "drizzle-orm": "0.45.2",
-    "hono": "4.13.7",
+    "hono": "4.13.8",
     "ioredis": "6.0.0",
     "katex": "0.18.7",
     "markdown-it": "15.0.2",
     "postgres": "3.4.9",
     "sanitize-html": "2.17.7",
-    "zod": "4.6.2"
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@types/deno": "2.7.0",
-    "@types/node": "24.13.4",
+    "@types/node": "24.13.5",
     "@types/sanitize-html": "2.16.1",
     "drizzle-kit": "0.31.10",
     "greenly": "1.1.6",
-    "oxfmt": "0.67.0",
-    "oxlint": "1.82.0",
-    "oxlint-tsgolint": "7.0.2001",
-    "vitest": "5.0.0"
+    "oxfmt": "0.68.0",
+    "oxlint": "1.83.0",
+    "oxlint-tsgolint": "7.0.2002",
+    "vitest": "5.0.1"
   }
 }

@@ -703,8 +703,6 @@ export const accounts = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     accountId: text("account_id").notNull(),
     providerId: text("provider_id").notNull(),
-    // 1.7 identity namespace (identityStrategy "provider-id"); "local:credential" for credentials.
-    issuer: text("issuer").notNull(),
     password: text("password"),
     accessToken: text("access_token"),
     refreshToken: text("refresh_token"),
@@ -717,7 +715,7 @@ export const accounts = pgTable(
   },
   (t) => [
     index("accounts_user_idx").on(t.userId),
-    uniqueIndex("accounts_issuer_account_idx").on(t.issuer, t.accountId),
+    uniqueIndex("accounts_provider_account_idx").on(t.providerId, t.accountId),
   ],
 );
 
