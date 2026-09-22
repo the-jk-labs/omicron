@@ -1,18 +1,27 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import Icon from "$lib/components/Icon.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { confirmRequest } from "$lib/components/ui/confirm";
-  import { AlertDialog } from "bits-ui";
+  import { AlertDialog, Checkbox } from "bits-ui";
 
   // Global host for the promise-based confirm() helper. Mounted once in the root
   // layout; renders the Bits UI AlertDialog whenever a request is pending and
   // resolves it with the user's choice.
   const req = $derived($confirmRequest);
 
+  // Opt-out checkbox state. Reset for every request — checked unless the
+  // request says otherwise; the moderator unchecks to stay silent.
+  let notifyChecked = $state(true);
+  $effect(() => {
+    req;
+    notifyChecked = req?.notify?.checked ?? true;
+  });
+
   // Resolve the pending promise and clear the request. AlertDialog closes itself
   // when its open binding flips to false.
-  function answer(value: boolean) {
-    req?.resolve(value);
+  function answer(ok: boolean) {
+    req?.resolve({ ok, notify: ok && !!req?.notify && notifyChecked });
     confirmRequest.set(null);
   }
 
@@ -36,6 +45,20 @@
       <AlertDialog.Description class="mt-1.5 text-sm text-foreground-alt">
         {req?.description}
       </AlertDialog.Description>
+
+      {#if req?.notify}
+        <label class="mt-4 flex cursor-pointer items-start gap-2.5 text-sm text-foreground">
+          <Checkbox.Root
+            bind:checked={notifyChecked}
+            class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border border-input bg-background shadow-btn data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
+          >
+            {#snippet children({ checked })}
+              {#if checked}<Icon name="check" size={12} />{/if}
+            {/snippet}
+          </Checkbox.Root>
+          <span class="leading-snug">{req.notify.label}</span>
+        </label>
+      {/if}
 
       <div class="mt-6 flex justify-end gap-2">
         <AlertDialog.Cancel

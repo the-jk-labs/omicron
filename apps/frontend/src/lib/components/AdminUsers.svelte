@@ -13,7 +13,7 @@
   import { identifierToUrl, platformMeta, urlToIdentifier } from "$lib/profileLinks";
   import { MAX_PROFILE_TAGS } from "$lib/tags";
   import type { AdminUser, AdminUserDetail, DeletedUser, ProfileLink } from "$lib/types";
-  import { Dialog, DropdownMenu, Label, ToggleGroup } from "bits-ui";
+  import { Checkbox, Dialog, DropdownMenu, Label, ToggleGroup } from "bits-ui";
   import { onMount } from "svelte";
 
   // The signed-in admin's own id, so the row for self can hide every action
@@ -98,6 +98,7 @@
   let deleteTarget = $state<AdminUser | null>(null);
   let deleteUsername = $state("");
   let deletePassword = $state("");
+  let deleteNotify = $state(true);
   let deleteError = $state("");
   let deleteBusy = $state(false);
 
@@ -221,18 +222,19 @@
 
   async function toggleSuspend(u: AdminUser) {
     const suspend = !u.suspended;
-    const ok = await confirm({
+    const { ok, notify } = await confirm({
       title: suspend ? `Suspend @${u.username}?` : `Reinstate @${u.username}?`,
       description: suspend
         ? "They will be signed out and unable to sign in until reinstated."
         : "They will be able to sign in again.",
       confirmText: suspend ? "Suspend" : "Reinstate",
       destructive: suspend,
+      notify: { label: `Notify @${u.username} by email.` },
     });
     if (!ok) return;
     busyId = u.id;
     try {
-      await endpoints().suspendUser(u.id, suspend);
+      await endpoints().suspendUser(u.id, suspend, notify);
       // The account leaves the listing when it no longer matches an active
       // Suspended filter (reinstated under "Yes", suspended under "No").
       if ((fSuspended === true && !suspend) || (fSuspended === false && suspend)) {
@@ -253,6 +255,7 @@
     deleteTarget = u;
     deleteUsername = "";
     deletePassword = "";
+    deleteNotify = true;
     deleteError = "";
   }
 
@@ -272,6 +275,7 @@
       await endpoints().deleteUser(deleteTarget.id, {
         username: deleteUsername.trim(),
         password: deletePassword,
+        notify: deleteNotify,
       });
       const goneId = deleteTarget.id;
       users = users.filter((x) => x.id !== goneId);
@@ -297,6 +301,7 @@
   let roleTarget = $state<AdminUser | null>(null);
   let roleAction = $state<"admin" | "moderator">("admin");
   let rolePassword = $state("");
+  let roleNotify = $state(true);
   let roleError = $state("");
   let roleBusy = $state(false);
 
@@ -304,6 +309,7 @@
     roleTarget = u;
     roleAction = action;
     rolePassword = "";
+    roleNotify = true;
     roleError = "";
   }
 
@@ -325,7 +331,7 @@
       const id = roleTarget.id;
       if (roleAction === "admin") {
         const makeAdmin = granting;
-        await endpoints().setUserRole(id, { makeAdmin, password: rolePassword });
+        await endpoints().setUserRole(id, { makeAdmin, password: rolePassword, notify: roleNotify });
         // The account leaves the listing when it no longer matches an active
         // Admin filter (demoted under "Yes", promoted under "No").
         if ((fAdmins === true && !makeAdmin) || (fAdmins === false && makeAdmin)) {
@@ -337,7 +343,7 @@
         }
       } else {
         const makeModerator = granting;
-        await endpoints().setUserModeratorRole(id, { makeModerator, password: rolePassword });
+        await endpoints().setUserModeratorRole(id, { makeModerator, password: rolePassword, notify: roleNotify });
         users = users.map((x) => (x.id === id ? { ...x, isModerator: makeModerator } : x));
       }
       roleTarget = null;
@@ -418,7 +424,7 @@
   }
 
   async function markVerified(u: AdminUser) {
-    const ok = await confirm({
+    const { ok } = await confirm({
       title: `Mark @${u.username}'s email verified?`,
       description:
         "They will be able to sign in without clicking a link. Use this when instance mail was broken — not to skip ownership proof lightly.",
@@ -452,7 +458,7 @@
   let resolveBusyId = $state<string | null>(null);
 
   async function resolveReportInline(u: AdminUser, reportId: string) {
-    const ok = await confirm({
+    const { ok } = await confirm({
       title: "Resolve this report?",
       description: "It leaves the moderation queue without a resolution note.",
       confirmText: "Resolve",
@@ -551,7 +557,7 @@
   async function removeEditAvatar() {
     if (!editTarget || !editAvatarUrl) return;
     const target = editTarget;
-    const ok = await confirm({
+    const { ok } = await confirm({
       title: `Remove @${target.username}'s photo?`,
       description: "Their profile reverts to initials. They can upload a new photo themselves at any time.",
       confirmText: "Remove photo",
@@ -722,10 +728,17 @@
   }
 
   async function restoreDeleted(d: DeletedUser) {
+    const { ok, notify } = await confirm({
+      title: `Restore @${d.username}?`,
+      description: "Their account, posts and follows come back as they were.",
+      confirmText: "Restore",
+      notify: { label: `Notify @${d.username} by email.` },
+    });
+    if (!ok) return;
     busyId = d.id;
     error = "";
     try {
-      await endpoints().restoreUser(d.id);
+      await endpoints().restoreUser(d.id, notify);
       deleted = deleted.filter((x) => x.id !== d.id);
       deletedTotal = Math.max(0, deletedTotal - 1);
       await load();
@@ -737,7 +750,7 @@
   }
 
   async function purgeDeleted(d: DeletedUser) {
-    const ok = await confirm({
+    const { ok } = await confirm({
       title: `Erase @${d.username} forever?`,
       description:
         "The account, its posts and all of its data will be permanently erased immediately. This cannot be undone.",
@@ -1231,8 +1244,8 @@
         Delete @{deleteTarget?.username}?
       </Dialog.Title>
       <Dialog.Description class="mt-1 text-sm text-muted-foreground">
-        This signs them out immediately and hides the account, its posts and its profile everywhere. They will be
-        notified by email. The data is kept for a limited time and can be restored from Recently deleted below.
+        This signs them out immediately and hides the account, its posts and its profile everywhere. The data is kept
+        for a limited time and can be restored from Recently deleted below.
       </Dialog.Description>
 
       <div class="mt-5 flex flex-col gap-4">
@@ -1260,6 +1273,17 @@
             class={field}
           />
         </div>
+        <label class="flex cursor-pointer items-start gap-2.5 text-sm text-foreground">
+          <Checkbox.Root
+            bind:checked={deleteNotify}
+            class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border border-input bg-background shadow-btn data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
+          >
+            {#snippet children({ checked })}
+              {#if checked}<Icon name="check" size={12} />{/if}
+            {/snippet}
+          </Checkbox.Root>
+          <span class="leading-snug">Notify @{deleteTarget?.username} by email.</span>
+        </label>
         {#if deleteError}<p class="text-sm text-destructive">{deleteError}</p>{/if}
       </div>
 
@@ -1299,30 +1323,40 @@
       <Dialog.Description class="mt-1 text-sm text-muted-foreground">
         {#if roleAction === "admin"}
           {#if roleTarget?.isAdmin}
-            They lose access to the admin panel immediately. Everything else stays as is. They will be notified by
-            email.
+            They lose access to the admin panel immediately. Everything else stays as is.
           {:else}
             They gain the admin panel: reports, accounts, defederation and instance settings — including other people's
-            login emails. They will be notified by email.
+            login emails.
           {/if}
         {:else if roleTarget?.isModerator}
-          They lose access to the moderation queue and user management immediately. Everything else stays as is. They
-          will be notified by email.
+          They lose access to the moderation queue and user management immediately. Everything else stays as is.
         {:else}
-          They gain the moderation queue plus user, post and report management — but no instance settings. They will be
-          notified by email.
+          They gain the moderation queue plus user, post and report management — but no instance settings.
         {/if}
       </Dialog.Description>
 
-      <div class="mt-5 flex flex-col gap-1.5">
-        <Label.Root for="role-password" class={labelClass}>Your password</Label.Root>
-        <input
-          id="role-password"
-          type="password"
-          bind:value={rolePassword}
-          autocomplete="current-password"
-          class={field}
-        />
+      <div class="mt-5 flex flex-col gap-4">
+        <div class="flex flex-col gap-1.5">
+          <Label.Root for="role-password" class={labelClass}>Your password</Label.Root>
+          <input
+            id="role-password"
+            type="password"
+            bind:value={rolePassword}
+            autocomplete="current-password"
+            class={field}
+          />
+        </div>
+        <label class="flex cursor-pointer items-start gap-2.5 text-sm text-foreground">
+          <Checkbox.Root
+            bind:checked={roleNotify}
+            class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border border-input bg-background shadow-btn data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
+          >
+            {#snippet children({ checked })}
+              {#if checked}<Icon name="check" size={12} />{/if}
+            {/snippet}
+          </Checkbox.Root>
+          <span class="leading-snug">Notify @{roleTarget?.username} by email.</span>
+        </label>
         {#if roleError}<p class="text-sm text-destructive">{roleError}</p>{/if}
       </div>
 

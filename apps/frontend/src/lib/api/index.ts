@@ -152,13 +152,15 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
         `/admin/users${qs ? `?${qs}` : ""}`,
       );
     },
-    suspendUser: (id: string, suspend: boolean) => api.post<{ ok: true }>(`/admin/users/${id}/suspend`, { suspend }),
+    suspendUser: (id: string, suspend: boolean, notify = false) =>
+      api.post<{ ok: true }>(`/admin/users/${id}/suspend`, { suspend, notify }),
     // Delete a local account. GitHub-style: the exact username plus the acting
     // admin's own password travel with the request — the server re-verifies both.
-    deleteUser: (id: string, body: { username: string; password: string }) =>
+    // `notify` mails the account; silence is the default.
+    deleteUser: (id: string, body: { username: string; password: string; notify?: boolean }) =>
       api.post<{ ok: true }>(`/admin/users/${id}/delete`, body),
     // Restore a deleted account within its retention window.
-    restoreUser: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/restore`, {}),
+    restoreUser: (id: string, notify = false) => api.post<{ ok: true }>(`/admin/users/${id}/restore`, { notify }),
     // Full detail for one account: counts, latest posts and reports against it.
     adminUserDetail: (id: string) => api.get<AdminUserDetail>(`/admin/users/${id}`),
     // Edit another account's profile + login email. Every field optional; only
@@ -186,12 +188,12 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     resendVerification: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/verification-email`, {}),
     verifyEmail: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/verify`, {}),
     // Grant or revoke the admin role. The acting admin's own password travels
-    // with the request — the server re-verifies it.
-    setUserRole: (id: string, body: { makeAdmin: boolean; password: string }) =>
+    // with the request — the server re-verifies it. `notify` mails the account.
+    setUserRole: (id: string, body: { makeAdmin: boolean; password: string; notify?: boolean }) =>
       api.post<{ ok: true }>(`/admin/users/${id}/role`, body),
     // Grant or revoke the moderator role. Same password re-verification;
-    // admin-only.
-    setUserModeratorRole: (id: string, body: { makeModerator: boolean; password: string }) =>
+    // admin-only. `notify` mails the account.
+    setUserModeratorRole: (id: string, body: { makeModerator: boolean; password: string; notify?: boolean }) =>
       api.post<{ ok: true }>(`/admin/users/${id}/moderator-role`, body),
     // Recently deleted accounts awaiting restore or expiry, newest deletion
     // first. Optional handle / name / email filter, keyset-paginated like
@@ -208,7 +210,8 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     },
     // Permanently erase a deleted account before its window ends.
     purgeDeletedUser: (id: string) => api.del<{ ok: true }>(`/admin/users/deleted/${id}`),
-    adminRemovePost: (id: string) => api.del<{ ok: true }>(`/admin/posts/${id}`),
+    adminRemovePost: (id: string, notify = false) =>
+      api.del<{ ok: true }>(`/admin/posts/${id}${notify ? "?notify=true" : ""}`),
     adminReports: (status?: "open" | "resolved") =>
       api.get<{ reports: Report[]; openCount: number }>(`/admin/reports${status ? `?status=${status}` : ""}`),
     resolveReport: (id: string, resolution?: string) =>
@@ -323,7 +326,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       // `slug` comes back because a retitle changes it, and the editor has to
       // navigate to the post's new address.
     ) => api.patch<{ post: { id: string; slug: string | null } }>(`/posts/${id}`, body),
-    deletePost: (id: string) => api.del<{ ok: true }>(`/posts/${id}`),
+    deletePost: (id: string, notify = false) => api.del<{ ok: true }>(`/posts/${id}${notify ? "?notify=true" : ""}`),
     // Posts to read next, shown under an article (see relatedPosts service).
     relatedPosts: (id: string) => api.get<{ items: Post[] }>(`/posts/${id}/related`),
 

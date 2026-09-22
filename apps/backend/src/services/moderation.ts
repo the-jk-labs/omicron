@@ -25,6 +25,7 @@ import {
   notifyModeratorDeleted,
   notifyModeratorGranted,
   notifyModeratorRevoked,
+  notifyPostAuthorRemoved,
   notifyReinstated,
   notifyRestored,
   notifySuspended,
@@ -40,6 +41,11 @@ import * as usersService from "@/services/users.ts";
 // except `report`, which any signed-in user may call. Per-account writes go
 // through `assertCanModerateAccount` so a moderator can never touch an admin's
 // account — or another moderator's, unless they are an admin.
+
+// Opt-in mail for moderation actions. Every mutating operation below takes it
+// and stays silent unless the moderator checked the notify box in the dialog
+// — notifications are never sent behind the moderator's back.
+export type NotifyOpt = { notify?: boolean };
 
 type RoleHolder = { id: string; isAdmin: boolean; isModerator: boolean };
 
@@ -157,7 +163,12 @@ export function countUsers(): Promise<number> {
 // other admins (protects the moderator team from lock-out and abuse), and a
 // moderator cannot suspend an admin or another moderator. Suspending
 // clears the target's sessions so the block takes effect immediately.
-export async function setSuspended(actorId: string, targetId: string, suspend: boolean): Promise<void> {
+export async function setSuspended(
+  actorId: string,
+  targetId: string,
+  suspend: boolean,
+  opts: NotifyOpt = {},
+): Promise<void> {
   const [actor, target] = await Promise.all([usersRepo.findById(actorId), usersRepo.findById(targetId)]);
   if (!target) throw notFound("Account not found.");
   if (!actor || (!actor.isAdmin && !actor.isModerator)) throw forbidden("Moderator access required.");
@@ -167,6 +178,9 @@ export async function setSuspended(actorId: string, targetId: string, suspend: b
   await usersRepo.setSuspended(targetId, suspend ? new Date() : null);
   if (suspend) {
     await sessionsRepo.removeAllForUser(targetId);
+  }
+  if (!opts.notify) return;
+  if (suspend) {
     await notifySuspended(target.email, target.username);
   } else {
     await notifyReinstated(target.email, target.username);
@@ -186,7 +200,7 @@ export async function setSuspended(actorId: string, targetId: string, suspend: b
 export async function setAdminRole(
   adminId: string,
   targetId: string,
-  input: { makeAdmin: boolean; password: string },
+  input: { makeAdmin: boolean; password: string; notify?: boolean },
 ): Promise<void> {
   const [actor, target] = await Promise.all([usersRepo.findById(adminId), usersRepo.findById(targetId)]);
   if (!actor?.isAdmin) throw forbidden("Admin access required.");
@@ -201,6 +215,7 @@ export async function setAdminRole(
     throw forbidden("You can't remove the last admin.");
   }
   await usersRepo.setAdmin(targetId, input.makeAdmin);
+  if (!input.notify) return;
   if (input.makeAdmin) {
     await notifyAdminGranted(target.email, target.username);
   } else {
@@ -217,7 +232,7 @@ export async function setAdminRole(
 export async function setModeratorRole(
   adminId: string,
   targetId: string,
-  input: { makeModerator: boolean; password: string },
+  input: { makeModerator: boolean; password: string; notify?: boolean },
 ): Promise<void> {
   const [actor, target] = await Promise.all([usersRepo.findById(adminId), usersRepo.findById(targetId)]);
   if (!actor?.isAdmin) throw forbidden("Admin access required.");
@@ -230,6 +245,7 @@ export async function setModeratorRole(
   }
   if (target.isModerator === input.makeModerator) return;
   await usersRepo.setModerator(targetId, input.makeModerator);
+  if (!input.notify) return;
   if (input.makeModerator) {
     await notifyModeratorGranted(target.email, target.username);
   } else {
@@ -284,7 +300,7 @@ export function deletionExpiresAt(deletedAt: Date): Date {
 export async function deleteUser(
   actorId: string,
   targetId: string,
-  input: { username: string; password: string },
+  input: { username: string; password: string; notify?: boolean },
 ): Promise<void> {
   const [actor, target] = await Promise.all([usersRepo.findById(actorId), usersRepo.findById(targetId)]);
   if (!target || target.deletedAt) throw notFound("Account not found.");
@@ -310,18 +326,24 @@ export async function deleteUser(
   const deletedAt = new Date();
   await usersRepo.setDeleted(targetId, deletedAt, actorId);
   await sessionsRepo.removeAllForUser(targetId);
-  // Tell the account what happened and until when restoration is possible.
-  await notifyModeratorDeleted(target.email, target.username, deletionExpiresAt(deletedAt).toISOString());
+  // Tell the account what happened and until when restoration is possible —
+  // but only when the moderator opted in.
+  if (input.notify) {
+    await notifyModeratorDeleted(target.email, target.username, deletionExpiresAt(deletedAt).toISOString());
+  }
 }
 
 // Restores a deleted account within its retention window. The username and
 // email were never freed (the row was kept), so restoration cannot conflict.
 // Queues an actor update so instances that cached the Delete can refetch.
-export async function restoreUser(targetId: string): Promise<void> {
+// The restore notice goes out only on opt-in.
+export async function restoreUser(targetId: string, opts: NotifyOpt = {}): Promise<void> {
   const target = await usersRepo.findById(targetId);
   if (!target || !target.deletedAt) throw notFound("Deleted account not found.");
   await usersRepo.setDeleted(targetId, null, null);
-  await notifyRestored(target.email, target.username);
+  if (opts.notify) {
+    await notifyRestored(target.email, target.username);
+  }
   queue.add("federate_actor_update", { userId: targetId });
 }
 
@@ -518,11 +540,15 @@ export async function updateUserDetails(actorId: string, targetId: string, input
 
 // Removes any local post (a moderator override — the author check in
 // services/posts.ts is bypassed here). Remote/cached posts cannot be deleted.
-export async function removePost(id: string): Promise<void> {
-  const row = await postsRepo.findById(id);
+// The author is told only on opt-in.
+export async function removePost(postId: string, deleterId: string, opts: NotifyOpt = {}): Promise<void> {
+  const row = await postsRepo.findById(postId);
   if (!row) throw notFound("Post not found.");
   if (row.post.remote) throw forbidden("Federated posts cannot be removed here.");
-  await postsRepo.remove(id);
+  await postsRepo.remove(postId);
+  if (opts.notify) {
+    await notifyPostAuthorRemoved(row.post.authorId, deleterId, row.post.title);
+  }
 }
 
 // ── Defederation (admin) ─────────────────────────────────────────────────

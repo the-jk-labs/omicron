@@ -334,18 +334,21 @@ adminRoutes.get("/users", async (c) => {
   return c.json({ users: users.map(adminUserView), nextCursor, total, filteredTotal });
 });
 
-const suspendSchema = z.object({ suspend: z.boolean() });
+const suspendSchema = z.object({ suspend: z.boolean(), notify: z.boolean().optional() });
 
-// Suspend or reinstate a local account.
+// Suspend or reinstate a local account. The account is mailed only when the
+// moderator opts in with `notify`.
 adminRoutes.post("/users/:id/suspend", jsonBody(suspendSchema, "Expected { suspend: boolean }."), async (c) => {
   const viewer = requireModerator(c);
-  await moderation.setSuspended(viewer.id, c.req.param("id"), c.req.valid("json").suspend);
+  const { suspend, notify } = c.req.valid("json");
+  await moderation.setSuspended(viewer.id, c.req.param("id"), suspend, { notify });
   return c.json({ ok: true });
 });
 
 const deleteUserSchema = z.object({
   username: z.string().trim().min(1, "Type the account's username to confirm."),
   password: z.string().min(1, "Your password is required."),
+  notify: z.boolean().optional(),
 });
 
 // Delete a local account (soft-delete with a retention window). GitHub-style:
@@ -353,15 +356,18 @@ const deleteUserSchema = z.object({
 // password — a stolen session alone cannot wipe accounts.
 adminRoutes.post("/users/:id/delete", jsonBody(deleteUserSchema), async (c) => {
   const viewer = requireModerator(c);
-  const { username, password } = c.req.valid("json");
-  await moderation.deleteUser(viewer.id, c.req.param("id"), { username, password });
+  const { username, password, notify } = c.req.valid("json");
+  await moderation.deleteUser(viewer.id, c.req.param("id"), { username, password, notify });
   return c.json({ ok: true });
 });
 
-// Restore a deleted account within its retention window.
-adminRoutes.post("/users/:id/restore", async (c) => {
+// Restore a deleted account within its retention window. The account is
+// mailed only on opt-in (`notify`).
+const restoreSchema = z.object({ notify: z.boolean().optional() });
+
+adminRoutes.post("/users/:id/restore", jsonBody(restoreSchema.catch({})), async (c) => {
   requireModerator(c);
-  await moderation.restoreUser(c.req.param("id"));
+  await moderation.restoreUser(c.req.param("id"), { notify: c.req.valid("json").notify });
   return c.json({ ok: true });
 });
 
@@ -395,21 +401,23 @@ adminRoutes.delete("/users/deleted/:id", async (c) => {
 const roleSchema = z.object({
   makeAdmin: z.boolean(),
   password: z.string().min(1, "Your password is required."),
+  notify: z.boolean().optional(),
 });
 
 // Grant or revoke the admin role. The acting admin's own password is
 // re-verified — a stolen session alone must not mint new admins. Never self,
-// never the last admin.
+// never the last admin. The account is mailed only on opt-in.
 adminRoutes.post("/users/:id/role", jsonBody(roleSchema), async (c) => {
   const admin = requireAdmin(c);
-  const { makeAdmin, password } = c.req.valid("json");
-  await moderation.setAdminRole(admin.id, c.req.param("id"), { makeAdmin, password });
+  const { makeAdmin, password, notify } = c.req.valid("json");
+  await moderation.setAdminRole(admin.id, c.req.param("id"), { makeAdmin, password, notify });
   return c.json({ ok: true });
 });
 
 const moderatorRoleSchema = z.object({
   makeModerator: z.boolean(),
   password: z.string().min(1, "Your password is required."),
+  notify: z.boolean().optional(),
 });
 
 // Grant or revoke the moderator role. Like the admin role: the acting admin's
@@ -417,8 +425,8 @@ const moderatorRoleSchema = z.object({
 // notified either way. Admin-only — moderators cannot mint moderators.
 adminRoutes.post("/users/:id/moderator-role", jsonBody(moderatorRoleSchema), async (c) => {
   const admin = requireAdmin(c);
-  const { makeModerator, password } = c.req.valid("json");
-  await moderation.setModeratorRole(admin.id, c.req.param("id"), { makeModerator, password });
+  const { makeModerator, password, notify } = c.req.valid("json");
+  await moderation.setModeratorRole(admin.id, c.req.param("id"), { makeModerator, password, notify });
   return c.json({ ok: true });
 });
 
@@ -494,9 +502,10 @@ adminRoutes.post("/users/:id/verify", async (c) => {
 // ── Posts ────────────────────────────────────────────────────────────────
 
 // Remove any local post (moderator override of the author-only delete).
+// `?notify=true` mails the author; silence is the default.
 adminRoutes.delete("/posts/:id", async (c) => {
-  requireModerator(c);
-  await moderation.removePost(c.req.param("id"));
+  const viewer = requireModerator(c);
+  await moderation.removePost(c.req.param("id"), viewer.id, { notify: c.req.query("notify") === "true" });
   return c.json({ ok: true });
 });
 

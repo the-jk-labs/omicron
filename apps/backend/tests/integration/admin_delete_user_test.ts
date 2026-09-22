@@ -127,7 +127,7 @@ describe("admin delete user", () => {
   });
 
   test("delete keeps the row but hides the account everywhere", async () => {
-    await moderation.deleteUser(adminId, victimId, { username: "victim", password: ADMIN_PASSWORD });
+    await moderation.deleteUser(adminId, victimId, { username: "victim", password: ADMIN_PASSWORD, notify: true });
 
     const row = await usersRepo.findById(victimId);
     expect(row?.deletedAt).toBeInstanceOf(Date);
@@ -201,6 +201,15 @@ describe("admin delete user", () => {
     const err = await captureRejection(moderation.purgeDeletedUser(victimId));
     expect(err).toBeInstanceOf(HttpError);
     expect((err as HttpError).status).toBe(404);
+  });
+
+  test("delete stays silent unless the moderator opts in", async () => {
+    // Victim is live again after the restore test above; delete without the
+    // checkbox and no second notice queues.
+    await moderation.deleteUser(adminId, victimId, { username: "victim", password: ADMIN_PASSWORD });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(deletionNotices).toHaveLength(1);
+    await moderation.restoreUser(victimId);
   });
 
   test("purge erases the row and cascades its posts", async () => {

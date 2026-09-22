@@ -185,7 +185,7 @@
   async function deleteComment(comment: Comment, thread: Comment) {
     if (!canDelete(comment)) return;
     if (ui.deleteBusy.has(comment.id)) return;
-    const ok = await confirm({
+    const { ok } = await confirm({
       title: "Delete comment",
       description: "Delete this comment? This can't be undone.",
       confirmText: "Delete",

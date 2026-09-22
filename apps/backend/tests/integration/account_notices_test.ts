@@ -1,17 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
-// Account lifecycle emails: every operation that changes what an account can
-// do — password change, self-deletion, suspension, reinstatement, restore —
-// notifies its login address. The tests capture the queued jobs instead of
-// delivering them and assert on recipient and payload.
+// Account lifecycle emails: password changes and self-deletion always notify
+// the login address, while moderation actions (suspension, reinstatement,
+// restore) notify only when the moderator opts in. The tests capture the
+// queued jobs instead of delivering them and assert on recipient and payload.
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { registerHandler } from "@/queue/queue.ts";
 import { notifyPasswordChanged, notifySelfDeleted } from "@/services/accountNotices.ts";
 import * as moderation from "@/services/moderation.ts";
-import { closeDb, mkUser, resetDb } from "./harness.ts";
+import * as postsService from "@/services/posts.ts";
+import { closeDb, mkPost, mkUser, resetDb } from "./harness.ts";
 
-type Notice = { to: string; username: string; appName: string; origin: string; expiresAt?: string };
+type Notice = {
+  to: string;
+  username: string;
+  appName: string;
+  origin: string;
+  expiresAt?: string;
+  postTitle?: string;
+};
 
 const captured = new Map<string, Notice[]>();
 
@@ -43,6 +51,7 @@ describe("account notice emails", () => {
       "send_account_suspended",
       "send_account_reinstated",
       "send_account_restored",
+      "send_post_removed",
     ] as const) {
       registerHandler(job, async (payload) => {
         captured.set(job, [...(captured.get(job) ?? []), payload]);
@@ -82,27 +91,67 @@ describe("account notice emails", () => {
     expect(notice?.username).toBe("gone");
   });
 
-  test("suspend and reinstate each notify the account", async () => {
+  test("suspend and reinstate notify only on opt-in", async () => {
+    // Silence by default: the operation applies, no mail queues.
     await moderation.setSuspended(adminId, suspendeeId, true);
+    await flush();
+    expect(notices("send_account_suspended")).toHaveLength(0);
+    expect((await usersRepo.findById(suspendeeId))?.suspendedAt).not.toBeNull();
+
+    await moderation.setSuspended(adminId, suspendeeId, false);
+    await flush();
+    expect(notices("send_account_reinstated")).toHaveLength(0);
+
+    // Opted in: each notifies the account.
+    await moderation.setSuspended(adminId, suspendeeId, true, { notify: true });
     await flush();
     const [suspended] = notices("send_account_suspended");
     expect(suspended?.to).toBe("suspendee@example.test");
     expect(suspended?.username).toBe("suspendee");
 
-    await moderation.setSuspended(adminId, suspendeeId, false);
+    await moderation.setSuspended(adminId, suspendeeId, false, { notify: true });
     await flush();
     const [reinstated] = notices("send_account_reinstated");
     expect(reinstated?.to).toBe("suspendee@example.test");
     expect(reinstated?.username).toBe("suspendee");
   });
 
-  test("restore notifies the account it is back", async () => {
+  test("restore notifies only on opt-in", async () => {
     await usersRepo.setDeleted(restoreeId, new Date(), adminId);
     await moderation.restoreUser(restoreeId);
+    await flush();
+    expect(notices("send_account_restored")).toHaveLength(0);
+    expect((await usersRepo.findById(restoreeId))?.deletedAt).toBeNull();
+
+    await usersRepo.setDeleted(restoreeId, new Date(), adminId);
+    await moderation.restoreUser(restoreeId, { notify: true });
     await flush();
 
     const [restored] = notices("send_account_restored");
     expect(restored?.to).toBe("restoree@example.test");
     expect(restored?.username).toBe("restoree");
+  });
+
+  test("post removal notifies the author only on opt-in", async () => {
+    const silentId = (await mkPost(suspendeeId, "quiet-post")).id;
+    await moderation.removePost(silentId, adminId);
+    await flush();
+    expect(notices("send_post_removed")).toHaveLength(0);
+
+    const loudId = (await mkPost(suspendeeId, "loud-post")).id;
+    await moderation.removePost(loudId, adminId, { notify: true });
+    await flush();
+
+    const [removed] = notices("send_post_removed");
+    expect(removed?.to).toBe("suspendee@example.test");
+    expect(removed?.username).toBe("suspendee");
+    expect(removed?.postTitle).toBe("loud-post");
+  });
+
+  test("an author deleting their own post is never mailed, even opted in", async () => {
+    const ownId = (await mkPost(suspendeeId, "own-post")).id;
+    await postsService.deletePost(suspendeeId, false, ownId, { notify: true });
+    await flush();
+    expect(notices("send_post_removed")).toHaveLength(1);
   });
 });

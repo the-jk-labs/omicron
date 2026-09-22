@@ -57,7 +57,7 @@
   }
 
   async function unblock(d: BlockedDomain) {
-    const ok = await confirm({
+    const { ok } = await confirm({
       title: `Unblock ${d.domain}?`,
       description: "This instance will federate with it again. Cached content re-populates on demand.",
       confirmText: "Unblock",

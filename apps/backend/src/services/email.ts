@@ -555,6 +555,33 @@ export function sendModeratorRevoked(to: string, vars: AccountNoticeVars): Promi
   return sendMail({ to, ...accountModeratorRevokedEmail(vars) });
 }
 
+export type PostRemovedVars = AccountNoticeVars & { postTitle: string };
+
+/** Post-removed notice: a moderator took down one of the account's posts. */
+export function accountPostRemovedEmail(vars: PostRemovedVars): Omit<EmailMessage, "to"> {
+  return {
+    subject: `Your ${vars.appName} post was removed`,
+    text: [
+      `A moderator on ${vars.appName} removed your post (@${vars.username}, "${vars.postTitle}").`,
+      "",
+      "If you think this was a mistake, reply to this email or contact the instance team.",
+      "",
+      `— The ${vars.appName} team`,
+      vars.origin,
+    ].join("\n"),
+    html: layout(
+      "Your post was removed",
+      `A moderator on ${vars.appName} removed your post (@${vars.username}, &ldquo;${vars.postTitle}&rdquo;). If you think this was a mistake, reply to this email or contact the instance team.`,
+      { label: `Open ${vars.appName}`, url: vars.origin },
+    ),
+  };
+}
+
+/** Post-removed notice. Queued off the request path (see queue/handlers.ts). */
+export function sendPostRemoved(to: string, vars: PostRemovedVars): Promise<void> {
+  return sendMail({ to, ...accountPostRemovedEmail(vars) });
+}
+
 /** Verified notice: an admin confirmed the address, so sign-in is unblocked. */
 export function accountVerifiedEmail(vars: AccountNoticeVars): Omit<EmailMessage, "to"> {
   return {

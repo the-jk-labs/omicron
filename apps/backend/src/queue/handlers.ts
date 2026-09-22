@@ -14,6 +14,7 @@ import {
   sendModeratorRevoked,
   sendPasswordChanged,
   sendPasswordReset,
+  sendPostRemoved,
 } from "@/services/email.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { federationRunning } from "@/services/federationState.ts";
@@ -173,6 +174,10 @@ export function registerJobHandlers() {
   );
   registerHandler("send_moderator_revoked", ({ to, username, appName, origin }) =>
     sendModeratorRevoked(to, { username, appName, origin }),
+  );
+  // A moderator removed one of the account's posts and opted to notify them.
+  registerHandler("send_post_removed", ({ to, username, postTitle, appName, origin }) =>
+    sendPostRemoved(to, { username, postTitle, appName, origin }),
   );
   // An admin manually verified the address, unblocking sign-in.
   registerHandler("send_account_verified", ({ to, username, appName, origin }) =>

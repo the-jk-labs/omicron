@@ -13,6 +13,7 @@ import { sanitizePostHtml } from "@/lib/sanitize.ts";
 import { MAX_TAGS_PER_POST, normalizeTags } from "@/lib/tags.ts";
 import { SUMMARY_LENGTH as MAX_SUMMARY } from "@/lib/webhook.ts";
 import { queue } from "@/queue/queue.ts";
+import { notifyPostAuthorRemoved } from "@/services/accountNotices.ts";
 import { syncSlug } from "@/services/postSlugs.ts";
 
 // Business logic for posts. Creating a local post enqueues federation delivery.
@@ -455,7 +456,8 @@ export async function updatePost(
 }
 
 // Deletes a post. The author or a moderator may delete; only local posts.
-export async function deletePost(userId: string, canModerate: boolean, id: string) {
+// The author is told only when a moderator opted into the notice.
+export async function deletePost(userId: string, canModerate: boolean, id: string, opts: { notify?: boolean } = {}) {
   const row = await postsRepo.findById(id);
   if (!row) throw notFound("Post not found.");
   if (row.post.remote) throw forbidden("Federated posts cannot be deleted here.");
@@ -467,7 +469,11 @@ export async function deletePost(userId: string, canModerate: boolean, id: strin
   // is about to vanish. Only published posts were ever federated.
   const wasPublished = row.post.status === "published";
   const authorId = row.post.authorId;
+  const title = row.post.title;
   await postsRepo.remove(id);
+  if (opts.notify) {
+    await notifyPostAuthorRemoved(authorId, userId, title);
+  }
 
   // Tombstone the post on remote followers' instances (author-owned Delete;
   // works for admin takedowns too, delivered on the original author's behalf).

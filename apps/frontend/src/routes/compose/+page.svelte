@@ -239,7 +239,7 @@
     // change away without telling anyone, so this is the one case left that is
     // genuinely the author's call.
     if (autosave.dirty) {
-      const leave = await confirm({
+      const { ok: leave } = await confirm({
         title: "Leave without saving?",
         description: "Your last change could not be saved. Leaving now loses it — staying lets the editor try again.",
         confirmText: "Leave",
