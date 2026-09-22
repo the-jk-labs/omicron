@@ -46,7 +46,7 @@
     {/if}
     <p>
       Include the URL of the content, a description of the issue, and your contact information. Moderators review
-      reports at <a href="/admin">/admin</a> when signed in as an admin.
+      reports at <a href="/admin">/admin</a> when signed in as a moderator or admin.
     </p>
 
     <h2>Fediverse</h2>

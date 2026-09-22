@@ -107,13 +107,13 @@ export async function edit(userId: string, commentId: string, content: string) {
 }
 
 // Deletes a comment (and its replies, via cascade). Only the comment's author
-// or an admin may delete it. A deleted local comment federates a Delete(Note)
+// or a moderator may delete it. A deleted local comment federates a Delete(Note)
 // so remote threads drop it too; a removed remote reply just disappears here
 // (the original still lives on its home instance).
-export async function remove(userId: string, isAdmin: boolean, commentId: string) {
+export async function remove(userId: string, canModerate: boolean, commentId: string) {
   const comment = await commentsRepo.findById(commentId);
   if (!comment) throw notFound("Comment not found.");
-  if (comment.authorId !== userId && !isAdmin) {
+  if (comment.authorId !== userId && !canModerate) {
     throw forbidden("You can only delete your own comments.");
   }
   await commentsRepo.remove(commentId);

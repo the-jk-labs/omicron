@@ -351,6 +351,12 @@ export async function setAdmin(id: string, isAdmin: boolean) {
   return row;
 }
 
+// Grants or revokes the moderator role. Returns the updated row.
+export async function setModerator(id: string, isModerator: boolean) {
+  const [row] = await db.update(users).set({ isModerator }).where(eq(users.id, id)).returning();
+  return row;
+}
+
 // How many live admins exist — the demote guardrail (the last admin cannot be
 // removed). Deleted accounts cannot be admins (deletion refuses them), but the
 // filter keeps the count honest regardless.

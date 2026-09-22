@@ -454,12 +454,12 @@ export async function updatePost(
   return post;
 }
 
-// Deletes a post. The author or an admin may delete; only local posts.
-export async function deletePost(userId: string, isAdmin: boolean, id: string) {
+// Deletes a post. The author or a moderator may delete; only local posts.
+export async function deletePost(userId: string, canModerate: boolean, id: string) {
   const row = await postsRepo.findById(id);
   if (!row) throw notFound("Post not found.");
   if (row.post.remote) throw forbidden("Federated posts cannot be deleted here.");
-  if (row.post.authorId !== userId && !isAdmin) {
+  if (row.post.authorId !== userId && !canModerate) {
     throw forbidden("You can only delete your own posts.");
   }
 

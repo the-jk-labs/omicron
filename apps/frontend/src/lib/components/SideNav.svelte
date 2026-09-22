@@ -30,12 +30,12 @@
       : [{ label: "Home", href: "/", icon: "home" }],
   );
 
-  // Admin (moderators only) and Settings are pinned to the bottom of the rail,
-  // away from the primary items.
+  // Admin (admins and moderators) and Settings are pinned to the bottom of the
+  // rail, away from the primary items.
   const footerItems = $derived<Item[]>(
     user
       ? [
-          ...(user.isAdmin ? [{ label: "Admin", href: "/admin", icon: "gavel" } as Item] : []),
+          ...(user.isAdmin || user.isModerator ? [{ label: "Admin", href: "/admin", icon: "gavel" } as Item] : []),
           { label: "Settings", href: "/settings", icon: "settings" },
         ]
       : [],

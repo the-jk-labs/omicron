@@ -62,6 +62,7 @@ export function publicUser(
     customSectionHtml: locked ? "" : u.customSectionHtml,
     avatarUrl: u.avatarUrl,
     isAdmin: u.isAdmin,
+    isModerator: u.isModerator,
     isPrivate: u.isPrivate,
     createdAt: u.createdAt,
     // When the profile last changed. Versions the profile's share card, so an
@@ -86,7 +87,7 @@ export function privateUser(u: User, tags: TagSummary[] = [], links: LinkSummary
 
 // Admin user-table row: identity plus the moderation-relevant private fields
 // (login email, verification + suspension state) and the editable profile
-// fields. Only ever returned to admins via the admin routes — never on any
+// fields. Only ever returned to moderators via the admin routes — never on any
 // public surface.
 export function adminUserView(u: User) {
   return {
@@ -98,6 +99,7 @@ export function adminUserView(u: User) {
     customSection: u.customSection,
     avatarUrl: u.avatarUrl,
     isAdmin: u.isAdmin,
+    isModerator: u.isModerator,
     email: u.email,
     emailVerified: u.emailVerified,
     suspended: u.suspendedAt !== null,
@@ -108,8 +110,8 @@ export function adminUserView(u: User) {
 // Full admin user detail: the table row plus post/follow counts, the latest
 // posts, the profile tags/links for the edit form, and the reports filed
 // against the account or its posts. The reports already carry the queue's
-// display shape, so they pass through untouched. Only ever returned to admins
-// via the admin routes.
+// display shape, so they pass through untouched. Only ever returned to
+// moderators via the admin routes.
 export function adminUserDetailView(row: {
   user: User;
   postCounts: { draft: number; scheduled: number; published: number };

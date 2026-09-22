@@ -69,6 +69,7 @@ afterAll(async () => {
 });
 
 describe("admin edit user", () => {
+  let adminId: string;
   let memberId: string;
 
   beforeAll(async () => {
@@ -84,12 +85,13 @@ describe("admin edit user", () => {
       changeNotices.push(payload);
     });
 
+    adminId = (await mkUser("root", { isAdmin: true })).id;
     memberId = (await mkUser("member")).id;
     await mkCredential(memberId, "member@example.test");
   });
 
   test("profile patch persists, shows in the detail, and federates", async () => {
-    await moderation.updateUserDetails(memberId, {
+    await moderation.updateUserDetails(adminId, memberId, {
       displayName: "New Name",
       bio: "Edited by a moderator.",
       publicEmail: "contact@example.com",
@@ -115,7 +117,7 @@ describe("admin edit user", () => {
   });
 
   test("email change normalizes, unverifies, and mails both addresses", async () => {
-    await moderation.updateUserDetails(memberId, { email: "  New-Address@Example.Test " });
+    await moderation.updateUserDetails(adminId, memberId, { email: "  New-Address@Example.Test " });
     await flush();
 
     const row = await usersRepo.findById(memberId);
@@ -140,12 +142,12 @@ describe("admin edit user", () => {
 
   test("email change to an in-use address is rejected and changes nothing", async () => {
     const holderId = (await mkUser("holder")).id;
-    await moderation.updateUserDetails(holderId, { email: "taken@example.test" });
+    await moderation.updateUserDetails(adminId, holderId, { email: "taken@example.test" });
     await flush();
     const noticesBefore = changeNotices.length;
 
     const otherId = (await mkUser("other")).id;
-    const err = await captureRejection(moderation.updateUserDetails(otherId, { email: "Taken@Example.Test" }));
+    const err = await captureRejection(moderation.updateUserDetails(adminId, otherId, { email: "Taken@Example.Test" }));
     expect(err).toBeInstanceOf(HttpError);
     expect((err as HttpError).status).toBe(400);
     expect((await usersRepo.findById(otherId))?.email).toBe("other@example.test");
@@ -154,7 +156,7 @@ describe("admin edit user", () => {
   });
 
   test("malformed email is rejected", async () => {
-    const err = await captureRejection(moderation.updateUserDetails(memberId, { email: "not-an-email" }));
+    const err = await captureRejection(moderation.updateUserDetails(adminId, memberId, { email: "not-an-email" }));
     expect(err).toBeInstanceOf(HttpError);
     expect((err as HttpError).status).toBe(400);
     expect((await usersRepo.findById(memberId))?.email).toBe("new-address@example.test");
@@ -165,7 +167,7 @@ describe("admin edit user", () => {
     const verificationsBefore = verifications.length;
     const noticesBefore = changeNotices.length;
 
-    await moderation.updateUserDetails(caseyId, { email: "casey@example.test" });
+    await moderation.updateUserDetails(adminId, caseyId, { email: "casey@example.test" });
     await flush();
 
     expect((await usersRepo.findById(caseyId))?.email).toBe("casey@example.test");
@@ -176,7 +178,7 @@ describe("admin edit user", () => {
   test("editing a deleted account 404s", async () => {
     const goneId = (await mkUser("gone")).id;
     await usersRepo.setDeleted(goneId, new Date(), memberId);
-    const err = await captureRejection(moderation.updateUserDetails(goneId, { displayName: "Ghost" }));
+    const err = await captureRejection(moderation.updateUserDetails(adminId, goneId, { displayName: "Ghost" }));
     expect(err).toBeInstanceOf(HttpError);
     expect((err as HttpError).status).toBe(404);
   });
@@ -195,7 +197,7 @@ describe("admin edit user", () => {
   });
 
   test("avatar replace stores the photo and federates", async () => {
-    const user = await moderation.setUserAvatar(memberId, pngBytes(64), "image/png");
+    const user = await moderation.setUserAvatar(adminId, memberId, pngBytes(64), "image/png");
     await flush();
 
     expect(user.avatarUrl).toMatch(/^\/api\/uploads\/.+\.png$/);
@@ -204,8 +206,8 @@ describe("admin edit user", () => {
   });
 
   test("avatar remove clears back to initials", async () => {
-    await moderation.setUserAvatar(memberId, pngBytes(64), "image/png");
-    const user = await moderation.removeUserAvatar(memberId);
+    await moderation.setUserAvatar(adminId, memberId, pngBytes(64), "image/png");
+    const user = await moderation.removeUserAvatar(adminId, memberId);
 
     expect(user.avatarUrl).toBeNull();
     expect((await usersRepo.findById(memberId))?.avatarUrl).toBeNull();
@@ -213,12 +215,12 @@ describe("admin edit user", () => {
 
   test("avatar rejects wrong types and mismatched bytes", async () => {
     const before = (await usersRepo.findById(memberId))?.avatarUrl;
-    const typeErr = await captureRejection(moderation.setUserAvatar(memberId, pngBytes(64), "image/bmp"));
+    const typeErr = await captureRejection(moderation.setUserAvatar(adminId, memberId, pngBytes(64), "image/bmp"));
     expect(typeErr).toBeInstanceOf(HttpError);
     expect((typeErr as HttpError).status).toBe(400);
 
     const sniffErr = await captureRejection(
-      moderation.setUserAvatar(memberId, new TextEncoder().encode("not an image"), "image/png"),
+      moderation.setUserAvatar(adminId, memberId, new TextEncoder().encode("not an image"), "image/png"),
     );
     expect(sniffErr).toBeInstanceOf(HttpError);
     expect((sniffErr as HttpError).status).toBe(400);
@@ -229,9 +231,9 @@ describe("admin edit user", () => {
   test("avatar on a deleted account 404s", async () => {
     const goneId = (await mkUser("gone-avatar")).id;
     await usersRepo.setDeleted(goneId, new Date(), memberId);
-    const setErr = await captureRejection(moderation.setUserAvatar(goneId, pngBytes(64), "image/png"));
+    const setErr = await captureRejection(moderation.setUserAvatar(adminId, goneId, pngBytes(64), "image/png"));
     expect((setErr as HttpError).status).toBe(404);
-    const removeErr = await captureRejection(moderation.removeUserAvatar(goneId));
+    const removeErr = await captureRejection(moderation.removeUserAvatar(adminId, goneId));
     expect((removeErr as HttpError).status).toBe(404);
   });
 });

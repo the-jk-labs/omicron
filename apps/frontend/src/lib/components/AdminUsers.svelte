@@ -17,8 +17,16 @@
   import { onMount } from "svelte";
 
   // The signed-in admin's own id, so the row for self can hide every action
-  // (the server also forbids them).
-  let { selfId }: { selfId: string } = $props();
+  // (the server also forbids them). `isViewerAdmin` gates the role grants —
+  // only admins may hand out the admin or moderator role, and a moderator
+  // viewer gets no action buttons on admin/moderator rows at all.
+  let { selfId, isViewerAdmin = false }: { selfId: string; isViewerAdmin?: boolean } = $props();
+
+  // Whether the viewer may act on this row. Moderators work regular accounts
+  // only; admins may act on anyone (per-action guards still apply).
+  function canModerateRow(u: AdminUser): boolean {
+    return isViewerAdmin || (!u.isAdmin && !u.isModerator);
+  }
 
   let users = $state<AdminUser[]>([]);
   let total = $state(0);
@@ -283,15 +291,18 @@
     }
   }
 
-  // Admin-role change: password re-verified server-side, like deletion minus
-  // the username typing (the target is already picked, and it is reversible).
+  // Role change (admin or moderator grant/revoke): password re-verified
+  // server-side, like deletion minus the username typing (the target is
+  // already picked, and it is reversible). Admin viewers only.
   let roleTarget = $state<AdminUser | null>(null);
+  let roleAction = $state<"admin" | "moderator">("admin");
   let rolePassword = $state("");
   let roleError = $state("");
   let roleBusy = $state(false);
 
-  function openRole(u: AdminUser) {
+  function openRole(u: AdminUser, action: "admin" | "moderator") {
     roleTarget = u;
+    roleAction = action;
     rolePassword = "";
     roleError = "";
   }
@@ -301,23 +312,33 @@
   }
 
   const roleReady = $derived(roleTarget !== null && rolePassword.length > 0);
+  // Whether the dialog's confirm button removes a held role (destructive
+  // styling) rather than granting it.
+  const roleRemoving = $derived(roleAction === "admin" ? roleTarget?.isAdmin : roleTarget?.isModerator);
 
   async function confirmRole() {
     if (!roleTarget || !roleReady || roleBusy) return;
-    const makeAdmin = !roleTarget.isAdmin;
+    const granting = roleAction === "admin" ? !roleTarget.isAdmin : !roleTarget.isModerator;
     roleBusy = true;
     roleError = "";
     try {
-      await endpoints().setUserRole(roleTarget.id, { makeAdmin, password: rolePassword });
       const id = roleTarget.id;
-      // The account leaves the listing when it no longer matches an active
-      // Admin filter (demoted under "Yes", promoted under "No").
-      if ((fAdmins === true && !makeAdmin) || (fAdmins === false && makeAdmin)) {
-        users = users.filter((x) => x.id !== id);
-        filteredTotal = Math.max(0, filteredTotal - 1);
-        if (expandedId === id) expandedId = null;
+      if (roleAction === "admin") {
+        const makeAdmin = granting;
+        await endpoints().setUserRole(id, { makeAdmin, password: rolePassword });
+        // The account leaves the listing when it no longer matches an active
+        // Admin filter (demoted under "Yes", promoted under "No").
+        if ((fAdmins === true && !makeAdmin) || (fAdmins === false && makeAdmin)) {
+          users = users.filter((x) => x.id !== id);
+          filteredTotal = Math.max(0, filteredTotal - 1);
+          if (expandedId === id) expandedId = null;
+        } else {
+          users = users.map((x) => (x.id === id ? { ...x, isAdmin: makeAdmin } : x));
+        }
       } else {
-        users = users.map((x) => (x.id === id ? { ...x, isAdmin: makeAdmin } : x));
+        const makeModerator = granting;
+        await endpoints().setUserModeratorRole(id, { makeModerator, password: rolePassword });
+        users = users.map((x) => (x.id === id ? { ...x, isModerator: makeModerator } : x));
       }
       roleTarget = null;
     } catch (e) {
@@ -908,6 +929,12 @@
                   >
                     <Icon name="admin" size={12} /> Admin
                   </span>
+                {:else if u.isModerator}
+                  <span
+                    class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground"
+                  >
+                    <Icon name="admin" size={12} /> Moderator
+                  </span>
                 {/if}
                 {#if u.suspended}
                   <span class="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
@@ -919,7 +946,7 @@
                 @{u.username} · {u.email} · joined <Time iso={u.createdAt} kind="date" />
               </p>
             </div>
-            {#if u.id !== selfId}
+            {#if u.id !== selfId && canModerateRow(u)}
               <div class="flex shrink-0 items-center gap-2">
                 {#if !u.isAdmin}
                   <Button
@@ -955,10 +982,18 @@
                       <DropdownMenu.Item onSelect={() => openEdit(u)} class={menuItemClass}>
                         <Icon name="edit" size={16} /> Edit profile…
                       </DropdownMenu.Item>
-                      <DropdownMenu.Item onSelect={() => openRole(u)} class={menuItemClass}>
-                        <Icon name="admin" size={16} />
-                        {u.isAdmin ? "Remove admin…" : "Make admin…"}
-                      </DropdownMenu.Item>
+                      {#if isViewerAdmin}
+                        <DropdownMenu.Item onSelect={() => openRole(u, "admin")} class={menuItemClass}>
+                          <Icon name="admin" size={16} />
+                          {u.isAdmin ? "Remove admin…" : "Make admin…"}
+                        </DropdownMenu.Item>
+                      {/if}
+                      {#if isViewerAdmin && !u.isAdmin}
+                        <DropdownMenu.Item onSelect={() => openRole(u, "moderator")} class={menuItemClass}>
+                          <Icon name="admin" size={16} />
+                          {u.isModerator ? "Remove moderator…" : "Make moderator…"}
+                        </DropdownMenu.Item>
+                      {/if}
                       {#if !u.isAdmin}
                         <DropdownMenu.Separator class="my-1 h-px bg-border" />
                         <DropdownMenu.Item onSelect={() => openDelete(u)} class={destructiveItemClass}>
@@ -988,7 +1023,7 @@
                   <span><strong class="text-foreground">{d.followCounts.following}</strong> following</span>
                   <span class="inline-flex flex-wrap items-center gap-2">
                     <span>{d.user.emailVerified ? "Email verified" : "Email unverified"}</span>
-                    {#if !d.user.emailVerified}
+                    {#if !d.user.emailVerified && canModerateRow(u)}
                       <Button
                         variant="outline"
                         size="xs"
@@ -1251,16 +1286,31 @@
       class="fixed top-1/2 left-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[440px]"
     >
       <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">
-        {roleTarget?.isAdmin
-          ? `Remove @${roleTarget?.username}'s admin role?`
-          : `Make @${roleTarget?.username} an admin?`}
+        {#if roleAction === "admin"}
+          {roleTarget?.isAdmin
+            ? `Remove @${roleTarget?.username}'s admin role?`
+            : `Make @${roleTarget?.username} an admin?`}
+        {:else}
+          {roleTarget?.isModerator
+            ? `Remove @${roleTarget?.username}'s moderator role?`
+            : `Make @${roleTarget?.username} a moderator?`}
+        {/if}
       </Dialog.Title>
       <Dialog.Description class="mt-1 text-sm text-muted-foreground">
-        {#if roleTarget?.isAdmin}
-          They lose access to the admin panel immediately. Everything else stays as is. They will be notified by email.
+        {#if roleAction === "admin"}
+          {#if roleTarget?.isAdmin}
+            They lose access to the admin panel immediately. Everything else stays as is. They will be notified by
+            email.
+          {:else}
+            They gain the admin panel: reports, accounts, defederation and instance settings — including other people's
+            login emails. They will be notified by email.
+          {/if}
+        {:else if roleTarget?.isModerator}
+          They lose access to the moderation queue and user management immediately. Everything else stays as is. They
+          will be notified by email.
         {:else}
-          They gain the admin panel: reports, accounts, defederation and instance settings — including other people's
-          login emails. They will be notified by email.
+          They gain the moderation queue plus user, post and report management — but no instance settings. They will be
+          notified by email.
         {/if}
       </Dialog.Description>
 
@@ -1283,11 +1333,11 @@
           Cancel
         </Dialog.Close>
         <Button
-          variant={roleTarget?.isAdmin ? "destructive" : "solid"}
+          variant={roleRemoving ? "destructive" : "solid"}
           disabled={!roleReady || roleBusy}
           onclick={confirmRole}
         >
-          {roleBusy ? "Saving…" : roleTarget?.isAdmin ? "Remove admin" : "Make admin"}
+          {roleBusy ? "Saving…" : roleRemoving ? `Remove ${roleAction}` : `Make ${roleAction}`}
         </Button>
       </div>
     </Dialog.Content>

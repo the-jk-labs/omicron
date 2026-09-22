@@ -189,6 +189,10 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // with the request — the server re-verifies it.
     setUserRole: (id: string, body: { makeAdmin: boolean; password: string }) =>
       api.post<{ ok: true }>(`/admin/users/${id}/role`, body),
+    // Grant or revoke the moderator role. Same password re-verification;
+    // admin-only.
+    setUserModeratorRole: (id: string, body: { makeModerator: boolean; password: string }) =>
+      api.post<{ ok: true }>(`/admin/users/${id}/moderator-role`, body),
     // Recently deleted accounts awaiting restore or expiry, newest deletion
     // first. Optional handle / name / email filter, keyset-paginated like
     // the live table.

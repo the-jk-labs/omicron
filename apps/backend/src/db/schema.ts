@@ -55,6 +55,10 @@ export const users = pgTable(
     customSectionHtml: text("custom_section_html").notNull().default(""),
     avatarUrl: text("avatar_url"),
     isAdmin: boolean("is_admin").notNull().default(false),
+    // Moderator role: access to the moderation queue plus user/post/report
+    // operations, but nothing instance-level (settings, email, federation,
+    // domains, SEO, media). Admins implicitly hold every moderator power.
+    isModerator: boolean("is_moderator").notNull().default(false),
     // Private account (Instagram-style). Public by default: anyone reads the
     // posts and follows instantly. When private, posts are visible only to
     // approved followers and following requires approval (see follows.approved);
