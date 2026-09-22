@@ -98,7 +98,7 @@
   let deleteTarget = $state<AdminUser | null>(null);
   let deleteUsername = $state("");
   let deletePassword = $state("");
-  let deleteNotify = $state(false);
+  let deleteNotify = $state(true);
   let deleteError = $state("");
   let deleteBusy = $state(false);
 
@@ -255,7 +255,7 @@
     deleteTarget = u;
     deleteUsername = "";
     deletePassword = "";
-    deleteNotify = false;
+    deleteNotify = true;
     deleteError = "";
   }
 
@@ -301,7 +301,7 @@
   let roleTarget = $state<AdminUser | null>(null);
   let roleAction = $state<"admin" | "moderator">("admin");
   let rolePassword = $state("");
-  let roleNotify = $state(false);
+  let roleNotify = $state(true);
   let roleError = $state("");
   let roleBusy = $state(false);
 
@@ -309,7 +309,7 @@
     roleTarget = u;
     roleAction = action;
     rolePassword = "";
-    roleNotify = false;
+    roleNotify = true;
     roleError = "";
   }
 

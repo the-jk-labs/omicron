@@ -12,9 +12,10 @@ export type ConfirmOptions = {
   cancelText?: string;
   // Style the confirm button as a destructive action (delete, etc.).
   destructive?: boolean;
-  // Opt-in mail notification: renders an unchecked-by-default checkbox with
-  // this label (moderation actions). The choice rides back in the result.
-  notify?: { label: string };
+  // Opt-in mail notification: renders a checkbox with this label
+  // (moderation actions), checked by default — uncheck to stay silent. The
+  // choice rides back in the result.
+  notify?: { label: string; checked?: boolean };
 };
 
 export type ConfirmResult = {

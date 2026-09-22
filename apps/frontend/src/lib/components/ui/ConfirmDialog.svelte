@@ -10,12 +10,12 @@
   // resolves it with the user's choice.
   const req = $derived($confirmRequest);
 
-  // Opt-in mail checkbox state. Reset for every request — opt-in means
-  // unchecked unless the moderator checks it, every time.
-  let notifyChecked = $state(false);
+  // Opt-out checkbox state. Reset for every request — checked unless the
+  // request says otherwise; the moderator unchecks to stay silent.
+  let notifyChecked = $state(true);
   $effect(() => {
     req;
-    notifyChecked = false;
+    notifyChecked = req?.notify?.checked ?? true;
   });
 
   // Resolve the pending promise and clear the request. AlertDialog closes itself
