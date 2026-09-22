@@ -64,16 +64,17 @@
 
   async function removePost(r: Report) {
     if (!r.postId) return;
-    const ok = await confirm({
+    const { ok, notify } = await confirm({
       title: "Remove post",
       description: "Permanently remove this post and resolve the report. This can't be undone.",
       confirmText: "Remove",
       destructive: true,
+      notify: { label: "Notify the author by email." },
     });
     if (!ok) return;
     busyId = r.id;
     try {
-      await endpoints().adminRemovePost(r.postId);
+      await endpoints().adminRemovePost(r.postId, notify);
       await endpoints().resolveReport(r.id, "Post removed.");
       await load();
     } catch (e) {
@@ -86,16 +87,17 @@
   async function suspendAuthor(r: Report) {
     const id = r.subjectType === "user" ? r.userId : null;
     if (!id) return;
-    const ok = await confirm({
+    const { ok, notify } = await confirm({
       title: `Suspend @${r.userUsername}?`,
       description: "They will be signed out and unable to sign in until reinstated.",
       confirmText: "Suspend",
       destructive: true,
+      notify: { label: `Notify @${r.userUsername} by email.` },
     });
     if (!ok) return;
     busyId = r.id;
     try {
-      await endpoints().suspendUser(id, true);
+      await endpoints().suspendUser(id, true, notify);
       await endpoints().resolveReport(r.id, "Account suspended.");
       await load();
     } catch (e) {

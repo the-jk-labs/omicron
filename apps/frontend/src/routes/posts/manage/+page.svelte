@@ -160,7 +160,7 @@
   }
 
   async function unpublish(post: Post) {
-    const ok = await confirm({
+    const { ok } = await confirm({
       title: "Unpublish post",
       description:
         "This takes the post off the site and tells other instances to remove their copy. It becomes a draft you can publish again.",
@@ -172,7 +172,7 @@
   }
 
   async function remove(post: Post, kind: string) {
-    const ok = await confirm({
+    const { ok } = await confirm({
       title: `Delete ${kind}`,
       description: `Delete this ${kind}? This can't be undone.`,
       confirmText: "Delete",

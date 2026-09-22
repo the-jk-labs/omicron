@@ -186,17 +186,21 @@
 
   async function deletePost() {
     if (deleting) return;
-    const ok = await confirm({
+    // A moderator removing someone else's post may opt into notifying the
+    // author; an author deleting their own post is never mailed.
+    const modDelete = !!data.user && data.user.id !== post.author.id && (data.user.isAdmin || data.user.isModerator);
+    const { ok, notify } = await confirm({
       title: "Delete post",
       description: "Delete this post? This can't be undone.",
       confirmText: "Delete",
       destructive: true,
+      ...(modDelete ? { notify: { label: "Notify the author by email." } } : {}),
     });
     if (!ok) return;
     deleting = true;
     deleteError = "";
     try {
-      await endpoints().deletePost(post.id);
+      await endpoints().deletePost(post.id, notify);
       goto("/");
     } catch (err) {
       deleteError = err instanceof ApiError ? err.message : "Failed to delete.";
@@ -208,7 +212,7 @@
   // copies are tombstoned. The author edits it from Drafts.
   async function unpublishPost() {
     if (unpublishing) return;
-    const ok = await confirm({
+    const { ok } = await confirm({
       title: "Move to drafts",
       description:
         "Unpublish this article? It will be hidden from readers and moved to your drafts. You can publish it again later.",

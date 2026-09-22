@@ -52,7 +52,7 @@
   }
 
   async function removeList() {
-    const ok = await confirm({
+    const { ok } = await confirm({
       title: "Delete list",
       description: `Delete "${list.title}"? This can't be undone. Your saved articles aren't deleted.`,
       confirmText: "Delete",

@@ -73,7 +73,7 @@
   }
 
   async function revoke(token: WebhookToken) {
-    const ok = await confirm({
+    const { ok } = await confirm({
       title: "Revoke this token?",
       description:
         `“${token.label}” will stop working immediately. Anything publishing with it ` +
