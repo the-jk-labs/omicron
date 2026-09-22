@@ -93,7 +93,7 @@ describe("admin roles", () => {
   });
 
   test("promote grants the role and notifies the account", async () => {
-    await moderation.setAdminRole(adminId, userId, { makeAdmin: true, password: ADMIN_PASSWORD });
+    await moderation.setAdminRole(adminId, userId, { makeAdmin: true, password: ADMIN_PASSWORD, notify: true });
     await flush();
 
     expect((await usersRepo.findById(userId))?.isAdmin).toBe(true);
@@ -114,7 +114,7 @@ describe("admin roles", () => {
   });
 
   test("demote revokes the role and notifies the account", async () => {
-    await moderation.setAdminRole(adminId, userId, { makeAdmin: false, password: ADMIN_PASSWORD });
+    await moderation.setAdminRole(adminId, userId, { makeAdmin: false, password: ADMIN_PASSWORD, notify: true });
     await flush();
 
     expect((await usersRepo.findById(userId))?.isAdmin).toBe(false);
@@ -196,7 +196,11 @@ describe("moderator roles", () => {
   });
 
   test("grant notifies the account, re-grant is a no-op, revoke notifies", async () => {
-    await moderation.setModeratorRole(adminId, memberId, { makeModerator: true, password: ADMIN_PASSWORD });
+    await moderation.setModeratorRole(adminId, memberId, {
+      makeModerator: true,
+      password: ADMIN_PASSWORD,
+      notify: true,
+    });
     await flush();
 
     expect((await usersRepo.findById(memberId))?.isModerator).toBe(true);
@@ -208,7 +212,11 @@ describe("moderator roles", () => {
     await flush();
     expect(notices("send_moderator_granted")).toHaveLength(1);
 
-    await moderation.setModeratorRole(adminId, memberId, { makeModerator: false, password: ADMIN_PASSWORD });
+    await moderation.setModeratorRole(adminId, memberId, {
+      makeModerator: false,
+      password: ADMIN_PASSWORD,
+      notify: true,
+    });
     await flush();
 
     expect((await usersRepo.findById(memberId))?.isModerator).toBe(false);

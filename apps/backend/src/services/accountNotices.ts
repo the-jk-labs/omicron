@@ -105,6 +105,29 @@ export async function notifyModeratorRevoked(email: string, username: string): P
   }
 }
 
+/** Post-removed notice after a moderator takes down one of the account's posts. */
+export async function notifyPostRemoved(email: string, username: string, postTitle: string): Promise<void> {
+  try {
+    queue.add("send_post_removed", { to: email, username, postTitle, ...(await instanceVars()) });
+  } catch (err) {
+    console.error("accountNotices: failed to queue post-removed notice (continuing):", err);
+  }
+}
+
+/** Opt-in variant: tells the author their post was removed, unless they
+ * removed it themselves or are gone. The checkbox lives in the moderation
+ * dialogs; the default is silence. */
+export async function notifyPostAuthorRemoved(
+  authorId: string | null,
+  deleterId: string,
+  postTitle: string | null,
+): Promise<void> {
+  if (!authorId || authorId === deleterId) return;
+  const author = await usersRepo.findById(authorId);
+  if (!author || author.deletedAt) return;
+  await notifyPostRemoved(author.email, author.username, postTitle ?? "Untitled");
+}
+
 /** Verified notice after an admin manually confirms the address. */
 export async function notifyVerified(email: string, username: string): Promise<void> {
   try {

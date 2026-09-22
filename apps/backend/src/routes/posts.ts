@@ -175,9 +175,13 @@ postRoutes.patch("/:id", jsonBody(updatePostSchema), async (c) => {
 });
 
 // Delete a post (auth required; author or moderator, local posts only).
+// `?notify=true` mails the author when someone else removes it; an author
+// deleting their own post is never mailed.
 postRoutes.delete("/:id", async (c) => {
   const user = requireUser(c);
-  await postsService.deletePost(user.id, user.isAdmin || user.isModerator, c.req.param("id"));
+  await postsService.deletePost(user.id, user.isAdmin || user.isModerator, c.req.param("id"), {
+    notify: c.req.query("notify") === "true",
+  });
   return c.json({ ok: true });
 });
 
