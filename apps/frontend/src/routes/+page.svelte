@@ -60,7 +60,7 @@
     value: "for-you",
     label: "For you",
     icon: "sparkles",
-    empty: "Your feed is empty — follow some writers to fill it.",
+    empty: "Your feed is empty. Follow some writers to fill it.",
     fetch: api.feed,
     preload: personalized ? preload : undefined,
   });

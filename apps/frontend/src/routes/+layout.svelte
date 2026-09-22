@@ -46,7 +46,7 @@
   // 152 chars for `Omicron` (adjusts with instance name): hits the 150–160 target
   // search engines show without truncation and matches the hero.
   const description = $derived(
-    `${appName} — an independent blogging platform on the fediverse. Write, share, discover. Federate with ActivityPub and own your data. Run your own instance.`,
+    `${appName}: an independent blogging platform on the fediverse. Write, share, discover. Federate with ActivityPub and own your data. Run your own instance.`,
   );
   // Every absolute URL we publish — the canonical link, og:url, the share image
   // — is built on the instance's configured origin rather than the hostname this
@@ -100,11 +100,11 @@
       const u = pd.profile.user;
       const bio = u.bio?.trim();
       if (bio) return bio.length > 160 ? `${bio.slice(0, 157)}…` : bio;
-      return `Read articles by ${u.displayName} (@${u.username.split("@")[0]}) on ${appName} — follow their writing across the fediverse.`;
+      return `Read articles by ${u.displayName} (@${u.username.split("@")[0]}) on ${appName}. Follow their writing across the fediverse.`;
     }
     if ($page.route.id === "/tags/[tag]" && pd.detail) {
       const d = pd.detail;
-      return `Explore #${d.tag.name} on ${appName} — ${d.postCount} ${d.postCount === 1 ? "article" : "articles"}, ${d.followerCount} ${d.followerCount === 1 ? "follower" : "followers"}. Discover writers and posts tagged #${d.tag.name} across the fediverse.`;
+      return `Explore #${d.tag.name} on ${appName}: ${d.postCount} ${d.postCount === 1 ? "article" : "articles"}, ${d.followerCount} ${d.followerCount === 1 ? "follower" : "followers"}. Discover writers and posts tagged #${d.tag.name} across the fediverse.`;
     }
     return description;
   });
@@ -359,7 +359,7 @@
   <div class="mx-auto flex max-w-md flex-col items-center px-4 py-16 text-center">
     <h1 class="text-lg font-semibold text-foreground">This page didn't load</h1>
     <p class="mt-2 text-sm text-muted-foreground">
-      Something went wrong while rendering it. The rest of the site is still working — you can try again or head back
+      Something went wrong while rendering it. The rest of the site is still working. You can try again or head back
       home.
     </p>
     <div class="mt-6 flex items-center gap-2">
@@ -393,8 +393,8 @@
        of routes. -->
   <noscript>
     <div class="border-b border-border bg-muted px-4 py-3 text-center text-sm text-foreground">
-      JavaScript is switched off, so anything here that needs a button — signing in, searching, publishing — does
-      nothing. Reading needs none of it:
+      JavaScript is switched off, so anything here that needs a button (signing in, searching, publishing) does nothing.
+      Reading needs none of it:
       <a href="/" class="font-medium underline underline-offset-4">go to the home page</a>.
     </div>
   </noscript>

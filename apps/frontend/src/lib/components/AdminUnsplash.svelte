@@ -70,8 +70,8 @@
       Status:
       <span class={configured ? "text-foreground" : "text-muted-foreground"}>
         {configured
-          ? "configured — writers see an Unsplash tab in the picker"
-          : "not configured — the picker searches Openverse only"}
+          ? "configured. Writers see an Unsplash tab in the picker"
+          : "not configured. The picker searches Openverse only"}
       </span>
     </p>
 

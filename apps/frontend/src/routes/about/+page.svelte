@@ -16,7 +16,7 @@
 <article class="mx-auto max-w-3xl">
   <h1 class="text-3xl font-bold tracking-tight text-foreground">About {appName}</h1>
   <p class="mt-3 text-sm leading-relaxed text-muted-foreground">
-    {appName} is a federated blogging platform — a home for free expression on the fediverse. Every author is an ActivityPub
+    {appName} is a federated blogging platform, a home for free expression on the fediverse. Every author is an ActivityPub
     actor, posts federate, and you can self-host your own instance with no vendor lock-in.
   </p>
 
@@ -27,7 +27,7 @@
       and instance name via the setup wizard. When federation is enabled this instance participates in the fediverse.
     </p>
     {#if instance?.federationEnabled}
-      <p>This instance is federating — profiles and posts can be followed from any ActivityPub server.</p>
+      <p>This instance is federating. Profiles and posts can be followed from any ActivityPub server.</p>
     {:else}
       <p>Federation is currently disabled on this instance.</p>
     {/if}
@@ -40,7 +40,7 @@
     </p>
     <p>
       For the full moderation policy or to report abuse, see <a href="/contact">Contact</a>. Admins can edit this page’s
-      copy to reflect their real community guidelines — replace this placeholder before operating a public service.
+      copy to reflect their real community guidelines. Replace this placeholder before operating a public service.
     </p>
 
     <h2 id="source">Source code</h2>
@@ -49,8 +49,8 @@
       interacts with this instance over a network is offered the Corresponding Source.
     </p>
     <p>
-      <a href={sourceUrl} target="_blank" rel="noopener noreferrer">Browse the source</a> — point this link at your fork when
-      you run a modified version.
+      <a href={sourceUrl} target="_blank" rel="noopener noreferrer">Browse the source</a>. Point this link at your fork
+      when you run a modified version.
     </p>
 
     <h2 id="contact">Contact</h2>

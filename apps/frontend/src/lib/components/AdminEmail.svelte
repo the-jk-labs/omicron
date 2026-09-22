@@ -218,7 +218,7 @@
     try {
       await endpoints().testAdminEmail(testTo.trim());
       testState = "ok";
-      testMsg = "Test email sent — check that inbox to confirm delivery.";
+      testMsg = "Test email sent. Check that inbox to confirm delivery.";
     } catch (e) {
       testState = "error";
       testMsg = e instanceof ApiError ? e.message : "Could not send the test email.";
@@ -242,7 +242,7 @@
     <RadioGroup.Item value="console" class={radioItem}>
       <div>
         <div class="text-sm font-semibold text-foreground">Console (default)</div>
-        <p class="mt-0.5 text-xs text-muted-foreground">Log links to the server — zero config.</p>
+        <p class="mt-0.5 text-xs text-muted-foreground">Log links to the server. Zero config.</p>
       </div>
     </RadioGroup.Item>
     <RadioGroup.Item value="smtp" class={radioItem}>
@@ -271,8 +271,8 @@
          forgets their password has no way back in and no way to find that out
          except by asking. Say it here, where the choice is being made. -->
     <p class="rounded-card border border-border bg-background-alt px-4 py-3 text-sm text-muted-foreground">
-      Nothing is delivered in this mode — reset and confirmation links are written to the backend log. Password reset
-      and email verification tell visitors so instead of offering a form. Fine for local development; pick another mode
+      Nothing is delivered in this mode. Reset and confirmation links are written to the backend log. Password reset and
+      email verification tell visitors so instead of offering a form. Fine for local development; pick another mode
       before anyone else signs up.
     </p>
   {/if}
@@ -359,7 +359,7 @@
   {:else if mode === "direct"}
     <div class="flex flex-col gap-3 rounded-card border border-border bg-background-alt p-4">
       <p class="text-sm text-muted-foreground">
-        Self-hosted delivery sends straight to each recipient's mail server, signed with your DKIM key — no third party.
+        Self-hosted delivery sends straight to each recipient's mail server, signed with your DKIM key. No third party.
         It needs the DNS records below published and outbound port 25 open on this host (many providers block it). Check
         that first:
       </p>
@@ -392,7 +392,7 @@
       <div>
         <h3 class="text-sm font-semibold text-foreground">Sending domain (DKIM / SPF / DMARC)</h3>
         <p class="mt-0.5 text-xs text-muted-foreground">
-          Generate a signing key, publish the three records, then verify — email is healthy once DKIM and SPF check out.
+          Generate a signing key, publish the three records, then verify. Email is healthy once DKIM and SPF check out.
         </p>
       </div>
       <div class="flex gap-2">
@@ -467,7 +467,7 @@
       {#if report}
         <p class="text-sm {report.healthy ? 'text-foreground' : 'text-muted-foreground'}">
           {report.healthy
-            ? "DNS looks healthy — DKIM and SPF are published."
+            ? "DNS looks healthy. DKIM and SPF are published."
             : "Not healthy yet: publish the records above (DNS can take a while to propagate), then verify again."}
         </p>
       {/if}
@@ -490,7 +490,7 @@
         {testState === "sending" ? "Sending…" : "Send test"}
       </Button>
     </div>
-    <p class="text-xs text-muted-foreground">Tests the currently saved settings — save first.</p>
+    <p class="text-xs text-muted-foreground">Tests the currently saved settings. Save first.</p>
     {#if testMsg}
       <p class="text-xs {testState === 'ok' ? 'text-foreground' : 'text-destructive'}">{testMsg}</p>
     {/if}

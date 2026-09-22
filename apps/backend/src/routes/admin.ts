@@ -266,7 +266,7 @@ adminRoutes.get("/email/dns", async (c) => {
   requireAdmin(c);
   const cfg = await emailSettings.getEmailConfig();
   if (!cfg.dkim.domain || !cfg.dkim.publicKey) {
-    throw badRequest("No DKIM key yet — generate one for your sending domain first.");
+    throw badRequest("No DKIM key yet. Generate one for your sending domain first.");
   }
   const report = await verifyRecords(cfg.dkim.domain, cfg.dkim.selector, cfg.dkim.publicKey);
   return c.json({

@@ -28,7 +28,7 @@
     {#if list.visibility === "private"}
       <span
         class="inline-flex items-center gap-1 text-xs text-muted-foreground"
-        title="Private — only you can see this list"
+        title="Private. Only you can see this list"
       >
         <Icon name="lock" size={12} /> Private
       </span>

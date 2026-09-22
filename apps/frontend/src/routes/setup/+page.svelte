@@ -81,7 +81,7 @@
         email: emailPayload(),
       });
       testState = "ok";
-      testMsg = "Test email sent — check that inbox to confirm delivery.";
+      testMsg = "Test email sent. Check that inbox to confirm delivery.";
     } catch (err) {
       testState = "error";
       testMsg = err instanceof ApiError ? err.message : "Could not send the test email.";
@@ -146,7 +146,7 @@
 
 <div class="mb-8 text-center">
   <div class="mb-4 flex justify-center"><img src={logo} alt="" class="h-12 w-auto" /></div>
-  <h1 class="text-2xl font-bold tracking-tight text-foreground">Welcome — let's set up</h1>
+  <h1 class="text-2xl font-bold tracking-tight text-foreground">Welcome, let's set up</h1>
   <p class="mt-1.5 text-sm text-muted-foreground">A few details and your instance is live. Nothing to edit on disk.</p>
 </div>
 
@@ -188,7 +188,7 @@
       <Label.Root for="displayName" class={labelClass}>Display name</Label.Root>
       <input id="displayName" bind:value={displayName} maxlength={MAX_DISPLAY_NAME_LEN} class={field} />
       <p class="text-xs text-muted-foreground">
-        {displayName.length}/{MAX_DISPLAY_NAME_LEN} — truncated with ellipsis in the feed; full name shows on hover.
+        {displayName.length}/{MAX_DISPLAY_NAME_LEN}. Truncated with ellipsis in the feed; full name shows on hover.
       </p>
     </div>
     <div class="flex flex-col gap-1.5">
@@ -242,7 +242,7 @@
         <div>
           <div class="text-sm font-semibold text-foreground">API key (easiest)</div>
           <p class="mt-0.5 text-xs text-muted-foreground">
-            Paste one API key from a provider (Resend) — no SMTP settings. Test it right here.
+            Paste one API key from a provider (Resend). No SMTP settings. Test it right here.
           </p>
         </div>
       </RadioGroup.Item>

@@ -300,7 +300,7 @@ export function accountDeletedEmail(vars: AccountDeletedVars): Omit<EmailMessage
       "",
       `Your data is kept until ${expiryDay}. If you believe this is a mistake, contact the instance administrator before then to ask for your account to be restored. After that date your account and all of its data are permanently erased.`,
       "",
-      `— The ${vars.appName} team`,
+      `The ${vars.appName} team`,
       vars.origin,
     ].join("\n"),
     html: layout(
@@ -333,14 +333,14 @@ export function accountPasswordChangedEmail(vars: AccountNoticeVars): Omit<Email
     text: [
       `The password for your account (@${vars.username}) on ${vars.appName} was just changed.`,
       "",
-      "If this was you, you can ignore this email. If it wasn't, reset your password immediately — your account may be compromised.",
+      "If this was you, you can ignore this email. If it wasn't, reset your password immediately: your account may be compromised.",
       `${vars.origin}/forgot-password`,
       "",
-      `— The ${vars.appName} team`,
+      `The ${vars.appName} team`,
     ].join("\n"),
     html: layout(
       "Your password was changed",
-      `The password for your account (@${vars.username}) on ${vars.appName} was just changed. If this was you, you can ignore this email. If it wasn't, reset your password immediately — your account may be compromised.`,
+      `The password for your account (@${vars.username}) on ${vars.appName} was just changed. If this was you, you can ignore this email. If it wasn't, reset your password immediately: your account may be compromised.`,
       { label: "Reset password", url: `${vars.origin}/forgot-password` },
     ),
   };
@@ -360,7 +360,7 @@ export function accountErasedEmail(vars: AccountNoticeVars): Omit<EmailMessage, 
       "",
       "Your profile, posts, lists and all other data were removed with it. This cannot be undone.",
       "",
-      `— The ${vars.appName} team`,
+      `The ${vars.appName} team`,
       vars.origin,
     ].join("\n"),
     html: layout(
@@ -389,7 +389,7 @@ export function accountSuspendedEmail(vars: AccountNoticeVars): Omit<EmailMessag
       "",
       "If you believe this is a mistake, contact the instance administrator.",
       "",
-      `— The ${vars.appName} team`,
+      `The ${vars.appName} team`,
       vars.origin,
     ].join("\n"),
     html: layout(
@@ -410,16 +410,16 @@ export function accountReinstatedEmail(vars: AccountNoticeVars): Omit<EmailMessa
   return {
     subject: `Your ${vars.appName} account has been reinstated`,
     text: [
-      `Good news — your account (@${vars.username}) on ${vars.appName} has been reinstated.`,
+      `Good news: your account (@${vars.username}) on ${vars.appName} has been reinstated.`,
       "",
       "You can sign in again, and your profile, posts and lists are served as before.",
       "",
-      `— The ${vars.appName} team`,
+      `The ${vars.appName} team`,
       `${vars.origin}/login`,
     ].join("\n"),
     html: layout(
       "Your account has been reinstated",
-      `Good news — your account (@${vars.username}) on ${vars.appName} has been reinstated. You can sign in again, and your profile, posts and lists are served as before.`,
+      `Good news: your account (@${vars.username}) on ${vars.appName} has been reinstated. You can sign in again, and your profile, posts and lists are served as before.`,
       { label: "Sign in", url: `${vars.origin}/login` },
     ),
   };
@@ -435,16 +435,16 @@ export function accountRestoredEmail(vars: AccountNoticeVars): Omit<EmailMessage
   return {
     subject: `Your ${vars.appName} account has been restored`,
     text: [
-      `Good news — your deleted account (@${vars.username}) on ${vars.appName} has been restored.`,
+      `Good news: your deleted account (@${vars.username}) on ${vars.appName} has been restored.`,
       "",
       "You can sign in again, and your profile, posts and lists are back as they were.",
       "",
-      `— The ${vars.appName} team`,
+      `The ${vars.appName} team`,
       `${vars.origin}/login`,
     ].join("\n"),
     html: layout(
       "Your account has been restored",
-      `Good news — your deleted account (@${vars.username}) on ${vars.appName} has been restored. You can sign in again, and your profile, posts and lists are back as they were.`,
+      `Good news: your deleted account (@${vars.username}) on ${vars.appName} has been restored. You can sign in again, and your profile, posts and lists are back as they were.`,
       { label: "Sign in", url: `${vars.origin}/login` },
     ),
   };
@@ -462,14 +462,14 @@ export function accountAdminGrantedEmail(vars: AccountNoticeVars): Omit<EmailMes
     text: [
       `Your account (@${vars.username}) on ${vars.appName} has been given the admin role.`,
       "",
-      "You can now open /admin: moderate reports and accounts, manage defederation, and change instance settings. With that comes access to other people's private data (login emails) — treat it accordingly.",
+      "You can now open /admin: moderate reports and accounts, manage defederation, and change instance settings. With that comes access to other people's private data (login emails). Treat it accordingly.",
       "",
-      `— The ${vars.appName} team`,
+      `The ${vars.appName} team`,
       `${vars.origin}/admin`,
     ].join("\n"),
     html: layout(
       "You are now an admin",
-      `Your account (@${vars.username}) on ${vars.appName} has been given the admin role. You can now open the admin panel: moderate reports and accounts, manage defederation, and change instance settings. With that comes access to other people's private data (login emails) — treat it accordingly.`,
+      `Your account (@${vars.username}) on ${vars.appName} has been given the admin role. You can now open the admin panel: moderate reports and accounts, manage defederation, and change instance settings. With that comes access to other people's private data (login emails). Treat it accordingly.`,
       { label: "Open the admin panel", url: `${vars.origin}/admin` },
     ),
   };
@@ -487,14 +487,14 @@ export function accountAdminRevokedEmail(vars: AccountNoticeVars): Omit<EmailMes
     text: [
       `Your account (@${vars.username}) on ${vars.appName} is no longer an admin.`,
       "",
-      "Everything else is unchanged — your profile, posts and lists are exactly as they were, and you can sign in as usual.",
+      "Everything else is unchanged: your profile, posts and lists are exactly as they were, and you can sign in as usual.",
       "",
-      `— The ${vars.appName} team`,
+      `The ${vars.appName} team`,
       vars.origin,
     ].join("\n"),
     html: layout(
       "Your admin role has been removed",
-      `Your account (@${vars.username}) on ${vars.appName} is no longer an admin. Everything else is unchanged — your profile, posts and lists are exactly as they were, and you can sign in as usual.`,
+      `Your account (@${vars.username}) on ${vars.appName} is no longer an admin. Everything else is unchanged: your profile, posts and lists are exactly as they were, and you can sign in as usual.`,
       { label: `Open ${vars.appName}`, url: vars.origin },
     ),
   };
@@ -512,14 +512,14 @@ export function accountModeratorGrantedEmail(vars: AccountNoticeVars): Omit<Emai
     text: [
       `Your account (@${vars.username}) on ${vars.appName} has been given the moderator role.`,
       "",
-      "You can now open /admin: work the reports queue and moderate accounts and posts. Instance settings stay admin-only. With that comes access to other people's private data (login emails) — treat it accordingly.",
+      "You can now open /admin: work the reports queue and moderate accounts and posts. Instance settings stay admin-only. With that comes access to other people's private data (login emails). Treat it accordingly.",
       "",
-      `— The ${vars.appName} team`,
+      `The ${vars.appName} team`,
       `${vars.origin}/admin`,
     ].join("\n"),
     html: layout(
       "You are now a moderator",
-      `Your account (@${vars.username}) on ${vars.appName} has been given the moderator role. You can now open the admin panel to work the reports queue and moderate accounts and posts — instance settings stay admin-only. With that comes access to other people's private data (login emails) — treat it accordingly.`,
+      `Your account (@${vars.username}) on ${vars.appName} has been given the moderator role. You can now open the admin panel to work the reports queue and moderate accounts and posts. Instance settings stay admin-only. With that comes access to other people's private data (login emails). Treat it accordingly.`,
       { label: "Open the admin panel", url: `${vars.origin}/admin` },
     ),
   };
@@ -537,14 +537,14 @@ export function accountModeratorRevokedEmail(vars: AccountNoticeVars): Omit<Emai
     text: [
       `Your account (@${vars.username}) on ${vars.appName} is no longer a moderator.`,
       "",
-      "Everything else is unchanged — your profile, posts and lists are exactly as they were, and you can sign in as usual.",
+      "Everything else is unchanged: your profile, posts and lists are exactly as they were, and you can sign in as usual.",
       "",
-      `— The ${vars.appName} team`,
+      `The ${vars.appName} team`,
       vars.origin,
     ].join("\n"),
     html: layout(
       "Your moderator role has been removed",
-      `Your account (@${vars.username}) on ${vars.appName} is no longer a moderator. Everything else is unchanged — your profile, posts and lists are exactly as they were, and you can sign in as usual.`,
+      `Your account (@${vars.username}) on ${vars.appName} is no longer a moderator. Everything else is unchanged: your profile, posts and lists are exactly as they were, and you can sign in as usual.`,
       { label: `Open ${vars.appName}`, url: vars.origin },
     ),
   };
@@ -566,7 +566,7 @@ export function accountPostRemovedEmail(vars: PostRemovedVars): Omit<EmailMessag
       "",
       "If you think this was a mistake, reply to this email or contact the instance team.",
       "",
-      `— The ${vars.appName} team`,
+      `The ${vars.appName} team`,
       vars.origin,
     ].join("\n"),
     html: layout(
@@ -589,14 +589,14 @@ export function accountVerifiedEmail(vars: AccountNoticeVars): Omit<EmailMessage
     text: [
       `An admin on ${vars.appName} has verified the email address on your account (@${vars.username}).`,
       "",
-      "You can sign in now — no further action needed.",
+      "You can sign in now. No further action needed.",
       "",
-      `— The ${vars.appName} team`,
+      `The ${vars.appName} team`,
       `${vars.origin}/login`,
     ].join("\n"),
     html: layout(
       "Your email has been verified",
-      `An admin on ${vars.appName} has verified the email address on your account (@${vars.username}). You can sign in now — no further action needed.`,
+      `An admin on ${vars.appName} has verified the email address on your account (@${vars.username}). You can sign in now. No further action needed.`,
       { label: "Sign in", url: `${vars.origin}/login` },
     ),
   };
@@ -616,16 +616,16 @@ export function accountEmailChangedEmail(vars: AccountEmailChangedVars): Omit<Em
     text: [
       `The login email for your account (@${vars.username}) on ${vars.appName} was changed by an admin to ${vars.newEmail}.`,
       "",
-      "Your old address can no longer sign in. A verification link was sent to the new address — the change is complete once it is confirmed.",
+      "Your old address can no longer sign in. A verification link was sent to the new address. The change is complete once it is confirmed.",
       "",
-      "If this wasn't you, contact the instance administrator immediately — your account may be compromised.",
+      "If this wasn't you, contact the instance administrator immediately: your account may be compromised.",
       "",
-      `— The ${vars.appName} team`,
+      `The ${vars.appName} team`,
       vars.origin,
     ].join("\n"),
     html: layout(
       "Your email was changed",
-      `The login email for your account (@${vars.username}) on ${vars.appName} was changed by an admin to ${vars.newEmail}. Your old address can no longer sign in. A verification link was sent to the new address — the change is complete once it is confirmed. If this wasn't you, contact the instance administrator immediately — your account may be compromised.`,
+      `The login email for your account (@${vars.username}) on ${vars.appName} was changed by an admin to ${vars.newEmail}. Your old address can no longer sign in. A verification link was sent to the new address. The change is complete once it is confirmed. If this wasn't you, contact the instance administrator immediately: your account may be compromised.`,
       { label: `Open ${vars.appName}`, url: vars.origin },
     ),
   };

@@ -152,7 +152,5 @@
 </div>
 <p class="mt-1.5 text-xs text-muted-foreground">{hint}</p>
 {#if suggestionsOpen}
-  <p class="mt-1 text-xs text-muted-foreground">
-    Similar tags available — pick a canonical one to avoid fragmentation.
-  </p>
+  <p class="mt-1 text-xs text-muted-foreground">Similar tags available. Pick a canonical one to avoid fragmentation.</p>
 {/if}

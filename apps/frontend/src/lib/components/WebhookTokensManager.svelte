@@ -105,7 +105,7 @@
   <div class="rounded-card border border-foreground/30 bg-muted p-4">
     <p class="text-sm font-semibold text-foreground">Copy your token now</p>
     <p class="mt-1 text-sm text-muted-foreground">
-      This is the only time it is shown. It is stored hashed, so it cannot be displayed again — if you lose it, revoke
+      This is the only time it is shown. It is stored hashed, so it cannot be displayed again. If you lose it, revoke
       this token and create another.
     </p>
     <div class="mt-3 flex items-center gap-2">

@@ -113,13 +113,13 @@ export async function checkOutboundPort25(): Promise<{ ok: boolean; detail: stri
       }),
     ]);
     conn.close();
-    return { ok: true, detail: `Connected to ${host}:25 — outbound SMTP works from this host.` };
+    return { ok: true, detail: `Connected to ${host}:25. Outbound SMTP works from this host.` };
   } catch (err) {
     return {
       ok: false,
       detail:
         `Could not reach ${host}:25 (${err instanceof Error ? err.message : JSON.stringify(err)}). ` +
-        `Your host most likely blocks outbound port 25 — use the API relay or an SMTP provider instead.`,
+        `Your host most likely blocks outbound port 25. Use the API relay or an SMTP provider instead.`,
     };
   } finally {
     if (timer !== undefined) clearTimeout(timer);

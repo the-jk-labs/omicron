@@ -49,7 +49,7 @@
         const code = (res.error as { code?: string }).code ?? "";
         if (code === "EMAIL_NOT_VERIFIED" || /verif|confirm/i.test(res.error.message ?? "")) {
           needsVerification = true;
-          error = "Check your inbox to confirm your email before signing in — a fresh link is on its way.";
+          error = "Check your inbox to confirm your email before signing in. A fresh link is on its way.";
           return;
         }
         error = res.error.message ?? "Invalid username or password.";
@@ -145,7 +145,7 @@
       <div class="flex flex-col gap-2">
         {#if resent}
           <p class="text-xs text-muted-foreground" aria-live="polite">
-            A fresh link is on its way — it expires in 24 hours.
+            A fresh link is on its way. It expires in 24 hours.
           </p>
         {/if}
         {#if resendError}<p class="text-xs text-destructive" role="alert">{resendError}</p>{/if}

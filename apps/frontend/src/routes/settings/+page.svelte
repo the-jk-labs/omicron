@@ -303,7 +303,7 @@
       return;
     }
     if (await isPwnedPasswordClient(newPassword)) {
-      pwError = "This password has appeared in a data breach — please choose a different one.";
+      pwError = "This password has appeared in a data breach. Please choose a different one.";
       return;
     }
     pwBusy = true;
@@ -473,7 +473,7 @@
           class={`${field} w-full`}
         />
         <p class="text-xs text-muted-foreground">
-          Optional — shown on your profile for anyone to contact you. Leave blank to hide it.
+          Optional. Shown on your profile for anyone to contact you. Leave blank to hide it.
         </p>
       </div>
 
@@ -483,7 +483,7 @@
         <TagInput
           bind:tags={profileTags}
           max={MAX_PROFILE_TAGS}
-          hint="Topics you post about — shown on your profile and federated to other servers."
+          hint="Topics you post about. Shown on your profile and federated to other servers."
         />
       </div>
 
@@ -497,7 +497,7 @@
       <div class="flex flex-col gap-1.5">
         <Label.Root class={labelClass}>Custom section</Label.Root>
         <p class="text-xs text-muted-foreground">
-          A free-form space at the top of your profile's About tab — write it in Markdown and lay it out however you
+          A free-form space at the top of your profile's About tab. Write it in Markdown and lay it out however you
           like. Leave it empty to hide the section.
         </p>
         <div class="mt-1">
@@ -635,7 +635,7 @@
   <section class="rounded-card border border-border bg-background p-6">
     <h2 class="text-lg font-semibold tracking-tight text-foreground">Integrations</h2>
     <p class="mt-1 max-w-prose text-sm text-muted-foreground">
-      Publish to this blog from an external system — a CMS like Sanity, a build hook, or a script. Create a token, give
+      Publish to this blog from an external system (a CMS like Sanity, a build hook, or a script). Create a token, give
       it to that system, and posts it sends are published as you and federate like anything you write here. Revoke a
       token any time to cut it off.
     </p>
@@ -653,7 +653,7 @@
       <div class="flex items-start justify-between gap-4">
         <div>
           <dt class="text-muted-foreground">Username</dt>
-          <p class="mt-0.5 text-xs text-muted-foreground">Your fediverse handle — permanent and can't be changed.</p>
+          <p class="mt-0.5 text-xs text-muted-foreground">Your fediverse handle. Permanent and can't be changed.</p>
         </div>
         <dd class="font-medium text-foreground">@{data.user.username}</dd>
       </div>
@@ -662,7 +662,7 @@
           <div>
             <dt class="text-muted-foreground">Email</dt>
             <p class="mt-0.5 text-xs text-muted-foreground">
-              Your private login address — used for sign-in and account recovery.
+              Your private login address. Used for sign-in and account recovery.
             </p>
           </div>
           <dd class="flex flex-col items-end gap-1">

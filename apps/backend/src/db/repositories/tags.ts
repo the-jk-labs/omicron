@@ -174,7 +174,7 @@ export async function createAlias(aliasSlug: string, targetSlug: string): Promis
   const target = await db.query.tags.findFirst({ where: eq(tags.slug, targetSlug) });
   if (!target) throw new Error(`Target tag "${targetSlug}" not found`);
   const exists = await db.query.tags.findFirst({ where: eq(tags.slug, aliasSlug) });
-  if (exists) throw new Error(`Alias "${aliasSlug}" is already a real tag — merge it instead`);
+  if (exists) throw new Error(`Alias "${aliasSlug}" is already a real tag. Merge it instead`);
   await db.insert(tagAliases).values({ aliasSlug, tagId: target.id }).onConflictDoNothing();
 }
 

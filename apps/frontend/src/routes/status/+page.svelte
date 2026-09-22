@@ -32,8 +32,8 @@
 
     <h2>Health endpoints</h2>
     <ul>
-      <li><code>/api/healthz</code> — liveness</li>
-      <li><code>/api/version</code> — build version and federation state</li>
+      <li><code>/api/healthz</code>: liveness</li>
+      <li><code>/api/version</code>: build version and federation state</li>
     </ul>
 
     <h2>Federation</h2>

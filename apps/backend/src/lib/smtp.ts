@@ -174,7 +174,7 @@ export async function sendSmtp(opts: SmtpOptions, env: SmtpEnvelope): Promise<vo
       : await Deno.connect({ hostname: opts.hostname, port: opts.port });
   } catch (err) {
     throw new Error(
-      `Could not connect to ${opts.hostname}:${opts.port} — ${err instanceof Error ? err.message : JSON.stringify(err)}`,
+      `Could not connect to ${opts.hostname}:${opts.port}: ${err instanceof Error ? err.message : JSON.stringify(err)}`,
       { cause: err },
     );
   }

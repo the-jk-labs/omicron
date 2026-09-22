@@ -113,7 +113,7 @@
 
   function engLabel(p: PostStat): string {
     const v = engPerDay(p);
-    if (v === 0) return "—";
+    if (v === 0) return "-";
     return `${v < 9.5 ? v.toFixed(1) : fmt(Math.round(v))}/d`;
   }
   const engFrac = (p: PostStat) => engPerDay(p) / maxPerDay;
@@ -133,7 +133,7 @@
   <h1 class="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
     <Icon name="chart" size={22} /> Dashboard
   </h1>
-  <p class="mt-1 text-muted-foreground">How your writing travels. Aggregate counts only — never who read you.</p>
+  <p class="mt-1 text-muted-foreground">How your writing travels. Aggregate counts only, never who read you.</p>
 </header>
 
 {#if summary.posts.length === 0}

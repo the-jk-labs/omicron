@@ -67,7 +67,7 @@
     if (!password) return `Password is required (at least ${MIN_PASSWORD_LEN} characters).`;
     if (password.length < MIN_PASSWORD_LEN) return `Password must be at least ${MIN_PASSWORD_LEN} characters.`;
     if (password.length > 128) return "Password must be at most 128 characters.";
-    if (pwned === true) return "This password has appeared in a data breach — please choose a different one.";
+    if (pwned === true) return "This password has appeared in a data breach. Please choose a different one.";
     return "";
   });
   const confirmError = $derived.by(() => {
@@ -146,7 +146,7 @@
       const pwnedNow = await isPwnedPasswordClient(password);
       if (pwnedNow === true) {
         pwned = true;
-        error = "This password has appeared in a data breach — please choose a different one.";
+        error = "This password has appeared in a data breach. Please choose a different one.";
         busy = false;
         return;
       }
@@ -245,8 +245,8 @@
         class={field}
       />
       <p id="displayName-hint" class="text-xs text-muted-foreground">
-        {displayName.length}/{MAX_DISPLAY_NAME_LEN} — shown on posts and your profile. Long names are truncated with an ellipsis;
-        hover to see the full name.
+        {displayName.length}/{MAX_DISPLAY_NAME_LEN}. Shown on posts and your profile. Long names are truncated with an
+        ellipsis; hover to see the full name.
       </p>
       {#if displayName.length > MAX_DISPLAY_NAME_LEN}
         <p class="text-xs text-destructive" aria-live="polite">
@@ -290,7 +290,7 @@
         <p id="email-error" class={errClass} aria-live="polite">{emailError}</p>
       {:else}
         <p id="email-hint" class="text-xs text-muted-foreground">
-          {#if verificationRequired}We’ll send a confirmation link to this address — you’ll need it to sign in.{:else}We’ll
+          {#if verificationRequired}We’ll send a confirmation link to this address. You’ll need it to sign in.{:else}We’ll
             send a verification link to this address.{/if}
         </p>
       {/if}
@@ -354,7 +354,7 @@
       </ul>
       {#if pwned === true}
         <p class="text-xs font-medium text-destructive" aria-live="polite">
-          This password was found in a breach — choose a different one.
+          This password was found in a breach. Choose a different one.
         </p>
       {:else if pwned === false && password.length >= MIN_PASSWORD_LEN}
         <p class="text-xs text-muted-foreground" aria-live="polite">Not found in known breaches.</p>

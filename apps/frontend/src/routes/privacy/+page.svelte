@@ -21,7 +21,7 @@
   <div class="prose-omicron mt-8">
     <p>
       This is a placeholder privacy notice for <strong>{appName} ({domain})</strong>. If you operate a public instance
-      in the EU/EEA you <em>must</em> replace it with your own policy before offering the service — it is not legal advice.
+      in the EU/EEA you <em>must</em> replace it with your own policy before offering the service. It is not legal advice.
     </p>
 
     <h2>Data we collect</h2>

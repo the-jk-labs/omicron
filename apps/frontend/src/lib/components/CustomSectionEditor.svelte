@@ -189,7 +189,7 @@
       rows={14}
       maxlength={maxLength}
       spellcheck="false"
-      placeholder={"# Hi, I'm …\n\nWrite anything here — headings, lists, tables, images, links.\nMarkdown and simple HTML both work."}
+      placeholder={"# Hi, I'm …\n\nWrite anything here: headings, lists, tables, images, links.\nMarkdown and simple HTML both work."}
       class="w-full resize-y rounded-input border border-input bg-background px-3.5 py-2.5 font-mono text-sm leading-relaxed shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
     ></textarea>
   </Tabs.Content>

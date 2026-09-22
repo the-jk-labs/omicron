@@ -173,7 +173,7 @@
           {#if r.status === "resolved"}
             {#if r.resolution}
               <p class="mt-2 text-xs text-muted-foreground">
-                <Icon name="check" size={12} /> Resolved — {r.resolution}
+                <Icon name="check" size={12} /> Resolved: {r.resolution}
               </p>
             {/if}
           {:else}

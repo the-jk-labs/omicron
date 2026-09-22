@@ -78,7 +78,7 @@
 
 <div class="mb-6">
   <p class="mb-1.5 text-xs font-medium text-muted-foreground">
-    Banner — shown at the top of the post and in link previews. Optional; the first image in your post is used when you
+    Banner. Shown at the top of the post and in link previews. Optional; the first image in your post is used when you
     don't pick one.
   </p>
 

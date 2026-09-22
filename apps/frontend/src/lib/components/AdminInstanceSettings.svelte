@@ -232,7 +232,7 @@
         on the next restart.
         {#if federationRestartPending}
           <span class="text-foreground"
-            >Saved as {federationEnabled ? "on" : "off"} — restart to apply (currently {federationRunning
+            >Saved as {federationEnabled ? "on" : "off"}. Restart to apply (currently {federationRunning
               ? "on"
               : "off"}).</span
           >
@@ -270,7 +270,7 @@
       </p>
       {#if rotated}
         <p class="text-sm text-foreground">
-          A new secret is staged. Restart the instance to apply it — all sessions end at that point.
+          A new secret is staged. Restart the instance to apply it. All sessions end at that point.
         </p>
       {:else}
         <Dialog.Root bind:open={rotateOpen}>
@@ -301,8 +301,8 @@
               </div>
               <div class="flex flex-col gap-4 px-5 py-5">
                 <p class="text-sm text-muted-foreground">
-                  This stages a new secret. On the next restart every session ends and everyone — you included — is
-                  signed out. It cannot be undone.
+                  This stages a new secret. On the next restart every session ends and everyone (you included) is signed
+                  out. It cannot be undone.
                 </p>
                 {#if rotateError}<p class="text-sm text-destructive">{rotateError}</p>{/if}
                 <div class="flex justify-end gap-2">
