@@ -489,17 +489,18 @@
   let removePostBusyId = $state<string | null>(null);
 
   async function removeUserPost(u: AdminUser, postId: string) {
-    const ok = await confirm({
+    const { ok, notify } = await confirm({
       title: "Remove this post?",
       description: `It is permanently removed from @${u.username}'s account everywhere. This can't be undone.`,
       confirmText: "Remove",
       destructive: true,
+      notify: { label: `Notify @${u.username} by email.` },
     });
     if (!ok) return;
     removePostBusyId = postId;
     clearDetailMsg(u.id);
     try {
-      await endpoints().adminRemovePost(postId);
+      await endpoints().adminRemovePost(postId, notify);
       const d = details[u.id];
       if (d) {
         const removed = d.recentPosts.find((p) => p.id === postId);
