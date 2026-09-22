@@ -41,6 +41,7 @@
   });
   const followerCount = $derived(profile.counts.followers - removedFollowers);
   const isAdmin = $derived(!data.remote && "isAdmin" in profile.user && profile.user.isAdmin);
+  const isModerator = $derived(!data.remote && "isModerator" in profile.user && profile.user.isModerator);
   // Public reading lists (local profiles only); the owner also sees their private ones.
   const lists = $derived(!data.remote ? data.lists : []);
   // Profile links exist on local profiles only; remote actors carry none.
@@ -427,7 +428,7 @@
           <dd class="text-sm text-foreground"><Time iso={data.profile.user.createdAt} kind="date" /></dd>
         </div>
 
-        {#if isAdmin}
+        {#if isAdmin || isModerator}
           <div class="flex items-center justify-between gap-3 px-4 py-3">
             <dt class="flex items-center gap-2 text-sm text-muted-foreground">
               <Icon name="admin" size={15} /> Role
@@ -436,7 +437,8 @@
               <span
                 class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground"
               >
-                <Icon name="admin" size={12} /> Admin
+                <Icon name="admin" size={12} />
+                {isAdmin ? "Admin" : "Moderator"}
               </span>
             </dd>
           </div>

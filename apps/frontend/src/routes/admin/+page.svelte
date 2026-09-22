@@ -16,6 +16,11 @@
 
   let { data }: { data: PageData } = $props();
 
+  // Moderators share this dashboard but may only use Reports and Users —
+  // every other tab stays visible yet gated, explaining it needs the admin
+  // role (the server enforces the same boundary).
+  const isAdmin = $derived(data.user.isAdmin);
+
   const tabs: { value: string; label: string; icon: IconName }[] = [
     { value: "reports", label: "Reports", icon: "flag" },
     { value: "users", label: "Users", icon: "users" },
@@ -30,6 +35,15 @@
   const triggerClass =
     "data-[state=active]:bg-background data-[state=active]:shadow-mini text-muted-foreground data-[state=active]:text-foreground inline-flex h-9 items-center gap-1.5 rounded-button px-4 text-sm font-medium";
 </script>
+
+{#snippet requiresAdmin(title: string)}
+  <section class="rounded-card border border-border bg-background p-6">
+    <h2 class="text-lg font-semibold tracking-tight text-foreground">{title}</h2>
+    <p class="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+      <Icon name="lock" size={15} /> This tab requires the admin role. Your moderator account can use Reports and Users.
+    </p>
+  </section>
+{/snippet}
 
 <PageTitle text="Admin" />
 
@@ -66,91 +80,115 @@
     <section class="rounded-card border border-border bg-background p-6">
       <h2 class="text-lg font-semibold tracking-tight text-foreground">Users</h2>
       <p class="mt-1 text-sm text-muted-foreground">
-        Every local account on this instance. Expand a row for detail; edit, suspend, delete, or change the admin role.
+        Every local account on this instance. Expand a row for detail; edit, suspend, delete, or change roles.
       </p>
       <div class="mt-5">
-        <AdminUsers selfId={data.user.id} />
+        <AdminUsers selfId={data.user.id} isViewerAdmin={isAdmin} />
       </div>
     </section>
   </Tabs.Content>
 
   <Tabs.Content value="federation" class="mt-6">
-    <section class="rounded-card border border-border bg-background p-6">
-      <h2 class="text-lg font-semibold tracking-tight text-foreground">Defederation</h2>
-      <p class="mt-1 text-sm text-muted-foreground">
-        Block domains this instance won't federate with. Inbound activity is dropped, delivery skips them, and their
-        content stops surfacing here.
-      </p>
-      <div class="mt-5">
-        <AdminDomains />
-      </div>
-    </section>
+    {#if isAdmin}
+      <section class="rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Defederation</h2>
+        <p class="mt-1 text-sm text-muted-foreground">
+          Block domains this instance won't federate with. Inbound activity is dropped, delivery skips them, and their
+          content stops surfacing here.
+        </p>
+        <div class="mt-5">
+          <AdminDomains />
+        </div>
+      </section>
+    {:else}
+      {@render requiresAdmin("Defederation")}
+    {/if}
   </Tabs.Content>
 
   <Tabs.Content value="email" class="mt-6">
-    <section class="rounded-card border border-border bg-background p-6">
-      <h2 class="text-lg font-semibold tracking-tight text-foreground">Email delivery</h2>
-      <p class="mt-1 text-sm text-muted-foreground">
-        How this instance sends password-reset and verification mail. Configure and test it here — no config files.
-      </p>
-      <div class="mt-5">
-        <AdminEmail />
-      </div>
-    </section>
+    {#if isAdmin}
+      <section class="rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Email delivery</h2>
+        <p class="mt-1 text-sm text-muted-foreground">
+          How this instance sends password-reset and verification mail. Configure and test it here — no config files.
+        </p>
+        <div class="mt-5">
+          <AdminEmail />
+        </div>
+      </section>
+    {:else}
+      {@render requiresAdmin("Email delivery")}
+    {/if}
   </Tabs.Content>
 
   <Tabs.Content value="security" class="mt-6">
-    <section class="rounded-card border border-border bg-background p-6">
-      <h2 class="text-lg font-semibold tracking-tight text-foreground">Security</h2>
-      <p class="mt-1 text-sm text-muted-foreground">
-        Defenses against automated abuse. Toggles apply live — no config files, no restart.
-      </p>
-      <div class="mt-5">
-        <AdminSecurity />
-      </div>
-    </section>
+    {#if isAdmin}
+      <section class="rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Security</h2>
+        <p class="mt-1 text-sm text-muted-foreground">
+          Defenses against automated abuse. Toggles apply live — no config files, no restart.
+        </p>
+        <div class="mt-5">
+          <AdminSecurity />
+        </div>
+      </section>
+    {:else}
+      {@render requiresAdmin("Security")}
+    {/if}
   </Tabs.Content>
 
   <Tabs.Content value="discoverability" class="mt-6">
-    <section class="rounded-card border border-border bg-background p-6">
-      <h2 class="text-lg font-semibold tracking-tight text-foreground">Discoverability</h2>
-      <p class="mt-1 text-sm text-muted-foreground">
-        Search-engine indexing, sitemap, and per-engine site verification. Applies live.
-      </p>
-      <div class="mt-5">
-        <AdminSeo />
-      </div>
-    </section>
+    {#if isAdmin}
+      <section class="rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Discoverability</h2>
+        <p class="mt-1 text-sm text-muted-foreground">
+          Search-engine indexing, sitemap, and per-engine site verification. Applies live.
+        </p>
+        <div class="mt-5">
+          <AdminSeo />
+        </div>
+      </section>
+    {:else}
+      {@render requiresAdmin("Discoverability")}
+    {/if}
   </Tabs.Content>
 
   <Tabs.Content value="media" class="mt-6">
-    <section class="rounded-card border border-border bg-background p-6">
-      <h2 class="text-lg font-semibold tracking-tight text-foreground">Photo search</h2>
-      <p class="mt-1 text-sm text-muted-foreground">
-        Writers can already search free, openly-licensed photos for a post banner — Openverse needs no setup. Add an
-        Unsplash key here to offer their library as a second source.
-      </p>
-      <div class="mt-5">
-        <AdminUnsplash />
-      </div>
-    </section>
+    {#if isAdmin}
+      <section class="rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Photo search</h2>
+        <p class="mt-1 text-sm text-muted-foreground">
+          Writers can already search free, openly-licensed photos for a post banner — Openverse needs no setup. Add an
+          Unsplash key here to offer their library as a second source.
+        </p>
+        <div class="mt-5">
+          <AdminUnsplash />
+        </div>
+      </section>
+    {:else}
+      {@render requiresAdmin("Photo search")}
+    {/if}
   </Tabs.Content>
 
   <Tabs.Content value="settings" class="mt-6">
-    <section class="rounded-card border border-border bg-background p-6">
-      <h2 class="text-lg font-semibold tracking-tight text-foreground">Instance identity</h2>
-      <p class="mt-1 text-sm text-muted-foreground">The public name and domain for this server.</p>
-      <div class="mt-5">
-        <AdminInstanceSettings />
-      </div>
-    </section>
+    {#if isAdmin}
+      <section class="rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Instance identity</h2>
+        <p class="mt-1 text-sm text-muted-foreground">The public name and domain for this server.</p>
+        <div class="mt-5">
+          <AdminInstanceSettings />
+        </div>
+      </section>
 
-    <section class="mt-6 rounded-card border border-border bg-background p-6">
-      <h2 class="text-lg font-semibold tracking-tight text-foreground">Instance settings</h2>
-      <p class="mt-1 text-sm text-muted-foreground">Settings that apply to everyone on this instance.</p>
-      <div class="mt-5">
-        <InstanceModeration />
-      </div>
-    </section>
+      <section class="mt-6 rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Instance settings</h2>
+        <p class="mt-1 text-sm text-muted-foreground">Settings that apply to everyone on this instance.</p>
+        <div class="mt-5">
+          <InstanceModeration />
+        </div>
+      </section>
+    {:else}
+      {@render requiresAdmin("Instance identity")}
+    {/if}
   </Tabs.Content>
 </Tabs.Root>

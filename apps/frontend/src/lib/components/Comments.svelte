@@ -149,8 +149,8 @@
     }
   }
 
-  // The viewer may delete their own comments; admins may delete any.
-  const canDelete = (comment: Comment) => !!user && (user.id === comment.author.id || user.isAdmin);
+  // The viewer may delete their own comments; moderators may delete any.
+  const canDelete = (comment: Comment) => !!user && (user.id === comment.author.id || user.isAdmin || user.isModerator);
 
   // Only the author may edit their own comment.
   const canEdit = (comment: Comment) => !!user && user.id === comment.author.id;

@@ -15,6 +15,9 @@ export type User = {
   customSectionHtml: string;
   avatarUrl: string | null;
   isAdmin: boolean;
+  // Moderator role: reports queue plus user/post/report operations, but no
+  // instance-level access. Admins implicitly hold every moderator power.
+  isModerator: boolean;
   // Private account (Instagram-style): posts are visible only to approved
   // followers and following requires approval. Public by default.
   isPrivate: boolean;
@@ -491,6 +494,7 @@ export type AdminUser = {
   customSection: string;
   avatarUrl: string | null;
   isAdmin: boolean;
+  isModerator: boolean;
   email: string;
   emailVerified: boolean;
   suspended: boolean;

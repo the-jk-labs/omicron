@@ -120,10 +120,12 @@
   let unpublishing = $state(false);
   let shared = $state(false);
 
-  // Authoring controls: edit is author-only; delete is author or admin. Neither
-  // applies to federated posts owned by a remote instance.
+  // Authoring controls: edit is author-only; delete is author or moderator.
+  // Neither applies to federated posts owned by a remote instance.
   const canEdit = $derived(!!data.user && !post.remote && data.user.id === post.author.id);
-  const canManage = $derived(!!data.user && !post.remote && (data.user.id === post.author.id || data.user.isAdmin));
+  const canManage = $derived(
+    !!data.user && !post.remote && (data.user.id === post.author.id || data.user.isAdmin || data.user.isModerator),
+  );
   // Any signed-in reader can report a post that isn't their own (local or remote).
   const canReport = $derived(!!data.user && data.user.id !== post.author.id);
 
