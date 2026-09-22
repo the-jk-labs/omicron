@@ -145,7 +145,7 @@
         <form onsubmit={search} class="flex items-center gap-2">
           <input
             bind:value={query}
-            placeholder="Search free photos — mountains, desk, coffee…"
+            placeholder="Search free photos: mountains, desk, coffee…"
             aria-label="Search photos"
             class="h-10 min-w-0 flex-1 rounded-input border border-input bg-background px-3.5 text-sm shadow-btn outline-hidden transition-colors placeholder:text-muted-foreground focus:border-foreground"
           />

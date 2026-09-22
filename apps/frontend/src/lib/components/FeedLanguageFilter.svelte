@@ -129,7 +129,7 @@
     </div>
 
     {#if reading.feedLangs.length === 0}
-      <p class="mt-2 text-xs text-muted-foreground">No filter set — articles in every language are shown.</p>
+      <p class="mt-2 text-xs text-muted-foreground">No filter set. Articles in every language are shown.</p>
     {/if}
   </div>
 {/if}

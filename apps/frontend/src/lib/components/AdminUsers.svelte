@@ -427,7 +427,7 @@
     const { ok } = await confirm({
       title: `Mark @${u.username}'s email verified?`,
       description:
-        "They will be able to sign in without clicking a link. Use this when instance mail was broken — not to skip ownership proof lightly.",
+        "They will be able to sign in without clicking a link. Use this when instance mail was broken, not to skip ownership proof lightly.",
       confirmText: "Mark verified",
     });
     if (!ok) return;
@@ -750,7 +750,7 @@
       setDetailNotice(
         target.id,
         emailChanged
-          ? "Saved. Login email updated — a verification link was sent to the new address and the previous address was notified."
+          ? "Saved. Login email updated. A verification link was sent to the new address and the previous address was notified."
           : "Saved.",
       );
       if (expandedId !== target.id) expandedId = target.id;
@@ -1144,7 +1144,7 @@
                           {r.subjectType === "post" ? `Post “${r.postTitle ?? "untitled"}”` : "Account"}
                         </span>
                         <span class="text-muted-foreground">
-                          — {r.reason || "No reason given"} · by {r.reporter
+                          - {r.reason || "No reason given"} · by {r.reporter
                             ? `@${r.reporter.username}`
                             : "a deleted account"} ·
                           <Time iso={r.createdAt} kind="date" />
@@ -1191,7 +1191,7 @@
         </span>
       {:else}
         <span>
-          Recently deleted ({deletedTotal}) — restorable until the retention window ends{deletedNextCursor
+          Recently deleted ({deletedTotal}). Restorable until the retention window ends{deletedNextCursor
             ? ` · showing ${deleted.length}`
             : ""}
         </span>
@@ -1372,13 +1372,13 @@
           {#if roleTarget?.isAdmin}
             They lose access to the admin panel immediately. Everything else stays as is.
           {:else}
-            They gain the admin panel: reports, accounts, defederation and instance settings — including other people's
+            They gain the admin panel: reports, accounts, defederation and instance settings, including other people's
             login emails.
           {/if}
         {:else if roleTarget?.isModerator}
           They lose access to the moderation queue and user management immediately. Everything else stays as is.
         {:else}
-          They gain the moderation queue plus user, post and report management — but no instance settings.
+          They gain the moderation queue plus user, post and report management, but no instance settings.
         {/if}
       </Dialog.Description>
 
@@ -1437,7 +1437,7 @@
         Edit @{editTarget?.username}
       </Dialog.Title>
       <Dialog.Description class="mt-1 text-sm text-muted-foreground">
-        Change how this account appears and which login email it uses. Changing the login email stores it unverified — a
+        Change how this account appears and which login email it uses. Changing the login email stores it unverified. A
         verification link goes to the new address and a security notice goes to the previous one.
       </Dialog.Description>
 
@@ -1463,7 +1463,7 @@
               {/if}
             </div>
             <p class="text-xs text-muted-foreground">
-              Applies immediately — not part of Save. PNG, JPEG, WebP or GIF · large photos are resized automatically
+              Applies immediately, not part of Save. PNG, JPEG, WebP or GIF · large photos are resized automatically
             </p>
           </div>
           <input
@@ -1497,7 +1497,7 @@
             class={field}
           />
           <p class="text-xs text-muted-foreground">
-            Private — used for sign-in and account recovery. Changing it requires the new address to be verified.
+            Private. Used for sign-in and account recovery. Changing it requires the new address to be verified.
           </p>
         </div>
         <div class="flex flex-col gap-1.5">
@@ -1512,14 +1512,14 @@
             spellcheck={false}
             class={field}
           />
-          <p class="text-xs text-muted-foreground">Optional — shown on the profile. Leave blank to hide it.</p>
+          <p class="text-xs text-muted-foreground">Optional. Shown on the profile. Leave blank to hide it.</p>
         </div>
         <div class="flex flex-col gap-1.5">
           <Label.Root class={labelClass}>Tags</Label.Root>
           <TagInput
             bind:tags={editTags}
             max={MAX_PROFILE_TAGS}
-            hint="Topics they post about — shown on the profile and federated to other servers."
+            hint="Topics they post about. Shown on the profile and federated to other servers."
           />
         </div>
         <div class="flex flex-col gap-1.5">

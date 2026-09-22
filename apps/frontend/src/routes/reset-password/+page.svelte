@@ -38,7 +38,7 @@
     }
     const pwned = await isPwnedPasswordClient(password);
     if (pwned === true) {
-      error = "This password has appeared in a data breach — please choose a different one.";
+      error = "This password has appeared in a data breach. Please choose a different one.";
       return;
     }
     busy = true;

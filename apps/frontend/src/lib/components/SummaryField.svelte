@@ -64,7 +64,7 @@
 
   <Collapsible.Content>
     <label for="post-summary" class="mb-1.5 block text-xs font-medium text-muted-foreground">
-      Description — shown in search results and link previews. Optional; the opening lines are used when it's blank.
+      Description. Shown in search results and link previews. Optional; the opening lines are used when it's blank.
     </label>
     <div class="flex items-center gap-3">
       <input

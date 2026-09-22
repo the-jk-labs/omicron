@@ -30,7 +30,7 @@ export const UPLOAD_TOTAL_QUOTA_BYTES = config.UPLOAD_QUOTA_TOTAL_MB * 1024 * 10
 export function quotaError(reason: "user" | "total"): HttpError {
   return reason === "user"
     ? payloadTooLarge(
-        `Upload storage limit reached (${config.UPLOAD_QUOTA_USER_MB} MB per account). Remove old images — edit older posts or clear your avatar — and try again.`,
+        `Upload storage limit reached (${config.UPLOAD_QUOTA_USER_MB} MB per account). Remove old images (edit older posts or clear your avatar) and try again.`,
       )
     : payloadTooLarge(
         `This instance's upload storage is full (${config.UPLOAD_QUOTA_TOTAL_MB} MB). Please contact the operator.`,

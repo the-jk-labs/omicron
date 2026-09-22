@@ -30,7 +30,7 @@
     {:else}
       <p>
         This instance has not published a dedicated contact address yet. If you have an account, use the <em>Flag</em>
-        action on the relevant post or profile — it creates a report for the moderators.
+        action on the relevant post or profile. It creates a report for the moderators.
       </p>
       <p class="text-sm text-muted-foreground">
         Operators: set <code>PUBLIC_CONTACT_EMAIL</code> or <code>PUBLIC_CONTACT_URL</code> to surface your address here,

@@ -88,8 +88,8 @@
         When on, this instance serves a permissive <code class="text-foreground-alt">robots.txt</code>
         and a <code class="text-foreground-alt">sitemap.xml</code> of published posts, so search engines can find and
         list your content. Turn it off to keep the instance out of search results entirely (emits
-        <code class="text-foreground-alt">noindex</code> everywhere). Private areas — settings, drafts, the dashboard, admin
-        — are never indexed either way.
+        <code class="text-foreground-alt">noindex</code> everywhere). Private areas (settings, drafts, the dashboard, admin)
+        are never indexed either way.
       </p>
     </div>
     <Switch.Root
@@ -118,7 +118,7 @@
       </p>
       <p class="max-w-prose text-sm text-muted-foreground">
         Off by default because it sends this instance's post URLs to those companies' servers on every publish. Nothing
-        else is sent, and only public posts by public accounts — never drafts, private accounts, or posts from other
+        else is sent, and only public posts by public accounts. Never drafts, private accounts, or posts from other
         instances.
       </p>
       {#if indexNowEnabled && indexNowKey}
@@ -152,8 +152,8 @@
       <p class="mt-0.5 max-w-prose text-sm text-muted-foreground">
         Paste the verification token from each search console to claim this site. We add the matching <code
           class="text-foreground-alt">&lt;meta&gt;</code
-        > tag to every page's head — pick the “HTML meta tag” method in the console, then copy just the token. For a site
-        behind the AI-scraper shield, the console's DNS/CNAME method is the most reliable and needs nothing here.
+        > tag to every page's head. Pick the “HTML meta tag” method in the console, then copy just the token. For a site behind
+        the AI-scraper shield, the console's DNS/CNAME method is the most reliable and needs nothing here.
       </p>
     </div>
 

@@ -152,6 +152,6 @@
     </button>
   </div>
   <p class="text-xs text-muted-foreground">
-    {links.length}/{MAX_LINKS} links — shown on your profile. Drag-free reordering with the arrows.
+    {links.length}/{MAX_LINKS} links. Shown on your profile. Drag-free reordering with the arrows.
   </p>
 </div>

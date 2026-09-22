@@ -50,12 +50,12 @@
     <p class="max-w-prose text-sm text-muted-foreground">
       Show a lightweight proof-of-work challenge to browser-like traffic on page loads, to slow down AI crawlers that
       hammer the instance. Real readers pass it in about a second; federation and the API are never challenged. Applies
-      instantly — no restart. Leave off unless you're seeing scraper load: it adds a brief interstitial for everyone,
+      instantly, no restart. Leave off unless you're seeing scraper load: it adds a brief interstitial for everyone,
       including no-JS readers.
     </p>
     {#if !managed}
       <p class="mt-1 max-w-prose text-sm text-foreground">
-        Not available in this environment — the bundled reverse proxy isn't under management here, so there's nothing to
+        Not available in this environment. The bundled reverse proxy isn't under management here, so there's nothing to
         route through the challenge.
       </p>
     {/if}

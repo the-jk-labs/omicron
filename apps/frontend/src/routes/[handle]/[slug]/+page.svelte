@@ -499,7 +499,7 @@
 
       {#if reportDone}
         <div class="mt-5 flex items-center gap-2 text-sm text-foreground">
-          <Icon name="check" size={16} /> Thanks — a moderator will take a look.
+          <Icon name="check" size={16} /> Thanks. A moderator will take a look.
         </div>
       {:else}
         <div class="mt-5 flex flex-col gap-1.5">

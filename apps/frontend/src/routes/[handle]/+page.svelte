@@ -465,7 +465,7 @@
       <div class="mt-3 max-w-prose">
         <Separator.Root class="my-3 h-px bg-border" />
         <p class="text-sm text-muted-foreground">
-          Your profile has no bio yet — add one from Edit profile to tell people who you are.
+          Your profile has no bio yet. Add one from Edit profile to tell people who you are.
         </p>
       </div>
     {/if}

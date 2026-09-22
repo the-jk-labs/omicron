@@ -241,7 +241,7 @@
     if (autosave.dirty) {
       const { ok: leave } = await confirm({
         title: "Leave without saving?",
-        description: "Your last change could not be saved. Leaving now loses it — staying lets the editor try again.",
+        description: "Your last change could not be saved. Leaving now loses it. Staying lets the editor try again.",
         confirmText: "Leave",
         cancelText: "Stay",
       });

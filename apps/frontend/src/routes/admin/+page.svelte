@@ -113,7 +113,7 @@
       <section class="rounded-card border border-border bg-background p-6">
         <h2 class="text-lg font-semibold tracking-tight text-foreground">Email delivery</h2>
         <p class="mt-1 text-sm text-muted-foreground">
-          How this instance sends password-reset and verification mail. Configure and test it here — no config files.
+          How this instance sends password-reset and verification mail. Configure and test it here. No config files.
         </p>
         <div class="mt-5">
           <AdminEmail />
@@ -129,7 +129,7 @@
       <section class="rounded-card border border-border bg-background p-6">
         <h2 class="text-lg font-semibold tracking-tight text-foreground">Security</h2>
         <p class="mt-1 text-sm text-muted-foreground">
-          Defenses against automated abuse. Toggles apply live — no config files, no restart.
+          Defenses against automated abuse. Toggles apply live. No config files, no restart.
         </p>
         <div class="mt-5">
           <AdminSecurity />
@@ -161,7 +161,7 @@
       <section class="rounded-card border border-border bg-background p-6">
         <h2 class="text-lg font-semibold tracking-tight text-foreground">Photo search</h2>
         <p class="mt-1 text-sm text-muted-foreground">
-          Writers can already search free, openly-licensed photos for a post banner — Openverse needs no setup. Add an
+          Writers can already search free, openly-licensed photos for a post banner. Openverse needs no setup. Add an
           Unsplash key here to offer their library as a second source.
         </p>
         <div class="mt-5">
