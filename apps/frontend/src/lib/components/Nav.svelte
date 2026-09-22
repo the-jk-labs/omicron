@@ -249,7 +249,8 @@
               </DropdownMenu.Item>
               {#if user.isAdmin || user.isModerator}
                 <DropdownMenu.Item onSelect={() => goto("/admin")} class={itemClass}>
-                  <Icon name="gavel" size={18} /> Admin
+                  <Icon name="gavel" size={18} />
+                  {user.isAdmin ? "Admin" : "Moderation"}
                 </DropdownMenu.Item>
               {/if}
               <DropdownMenu.Item onSelect={() => goto("/settings")} class={itemClass}>

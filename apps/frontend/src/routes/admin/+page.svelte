@@ -45,13 +45,16 @@
   </section>
 {/snippet}
 
-<PageTitle text="Admin" />
+<PageTitle text={isAdmin ? "Admin" : "Moderation"} />
 
 <header class="mb-6 pb-2">
   <h1 class="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
-    <Icon name="gavel" size={22} /> Admin
+    <Icon name="gavel" size={22} />
+    {isAdmin ? "Admin" : "Moderation"}
   </h1>
-  <p class="mt-1 text-muted-foreground">Moderation and instance-wide controls for this server.</p>
+  <p class="mt-1 text-muted-foreground">
+    {isAdmin ? "Moderation and instance-wide controls for this server." : "Reports queue and account moderation."}
+  </p>
 </header>
 
 <Tabs.Root value="reports">
