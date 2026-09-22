@@ -10,6 +10,8 @@ import {
   sendAdminGranted,
   sendAdminRevoked,
   sendEmailVerification,
+  sendModeratorGranted,
+  sendModeratorRevoked,
   sendPasswordChanged,
   sendPasswordReset,
 } from "@/services/email.ts";
@@ -164,6 +166,13 @@ export function registerJobHandlers() {
   );
   registerHandler("send_admin_revoked", ({ to, username, appName, origin }) =>
     sendAdminRevoked(to, { username, appName, origin }),
+  );
+  // The moderator role was granted or revoked; the affected account is told either way.
+  registerHandler("send_moderator_granted", ({ to, username, appName, origin }) =>
+    sendModeratorGranted(to, { username, appName, origin }),
+  );
+  registerHandler("send_moderator_revoked", ({ to, username, appName, origin }) =>
+    sendModeratorRevoked(to, { username, appName, origin }),
   );
   // An admin manually verified the address, unblocking sign-in.
   registerHandler("send_account_verified", ({ to, username, appName, origin }) =>

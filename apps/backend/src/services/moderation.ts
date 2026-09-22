@@ -23,6 +23,8 @@ import {
   notifyAdminRevoked,
   notifyEmailChanged,
   notifyModeratorDeleted,
+  notifyModeratorGranted,
+  notifyModeratorRevoked,
   notifyReinstated,
   notifyRestored,
   notifySuspended,
@@ -32,9 +34,23 @@ import { federationRunning } from "@/services/federationState.ts";
 import type { ProfileLinkInput } from "@/services/users.ts";
 import * as usersService from "@/services/users.ts";
 
-// Business logic for moderation. Admin authorization is enforced at the route
-// layer (requireAdmin); these functions assume the caller is a moderator except
-// `report`, which any signed-in user may call.
+// Business logic for moderation. Authorization is enforced at the route layer
+// (requireModerator for user/post/report operations, requireAdmin for
+// instance-level ones); these functions assume the caller holds the role,
+// except `report`, which any signed-in user may call. Per-account writes go
+// through `assertCanModerateAccount` so a moderator can never touch an admin's
+// account — or another moderator's, unless they are an admin.
+
+type RoleHolder = { id: string; isAdmin: boolean; isModerator: boolean };
+
+// Backstop for per-account writes: moderators act on regular accounts only.
+// Admins act on anyone except other admins (per-operation guards below refine
+// that for suspend/delete). Self-harm is guarded per operation, not here.
+function assertCanModerateAccount(actor: RoleHolder, target: RoleHolder): void {
+  if (!actor.isAdmin && !actor.isModerator) throw forbidden("Moderator access required.");
+  if (target.isAdmin) throw forbidden("You can't moderate another admin.");
+  if (target.isModerator && !actor.isAdmin) throw forbidden("Only admins can moderate another moderator.");
+}
 
 const MAX_REASON = 1000;
 
@@ -73,7 +89,7 @@ export async function report(
   });
 }
 
-// ── Moderation queue (admin) ───────────────────────────────────────────────
+// ── Moderation queue (moderator) ───────────────────────────────────────────
 
 export function listReports(status?: "open" | "resolved"): Promise<ReportRow[]> {
   return reportsRepo.list(status);
@@ -83,14 +99,14 @@ export function openReportCount(): Promise<number> {
   return reportsRepo.countOpen();
 }
 
-export async function resolveReport(adminId: string, reportId: string, resolution: string): Promise<void> {
+export async function resolveReport(actorId: string, reportId: string, resolution: string): Promise<void> {
   const fetchedReport = await reportsRepo.findById(reportId);
   if (!fetchedReport) throw notFound("Report not found.");
   if (fetchedReport.status === "resolved") return;
-  await reportsRepo.resolve(reportId, adminId, (resolution ?? "").trim().slice(0, MAX_REASON));
+  await reportsRepo.resolve(reportId, actorId, (resolution ?? "").trim().slice(0, MAX_REASON));
 }
 
-// ── Users (admin) ──────────────────────────────────────────────────────────
+// ── Users (moderator) ──────────────────────────────────────────────────────
 
 // One page of the admin user table. The cursor is opaque —
 // pass back the previous page's `nextCursor`, or null for the first page,
@@ -138,13 +154,15 @@ export function countUsers(): Promise<number> {
 }
 
 // Suspends or reinstates a local account. Admins cannot suspend themselves or
-// other admins (protects the moderator team from lock-out and abuse). Suspending
+// other admins (protects the moderator team from lock-out and abuse), and a
+// moderator cannot suspend an admin or another moderator. Suspending
 // clears the target's sessions so the block takes effect immediately.
-export async function setSuspended(adminId: string, targetId: string, suspend: boolean): Promise<void> {
-  const target = await usersRepo.findById(targetId);
+export async function setSuspended(actorId: string, targetId: string, suspend: boolean): Promise<void> {
+  const [actor, target] = await Promise.all([usersRepo.findById(actorId), usersRepo.findById(targetId)]);
   if (!target) throw notFound("Account not found.");
-  if (target.id === adminId) throw forbidden("You can't suspend your own account.");
-  if (target.isAdmin) throw forbidden("You can't suspend another admin.");
+  if (!actor || (!actor.isAdmin && !actor.isModerator)) throw forbidden("Moderator access required.");
+  if (target.id === actorId) throw forbidden("You can't suspend your own account.");
+  assertCanModerateAccount(actor, target);
 
   await usersRepo.setSuspended(targetId, suspend ? new Date() : null);
   if (suspend) {
@@ -155,19 +173,23 @@ export async function setSuspended(adminId: string, targetId: string, suspend: b
   }
 }
 
-// ── Admin role (promote / demote) ──────────────────────────────────────────
+// ── Roles (admin only) ───────────────────────────────────────────────────
 
-// Grants or revokes the admin role. A stolen admin session must not be enough
-// to mint new admins, so the acting admin's own password is re-verified — the
-// same bar as deletion, minus the username typing (the target is already
-// picked, and the action is reversible). Guards: never self, never the last
-// admin. The affected account is notified either way.
+// Grants or revokes the admin role. Admin-only: the route layer enforces it
+// and this function re-checks, because the password re-verification below
+// would otherwise be passable with the caller's own password. A stolen admin
+// session must not be enough to mint new admins, so the acting admin's own
+// password is re-verified — the same bar as deletion, minus the username
+// typing (the target is already picked, and the action is reversible).
+// Guards: never self, never the last admin. The affected account is notified
+// either way.
 export async function setAdminRole(
   adminId: string,
   targetId: string,
   input: { makeAdmin: boolean; password: string },
 ): Promise<void> {
-  const target = await usersRepo.findById(targetId);
+  const [actor, target] = await Promise.all([usersRepo.findById(adminId), usersRepo.findById(targetId)]);
+  if (!actor?.isAdmin) throw forbidden("Admin access required.");
   if (!target || target.deletedAt) throw notFound("Account not found.");
   if (target.id === adminId) throw forbidden("You can't change your own role.");
   const hash = await accountsRepo.findCredentialHashByUserId(adminId);
@@ -186,7 +208,36 @@ export async function setAdminRole(
   }
 }
 
-// ── User detail (admin) ────────────────────────────────────────────────────
+// ── Moderator role (admin only) ────────────────────────────────────────────
+
+// Grants or revokes the moderator role. Same protections as the admin role
+// (admin-only caller, password re-verified, never self); an admin's account
+// needs no moderator flag since admins implicitly hold every moderator power.
+// The affected account is notified either way.
+export async function setModeratorRole(
+  adminId: string,
+  targetId: string,
+  input: { makeModerator: boolean; password: string },
+): Promise<void> {
+  const [actor, target] = await Promise.all([usersRepo.findById(adminId), usersRepo.findById(targetId)]);
+  if (!actor?.isAdmin) throw forbidden("Admin access required.");
+  if (!target || target.deletedAt) throw notFound("Account not found.");
+  if (target.id === adminId) throw forbidden("You can't change your own role.");
+  if (target.isAdmin) throw forbidden("An admin already has every moderator power.");
+  const hash = await accountsRepo.findCredentialHashByUserId(adminId);
+  if (!hash || !(await bcrypt.compare(input.password, hash))) {
+    throw unauthorized("Incorrect password.");
+  }
+  if (target.isModerator === input.makeModerator) return;
+  await usersRepo.setModerator(targetId, input.makeModerator);
+  if (input.makeModerator) {
+    await notifyModeratorGranted(target.email, target.username);
+  } else {
+    await notifyModeratorRevoked(target.email, target.username);
+  }
+}
+
+// ── User detail (moderator) ────────────────────────────────────────────────
 
 // Everything the admin user detail shows: the table row plus post/follow
 // counts, the latest posts, the profile tags/links backing the edit form, and
@@ -228,20 +279,22 @@ export function deletionExpiresAt(deletedAt: Date): Date {
 // soft-deletes: the row — posts, follows and all — is kept for the retention
 // window so the deletion can be reverted, while the account itself cannot sign
 // in and vanishes from every listing, profile, feed and actor lookup.
-// Admins cannot delete themselves or other admins.
+// Nobody can delete their own account here, an admin's account, or (unless an
+// admin) another moderator's.
 export async function deleteUser(
-  adminId: string,
+  actorId: string,
   targetId: string,
   input: { username: string; password: string },
 ): Promise<void> {
-  const target = await usersRepo.findById(targetId);
+  const [actor, target] = await Promise.all([usersRepo.findById(actorId), usersRepo.findById(targetId)]);
   if (!target || target.deletedAt) throw notFound("Account not found.");
-  if (target.id === adminId) throw forbidden("You can't delete your own account.");
-  if (target.isAdmin) throw forbidden("You can't delete another admin.");
+  if (!actor || (!actor.isAdmin && !actor.isModerator)) throw forbidden("Moderator access required.");
+  if (target.id === actorId) throw forbidden("You can't delete your own account.");
+  assertCanModerateAccount(actor, target);
   if (input.username.trim() !== target.username) {
     throw badRequest("The typed username does not match this account.");
   }
-  const hash = await accountsRepo.findCredentialHashByUserId(adminId);
+  const hash = await accountsRepo.findCredentialHashByUserId(actorId);
   if (!hash || !(await bcrypt.compare(input.password, hash))) {
     throw unauthorized("Incorrect password.");
   }
@@ -255,7 +308,7 @@ export async function deleteUser(
     }
   }
   const deletedAt = new Date();
-  await usersRepo.setDeleted(targetId, deletedAt, adminId);
+  await usersRepo.setDeleted(targetId, deletedAt, actorId);
   await sessionsRepo.removeAllForUser(targetId);
   // Tell the account what happened and until when restoration is possible.
   await notifyModeratorDeleted(target.email, target.username, deletionExpiresAt(deletedAt).toISOString());
@@ -341,14 +394,16 @@ export async function purgeExpiredDeletedUsers(now = new Date(), limit = 100): P
   return expired.length;
 }
 
-// ── Email verification (admin) ───────────────────────────────────────────
+// ── Email verification (moderator) ─────────────────────────────────────────
 
 // Manually marks an account's email verified — the escape hatch for when
 // instance mail was misconfigured and the user can never receive the link.
 // Idempotent; the account is notified it can sign in.
-export async function verifyEmail(targetId: string): Promise<void> {
-  const target = await usersRepo.findById(targetId);
+export async function verifyEmail(actorId: string, targetId: string): Promise<void> {
+  const [actor, target] = await Promise.all([usersRepo.findById(actorId), usersRepo.findById(targetId)]);
   if (!target || target.deletedAt) throw notFound("Account not found.");
+  if (!actor) throw forbidden("Moderator access required.");
+  assertCanModerateAccount(actor, target);
   if (target.emailVerified) return;
   await usersRepo.update(targetId, { emailVerified: true });
   await notifyVerified(target.email, target.username);
@@ -357,9 +412,11 @@ export async function verifyEmail(targetId: string): Promise<void> {
 // Resends the verification email to an unverified account. Goes through
 // Better Auth's own endpoint so token format and expiry stay in one place;
 // already-verified is a caller error, not a silent no-op.
-export async function resendVerification(targetId: string): Promise<void> {
-  const target = await usersRepo.findById(targetId);
+export async function resendVerification(actorId: string, targetId: string): Promise<void> {
+  const [actor, target] = await Promise.all([usersRepo.findById(actorId), usersRepo.findById(targetId)]);
   if (!target || target.deletedAt) throw notFound("Account not found.");
+  if (!actor) throw forbidden("Moderator access required.");
+  assertCanModerateAccount(actor, target);
   if (target.emailVerified) throw badRequest("This account's email is already verified.");
   try {
     const { auth } = await import("@/auth/auth.ts");
@@ -375,16 +432,20 @@ export async function resendVerification(targetId: string): Promise<void> {
 // (services/users.ts) so type/size validation, quota and federation stay in
 // one place — the typical use is clearing an abusive photo, with an optional
 // neutral replacement.
-export async function setUserAvatar(targetId: string, bytes: Uint8Array, contentType: string) {
-  const target = await usersRepo.findById(targetId);
+export async function setUserAvatar(actorId: string, targetId: string, bytes: Uint8Array, contentType: string) {
+  const [actor, target] = await Promise.all([usersRepo.findById(actorId), usersRepo.findById(targetId)]);
   if (!target || target.deletedAt) throw notFound("Account not found.");
+  if (!actor) throw forbidden("Moderator access required.");
+  assertCanModerateAccount(actor, target);
   return usersService.setAvatar(targetId, bytes, contentType);
 }
 
 // Clears another account's avatar so the profile falls back to initials.
-export async function removeUserAvatar(targetId: string) {
-  const target = await usersRepo.findById(targetId);
+export async function removeUserAvatar(actorId: string, targetId: string) {
+  const [actor, target] = await Promise.all([usersRepo.findById(actorId), usersRepo.findById(targetId)]);
   if (!target || target.deletedAt) throw notFound("Account not found.");
+  if (!actor) throw forbidden("Moderator access required.");
+  assertCanModerateAccount(actor, target);
   return usersService.removeAvatar(targetId);
 }
 
@@ -406,9 +467,11 @@ export type AdminUpdateUserInput = {
 // address gets a security notice. Best-effort mail never fails the edit
 // itself, except the verification send, which the admin can retry via the
 // existing resend endpoint.
-export async function updateUserDetails(targetId: string, input: AdminUpdateUserInput) {
-  const target = await usersRepo.findById(targetId);
+export async function updateUserDetails(actorId: string, targetId: string, input: AdminUpdateUserInput) {
+  const [actor, target] = await Promise.all([usersRepo.findById(actorId), usersRepo.findById(targetId)]);
   if (!target || target.deletedAt) throw notFound("Account not found.");
+  if (!actor) throw forbidden("Moderator access required.");
+  assertCanModerateAccount(actor, target);
 
   const { email, ...profileInput } = input;
   if (Object.keys(profileInput).length > 0) {
@@ -451,7 +514,7 @@ export async function updateUserDetails(targetId: string, input: AdminUpdateUser
   return updated;
 }
 
-// ── Posts (admin) ──────────────────────────────────────────────────────────
+// ── Posts (moderator) ──────────────────────────────────────────────────────
 
 // Removes any local post (a moderator override — the author check in
 // services/posts.ts is bypassed here). Remote/cached posts cannot be deleted.

@@ -159,6 +159,7 @@ describe("admin user filters", () => {
 });
 
 describe("admin email verification control", () => {
+  let adminId: string;
   let unverifiedId: string;
 
   beforeAll(async () => {
@@ -170,11 +171,12 @@ describe("admin email verification control", () => {
       });
     }
 
+    adminId = (await mkUser("root", { isAdmin: true })).id;
     unverifiedId = (await mkUser("pending")).id;
   });
 
   test("manual verify marks the address and notifies the account", async () => {
-    await moderation.verifyEmail(unverifiedId);
+    await moderation.verifyEmail(adminId, unverifiedId);
     await flush();
 
     expect((await usersRepo.findById(unverifiedId))?.emailVerified).toBe(true);
@@ -184,7 +186,7 @@ describe("admin email verification control", () => {
   });
 
   test("manual verify is idempotent (no second notice)", async () => {
-    await moderation.verifyEmail(unverifiedId);
+    await moderation.verifyEmail(adminId, unverifiedId);
     await flush();
 
     expect(notices("send_account_verified")).toHaveLength(1);
@@ -192,7 +194,7 @@ describe("admin email verification control", () => {
 
   test("resend delivers a fresh verification email", async () => {
     const freshId = (await mkUser("fresh")).id;
-    await moderation.resendVerification(freshId);
+    await moderation.resendVerification(adminId, freshId);
     await flush();
 
     const [notice] = notices("send_email_verification");
@@ -200,23 +202,23 @@ describe("admin email verification control", () => {
   });
 
   test("resend refuses an already-verified address", async () => {
-    const err = await captureRejection(moderation.resendVerification(unverifiedId));
+    const err = await captureRejection(moderation.resendVerification(adminId, unverifiedId));
     expect(err).toBeInstanceOf(HttpError);
     expect((err as HttpError).status).toBe(400);
   });
 
   test("verify and resend on a missing account 404", async () => {
     const missing = "00000000-0000-0000-0000-000000000000";
-    const verifyErr = await captureRejection(moderation.verifyEmail(missing));
+    const verifyErr = await captureRejection(moderation.verifyEmail(adminId, missing));
     expect((verifyErr as HttpError).status).toBe(404);
-    const resendErr = await captureRejection(moderation.resendVerification(missing));
+    const resendErr = await captureRejection(moderation.resendVerification(adminId, missing));
     expect((resendErr as HttpError).status).toBe(404);
   });
 
   test("verify on a deleted account 404s", async () => {
     const goneId = (await mkUser("gone2")).id;
     await usersRepo.setDeleted(goneId, new Date(), unverifiedId);
-    const err = await captureRejection(moderation.verifyEmail(goneId));
+    const err = await captureRejection(moderation.verifyEmail(adminId, goneId));
     expect(err).toBeInstanceOf(HttpError);
     expect((err as HttpError).status).toBe(404);
   });

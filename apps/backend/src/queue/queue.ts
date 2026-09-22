@@ -35,6 +35,8 @@ export type JobName =
   | "send_account_restored"
   | "send_admin_granted"
   | "send_admin_revoked"
+  | "send_moderator_granted"
+  | "send_moderator_revoked"
   | "send_account_verified"
   | "send_account_email_changed";
 
@@ -67,6 +69,8 @@ export type JobPayloads = {
   send_account_restored: { to: string; username: string; appName: string; origin: string };
   send_admin_granted: { to: string; username: string; appName: string; origin: string };
   send_admin_revoked: { to: string; username: string; appName: string; origin: string };
+  send_moderator_granted: { to: string; username: string; appName: string; origin: string };
+  send_moderator_revoked: { to: string; username: string; appName: string; origin: string };
   send_account_verified: { to: string; username: string; appName: string; origin: string };
   send_account_email_changed: { to: string; username: string; appName: string; origin: string; newEmail: string };
 };

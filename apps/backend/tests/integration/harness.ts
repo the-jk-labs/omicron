@@ -56,6 +56,7 @@ export type UserOpts = {
   isPrivate?: boolean;
   suspended?: boolean;
   isAdmin?: boolean;
+  isModerator?: boolean;
   deleted?: boolean;
   // Explicit creation instant. Lets a test pin row order without racing the
   // clock — rows minted in the same millisecond otherwise share a timestamp
@@ -73,6 +74,7 @@ export async function mkUser(username: string, opts: UserOpts = {}) {
       displayName: username,
       isPrivate: opts.isPrivate ?? false,
       isAdmin: opts.isAdmin ?? false,
+      isModerator: opts.isModerator ?? false,
       suspendedAt: opts.suspended ? new Date() : null,
       deletedAt: opts.deleted ? new Date() : null,
       ...(opts.createdAt ? { createdAt: opts.createdAt, updatedAt: opts.createdAt } : {}),

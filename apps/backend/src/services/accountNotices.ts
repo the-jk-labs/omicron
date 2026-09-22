@@ -87,6 +87,24 @@ export async function notifyAdminRevoked(email: string, username: string): Promi
   }
 }
 
+/** Moderator-granted notice after an admin promotes the account. */
+export async function notifyModeratorGranted(email: string, username: string): Promise<void> {
+  try {
+    queue.add("send_moderator_granted", { to: email, username, ...(await instanceVars()) });
+  } catch (err) {
+    console.error("accountNotices: failed to queue moderator-granted notice (continuing):", err);
+  }
+}
+
+/** Moderator-revoked notice after an admin demotes the account. */
+export async function notifyModeratorRevoked(email: string, username: string): Promise<void> {
+  try {
+    queue.add("send_moderator_revoked", { to: email, username, ...(await instanceVars()) });
+  } catch (err) {
+    console.error("accountNotices: failed to queue moderator-revoked notice (continuing):", err);
+  }
+}
+
 /** Verified notice after an admin manually confirms the address. */
 export async function notifyVerified(email: string, username: string): Promise<void> {
   try {

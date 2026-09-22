@@ -18,6 +18,7 @@ const user = {
   customSectionHtml: "<h1>Secret plans</h1>",
   avatarUrl: null,
   isAdmin: false,
+  isModerator: false,
   isPrivate: true,
   emailVerified: false,
   suspendedAt: null,

@@ -88,9 +88,10 @@ export const auth = betterAuth({
   },
   user: {
     fields: { name: "displayName", image: "avatarUrl" },
-    // Declared so the create hook can persist it.
+    // Declared so the create hook can persist them.
     additionalFields: {
       isAdmin: { type: "boolean", required: false, input: false, defaultValue: false },
+      isModerator: { type: "boolean", required: false, input: false, defaultValue: false },
     },
     deleteUser: {
       enabled: true,

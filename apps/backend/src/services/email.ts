@@ -505,6 +505,56 @@ export function sendAdminRevoked(to: string, vars: AccountNoticeVars): Promise<v
   return sendMail({ to, ...accountAdminRevokedEmail(vars) });
 }
 
+/** Moderator-granted notice: the account can now work the moderation queue. */
+export function accountModeratorGrantedEmail(vars: AccountNoticeVars): Omit<EmailMessage, "to"> {
+  return {
+    subject: `You are now a moderator on ${vars.appName}`,
+    text: [
+      `Your account (@${vars.username}) on ${vars.appName} has been given the moderator role.`,
+      "",
+      "You can now open /admin: work the reports queue and moderate accounts and posts. Instance settings stay admin-only. With that comes access to other people's private data (login emails) — treat it accordingly.",
+      "",
+      `— The ${vars.appName} team`,
+      `${vars.origin}/admin`,
+    ].join("\n"),
+    html: layout(
+      "You are now a moderator",
+      `Your account (@${vars.username}) on ${vars.appName} has been given the moderator role. You can now open the admin panel to work the reports queue and moderate accounts and posts — instance settings stay admin-only. With that comes access to other people's private data (login emails) — treat it accordingly.`,
+      { label: "Open the admin panel", url: `${vars.origin}/admin` },
+    ),
+  };
+}
+
+/** Moderator-granted notice. Queued off the request path (see queue/handlers.ts). */
+export function sendModeratorGranted(to: string, vars: AccountNoticeVars): Promise<void> {
+  return sendMail({ to, ...accountModeratorGrantedEmail(vars) });
+}
+
+/** Moderator-revoked notice: back to a regular account, everything else unchanged. */
+export function accountModeratorRevokedEmail(vars: AccountNoticeVars): Omit<EmailMessage, "to"> {
+  return {
+    subject: `Your ${vars.appName} moderator role has been removed`,
+    text: [
+      `Your account (@${vars.username}) on ${vars.appName} is no longer a moderator.`,
+      "",
+      "Everything else is unchanged — your profile, posts and lists are exactly as they were, and you can sign in as usual.",
+      "",
+      `— The ${vars.appName} team`,
+      vars.origin,
+    ].join("\n"),
+    html: layout(
+      "Your moderator role has been removed",
+      `Your account (@${vars.username}) on ${vars.appName} is no longer a moderator. Everything else is unchanged — your profile, posts and lists are exactly as they were, and you can sign in as usual.`,
+      { label: `Open ${vars.appName}`, url: vars.origin },
+    ),
+  };
+}
+
+/** Moderator-revoked notice. Queued off the request path (see queue/handlers.ts). */
+export function sendModeratorRevoked(to: string, vars: AccountNoticeVars): Promise<void> {
+  return sendMail({ to, ...accountModeratorRevokedEmail(vars) });
+}
+
 /** Verified notice: an admin confirmed the address, so sign-in is unblocked. */
 export function accountVerifiedEmail(vars: AccountNoticeVars): Omit<EmailMessage, "to"> {
   return {

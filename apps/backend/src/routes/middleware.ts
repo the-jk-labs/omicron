@@ -7,7 +7,7 @@ import type { AppEnv } from "@/routes/types.ts";
 
 // Resolves the Better Auth session → full user row on every request (null if
 // none). Loading the row (not just the session's user) keeps the whole `User`
-// shape — isAdmin, isPrivate, suspendedAt, deletedAt, actorKeyPair — available downstream.
+// shape — isAdmin, isModerator, isPrivate, suspendedAt, deletedAt, actorKeyPair — available downstream.
 export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   const user = session ? await usersRepo.findById(session.user.id) : null;
@@ -24,9 +24,19 @@ export function requireUser(c: { get: (k: "user") => AppEnv["Variables"]["user"]
   return user;
 }
 
-// Guard for instance-administration routes (moderators). Returns the admin user.
+// Guard for moderation routes (users / posts / reports operations). Admins
+// implicitly hold every moderator power. Returns the moderator user.
+export function requireModerator(c: { get: (k: "user") => AppEnv["Variables"]["user"] }) {
+  const user = requireUser(c);
+  if (!user.isAdmin && !user.isModerator) throw forbidden("Moderator access required.");
+  return user;
+}
+
+// Guard for instance-administration routes (settings, email, federation,
+// domains, SEO, media, role grants). Moderators are refused here. Returns the
+// admin user.
 export function requireAdmin(c: { get: (k: "user") => AppEnv["Variables"]["user"] }) {
   const user = requireUser(c);
-  if (!user.isAdmin) throw forbidden("Moderator access required.");
+  if (!user.isAdmin) throw forbidden("Admin access required.");
   return user;
 }

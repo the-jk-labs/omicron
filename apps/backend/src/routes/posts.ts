@@ -174,10 +174,10 @@ postRoutes.patch("/:id", jsonBody(updatePostSchema), async (c) => {
   return c.json({ post: barePost(post) });
 });
 
-// Delete a post (auth required; author or admin, local posts only).
+// Delete a post (auth required; author or moderator, local posts only).
 postRoutes.delete("/:id", async (c) => {
   const user = requireUser(c);
-  await postsService.deletePost(user.id, user.isAdmin, c.req.param("id"));
+  await postsService.deletePost(user.id, user.isAdmin || user.isModerator, c.req.param("id"));
   return c.json({ ok: true });
 });
 
@@ -250,10 +250,10 @@ postRoutes.patch("/:id/comments/:commentId", jsonBody(z.object({ content: z.stri
   return c.json({ comment: { id: comment.id, content: comment.content } });
 });
 
-// Delete a comment (auth required; author or admin only).
+// Delete a comment (auth required; author or moderator only).
 postRoutes.delete("/:id/comments/:commentId", async (c) => {
   const user = requireUser(c);
-  await commentsService.remove(user.id, user.isAdmin, c.req.param("commentId"));
+  await commentsService.remove(user.id, user.isAdmin || user.isModerator, c.req.param("commentId"));
   return c.json({ ok: true });
 });
 

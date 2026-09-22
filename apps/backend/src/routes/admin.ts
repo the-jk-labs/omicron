@@ -11,7 +11,7 @@ import {
 import { badRequest } from "@/lib/http.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { jsonBody } from "@/lib/validate.ts";
-import { requireAdmin } from "@/routes/middleware.ts";
+import { requireAdmin, requireModerator } from "@/routes/middleware.ts";
 import { adminUserDetailView, adminUserView, deletedUserView } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import * as anubis from "@/services/anubisProtection.ts";
@@ -30,7 +30,7 @@ import * as unsplash from "@/services/unsplash.ts";
 
 export const adminRoutes = new Hono<AppEnv>();
 
-// Instance settings a moderator can read/change at runtime (moderator-only).
+// Instance settings an admin can read/change at runtime (admin-only).
 adminRoutes.get("/settings", async (c) => {
   requireAdmin(c);
   return c.json({ onInstanceViews: await settings.onInstanceViewsEnabled() });
@@ -88,7 +88,7 @@ adminRoutes.put("/security/anubis", jsonBody(securitySchema, "Expected { anubisP
 
 // Search-engine indexing toggle + per-engine site-verification tokens. The
 // public /api/seo endpoint (and the app's robots.txt / sitemap.xml / <head>)
-// read the same settings; this is the moderator-only write side.
+// read the same settings; this is the admin-only write side.
 adminRoutes.get("/seo", async (c) => {
   requireAdmin(c);
   return c.json(await seo.getSeoSettings());
@@ -314,7 +314,7 @@ function flag(v: string | undefined): boolean | undefined {
 // back to newest so a stale bookmark still lists. `total` is the unfiltered
 // local-account count; `filteredTotal` matches the current filter.
 adminRoutes.get("/users", async (c) => {
-  requireAdmin(c);
+  requireModerator(c);
   const q = c.req.query("q") ?? "";
   const filter = {
     suspended: flag(c.req.query("suspended")),
@@ -338,8 +338,8 @@ const suspendSchema = z.object({ suspend: z.boolean() });
 
 // Suspend or reinstate a local account.
 adminRoutes.post("/users/:id/suspend", jsonBody(suspendSchema, "Expected { suspend: boolean }."), async (c) => {
-  const admin = requireAdmin(c);
-  await moderation.setSuspended(admin.id, c.req.param("id"), c.req.valid("json").suspend);
+  const viewer = requireModerator(c);
+  await moderation.setSuspended(viewer.id, c.req.param("id"), c.req.valid("json").suspend);
   return c.json({ ok: true });
 });
 
@@ -349,18 +349,18 @@ const deleteUserSchema = z.object({
 });
 
 // Delete a local account (soft-delete with a retention window). GitHub-style:
-// the admin must type the account's exact username and re-enter their own
+// the moderator must type the account's exact username and re-enter their own
 // password — a stolen session alone cannot wipe accounts.
 adminRoutes.post("/users/:id/delete", jsonBody(deleteUserSchema), async (c) => {
-  const admin = requireAdmin(c);
+  const viewer = requireModerator(c);
   const { username, password } = c.req.valid("json");
-  await moderation.deleteUser(admin.id, c.req.param("id"), { username, password });
+  await moderation.deleteUser(viewer.id, c.req.param("id"), { username, password });
   return c.json({ ok: true });
 });
 
 // Restore a deleted account within its retention window.
 adminRoutes.post("/users/:id/restore", async (c) => {
-  requireAdmin(c);
+  requireModerator(c);
   await moderation.restoreUser(c.req.param("id"));
   return c.json({ ok: true });
 });
@@ -371,7 +371,7 @@ adminRoutes.post("/users/:id/restore", async (c) => {
 // `?limit=` sizes the page (1–100, default 50). `total` counts every deleted
 // account; `filteredTotal` matches the current search.
 adminRoutes.get("/users/deleted", async (c) => {
-  requireAdmin(c);
+  requireModerator(c);
   const q = c.req.query("q") ?? "";
   const cursor = decodeCursor(c.req.query("cursor"));
   const limitRaw = Number.parseInt(c.req.query("limit") ?? "", 10);
@@ -387,7 +387,7 @@ adminRoutes.get("/users/deleted", async (c) => {
 // Permanently erase a deleted account before its window ends (frees the handle
 // immediately; cannot be undone).
 adminRoutes.delete("/users/deleted/:id", async (c) => {
-  requireAdmin(c);
+  requireModerator(c);
   await moderation.purgeDeletedUser(c.req.param("id"));
   return c.json({ ok: true });
 });
@@ -407,10 +407,25 @@ adminRoutes.post("/users/:id/role", jsonBody(roleSchema), async (c) => {
   return c.json({ ok: true });
 });
 
+const moderatorRoleSchema = z.object({
+  makeModerator: z.boolean(),
+  password: z.string().min(1, "Your password is required."),
+});
+
+// Grant or revoke the moderator role. Like the admin role: the acting admin's
+// own password is re-verified, never self, and the affected account is
+// notified either way. Admin-only — moderators cannot mint moderators.
+adminRoutes.post("/users/:id/moderator-role", jsonBody(moderatorRoleSchema), async (c) => {
+  const admin = requireAdmin(c);
+  const { makeModerator, password } = c.req.valid("json");
+  await moderation.setModeratorRole(admin.id, c.req.param("id"), { makeModerator, password });
+  return c.json({ ok: true });
+});
+
 // Full detail for one account: the table row plus counts, latest posts and
 // reports filed against the account or its posts.
 adminRoutes.get("/users/:id", async (c) => {
-  requireAdmin(c);
+  requireModerator(c);
   return c.json(adminUserDetailView(await moderation.getUserDetail(c.req.param("id"))));
 });
 
@@ -438,8 +453,8 @@ const adminUpdateUserSchema = z.object({
 });
 
 adminRoutes.patch("/users/:id", jsonBody(adminUpdateUserSchema), async (c) => {
-  requireAdmin(c);
-  const user = await moderation.updateUserDetails(c.req.param("id"), c.req.valid("json"));
+  const viewer = requireModerator(c);
+  const user = await moderation.updateUserDetails(viewer.id, c.req.param("id"), c.req.valid("json"));
   return c.json({ user: adminUserView(user) });
 });
 
@@ -447,32 +462,32 @@ adminRoutes.patch("/users/:id", jsonBody(adminUpdateUserSchema), async (c) => {
 // the format). Same validation, quota and federation as the account's own
 // upload — the moderator override for an abusive photo.
 adminRoutes.post("/users/:id/avatar", async (c) => {
-  requireAdmin(c);
+  const viewer = requireModerator(c);
   const contentType = (c.req.header("content-type") ?? "").split(";")[0].trim();
   const bytes = new Uint8Array(await c.req.arrayBuffer());
-  const user = await moderation.setUserAvatar(c.req.param("id"), bytes, contentType);
+  const user = await moderation.setUserAvatar(viewer.id, c.req.param("id"), bytes, contentType);
   return c.json({ user: adminUserView(user) });
 });
 
 // Clear another account's avatar so the profile falls back to initials.
 adminRoutes.delete("/users/:id/avatar", async (c) => {
-  requireAdmin(c);
-  const user = await moderation.removeUserAvatar(c.req.param("id"));
+  const viewer = requireModerator(c);
+  const user = await moderation.removeUserAvatar(viewer.id, c.req.param("id"));
   return c.json({ user: adminUserView(user) });
 });
 
 // Resend the verification email to an unverified account.
 adminRoutes.post("/users/:id/verification-email", async (c) => {
-  requireAdmin(c);
-  await moderation.resendVerification(c.req.param("id"));
+  const viewer = requireModerator(c);
+  await moderation.resendVerification(viewer.id, c.req.param("id"));
   return c.json({ ok: true });
 });
 
 // Manually mark an account's email verified — the escape hatch for when
 // instance mail was misconfigured and the link can never arrive.
 adminRoutes.post("/users/:id/verify", async (c) => {
-  requireAdmin(c);
-  await moderation.verifyEmail(c.req.param("id"));
+  const viewer = requireModerator(c);
+  await moderation.verifyEmail(viewer.id, c.req.param("id"));
   return c.json({ ok: true });
 });
 
@@ -480,7 +495,7 @@ adminRoutes.post("/users/:id/verify", async (c) => {
 
 // Remove any local post (moderator override of the author-only delete).
 adminRoutes.delete("/posts/:id", async (c) => {
-  requireAdmin(c);
+  requireModerator(c);
   await moderation.removePost(c.req.param("id"));
   return c.json({ ok: true });
 });
@@ -489,7 +504,7 @@ adminRoutes.delete("/posts/:id", async (c) => {
 
 // The queue. `?status=open|resolved` filters; omit for everything.
 adminRoutes.get("/reports", async (c) => {
-  requireAdmin(c);
+  requireModerator(c);
   const status = c.req.query("status");
   const filter = status === "open" || status === "resolved" ? status : undefined;
   const [reports, openCount] = await Promise.all([moderation.listReports(filter), moderation.openReportCount()]);
@@ -500,9 +515,9 @@ const resolveSchema = z.object({ resolution: z.string().optional() });
 
 // Mark a report resolved with an optional note.
 adminRoutes.post("/reports/:id/resolve", jsonBody(resolveSchema.catch({})), async (c) => {
-  const admin = requireAdmin(c);
+  const viewer = requireModerator(c);
   const resolution = c.req.valid("json").resolution ?? "";
-  await moderation.resolveReport(admin.id, c.req.param("id"), resolution);
+  await moderation.resolveReport(viewer.id, c.req.param("id"), resolution);
   return c.json({ ok: true });
 });
 

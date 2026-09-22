@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
-// Admin roles and the user detail endpoint.
+// Admin and moderator roles, plus the user detail endpoint.
 //
 // Covers promotion / demotion end to end against real Postgres: the password
 // re-verification, the guards (self, wrong password, deleted target), the
 // last-admin count the demote guardrail reads, the granted/revoked notices,
-// and the detail payload (counts, latest posts, reports against the account
+// the moderator boundary (moderators act on regular accounts only), and the
+// detail payload (counts, latest posts, reports against the account
 // and its posts).
 import bcrypt from "bcryptjs";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
@@ -127,6 +128,142 @@ describe("admin roles", () => {
     await usersRepo.setDeleted(userId, new Date(), adminId);
     const err = await captureRejection(
       moderation.setAdminRole(adminId, userId, { makeAdmin: true, password: ADMIN_PASSWORD }),
+    );
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(404);
+  });
+});
+
+describe("moderator roles", () => {
+  let adminId: string;
+  let fellowAdminId: string;
+  let moderatorId: string;
+  let fellowId: string;
+  let memberId: string;
+  let subjectId: string;
+
+  beforeAll(async () => {
+    await resetDb();
+
+    for (const job of ["send_moderator_granted", "send_moderator_revoked"] as const) {
+      registerHandler(job, async (payload) => {
+        captured.set(job, [...(captured.get(job) ?? []), payload]);
+      });
+    }
+
+    adminId = (await mkUser("root", { isAdmin: true })).id;
+    await mkCredential(adminId, ADMIN_PASSWORD);
+    fellowAdminId = (await mkUser("root2", { isAdmin: true })).id;
+    moderatorId = (await mkUser("mod", { isModerator: true })).id;
+    fellowId = (await mkUser("fellow", { isModerator: true })).id;
+    memberId = (await mkUser("member")).id;
+    subjectId = (await mkUser("subject")).id;
+  });
+
+  test("a non-admin cannot grant the moderator role", async () => {
+    const err = await captureRejection(
+      moderation.setModeratorRole(memberId, subjectId, { makeModerator: true, password: "whatever-12-chars" }),
+    );
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(403);
+    expect((await usersRepo.findById(subjectId))?.isModerator).toBe(false);
+  });
+
+  test("wrong password is rejected and the role is unchanged", async () => {
+    const err = await captureRejection(
+      moderation.setModeratorRole(adminId, memberId, { makeModerator: true, password: "nope-nope-nope-nope" }),
+    );
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(401);
+    expect((await usersRepo.findById(memberId))?.isModerator).toBe(false);
+  });
+
+  test("an admin cannot change their own moderator role", async () => {
+    const err = await captureRejection(
+      moderation.setModeratorRole(adminId, adminId, { makeModerator: true, password: ADMIN_PASSWORD }),
+    );
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(403);
+  });
+
+  test("an admin needs no moderator flag", async () => {
+    const err = await captureRejection(
+      moderation.setModeratorRole(adminId, fellowAdminId, { makeModerator: true, password: ADMIN_PASSWORD }),
+    );
+    expect(err).toBeInstanceOf(HttpError);
+    expect((err as HttpError).status).toBe(403);
+    expect((await usersRepo.findById(fellowAdminId))?.isModerator).toBe(false);
+  });
+
+  test("grant notifies the account, re-grant is a no-op, revoke notifies", async () => {
+    await moderation.setModeratorRole(adminId, memberId, { makeModerator: true, password: ADMIN_PASSWORD });
+    await flush();
+
+    expect((await usersRepo.findById(memberId))?.isModerator).toBe(true);
+    const [granted] = notices("send_moderator_granted");
+    expect(granted?.to).toBe("member@example.test");
+    expect(granted?.username).toBe("member");
+
+    await moderation.setModeratorRole(adminId, memberId, { makeModerator: true, password: ADMIN_PASSWORD });
+    await flush();
+    expect(notices("send_moderator_granted")).toHaveLength(1);
+
+    await moderation.setModeratorRole(adminId, memberId, { makeModerator: false, password: ADMIN_PASSWORD });
+    await flush();
+
+    expect((await usersRepo.findById(memberId))?.isModerator).toBe(false);
+    const [revoked] = notices("send_moderator_revoked");
+    expect(revoked?.to).toBe("member@example.test");
+  });
+
+  test("a moderator suspends and reinstates a regular account", async () => {
+    await moderation.setSuspended(moderatorId, subjectId, true);
+    expect((await usersRepo.findById(subjectId))?.suspendedAt).not.toBeNull();
+
+    await moderation.setSuspended(moderatorId, subjectId, false);
+    expect((await usersRepo.findById(subjectId))?.suspendedAt).toBeNull();
+  });
+
+  test("a moderator cannot suspend an admin or another moderator", async () => {
+    const adminErr = await captureRejection(moderation.setSuspended(moderatorId, adminId, true));
+    expect((adminErr as HttpError).status).toBe(403);
+    expect((await usersRepo.findById(adminId))?.suspendedAt).toBeNull();
+
+    const fellowErr = await captureRejection(moderation.setSuspended(moderatorId, fellowId, true));
+    expect((fellowErr as HttpError).status).toBe(403);
+    expect((await usersRepo.findById(fellowId))?.suspendedAt).toBeNull();
+  });
+
+  test("an admin can suspend a moderator", async () => {
+    await moderation.setSuspended(adminId, fellowId, true);
+    expect((await usersRepo.findById(fellowId))?.suspendedAt).not.toBeNull();
+    await moderation.setSuspended(adminId, fellowId, false);
+    expect((await usersRepo.findById(fellowId))?.suspendedAt).toBeNull();
+  });
+
+  test("a moderator cannot delete or edit an admin's account", async () => {
+    const deleteErr = await captureRejection(
+      moderation.deleteUser(moderatorId, adminId, { username: "root", password: "whatever-12-chars" }),
+    );
+    expect((deleteErr as HttpError).status).toBe(403);
+    expect((await usersRepo.findById(adminId))?.deletedAt).toBeNull();
+
+    const editErr = await captureRejection(
+      moderation.updateUserDetails(moderatorId, adminId, { displayName: "Hacked" }),
+    );
+    expect((editErr as HttpError).status).toBe(403);
+    expect((await usersRepo.findById(adminId))?.displayName).toBe("root");
+  });
+
+  test("a moderator edits a regular account", async () => {
+    await moderation.updateUserDetails(moderatorId, subjectId, { displayName: "Edited" });
+    expect((await usersRepo.findById(subjectId))?.displayName).toBe("Edited");
+  });
+
+  test("moderator grant on a deleted account 404s", async () => {
+    await usersRepo.setDeleted(subjectId, new Date(), adminId);
+    const err = await captureRejection(
+      moderation.setModeratorRole(adminId, subjectId, { makeModerator: true, password: ADMIN_PASSWORD }),
     );
     expect(err).toBeInstanceOf(HttpError);
     expect((err as HttpError).status).toBe(404);
