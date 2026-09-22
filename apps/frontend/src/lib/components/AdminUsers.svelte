@@ -456,7 +456,6 @@
   // no resolution note. The full flow (note + context of the whole queue)
   // stays in Admin → Reports.
   let resolveBusyId = $state<string | null>(null);
-
   async function resolveReportInline(u: AdminUser, reportId: string) {
     const { ok } = await confirm({
       title: "Resolve this report?",
@@ -481,6 +480,41 @@
       setDetailError(u.id, e instanceof ApiError ? e.message : "Resolve failed.");
     } finally {
       resolveBusyId = null;
+    }
+  }
+
+  // Removing one of the account's posts from its detail. Delete only — post
+  // content is the author's to edit. The cached detail drops the post and its
+  // count bucket so the panel stays truthful without a reload.
+  let removePostBusyId = $state<string | null>(null);
+
+  async function removeUserPost(u: AdminUser, postId: string) {
+    const { ok, notify } = await confirm({
+      title: "Remove this post?",
+      description: `It is permanently removed from @${u.username}'s account everywhere. This can't be undone.`,
+      confirmText: "Remove",
+      destructive: true,
+      notify: { label: `Notify @${u.username} by email.` },
+    });
+    if (!ok) return;
+    removePostBusyId = postId;
+    clearDetailMsg(u.id);
+    try {
+      await endpoints().adminRemovePost(postId, notify);
+      const d = details[u.id];
+      if (d) {
+        const removed = d.recentPosts.find((p) => p.id === postId);
+        const counts = { ...d.postCounts };
+        if (removed?.status === "published") counts.published = Math.max(0, counts.published - 1);
+        else if (removed?.status === "scheduled") counts.scheduled = Math.max(0, counts.scheduled - 1);
+        else counts.draft = Math.max(0, counts.draft - 1);
+        details[u.id] = { ...d, recentPosts: d.recentPosts.filter((p) => p.id !== postId), postCounts: counts };
+      }
+      setDetailNotice(u.id, "Post removed.");
+    } catch (e) {
+      setDetailError(u.id, e instanceof ApiError ? e.message : "Remove failed.");
+    } finally {
+      removePostBusyId = null;
     }
   }
 
@@ -1073,6 +1107,19 @@
                         <span class="shrink-0 text-xs text-muted-foreground">
                           {p.status} · <Time iso={p.createdAt} kind="date" />
                         </span>
+                        {#if canModerateRow(u)}
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            disabled={removePostBusyId === p.id}
+                            onclick={() => removeUserPost(u, p.id)}
+                            aria-label={`Remove “${p.title ?? "Untitled"}”`}
+                            class="ml-auto shrink-0 text-muted-foreground hover:text-destructive"
+                          >
+                            <Icon name="trash" size={13} />
+                            {removePostBusyId === p.id ? "Removing…" : "Remove"}
+                          </Button>
+                        {/if}
                       </li>
                     {/each}
                   </ul>
