@@ -1806,8 +1806,8 @@ packages:
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
 
-  undici@6.28.0:
-    resolution: {integrity: sha512-LIY910g9TI13YS95lrMFrs8Rm/u/irgHeTWoKCoteeJ04CUJ92eEfj0rVn+7VKMPBpUPiUoBKfhNyLI23EE/KA==}
+  undici@6.29.0:
+    resolution: {integrity: sha512-R+RODBqp6i2pPflGdq+xIOUkl+RNfGgHwoinecKu/JCuf2uO06cOKoDbI2P7Dn6KcswdKwrczbU6IYJ6K8X+wg==}
     engines: {node: '>=18.17'}
 
   urlpattern-polyfill@10.1.0:
@@ -1981,7 +1981,7 @@ snapshots:
   '@digitalbazaar/http-client@4.4.0':
     dependencies:
       ky: 1.14.3
-      undici: 6.28.0
+      undici: 6.29.0
 
   '@drizzle-team/brocli@0.10.2': {}
 
@@ -3137,7 +3137,7 @@ snapshots:
 
   undici-types@7.18.2: {}
 
-  undici@6.28.0: {}
+  undici@6.29.0: {}
 
   urlpattern-polyfill@10.1.0: {}
 
