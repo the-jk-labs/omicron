@@ -29,6 +29,8 @@
   let showPassword = $state(false);
   let showConfirm = $state(false);
   let error = $state("");
+  let takenEmail = $state("");
+  const emailTaken = $derived(!!takenEmail && email.trim().toLowerCase() === takenEmail);
   let busy = $state(false);
   let registeredEmail = $state("");
   let resending = $state(false);
@@ -60,6 +62,7 @@
     const v = email.trim().toLowerCase();
     if (!v) return "Enter your email address.";
     if (v.length > 254 || !EMAIL_RE.test(v)) return "Enter a valid email address.";
+    if (emailTaken) return "This email is already registered. Sign in or reset your password.";
     return "";
   });
   const passwordError = $derived.by(() => {
@@ -141,6 +144,7 @@
 
     error = "";
     busy = true;
+    const submittedEmail = email.trim().toLowerCase();
     try {
       // final pwned gate (in case the debounced check is still pending)
       const pwnedNow = await isPwnedPasswordClient(password);
@@ -151,12 +155,17 @@
         return;
       }
       const res = await authClient.signUp.email({
-        email,
+        email: submittedEmail,
         password,
         name: displayName.trim() || username,
         username,
       });
       if (res.error) {
+        if (res.error.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") {
+          takenEmail = submittedEmail;
+          document.getElementById("email")?.focus();
+          return;
+        }
         error = res.error.message ?? "Something went wrong.";
         return;
       }
@@ -165,7 +174,7 @@
       // "check your inbox", never signed in. Without it, keep the instant
       // sign-in.
       if (verificationRequired) {
-        registeredEmail = email.trim();
+        registeredEmail = submittedEmail;
         return;
       }
       await invalidateAll();
@@ -287,7 +296,14 @@
         class={field}
       />
       {#if emailError}
-        <p id="email-error" class={errClass} aria-live="polite">{emailError}</p>
+        <p id="email-error" class={errClass} role="alert">{emailError}</p>
+        {#if emailTaken}
+          <div class="flex items-center gap-2 text-sm">
+            <Button href="/login" variant="link" class="px-0">Sign in</Button>
+            <span class="text-muted-foreground">·</span>
+            <Button href="/forgot-password" variant="link" class="px-0">Reset password</Button>
+          </div>
+        {/if}
       {:else}
         <p id="email-hint" class="text-xs text-muted-foreground">
           {#if verificationRequired}We’ll send a confirmation link to this address. You’ll need it to sign in.{:else}We’ll

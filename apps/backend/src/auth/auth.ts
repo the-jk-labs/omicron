@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { haveIBeenPwned, username } from "better-auth/plugins";
 import { config } from "@/config.ts";
 import { db } from "@/db/client.ts";
@@ -40,6 +40,19 @@ export const auth = betterAuth({
   },
   rateLimit: {
     storage: "memory",
+  },
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/sign-up/email" || typeof ctx.body?.email !== "string") return;
+      // Better Auth otherwise returns a synthetic success for duplicate emails
+      // when verification is required, although no account or email is created.
+      if (await usersRepo.findByEmail(ctx.body.email.toLowerCase())) {
+        throw new APIError("UNPROCESSABLE_ENTITY", {
+          code: "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL",
+          message: "This email is already registered. Sign in or reset your password.",
+        });
+      }
+    }),
   },
   // Trust the real public origin (a wizard-set domain ≠ APP_DOMAIN) from forwarded headers.
   trustedOrigins: (request) => {
