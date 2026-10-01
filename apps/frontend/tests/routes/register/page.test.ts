@@ -4,7 +4,7 @@ import { page } from "$app/state";
 import type * as passwordHelpers from "$lib/password";
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import RegisterPage from "./+page.svelte";
+import RegisterPage from "../../../src/routes/register/+page.svelte";
 
 const { signUp } = vi.hoisted(() => ({ signUp: vi.fn() }));
 vi.mock("$lib/auth-client", () => ({

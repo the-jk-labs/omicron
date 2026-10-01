@@ -9,7 +9,7 @@
 // to assistive tech.
 import { render, screen } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
-import RecommendButton from "./RecommendButton.svelte";
+import RecommendButton from "$lib/components/RecommendButton.svelte";
 
 describe("RecommendButton", () => {
   it("includes the count in its accessible name and hover tooltip", () => {

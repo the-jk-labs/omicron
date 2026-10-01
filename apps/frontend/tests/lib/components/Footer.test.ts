@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render, screen } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
-import Footer from "./Footer.svelte";
+import Footer from "$lib/components/Footer.svelte";
 
 describe("Footer", () => {
   it("renders legal and AGPL-required links", () => {

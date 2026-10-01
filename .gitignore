@@ -10,6 +10,9 @@ apps/frontend/build/
 apps/frontend/.vite/
 *.log
 
+# Test coverage reports
+coverage/
+
 # Deno
 apps/backend/.deno/
 

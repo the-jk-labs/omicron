@@ -8,7 +8,7 @@
 // expose the name again, these tests fail.
 import { render, screen } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
-import Avatar from "./Avatar.svelte";
+import Avatar from "$lib/components/ui/Avatar.svelte";
 
 describe("Avatar", () => {
   it("renders the image with an empty alt attribute", () => {

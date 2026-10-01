@@ -20,11 +20,20 @@ export default defineConfig({
   plugins: [svelte(), svelteTesting()],
   test: {
     environment: "jsdom",
-    setupFiles: ["./src/test/setup.ts"],
+    setupFiles: ["./tests/setup.ts"],
     fsModuleCache: true,
-    include: ["src/**/*.test.ts"],
+    include: ["tests/**/*.test.ts"],
     // Tailwind/theme CSS is irrelevant to these assertions and slows the run.
     css: false,
+    restoreMocks: true,
+    unstubGlobals: true,
+    unstubEnvs: true,
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,svelte}"],
+      exclude: ["src/**/*.d.ts"],
+      reporter: ["text-summary", "json-summary", "html"],
+    },
     environmentOptions: {
       jsdom: { url: "http://localhost" },
     },
@@ -36,11 +45,11 @@ export default defineConfig({
       // SvelteKit's `$app/*` modules are virtual — there is no file to resolve
       // outside a kit build. Point them at the jsdom test doubles so components
       // that read `page`/`goto`/`browser` can be rendered directly.
-      "$app/state": fileURLToPath(new URL("./src/test/mocks/$app/state.ts", import.meta.url)),
-      "$app/navigation": fileURLToPath(new URL("./src/test/mocks/$app/navigation.ts", import.meta.url)),
-      "$app/stores": fileURLToPath(new URL("./src/test/mocks/$app/stores.ts", import.meta.url)),
-      "$app/environment": fileURLToPath(new URL("./src/test/mocks/$app/environment.ts", import.meta.url)),
-      "$env/dynamic/public": fileURLToPath(new URL("./src/test/mocks/$env/dynamic/public.ts", import.meta.url)),
+      "$app/state": fileURLToPath(new URL("./tests/mocks/$app/state.ts", import.meta.url)),
+      "$app/navigation": fileURLToPath(new URL("./tests/mocks/$app/navigation.ts", import.meta.url)),
+      "$app/stores": fileURLToPath(new URL("./tests/mocks/$app/stores.ts", import.meta.url)),
+      "$app/environment": fileURLToPath(new URL("./tests/mocks/$app/environment.ts", import.meta.url)),
+      "$env/dynamic/public": fileURLToPath(new URL("./tests/mocks/$env/dynamic/public.ts", import.meta.url)),
     },
   },
 });

@@ -8,8 +8,16 @@ export default defineConfig({
     alias: [{ find: /^@\//, replacement: fileURLToPath(new URL("./src/", import.meta.url)) }],
   },
   test: {
-    include: ["src/**/*_test.ts", "tests/**/*_test.ts"],
+    include: ["tests/**/*_test.ts"],
     fsModuleCache: true,
     slowTestThreshold: 2000,
+    restoreMocks: true,
+    unstubGlobals: true,
+    unstubEnvs: true,
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.ts"],
+      reporter: ["text-summary", "json-summary", "html"],
+    },
   },
 });
