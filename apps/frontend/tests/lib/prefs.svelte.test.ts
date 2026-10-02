@@ -67,11 +67,7 @@ describe("restoring saved preferences", () => {
     expect(localStorage.getItem("default-feed")).toBe("local");
   });
 
-  // BUG: every initial*() reads localStorage while the module is being imported,
-  // with no try/catch. A browser set to block site data throws a SecurityError
-  // from the `localStorage` getter, so importing prefs throws and the pages that
-  // use it fail to hydrate, instead of falling back to the defaults.
-  test.fails("BUG: a browser that blocks storage still gets the defaults", async () => {
+  test("a browser that blocks storage still gets the defaults", async () => {
     vi.spyOn(window, "localStorage", "get").mockImplementation(() => {
       throw new DOMException("The operation is insecure.", "SecurityError");
     });

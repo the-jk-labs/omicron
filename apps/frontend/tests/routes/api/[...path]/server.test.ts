@@ -97,12 +97,7 @@ test("the response keeps its status, body, every Set-Cookie and only allowlisted
   expect(res.headers.has("server")).toBe(false);
 });
 
-// BUG: the target is rebuilt from `params.path`, which SvelteKit has already
-// percent-decoded. An encoded "/" or "?" inside one path segment — a tag, a
-// slug, a remote handle — reaches the backend as a real separator, so the
-// request lands on a different route (or turns the rest into a query string).
-// The raw `url.pathname` keeps the encoding.
-test.fails("BUG: an encoded slash inside a path segment reaches the backend still encoded", async () => {
+test("an encoded slash inside a path segment reaches the backend still encoded", async () => {
   await GET(proxyEvent("https://blog.example/api/tags/a%2Fb/posts"));
   expect(seen!.url).toBe("http://backend.test:8000/api/tags/a%2Fb/posts");
 });

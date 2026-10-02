@@ -14,11 +14,7 @@ describe("passwordStrength", () => {
     expect(passwordStrength(pw)).toEqual({ score, label });
   });
 
-  // BUG: the meter scores character classes without regard to the minimum
-  // length, so "Ab1!" — four characters, rejected on submit — is labelled
-  // "Good". The meter and the requirement list beside it then disagree about
-  // the same password.
-  test.fails("BUG: a password under the minimum length is never rated above Weak", () => {
+  test("a password under the minimum length is never rated above Weak", () => {
     expect(passwordStrength("Ab1!").score).toBeLessThanOrEqual(1);
   });
 });

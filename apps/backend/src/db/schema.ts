@@ -334,6 +334,10 @@ export const follows = pgTable(
     uniqueIndex("follows_remote_followee_unique_idx")
       .on(t.followerId, t.remoteFolloweeId)
       .where(sql`${t.followerId} is not null and ${t.remoteFolloweeId} is not null`),
+    // Prevent duplicate inbound remote→local edges (a Follow resent with a new id).
+    uniqueIndex("follows_remote_follower_unique_idx")
+      .on(t.followeeId, t.remoteActor)
+      .where(sql`${t.remoteActor} is not null`),
     index("follows_follower_idx").on(t.followerId),
     index("follows_followee_idx").on(t.followeeId),
   ],

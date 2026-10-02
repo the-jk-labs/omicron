@@ -14,6 +14,8 @@ export function passwordStrength(pw: string): Strength {
   if (/[^A-Za-z0-9]/.test(pw)) score += 1;
   if (pw.length >= 16 && score < 4) score += 1;
   if (score > 4) score = 4;
+  // Below the minimum it is refused on submit, so it can't read as better than Weak.
+  if (pw.length < MIN_PASSWORD_LEN) score = Math.min(score, 1);
   const labels = ["", "Weak", "Fair", "Good", "Strong"] as const;
   // oxlint-disable-next-line no-unsafe-type-assertion
   return { score: score as Strength["score"], label: labels[score] ?? "" };

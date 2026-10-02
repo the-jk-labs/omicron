@@ -56,13 +56,12 @@ test("an error carries the status and the backend's message, or a generic one", 
   await expect(api.get("/b")).rejects.toMatchObject({ status: 500, message: "Request failed (500)" });
 });
 
-// BUG: every non-empty body goes through JSON.parse before the status is
-// looked at. An error that does not come from the backend's JSON handler — a
-// 502/504 HTML page from Caddy while the backend restarts, a plain-text
-// "Payload Too Large" — throws a SyntaxError instead, so callers that branch on
-// `err instanceof ApiError` (404 pages, form error messages) show
-// "Unexpected token '<'" or crash the load.
-test.fails("BUG: a non-JSON error page still surfaces as an ApiError with its status", async () => {
+test("a 200 that is not JSON is an ApiError, not a SyntaxError", async () => {
+  const { fetch } = fakeFetch({ "GET /api/x": () => new Response("<html>login</html>", { status: 200 }) });
+  await expect(makeApi(fetch).get("/x")).rejects.toBeInstanceOf(ApiError);
+});
+
+test("a non-JSON error page still surfaces as an ApiError with its status", async () => {
   const { fetch } = fakeFetch({
     "GET /api/x": () => new Response("<html>502 Bad Gateway</html>", { status: 502 }),
   });

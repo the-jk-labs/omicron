@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { browser } from "$app/environment";
 import { LANGUAGES } from "$lib/languages";
+import { readStorage, writeStorage } from "$lib/storage";
 
 // Client-side reading preferences, persisted in localStorage. These are personal
 // view settings (not account data), so they live in the browser, not the server.
@@ -18,19 +19,19 @@ const COMPOSE_LANG_KEY = "compose-lang";
 
 function initialFeed(): FeedTab | null {
   if (!browser) return null;
-  const v = localStorage.getItem(FEED_KEY);
+  const v = readStorage(FEED_KEY);
   return v === "for-you" || v === "local" || v === "global" ? v : null;
 }
 
 function initialLangMode(): FeedLangMode {
   if (!browser) return "show";
-  const v = localStorage.getItem(LANG_MODE_KEY);
+  const v = readStorage(LANG_MODE_KEY);
   return v === "hide" ? "hide" : "show";
 }
 
 function initialLangs(): string[] {
   if (!browser) return [];
-  const raw = localStorage.getItem(LANGS_KEY);
+  const raw = readStorage(LANGS_KEY);
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
@@ -54,7 +55,7 @@ function initialLangs(): string[] {
 // clear it, and doing so is what teaches the next one.
 function initialComposeLang(): string | null {
   if (!browser) return null;
-  const saved = localStorage.getItem(COMPOSE_LANG_KEY);
+  const saved = readStorage(COMPOSE_LANG_KEY);
   if (saved) return saved;
   // `navigator.language` is a full locale ("az-AZ", "pt-BR"); posts are tagged
   // with the primary subtag alone, which is what the backend stores and
@@ -74,12 +75,12 @@ class ReadingPrefs {
 
   setDefaultFeed(tab: FeedTab) {
     this.defaultFeed = tab;
-    if (browser) localStorage.setItem(FEED_KEY, tab);
+    if (browser) writeStorage(FEED_KEY, tab);
   }
 
   setFeedLangMode(mode: FeedLangMode) {
     this.feedLangMode = mode;
-    if (browser) localStorage.setItem(LANG_MODE_KEY, mode);
+    if (browser) writeStorage(LANG_MODE_KEY, mode);
   }
 
   addFeedLang(code: string) {
@@ -94,7 +95,7 @@ class ReadingPrefs {
   }
 
   private persistLangs() {
-    if (browser) localStorage.setItem(LANGS_KEY, JSON.stringify(this.feedLangs));
+    if (browser) writeStorage(LANGS_KEY, JSON.stringify(this.feedLangs));
   }
 
   /** Language to preselect in the composer; null when nothing is known. */
@@ -103,9 +104,7 @@ class ReadingPrefs {
   /** Remember the language an author actually published in. */
   setComposeLang(code: string | null) {
     this.composeLang = code;
-    if (!browser) return;
-    if (code) localStorage.setItem(COMPOSE_LANG_KEY, code);
-    else localStorage.removeItem(COMPOSE_LANG_KEY);
+    if (browser) writeStorage(COMPOSE_LANG_KEY, code || null);
   }
 
   /** The active filter as API query params, or null when the filter is off. */

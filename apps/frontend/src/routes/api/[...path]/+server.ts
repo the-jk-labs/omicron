@@ -9,8 +9,10 @@ import type { RequestHandler } from "./$types";
 
 const BACKEND = env.INTERNAL_API_URL ?? "http://localhost:8000";
 
-const proxy: RequestHandler = async ({ request, params, url, getClientAddress }) => {
-  const target = `${BACKEND}/api/${params.path}${url.search}`;
+const proxy: RequestHandler = async ({ request, url, getClientAddress }) => {
+  // The raw pathname, not the decoded `params.path`: an encoded "/" or "?" inside
+  // a segment (a tag, a slug) must not become a real separator.
+  const target = `${BACKEND}${url.pathname}${url.search}`;
 
   const headers = new Headers(request.headers);
   headers.delete("host");

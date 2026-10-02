@@ -125,6 +125,8 @@ export function listByRemoteActor(
       and(
         eq(recommendations.remoteActorId, remoteActorId),
         eq(posts.apType, "Article"),
+        isPublished,
+        notSuspended,
         notHidden(viewerId),
         visibleToViewer(viewerId),
         beforeCursor(cursor),

@@ -77,12 +77,7 @@ describe("inbound remote followers", () => {
     expect(await followsRepo.remoteFollowerActors(ada.id)).toEqual(["https://uncached.example/users/u"]);
   });
 
-  // BUG: inbound remote follow edges have no unique index (only local→local and
-  // local→remote do) and createRemoteFollower is a plain insert, so a second
-  // Follow from the same actor (a fresh Follow id after a lost Accept, which
-  // several servers resend) adds a second edge. Follower counts and lists then
-  // show the actor twice, and a private account sees the request twice.
-  test.fails("BUG: a repeated Follow from the same remote actor is one edge", async () => {
+  test("a repeated Follow from the same remote actor is one edge", async () => {
     const ada = await mkUser("ada");
     await followsRepo.createRemoteFollower(ada.id, EVE);
     await followsRepo.createRemoteFollower(ada.id, EVE).catch(() => {});

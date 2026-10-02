@@ -4,6 +4,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import { LANGUAGES, languageLabel } from "$lib/languages";
   import { reading, type FeedLangMode } from "$lib/prefs.svelte";
+  import { readStorage, writeStorage } from "$lib/storage";
   import { Button as ButtonPrimitive, Select } from "bits-ui";
   import { onMount } from "svelte";
 
@@ -19,11 +20,11 @@
   // localStorage) — reveal after mount only when not dismissed, avoiding a flash.
   let dismissed = $state(true);
   onMount(() => {
-    if (localStorage.getItem(DISMISSED_KEY) !== "1") dismissed = false;
+    if (readStorage(DISMISSED_KEY) !== "1") dismissed = false;
   });
   function dismiss() {
     dismissed = true;
-    if (browser) localStorage.setItem(DISMISSED_KEY, "1");
+    if (browser) writeStorage(DISMISSED_KEY, "1");
   }
   const availableLanguages = $derived(LANGUAGES.filter((l) => !reading.feedLangs.includes(l.code)));
   let addLangValue = $state("");

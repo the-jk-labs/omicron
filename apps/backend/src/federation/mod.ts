@@ -341,7 +341,14 @@ function setupInbox(f: Federation<ContextData>) {
         // Follow activity id so a later approve can Accept it) and notify the
         // owner. Do NOT auto-Accept — the owner approves/rejects (see
         // services/followRequests.ts), which sends the Accept/Reject.
-        await followsRepo.createRemoteFollower(followee.id, follower.id.href, false, follow.id?.href ?? null);
+        const created = await followsRepo.createRemoteFollower(
+          followee.id,
+          follower.id.href,
+          false,
+          follow.id?.href ?? null,
+        );
+        // A resent Follow is the same request; don't show it to the owner twice.
+        if (!created) return;
         await notifications.notify({
           recipientId: followee.id,
           type: "follow_request",
@@ -350,13 +357,15 @@ function setupInbox(f: Federation<ContextData>) {
         return;
       }
 
-      // Public account: accept instantly and notify the new follower.
-      await followsRepo.createRemoteFollower(followee.id, follower.id.href);
-      await notifications.notify({
-        recipientId: followee.id,
-        type: "follow",
-        remoteActorId: cachedActor.id,
-      });
+      // Public account: accept instantly and notify the new follower. A resent
+      // Follow (its Accept was lost) is accepted again but not re-notified.
+      if (await followsRepo.createRemoteFollower(followee.id, follower.id.href)) {
+        await notifications.notify({
+          recipientId: followee.id,
+          type: "follow",
+          remoteActorId: cachedActor.id,
+        });
+      }
       await ctx.sendActivity(
         { identifier: parsed.identifier },
         follower,

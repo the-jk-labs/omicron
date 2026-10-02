@@ -101,11 +101,7 @@ describe("a remote actor's Recommendations tab", () => {
     ]);
   });
 
-  // BUG: unlike listByUser and listFeedFor, this listing has no isPublished or
-  // notSuspended predicate. A local post a Mastodon user boosted keeps showing,
-  // title and body, on that actor's Recommendations tab after its author moves
-  // it back to draft or is suspended or deleted.
-  test.fails("BUG: never lists a local post that is no longer published, or whose author is suspended", async () => {
+  test("never lists a local post that is no longer published, or whose author is suspended", async () => {
     const ada = await mkUser("ada");
     const eve = await mkRemoteActor("eve@remote.example");
     const unpublished = await mkPost(ada.id, "unpublished");

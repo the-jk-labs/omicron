@@ -155,20 +155,14 @@ describe("counts and discovery", () => {
     expect((await tagsRepo.suggest("perceid", 10)).map((t) => t.slug)).toContain("perseid");
   });
 
-  // BUG: setPostTags runs for drafts too, and search/suggest (public routes)
-  // and the followed-tags list count raw post_tags edges with no visibility
-  // predicate. A tag used only on a draft, or on a private account's posts, is
-  // listed with its count, so the topic of an unpublished draft can be found
-  // by typing a prefix into the public tag search. tagsRepo.postCount's own
-  // comment calls a count over a wider set than the list a disclosure.
-  test.fails("BUG: search and suggest never surface a tag used only on a draft", async () => {
+  test("search and suggest never surface a tag used only on a draft", async () => {
     const ada = await mkUser("ada");
     await tagsRepo.setPostTags((await mkPost(ada.id, "d", { status: "draft" })).id, ["secret-acquisition"]);
     expect(await tagsRepo.search("secret", 10)).toEqual([]);
     expect(await tagsRepo.suggest("secret", 10)).toEqual([]);
   });
 
-  test.fails("BUG: search counts only posts an anonymous reader can see", async () => {
+  test("search counts only posts an anonymous reader can see", async () => {
     await seed();
     expect((await tagsRepo.search("deno", 10))[0].postCount).toBe(3);
   });
@@ -191,6 +185,14 @@ describe("tag follows and profile tags", () => {
     ]);
     await tagsRepo.unfollow(ada.id, a.id);
     expect(await tagsRepo.isFollowing(ada.id, a.id)).toBe(false);
+  });
+
+  test("a followed tag stays listed, but its count leaves out drafts", async () => {
+    const [ada, bob] = [await mkUser("ada"), await mkUser("bob")];
+    const tag = await mkTag("a");
+    await tagsRepo.follow(ada.id, tag.id);
+    await tagsRepo.setPostTags((await mkPost(bob.id, "d", { status: "draft" })).id, ["a"]);
+    expect((await tagsRepo.listFollowedByUser(ada.id)).map((t) => [t.slug, t.postCount])).toEqual([["a", 0]]);
   });
 
   test("profile tags are replaced wholesale, for local users and remote actors", async () => {

@@ -274,6 +274,13 @@
       "when": 1789500000000,
       "tag": "0038_moderator_role",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1789600000000,
+      "tag": "0039_unique_remote_follower",
+      "breakpoints": true
     }
   ]
 }

@@ -16,7 +16,12 @@ export async function createRemoteFollower(
   approved = true,
   followActivityId: string | null = null,
 ) {
-  const [row] = await db.insert(follows).values({ followeeId, remoteActor, approved, followActivityId }).returning();
+  // Undefined when this actor already follows (or asked to): a resent Follow.
+  const [row] = await db
+    .insert(follows)
+    .values({ followeeId, remoteActor, approved, followActivityId })
+    .onConflictDoNothing()
+    .returning();
   return row;
 }
 

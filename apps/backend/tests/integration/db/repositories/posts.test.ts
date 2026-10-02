@@ -316,11 +316,7 @@ describe("trending", () => {
     expect(await postsRepo.listTrending(null, 1)).toHaveLength(1);
   });
 
-  // BUG: the comment count excludes the author's own replies with
-  // `comments.author_id != posts.author_id`. A federated reply has a null
-  // author_id, so that comparison is NULL and the reply is never counted: a
-  // local post discussed across the fediverse scores as if nobody replied.
-  test.fails("BUG: federated replies count toward a local post's trending score", async () => {
+  test("federated replies count toward a local post's trending score", async () => {
     const ada = await mkUser("ada");
     const eve = await mkRemoteActor("eve@remote.example");
     const discussed = await mkPost(ada.id, "discussed", { createdAt: hoursAgo(5) });

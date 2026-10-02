@@ -66,10 +66,7 @@ test("an OS change is followed only while the preference is system", async () =>
   expect(theme.current).toBe("light");
 });
 
-// BUG: like prefs.svelte.ts, the initial preference is read from localStorage
-// while the module is imported, unguarded. With site data blocked, the getter
-// throws and every page that imports the theme fails to hydrate.
-test.fails("BUG: a browser that blocks storage still gets the system theme", async () => {
+test("a browser that blocks storage still gets the system theme", async () => {
   vi.spyOn(window, "localStorage", "get").mockImplementation(() => {
     throw new DOMException("The operation is insecure.", "SecurityError");
   });

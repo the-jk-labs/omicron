@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { browser } from "$app/environment";
+import { readStorage, writeStorage } from "$lib/storage";
 
 // Reactive theme state. The initial `dark` class is applied pre-paint by the
 // inline script in app.html; this keeps the UI in sync and persists the user's
@@ -17,7 +18,7 @@ function osTheme(): Theme {
 
 function initialPreference(): ThemePreference {
   if (!browser) return "system";
-  const stored = localStorage.getItem(STORAGE_KEY);
+  const stored = readStorage(STORAGE_KEY);
   if (stored === "light" || stored === "dark" || stored === "system") return stored;
   return "system";
 }
@@ -40,7 +41,7 @@ class ThemeState {
   /** Set the preference — persisted — and apply the resolved theme. */
   set(pref: ThemePreference) {
     this.preference = pref;
-    if (browser) localStorage.setItem(STORAGE_KEY, pref);
+    if (browser) writeStorage(STORAGE_KEY, pref);
     this.#apply(resolve(pref));
   }
 

@@ -166,6 +166,26 @@ describe("inbox: Follow", () => {
   const follow = () =>
     new Follow({ id: new URL("https://remote.example/follows/1"), actor: bobPerson(), object: new URL(ADA) });
 
+  beforeEach(() => {
+    // A new edge; undefined means this actor already follows (a resent Follow).
+    vi.mocked(followsRepo.createRemoteFollower).mockResolvedValue({ id: "edge" } as never);
+  });
+
+  it("a resent Follow to a public account is accepted again but not notified twice", async () => {
+    vi.mocked(followsRepo.createRemoteFollower).mockResolvedValue(undefined as never);
+    await on(Follow)(follow());
+    expect(notificationsRepo.create).not.toHaveBeenCalled();
+    expect(f.sent[0].activity).toBeInstanceOf(Accept);
+  });
+
+  it("a resent Follow to a private account is not shown to the owner as a second request", async () => {
+    vi.mocked(usersRepo.findByUsername).mockResolvedValue(userRow({ id: "ada-id", username: "ada", isPrivate: true }));
+    vi.mocked(followsRepo.createRemoteFollower).mockResolvedValue(undefined as never);
+    await on(Follow)(follow());
+    expect(notificationsRepo.create).not.toHaveBeenCalled();
+    expect(f.sent).toEqual([]);
+  });
+
   it("a public account accepts at once, records the follower and notifies", async () => {
     await on(Follow)(follow());
     expect(followsRepo.createRemoteFollower).toHaveBeenCalledWith("ada-id", BOB);

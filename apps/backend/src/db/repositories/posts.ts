@@ -618,7 +618,7 @@ export function listTrending(viewerId: string | null, limit = 5, sinceDays = 30)
       * 1
       + (select count(*) from comments
         where comments.post_id = ${posts.id}
-          and (${posts.authorId} is null or comments.author_id != ${posts.authorId}))
+          and comments.author_id is distinct from ${posts.authorId})
       * 2
     ) / power(extract(epoch from (now() - ${posts.createdAt})) / 3600 + 2, 1.5)
   )`;

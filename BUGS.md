@@ -17,54 +17,6 @@ user or operator will hit, **Low** = edge case or cosmetic.
 
 ---
 
-## Federation output
-
-### B41. A repeated remote Follow creates a duplicate follower edge — Medium
-- **Where:** `src/db/repositories/follows.ts` `createRemoteFollower` (plain insert)
-  and `src/db/schema.ts` `follows`: unique indexes exist for local→local and
-  local→remote edges, but none for inbound remote edges (`followee_id`, `remote_actor`).
-  The inbox Follow handler (`src/federation/mod.ts`) doesn't check for an existing edge.
-- **Symptom:** a second Follow from the same actor with a new activity id (several
-  servers resend one after a lost Accept; Fedify only dedupes identical ids) adds a
-  second row. The follower count is inflated, the follower list shows the actor twice,
-  and a private account sees the same request twice.
-- **Fix idea:** a partial unique index on (`followee_id`, `remote_actor`) where
-  `remote_actor is not null` (deduplicating existing rows in the migration), and
-  `onConflictDoNothing` in `createRemoteFollower`. On a duplicate, still re-send the
-  Accept so the remote side gets unstuck.
-- **Test:** `tests/integration/db/repositories/follows.test.ts` ("a repeated Follow from the same remote actor is one edge").
-
-### B42. A remote actor's Recommendations tab shows unpublished posts — Medium
-- **Where:** `src/db/repositories/recommendations.ts` `listByRemoteActor`.
-- **Symptom:** unlike `listByUser` and `listFeedFor`, it has no `isPublished` or
-  `notSuspended` predicate. A local post a Mastodon user boosted keeps being served,
-  title and body, on that actor's profile tab (`/api/remote/users/:handle/recommendations`)
-  after its author moves it back to draft, or is suspended or deleted.
-- **Fix idea:** add `isPublished` and `notSuspended` to the `where`.
-- **Test:** `tests/integration/db/repositories/recommendations.test.ts` ("never lists a local post that is no longer published, or whose author is suspended").
-
-### B43. Public tag search exposes tags used only on drafts — Low
-- **Where:** `src/db/repositories/tags.ts` `search`, `suggest`, `listFollowedByUser`.
-- **Symptom:** `setPostTags` runs for drafts too, and these queries count raw
-  `post_tags` edges with no visibility predicate. A tag used only on a draft (or only
-  on a private account's posts) appears in `GET /api/tags/search` with its count, so
-  an unpublished draft's topic can be found by typing a prefix. The counts also
-  include drafts, private and suspended posts, which `postCount`'s own comment calls
-  a disclosure.
-- **Fix idea:** join `posts`/`users` and count with `isPublished`, `notSuspended`,
-  `visibleToViewer(null)` (as `trending` does), and drop tags whose visible count is 0.
-- **Test:** `tests/integration/db/repositories/tags.test.ts` ("search and suggest never surface a tag used only on a draft", "search counts only posts an anonymous reader can see").
-
-### B44. Federated replies never count toward trending — Low
-- **Where:** `src/db/repositories/posts.ts` `listTrending`, the comment subquery
-  `comments.author_id != posts.author_id`.
-- **Symptom:** the predicate meant to drop an author's replies to their own post
-  also drops every federated reply: its `author_id` is null, so the comparison is
-  NULL. A local post discussed across the fediverse ranks as if nobody replied.
-- **Fix idea:** `comments.author_id is distinct from posts.author_id` (same for the
-  likes subquery, for symmetry).
-- **Test:** `tests/integration/db/repositories/posts.test.ts` ("federated replies count toward a local post's trending score").
-
 ## Post links
 
 ### B53. Full-UUID post links 404, including every reported post in the admin queue — Medium
@@ -83,60 +35,6 @@ user or operator will hit, **Low** = edge case or cosmetic.
 ## Frontend
 
 Paths in this section are under `apps/frontend/`.
-
-### B46. A non-JSON error response crashes the API client — Medium
-- **Where:** `src/lib/api/client.ts` `request`: `JSON.parse(text)` runs on every
-  non-empty body before `res.ok` is checked.
-- **Symptom:** an error that doesn't come from the backend's JSON error handler
-  (a 502/504 HTML page from Caddy while the backend restarts, a plain-text
-  "Payload Too Large") throws a `SyntaxError` instead of an `ApiError`. Every
-  caller that branches on `err instanceof ApiError` misses it: page loads turn
-  into 500s instead of their 404/error pages, and forms show "Unexpected token
-  '<'…" as the error message.
-- **Fix idea:** parse inside a try; on failure, keep `body = null` so a failed
-  response still becomes `ApiError(res.status, "Request failed (…)")`.
-- **Test:** `tests/lib/api/client.test.ts` ("a non-JSON error page still surfaces as an ApiError with its status").
-
-### B47. The API proxy re-interprets encoded `/` and `?` in a path — Low
-- **Where:** `src/routes/api/[...path]/+server.ts`: the backend URL is built from
-  `params.path`, which SvelteKit has already percent-decoded.
-- **Symptom:** `/api/tags/a%2Fb/posts` is forwarded as `/api/tags/a/b/posts`, and
-  `%3F` becomes a real query separator. Any path segment carrying user text (a
-  slug, a tag, a handle) can land on a different backend route.
-- **Fix idea:** forward the raw `url.pathname` (minus the `/api` prefix) instead.
-- **Test:** `tests/routes/api/[...path]/server.test.ts` ("an encoded slash inside a path segment reaches the backend still encoded").
-
-### B48. One control character in a federated title breaks a whole feed — Low
-- **Where:** `src/lib/xml.ts` `escapeXml`, used by the RSS feeds and sitemaps.
-- **Symptom:** XML 1.0 forbids most C0 control characters even escaped; parsers
-  reject the whole document. Reading-list feeds include federated posts, whose
-  titles come from other servers, so one title containing e.g. `U+0008` makes
-  that list's feed unreadable for every subscriber.
-- **Fix idea:** strip `U+0000–U+0008, U+000B, U+000C, U+000E–U+001F, U+FFFE, U+FFFF` (and
-  lone surrogates) before escaping.
-- **Test:** `tests/lib/xml.test.ts` ("drops characters XML 1.0 does not allow").
-
-### B49. The password meter rates too-short passwords "Good" — Low
-- **Where:** `src/lib/password.ts` `passwordStrength`.
-- **Symptom:** the score counts character classes without regard to the minimum
-  length, so `Ab1!` (4 characters, rejected on submit) shows "Good" next to a
-  requirement list saying it is too short.
-- **Fix idea:** cap the score at 1 ("Weak") below `MIN_PASSWORD_LEN`.
-- **Test:** `tests/lib/password.test.ts` ("a password under the minimum length is never rated above Weak").
-
-### B50. Pages fail to load when the browser blocks site storage — Low
-- **Where:** `src/lib/prefs.svelte.ts` (`initialFeed`, `initialLangMode`,
-  `initialLangs`, `initialComposeLang`) and `src/lib/theme.svelte.ts`
-  (`initialPreference`), which read `localStorage` at import time, unguarded.
-- **Symptom:** with site data blocked (e.g. Chrome's "block all cookies"), the
-  `localStorage` getter throws a `SecurityError`; importing either module throws
-  and the pages using them fail to hydrate, instead of running with defaults.
-- **Fix idea:** wrap storage reads and writes in try/catch and fall back to the
-  defaults.
-- **Test:** `tests/lib/prefs.svelte.test.ts`, `tests/lib/theme.svelte.test.ts`
-  ("a browser that blocks storage still gets …").
-  `src/lib/components/FeedLanguageFilter.svelte` reads `localStorage` unguarded
-  in `onMount` too.
 
 ### B51. "Save to list" loses a list when adding the post to it fails — Low
 - **Where:** `src/lib/components/SaveToListButton.svelte` `createAndAdd`.

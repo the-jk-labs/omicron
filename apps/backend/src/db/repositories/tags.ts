@@ -129,6 +129,12 @@ export async function followerCount(tagId: string): Promise<number> {
   return row?.count ?? 0;
 }
 
+// A published Article an anonymous reader may see. Public tag lists count only
+// these, so a tag used just on drafts or private posts never surfaces.
+function publicArticle() {
+  return and(eq(posts.apType, "Article"), isPublished, notSuspended, visibleToViewer(null));
+}
+
 // Tag search: prefix/substring match on the slug (trigram-indexed), ordered by
 // how many posts carry the tag so the most-used surface first.
 export function search(query: string, limit: number): Promise<TagWithCount[]> {
@@ -140,8 +146,10 @@ export function search(query: string, limit: number): Promise<TagWithCount[]> {
       postCount: sql<number>`count(${postTags.postId})::int`,
     })
     .from(tags)
-    .leftJoin(postTags, eq(postTags.tagId, tags.id))
-    .where(sql`${tags.slug} ilike ${term}`)
+    .innerJoin(postTags, eq(postTags.tagId, tags.id))
+    .innerJoin(posts, eq(posts.id, postTags.postId))
+    .leftJoin(users, eq(posts.authorId, users.id))
+    .where(and(sql`${tags.slug} ilike ${term}`, publicArticle()))
     .groupBy(tags.id)
     .orderBy(desc(sql`count(${postTags.postId})`))
     .limit(limit);
@@ -160,8 +168,10 @@ export function suggest(query: string, limit: number): Promise<TagWithCount[]> {
       postCount: sql<number>`count(${postTags.postId})::int`,
     })
     .from(tags)
-    .leftJoin(postTags, eq(postTags.tagId, tags.id))
-    .where(sql`${tags.slug} % ${query} or ${tags.slug} ilike ${term}`)
+    .innerJoin(postTags, eq(postTags.tagId, tags.id))
+    .innerJoin(posts, eq(posts.id, postTags.postId))
+    .leftJoin(users, eq(posts.authorId, users.id))
+    .where(and(sql`(${tags.slug} % ${query} or ${tags.slug} ilike ${term})`, publicArticle()))
     .groupBy(tags.id)
     .orderBy(desc(sql`similarity(${tags.slug}, ${query})`), desc(sql`count(${postTags.postId})`))
     .limit(limit);
@@ -348,11 +358,14 @@ export function listFollowedByUser(userId: string): Promise<TagWithCount[]> {
     .select({
       slug: tags.slug,
       name: tags.name,
-      postCount: sql<number>`count(${postTags.postId})::int`,
+      // A followed tag stays listed; its count covers only posts the user may see.
+      postCount: sql<number>`(count(*) filter (where ${and(eq(posts.apType, "Article"), isPublished, notSuspended, visibleToViewer(userId))}))::int`,
     })
     .from(tagFollows)
     .innerJoin(tags, eq(tags.id, tagFollows.tagId))
     .leftJoin(postTags, eq(postTags.tagId, tags.id))
+    .leftJoin(posts, eq(posts.id, postTags.postId))
+    .leftJoin(users, eq(posts.authorId, users.id))
     .where(eq(tagFollows.userId, userId))
     .groupBy(tags.id, tagFollows.createdAt)
     .orderBy(desc(tagFollows.createdAt));

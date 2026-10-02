@@ -10,10 +10,6 @@ test("escapes the five XML specials, ampersand first", () => {
   expect(escapeXml("plain")).toBe("plain");
 });
 
-// BUG: XML 1.0 forbids most C0 control characters even when escaped, and a
-// feed or sitemap carrying one is rejected whole by every parser. Titles in the
-// list feeds come from federated posts, i.e. another server, so a single title
-// with a stray \u0008 breaks the reading list's feed for every subscriber.
-test.fails("BUG: drops characters XML 1.0 does not allow", () => {
+test("drops characters XML 1.0 does not allow", () => {
   expect(escapeXml("bad\u0008title\u0000")).toBe("badtitle");
 });
