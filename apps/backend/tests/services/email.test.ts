@@ -18,7 +18,7 @@ import { type DkimKeyPair, generateKeyPair, verifyOwn } from "@/services/dkim.ts
 import * as email from "@/services/email.ts";
 import type { EmailConfig } from "@/services/emailSettings.ts";
 import { getEmailConfig } from "@/services/emailSettings.ts";
-import { getOrigin } from "@/services/instanceSetup.ts";
+import { getAppName, getOrigin } from "@/services/instanceSetup.ts";
 
 let keys: DkimKeyPair;
 
@@ -271,24 +271,17 @@ describe("templates", () => {
     expect(sendSmtp).toHaveBeenCalledTimes(senders.length + 1);
   });
 
-  // BUG: layout() interpolates its values into HTML unescaped. The post title
-  // in the removal notice is author-written, so a title like `a <b> & c`
-  // corrupts the message and `<a href=…>` injects live markup into an email the
-  // instance sends under its own name. appName, username and newEmail are
-  // interpolated the same way.
-  test.fails("BUG: escapes the post title in the HTML of the removal notice", () => {
+  test("escapes the post title in the HTML of the removal notice", () => {
     const m = email.accountPostRemovedEmail({ ...vars, postTitle: '<a href="https://evil.example">Restore</a>' });
     expect(m.html).not.toContain('<a href="https://evil.example">');
   });
 
-  // BUG: every other notice uses the instance's name, but the two mails a new
-  // or locked-out user is most likely to receive hardcode "Omicron" — an
-  // instance named "My Blog" sends "Reset your Omicron password".
-  test.fails("BUG: the password-reset email names the instance, not the software", async () => {
+  test("the password-reset email names the instance, not the software", async () => {
     vi.mocked(getEmailConfig).mockResolvedValue(cfg({ mode: "smtp" }));
     vi.mocked(getOrigin).mockResolvedValue("https://blog.example");
+    vi.mocked(getAppName).mockResolvedValue("My Blog");
     await email.sendPasswordReset("a@x.test", "https://blog.example/r");
     const { headers } = parse(vi.mocked(sendSmtp).mock.calls[0][1].data);
-    expect(headers.find(([n]) => n === "Subject")?.[1]).not.toContain("Omicron");
+    expect(headers.find(([n]) => n === "Subject")?.[1]).toBe("Reset your My Blog password");
   });
 });

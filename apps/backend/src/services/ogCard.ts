@@ -57,11 +57,11 @@ export async function postCard(postId: string): Promise<Uint8Array<ArrayBuffer> 
   const jpeg = await renderOgCard(text);
   if (!jpeg) return null;
 
-  await mkdir(`${config.UPLOADS_DIR}/og-cards`, { recursive: true });
   // Written to a temporary file and renamed into place, so two scrapers
   // arriving together can never serve each other a half-written image.
   const tmp = `${cached}.${crypto.randomUUID()}.tmp`;
   try {
+    await mkdir(`${config.UPLOADS_DIR}/og-cards`, { recursive: true });
     await writeFile(tmp, jpeg);
     await rename(tmp, cached);
   } catch {

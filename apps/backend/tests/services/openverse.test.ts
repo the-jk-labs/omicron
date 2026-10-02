@@ -119,11 +119,7 @@ describe("results", () => {
     expect(await search("q")).toEqual([]);
   });
 
-  // BUG: Openverse source keys are snake_case identifiers
-  // ("wikimedia_commons", "smithsonian_american_art_museum"); only the first
-  // letter is capitalised, so the credit printed under a published banner
-  // reads "Wikimedia_commons".
-  test.fails("BUG: a multi-word source key reads as words in the credit line", async () => {
+  test("a multi-word source key reads as words in the credit line", async () => {
     respond([raw({ source: "wikimedia_commons" })]);
     expect((await search("q"))[0].credit.source).not.toContain("_");
   });

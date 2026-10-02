@@ -57,9 +57,7 @@ test("returns null for an unknown upload without creating anything", async () =>
   expect(existsSync(join(tmp, "og"))).toBe(false);
 });
 
-// BUG: as in services/ogCard.ts — the cache directory is created outside the
-// best-effort try, so a volume that cannot take it fails the share image.
-test.fails("BUG: a cache directory that cannot be created still returns the image", async () => {
+test("a cache directory that cannot be created still returns the image", async () => {
   writeFileSync(join(tmp, `${ID}.png`), "png");
   writeFileSync(join(tmp, "og"), "not a directory");
   expect(await shareJpeg(ID)).toEqual(JPEG);

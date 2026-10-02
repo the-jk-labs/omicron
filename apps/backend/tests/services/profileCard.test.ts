@@ -119,10 +119,7 @@ test("a name the font cannot draw yields null and caches nothing", async () => {
   expect(existsSync(join(tmp, "og-profiles"))).toBe(false);
 });
 
-// BUG: as in services/ogCard.ts — the cache directory is created outside the
-// best-effort try, so an uploads volume that cannot take it turns a
-// renderable card into a 500.
-test.fails("BUG: a cache directory that cannot be created still returns the card", async () => {
+test("a cache directory that cannot be created still returns the card", async () => {
   writeFileSync(join(tmp, "og-profiles"), "not a directory");
   expect(await profileCard("ada")).toEqual(JPEG);
 });

@@ -92,10 +92,7 @@ test("a failed cache rename still returns the card and leaves no temp file", asy
   expect(cards().filter((f) => f.endsWith(".tmp"))).toEqual([]);
 });
 
-// BUG: the cache directory is created outside the try that makes cache writes
-// best-effort, so an uploads volume that cannot take the directory (read-only,
-// full, a stray file in the way) turns a renderable card into a 500.
-test.fails("BUG: a cache directory that cannot be created still returns the card", async () => {
+test("a cache directory that cannot be created still returns the card", async () => {
   writeFileSync(join(tmp, "og-cards"), "not a directory");
   expect(await postCard("p1")).toEqual(JPEG);
 });

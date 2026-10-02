@@ -9,6 +9,11 @@ import { connect as tlsConnect, type TLSSocket } from "node:tls";
 // matches). It speaks just enough SMTP to submit one message: EHLO, optional
 // STARTTLS, optional AUTH, MAIL/RCPT/DATA.
 
+// AUTH credentials are base64 of their UTF-8 bytes; btoa() alone throws past Latin-1.
+function base64Utf8(s: string): string {
+  return btoa(String.fromCharCode(...new TextEncoder().encode(s)));
+}
+
 export interface SmtpOptions {
   hostname: string;
   port: number;
@@ -304,9 +309,9 @@ export async function sendSmtp(opts: SmtpOptions, env: SmtpEnvelope): Promise<vo
       }
       await conn.write("AUTH LOGIN");
       await conn.read(334);
-      await conn.write(btoa(opts.username));
+      await conn.write(base64Utf8(opts.username));
       await conn.read(334);
-      await conn.write(btoa(opts.password));
+      await conn.write(base64Utf8(opts.password));
       await conn.read(235);
     }
 

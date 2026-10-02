@@ -260,7 +260,7 @@ describe("ingestContent (update)", () => {
   test("publishing a staged draft dates it now and federates a Create", async () => {
     vi.mocked(postsRepo.findByExternalId).mockResolvedValue(existing({ status: "draft" }) as never);
     await ingestContent({ slug: "doc-42", status: "published" }, author);
-    expect(postsRepo.update).toHaveBeenCalledWith("p1", { status: "published", createdAt: NOW });
+    expect(postsRepo.update).toHaveBeenCalledWith("p1", { status: "published", publishAt: null, createdAt: NOW });
     expect(queue.add).toHaveBeenCalledWith("federate_post", { postId: "p1", action: "create" });
   });
 
@@ -276,21 +276,13 @@ describe("ingestContent (update)", () => {
     expect(syncSlug).not.toHaveBeenCalled();
   });
 
-  // BUG: tags are validated (resolveTags caps them at 5, while the payload
-  // schema allows 50) only after the post has been written. A delivery with a
-  // new body and six tags answers 400 — and the body is already saved.
-  test.fails("BUG: too many tags are refused before the post is written", async () => {
+  test("too many tags are refused before the post is written", async () => {
     vi.mocked(postsRepo.findByExternalId).mockResolvedValue(existing() as never);
     await ingestContent({ slug: "doc-42", body: "new", tags: ["a", "b", "c", "d", "e", "f"] }, author).catch(() => {});
     expect(postsRepo.update).not.toHaveBeenCalled();
   });
 
-  // BUG: a post scheduled in the editor carries a publishAt; when the CMS then
-  // sets it to draft or published, ingestContent changes the status but leaves
-  // publishAt, which the database's status/publish_at check constraint rejects
-  // — the delivery fails with a 500 instead of clearing the schedule as
-  // posts.updatePost does.
-  test.fails("BUG: changing the status of a scheduled post clears its publish time", async () => {
+  test("changing the status of a scheduled post clears its publish time", async () => {
     vi.mocked(postsRepo.findByExternalId).mockResolvedValue(
       existing({ status: "scheduled", publishAt: new Date("2026-07-01T00:00:00Z") }) as never,
     );
@@ -298,10 +290,7 @@ describe("ingestContent (update)", () => {
     expect(vi.mocked(postsRepo.update).mock.calls[0][1]).toMatchObject({ publishAt: null });
   });
 
-  // BUG: posts.createPost/updatePost queue `indexnow_submit` whenever a post is
-  // published or edited; the webhook path, which says it mirrors them, never
-  // does — ingested posts are invisible to IndexNow.
-  test.fails("BUG: a published ingest is submitted to IndexNow like an editor publish", async () => {
+  test("a published ingest is submitted to IndexNow like an editor publish", async () => {
     await ingestContent({ slug: "doc-1", title: "t", body: "b" }, author);
     expect(queue.add).toHaveBeenCalledWith("indexnow_submit", { postId: "new" });
   });

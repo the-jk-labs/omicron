@@ -339,11 +339,7 @@ describe.skipIf(!TLS)("TLS", () => {
     );
   });
 
-  // BUG: AUTH LOGIN encodes the credentials with btoa(), which only accepts
-  // Latin-1. A password containing any other character (Azerbaijani "ə", an
-  // emoji, …) throws InvalidCharacterError instead of authenticating; RFC 4954
-  // expects the UTF-8 bytes base64-encoded.
-  test.fails("BUG: authenticates with a non-Latin-1 password", async () => {
+  test("authenticates with a non-Latin-1 password", async () => {
     serve(standard());
     await sendSmtp(opts({ starttls: "require", username: "user", password: "şifrə-🔑" }), env());
     const utf8 = btoa(String.fromCharCode(...new TextEncoder().encode("şifrə-🔑")));

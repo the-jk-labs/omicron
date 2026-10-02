@@ -49,9 +49,9 @@ export async function shareJpeg(id: string): Promise<Uint8Array<ArrayBuffer> | n
   if (!source) return null;
 
   const jpeg = await toShareJpeg(source);
-  await mkdir(`${config.UPLOADS_DIR}/og`, { recursive: true });
   const tmp = `${cached}.${crypto.randomUUID()}.tmp`;
   try {
+    await mkdir(`${config.UPLOADS_DIR}/og`, { recursive: true });
     await writeFile(tmp, jpeg);
     await rename(tmp, cached);
   } catch {

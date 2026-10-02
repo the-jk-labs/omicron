@@ -100,11 +100,11 @@ export async function profileCard(username: string): Promise<Uint8Array<ArrayBuf
   const jpeg = await renderProfileCard(text, avatar);
   if (!jpeg) return null;
 
-  await mkdir(`${config.UPLOADS_DIR}/og-profiles`, { recursive: true });
   // Written to a temporary file and renamed into place, so two scrapers
   // arriving together can never serve each other a half-written image.
   const tmp = `${cached}.${crypto.randomUUID()}.tmp`;
   try {
+    await mkdir(`${config.UPLOADS_DIR}/og-profiles`, { recursive: true });
     await writeFile(tmp, jpeg);
     await rename(tmp, cached);
   } catch {

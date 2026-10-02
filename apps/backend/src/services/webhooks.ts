@@ -163,6 +163,8 @@ export async function ingestContent(payload: ContentPayload, author: User): Prom
   }
 
   if (!existing) requireCreateFields(payload);
+  // Validated before any write, so a refused tag list leaves the post untouched.
+  const tags = payload.tags === undefined ? undefined : resolveTags(payload.tags);
 
   // Only what the payload actually carries goes into the write; anything absent
   // keeps the value the row already holds.
@@ -189,8 +191,11 @@ export async function ingestContent(payload: ContentPayload, author: User): Prom
     fields.coverCredit = null;
   }
   if (payload.language !== undefined) fields.language = normalizeLanguage(payload.language);
-  if (payload.status !== undefined) fields.status = payload.status;
-  else if (!existing) fields.status = "published";
+  if (payload.status !== undefined) {
+    fields.status = payload.status;
+    // Neither status a CMS can send keeps an editor-set schedule (the DB checks it).
+    fields.publishAt = null;
+  } else if (!existing) fields.status = "published";
   // A post going live for the first time is dated from now, not from whenever
   // its row was first written — the same rule the Publish button and the
   // scheduling sweeper follow. Without it a CMS that stages a draft and
@@ -240,8 +245,8 @@ export async function ingestContent(payload: ContentPayload, author: User): Prom
 
   // Tags are replaced wholesale when the payload carries the field; omitting it
   // leaves whatever the post already has, and `[]` clears them.
-  if (payload.tags !== undefined) {
-    await tagsRepo.setPostTags(post.id, resolveTags(payload.tags));
+  if (tags !== undefined) {
+    await tagsRepo.setPostTags(post.id, tags);
   }
 
   // Federation, mirroring services/posts.ts: a published post fans out — as an
@@ -250,6 +255,7 @@ export async function ingestContent(payload: ContentPayload, author: User): Prom
   const wasPublished = existing?.status === "published";
   if (post.status === "published") {
     queue.add("federate_post", { postId: post.id, action: wasPublished ? "update" : "create" });
+    queue.add("indexnow_submit", { postId: post.id });
   } else if (wasPublished) {
     queue.add("federate_post_delete", { postId: post.id, authorId: author.id });
   }

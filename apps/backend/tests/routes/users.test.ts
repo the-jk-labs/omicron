@@ -236,10 +236,7 @@ describe("public profiles", () => {
     expect(recommendationsService.listByUser).toHaveBeenCalledWith("bob", null, null);
   });
 
-  // BUG: every other profile surface treats a deleted account as not found
-  // (follows.profile, followersOf/followingOf), but the posts and
-  // recommendations tabs look the user up without checking deletedAt.
-  test.fails("BUG: a deleted account's posts tab is not found", async () => {
+  test("a deleted account's posts tab is not found", async () => {
     vi.mocked(usersRepo.findByUsername).mockResolvedValue(userRow({ id: "bob", deletedAt: new Date() }));
     vi.mocked(postsService.listByAuthor).mockResolvedValue({ items: [], nextCursor: null });
     expect((await api.request("/api/users/bob/posts")).status).toBe(404);

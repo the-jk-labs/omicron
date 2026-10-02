@@ -93,9 +93,9 @@ function toPhoto(raw: RawImage): StockPhoto | null {
     credit: {
       name,
       nameUrl,
-      // "flickr" → "Flickr". The API returns a lowercase key, and the credit
-      // line reads as a sentence.
-      source: source.charAt(0).toUpperCase() + source.slice(1),
+      // "wikimedia_commons" → "Wikimedia Commons". The API returns a snake_case
+      // key, and the credit line reads as a sentence.
+      source: source.replace(/_+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
       sourceUrl,
       license: licenseLabel(license, str(raw.license_version)),
       licenseUrl,

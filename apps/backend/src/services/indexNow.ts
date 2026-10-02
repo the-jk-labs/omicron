@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { config } from "@/config.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
+import { getAppDomain } from "@/services/instanceSetup.ts";
 import { getSeoSettings } from "@/services/seo.ts";
 
 // IndexNow: tell participating search engines that a URL changed, instead of
@@ -39,8 +39,9 @@ export function keyLocation(originURL: string, key: string): string {
   return `${originURL}/indexnow-${key}.txt`;
 }
 
-function origin(): string | null {
-  const host = config.APP_DOMAIN?.trim();
+async function origin(): Promise<string | null> {
+  // The effective domain: a wizard-configured instance keeps APP_DOMAIN at localhost.
+  const host = await getAppDomain();
   if (!host || host.startsWith("localhost")) return null;
   return `https://${host}`;
 }
@@ -52,7 +53,7 @@ function origin(): string | null {
  * no public URL for an engine to fetch.
  */
 export async function submitPost(postId: string): Promise<void> {
-  const site = origin();
+  const site = await origin();
   if (!site) return;
 
   const seo = await getSeoSettings();

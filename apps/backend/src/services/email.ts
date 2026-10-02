@@ -18,11 +18,12 @@
 // no config file to edit.
 
 import { resolveMx } from "node:dns/promises";
+import { escapeHtml } from "@/lib/html.ts";
 import { buildMessage, domainOf, extractAddress, serializeMessage } from "@/lib/mime.ts";
 import { sendSmtp } from "@/lib/smtp.ts";
 import { signMessage } from "@/services/dkim.ts";
 import { type EmailConfig, getEmailConfig } from "@/services/emailSettings.ts";
-import { getOrigin } from "@/services/instanceSetup.ts";
+import { getAppName, getOrigin } from "@/services/instanceSetup.ts";
 
 export type EmailMessage = {
   to: string;
@@ -233,7 +234,11 @@ export async function sendTestEmail(to: string, override?: EmailConfig): Promise
 // Kept plain and self-contained. Both a text and a lightly-styled HTML body are
 // provided so clients render nicely without pulling in a templating dependency.
 
+// Every argument is plain text and is escaped here, so an author-written title
+// or a username can never inject markup into mail sent under the instance's name.
 function layout(heading: string, body: string, cta: { label: string; url: string }): string {
+  [heading, body] = [escapeHtml(heading), escapeHtml(body)];
+  cta = { label: escapeHtml(cta.label), url: escapeHtml(cta.url) };
   return `<!doctype html><html><body style="margin:0;background:#f4f4f5;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#18181b">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
     <table role="presentation" width="100%" style="max-width:440px;background:#ffffff;border:1px solid #e4e4e7;border-radius:12px;padding:32px">
@@ -249,10 +254,10 @@ function layout(heading: string, body: string, cta: { label: string; url: string
 }
 
 /** Password-reset mail with a Better Auth link. */
-export function sendPasswordReset(to: string, url: string): Promise<void> {
+export async function sendPasswordReset(to: string, url: string): Promise<void> {
   return sendMail({
     to,
-    subject: "Reset your Omicron password",
+    subject: `Reset your ${await getAppName()} password`,
     text: `Someone requested a password reset for your account.\n\nReset it here (valid for 1 hour):\n${url}\n\nIf you didn't request this, you can safely ignore this email.`,
     html: layout(
       "Reset your password",
@@ -263,14 +268,15 @@ export function sendPasswordReset(to: string, url: string): Promise<void> {
 }
 
 /** Email-verification mail with a Better Auth link. */
-export function sendEmailVerification(to: string, url: string): Promise<void> {
+export async function sendEmailVerification(to: string, url: string): Promise<void> {
+  const appName = await getAppName();
   return sendMail({
     to,
-    subject: "Confirm your Omicron email",
-    text: `Welcome to Omicron! Confirm your email address to finish setting up your account (valid for 24 hours):\n${url}\n\nIf you didn't create this account, you can ignore this email.`,
+    subject: `Confirm your ${appName} email`,
+    text: `Welcome to ${appName}! Confirm your email address to finish setting up your account (valid for 24 hours):\n${url}\n\nIf you didn't create this account, you can ignore this email.`,
     html: layout(
       "Confirm your email",
-      "Welcome to Omicron! Confirm your email address to finish setting up your account. This link is valid for 24 hours.",
+      `Welcome to ${appName}! Confirm your email address to finish setting up your account. This link is valid for 24 hours.`,
       { label: "Confirm email", url },
     ),
   });
@@ -572,7 +578,7 @@ export function accountPostRemovedEmail(vars: PostRemovedVars): Omit<EmailMessag
     ].join("\n"),
     html: layout(
       "Your post was removed",
-      `A moderator on ${vars.appName} removed your post (@${vars.username}, &ldquo;${vars.postTitle}&rdquo;). If you think this was a mistake, reply to this email or contact the instance team.`,
+      `A moderator on ${vars.appName} removed your post (@${vars.username}, “${vars.postTitle}”). If you think this was a mistake, reply to this email or contact the instance team.`,
       { label: `Open ${vars.appName}`, url: vars.origin },
     ),
   };

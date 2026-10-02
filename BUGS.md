@@ -17,113 +17,6 @@ user or operator will hit, **Low** = edge case or cosmetic.
 
 ---
 
-## Email
-
-### B21. Email HTML templates don't escape interpolated values — Medium
-- **Where:** `src/services/email.ts` `layout()` and every template that feeds it
-  (e.g. `accountPostRemovedEmail`, `accountEmailChangedEmail`).
-- **Symptom:** values are dropped into the HTML body raw. The post title in the
-  "post removed" notice is author-written, so `a <b> & c` corrupts the message
-  and `<a href="…">Restore</a>` injects live markup into a mail the instance
-  sends under its own name. `appName`, `username` and `newEmail` go in the
-  same way.
-- **Fix idea:** HTML-escape every interpolated value (`escapeHtml` in
-  `src/lib/html.ts`), including inside the `href`.
-- **Test:** `tests/services/email.test.ts` ("escapes the post title in the HTML of the removal notice").
-
-### B22. Password-reset and verification emails hardcode "Omicron" — Low
-- **Where:** `src/services/email.ts` `sendPasswordReset` / `sendEmailVerification`.
-- **Symptom:** every account notice uses the instance name (`Your ${appName} …`),
-  but the two emails a new or locked-out user most needs say "Reset your Omicron
-  password" / "Welcome to Omicron!", whatever the instance is called.
-- **Test:** `tests/services/email.test.ts` ("the password-reset email names the instance, not the software").
-
-### B23. SMTP AUTH fails for non-Latin-1 credentials — Medium
-- **Where:** `src/lib/smtp.ts` (`AUTH LOGIN` uses `btoa(opts.username)` / `btoa(opts.password)`).
-- **Symptom:** `btoa` only accepts Latin-1, so an SMTP password with any other
-  character (Azerbaijani `ə`, `ş`, an emoji…) throws `InvalidCharacterError` and
-  no mail can be sent. Latin-1 characters that do get through are encoded as
-  Latin-1, not UTF-8.
-- **Fix idea:** base64 the UTF-8 bytes (`TextEncoder` and then base64).
-- **Test:** `tests/lib/smtp.test.ts` ("authenticates with a non-Latin-1 password", runs where openssl is available).
-
-## Content webhook
-
-All three are in `src/services/webhooks.ts` `ingestContent`; tests in
-`tests/services/webhooks.test.ts`.
-
-### B24. Too many tags are rejected only after the post is written — Medium
-- **Symptom:** the payload schema allows up to 50 tags (`src/lib/webhook.ts`),
-  but `resolveTags` caps a post at 5 and runs after `postsRepo.update` /
-  `upsertByExternalId`. A delivery with a new body and six tags answers **400**,
-  and the body is already saved (or the post already created).
-- **Fix idea:** call `resolveTags(payload.tags)` before the write.
-- **Test:** "too many tags are refused before the post is written".
-
-### B25. Changing the status of an editor-scheduled post fails with a 500 — Medium
-- **Symptom:** a post scheduled in the editor has `publish_at` set. When the CMS
-  then sends `status: "draft"` or `"published"` for it, `ingestContent` changes
-  the status but leaves `publish_at`, which violates the
-  `posts_publish_at_status_ck` constraint, so the delivery fails with 500.
-- **Fix idea:** clear `publishAt` whenever the status written is not
-  `scheduled`, as `posts.updatePost` does via `resolvePublishAt`.
-- **Test:** "changing the status of a scheduled post clears its publish time".
-
-### B26. Webhook-published posts are never submitted to IndexNow — Low
-- **Symptom:** `posts.createPost` / `updatePost` queue `indexnow_submit` on
-  publish and on edit; `ingestContent` says it mirrors them but never does.
-- **Test:** "a published ingest is submitted to IndexNow like an editor publish".
-
-## Wizard-configured domain ignored
-
-### B27. IndexNow never submits on a wizard-configured instance — Medium
-- **Where:** `src/services/indexNow.ts` `origin()`.
-- **Symptom:** the public origin comes from the boot-time `config.APP_DOMAIN`,
-  not the domain saved by the setup wizard (`getAppDomain()`). An instance set
-  up through the wizard keeps `APP_DOMAIN` at its `localhost:5173` default, so
-  `origin()` returns null and IndexNow silently does nothing, even when switched
-  on. (`moderation.blockDomain` already reads `getAppDomain()`.)
-- **Test:** `tests/services/indexNow.test.ts` ("submits on an instance whose domain was set in the setup wizard").
-
-## Stock photos
-
-### B28. Openverse source keys are shown raw in published credits — Low
-- **Where:** `src/services/openverse.ts` `toPhoto` (`source.charAt(0).toUpperCase() + …`).
-- **Symptom:** Openverse source keys are snake_case (`wikimedia_commons`), so
-  the credit line under a published banner reads "Wikimedia_commons".
-- **Test:** `tests/services/openverse.test.ts` ("a multi-word source key reads as words in the credit line").
-
-## Image caches
-
-### B29. An uncreatable cache directory turns a share image into a 500 — Low
-- **Where:** `src/services/ogCard.ts` `postCard`, `src/services/profileCard.ts`
-  `profileCard`, `src/services/shareImage.ts` `shareJpeg`. Each calls `mkdir`
-  for its cache directory outside the `try` that makes cache writes best-effort.
-- **Symptom:** if the uploads volume can't take the directory (read-only, full,
-  a stray file in the way), a card that rendered fine is thrown away and the
-  request fails, contradicting each function's own "a failed cache write … must
-  not cost the caller" comment.
-- **Fix idea:** move the `mkdir` inside the `try`.
-- **Tests:** "a cache directory that cannot be created still returns the card/image"
-  in `tests/services/{ogCard,profileCard,shareImage}.test.ts`.
-
-## Profiles of deleted accounts
-
-### B30. A deleted account's recommendations tab keeps listing its boosts — Low
-- **Where:** `src/routes/users.ts`, `GET /api/users/:username/posts` and
-  `/recommendations`. Both look the user up with `usersRepo.findByUsername` and
-  never check `deletedAt`; `recommendationsRepo.listByUser` filters on the *post
-  author's* suspension and deletion, never on the recommender's.
-- **Symptom:** every other profile surface treats a deleted account as not found
-  (`follows.profile`, `followersOf`, `followingOf`). Checked end to end: the posts
-  tab answers 200 with an empty list (`listByAuthor`'s `notSuspended` also covers
-  `deleted_at`, so nothing leaks there). The recommendations tab answers 200 and
-  still lists every post the deleted account recommended.
-- **Fix idea:** treat a deleted (and suspended) user as not found in both routes,
-  as `follows.profile` does.
-- **Test:** `tests/routes/users.test.ts` ("a deleted account's posts tab is not found"),
-  `tests/integration/app.test.ts` ("the recommendations tab lists nothing for a deleted account").
-
 ## Admin authorization
 
 ### B32. Any moderator session can permanently purge a deleted account — High
@@ -158,7 +51,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
 - **Fix idea:** build email links from `getOrigin()` (the wizard → env →
   default chain) at send time, not from the import-time `baseURL`.
 - **Test:** `tests/auth/auth.test.ts` ("the verification link uses the domain set in the setup wizard").
-- Related: B27, B39 share the root cause (boot-time `APP_DOMAIN` used where
+- Related: B39 shares the root cause (boot-time `APP_DOMAIN` used where
   the effective domain is meant).
 
 ## Federation output
@@ -235,7 +128,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   `attributionDomains`. That value is the boot-time `APP_DOMAIN`, so on an
   instance configured through the setup wizard every actor advertises
   `localhost:5173`, and shared articles never get the byline. Same root cause
-  as B27 and B33.
+  as B33.
 - **Fix idea:** pass `await getAppDomain()` instead.
 - **Test:** `tests/integration/app.test.ts` ("vouches for the domain set in the setup wizard").
 

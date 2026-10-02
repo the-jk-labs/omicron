@@ -169,7 +169,8 @@ userRoutes.get("/:username/following", async (c) => {
 userRoutes.get("/:username/posts", async (c) => {
   const viewer = c.get("user");
   const user = await usersRepo.findByUsername(c.req.param("username"));
-  if (!user) throw notFound("User not found.");
+  // A deleted account is not found here, as on every other profile surface.
+  if (!user || user.deletedAt) throw notFound("User not found.");
   const cursor = decodeCursor(c.req.query("cursor"));
   const { items, nextCursor } = await postsService.listByAuthor(user.id, cursor, viewer?.id ?? null);
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
@@ -181,7 +182,7 @@ userRoutes.get("/:username/posts", async (c) => {
 userRoutes.get("/:username/recommendations", async (c) => {
   const viewer = c.get("user");
   const user = await usersRepo.findByUsername(c.req.param("username"));
-  if (!user) throw notFound("User not found.");
+  if (!user || user.deletedAt) throw notFound("User not found.");
   const cursor = decodeCursor(c.req.query("cursor"));
   const { items, nextCursor } = await recommendationsService.listByUser(user.id, viewer?.id ?? null, cursor);
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });

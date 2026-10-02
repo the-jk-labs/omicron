@@ -68,7 +68,7 @@ describe("submitPost", () => {
     config.APP_DOMAIN = "localhost:5173";
     await submitPost("p1");
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(settingsRepo.get).not.toHaveBeenCalled();
+    expect(postsRepo.findById).not.toHaveBeenCalled();
   });
 
   test.for([
@@ -121,11 +121,7 @@ describe("submitPost", () => {
     vi.useRealTimers();
   });
 
-  // BUG: the public origin is taken from the boot-time APP_DOMAIN, not the
-  // domain the setup wizard stored (getAppDomain). A wizard-configured instance
-  // still has APP_DOMAIN at its localhost default, so origin() is null and
-  // IndexNow silently never submits anything, even when switched on.
-  test.fails("BUG: submits on an instance whose domain was set in the setup wizard", async () => {
+  test("submits on an instance whose domain was set in the setup wizard", async () => {
     config.APP_DOMAIN = "localhost:5173";
     settings["instance.appDomain"] = "blog.example";
     await submitPost("p1");

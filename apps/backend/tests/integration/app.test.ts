@@ -69,9 +69,7 @@ describe("a deleted account's profile tabs (B30)", () => {
     expect(await tabItems(`/api/users/${goneUser}/posts`)).toEqual([]);
   });
 
-  // listByUser filters on the *post author's* suspension and deletion, never on
-  // the recommender's, so the tab keeps listing what the deleted account boosted.
-  test.fails("BUG: the recommendations tab lists nothing for a deleted account", async () => {
+  test("the recommendations tab lists nothing for a deleted account", async () => {
     expect(await tabItems(`/api/users/${goneUser}/recommendations`)).toEqual([]);
   });
 });
