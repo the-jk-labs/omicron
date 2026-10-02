@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { connect as netConnect, isIP, type Socket } from "node:net";
+import { connect as tlsConnect, type TLSSocket } from "node:tls";
 
 // A minimal, fully-controlled SMTP client. We deliberately don't use a
 // third-party mailer: owning the wire protocol lets us (a) give precise errors
@@ -45,25 +47,66 @@ interface Reply {
   text: string;
 }
 
-// Buffered line reader over a Deno connection. SMTP replies are CRLF-delimited;
+// Buffered line reader over a TCP/TLS socket. SMTP replies are CRLF-delimited;
 // a multiline reply repeats the code with "-" until a final "code<space>".
 class SmtpConn {
-  #conn: Deno.Conn;
+  #socket!: Socket;
   #buf = new Uint8Array(0);
   #dec = new TextDecoder();
+  #closed = false;
+  #error: Error | null = null;
+  #wake: (() => void) | null = null;
   timeoutMs: number;
 
-  constructor(conn: Deno.Conn, timeoutMs: number) {
-    this.#conn = conn;
+  constructor(socket: Socket, timeoutMs: number) {
     this.timeoutMs = timeoutMs;
+    this.#attach(socket);
   }
 
-  get raw(): Deno.Conn {
-    return this.#conn;
+  #onData = (chunk: Uint8Array) => {
+    const next = new Uint8Array(this.#buf.length + chunk.length);
+    next.set(this.#buf);
+    next.set(chunk, this.#buf.length);
+    this.#buf = next;
+    this.#notify();
+  };
+
+  #onClose = () => {
+    this.#closed = true;
+    this.#notify();
+  };
+
+  #onError = (err: Error) => {
+    this.#error = err;
+    this.#notify();
+  };
+
+  #notify() {
+    const wake = this.#wake;
+    this.#wake = null;
+    wake?.();
   }
 
-  replace(conn: Deno.Conn) {
-    this.#conn = conn;
+  #attach(socket: Socket) {
+    this.#socket = socket;
+    socket.on("data", this.#onData);
+    socket.on("close", this.#onClose);
+    socket.on("end", this.#onClose);
+    socket.on("error", this.#onError);
+  }
+
+  /** Stop reading from the current socket and hand it back (for a TLS upgrade). */
+  detach(): Socket {
+    const socket = this.#socket;
+    socket.off("data", this.#onData);
+    socket.off("close", this.#onClose);
+    socket.off("end", this.#onClose);
+    socket.off("error", this.#onError);
+    return socket;
+  }
+
+  replace(socket: Socket) {
+    this.#attach(socket);
   }
 
   async #withTimeout<T>(p: Promise<T>): Promise<T> {
@@ -79,13 +122,11 @@ class SmtpConn {
   }
 
   async #readMore(): Promise<void> {
-    const chunk = new Uint8Array(4096);
-    const n = await this.#withTimeout(this.#conn.read(chunk));
-    if (n === null) throw new Error("SMTP connection closed by server");
-    const next = new Uint8Array(this.#buf.length + n);
-    next.set(this.#buf);
-    next.set(chunk.subarray(0, n), this.#buf.length);
-    this.#buf = next;
+    if (this.#error) throw this.#error;
+    if (this.#closed) throw new Error("SMTP connection closed by server");
+    await this.#withTimeout(new Promise<void>((resolve) => (this.#wake = resolve)));
+    if (this.#error) throw this.#error;
+    if (this.#closed && this.#buf.indexOf(0x0a) === -1) throw new Error("SMTP connection closed by server");
   }
 
   async #readLine(): Promise<string> {
@@ -119,27 +160,59 @@ class SmtpConn {
   }
 
   async write(line: string): Promise<void> {
-    await this.#withTimeout(writeAll(this.#conn, encoder.encode(line + CRLF)));
+    await this.writeBytes(encoder.encode(line + CRLF));
   }
 
   async writeBytes(bytes: Uint8Array): Promise<void> {
-    await this.#withTimeout(writeAll(this.#conn, bytes));
+    if (this.#error) throw this.#error;
+    await this.#withTimeout(
+      new Promise<void>((resolve, reject) => this.#socket.write(bytes, (err) => (err ? reject(err) : resolve()))),
+    );
   }
 
   close() {
-    try {
-      this.#conn.close();
-    } catch {
-      /* already closed */
-    }
+    this.#socket.destroy();
   }
 }
 
-async function writeAll(conn: Deno.Conn, data: Uint8Array): Promise<void> {
-  let off = 0;
-  while (off < data.length) {
-    off += await conn.write(data.subarray(off));
-  }
+// Opens the connection: plain TCP, or TLS from the first byte (implicit TLS).
+function openSocket(opts: SmtpOptions, timeoutMs: number): Promise<Socket> {
+  return new Promise((resolve, reject) => {
+    const socket = opts.implicitTls
+      ? tlsConnect({ host: opts.hostname, port: opts.port, servername: serverName(opts.hostname) })
+      : netConnect({ host: opts.hostname, port: opts.port });
+    const timer = setTimeout(() => fail(new Error("SMTP timeout")), timeoutMs);
+    const fail = (err: Error) => {
+      clearTimeout(timer);
+      socket.destroy();
+      reject(err);
+    };
+    socket.once("error", fail);
+    socket.once(opts.implicitTls ? "secureConnect" : "connect", () => {
+      clearTimeout(timer);
+      socket.off("error", fail);
+      resolve(socket);
+    });
+  });
+}
+
+// Wraps an established plaintext socket in TLS (the STARTTLS upgrade).
+function startTls(socket: Socket, hostname: string): Promise<TLSSocket> {
+  return new Promise((resolve, reject) => {
+    // `host` drives certificate verification; without it Node checks the
+    // certificate against "localhost" whenever there is no SNI name (IP hosts).
+    const tls = tlsConnect({ socket, host: hostname, servername: serverName(hostname) });
+    tls.once("error", reject);
+    tls.once("secureConnect", () => {
+      tls.off("error", reject);
+      resolve(tls);
+    });
+  });
+}
+
+// SNI must be a hostname; an IP literal is sent without one.
+function serverName(hostname: string): string | undefined {
+  return isIP(hostname) ? undefined : hostname;
 }
 
 // Dot-stuffing per RFC 5321 §4.5.2: a line starting with "." gets an extra ".".
@@ -167,11 +240,9 @@ export async function sendSmtp(opts: SmtpOptions, env: SmtpEnvelope): Promise<vo
     throw new Error("Illegal control character in SMTP envelope address.");
   }
 
-  let socket: Deno.Conn;
+  let socket: Socket;
   try {
-    socket = opts.implicitTls
-      ? await Deno.connectTls({ hostname: opts.hostname, port: opts.port })
-      : await Deno.connect({ hostname: opts.hostname, port: opts.port });
+    socket = await openSocket(opts, timeoutMs);
   } catch (err) {
     throw new Error(
       `Could not connect to ${opts.hostname}:${opts.port}: ${err instanceof Error ? err.message : JSON.stringify(err)}`,
@@ -197,7 +268,7 @@ export async function sendSmtp(opts: SmtpOptions, env: SmtpEnvelope): Promise<vo
         await conn.write("STARTTLS");
         await conn.read(220);
         try {
-          const tls = await Deno.startTls(conn.raw as Deno.TcpConn, { hostname: opts.hostname });
+          const tls = await startTls(conn.detach(), opts.hostname);
           conn.replace(tls);
           secure = true;
           caps = await ehlo(); // capabilities may change after TLS

@@ -1,3 +1,4 @@
+import { mkdir, writeFile } from "node:fs/promises";
 import { config } from "@/config.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as linksRepo from "@/db/repositories/profileLinks.ts";
@@ -217,9 +218,9 @@ export async function setAvatar(userId: string, bytes: Uint8Array, contentType: 
   );
   if (!verdict.ok) throw quotaError(verdict.reason);
 
-  await Deno.mkdir(config.UPLOADS_DIR, { recursive: true });
+  await mkdir(config.UPLOADS_DIR, { recursive: true });
   try {
-    await Deno.writeFile(`${config.UPLOADS_DIR}/${filename}`, bytes);
+    await writeFile(`${config.UPLOADS_DIR}/${filename}`, bytes);
   } catch (err) {
     await uploadsRepo.removeByFilename(filename).catch(() => {});
     throw err;

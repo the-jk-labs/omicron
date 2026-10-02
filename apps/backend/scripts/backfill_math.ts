@@ -1,10 +1,13 @@
+import process from "node:process";
 import { sql } from "@/db/client.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // One-time backfill: typeset the maths in posts written before `$…$` was
 // rendered, which still show their TeX as literal text in the reader.
 //
-//   deno task backfill:math            # apply changes
-//   deno task backfill:math --dry-run  # preview without writing
+//   docker compose exec backend deno task backfill:math            # apply changes
+//   docker compose exec backend deno task backfill:math --dry-run  # preview without writing
+//
+// Locally: `pnpm backfill:math` (add `--dry-run` the same way).
 //
 // Safe to run more than once: only posts whose HTML actually changes are
 // updated. See src/lib/legacyMath.ts for the (conservative, idempotent)
@@ -12,7 +15,7 @@ import { sql } from "@/db/client.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import { upgradeLegacyMath } from "@/lib/legacyMath.ts";
 
-const dryRun = Deno.args.includes("--dry-run");
+const dryRun = process.argv.includes("--dry-run");
 
 const posts = await postsRepo.listAllLocal();
 console.log(`Scanning ${posts.length} local post(s)${dryRun ? " (dry run)" : ""}…`);

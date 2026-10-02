@@ -2,18 +2,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Exercise the real Better Auth endpoint with disposable in-memory storage.
-const { store, testConfig, addMail } = vi.hoisted(() => ({
+const { store, addMail, settings } = vi.hoisted(() => ({
   store: { user: [], account: [], session: [], verification: [] } as Record<string, Record<string, unknown>[]>,
-  testConfig: {
-    APP_DOMAIN: "localhost:3000",
-    SESSION_SECRET: "registration-tests-secret-at-least-32-characters",
-    HIBP_CHECK_ENABLED: false,
-    EMAIL_VERIFICATION_REQUIRED: true,
-  },
   addMail: vi.fn<(name: string, payload: unknown) => void>(),
+  settings: {} as Record<string, unknown>,
 }));
 
-vi.mock("@/config.ts", () => ({ config: testConfig }));
 vi.mock("@/db/client.ts", () => ({ db: {} }));
 vi.mock("better-auth/adapters/drizzle", async () => {
   const { memoryAdapter } = await import("better-auth/adapters/memory");
@@ -25,6 +19,10 @@ vi.mock("@/db/repositories/users.ts", () => ({
   countUsers: () => Promise.resolve(store.user.length),
 }));
 vi.mock("@/queue/queue.ts", () => ({ queue: { add: addMail } }));
+vi.mock("@/db/repositories/instanceSettings.ts", () => ({
+  get: (key: string) => Promise.resolve(settings[key]),
+  set: (key: string, value: unknown) => Promise.resolve(void (settings[key] = value)),
+}));
 vi.mock("@/services/accountNotices.ts", () => ({
   notifyPasswordChanged: vi.fn<() => Promise<void>>(),
   notifySelfDeleted: vi.fn<() => Promise<void>>(),
@@ -58,7 +56,11 @@ describe.each([true, false])("registration (email verification required: %s)", (
     vi.resetModules();
     for (const rows of Object.values(store)) rows.length = 0;
     addMail.mockClear();
-    testConfig.EMAIL_VERIFICATION_REQUIRED = verificationRequired;
+    for (const key of Object.keys(settings)) delete settings[key];
+    // auth.ts reads config when it is imported, and every test imports it fresh.
+    vi.stubEnv("APP_DOMAIN", "localhost:3000");
+    vi.stubEnv("HIBP_CHECK_ENABLED", "false");
+    vi.stubEnv("EMAIL_VERIFICATION_REQUIRED", String(verificationRequired));
   });
 
   it.each([true, false])(
@@ -101,6 +103,21 @@ describe.each([true, false])("registration (email verification required: %s)", (
     expect(addMail).toHaveBeenCalledExactlyOnceWith("send_email_verification", {
       to: "new@example.com",
       url: expect.stringContaining("http://localhost:3000/verify-email?token="),
+    });
+  });
+
+  // BUG: the verification link is built from Better Auth's baseURL, which is
+  // fixed at import from the boot-time APP_DOMAIN. docker-compose defaults that
+  // to localhost:5173 and .env.example says the setup wizard is enough to go
+  // public — so on a wizard-configured instance every confirmation link points
+  // at localhost and new accounts can never verify (and, with verification
+  // required by default, never sign in). Password-reset links share baseURL.
+  it.fails("BUG: the verification link uses the domain set in the setup wizard", async () => {
+    settings["instance.appDomain"] = "blog.example.com";
+    await signUp("NEW@example.com");
+    expect(addMail).toHaveBeenCalledWith("send_email_verification", {
+      to: "new@example.com",
+      url: expect.stringMatching(/^https:\/\/blog\.example\.com\/verify-email\?token=/),
     });
   });
 });

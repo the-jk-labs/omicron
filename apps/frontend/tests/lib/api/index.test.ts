@@ -1,0 +1,330 @@
+import { endpoints } from "$lib/api";
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// The typed endpoint table: each helper must hit the backend route it names,
+// with the method, query string and body that route reads. A wrong path here
+// is a feature that silently 404s, so every helper is listed.
+import { describe, expect, test } from "vitest";
+import { fakeFetch } from "../../fakeFetch";
+
+type E = ReturnType<typeof endpoints>;
+type Row = [name: string, call: (e: E) => Promise<unknown>, method: string, path: string, body?: unknown];
+
+const bytes = new TextEncoder().encode("img");
+const ID = "p1";
+
+const rows: Row[] = [
+  // instance + setup
+  ["instance", (e) => e.instance(), "GET", "/api/instance"],
+  [
+    "completeSetup",
+    (e) => e.completeSetup({ appName: "O", admin: { username: "a", email: "e", password: "p" } }),
+    "POST",
+    "/api/setup",
+    { appName: "O", admin: { username: "a", email: "e", password: "p" } },
+  ],
+  ["testSetupEmail", (e) => e.testSetupEmail({ to: "a@b.c" }), "POST", "/api/setup/test-email", { to: "a@b.c" }],
+  ["me", (e) => e.me(), "GET", "/api/me"],
+  ["dashboard", (e) => e.dashboard(), "GET", "/api/dashboard"],
+  ["dashboard(days)", (e) => e.dashboard(7), "GET", "/api/dashboard?days=7"],
+  // admin
+  ["adminSettings", (e) => e.adminSettings(), "GET", "/api/admin/settings"],
+  ["setAnalytics", (e) => e.setAnalytics(true), "PUT", "/api/admin/settings/analytics", { onInstanceViews: true }],
+  ["adminInstance", (e) => e.adminInstance(), "GET", "/api/admin/instance"],
+  ["setAdminInstance", (e) => e.setAdminInstance({ appName: "X" }), "PUT", "/api/admin/instance", { appName: "X" }],
+  ["rotateSessionSecret", (e) => e.rotateSessionSecret(), "POST", "/api/admin/instance/rotate-secret", {}],
+  [
+    "uploadInstanceBanner",
+    (e) => e.uploadInstanceBanner(bytes as never, "image/webp"),
+    "POST",
+    "/api/admin/instance/banner",
+    "img",
+  ],
+  ["removeInstanceBanner", (e) => e.removeInstanceBanner(), "DELETE", "/api/admin/instance/banner"],
+  ["adminSecurity", (e) => e.adminSecurity(), "GET", "/api/admin/security"],
+  [
+    "setAnubisProtection",
+    (e) => e.setAnubisProtection(false),
+    "PUT",
+    "/api/admin/security/anubis",
+    { anubisProtection: false },
+  ],
+  ["seo", (e) => e.seo(), "GET", "/api/seo"],
+  ["verifyIndexNowKey", (e) => e.verifyIndexNowKey("a/b"), "GET", "/api/seo/indexnow-key/a%2Fb"],
+  ["sitemapEntries", (e) => e.sitemapEntries(), "GET", "/api/seo/sitemap-entries"],
+  ["sitemapPosts", (e) => e.sitemapPosts(2), "GET", "/api/seo/sitemap-posts?page=2"],
+  ["adminSeo", (e) => e.adminSeo(), "GET", "/api/admin/seo"],
+  [
+    "setAdminSeo",
+    (e) => e.setAdminSeo({ indexingEnabled: false }),
+    "PUT",
+    "/api/admin/seo",
+    { indexingEnabled: false },
+  ],
+  ["adminUnsplash", (e) => e.adminUnsplash(), "GET", "/api/admin/unsplash"],
+  ["setAdminUnsplash", (e) => e.setAdminUnsplash(null), "PUT", "/api/admin/unsplash", { accessKey: null }],
+  ["adminEmail", (e) => e.adminEmail(), "GET", "/api/admin/email"],
+  ["setAdminEmail", (e) => e.setAdminEmail({ mode: "off" } as never), "PUT", "/api/admin/email", { mode: "off" }],
+  ["testAdminEmail", (e) => e.testAdminEmail("a@b.c"), "POST", "/api/admin/email/test", { to: "a@b.c" }],
+  ["generateDkim", (e) => e.generateDkim("b.c"), "POST", "/api/admin/email/dkim", { domain: "b.c" }],
+  ["checkEmailDns", (e) => e.checkEmailDns(), "GET", "/api/admin/email/dns"],
+  ["checkPort25", (e) => e.checkPort25(), "GET", "/api/admin/email/port25"],
+  ["adminUsers()", (e) => e.adminUsers(), "GET", "/api/admin/users"],
+  [
+    "adminUsers(all)",
+    (e) =>
+      e.adminUsers("a b", { suspended: false, admin: true, verified: false }, { cursor: "c", limit: 5 }, "username"),
+    "GET",
+    "/api/admin/users?q=a+b&suspended=false&admin=true&verified=false&sort=username&cursor=c&limit=5",
+  ],
+  ["adminUsers(newest)", (e) => e.adminUsers(undefined, undefined, undefined, "newest"), "GET", "/api/admin/users"],
+  [
+    "suspendUser",
+    (e) => e.suspendUser(ID, true),
+    "POST",
+    `/api/admin/users/${ID}/suspend`,
+    { suspend: true, notify: false },
+  ],
+  [
+    "deleteUser",
+    (e) => e.deleteUser(ID, { username: "u", password: "p" }),
+    "POST",
+    `/api/admin/users/${ID}/delete`,
+    { username: "u", password: "p" },
+  ],
+  ["restoreUser", (e) => e.restoreUser(ID, true), "POST", `/api/admin/users/${ID}/restore`, { notify: true }],
+  ["adminUserDetail", (e) => e.adminUserDetail(ID), "GET", `/api/admin/users/${ID}`],
+  ["updateUserAsAdmin", (e) => e.updateUserAsAdmin(ID, { bio: "b" }), "PATCH", `/api/admin/users/${ID}`, { bio: "b" }],
+  [
+    "uploadUserAvatarAsAdmin",
+    (e) => e.uploadUserAvatarAsAdmin(ID, bytes as never, "image/webp"),
+    "POST",
+    `/api/admin/users/${ID}/avatar`,
+    "img",
+  ],
+  ["removeUserAvatarAsAdmin", (e) => e.removeUserAvatarAsAdmin(ID), "DELETE", `/api/admin/users/${ID}/avatar`],
+  ["resendVerification", (e) => e.resendVerification(ID), "POST", `/api/admin/users/${ID}/verification-email`, {}],
+  ["verifyEmail", (e) => e.verifyEmail(ID), "POST", `/api/admin/users/${ID}/verify`, {}],
+  [
+    "setUserRole",
+    (e) => e.setUserRole(ID, { makeAdmin: true, password: "p" }),
+    "POST",
+    `/api/admin/users/${ID}/role`,
+    { makeAdmin: true, password: "p" },
+  ],
+  [
+    "setUserModeratorRole",
+    (e) => e.setUserModeratorRole(ID, { makeModerator: false, password: "p" }),
+    "POST",
+    `/api/admin/users/${ID}/moderator-role`,
+    { makeModerator: false, password: "p" },
+  ],
+  ["deletedUsers()", (e) => e.deletedUsers(), "GET", "/api/admin/users/deleted"],
+  ["deletedUsers(all)", (e) => e.deletedUsers("c", 10, "q"), "GET", "/api/admin/users/deleted?q=q&cursor=c&limit=10"],
+  ["purgeDeletedUser", (e) => e.purgeDeletedUser(ID), "DELETE", `/api/admin/users/deleted/${ID}`],
+  ["adminRemovePost", (e) => e.adminRemovePost(ID), "DELETE", `/api/admin/posts/${ID}`],
+  ["adminRemovePost(notify)", (e) => e.adminRemovePost(ID, true), "DELETE", `/api/admin/posts/${ID}?notify=true`],
+  ["adminReports", (e) => e.adminReports(), "GET", "/api/admin/reports"],
+  ["adminReports(open)", (e) => e.adminReports("open"), "GET", "/api/admin/reports?status=open"],
+  ["resolveReport", (e) => e.resolveReport(ID, "ok"), "POST", `/api/admin/reports/${ID}/resolve`, { resolution: "ok" }],
+  ["blockedDomains", (e) => e.blockedDomains(), "GET", "/api/admin/domains"],
+  [
+    "blockDomain",
+    (e) => e.blockDomain("bad.example", "spam"),
+    "POST",
+    "/api/admin/domains",
+    { domain: "bad.example", reason: "spam" },
+  ],
+  ["unblockDomain", (e) => e.unblockDomain("bad.example"), "DELETE", "/api/admin/domains/bad.example"],
+  [
+    "report",
+    (e) => e.report("post", ID, "spam"),
+    "POST",
+    "/api/reports",
+    { subjectType: "post", subjectId: ID, reason: "spam" },
+  ],
+  // notifications
+  ["notifications", (e) => e.notifications(), "GET", "/api/notifications"],
+  ["notifications(cursor)", (e) => e.notifications("a+b/c"), "GET", "/api/notifications?cursor=a%2Bb%2Fc"],
+  ["unreadNotificationCount", (e) => e.unreadNotificationCount(), "GET", "/api/notifications/unread-count"],
+  ["markAllNotificationsRead", (e) => e.markAllNotificationsRead(), "POST", "/api/notifications/read"],
+  ["markNotificationRead", (e) => e.markNotificationRead(ID), "POST", `/api/notifications/${ID}/read`],
+  // search + tags
+  ["search", (e) => e.search("a&b"), "GET", "/api/search?q=a%26b"],
+  ["search(scope)", (e) => e.search("q", "people"), "GET", "/api/search?q=q&scope=people"],
+  ["search(opts)", (e) => e.search("q", { tag: "deno", author: "ada" }), "GET", "/api/search?q=q&tag=deno&author=ada"],
+  ["tag", (e) => e.tag("c#"), "GET", "/api/tags/c%23"],
+  ["tagPosts", (e) => e.tagPosts("deno", "cur"), "GET", "/api/tags/deno/posts?cursor=cur"],
+  ["followTag", (e) => e.followTag("deno"), "POST", "/api/tags/deno/follow"],
+  ["unfollowTag", (e) => e.unfollowTag("deno"), "DELETE", "/api/tags/deno/follow"],
+  ["trendingTags", (e) => e.trendingTags(), "GET", "/api/tags"],
+  ["followedTags", (e) => e.followedTags(), "GET", "/api/tags/following"],
+  ["suggestTags", (e) => e.suggestTags("de no"), "GET", "/api/tags/suggest?q=de%20no"],
+  ["searchTags", (e) => e.searchTags("x"), "GET", "/api/tags/search?q=x"],
+  ["adminTagAliases", (e) => e.adminTagAliases(), "GET", "/api/admin/tags/aliases"],
+  [
+    "createTagAlias",
+    (e) => e.createTagAlias("js", "javascript"),
+    "POST",
+    "/api/admin/tags/alias",
+    { alias: "js", target: "javascript" },
+  ],
+  [
+    "mergeTags",
+    (e) => e.mergeTags("js", "javascript"),
+    "POST",
+    "/api/admin/tags/merge",
+    { from: "js", to: "javascript" },
+  ],
+  // webhooks
+  ["webhookTokens", (e) => e.webhookTokens(), "GET", "/api/webhooks/tokens"],
+  ["createWebhookToken", (e) => e.createWebhookToken("ci"), "POST", "/api/webhooks/tokens", { label: "ci" }],
+  ["revokeWebhookToken", (e) => e.revokeWebhookToken(ID), "DELETE", `/api/webhooks/tokens/${ID}`],
+  // feeds + posts
+  ["feed", (e) => e.feed("c"), "GET", "/api/feed?cursor=c"],
+  ["globalTimeline", (e) => e.globalTimeline(), "GET", "/api/posts"],
+  [
+    "globalTimeline(filter)",
+    (e) => e.globalTimeline("c", { langMode: "hide", langs: "en,tr" }),
+    "GET",
+    "/api/posts?cursor=c&langMode=hide&langs=en%2Ctr",
+  ],
+  ["globalTimeline(empty filter)", (e) => e.globalTimeline(null, { langMode: "show", langs: "" }), "GET", "/api/posts"],
+  ["localTimeline", (e) => e.localTimeline(), "GET", "/api/posts?scope=local"],
+  ["trendingPosts", (e) => e.trendingPosts(), "GET", "/api/posts/trending"],
+  ["post", (e) => e.post(ID), "GET", `/api/posts/${ID}`],
+  ["postBySlug", (e) => e.postBySlug("bob@remote.example", "a b"), "GET", "/api/posts/by/bob%40remote.example/a%20b"],
+  ["drafts", (e) => e.drafts(), "GET", "/api/posts/drafts"],
+  ["ownPosts", (e) => e.ownPosts("scheduled", "c"), "GET", "/api/posts/mine?status=scheduled&cursor=c"],
+  ["ownPostCounts", (e) => e.ownPostCounts(), "GET", "/api/posts/mine/counts"],
+  ["createPost", (e) => e.createPost({ contentHtml: "<p>x</p>" }), "POST", "/api/posts", { contentHtml: "<p>x</p>" }],
+  ["updatePost", (e) => e.updatePost(ID, { title: "T" }), "PATCH", `/api/posts/${ID}`, { title: "T" }],
+  ["deletePost", (e) => e.deletePost(ID), "DELETE", `/api/posts/${ID}`],
+  ["deletePost(notify)", (e) => e.deletePost(ID, true), "DELETE", `/api/posts/${ID}?notify=true`],
+  ["relatedPosts", (e) => e.relatedPosts(ID), "GET", `/api/posts/${ID}/related`],
+  ["likePost", (e) => e.likePost(ID), "POST", `/api/posts/${ID}/like`],
+  ["unlikePost", (e) => e.unlikePost(ID), "DELETE", `/api/posts/${ID}/like`],
+  ["recommendPost", (e) => e.recommendPost(ID), "POST", `/api/posts/${ID}/recommend`],
+  ["unrecommendPost", (e) => e.unrecommendPost(ID), "DELETE", `/api/posts/${ID}/recommend`],
+  ["comments", (e) => e.comments(ID, "c"), "GET", `/api/posts/${ID}/comments?cursor=c`],
+  [
+    "createComment",
+    (e) => e.createComment(ID, "hi", "c1"),
+    "POST",
+    `/api/posts/${ID}/comments`,
+    { content: "hi", parentId: "c1" },
+  ],
+  ["editComment", (e) => e.editComment(ID, "c1", "edit"), "PATCH", `/api/posts/${ID}/comments/c1`, { content: "edit" }],
+  ["deleteComment", (e) => e.deleteComment(ID, "c1"), "DELETE", `/api/posts/${ID}/comments/c1`],
+  ["likeComment", (e) => e.likeComment(ID, "c1"), "POST", `/api/posts/${ID}/comments/c1/like`],
+  ["unlikeComment", (e) => e.unlikeComment(ID, "c1"), "DELETE", `/api/posts/${ID}/comments/c1/like`],
+  // lists
+  ["myLists", (e) => e.myLists(), "GET", "/api/lists"],
+  ["userLists", (e) => e.userLists("ada"), "GET", "/api/lists/user/ada"],
+  ["readLater", (e) => e.readLater(), "GET", "/api/lists/read-later"],
+  ["list", (e) => e.list("l1"), "GET", "/api/lists/l1"],
+  ["listItems", (e) => e.listItems("l1", "c"), "GET", "/api/lists/l1/items?cursor=c"],
+  ["listsForPost", (e) => e.listsForPost(ID), "GET", `/api/lists/for-post/${ID}`],
+  ["createList", (e) => e.createList({ title: "L" }), "POST", "/api/lists", { title: "L" }],
+  [
+    "updateList",
+    (e) => e.updateList("l1", { visibility: "private" }),
+    "PATCH",
+    "/api/lists/l1",
+    { visibility: "private" },
+  ],
+  ["deleteList", (e) => e.deleteList("l1"), "DELETE", "/api/lists/l1"],
+  ["addToList", (e) => e.addToList("l1", ID), "POST", "/api/lists/l1/items", { postId: ID }],
+  ["removeFromList", (e) => e.removeFromList("l1", ID), "DELETE", `/api/lists/l1/items/${ID}`],
+  // own profile + media
+  ["updateProfile", (e) => e.updateProfile({ bio: "b" }), "PATCH", "/api/users/me", { bio: "b" }],
+  [
+    "previewCustomSection",
+    (e) => e.previewCustomSection("# Hi"),
+    "POST",
+    "/api/users/me/custom-section/preview",
+    { customSection: "# Hi" },
+  ],
+  ["uploadAvatar", (e) => e.uploadAvatar(bytes as never, "image/webp"), "POST", "/api/users/me/avatar", "img"],
+  ["removeAvatar", (e) => e.removeAvatar(), "DELETE", "/api/users/me/avatar"],
+  ["uploadImage", (e) => e.uploadImage(bytes as never, "image/webp"), "POST", "/api/uploads", "img"],
+  ["photoProviders", (e) => e.photoProviders(), "GET", "/api/photos/providers"],
+  [
+    "searchPhotos",
+    (e) => e.searchPhotos("unsplash", "sea & sky"),
+    "GET",
+    "/api/photos/search?provider=unsplash&q=sea%20%26%20sky&page=1",
+  ],
+  [
+    "recordPhotoUse",
+    (e) => e.recordPhotoUse("unsplash", "t"),
+    "POST",
+    "/api/photos/use",
+    { provider: "unsplash", token: "t" },
+  ],
+  // users + relations
+  ["suggestedUsers", (e) => e.suggestedUsers(), "GET", "/api/users/suggested"],
+  ["profile", (e) => e.profile("ada"), "GET", "/api/users/ada"],
+  ["userPosts", (e) => e.userPosts("ada", "c"), "GET", "/api/users/ada/posts?cursor=c"],
+  ["userRecommendations", (e) => e.userRecommendations("ada"), "GET", "/api/users/ada/recommendations"],
+  ["follow", (e) => e.follow("ada"), "POST", "/api/users/ada/follow"],
+  ["unfollow", (e) => e.unfollow("ada"), "DELETE", "/api/users/ada/follow"],
+  ["setPrivacy", (e) => e.setPrivacy(true), "PATCH", "/api/users/me/privacy", { isPrivate: true }],
+  ["followRequests", (e) => e.followRequests(), "GET", "/api/users/me/follow-requests"],
+  ["approveFollowRequest", (e) => e.approveFollowRequest("f1"), "POST", "/api/users/me/follow-requests/f1/approve"],
+  ["rejectFollowRequest", (e) => e.rejectFollowRequest("f1"), "POST", "/api/users/me/follow-requests/f1/reject"],
+  ["mute", (e) => e.mute("ada"), "POST", "/api/users/ada/mute"],
+  ["unmute", (e) => e.unmute("ada"), "DELETE", "/api/users/ada/mute"],
+  ["block", (e) => e.block("ada"), "POST", "/api/users/ada/block"],
+  ["unblock", (e) => e.unblock("ada"), "DELETE", "/api/users/ada/block"],
+  ["userFollowers", (e) => e.userFollowers("ada"), "GET", "/api/users/ada/followers"],
+  ["userFollowing", (e) => e.userFollowing("ada"), "GET", "/api/users/ada/following"],
+  [
+    "removeFollower",
+    (e) => e.removeFollower("bob@remote.example"),
+    "DELETE",
+    "/api/users/me/followers/bob%40remote.example",
+  ],
+  ["muted", (e) => e.muted(), "GET", "/api/users/me/muted"],
+  ["blocked", (e) => e.blocked(), "GET", "/api/users/me/blocked"],
+  // remote profiles
+  ["remoteProfile", (e) => e.remoteProfile("bob@remote.example"), "GET", "/api/remote/users/bob%40remote.example"],
+  [
+    "remoteUserPosts",
+    (e) => e.remoteUserPosts("bob@r.example", "c"),
+    "GET",
+    "/api/remote/users/bob%40r.example/posts?cursor=c",
+  ],
+  [
+    "remoteUserRecommendations",
+    (e) => e.remoteUserRecommendations("bob@r.example"),
+    "GET",
+    "/api/remote/users/bob%40r.example/recommendations",
+  ],
+  [
+    "remoteUserRecommendations(cursor)",
+    (e) => e.remoteUserRecommendations("bob@r.example", "c"),
+    "GET",
+    "/api/remote/users/bob%40r.example/recommendations?cursor=c",
+  ],
+  ["remoteFollow", (e) => e.remoteFollow("bob@r.example"), "POST", "/api/remote/users/bob%40r.example/follow"],
+  ["remoteUnfollow", (e) => e.remoteUnfollow("bob@r.example"), "DELETE", "/api/remote/users/bob%40r.example/follow"],
+  ["remoteMute", (e) => e.remoteMute("bob@r.example"), "POST", "/api/remote/users/bob%40r.example/mute"],
+  ["remoteUnmute", (e) => e.remoteUnmute("bob@r.example"), "DELETE", "/api/remote/users/bob%40r.example/mute"],
+  ["remoteBlock", (e) => e.remoteBlock("bob@r.example"), "POST", "/api/remote/users/bob%40r.example/block"],
+  ["remoteUnblock", (e) => e.remoteUnblock("bob@r.example"), "DELETE", "/api/remote/users/bob%40r.example/block"],
+];
+
+describe("endpoint table", () => {
+  test.for(rows)("%s → %s %s", async ([, call, method, path, body]) => {
+    const { fetch, calls } = fakeFetch({ "*": {} });
+    await call(endpoints(fetch));
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ method, path, body });
+  });
+
+  test("every helper is listed above", () => {
+    const listed = new Set(rows.map(([name]) => name.replace(/\(.*$/, "")));
+    const missing = Object.keys(endpoints(fakeFetch().fetch)).filter((k) => !listed.has(k));
+    expect(missing).toEqual([]);
+  });
+});

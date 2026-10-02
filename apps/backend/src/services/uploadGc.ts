@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { unlink } from "node:fs/promises";
 import { config } from "@/config.ts";
 import * as instanceSettingsRepo from "@/db/repositories/instanceSettings.ts";
 import * as uploadsRepo from "@/db/repositories/uploads.ts";
@@ -76,12 +77,12 @@ export async function sweep(): Promise<number> {
   let reaped = 0;
   for (const victim of victims) {
     try {
-      await Deno.remove(`${config.UPLOADS_DIR}/${victim.filename}`);
+      await unlink(`${config.UPLOADS_DIR}/${victim.filename}`);
     } catch (err) {
       // Already gone — another node won the race, or an earlier sweep unlinked
       // the file but failed before forgetting the row: the row can still go.
       // Anything else leaves the row so a later sweep retries.
-      if (!(err instanceof Deno.errors.NotFound)) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
         console.warn(`upload-gc: could not delete ${victim.filename}:`, err);
         continue;
       }
@@ -89,7 +90,7 @@ export async function sweep(): Promise<number> {
     // Drop the derived share image too (id = filename without extension);
     // stale otherwise, and it would never be rebuilt once the source is gone.
     const id = victim.filename.replace(/\.[a-z0-9]+$/i, "");
-    await Deno.remove(cachePath(id)).catch(() => {});
+    await unlink(cachePath(id)).catch(() => {});
     try {
       await uploadsRepo.remove(victim.id);
     } catch (err) {

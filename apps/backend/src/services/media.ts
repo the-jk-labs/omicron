@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { mkdir, writeFile } from "node:fs/promises";
 import { config } from "@/config.ts";
 import * as uploadsRepo from "@/db/repositories/uploads.ts";
 import { badRequest, payloadTooLarge, type HttpError } from "@/lib/http.ts";
@@ -115,9 +116,9 @@ export async function saveImage(ownerId: string, bytes: Uint8Array, contentType:
   );
   if (!verdict.ok) throw quotaError(verdict.reason);
 
-  await Deno.mkdir(config.UPLOADS_DIR, { recursive: true });
+  await mkdir(config.UPLOADS_DIR, { recursive: true });
   try {
-    await Deno.writeFile(`${config.UPLOADS_DIR}/${filename}`, bytes);
+    await writeFile(`${config.UPLOADS_DIR}/${filename}`, bytes);
   } catch (err) {
     await uploadsRepo.removeByFilename(filename).catch(() => {});
     throw err;

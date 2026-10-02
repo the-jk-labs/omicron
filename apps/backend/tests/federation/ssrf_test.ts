@@ -4,10 +4,6 @@
 // (incl. cloud metadata), or other private hosts — no matter the IP spelling.
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/config.ts", () => ({
-  config: { ALLOW_PRIVATE_FEDERATION: false },
-}));
-
 vi.mock("node:dns/promises", () => ({
   lookup: vi.fn<() => Promise<unknown>>(),
 }));

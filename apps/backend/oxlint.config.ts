@@ -16,4 +16,12 @@ export default defineConfig({
     "typescript/consistent-type-imports": "warn",
     "typescript/no-unsafe-type-assertion": "off",
   },
+  overrides: [
+    {
+      // Asserting on a mocked method (`expect(queue.add)`) is the whole point
+      // of a spy; there is no `this` to lose.
+      files: ["tests/**"],
+      rules: { "typescript/unbound-method": "off" },
+    },
+  ],
 });

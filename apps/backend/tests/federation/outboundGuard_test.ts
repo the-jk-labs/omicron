@@ -6,14 +6,13 @@
 // caching, a global + per-origin concurrency budget, and a hard deadline.
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/config.ts", () => ({
-  config: {
-    RL_REMOTE_MAX_OUTBOUND: 2,
-    RL_REMOTE_MAX_PER_ORIGIN: 1,
-    REMOTE_LOOKUP_TIMEOUT_MS: 250,
-    REMOTE_NEGATIVE_CACHE_TTL_MS: 60_000,
-  },
-}));
+// The guard reads its limits from config at import, so set them as env first.
+vi.hoisted(() => {
+  vi.stubEnv("RL_REMOTE_MAX_OUTBOUND", "2");
+  vi.stubEnv("RL_REMOTE_MAX_PER_ORIGIN", "1");
+  vi.stubEnv("REMOTE_LOOKUP_TIMEOUT_MS", "250");
+  vi.stubEnv("REMOTE_NEGATIVE_CACHE_TTL_MS", "60000");
+});
 
 import {
   negativeCached,

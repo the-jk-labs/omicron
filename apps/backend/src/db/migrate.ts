@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { readFile } from "node:fs/promises";
 import { sql } from "@/db/client.ts";
 import { APP_VERSION } from "@/version.ts";
 
@@ -28,7 +29,7 @@ export async function runMigrations() {
   console.log(`▶ Omicron v${APP_VERSION}: applying migrations...`);
   const start = Date.now();
 
-  const journal = JSON.parse(await Deno.readTextFile(new URL("meta/_journal.json", drizzleDir))) as {
+  const journal = JSON.parse(await readFile(new URL("meta/_journal.json", drizzleDir), "utf8")) as {
     entries: JournalEntry[];
   };
 
@@ -36,7 +37,7 @@ export async function runMigrations() {
   const pending = journal.entries.toSorted((a, b) => a.idx - b.idx).filter((e) => !done.has(e.tag));
 
   for (const entry of pending) {
-    const file = await Deno.readTextFile(new URL(`${entry.tag}.sql`, drizzleDir));
+    const file = await readFile(new URL(`${entry.tag}.sql`, drizzleDir), "utf8");
     const statements = file
       .split("--> statement-breakpoint")
       .map((s) => s.trim())

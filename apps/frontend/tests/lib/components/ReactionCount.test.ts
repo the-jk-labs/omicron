@@ -1,7 +1,7 @@
+import ReactionCount from "$lib/components/ReactionCount.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render, screen } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
-import ReactionCount from "$lib/components/ReactionCount.svelte";
 
 describe("ReactionCount", () => {
   it("renders the count with title, sr-only and aria-hidden", () => {

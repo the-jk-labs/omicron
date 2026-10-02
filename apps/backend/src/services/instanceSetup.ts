@@ -1,3 +1,4 @@
+import process from "node:process";
 import { config } from "@/config.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
@@ -32,7 +33,7 @@ export async function isSetupComplete(): Promise<boolean> {
 // Effective public-facing instance name: wizard → PUBLIC_APP_NAME env → default.
 export async function getAppName(): Promise<string> {
   const fromDb = await settingsRepo.get<string>(SETUP_KEYS.appName);
-  return fromDb?.trim() || Deno.env.get("PUBLIC_APP_NAME")?.trim() || "Omicron";
+  return fromDb?.trim() || process.env.PUBLIC_APP_NAME?.trim() || "Omicron";
 }
 
 // Effective public domain: wizard → APP_DOMAIN env/default (config.APP_DOMAIN).

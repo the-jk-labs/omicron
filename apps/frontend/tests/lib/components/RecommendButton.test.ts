@@ -1,3 +1,6 @@
+import { goto } from "$app/navigation";
+import { page } from "$app/state";
+import RecommendButton from "$lib/components/RecommendButton.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // Regression tests for the recommendation counter rendering as a bare number.
@@ -7,9 +10,9 @@
 // is mirrored in `title` for the hover tooltip. If either regresses, the card
 // and post page would again show "2 0 0" / "5 0 0" to sighted users and silence
 // to assistive tech.
-import { render, screen } from "@testing-library/svelte";
-import { describe, expect, it } from "vitest";
-import RecommendButton from "$lib/components/RecommendButton.svelte";
+import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { apiError, fakeFetch } from "../../fakeFetch";
 
 describe("RecommendButton", () => {
   it("includes the count in its accessible name and hover tooltip", () => {
@@ -44,5 +47,42 @@ describe("RecommendButton", () => {
       "title",
       "Recommend (0 recommendations)",
     );
+  });
+});
+
+describe("RecommendButton toggling", () => {
+  afterEach(() => {
+    page.data.user = null;
+  });
+
+  it("a guest is sent to sign in, and nothing is posted", async () => {
+    const { fetch } = fakeFetch();
+    vi.stubGlobal("fetch", fetch);
+    render(RecommendButton, { props: { postId: "p1", recommended: false, recommendCount: 2 } });
+    await fireEvent.click(screen.getByRole("button"));
+    expect(goto).toHaveBeenCalledWith("/login");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("recommends optimistically, then settles on the server's numbers", async () => {
+    page.data.user = { id: "u1" } as never;
+    vi.stubGlobal(
+      "fetch",
+      fakeFetch({ "POST /api/posts/p1/recommend": { recommended: true, recommendCount: 7 } }).fetch,
+    );
+    render(RecommendButton, { props: { postId: "p1", recommended: false, recommendCount: 2 } });
+    await fireEvent.click(screen.getByRole("button"));
+    await waitFor(() => expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true"));
+    expect(screen.getByRole("button")).toHaveTextContent("7");
+  });
+
+  it("a failed un-recommend puts the button back", async () => {
+    page.data.user = { id: "u1" } as never;
+    vi.stubGlobal("fetch", fakeFetch({ "DELETE /api/posts/p1/recommend": apiError(500) }).fetch);
+    render(RecommendButton, { props: { postId: "p1", recommended: true, recommendCount: 3 } });
+    await fireEvent.click(screen.getByRole("button"));
+    await waitFor(() => expect(screen.getByRole("button")).not.toBeDisabled());
+    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button")).toHaveTextContent("3");
   });
 });

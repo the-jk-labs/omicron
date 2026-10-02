@@ -11,7 +11,6 @@
 // a sliding window but cheap and more than adequate for abuse throttling.
 
 import type { Context } from "hono";
-import { getConnInfo } from "hono/deno";
 import { createMiddleware } from "hono/factory";
 import { config } from "@/config.ts";
 import { hit } from "@/lib/rateLimitCore.ts";
@@ -37,11 +36,10 @@ export function clientIp(c: Context): string {
   }
   const real = c.req.header("x-real-ip");
   if (real) return real.trim();
-  try {
-    return getConnInfo(c).remote.address ?? "unknown";
-  } catch {
-    return "unknown";
-  }
+  // The socket peer, which the server adapter passes as `env.remoteAddr`
+  // (Deno.serve's ServeHandlerInfo) — what `hono/deno`'s getConnInfo reads.
+  const env = c.env as { remoteAddr?: { hostname?: string } } | undefined;
+  return env?.remoteAddr?.hostname ?? "unknown";
 }
 
 export type RateLimitOptions = {

@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { readFile } from "node:fs/promises";
+import process from "node:process";
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
 import { routeThroughAnubis } from "@/lib/caddyfile.ts";
 
@@ -22,12 +24,12 @@ import { routeThroughAnubis } from "@/lib/caddyfile.ts";
 const SETTING_KEY = "security.anubisProtection";
 
 // Caddy's admin API, reachable only over the compose network. Unset in a bare
-// `deno task` dev run with no Caddy in front — then the feature is unavailable
+// `pnpm dev` run with no Caddy in front — then the feature is unavailable
 // and the UI says so instead of erroring.
-const CADDY_ADMIN_URL = Deno.env.get("CADDY_ADMIN_URL")?.trim();
+const CADDY_ADMIN_URL = process.env.CADDY_ADMIN_URL?.trim();
 // The Caddyfile the running Caddy loaded, mounted read-only into this container
 // so we transform the operator's real config rather than a drifting duplicate.
-const CADDYFILE_PATH = Deno.env.get("CADDYFILE_PATH")?.trim() || "/etc/caddy/Caddyfile";
+const CADDYFILE_PATH = process.env.CADDYFILE_PATH?.trim() || "/etc/caddy/Caddyfile";
 
 // Whether the live toggle can work in this deployment (Caddy admin reachable).
 export function anubisManaged(): boolean {
@@ -41,7 +43,7 @@ export async function anubisProtectionEnabled(): Promise<boolean> {
 // The desired Caddyfile: unchanged when disabling, frontend upstream swapped for
 // the Anubis sidecar when enabling.
 async function renderCaddyfile(enabled: boolean): Promise<string> {
-  const base = await Deno.readTextFile(CADDYFILE_PATH);
+  const base = await readFile(CADDYFILE_PATH, "utf8");
   return enabled ? routeThroughAnubis(base) : base;
 }
 

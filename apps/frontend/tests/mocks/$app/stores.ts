@@ -5,6 +5,6 @@
 // `Readable`; `UTC` matches the server's first-render fallback.
 import { readable } from "svelte/store";
 
-export const page = readable({ data: { timeZone: "UTC" } });
+export const page = readable({ data: { timeZone: "UTC" }, url: new URL("http://localhost/") });
 export const navigating = readable(null);
 export const updated = readable({ current: false });

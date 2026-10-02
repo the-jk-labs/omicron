@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { config } from "@/config.ts";
 import { toShareJpeg } from "@/lib/shareImage.ts";
 import { IMAGE_TYPES } from "@/services/media.ts";
@@ -21,7 +22,7 @@ export function cachePath(id: string): string {
 export async function findSource(id: string): Promise<Uint8Array<ArrayBuffer> | null> {
   for (const ext of new Set(Object.values(IMAGE_TYPES))) {
     try {
-      return await Deno.readFile(`${config.UPLOADS_DIR}/${id}.${ext}`);
+      return await readFile(`${config.UPLOADS_DIR}/${id}.${ext}`);
     } catch {
       // Not this extension; try the next.
     }
@@ -39,7 +40,7 @@ export async function findSource(id: string): Promise<Uint8Array<ArrayBuffer> | 
 export async function shareJpeg(id: string): Promise<Uint8Array<ArrayBuffer> | null> {
   const cached = cachePath(id);
   try {
-    return await Deno.readFile(cached);
+    return await readFile(cached);
   } catch {
     // Not built yet.
   }
@@ -48,15 +49,15 @@ export async function shareJpeg(id: string): Promise<Uint8Array<ArrayBuffer> | n
   if (!source) return null;
 
   const jpeg = await toShareJpeg(source);
-  await Deno.mkdir(`${config.UPLOADS_DIR}/og`, { recursive: true });
+  await mkdir(`${config.UPLOADS_DIR}/og`, { recursive: true });
   const tmp = `${cached}.${crypto.randomUUID()}.tmp`;
   try {
-    await Deno.writeFile(tmp, jpeg);
-    await Deno.rename(tmp, cached);
+    await writeFile(tmp, jpeg);
+    await rename(tmp, cached);
   } catch {
     // A failed cache write costs a re-transcode next time; it must not cost the
     // caller their share image.
-    await Deno.remove(tmp).catch(() => {});
+    await unlink(tmp).catch(() => {});
   }
   return jpeg;
 }

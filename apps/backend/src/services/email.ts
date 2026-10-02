@@ -17,6 +17,7 @@
 // made in the setup wizard or admin page takes effect immediately — no restart,
 // no config file to edit.
 
+import { resolveMx } from "node:dns/promises";
 import { buildMessage, domainOf, extractAddress, serializeMessage } from "@/lib/mime.ts";
 import { sendSmtp } from "@/lib/smtp.ts";
 import { signMessage } from "@/services/dkim.ts";
@@ -156,15 +157,15 @@ function directTransport(cfg: EmailConfig): Transport {
       const domain = domainOf(extractAddress(msg.to));
       if (!domain) throw new Error(`Invalid recipient address: ${msg.to}`);
 
-      let mx: { preference: number; exchange: string }[];
+      let mx: { priority: number; exchange: string }[];
       try {
-        mx = await Deno.resolveDns(domain, "MX");
+        mx = await resolveMx(domain);
       } catch (err) {
         throw new Error(`No MX records for ${domain}: ${err instanceof Error ? err.message : JSON.stringify(err)}`, {
           cause: err,
         });
       }
-      const hosts = mx.toSorted((a, b) => a.preference - b.preference).map((r) => r.exchange);
+      const hosts = mx.toSorted((a, b) => a.priority - b.priority).map((r) => r.exchange);
       if (hosts.length === 0) throw new Error(`No MX records for ${domain}`);
 
       const errors: string[] = [];

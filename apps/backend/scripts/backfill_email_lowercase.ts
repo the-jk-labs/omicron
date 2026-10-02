@@ -1,3 +1,4 @@
+import process from "node:process";
 import { sql } from "@/db/client.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // One-time backfill: canonicalise stored login emails to lowercase.
@@ -8,8 +9,10 @@ import { sql } from "@/db/client.ts";
 // may still hold a mixed-case address, which is unreachable at sign-in and can
 // sit alongside a lowercase twin. This script lowercases those older rows.
 //
-//   deno task backfill:email-lowercase            # apply changes
-//   deno task backfill:email-lowercase --dry-run  # preview without writing
+//   docker compose exec backend deno task backfill:email-lowercase            # apply changes
+//   docker compose exec backend deno task backfill:email-lowercase --dry-run  # preview without writing
+//
+// Locally: `pnpm backfill:email-lowercase` (add `--dry-run` the same way).
 //
 // Safe to run more than once: a row already lowercase is skipped.
 //
@@ -21,7 +24,7 @@ import { sql } from "@/db/client.ts";
 // suspend or delete the duplicate) and re-run.
 import * as usersRepo from "@/db/repositories/users.ts";
 
-const dryRun = Deno.args.includes("--dry-run");
+const dryRun = process.argv.includes("--dry-run");
 
 const rows = await usersRepo.listEmails();
 console.log(`Scanning ${rows.length} account(s)${dryRun ? " (dry run)" : ""}…`);

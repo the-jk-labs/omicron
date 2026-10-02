@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { mkdir, readdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { config } from "@/config.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
@@ -80,7 +81,7 @@ export async function profileCard(username: string): Promise<Uint8Array<ArrayBuf
   const avatarFile = user.avatarUrl ? AVATAR_PATH.exec(user.avatarUrl)?.[1] : undefined;
   if (avatarFile) {
     try {
-      avatar = await Deno.readFile(`${config.UPLOADS_DIR}/${avatarFile}`);
+      avatar = await readFile(`${config.UPLOADS_DIR}/${avatarFile}`);
     } catch {
       avatar = null;
     }
@@ -91,7 +92,7 @@ export async function profileCard(username: string): Promise<Uint8Array<ArrayBuf
   );
   const cached = cachePath(user.username, digest);
   try {
-    return await Deno.readFile(cached);
+    return await readFile(cached);
   } catch {
     // Not built yet.
   }
@@ -99,17 +100,17 @@ export async function profileCard(username: string): Promise<Uint8Array<ArrayBuf
   const jpeg = await renderProfileCard(text, avatar);
   if (!jpeg) return null;
 
-  await Deno.mkdir(`${config.UPLOADS_DIR}/og-profiles`, { recursive: true });
+  await mkdir(`${config.UPLOADS_DIR}/og-profiles`, { recursive: true });
   // Written to a temporary file and renamed into place, so two scrapers
   // arriving together can never serve each other a half-written image.
   const tmp = `${cached}.${crypto.randomUUID()}.tmp`;
   try {
-    await Deno.writeFile(tmp, jpeg);
-    await Deno.rename(tmp, cached);
+    await writeFile(tmp, jpeg);
+    await rename(tmp, cached);
   } catch {
     // A failed cache write costs a re-render next time; it must not cost the
     // caller their card.
-    await Deno.remove(tmp).catch(() => {});
+    await unlink(tmp).catch(() => {});
   }
   // Retire this profile's superseded renders — the file the rename above just
   // replaced, plus any older generation a CARD_VERSION bump orphaned. Best
@@ -118,9 +119,9 @@ export async function profileCard(username: string): Promise<Uint8Array<ArrayBuf
   // escape this profile's own files.
   const fileName = cached.slice(cached.lastIndexOf("/") + 1);
   try {
-    for await (const entry of Deno.readDir(`${config.UPLOADS_DIR}/og-profiles`)) {
-      if (entry.isFile && entry.name.startsWith(`${user.username}-`) && entry.name !== fileName) {
-        await Deno.remove(`${config.UPLOADS_DIR}/og-profiles/${entry.name}`).catch(() => {});
+    for (const entry of await readdir(`${config.UPLOADS_DIR}/og-profiles`, { withFileTypes: true })) {
+      if (entry.isFile() && entry.name.startsWith(`${user.username}-`) && entry.name !== fileName) {
+        await unlink(`${config.UPLOADS_DIR}/og-profiles/${entry.name}`).catch(() => {});
       }
     }
   } catch {

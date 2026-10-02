@@ -1,5 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import process from "node:process";
+import { config as loadDotenv } from "dotenv";
 import { z } from "zod";
+
+// A local `.env` fills in whatever the real environment leaves unset; set
+// variables always win. `DOTENV_PATH` points it elsewhere (the test suite does).
+loadDotenv({ quiet: true });
+const env = process.env;
 
 // The shipped placeholder from older .env.example files — treat it as "unset"
 // so an operator who never edited it still gets a real generated secret.
@@ -9,12 +17,12 @@ const PLACEHOLDER_SECRET = "change-me-please-use-a-long-random-string";
 // zero-config path). In docker compose this maps to a small persistent volume;
 // locally it defaults to ./.state. Kept out of UPLOADS_DIR so a secret can
 // never be served as media.
-const STATE_DIR = Deno.env.get("STATE_DIR")?.trim() || "./.state";
+const STATE_DIR = env.STATE_DIR?.trim() || "./.state";
 
 function readFileTrimmed(path?: string | null): string | undefined {
   if (!path) return undefined;
   try {
-    return Deno.readTextFileSync(path).trim() || undefined;
+    return readFileSync(path, "utf8").trim() || undefined;
   } catch {
     return undefined;
   }
@@ -38,22 +46,22 @@ const STATE_SECRET_PATH = `${STATE_DIR}/session_secret`;
 //   SESSION_SECRET_FILE so a web-UI rotation sticks even when the bootstrap
 //   secret file is read-only.
 function resolveSessionSecret(): string {
-  const fromEnv = Deno.env.get("SESSION_SECRET")?.trim();
+  const fromEnv = env.SESSION_SECRET?.trim();
   if (fromEnv && fromEnv !== PLACEHOLDER_SECRET) return fromEnv;
 
   // A prior UI rotation (or a previous auto-generation) persisted here.
   const rotated = readFileTrimmed(STATE_SECRET_PATH);
   if (rotated) return rotated;
 
-  const fromFile = readFileTrimmed(Deno.env.get("SESSION_SECRET_FILE"));
+  const fromFile = readFileTrimmed(env.SESSION_SECRET_FILE);
   if (fromFile) return fromFile;
 
   // Nothing supplied — generate once and persist so sessions survive restarts
   // and upgrades. This is the toy-easy default for local/dev and single-node.
   const secret = randomHex(32);
   try {
-    Deno.mkdirSync(STATE_DIR, { recursive: true });
-    Deno.writeTextFileSync(STATE_SECRET_PATH, secret, { mode: 0o600 });
+    mkdirSync(STATE_DIR, { recursive: true });
+    writeFileSync(STATE_SECRET_PATH, secret, { mode: 0o600 });
     console.log(`✔ No SESSION_SECRET set — generated and persisted one at ${STATE_SECRET_PATH}.`);
   } catch (err) {
     console.warn(
@@ -71,7 +79,7 @@ function resolveSessionSecret(): string {
 // it's the docker default, an auto-generated file in a volume, not a hand-pinned
 // value — so rotation stays available for the common containerised deployment.
 export function sessionSecretManaged(): boolean {
-  const fromEnv = Deno.env.get("SESSION_SECRET")?.trim();
+  const fromEnv = env.SESSION_SECRET?.trim();
   return !(fromEnv && fromEnv !== PLACEHOLDER_SECRET);
 }
 
@@ -87,8 +95,8 @@ export function rotateSessionSecret(): void {
       "The session secret is pinned via the SESSION_SECRET env var — rotate it there, not from the web UI.",
     );
   }
-  Deno.mkdirSync(STATE_DIR, { recursive: true });
-  Deno.writeTextFileSync(STATE_SECRET_PATH, randomHex(32), { mode: 0o600 });
+  mkdirSync(STATE_DIR, { recursive: true });
+  writeFileSync(STATE_SECRET_PATH, randomHex(32), { mode: 0o600 });
 }
 
 // Resolve the database URL: explicit DATABASE_URL, or assemble it from
@@ -96,16 +104,16 @@ export function rotateSessionSecret(): void {
 // (POSTGRES_PASSWORD_FILE) or POSTGRES_PASSWORD. Lets compose run without a
 // hardcoded connection string or a known-default password.
 function resolveDatabaseUrl(): string | undefined {
-  const explicit = Deno.env.get("DATABASE_URL")?.trim();
+  const explicit = env.DATABASE_URL?.trim();
   if (explicit) return explicit;
 
-  const password = readFileTrimmed(Deno.env.get("POSTGRES_PASSWORD_FILE")) ?? Deno.env.get("POSTGRES_PASSWORD")?.trim();
+  const password = readFileTrimmed(env.POSTGRES_PASSWORD_FILE) ?? env.POSTGRES_PASSWORD?.trim();
   if (!password) return undefined;
 
-  const user = Deno.env.get("POSTGRES_USER")?.trim() || "omicron";
-  const dbname = Deno.env.get("POSTGRES_DB")?.trim() || "omicron";
-  const host = Deno.env.get("POSTGRES_HOST")?.trim() || "postgres";
-  const port = Deno.env.get("POSTGRES_PORT")?.trim() || "5432";
+  const user = env.POSTGRES_USER?.trim() || "omicron";
+  const dbname = env.POSTGRES_DB?.trim() || "omicron";
+  const host = env.POSTGRES_HOST?.trim() || "postgres";
+  const port = env.POSTGRES_PORT?.trim() || "5432";
   return `postgres://${user}:${encodeURIComponent(password)}@${host}:${port}/${dbname}`;
 }
 
@@ -251,43 +259,43 @@ const schema = z.object({
 function load() {
   const parsed = schema.safeParse({
     DATABASE_URL: resolveDatabaseUrl(),
-    APP_DOMAIN: Deno.env.get("APP_DOMAIN"),
-    FEDERATION_ENABLED: Deno.env.get("FEDERATION_ENABLED"),
-    ALLOW_PRIVATE_FEDERATION: Deno.env.get("ALLOW_PRIVATE_FEDERATION"),
+    APP_DOMAIN: env.APP_DOMAIN,
+    FEDERATION_ENABLED: env.FEDERATION_ENABLED,
+    ALLOW_PRIVATE_FEDERATION: env.ALLOW_PRIVATE_FEDERATION,
     SESSION_SECRET: resolveSessionSecret(),
-    PORT: Deno.env.get("PORT"),
-    UPLOADS_DIR: Deno.env.get("UPLOADS_DIR"),
-    REDIS_URL: Deno.env.get("REDIS_URL"),
-    RATE_LIMIT_ENABLED: Deno.env.get("RATE_LIMIT_ENABLED"),
-    RL_LOGIN_MAX: Deno.env.get("RL_LOGIN_MAX"),
-    RL_REGISTER_MAX: Deno.env.get("RL_REGISTER_MAX"),
-    RL_API_WRITE_MAX: Deno.env.get("RL_API_WRITE_MAX"),
-    RL_UPLOAD_MAX: Deno.env.get("RL_UPLOAD_MAX"),
-    RL_INBOX_MAX: Deno.env.get("RL_INBOX_MAX"),
-    RL_WEBHOOK_MAX: Deno.env.get("RL_WEBHOOK_MAX"),
-    INBOX_MAX_BODY_BYTES: Deno.env.get("INBOX_MAX_BODY_BYTES"),
-    RL_REMOTE_MAX: Deno.env.get("RL_REMOTE_MAX"),
-    RL_REMOTE_MISS_MAX: Deno.env.get("RL_REMOTE_MISS_MAX"),
-    RL_REMOTE_MAX_OUTBOUND: Deno.env.get("RL_REMOTE_MAX_OUTBOUND"),
-    RL_REMOTE_MAX_PER_ORIGIN: Deno.env.get("RL_REMOTE_MAX_PER_ORIGIN"),
-    REMOTE_LOOKUP_TIMEOUT_MS: Deno.env.get("REMOTE_LOOKUP_TIMEOUT_MS"),
-    REMOTE_NEGATIVE_CACHE_TTL_MS: Deno.env.get("REMOTE_NEGATIVE_CACHE_TTL_MS"),
-    REMOTE_CACHE_RETENTION_DAYS: Deno.env.get("REMOTE_CACHE_RETENTION_DAYS"),
-    UPLOAD_GC_GRACE_DAYS: Deno.env.get("UPLOAD_GC_GRACE_DAYS"),
-    UPLOAD_QUOTA_USER_MB: Deno.env.get("UPLOAD_QUOTA_USER_MB"),
-    UPLOAD_QUOTA_TOTAL_MB: Deno.env.get("UPLOAD_QUOTA_TOTAL_MB"),
-    WEBHOOK_SECRET: Deno.env.get("WEBHOOK_SECRET")?.trim() || undefined,
-    WEBHOOK_AUTHOR: Deno.env.get("WEBHOOK_AUTHOR")?.trim() || undefined,
-    WEBHOOK_MAX_BODY_BYTES: Deno.env.get("WEBHOOK_MAX_BODY_BYTES"),
-    EMAIL_TRANSPORT: Deno.env.get("EMAIL_TRANSPORT"),
-    EMAIL_FROM: Deno.env.get("EMAIL_FROM"),
-    SMTP_HOST: Deno.env.get("SMTP_HOST"),
-    SMTP_PORT: Deno.env.get("SMTP_PORT"),
-    SMTP_USERNAME: Deno.env.get("SMTP_USERNAME"),
-    SMTP_PASSWORD: Deno.env.get("SMTP_PASSWORD"),
-    SMTP_TLS: Deno.env.get("SMTP_TLS"),
-    EMAIL_VERIFICATION_REQUIRED: Deno.env.get("EMAIL_VERIFICATION_REQUIRED"),
-    HIBP_CHECK_ENABLED: Deno.env.get("HIBP_CHECK_ENABLED"),
+    PORT: env.PORT,
+    UPLOADS_DIR: env.UPLOADS_DIR,
+    REDIS_URL: env.REDIS_URL,
+    RATE_LIMIT_ENABLED: env.RATE_LIMIT_ENABLED,
+    RL_LOGIN_MAX: env.RL_LOGIN_MAX,
+    RL_REGISTER_MAX: env.RL_REGISTER_MAX,
+    RL_API_WRITE_MAX: env.RL_API_WRITE_MAX,
+    RL_UPLOAD_MAX: env.RL_UPLOAD_MAX,
+    RL_INBOX_MAX: env.RL_INBOX_MAX,
+    RL_WEBHOOK_MAX: env.RL_WEBHOOK_MAX,
+    INBOX_MAX_BODY_BYTES: env.INBOX_MAX_BODY_BYTES,
+    RL_REMOTE_MAX: env.RL_REMOTE_MAX,
+    RL_REMOTE_MISS_MAX: env.RL_REMOTE_MISS_MAX,
+    RL_REMOTE_MAX_OUTBOUND: env.RL_REMOTE_MAX_OUTBOUND,
+    RL_REMOTE_MAX_PER_ORIGIN: env.RL_REMOTE_MAX_PER_ORIGIN,
+    REMOTE_LOOKUP_TIMEOUT_MS: env.REMOTE_LOOKUP_TIMEOUT_MS,
+    REMOTE_NEGATIVE_CACHE_TTL_MS: env.REMOTE_NEGATIVE_CACHE_TTL_MS,
+    REMOTE_CACHE_RETENTION_DAYS: env.REMOTE_CACHE_RETENTION_DAYS,
+    UPLOAD_GC_GRACE_DAYS: env.UPLOAD_GC_GRACE_DAYS,
+    UPLOAD_QUOTA_USER_MB: env.UPLOAD_QUOTA_USER_MB,
+    UPLOAD_QUOTA_TOTAL_MB: env.UPLOAD_QUOTA_TOTAL_MB,
+    WEBHOOK_SECRET: env.WEBHOOK_SECRET?.trim() || undefined,
+    WEBHOOK_AUTHOR: env.WEBHOOK_AUTHOR?.trim() || undefined,
+    WEBHOOK_MAX_BODY_BYTES: env.WEBHOOK_MAX_BODY_BYTES,
+    EMAIL_TRANSPORT: env.EMAIL_TRANSPORT,
+    EMAIL_FROM: env.EMAIL_FROM,
+    SMTP_HOST: env.SMTP_HOST,
+    SMTP_PORT: env.SMTP_PORT,
+    SMTP_USERNAME: env.SMTP_USERNAME,
+    SMTP_PASSWORD: env.SMTP_PASSWORD,
+    SMTP_TLS: env.SMTP_TLS,
+    EMAIL_VERIFICATION_REQUIRED: env.EMAIL_VERIFICATION_REQUIRED,
+    HIBP_CHECK_ENABLED: env.HIBP_CHECK_ENABLED,
   });
 
   if (!parsed.success) {
@@ -299,7 +307,7 @@ function load() {
           "POSTGRES_PASSWORD (with optional POSTGRES_USER/DB/HOST/PORT).",
       );
     }
-    Deno.exit(1);
+    process.exit(1);
   }
   return parsed.data;
 }

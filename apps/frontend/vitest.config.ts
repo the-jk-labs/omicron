@@ -23,11 +23,17 @@ export default defineConfig({
     setupFiles: ["./tests/setup.ts"],
     fsModuleCache: true,
     include: ["tests/**/*.test.ts"],
+    // Cold imports (bits-ui, Tiptap, fresh module graphs) under a fully
+    // parallel run can pass the 5s default.
+    testTimeout: 15_000,
     // Tailwind/theme CSS is irrelevant to these assertions and slows the run.
     css: false,
+    mockReset: true,
     restoreMocks: true,
     unstubGlobals: true,
     unstubEnvs: true,
+    // BUG pins for unhandled rejections tag their error so the leak doesn't fail the run.
+    onUnhandledError: (error) => !error.message?.includes("[BUG pin]"),
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,svelte}"],
@@ -50,6 +56,7 @@ export default defineConfig({
       "$app/stores": fileURLToPath(new URL("./tests/mocks/$app/stores.ts", import.meta.url)),
       "$app/environment": fileURLToPath(new URL("./tests/mocks/$app/environment.ts", import.meta.url)),
       "$env/dynamic/public": fileURLToPath(new URL("./tests/mocks/$env/dynamic/public.ts", import.meta.url)),
+      "$env/dynamic/private": fileURLToPath(new URL("./tests/mocks/$env/dynamic/private.ts", import.meta.url)),
     },
   },
 });

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { readFile } from "node:fs/promises";
 import { Hono } from "hono";
 import { config } from "@/config.ts";
 import { notFound } from "@/lib/http.ts";
@@ -71,7 +72,7 @@ mediaRoutes.get("/:file", async (c) => {
   const ext = file.split(".").pop()!.toLowerCase();
 
   try {
-    const bytes = await Deno.readFile(`${config.UPLOADS_DIR}/${file}`);
+    const bytes = await readFile(`${config.UPLOADS_DIR}/${file}`);
     return new Response(bytes, {
       headers: {
         "content-type": CONTENT_TYPE[ext] ?? "application/octet-stream",

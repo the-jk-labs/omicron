@@ -30,6 +30,7 @@
     "@vscode/markdown-it-katex": "1.1.2",
     "bcryptjs": "3.0.3",
     "better-auth": "1.7.5",
+    "dotenv": "18.0.5",
     "drizzle-orm": "0.45.2",
     "hono": "4.13.8",
     "ioredis": "6.0.0",

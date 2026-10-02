@@ -1,3 +1,4 @@
+import { stat } from "node:fs/promises";
 import { eq } from "drizzle-orm";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
@@ -38,7 +39,7 @@ function filenameOf(url: string): string {
 
 async function existsOnDisk(filename: string): Promise<boolean> {
   try {
-    await Deno.stat(`${config.UPLOADS_DIR}/${filename}`);
+    await stat(`${config.UPLOADS_DIR}/${filename}`);
     return true;
   } catch {
     return false;

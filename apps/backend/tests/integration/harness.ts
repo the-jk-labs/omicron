@@ -6,7 +6,7 @@
 // reach.
 //
 // Requires DATABASE_URL to point at a THROWAWAY database — `resetDb()` truncates
-// every table it touches. See `deno task test:integration` and the `postgres`
+// every table it touches. See `pnpm test:integration` and the `postgres`
 // service in .github/workflows/ci.yml.
 import { sql } from "@/db/client.ts";
 import { db } from "@/db/client.ts";
@@ -19,6 +19,7 @@ import {
   readingListItems,
   readingLists,
   recommendations,
+  remoteActors,
   sessions,
   tagFollows,
   tags,
@@ -38,7 +39,8 @@ export async function resetDb(): Promise<void> {
   // suite asserts on the listed ones only.
   await sql`
     truncate users, posts, tags, post_tags, tag_follows, follows,
-             recommendations, reading_lists, reading_list_items
+             recommendations, reading_lists, reading_list_items,
+             remote_actors, blocked_domains
     restart identity cascade`;
 }
 
@@ -112,6 +114,46 @@ export async function mkPost(authorId: string, slug: string, opts: PostOpts = {}
       apType: opts.apType ?? "Article",
       remote: opts.remote ?? false,
       ...(opts.createdAt ? { createdAt: opts.createdAt, updatedAt: opts.createdAt } : {}),
+    })
+    .returning();
+  return row;
+}
+
+// A cached fediverse actor. `host` defaults to the handle's host, port included,
+// which is how federation/remote.ts cacheActor stores it.
+export async function mkRemoteActor(handle: string, opts: { displayName?: string; fetchedAt?: Date } = {}) {
+  const [username, host] = handle.split("@");
+  const [row] = await db
+    .insert(remoteActors)
+    .values({
+      apId: `https://${host}/users/${username}`,
+      handle,
+      username,
+      host,
+      displayName: opts.displayName ?? username,
+      inboxUrl: `https://${host}/users/${username}/inbox`,
+      ...(opts.fetchedAt ? { fetchedAt: opts.fetchedAt } : {}),
+    })
+    .returning();
+  return row;
+}
+
+// A cached remote post, as an inbound Create or an outbox crawl stores it.
+export async function mkRemotePost(
+  remoteActorId: string,
+  apId: string,
+  opts: { apType?: string; createdAt?: Date } = {},
+) {
+  const [row] = await db
+    .insert(posts)
+    .values({
+      remoteActorId,
+      apId,
+      title: apId,
+      contentHtml: "<p>remote</p>",
+      apType: opts.apType ?? "Article",
+      remote: true,
+      ...(opts.createdAt ? { createdAt: opts.createdAt } : {}),
     })
     .returning();
   return row;

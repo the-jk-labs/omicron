@@ -12,6 +12,7 @@ apps/frontend/.vite/
 
 # Test coverage reports
 coverage/
+coverage-int/
 
 # Deno
 apps/backend/.deno/

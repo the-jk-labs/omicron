@@ -1,3 +1,4 @@
+import process from "node:process";
 import { config } from "@/config.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
@@ -84,9 +85,7 @@ async function defaultFrom(): Promise<string> {
   const domainRaw = (await settingsRepo.get<string>("instance.appDomain"))?.trim() || config.APP_DOMAIN;
   const domain = bareHost(domainRaw) || "localhost";
   const name =
-    (await settingsRepo.get<string>("instance.appName"))?.trim() ||
-    Deno.env.get("PUBLIC_APP_NAME")?.trim() ||
-    "Omicron";
+    (await settingsRepo.get<string>("instance.appName"))?.trim() || process.env.PUBLIC_APP_NAME?.trim() || "Omicron";
   return `${name} <noreply@${domain}>`;
 }
 
@@ -140,7 +139,7 @@ export async function getEmailConfig(): Promise<EmailConfig> {
   // Explicit From (wizard/admin, then env) wins; otherwise derive noreply@domain
   // from the instance identity. The built-in config default is only a last resort
   // inside defaultFrom (config.APP_DOMAIN).
-  const explicitFrom = from?.trim() || Deno.env.get("EMAIL_FROM")?.trim();
+  const explicitFrom = from?.trim() || process.env.EMAIL_FROM?.trim();
   return {
     mode: isMode(mode) ? mode : config.EMAIL_TRANSPORT,
     from: explicitFrom || (await defaultFrom()),

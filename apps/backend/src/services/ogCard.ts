@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { config } from "@/config.ts";
 import { renderOgCard } from "@/lib/ogCard.ts";
 import { hashToken } from "@/lib/tokens.ts";
@@ -48,7 +49,7 @@ export async function postCard(postId: string): Promise<Uint8Array<ArrayBuffer> 
   const digest = await hashToken(`${text.title}\n${text.byline}\n${text.site}`);
   const cached = cachePath(postId, digest);
   try {
-    return await Deno.readFile(cached);
+    return await readFile(cached);
   } catch {
     // Not built yet.
   }
@@ -56,17 +57,17 @@ export async function postCard(postId: string): Promise<Uint8Array<ArrayBuffer> 
   const jpeg = await renderOgCard(text);
   if (!jpeg) return null;
 
-  await Deno.mkdir(`${config.UPLOADS_DIR}/og-cards`, { recursive: true });
+  await mkdir(`${config.UPLOADS_DIR}/og-cards`, { recursive: true });
   // Written to a temporary file and renamed into place, so two scrapers
   // arriving together can never serve each other a half-written image.
   const tmp = `${cached}.${crypto.randomUUID()}.tmp`;
   try {
-    await Deno.writeFile(tmp, jpeg);
-    await Deno.rename(tmp, cached);
+    await writeFile(tmp, jpeg);
+    await rename(tmp, cached);
   } catch {
     // A failed cache write costs a re-render next time; it must not cost the
     // caller their card.
-    await Deno.remove(tmp).catch(() => {});
+    await unlink(tmp).catch(() => {});
   }
   return jpeg;
 }

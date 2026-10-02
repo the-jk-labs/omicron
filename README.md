@@ -80,25 +80,27 @@ Everything lives at **[docs.omicron.blog](https://docs.omicron.blog)**:
 
 ```bash
 # Postgres must be running and DATABASE_URL set.
-cd apps/backend && deno task dev              # http://localhost:8000
+cd apps/backend && pnpm install && pnpm dev   # http://localhost:8000
 cd apps/frontend && pnpm install && pnpm dev  # http://localhost:5173
 ```
 
-Run the backend at least once before the frontend's `pnpm check`, even when
-working only on the frontend. The frontend typecheck reads the backend's
-serializers to verify its own API types still match them
-(`apps/frontend/src/lib/api/contract.ts`), so it needs the backend's npm
-dependencies on disk. `deno task dev` installs them as a side effect; `deno
-install` in `apps/backend` does it on its own. Skip this and `pnpm check`
-reports `Cannot find module 'drizzle-orm'` against backend files rather than
-anything you changed.
+Development uses pnpm throughout; Deno only runs the backend underneath
+(`pnpm dev` starts it) and in the production container.
+
+Install the backend's dependencies (`pnpm install` in `apps/backend`) before
+the frontend's `pnpm check`, even when working only on the frontend. The
+frontend typecheck reads the backend's serializers to verify its own API types
+still match them (`apps/frontend/src/lib/api/contract.ts`). Skip this and
+`pnpm check` reports `Cannot find module 'drizzle-orm'` against backend files
+rather than anything you changed.
 
 ### Tests
 
 ```bash
 cd apps/backend
-deno task test              # unit tests — no database needed
-deno task test:integration  # visibility rules — needs a throwaway database
+pnpm test              # unit tests — no database needed
+pnpm test:integration  # visibility rules — needs a throwaway database
+pnpm check             # typecheck, format, lint and unit tests (run `pnpm fmt` first)
 ```
 
 The integration suite runs the committed migrations and asserts on who can see
@@ -112,7 +114,7 @@ docker run -d --name omicron-test-db -p 55432:5432 \
   -e POSTGRES_DB=omicron_test postgres:16-alpine
 
 DATABASE_URL=postgres://omicron:omicron@localhost:55432/omicron_test \
-SESSION_SECRET=test-secret deno task test:integration
+SESSION_SECRET=test-secret pnpm test:integration
 ```
 
 CI runs both on every push and PR against its own Postgres service.

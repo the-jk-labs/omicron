@@ -1,18 +1,21 @@
+import process from "node:process";
 import { sql } from "@/db/client.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // One-time repair: restore post bodies that were stored as escaped HTML by the
 // editor before it learned to parse an ingested body as HTML. See
 // lib/unescapeBody.ts for what the damage looks like and why the rule is narrow.
 //
-//   deno task backfill:unescape            # apply changes
-//   deno task backfill:unescape --dry-run  # preview without writing
+//   docker compose exec backend deno task backfill:unescape            # apply changes
+//   docker compose exec backend deno task backfill:unescape --dry-run  # preview without writing
+//
+// Locally: `pnpm backfill:unescape` (add `--dry-run` the same way).
 //
 // Safe to run more than once: a repaired body no longer matches the damage
 // signature, so a second run finds nothing.
 import * as postsRepo from "@/db/repositories/posts.ts";
 import { isEscapedBody, repairEscapedBody, unexpectedTags } from "@/lib/unescapeBody.ts";
 
-const dryRun = Deno.args.includes("--dry-run");
+const dryRun = process.argv.includes("--dry-run");
 
 const posts = await postsRepo.listAllContent();
 console.log(`Scanning ${posts.length} post(s)${dryRun ? " (dry run)" : ""}…`);

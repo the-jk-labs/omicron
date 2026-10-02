@@ -1,3 +1,4 @@
+import PostCard from "$lib/components/PostCard.svelte";
 import type { Post } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
@@ -12,7 +13,6 @@ import type { Post } from "$lib/types";
 // digits. If any label or tooltip regresses, these tests fail.
 import { render, screen } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
-import PostCard from "$lib/components/PostCard.svelte";
 
 // `summary` is null on an editor-written post, so the card derives the excerpt
 // from the body — the exact path that produced "UNIX-programming-timev

@@ -4,6 +4,8 @@
 // confirm the operator actually published the SPF / DKIM / DMARC records before
 // email is declared healthy — the "verify, don't just instruct" half of Path B.
 
+import { resolveMx, resolveTxt } from "node:dns/promises";
+import { connect } from "node:net";
 import { dnsRecords } from "@/services/dkim.ts";
 
 export interface DnsCheck {
@@ -28,7 +30,7 @@ export interface DnsReport {
 async function txt(host: string): Promise<string[]> {
   try {
     // Each TXT record can be split into multiple strings; join them.
-    return (await Deno.resolveDns(host, "TXT")).map((parts) => parts.join(""));
+    return (await resolveTxt(host)).map((parts) => parts.join(""));
   } catch {
     return [];
   }
@@ -36,7 +38,7 @@ async function txt(host: string): Promise<string[]> {
 
 async function mxHosts(domain: string): Promise<string[]> {
   try {
-    return (await Deno.resolveDns(domain, "MX")).toSorted((a, b) => a.preference - b.preference).map((r) => r.exchange);
+    return (await resolveMx(domain)).toSorted((a, b) => a.priority - b.priority).map((r) => r.exchange);
   } catch {
     return [];
   }
@@ -96,23 +98,14 @@ export async function verifyRecords(domain: string, selector: string, publicKey:
 export async function checkOutboundPort25(): Promise<{ ok: boolean; detail: string }> {
   let hosts: string[] = [];
   try {
-    hosts = (await Deno.resolveDns("gmail.com", "MX"))
-      .toSorted((a, b) => a.preference - b.preference)
-      .map((r) => r.exchange);
+    hosts = (await resolveMx("gmail.com")).toSorted((a, b) => a.priority - b.priority).map((r) => r.exchange);
   } catch {
     /* fall through to a hardcoded target */
   }
   const host = hosts[0] ?? "gmail-smtp-in.l.google.com";
 
-  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const conn = await Promise.race([
-      Deno.connect({ hostname: host, port: 25 }),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error("timed out")), 6000);
-      }),
-    ]);
-    conn.close();
+    await probeTcp(host, 25, 6000);
     return { ok: true, detail: `Connected to ${host}:25. Outbound SMTP works from this host.` };
   } catch (err) {
     return {
@@ -121,7 +114,26 @@ export async function checkOutboundPort25(): Promise<{ ok: boolean; detail: stri
         `Could not reach ${host}:25 (${err instanceof Error ? err.message : JSON.stringify(err)}). ` +
         `Your host most likely blocks outbound port 25. Use the API relay or an SMTP provider instead.`,
     };
-  } finally {
-    if (timer !== undefined) clearTimeout(timer);
   }
+}
+
+// Opens a TCP connection and closes it straight away; rejects on error or timeout.
+function probeTcp(host: string, port: number, timeoutMs: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const socket = connect({ host, port });
+    const timer = setTimeout(() => {
+      socket.destroy();
+      reject(new Error("timed out"));
+    }, timeoutMs);
+    socket.once("connect", () => {
+      clearTimeout(timer);
+      socket.destroy();
+      resolve();
+    });
+    socket.once("error", (err) => {
+      clearTimeout(timer);
+      socket.destroy();
+      reject(err);
+    });
+  });
 }
