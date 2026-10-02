@@ -104,7 +104,8 @@ Schema changes: edit `src/db/schema.ts`, then generate a migration with
   - frontend: oxfmt, svelte-check, oxlint, Vitest
 - Backend tests are two Vitest projects: `pnpm test` runs both,
   `pnpm test:unit` / `pnpm test:integration` run one. `pnpm check` runs only the
-  unit project, so it needs no database.
+  unit project, so it needs no database. Vitest runs on Node, which must be
+  26+ for the built-in `Temporal` the federation code uses (Deno has it).
 - The integration project needs Postgres and runs its files one at a time. It
   defaults to `postgres://omicron:omicron@localhost:5432/omicron_test`
   (`tests/test.env`); any local Postgres with that role and database works, or

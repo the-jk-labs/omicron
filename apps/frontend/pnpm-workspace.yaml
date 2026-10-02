@@ -6,3 +6,4 @@ trustPolicy: "off"
 trustPolicyExcludePrune: true
 overrides:
   cookie@<0.7.0: "^0.7.0"
+  devalue@<5.9.3: "^5.9.3"

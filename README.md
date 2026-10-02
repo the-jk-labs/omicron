@@ -104,6 +104,9 @@ pnpm test:integration  # visibility rules only
 pnpm check             # typecheck, format, lint and unit tests (run `pnpm fmt` first)
 ```
 
+The backend tests run on Node and need Node 26 or newer for its built-in
+`Temporal`, which the federation code uses (Deno, the runtime, has it too).
+
 The integration suite runs the committed migrations and asserts on who can see
 what: drafts, private accounts, suspended authors, across feeds, tag pages,
 reading lists and the sitemap. Its files run one at a time and **truncate every
