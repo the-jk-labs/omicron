@@ -6,6 +6,7 @@
   import CommentNode from "$lib/components/CommentNode.svelte";
   import type { CommentActions, CommentUiState } from "$lib/components/comments";
   import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
+  import LoadMoreButton from "$lib/components/LoadMoreButton.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { confirm } from "$lib/components/ui/confirm";
@@ -286,11 +287,7 @@
     </ul>
 
     {#if cursor}
-      <div class="mt-6 flex justify-center">
-        <Button onclick={loadMore} disabled={loadingMore} variant="outline" size="sm">
-          {loadingMore ? "Loading…" : "Show more responses"}
-        </Button>
-      </div>
+      <LoadMoreButton load={loadMore} loading={loadingMore} label="Show more responses" size="sm" class="mt-6" />
     {/if}
   {/if}
 </section>

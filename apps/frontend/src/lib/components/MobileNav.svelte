@@ -28,7 +28,8 @@
 
   function active(href: string): boolean {
     const path = page.url.pathname;
-    return href === "/" ? path === "/" : path.startsWith(href);
+    // A whole-segment prefix: /@ada must not light up on /@adam.
+    return href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`);
   }
 
   // Firefox on Android retracts its browser toolbar on scroll-down but keeps the

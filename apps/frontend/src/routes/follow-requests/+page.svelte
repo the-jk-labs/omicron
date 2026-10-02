@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints } from "$lib/api";
+  import { ApiError, endpoints } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
@@ -20,14 +20,18 @@
   });
   // Ids currently being approved/rejected, so their buttons disable individually.
   let busy = $state<Record<string, boolean>>({});
+  let error = $state("");
 
   async function act(req: FollowRequest, approve: boolean) {
     busy = { ...busy, [req.requestId]: true };
+    error = "";
     try {
       await (approve
         ? endpoints().approveFollowRequest(req.requestId)
         : endpoints().rejectFollowRequest(req.requestId));
       items = items.filter((r) => r.requestId !== req.requestId);
+    } catch (e) {
+      error = e instanceof ApiError ? e.message : `Couldn't ${approve ? "approve" : "decline"} @${req.actor.username}.`;
     } finally {
       busy = { ...busy, [req.requestId]: false };
     }
@@ -41,6 +45,7 @@
     <Icon name="lock" size={22} /> Follow requests
   </h1>
   <p class="mt-1 text-muted-foreground">People asking to follow your private account.</p>
+  {#if error}<p role="alert" class="mt-3 text-sm text-destructive">{error}</p>{/if}
 </header>
 
 {#if items.length === 0}

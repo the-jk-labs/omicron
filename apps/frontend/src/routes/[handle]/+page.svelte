@@ -5,6 +5,7 @@
   import FollowButton from "$lib/components/FollowButton.svelte";
   import FollowListDialog from "$lib/components/FollowListDialog.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import LoadMoreButton from "$lib/components/LoadMoreButton.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import PostCard from "$lib/components/PostCard.svelte";
   import ProfileLinkIcon from "$lib/components/ProfileLinkIcon.svelte";
@@ -313,11 +314,7 @@
         <PostCard {post} />
       {/each}
       {#if cursor}
-        <div class="mt-8 flex justify-center">
-          <Button onclick={loadMore} disabled={loading} variant="outline">
-            {loading ? "Loading…" : "Show more"}
-          </Button>
-        </div>
+        <LoadMoreButton load={loadMore} {loading} />
       {/if}
     {/if}
   </Tabs.Content>
@@ -354,11 +351,7 @@
           <PostCard {post} />
         {/each}
         {#if recommendedCursor}
-          <div class="mt-8 flex justify-center">
-            <Button onclick={loadMoreRecommended} disabled={recommendedLoading} variant="outline">
-              {recommendedLoading ? "Loading…" : "Show more"}
-            </Button>
-          </div>
+          <LoadMoreButton load={loadMoreRecommended} loading={recommendedLoading} />
         {/if}
       {/if}
     </Tabs.Content>

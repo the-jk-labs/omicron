@@ -137,12 +137,25 @@ test("a failed test email is shown", async () => {
 });
 
 test("a refused admin account sends the operator back to the Admin step", async () => {
-  setup(null, { "POST /api/setup": apiError(400, "Username is already taken") });
+  // The backend names the field a refusal is about (routes/setup.ts).
+  setup(null, {
+    "POST /api/setup": Response.json({ error: "Username is already taken", field: "admin" }, { status: 400 }),
+  });
   await toEmailStep();
   await fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
   await screen.findByText("Username is already taken");
   expect(currentStep()).toBe("Admin");
   expect(goto).not.toHaveBeenCalled();
+});
+
+test("a refused instance name sends the operator back to the Instance step", async () => {
+  setup(null, {
+    "POST /api/setup": Response.json({ error: "Name is too long", field: "appName" }, { status: 400 }),
+  });
+  await toEmailStep();
+  await fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
+  await screen.findByText("Name is too long");
+  expect(currentStep()).toBe("Instance");
 });
 
 test("a server error keeps the operator on the Email step", async () => {
@@ -153,12 +166,7 @@ test("a server error keeps the operator on the Email step", async () => {
   expect(currentStep()).toBe("Email");
 });
 
-// BUG: finish() treats every 400 as an admin-field error and jumps to the
-// Admin step. The backend also answers 400 for the instance name (over 100
-// characters; the input has no maxlength) and for email settings (an SMTP
-// port over 65535), so the operator lands on a step that doesn't show the
-// field the message is about.
-test.fails("BUG: a refused SMTP port keeps the operator on the Email step", async () => {
+test("a refused SMTP port keeps the operator on the Email step", async () => {
   setup(null, { "POST /api/setup": apiError(400, "Number must be less than or equal to 65535") });
   await toEmailStep();
   await fireEvent.click(screen.getByRole("radio", { name: /^SMTP server/ }));

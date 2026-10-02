@@ -2,6 +2,7 @@
 <script lang="ts">
   import { endpoints } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
+  import LoadMoreButton from "$lib/components/LoadMoreButton.svelte";
   import {
     notificationAction,
     notificationHref,
@@ -34,7 +35,8 @@
   // Seeing the page counts as reading everything: clear the server unread state
   // and the nav badge. Rows already rendered keep their unread highlight.
   onMount(() => {
-    if (bell.count > 0)
+    // The badge count may not have arrived yet; an unread row on screen is reason enough.
+    if (bell.count > 0 || items.some((n) => !n.read))
       endpoints()
         .markAllNotificationsRead()
         .catch(() => {});
@@ -113,10 +115,6 @@
   </ul>
 
   {#if cursor}
-    <div class="mt-8 flex justify-center">
-      <Button onclick={loadMore} disabled={loading} variant="outline">
-        {loading ? "Loading…" : "Load more"}
-      </Button>
-    </div>
+    <LoadMoreButton load={loadMore} {loading} label="Load more" />
   {/if}
 {/if}

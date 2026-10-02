@@ -158,18 +158,14 @@ test("an unsupported file and a failed upload are both reported", async () => {
   expect(editor.getHTML()).not.toContain("<img");
 });
 
-// BUG: without a drop position, each image is inserted at the cursor and then
-// `focus("end")` moves the cursor to the end of the document. A second image
-// (pasting two screenshots, say) lands at the very end of the article instead
-// of after the first, and even a single paste mid-article throws the caret to
-// the bottom. The code's own comment promises the original order.
-test.fails("BUG: several images inserted at the cursor stay together, in order", async () => {
+test("several images inserted at the cursor stay together, in order", async () => {
   const { editor } = await setup("<p>before</p><p>after</p>");
   editor.commands.setTextSelection(7);
   await fireEvent.change(imageInput(), { target: { files: [png("a.png"), png("b.png")] } });
   await waitFor(() => expect(editor.getHTML()).toContain("img2.webp"));
   const html = editor.getHTML();
-  expect(html.indexOf("img2.webp")).toBeLessThan(html.indexOf("after"));
+  const order = ["before", "img1.webp", "img2.webp", "after"].map((x) => html.indexOf(x));
+  expect(order).toEqual(order.toSorted((a, b) => a - b));
 });
 
 test("an image's alt text is edited through the dialog and stored trimmed", async () => {

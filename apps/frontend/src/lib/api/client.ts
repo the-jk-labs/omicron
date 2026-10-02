@@ -6,6 +6,8 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** The request field the error is about, when the backend names one. */
+    public field?: string,
   ) {
     super(message);
   }
@@ -27,7 +29,7 @@ async function request<T>(path: string, init: RequestInit, fetchFn: FetchFn): Pr
     if (res.ok) throw new ApiError(res.status, "Unexpected response from the server.");
   }
   if (!res.ok) {
-    throw new ApiError(res.status, body?.error ?? `Request failed (${res.status})`);
+    throw new ApiError(res.status, body?.error ?? `Request failed (${res.status})`, body?.field || undefined);
   }
   // oxlint-disable-next-line no-unsafe-type-assertion
   return body as T;

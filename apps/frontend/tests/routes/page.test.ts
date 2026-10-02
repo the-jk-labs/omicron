@@ -112,22 +112,15 @@ test("a guest's timelines are never language-filtered", async () => {
   await waitFor(() => expect(feedCalls()).toEqual(["/api/posts?scope=local"]));
 });
 
-// BUG: ensureLoaded has no catch. When a tab's first load fails, `loading`
-// goes back to false with no items, so the tab renders its empty state
-// ("No articles on this instance yet.") as if there were nothing to read,
-// and the rejection is unhandled. Same class as B52.
-test.fails("BUG: a tab that fails to load doesn't claim to be empty", async () => {
-  setup(false, page([post()]), { "GET /api/posts?scope=local": apiError(500, "Timeline down [BUG pin]") });
+test("a tab that fails to load doesn't claim to be empty", async () => {
+  setup(false, page([post()]), { "GET /api/posts?scope=local": apiError(500, "Timeline down") });
   await openTab("Local");
   await waitFor(() => expect(feedCalls()).toContain("/api/posts?scope=local"));
   await new Promise((r) => setTimeout(r, 20));
   expect(screen.queryByText("No articles on this instance yet.")).toBe(null);
 });
 
-// BUG: the language-filter effect skips a feed that is still loading, and
-// nothing re-checks once that load settles. A filter change made while the
-// timeline is loading is dropped: the list shows the old filter's results.
-test.fails("BUG: a filter change made mid-load still applies", async () => {
+test("a filter change made mid-load still applies", async () => {
   let release!: () => void;
   const gate = new Promise<void>((r) => (release = r));
   reading.defaultFeed = "local";

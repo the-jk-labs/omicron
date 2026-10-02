@@ -166,13 +166,7 @@ test("a reload from the server replaces the list and the counts", async () => {
   expect(screen.getByRole("tab", { name: /^Published/ })).toHaveTextContent("1");
 });
 
-// BUG: tabs switch with replaceState (shallow routing), which leaves SvelteKit's
-// own URL at the one the page loaded with (client.js replaceState keeps
-// page.url; _invalidate reloads current.url). So the invalidateAll() after an
-// action reloads the *original* tab, and the effect sets `active = data.tab`:
-// the author is thrown back to Drafts, and the tab they acted on keeps showing
-// the post they just unpublished.
-test.fails("BUG: acting on another tab keeps the author on that tab", async () => {
+test("acting on another tab keeps the author on that tab", async () => {
   const { rerender } = setup(data("draft", [draft]));
   // What SvelteKit does on invalidateAll here: re-run the load for the URL the
   // page was loaded with, /posts/manage?tab=draft.

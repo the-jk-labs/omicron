@@ -62,7 +62,8 @@
     try {
       const page = await endpoints().notifications();
       notifItems = page.items;
-      if (notifications.count > 0) await endpoints().markAllNotificationsRead();
+      // The polled count can lag; an unread row on screen is reason enough.
+      if (notifications.count > 0 || page.items.some((n) => !n.read)) await endpoints().markAllNotificationsRead();
       notifications.clear();
     } catch {
       // Leave any previously loaded items; the bell stays usable.

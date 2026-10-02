@@ -1,8 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints } from "$lib/api";
+  import { ApiError, endpoints } from "$lib/api";
   import FeedLanguageFilter from "$lib/components/FeedLanguageFilter.svelte";
   import Icon, { type IconName } from "$lib/components/Icon.svelte";
+  import LoadMoreButton from "$lib/components/LoadMoreButton.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import PostCard from "$lib/components/PostCard.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -26,6 +27,9 @@
     cursor: string | null;
     loaded: boolean;
     loading: boolean;
+    error: string;
+    // A filter change arrived mid-load; refetch once the load settles.
+    refetchPending: boolean;
     fetch: (c?: string | null) => Promise<Page<Post>>;
   };
 
@@ -52,6 +56,8 @@
       cursor: init.preload?.nextCursor ?? null,
       loaded: !!init.preload,
       loading: false,
+      error: "",
+      refetchPending: false,
     };
   }
 
@@ -126,8 +132,8 @@
       if (activeTab === "for-you") return;
       // don't refetch before the tab's first load has settled
       const feed = feeds.find((f) => f.value === activeTab);
-      if (!feed?.loaded || feed.loading) return;
-      refetch(activeTab);
+      if (feed?.loading) feed.refetchPending = true;
+      else if (feed?.loaded) refetch(activeTab);
     });
   });
 
@@ -158,13 +164,20 @@
     const feed = feeds.find((f) => f.value === value);
     if (!feed || feed.loaded || feed.loading) return;
     feed.loading = true;
+    feed.error = "";
     try {
       const res = await feed.fetch();
       feed.items = dedupById(res.items);
       feed.cursor = res.nextCursor;
       feed.loaded = true;
+    } catch (e) {
+      feed.error = e instanceof ApiError ? e.message : "Couldn't load this feed.";
     } finally {
       feed.loading = false;
+    }
+    if (feed.refetchPending) {
+      feed.refetchPending = false;
+      refetch(value);
     }
   }
 </script>
@@ -189,6 +202,11 @@
 {#snippet feedView(feed: Feed)}
   {#if feed.loading && feed.items.length === 0}
     <p class="py-8 text-center text-muted-foreground">Loading…</p>
+  {:else if feed.error && !feed.loaded}
+    <div class="flex flex-col items-center gap-3 py-10 text-center">
+      <p class="text-destructive">{feed.error}</p>
+      <Button onclick={() => ensureLoaded(feed.value)} variant="outline">Try again</Button>
+    </div>
   {:else if feed.items.length === 0}
     <div class="py-10 text-center text-muted-foreground">
       <p>{feed.empty}</p>
@@ -201,11 +219,7 @@
       <PostCard {post} />
     {/each}
     {#if feed.cursor}
-      <div class="mt-8 flex justify-center">
-        <Button onclick={() => loadMore(feed)} disabled={feed.loading} variant="outline">
-          {feed.loading ? "Loading…" : "Show more"}
-        </Button>
-      </div>
+      <LoadMoreButton load={() => loadMore(feed)} loading={feed.loading} />
     {/if}
   {/if}
 {/snippet}

@@ -36,6 +36,9 @@
     const source = value;
     if (previewedSource === source) return;
     if (!source.trim()) {
+      // Supersede any request still in flight, or it would land over this.
+      ++previewToken;
+      previewLoading = false;
       previewHtml = "";
       previewError = "";
       previewedSource = source;

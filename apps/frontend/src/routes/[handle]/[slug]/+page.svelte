@@ -403,7 +403,7 @@
         >
           {post.coverCredit.source}
         </a>{#if post.coverCredit.license && post.coverCredit.licenseUrl}
-          ·
+          {" "}·
           <a
             href={post.coverCredit.licenseUrl}
             target="_blank"

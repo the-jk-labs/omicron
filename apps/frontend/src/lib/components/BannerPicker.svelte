@@ -125,7 +125,7 @@
         >
           {coverCredit.source}
         </a>{#if coverCredit.license && coverCredit.licenseUrl}
-          ·
+          {" "}·
           <a
             href={coverCredit.licenseUrl}
             target="_blank"

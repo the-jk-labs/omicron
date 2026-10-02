@@ -1,9 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { endpoints } from "$lib/api";
+  import { ApiError, endpoints } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
   import ListFormDialog from "$lib/components/ListFormDialog.svelte";
+  import LoadMoreButton from "$lib/components/LoadMoreButton.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import PostCard from "$lib/components/PostCard.svelte";
   import RssButton from "$lib/components/RssButton.svelte";
@@ -20,6 +21,7 @@
   let posts = $state<Post[]>(untrack(() => data.page.items));
   let cursor = $state<string | null>(untrack(() => data.page.nextCursor));
   let loading = $state(false);
+  let error = $state("");
   // Reset when navigating between lists client-side; "load more" and local
   // removals mutate `posts`/`list` without changing `data`, so they persist.
   $effect(() => {
@@ -59,7 +61,13 @@
       destructive: true,
     });
     if (!ok) return;
-    await endpoints().deleteList(list.id);
+    error = "";
+    try {
+      await endpoints().deleteList(list.id);
+    } catch (e) {
+      error = e instanceof ApiError ? e.message : "Couldn't delete the list.";
+      return;
+    }
     goto("/lists");
   }
 </script>
@@ -118,6 +126,7 @@
       </div>
     {/if}
   </div>
+  {#if error}<p class="mt-3 text-sm text-destructive">{error}</p>{/if}
 </header>
 
 {#if posts.length === 0}
@@ -129,10 +138,6 @@
     <PostCard {post} />
   {/each}
   {#if cursor}
-    <div class="mt-8 flex justify-center">
-      <Button onclick={loadMore} disabled={loading} variant="outline">
-        {loading ? "Loading…" : "Show more"}
-      </Button>
-    </div>
+    <LoadMoreButton load={loadMore} {loading} />
   {/if}
 {/if}

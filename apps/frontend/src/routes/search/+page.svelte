@@ -259,10 +259,10 @@
         {#if posts.length === 0}
           <p class="py-10 text-center text-muted-foreground">
             No articles match “{data.query}”{#if (data as { tag?: string }).tag}
-              with tag
+              {" "}with tag
               <span class="font-medium">#{(data as { tag?: string }).tag}</span
               >{/if}{#if (data as { author?: string }).author}
-              by
+              {" "}by
               <span class="font-medium">{(data as { author?: string }).author}</span>{/if}.
             {#if (data as { tag?: string }).tag || (data as { author?: string }).author}
               <button

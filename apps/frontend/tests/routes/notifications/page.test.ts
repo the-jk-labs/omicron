@@ -68,11 +68,7 @@ test("Load more appends older notifications", async () => {
   expect(screen.queryByRole("button", { name: "Load more" })).toBe(null);
 });
 
-// B69 again: onMount marks all read only when the polled badge count is above
-// zero. Loading /notifications directly (a reload, or a link from an email)
-// runs onMount before the nav's first count request has answered, so the
-// count is still 0 and the unread notifications on screen are never marked read.
-test.fails("BUG: unread notifications on screen are marked read even before the badge count arrives", async () => {
+test("unread notifications on screen are marked read even before the badge count arrives", async () => {
   notifications.count = 0;
   setup([notif({ read: false })]);
   await waitFor(() => expect(markedRead()).toBe(true), { timeout: 500 });

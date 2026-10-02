@@ -131,10 +131,7 @@ test("a preview failure is shown", async () => {
   await screen.findByText("Too long to render");
 });
 
-// BUG: clearing the source takes loadPreview's early "empty" path, which
-// doesn't bump previewToken. A preview request still in flight for the old
-// text then lands and shows the old rendering for an empty section.
-test.fails("BUG: a slow preview of old text doesn't show after the text is cleared", async () => {
+test("a slow preview of old text doesn't show after the text is cleared", async () => {
   let release!: () => void;
   const gate = new Promise<void>((r) => (release = r));
   setup("old text", {

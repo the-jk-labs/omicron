@@ -95,9 +95,7 @@ test("Free photos opens the stock picker", async () => {
   await screen.findByRole("dialog", { name: "Choose a photo" });
 });
 
-// B66 again: "{coverCredit.source}</a>{#if …}\n·" — Svelte trims the block's
-// leading whitespace, so the credit reads "on Unsplash· Unsplash License".
-test.fails("BUG: the credit keeps a space before the licence", () => {
+test("the credit keeps a space before the licence", () => {
   setup({ coverUrl: "https://img.example/x.jpg", coverCredit: credit });
   expect(screen.getByText(/^Photo by/).textContent?.replace(/\s+/g, " ")).toContain("on Unsplash · Unsplash License");
 });

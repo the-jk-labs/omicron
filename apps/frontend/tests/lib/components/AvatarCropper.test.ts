@@ -61,10 +61,7 @@ test("Apply before the photo has loaded does nothing", async () => {
   expect(onCrop).not.toHaveBeenCalled();
 });
 
-// BUG: the viewport is focusable and announced as a slider (role="slider",
-// aria-valuenow), but has no key handler — a keyboard user can focus it and
-// can't move the photo at all.
-test.fails("BUG: arrow keys reposition the photo", async () => {
+test("arrow keys reposition the photo", async () => {
   const { img, surface } = await setup(560, 280);
   surface.focus();
   await fireEvent.keyDown(surface, { key: "ArrowRight" });

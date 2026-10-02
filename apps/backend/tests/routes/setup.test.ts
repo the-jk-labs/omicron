@@ -93,15 +93,16 @@ describe("POST /api/setup", () => {
     expect(setup.completeSetup).not.toHaveBeenCalled();
   });
 
+  // `field` tells the wizard which step to send the operator back to.
   test.for([
-    [{ ...valid, appName: "   " }, "An instance name is required."],
-    [{ ...valid, admin: { ...valid.admin, email: "nope" } }, "A valid admin email is required."],
-    [{ ...valid, email: { mode: "pigeon" } }, expect.any(String)],
-    [{ ...valid, email: { smtp: { port: 70000 } } }, expect.any(String)],
-  ])("a bad body is a 400 naming the first problem (%#)", async ([body, message]) => {
+    [{ ...valid, appName: "   " }, "An instance name is required.", "appName"],
+    [{ ...valid, admin: { ...valid.admin, email: "nope" } }, "A valid admin email is required.", "admin"],
+    [{ ...valid, email: { mode: "pigeon" } }, expect.any(String), "email"],
+    [{ ...valid, email: { smtp: { port: 70000 } } }, expect.any(String), "email"],
+  ])("a bad body is a 400 naming the first problem and its field (%#)", async ([body, message, field]) => {
     const res = await wizard.json("/api/setup", "POST", body);
     expect(res.status).toBe(400);
-    expect((await res.json()).error).toEqual(message);
+    expect(await res.json()).toEqual({ error: message, field });
     expect(auth.api.signUpEmail).not.toHaveBeenCalled();
   });
 
@@ -117,7 +118,7 @@ describe("POST /api/setup", () => {
     );
     const res = await wizard.json("/api/setup", "POST", valid);
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "Password is too short" });
+    expect(await res.json()).toEqual({ error: "Password is too short", field: "admin" });
     expect(setup.completeSetup).not.toHaveBeenCalled();
   });
 
@@ -125,6 +126,7 @@ describe("POST /api/setup", () => {
     vi.mocked(auth.api.signUpEmail).mockResolvedValue(new Response("oops", { status: 500 }) as never);
     expect(await (await wizard.json("/api/setup", "POST", valid)).json()).toEqual({
       error: "Could not create the admin account.",
+      field: "admin",
     });
   });
 });

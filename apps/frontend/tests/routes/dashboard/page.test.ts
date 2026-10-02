@@ -83,10 +83,7 @@ test("an all-quiet range shows no chart", () => {
   expect(screen.queryByText("Views over time")).toBe(null);
 });
 
-// BUG: series days are UTC calendar dates ("2026-01-05", from the backend's
-// today()). dayLabel parses one as UTC midnight and formats it in the
-// reader's zone, so everywhere west of UTC every label is a day early.
-test.fails("BUG: day labels don't shift a day for readers west of UTC", () => {
+test("day labels don't shift a day for readers west of UTC", () => {
   (timeZone as Writable<string>).set("America/New_York");
   setup(summary());
   expect(screen.getByRole("button", { name: "Jan 5: 8 views" })).toBeInTheDocument();

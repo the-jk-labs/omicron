@@ -61,9 +61,7 @@ test("keyboard focus brings a retracted bar back", async () => {
   expect(nav().getAttribute("style")).not.toContain("translateY(100%)");
 });
 
-// BUG: same bare prefix match as SideNav — on "/@adam" the Profile tab of
-// "@ada" is announced as the current page.
-test.fails("BUG: another user's profile isn't announced as your Profile", () => {
+test("another user's profile isn't announced as your Profile", () => {
   page.url = new URL("http://localhost/@adam") as typeof page.url;
   render(MobileNav, { props: { user: me } });
   expect(screen.getByRole("link", { name: "Profile" })).not.toHaveAttribute("aria-current");

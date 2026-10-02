@@ -39,7 +39,7 @@ afterAll(async () => {
 const get = (path: string, headers: Record<string, string> = {}) =>
   app.request(`https://blog.example${path}`, { headers });
 
-// A tab's items; a 404 (the eventual fix for B30) counts as nothing listed.
+// A tab's items; a 404 (a deleted account) counts as nothing listed.
 async function tabItems(path: string): Promise<unknown[]> {
   const res = await get(path);
   expect([200, 404]).toContain(res.status);
@@ -64,7 +64,7 @@ describe("malformed input is a client error, never a 500", () => {
   });
 });
 
-describe("a deleted account's profile tabs (B30)", () => {
+describe("a deleted account's profile tabs", () => {
   test("the posts tab serves none of the deleted account's posts", async () => {
     expect(await tabItems(`/api/users/${goneUser}/posts`)).toEqual([]);
   });

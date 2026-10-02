@@ -86,6 +86,20 @@
     offset = clamp(offset.x + (e.clientX - last.x), offset.y + (e.clientY - last.y));
     last = { x: e.clientX, y: e.clientY };
   }
+  // Arrow keys nudge the photo, so the slider role holds for keyboard users too.
+  const NUDGE: Record<string, [number, number]> = {
+    ArrowLeft: [-10, 0],
+    ArrowRight: [10, 0],
+    ArrowUp: [0, -10],
+    ArrowDown: [0, 10],
+  };
+  function onKeyDown(e: KeyboardEvent) {
+    const step = NUDGE[e.key];
+    if (!step) return;
+    e.preventDefault();
+    offset = clamp(offset.x + step[0], offset.y + step[1]);
+  }
+
   function onPointerUp(e: PointerEvent) {
     dragging = false;
     (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
@@ -127,7 +141,7 @@
     >
       <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Adjust photo</Dialog.Title>
       <Dialog.Description class="mt-1.5 text-sm text-foreground-alt">
-        Drag to reposition and zoom to frame your picture.
+        Drag (or use the arrow keys) to reposition and zoom to frame your picture.
       </Dialog.Description>
 
       <div class="mt-5 flex flex-col items-center gap-5">
@@ -139,6 +153,7 @@
           aria-valuenow={Math.round(offset.x)}
           class="relative cursor-grab touch-none overflow-hidden rounded-card bg-dark select-none active:cursor-grabbing"
           style={`width:${VIEWPORT}px;height:${VIEWPORT}px`}
+          onkeydown={onKeyDown}
           onpointerdown={onPointerDown}
           onpointermove={onPointerMove}
           onpointerup={onPointerUp}

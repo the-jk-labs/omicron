@@ -52,9 +52,9 @@
     <h2>Fediverse</h2>
     <p>
       This instance federates via ActivityPub{#if instance?.federationEnabled}
-        at
+        {" "}at
         <code>{domain}</code>{:else}
-        when federation is enabled{/if}. You can follow authors from any compatible server.
+        {" "}when federation is enabled{/if}. You can follow authors from any compatible server.
     </p>
 
     <h2>Source</h2>

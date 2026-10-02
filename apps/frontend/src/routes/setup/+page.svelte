@@ -130,9 +130,10 @@
       goto("/");
     } catch (err) {
       error = err instanceof ApiError ? err.message : "Something went wrong.";
-      // Field errors (username/email/password) come from the admin step — send
-      // the operator back there to fix them.
-      if (err instanceof ApiError && err.status === 400) step = 1;
+      // Send the operator to the step that shows the refused field; without one,
+      // stay put rather than guess.
+      const fieldStep: Record<string, number> = { appName: 0, appDomain: 0, admin: 1, email: 2 };
+      if (err instanceof ApiError && err.field && err.field in fieldStep) step = fieldStep[err.field];
     } finally {
       busy = false;
     }
@@ -171,7 +172,7 @@
   {#if step === 0}
     <div class="flex flex-col gap-1.5">
       <Label.Root for="appName" class={labelClass}>Instance name</Label.Root>
-      <input id="appName" bind:value={appName} placeholder="My Blog" class={field} />
+      <input id="appName" bind:value={appName} placeholder="My Blog" maxlength={100} class={field} />
       <p class="text-xs text-muted-foreground">The name shown across the site.</p>
     </div>
     <div class="flex flex-col gap-1.5">

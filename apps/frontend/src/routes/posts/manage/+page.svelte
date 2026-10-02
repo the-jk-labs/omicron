@@ -84,10 +84,17 @@
   // Re-seed whenever the server load runs again — which is what an action that
   // moved a post between tabs triggers, so the list and the badges refresh
   // together instead of one going stale behind the other.
+  // Tabs switch with replaceState, which SvelteKit's own URL doesn't follow, so a
+  // reload after an action re-runs the load for the tab the page opened on. Only
+  // a real navigation (data.tab changing) picks the tab; act() refreshes the rest.
+  let seededTab = untrack(() => data.tab);
   $effect(() => {
     lanes[data.tab] = { items: data.page.items, cursor: data.page.nextCursor, loaded: true, loading: false };
     counts = data.counts;
-    active = data.tab;
+    if (data.tab !== seededTab) {
+      seededTab = data.tab;
+      active = data.tab;
+    }
   });
 
   async function ensureLoaded(value: string) {
@@ -142,6 +149,11 @@
       await run();
       for (const tab of tabs) if (tab.value !== active) lanes[tab.value] = blank();
       await invalidateAll();
+      // The reload covered the page's original tab; refetch the one on screen.
+      if (active !== data.tab) {
+        lanes[active] = blank();
+        await ensureLoaded(active);
+      }
     } catch (err) {
       error = message(err, fallback);
     }

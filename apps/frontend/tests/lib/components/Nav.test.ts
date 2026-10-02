@@ -110,11 +110,7 @@ test("an empty bell says so and links to all notifications", async () => {
   expect(goto).toHaveBeenCalledWith("/notifications");
 });
 
-// BUG: loadNotifications only marks all read when the polled badge count is
-// above zero. The count is refreshed every 30s, so a notification that arrived
-// since the last poll is shown unread in the dropdown but never marked read:
-// the badge clears now and comes back on the next poll.
-test.fails("BUG: opening the bell marks fresh unread notifications read", async () => {
+test("opening the bell marks fresh unread notifications read", async () => {
   notifications.count = 0;
   setup(me, {}, [notif()]);
   await openMenu("Notifications");

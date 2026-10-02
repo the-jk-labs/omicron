@@ -72,9 +72,7 @@ test("the current section is highlighted; Home only on the home page", () => {
   expect(isActive("Home")).toBe(false);
 });
 
-// BUG: active() is a bare prefix match, so "/@ada" counts as active on
-// "/@adam" — reading someone else's profile highlights your own Profile.
-test.fails("BUG: another user's profile doesn't highlight your Profile", () => {
+test("another user's profile doesn't highlight your Profile", () => {
   at("/@adam");
   render(SideNav, { props: { user: me } });
   expect(isActive("Profile")).toBe(false);

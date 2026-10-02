@@ -124,10 +124,7 @@ test("closing clears the search so the next open starts clean", async () => {
   expect(screen.queryByRole("img")).toBe(null);
 });
 
-// BUG: pick() closes with `open = false`, which doesn't go through
-// onOpenChange (bits-ui only calls it for its own interactions), so the
-// reset there never runs: the next open shows the previous search and photos.
-test.fails("BUG: after picking, the next open starts clean", async () => {
+test("after picking, the next open starts clean", async () => {
   const { rerender } = setup();
   await search("sea");
   await fireEvent.click((await screen.findByRole("img", { name: "Photo openverse-sea" })).closest("button")!);
@@ -136,10 +133,7 @@ test.fails("BUG: after picking, the next open starts clean", async () => {
   expect(screen.getByRole("textbox", { name: "Search photos" })).toHaveValue("");
 });
 
-// BUG: switchTo() calls run(), which returns early while a search is in
-// flight. The switch's search is dropped and the earlier provider's results
-// land under the new tab — and picking one then pings the wrong provider.
-test.fails("BUG: switching provider mid-search shows the new provider's photos", async () => {
+test("switching provider mid-search shows the new provider's photos", async () => {
   let release!: () => void;
   const gate = new Promise<void>((r) => (release = r));
   setup(

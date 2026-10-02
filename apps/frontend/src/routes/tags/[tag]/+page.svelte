@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { endpoints } from "$lib/api";
+  import LoadMoreButton from "$lib/components/LoadMoreButton.svelte";
   import PageTitle from "$lib/components/PageTitle.svelte";
   import PostCard from "$lib/components/PostCard.svelte";
   import TagFollowButton from "$lib/components/TagFollowButton.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
   import type { Post } from "$lib/types";
   import { untrack } from "svelte";
   import type { PageData } from "./$types";
@@ -67,10 +67,6 @@
     <PostCard {post} />
   {/each}
   {#if cursor}
-    <div class="mt-8 flex justify-center">
-      <Button onclick={loadMore} disabled={loading} variant="outline">
-        {loading ? "Loading…" : "Show more"}
-      </Button>
-    </div>
+    <LoadMoreButton load={loadMore} {loading} />
   {/if}
 {/if}

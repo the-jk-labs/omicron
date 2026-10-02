@@ -295,9 +295,7 @@ test("related posts are listed under Read next", () => {
   expect(screen.getByText("Another one")).toBeInTheDocument();
 });
 
-// B66: "{source}</a>{#if license}\n·" loses the space before the dot, so the
-// credit under a stock banner reads "on Unsplash· Unsplash License".
-test.fails("BUG: the cover credit keeps a space before the licence", () => {
+test("the cover credit keeps a space before the licence", () => {
   setup({
     coverUrl: "https://img.example/c.jpg",
     coverCredit: {

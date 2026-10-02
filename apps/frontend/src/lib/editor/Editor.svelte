@@ -287,7 +287,9 @@
         // keep writing immediately — just like a normal editor.
         const nodes = [{ type: "image", attrs: { src: url } }, { type: "paragraph" }];
         const chain = editor.chain();
-        if (at === undefined) chain.insertContent(nodes).focus("end");
+        // At the cursor, which insertContent leaves after what it inserted, so the
+        // next image follows this one rather than jumping to the end.
+        if (at === undefined) chain.focus().insertContent(nodes);
         else {
           // The image node is 1 wide and the empty paragraph 2, so the caret
           // lands at `at + 2` and the next image goes after both.

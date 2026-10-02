@@ -45,18 +45,26 @@
       .catch(() => {});
   });
 
+  // The latest search wins: a provider switch mid-search must not get the
+  // earlier provider's photos.
+  let searchToken = 0;
+
   async function run(p: PhotoProvider, q: string) {
-    if (!q || searching) return;
+    if (!q) return;
+    const token = ++searchToken;
     searching = true;
     error = "";
     try {
-      photos = (await endpoints().searchPhotos(p, q)).items;
+      const items = (await endpoints().searchPhotos(p, q)).items;
+      if (token !== searchToken) return;
+      photos = items;
       searched = true;
     } catch (err) {
+      if (token !== searchToken) return;
       error = err instanceof ApiError ? err.message : "Photo search failed.";
       photos = [];
     } finally {
-      searching = false;
+      if (token === searchToken) searching = false;
     }
   }
 
@@ -87,14 +95,21 @@
         .catch(() => {});
     }
     onPick(photo);
+    // Setting `open` doesn't go through onOpenChange, so reset here too.
     open = false;
+    reset();
   }
 
   // Each open starts clean rather than showing the last search's results, which
   // would look like a response to a query the author hasn't typed yet.
   function onOpenChange(next: boolean) {
     open = next;
-    if (next) return;
+    if (!next) reset();
+  }
+
+  function reset() {
+    ++searchToken;
+    searching = false;
     query = "";
     photos = [];
     error = "";

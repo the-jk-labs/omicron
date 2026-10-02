@@ -130,10 +130,7 @@ test("clearing the query goes back to the bare search page", async () => {
   expect(goto).toHaveBeenCalledWith("/search", expect.anything());
 });
 
-// BUG: Svelte 5 trims whitespace at the edges of a block, and this sentence
-// is split across {#if} blocks with no space outside them, so it renders as
-// "No articles match “de”with tag #denoby ada."
-test.fails("BUG: the filtered empty state keeps its spaces", () => {
+test("the filtered empty state keeps its spaces", () => {
   setup("de", {}, { tag: "deno", author: "ada" });
   expect(screen.getByText(/No articles match/).textContent).toContain("“de” with tag #deno by ada.");
 });

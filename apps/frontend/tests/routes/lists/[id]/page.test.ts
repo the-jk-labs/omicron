@@ -121,11 +121,8 @@ test("editing updates the header in place", async () => {
   await screen.findByRole("heading", { level: 1, name: "Renamed" });
 });
 
-// BUG: removeList awaits deleteList with no try/catch. A failed delete shows
-// nothing (the confirm closes and the page stays as it was), and the
-// rejection is unhandled.
-test.fails("BUG: a failed delete tells the owner", async () => {
-  setup({ isOwner: true }, { [`DELETE /api/lists/${LIST_ID}`]: apiError(500, "List delete failed [BUG pin]") });
+test("a failed delete tells the owner", async () => {
+  setup({ isOwner: true }, { [`DELETE /api/lists/${LIST_ID}`]: apiError(500, "List delete failed") });
   await fireEvent.click(screen.getByRole("button", { name: "Delete list" }));
   await answerConfirm(true);
   await screen.findByText(/List delete failed|Couldn't delete|Failed to delete/, undefined, { timeout: 500 });

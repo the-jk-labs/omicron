@@ -144,13 +144,9 @@ test("Show more appends the next page of posts", async () => {
   expect(screen.queryByRole("button", { name: "Show more" })).toBe(null);
 });
 
-// BUG: loadMore has try/finally but no catch. A failed page is an unhandled
-// rejection and the reader sees nothing; the button just comes back. The same
-// pattern is in the home feed, lists/[id], tags/[tag], notifications and
-// Comments.
-test.fails("BUG: a failed Show more tells the reader", async () => {
+test("a failed Show more tells the reader", async () => {
   setup(data({ page: page([post()], "c1") }), {
-    "GET /api/users/ada/posts?cursor=c1": apiError(500, "Feed down [BUG pin]"),
+    "GET /api/users/ada/posts?cursor=c1": apiError(500, "Feed down"),
   });
   await fireEvent.click(screen.getByRole("button", { name: "Show more" }));
   await screen.findByText(/couldn't load|failed to load|try again|Feed down/i, undefined, { timeout: 500 });

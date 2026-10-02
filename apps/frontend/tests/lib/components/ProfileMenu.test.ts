@@ -53,7 +53,7 @@ test("a remote account goes through the remote endpoints with its handle encoded
 });
 
 test("a failed request leaves the state as it was", async () => {
-  setup({}, { "POST /api/users/bob/mute": apiError(500, "Mute failed [BUG pin]") });
+  setup({}, { "POST /api/users/bob/mute": apiError(500, "Mute failed") });
   await choose("Mute");
   await waitFor(() => expect(api.calls).toHaveLength(1));
   expect(await labels()).toEqual(["Mute", "Block"]);
@@ -65,11 +65,8 @@ test("props re-sync when the menu is reused for another profile", async () => {
   expect(await labels()).toEqual(["Unmute", "Unblock"]);
 });
 
-// B73: toggleBlock has try/finally and no catch. A failed block shows no
-// message — the menu just closes — so the reader may believe they've blocked
-// someone they haven't. The rejection is unhandled.
-test.fails("BUG: a failed block tells the reader", async () => {
-  setup({}, { "POST /api/users/bob/block": apiError(500, "Block failed [BUG pin]") });
+test("a failed block tells the reader", async () => {
+  setup({}, { "POST /api/users/bob/block": apiError(500, "Block failed") });
   await choose("Block");
   await screen.findByText(/Block failed|Couldn't|Failed to/, undefined, { timeout: 500 });
 });

@@ -49,11 +49,9 @@ test("a reload of the page data replaces the list", async () => {
   expect(screen.queryByText("BOB")).toBe(null);
 });
 
-// BUG: act() has try/finally and no catch: a failed approve/reject leaves the
-// row as it was with no message, and the rejection is unhandled.
-test.fails("BUG: a failed approval tells the account owner", async () => {
+test("a failed approval tells the account owner", async () => {
   setup([req("r1", "bob")], {
-    "POST /api/users/me/follow-requests/r1/approve": apiError(500, "Approve failed [BUG pin]"),
+    "POST /api/users/me/follow-requests/r1/approve": apiError(500, "Approve failed"),
   });
   await fireEvent.click(screen.getByRole("button", { name: /Approve/ }));
   await screen.findByText(/Approve failed|Couldn't|Failed to/, undefined, { timeout: 500 });

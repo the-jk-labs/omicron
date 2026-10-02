@@ -166,7 +166,9 @@
         error = "Write something first.";
         return;
       }
-    } else if (!hasContent()) {
+    } else if (!postId && !hasContent()) {
+      // Only a new post can be empty; an existing one may change status untouched
+      // (e.g. "Unschedule, keep as draft").
       error = "Nothing to save yet.";
       return;
     }

@@ -118,11 +118,12 @@
   }
   const engFrac = (p: PostStat) => engPerDay(p) / maxPerDay;
 
+  // A series day is a UTC calendar date, not an instant: format it as that date.
   function dayLabel(iso: string): string {
     return new Date(iso).toLocaleDateString($locale, {
       month: "short",
       day: "numeric",
-      timeZone: $timeZone,
+      timeZone: "UTC",
     });
   }
 </script>

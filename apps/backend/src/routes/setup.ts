@@ -75,8 +75,11 @@ setupRoutes.post("/", async (c) => {
   }
 
   const parsed = setupSchema.safeParse(await c.req.json().catch(() => null));
+  // A refusal names its field (`appName`, `appDomain`, `email` or `admin`), so the
+  // wizard can return the operator to the step that shows it.
   if (!parsed.success) {
-    throw badRequest(parsed.error.issues[0]?.message ?? "Invalid setup details.");
+    const issue = parsed.error.issues[0];
+    return c.json({ error: issue?.message ?? "Invalid setup details.", field: issue?.path[0]?.toString() }, 400);
   }
   const { appName, appDomain, email, admin } = parsed.data;
 
@@ -94,7 +97,7 @@ setupRoutes.post("/", async (c) => {
   const res = await auth.api.signUpEmail({ body: signupBody, asResponse: true });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    throw badRequest(body?.message ?? "Could not create the admin account.");
+    return c.json({ error: body?.message ?? "Could not create the admin account.", field: "admin" }, 400);
   }
   for (const cookie of res.headers.getSetCookie()) c.header("set-cookie", cookie, { append: true });
 

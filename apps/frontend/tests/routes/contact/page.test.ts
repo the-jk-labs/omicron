@@ -60,10 +60,7 @@ test("the instance name and domain come from the instance settings", () => {
   expect(text()).toContain("Reach the operator of blog.example (Starlog)");
 });
 
-// BUG: "ActivityPub{#if …}\n at …" — Svelte 5 trims whitespace at a block's
-// edges, so the sentence renders as "federates via ActivityPubat blog.example"
-// (or "ActivityPubwhen federation is enabled"). Same cause as B66.
-test.fails("BUG: the federation sentence keeps its space", () => {
+test("the federation sentence keeps its space", () => {
   state.instance = { name: "Starlog", domain: "blog.example", federationEnabled: true };
   render(ContactPage);
   expect(text()).toContain("federates via ActivityPub at blog.example.");

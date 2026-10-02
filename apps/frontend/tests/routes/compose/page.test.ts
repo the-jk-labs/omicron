@@ -142,11 +142,7 @@ test("unscheduling an edited scheduled post saves it as a draft", async () => {
   expect(writes().at(-1)?.body).toMatchObject({ status: "draft", publishAt: null });
 });
 
-// BUG: persist("draft") refuses when !hasContent(), and hasContent() is false
-// until the author has edited something (`touched`). So opening a scheduled
-// post and choosing "Unschedule, keep as draft" answers "Nothing to save yet."
-// and the post stays scheduled to go out.
-test.fails("BUG: an untouched scheduled post can be unscheduled", async () => {
+test("an untouched scheduled post can be unscheduled", async () => {
   setup({ status: "scheduled", publishAt: "2099-01-01T09:00:00Z" } as Partial<Post>);
   await publishingMenu("Unschedule, keep as draft");
   await waitFor(() => expect(writes().at(-1)?.body).toMatchObject({ status: "draft", publishAt: null }), {
