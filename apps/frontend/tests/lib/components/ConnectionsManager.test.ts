@@ -28,12 +28,38 @@ test("lists muted accounts on open and unmutes local and remote ones by their ow
   ]);
 });
 
-// BUG: a failed load is swallowed (`catch {}`) and the panel then renders its
-// empty state, telling the reader "You haven't muted anyone." when the request
-// merely failed. FollowedTagsManager and FollowListDialog do the same.
-test.fails("BUG: a failed load says so instead of claiming the list is empty", async () => {
+test("a failed load says so instead of claiming the list is empty", async () => {
   vi.stubGlobal("fetch", fakeFetch({ "GET /api/users/me/muted": apiError(500) }).fetch);
   render(ConnectionsManager);
   await new Promise((r) => setTimeout(r, 20));
   expect(screen.queryByText("You haven't muted anyone.")).toBe(null);
+});
+
+test("after a failed load, Try again loads the list", async () => {
+  let fail = true;
+  vi.stubGlobal(
+    "fetch",
+    fakeFetch({
+      "GET /api/users/me/muted": () => (fail ? apiError(500, "Mutes down") : Response.json({ items: [bob] })),
+    }).fetch,
+  );
+  render(ConnectionsManager);
+  await screen.findByText("Mutes down");
+  fail = false;
+  await fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  await screen.findByText("Bob");
+});
+
+test("a failed unmute says so and keeps the row", async () => {
+  vi.stubGlobal(
+    "fetch",
+    fakeFetch({
+      "GET /api/users/me/muted": { items: [bob] },
+      "DELETE /api/users/bob/mute": apiError(500, "Unmute failed"),
+    }).fetch,
+  );
+  render(ConnectionsManager);
+  await fireEvent.click(await screen.findByRole("button", { name: "Unmute" }));
+  await screen.findByText("Unmute failed");
+  expect(screen.getByText("Bob")).toBeInTheDocument();
 });

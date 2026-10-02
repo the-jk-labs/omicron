@@ -64,9 +64,12 @@
     error = "";
     try {
       const { list } = await endpoints().createList({ title });
-      await endpoints().addToList(list.id, postId);
-      lists = [...lists, { ...list, contains: true, itemCount: 1 }];
+      // Shown as soon as it exists, so a failed add below can't hide it (and a
+      // retry can't create a twin).
+      lists = [...lists, { ...list, contains: false, itemCount: 0 }];
       newTitle = "";
+      await endpoints().addToList(list.id, postId);
+      lists = lists.map((l) => (l.id === list.id ? { ...l, contains: true, itemCount: 1 } : l));
     } catch (e) {
       error = e instanceof ApiError ? e.message : "Couldn't create the list.";
     } finally {

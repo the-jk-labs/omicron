@@ -385,6 +385,20 @@
     detailErrors = { ...detailErrors, [id]: msg };
   }
 
+  // One detail request per row, shared by the expander and the edit dialog, so
+  // opening Edit mid-load waits for it rather than seeding from the bare row.
+  const detailRequests = new Map<string, Promise<AdminUserDetail>>();
+  function fetchDetail(id: string): Promise<AdminUserDetail> {
+    let request = detailRequests.get(id);
+    if (!request) {
+      request = endpoints()
+        .adminUserDetail(id)
+        .finally(() => detailRequests.delete(id));
+      detailRequests.set(id, request);
+    }
+    return request;
+  }
+
   async function toggleDetail(u: AdminUser) {
     if (expandedId === u.id) {
       expandedId = null;
@@ -395,7 +409,7 @@
     if (details[u.id] || detailLoadingId === u.id) return;
     detailLoadingId = u.id;
     try {
-      details[u.id] = await endpoints().adminUserDetail(u.id);
+      details[u.id] = await fetchDetail(u.id);
     } catch (e) {
       // Inline, panel stays open: collapsing would hide the failure and the
       // row's toggle retries (nothing is cached).
@@ -531,6 +545,8 @@
   let editCustomSection = $state("");
   let editTags = $state<string[]>([]);
   let editLinks = $state<ProfileLink[]>([]);
+  // Without the detail the tags and links are unknown; saving them would wipe them.
+  let editHasDetail = $state(false);
   let editInitial = $state("");
   let editError = $state("");
   let editBusy = $state(false);
@@ -614,10 +630,11 @@
     editTarget = u;
     editError = "";
     editBusy = false;
-    if (!details[u.id] && detailLoadingId !== u.id) {
+    editHasDetail = true; // until a failed load says otherwise
+    if (!details[u.id]) {
       detailLoadingId = u.id;
       try {
-        details[u.id] = await endpoints().adminUserDetail(u.id);
+        details[u.id] = await fetchDetail(u.id);
       } catch (e) {
         editError = e instanceof ApiError ? e.message : "Failed to load account detail.";
       } finally {
@@ -625,6 +642,7 @@
       }
     }
     const d = details[u.id];
+    editHasDetail = d !== undefined;
     const row = d?.user ?? u;
     editAvatarUrl = row.avatarUrl ?? null;
     editDisplayName = row.displayName;
@@ -728,6 +746,10 @@
     // set differs; cover the case where the comparison above missed it because
     // blank rows were skipped during conversion.
     if (body.links === undefined && JSON.stringify(links) !== JSON.stringify(initial.links)) body.links = links;
+    if (!editHasDetail) {
+      delete body.tags;
+      delete body.links;
+    }
     if (Object.keys(body).length === 0) {
       editTarget = null;
       return;
@@ -775,6 +797,7 @@
       await endpoints().restoreUser(d.id, notify);
       deleted = deleted.filter((x) => x.id !== d.id);
       deletedTotal = Math.max(0, deletedTotal - 1);
+      deletedFilteredTotal = Math.max(0, deletedFilteredTotal - 1);
       await load();
     } catch (e) {
       error = e instanceof ApiError ? e.message : "Restore failed.";
@@ -797,6 +820,7 @@
       await endpoints().purgeDeletedUser(d.id);
       deleted = deleted.filter((x) => x.id !== d.id);
       deletedTotal = Math.max(0, deletedTotal - 1);
+      deletedFilteredTotal = Math.max(0, deletedFilteredTotal - 1);
     } catch (e) {
       deletedError = e instanceof ApiError ? e.message : "Erase failed.";
     } finally {
@@ -1516,18 +1540,22 @@
           />
           <p class="text-xs text-muted-foreground">Optional. Shown on the profile. Leave blank to hide it.</p>
         </div>
-        <div class="flex flex-col gap-1.5">
-          <Label.Root class={labelClass}>Tags</Label.Root>
-          <TagInput
-            bind:tags={editTags}
-            max={MAX_PROFILE_TAGS}
-            hint="Topics they post about. Shown on the profile and federated to other servers."
-          />
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <Label.Root class={labelClass}>Links</Label.Root>
-          <ProfileLinksEditor bind:links={editLinks} />
-        </div>
+        {#if editHasDetail}
+          <div class="flex flex-col gap-1.5">
+            <Label.Root class={labelClass}>Tags</Label.Root>
+            <TagInput
+              bind:tags={editTags}
+              max={MAX_PROFILE_TAGS}
+              hint="Topics they post about. Shown on the profile and federated to other servers."
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <Label.Root class={labelClass}>Links</Label.Root>
+            <ProfileLinksEditor bind:links={editLinks} />
+          </div>
+        {:else}
+          <p class="text-xs text-muted-foreground">Tags and links couldn't be loaded, so they are left as they are.</p>
+        {/if}
         <div class="flex flex-col gap-1.5">
           <Label.Root class={labelClass}>Custom section</Label.Root>
           <CustomSectionEditor bind:value={editCustomSection} maxLength={MAX_CUSTOM_SECTION_LEN} />

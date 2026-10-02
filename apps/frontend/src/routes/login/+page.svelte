@@ -32,6 +32,9 @@
     "h-11 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus:border-foreground";
   const labelClass = "text-sm font-medium leading-none text-foreground";
 
+  // Fediverse habit: "@ada" is the username ada. Only what still has an "@" is an email.
+  const loginId = () => identifier.replace(/^@/, "");
+
   async function submit(e: SubmitEvent) {
     e.preventDefault();
     error = "";
@@ -42,9 +45,10 @@
     try {
       // The single field accepts a username or an email; route to the matching
       // Better Auth sign-in.
-      const res = identifier.includes("@")
-        ? await authClient.signIn.email({ email: identifier, password })
-        : await authClient.signIn.username({ username: identifier, password });
+      const id = loginId();
+      const res = id.includes("@")
+        ? await authClient.signIn.email({ email: id, password })
+        : await authClient.signIn.username({ username: id, password });
       if (res.error) {
         const code = (res.error as { code?: string }).code ?? "";
         if (code === "EMAIL_NOT_VERIFIED" || /verif|confirm/i.test(res.error.message ?? "")) {
@@ -66,7 +70,7 @@
 
   async function resendConfirmation() {
     // Resending needs the login email; a username alone cannot address it.
-    const addr = identifier.includes("@") ? identifier.trim() : "";
+    const addr = loginId().includes("@") ? loginId().trim() : "";
     if (!addr) {
       resendError = "Enter your email address above to resend the confirmation link.";
       return;
@@ -150,7 +154,7 @@
         {/if}
         {#if resendError}<p class="text-xs text-destructive" role="alert">{resendError}</p>{/if}
         <div class="flex items-center gap-2 text-sm">
-          <Button onclick={resendConfirmation} disabled={resending} variant="link" class="px-0">
+          <Button type="button" onclick={resendConfirmation} disabled={resending} variant="link" class="px-0">
             {resending ? "Sending…" : "Resend confirmation link"}
           </Button>
           <span class="text-muted-foreground">·</span>

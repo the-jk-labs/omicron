@@ -100,10 +100,8 @@ test("a new profile clears the cached list", async () => {
   expect(screen.queryByText("BOB")).toBe(null);
 });
 
-// B52: the load has try/finally and no catch, so a failure renders the empty
-// state ("No followers yet.") and the rejection is unhandled.
-test.fails("BUG: a failed load doesn't claim there are no followers", async () => {
-  setup({}, { "GET /api/users/ada/followers": apiError(500, "Followers down [BUG pin]") });
+test("a failed load doesn't claim there are no followers", async () => {
+  setup({}, { "GET /api/users/ada/followers": apiError(500, "Followers down") });
   await open();
   await waitFor(() => expect(listCalls()).toHaveLength(1));
   await new Promise((r) => setTimeout(r, 20));

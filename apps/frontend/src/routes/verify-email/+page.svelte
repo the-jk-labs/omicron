@@ -34,7 +34,10 @@
 
   onMount(async () => {
     if (!token) return;
-    const res = await authClient.verifyEmail({ query: { token } });
+    const res = await authClient.verifyEmail({ query: { token } }).catch((e: unknown) => ({
+      // Offline or proxy down: the same error view, not "Confirming…" forever.
+      error: { message: e instanceof Error ? e.message : "Couldn't reach the server. Try the link again." },
+    }));
     if (res.error) {
       errorMsg = res.error.message ?? "This verification link is invalid or has expired.";
       view = "error";

@@ -137,11 +137,7 @@ test("after a save the refreshed data clears the dirty state and says Saved", as
   expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
 });
 
-// BUG: `dirty` compares tags and links with constants captured at mount
-// (initialTags / initialLinks), not with the refreshed data.user. After
-// saving a tag or link change the form stays dirty: "Saved." never shows and
-// Save stays enabled.
-test.fails("BUG: after saving a tag change the form is no longer dirty", async () => {
+test("after saving a tag change the form is no longer dirty", async () => {
   const { rerender } = setup();
   const tags = screen.getByPlaceholderText(/^Add (tags|another tag)/);
   await fireEvent.input(tags, { target: { value: "deno" } });
@@ -149,6 +145,19 @@ test.fails("BUG: after saving a tag change the form is no longer dirty", async (
   await fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() => expect(invalidateAll).toHaveBeenCalled());
   await rerender({ data: { user: me({ tags: [{ slug: "deno", name: "deno" }] }) } as never });
+  await screen.findByText("Saved.", undefined, { timeout: 500 });
+});
+
+// The server stores the canonical URL, not what was typed.
+test("after saving a link typed without its scheme the form is no longer dirty", async () => {
+  const { rerender } = setup(me({ links: [{ platform: "website", url: "https://old.example/", label: "" }] }));
+  await fireEvent.input(screen.getByPlaceholderText("https://example.com"), { target: { value: "ada.example" } });
+  await fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await waitFor(() => expect(invalidateAll).toHaveBeenCalled());
+  expect(patchBody()).toMatchObject({ links: [{ platform: "website", url: "https://ada.example/", label: "" }] });
+  await rerender({
+    data: { user: me({ links: [{ platform: "website", url: "https://ada.example/", label: "" }] }) } as never,
+  });
   await screen.findByText("Saved.", undefined, { timeout: 500 });
 });
 
@@ -190,10 +199,7 @@ test("an oversized photo after compression is refused without uploading", async 
   expect(api.calls.some((c) => c.path === "/api/users/me/avatar")).toBe(false);
 });
 
-// BUG: save() uploads the staged photo before validating the links. With an
-// invalid link the photo is already replaced on the server while the page
-// shows an error and still lists the photo as unsaved.
-test.fails("BUG: an invalid link stops the save before the photo is uploaded", async () => {
+test("an invalid link stops the save before the photo is uploaded", async () => {
   setup(me({ links: [{ platform: "website", url: "https://ada.example", label: "" }] }));
   await pickPhoto();
   await fireEvent.click(await screen.findByRole("button", { name: "Apply crop" }));

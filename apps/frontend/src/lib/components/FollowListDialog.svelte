@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints } from "$lib/api";
+  import { ApiError, endpoints } from "$lib/api";
   import Icon from "$lib/components/Icon.svelte";
   import Avatar from "$lib/components/ui/Avatar.svelte";
   import type { RelationActor } from "$lib/types";
@@ -31,6 +31,7 @@
   let items = $state<RelationActor[]>([]);
   let loaded = $state(false);
   let loading = $state(false);
+  let error = $state("");
   // Follower ids awaiting a second click to confirm removal.
   let confirming = $state<Set<string>>(new Set());
   let removing = $state<Set<string>>(new Set());
@@ -45,6 +46,7 @@
     items = [];
     loaded = false;
     loading = false;
+    error = "";
     confirming = new Set();
     removing = new Set();
   });
@@ -55,10 +57,13 @@
       return;
     }
     removing = new Set(removing).add(actor.id);
+    error = "";
     try {
       await endpoints().removeFollower(actor.username);
       items = items.filter((a) => a.id !== actor.id);
       onRemoved?.();
+    } catch (e) {
+      error = e instanceof ApiError ? e.message : `Couldn't remove @${actor.username}.`;
     } finally {
       removing.delete(actor.id);
       removing = new Set(removing);
@@ -69,13 +74,20 @@
 
   async function onOpenChange(next: boolean) {
     open = next;
-    if (!next || loaded || loading) return;
+    if (next) await load();
+  }
+
+  async function load() {
+    if (loaded || loading) return;
     loading = true;
+    error = "";
     try {
       const res =
         kind === "followers" ? await endpoints().userFollowers(username) : await endpoints().userFollowing(username);
       items = res.items;
       loaded = true;
+    } catch (e) {
+      error = e instanceof ApiError ? e.message : "Couldn't load this list.";
     } finally {
       loading = false;
     }
@@ -109,6 +121,16 @@
       <div class="min-h-0 flex-1 overflow-y-auto px-2 py-2">
         {#if loading && items.length === 0}
           <p class="py-8 text-center text-sm text-muted-foreground">Loading…</p>
+        {:else if !loaded}
+          <div class="flex flex-col items-center gap-3 py-8 text-center text-sm">
+            <p class="text-destructive">{error}</p>
+            <Button.Root
+              onclick={load}
+              class="rounded-input border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-btn hover:bg-muted focus-visible:outline-hidden"
+            >
+              Try again
+            </Button.Root>
+          </div>
         {:else if items.length === 0}
           <p class="py-8 text-center text-sm text-muted-foreground">
             {kind === "followers" ? "No followers yet." : "Not following anyone yet."}
@@ -145,6 +167,9 @@
               </li>
             {/each}
           </ul>
+        {/if}
+        {#if loaded && error}
+          <p class="px-3 pt-2 text-sm text-destructive">{error}</p>
         {/if}
       </div>
     </Dialog.Content>

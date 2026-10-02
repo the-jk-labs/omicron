@@ -74,18 +74,14 @@ test("loading failures are reported and retried on the next open", async () => {
   await waitFor(() => screen.getByText("Lists are down"));
 });
 
-// BUG: createAndAdd creates the list, then adds the post. When the second call
-// fails, the error is shown but the list that now exists on the server is never
-// put into the menu — and the menu is not reloaded on reopen (`loaded` stays
-// true). The reader sees no new list, tries again, and ends up with two.
-test.fails("BUG: a list that was created stays in the menu even if adding the post to it failed", async () => {
+test("a list that was created stays in the menu even if adding the post to it failed", async () => {
   await open({
     "POST /api/lists": { list: { id: "l3", title: "Fresh", visibility: "public", itemCount: 0 } },
-    "POST /api/lists/l3/items": apiError(500),
+    "POST /api/lists/l3/items": apiError(500, "Could not add the post"),
   });
   const input = screen.getByPlaceholderText("New list");
   await fireEvent.input(input, { target: { value: "Fresh" } });
   await fireEvent.submit(input.closest("form")!);
-  await waitFor(() => screen.getByText(/went wrong|Couldn't|Request failed/));
+  await screen.findByText("Could not add the post");
   expect(screen.getByRole("button", { name: /Fresh/ })).toBeInTheDocument();
 });

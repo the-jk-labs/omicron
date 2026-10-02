@@ -42,14 +42,27 @@
   // constants module, so this is kept in sync by hand.
   const MAX_CUSTOM_SECTION_LEN = 20_000;
   let profileTags = $state<string[]>(seed.tags?.map((t) => t.name) ?? []);
-  const initialTags = (seed.tags?.map((t) => t.name) ?? []).join(",");
+  // Baselines follow the saved profile (refreshed by invalidateAll), like the text fields.
+  const initialTags = $derived((data.user.tags?.map((t) => t.name) ?? []).join(","));
   // The editor works in "identifier" form (a handle / username), so seed from
   // the stored canonical URLs and convert back on save. Deep-copied so edits
   // don't mutate the loaded page data.
   const toEditable = (links: ProfileLink[]) =>
     links.map((l) => ({ platform: l.platform, url: urlToIdentifier(l.platform, l.url), label: l.label }));
   let profileLinks = $state<ProfileLink[]>(toEditable(seed.links ?? []));
-  const initialLinks = JSON.stringify(toEditable(seed.links ?? []));
+  // Links are compared as save() sends them (canonical URL, blank rows skipped), so
+  // "ada.example" matches a stored "https://ada.example/" once it has been saved.
+  const canonicalLinks = (links: ProfileLink[]) =>
+    JSON.stringify(
+      links
+        .filter((l) => l.url.trim())
+        .map((l) => ({
+          platform: l.platform,
+          url: identifierToUrl(l.platform, l.url) ?? l.url,
+          label: l.label.trim(),
+        })),
+    );
+  const initialLinks = $derived(canonicalLinks(toEditable(data.user.links ?? [])));
   let nameEl = $state<HTMLInputElement | null>(null);
   let bioEl = $state<HTMLTextAreaElement | null>(null);
 
@@ -98,7 +111,7 @@
       customSection !== (data.user.customSection ?? "") ||
       file !== null ||
       profileTags.join(",") !== initialTags ||
-      JSON.stringify(profileLinks) !== initialLinks,
+      canonicalLinks(profileLinks) !== initialLinks,
   );
 
   let removingPhoto = $state(false);
@@ -172,23 +185,8 @@
     saved = false;
     busy = true;
     try {
-      if (file) {
-        // Downscale/re-encode to ~160px before upload so avatars aren't shipped
-        // at full photo resolution. If it's still over the backend's cap
-        // afterward (only realistic for animated GIFs, which we don't
-        // re-encode), surface a clear error instead of a failed upload.
-        const { blob, type } = await prepareImage(file, AVATAR_MAX_DIMENSION, MAX_BYTES);
-        if (blob.size > MAX_BYTES) {
-          error =
-            type === "image/gif"
-              ? "That GIF is too large (max 2 MB). Try a smaller GIF, or use PNG/JPEG/WebP."
-              : "Image too large (max 2 MB) even after compression. Please choose a different photo.";
-          busy = false;
-          return;
-        }
-        await endpoints().uploadAvatar(blob, type);
-      }
       // Convert each typed identifier to a canonical URL, skipping blank rows.
+      // First, so an invalid link stops the save before the photo is uploaded.
       const links = [];
       for (const l of profileLinks) {
         if (!l.url.trim()) continue;
@@ -214,6 +212,22 @@
           return;
         }
         links.push({ platform: l.platform, url, label: l.label.trim() });
+      }
+      if (file) {
+        // Downscale/re-encode to ~160px before upload so avatars aren't shipped
+        // at full photo resolution. If it's still over the backend's cap
+        // afterward (only realistic for animated GIFs, which we don't
+        // re-encode), surface a clear error instead of a failed upload.
+        const { blob, type } = await prepareImage(file, AVATAR_MAX_DIMENSION, MAX_BYTES);
+        if (blob.size > MAX_BYTES) {
+          error =
+            type === "image/gif"
+              ? "That GIF is too large (max 2 MB). Try a smaller GIF, or use PNG/JPEG/WebP."
+              : "Image too large (max 2 MB) even after compression. Please choose a different photo.";
+          busy = false;
+          return;
+        }
+        await endpoints().uploadAvatar(blob, type);
       }
       await endpoints().updateProfile({
         displayName,

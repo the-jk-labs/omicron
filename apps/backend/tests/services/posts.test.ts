@@ -295,12 +295,7 @@ describe("getPostBySlug", () => {
     },
   );
 
-  // BUG: a full UUID in the slug position is read by TRAILING_SHORT_ID as its
-  // last dash-separated group ("555555555555"), which no post id starts with.
-  // The admin reports queue links reported posts exactly this way
-  // (`/@author/<postId>`), so every such link 404s; the frontend's links.ts
-  // also documents full-UUID permalinks as resolvable.
-  test.fails("BUG: a full-UUID permalink resolves the post", async () => {
+  test("a full-UUID permalink resolves the post", async () => {
     vi.mocked(postsRepo.findByAuthorSlug).mockResolvedValue(null);
     vi.mocked(postsRepo.findIdByHistorySlug).mockResolvedValue(null as never);
     vi.mocked(postsRepo.findById).mockResolvedValue(row);

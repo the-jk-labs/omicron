@@ -17,9 +17,7 @@ test("lists followed tags and unfollows one", async () => {
   expect(calls.at(-1)).toMatchObject({ method: "DELETE", path: "/api/tags/deno/follow" });
 });
 
-// BUG (same as ConnectionsManager): a failed load renders "You don't follow
-// any tags yet." instead of an error.
-test.fails("BUG: a failed load says so instead of claiming there are no tags", async () => {
+test("a failed load says so instead of claiming there are no tags", async () => {
   vi.stubGlobal("fetch", fakeFetch({ "GET /api/tags/following": apiError(500) }).fetch);
   render(FollowedTagsManager);
   await new Promise((r) => setTimeout(r, 20));

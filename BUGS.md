@@ -17,130 +17,9 @@ user or operator will hit, **Low** = edge case or cosmetic.
 
 ---
 
-## Post links
-
-### B53. Full-UUID post links 404, including every reported post in the admin queue — Medium
-- **Where:** `src/services/posts.ts` `getPostBySlug`: `TRAILING_SHORT_ID`
-  (`/(?:^|-)([0-9a-f]{8,})$/`) reads a full UUID as its last dash group
-  (`555555555555`), which no post id starts with.
-- **Symptom:** `/@author/<full uuid>` answers "Post not found". The frontend's
-  admin reports queue links each reported post exactly that way
-  (`apps/frontend/src/lib/components/AdminReports.svelte` `subjectHref`), so a
-  moderator can never open a reported post from the queue. `apps/frontend/src/lib/links.ts`
-  also documents full-UUID permalinks as resolvable.
-- **Fix idea:** in `getPostBySlug`, try a full UUID (anywhere in the slug) before
-  the trailing short id; and have `subjectHref` build links with `postPath`.
-- **Test:** `tests/services/posts.test.ts` ("a full-UUID permalink resolves the post").
-
 ## Frontend
 
 Paths in this section are under `apps/frontend/`.
-
-### B51. "Save to list" loses a list when adding the post to it fails — Low
-- **Where:** `src/lib/components/SaveToListButton.svelte` `createAndAdd`.
-- **Symptom:** the new list is created, then the post is added in a second call.
-  If that second call fails, the error is shown but the list, which now exists
-  on the server, is never added to the menu, and the menu is not reloaded on
-  reopen (`loaded` stays true). The reader sees no new list, tries again, and
-  ends up with two lists of the same name.
-- **Fix idea:** add the created list to `lists` (with `contains: false`) as soon
-  as `createList` succeeds, before attempting `addToList`.
-- **Test:** `tests/lib/components/SaveToListButton.test.ts` ("a list that was created stays in the menu …").
-
-### B52. Failed loads in settings lists claim the list is empty — Low
-- **Where:** `src/lib/components/ConnectionsManager.svelte` (`ensureLoaded`),
-  `FollowedTagsManager.svelte` (`load`), `FollowListDialog.svelte`
-  (`onOpenChange`, which doesn't catch at all).
-- **Symptom:** the load error is swallowed and the empty state renders: "You
-  haven't muted anyone.", "You don't follow any tags yet.", "No followers yet."
-  A reader whose request merely failed is told their blocks, tags or followers
-  are gone. The actions (unmute, unfollow, remove follower) also fail silently.
-- **Fix idea:** track an error state and show "Couldn't load …" with a retry,
-  as `WebhookTokensManager.svelte` already does.
-- **Test:** `tests/lib/components/ConnectionsManager.test.ts`,
-  `tests/lib/components/FollowedTagsManager.test.ts` ("a failed load says so …"),
-  `tests/lib/components/FollowListDialog.test.ts` ("BUG: a failed load doesn't
-  claim there are no followers"; error tagged `[BUG pin]`).
-
-### B54. Signing in with "@handle" is sent as an email sign-in — Low
-- **Where:** `src/routes/login/+page.svelte` (`submit`:
-  `identifier.includes("@")`).
-- **Symptom:** any identifier containing "@" goes to `signIn.email`. Fediverse
-  users habitually type their handle as "@ada"; that fails as an email and
-  shows the server's email error instead of signing them in.
-- **Fix idea:** strip one leading "@", then treat the rest as an email only if
-  it still contains "@".
-- **Test:** `tests/routes/login/page.test.ts` ("BUG: a username typed with a
-  leading @ …").
-
-### B55. A network error on the verify-email page hangs on "Confirming…" — Low
-- **Where:** `src/routes/verify-email/+page.svelte` (`onMount` awaits
-  `authClient.verifyEmail` with no try/catch).
-- **Symptom:** if the request throws (offline, proxy down), the page stays on
-  "Confirming your email…" forever and the rejection goes unhandled. The error
-  view with its resend form never shows.
-- **Fix idea:** wrap the call in try/catch and set the same error state as a
-  `res.error` response.
-- **Test:** `tests/routes/verify-email/page.test.ts` ("BUG: a network failure
-  while verifying …"). Its error is tagged `[BUG pin]`, which
-  `vitest.config.ts` `onUnhandledError` ignores.
-
-### B56. "Resend confirmation link" on the login page also re-submits sign-in — Low
-- **Where:** `src/routes/login/+page.svelte`: the Resend `<Button>` sits inside
-  the sign-in `<form>` with no `type`. Neither `ui/Button.svelte` nor bits-ui
-  `Button.Root` defaults one, so it is a submit button.
-- **Symptom:** one click runs `resendConfirmation()` *and* `submit()`. Sign-in
-  is attempted again (with an email, a second request, and with
-  `sendOnSignIn` a second link), and `submit()` clears `resendError`/`resent`,
-  so "Enter your email address above…" disappears as soon as it is shown.
-- **Fix idea:** `type="button"` on the Resend button. Other non-submit
-  `<Button>`s inside forms may share the issue.
-- **Test:** `tests/routes/login/page.test.ts` ("BUG: clicking Resend doesn't
-  submit the sign-in form again").
-
-### B57. Admin "Edit profile" can wipe an account's tags and links — Medium
-- **Where:** `src/lib/components/AdminUsers.svelte` (`openEdit`). It fetches
-  the account detail only when `detailLoadingId !== u.id`, and otherwise (or
-  when the fetch fails) seeds the form from the bare table row, which has no
-  tags or links.
-- **Symptom:** expand a row and pick "Edit profile…" before its detail loads
-  (or open Edit when the detail request fails). The dialog shows no tags or
-  links. Adding one tag saves `tags: ["new"]`, silently deleting every
-  existing tag (likewise links).
-- **Fix idea:** await the in-flight detail request instead of skipping it, and
-  don't allow saving tags/links when the detail couldn't be loaded.
-- **Test:** `tests/lib/components/AdminUsers.test.ts` ("BUG: editing while the
-  row's detail is loading keeps its existing tags").
-
-### B58. Restoring or erasing while searching deleted accounts breaks the count — Low
-- **Where:** `src/lib/components/AdminUsers.svelte` (`restoreDeleted`,
-  `purgeDeleted`) decrement `deletedTotal` but not `deletedFilteredTotal`.
-- **Symptom:** with a search active, erasing the only match shows "1 of 0
-  accounts · showing 0"; "Load more (x of N)" is off by one the same way.
-- **Fix idea:** decrement `deletedFilteredTotal` alongside `deletedTotal`.
-- **Test:** `tests/lib/components/AdminUsers.test.ts` ("BUG: erasing a
-  searched-for account keeps the search count honest").
-
-### B59. Settings stays "unsaved" after saving a tag or link change — Low
-- **Where:** `src/routes/settings/+page.svelte` (`dirty`). The text fields
-  compare against the live `data.user`, but tags and links compare against
-  `initialTags` / `initialLinks`, constants captured at mount.
-- **Symptom:** after saving a tag or link change (and `invalidateAll`
-  refreshing `data.user`), `dirty` stays true: "Saved." never appears and Save
-  stays enabled until the page is reloaded.
-- **Fix idea:** derive the baselines from `data.user.tags` / `data.user.links`.
-- **Test:** `tests/routes/settings/page.test.ts` ("BUG: after saving a tag
-  change the form is no longer dirty").
-
-### B60. Settings uploads a new photo even when the save then fails validation — Low
-- **Where:** `src/routes/settings/+page.svelte` (`save`): the avatar upload
-  runs before the profile-link validation loop.
-- **Symptom:** with a staged photo and an invalid link, the photo is replaced
-  on the server while the page shows "Enter a valid … web address." and still
-  treats the photo as unsaved (the next save uploads it again).
-- **Fix idea:** validate links before any request.
-- **Test:** `tests/routes/settings/page.test.ts` ("BUG: an invalid link stops
-  the save before the photo is uploaded").
 
 ### B61. A failed "Show more" is silent and leaks an unhandled rejection — Low
 - **Where:** `loadMore` (try/finally, no catch) in
@@ -153,7 +32,8 @@ Paths in this section are under `apps/frontend/`.
   unhandled promise rejection in the console.
 - **Fix idea:** catch, show a short inline "Couldn't load more. Try again."
 - **Test:** `tests/routes/[handle]/page.test.ts` ("BUG: a failed Show more
-  tells the reader"). Its error is tagged `[BUG pin]` (see B55).
+  tells the reader"). Its error is tagged `[BUG pin]`, which
+  `vitest.config.ts` `onUnhandledError` ignores.
 
 ### B62. The setup wizard sends every 400 back to the Admin step — Low
 - **Where:** `src/routes/setup/+page.svelte` (`finish`:
@@ -240,8 +120,7 @@ Paths in this section are under `apps/frontend/`.
   no items, so the tab shows its empty state ("No articles on this instance
   yet.", "Your feed is empty. Follow some writers to fill it.") instead of an
   error, and switching back to the tab doesn't retry (it only reloads on a tab
-  *change* while `loaded` is false). The rejection is unhandled. Same class
-  as B52.
+  *change* while `loaded` is false). The rejection is unhandled.
 - **Fix idea:** track an error per feed and show "Couldn't load. Try again."
 - **Test:** `tests/routes/page.test.ts` ("BUG: a tab that fails to load
   doesn't claim to be empty"; error tagged `[BUG pin]`).

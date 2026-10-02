@@ -5,6 +5,7 @@
   import Time from "$lib/components/Time.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { confirm } from "$lib/components/ui/confirm";
+  import { postPath } from "$lib/links";
   import type { Report } from "$lib/types";
   import { Tabs } from "bits-ui";
 
@@ -37,7 +38,7 @@
 
   function subjectHref(r: Report): string | null {
     if (r.subjectType === "post" && r.postAuthor && r.postId) {
-      return `/@${r.postAuthor}/${r.postId}`;
+      return postPath({ id: r.postId, slug: null, author: { username: r.postAuthor } });
     }
     if (r.subjectType === "user" && r.userUsername) return `/@${r.userUsername}`;
     return null;

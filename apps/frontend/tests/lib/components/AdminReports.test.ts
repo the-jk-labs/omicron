@@ -102,3 +102,10 @@ test("a failure is shown", async () => {
   await fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
   await waitFor(() => screen.getByText("Admins only"));
 });
+
+// A full UUID in the slug position is resolvable now too, but the short id is the canonical form.
+test("a reported post links to its short-id permalink", async () => {
+  setup([report({})]);
+  await waitFor(() => screen.getByText("Buy now"));
+  expect(screen.getByRole("link", { name: "Buy now" })).toHaveAttribute("href", "/@spammer/9e962281");
+});

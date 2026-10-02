@@ -40,10 +40,7 @@ test("a username signs in by username", async () => {
   );
 });
 
-// BUG: any identifier containing "@" is sent as an email. Fediverse users
-// habitually write their handle with a leading "@" ("@ada"), which then fails
-// as an email sign-in with a misleading "invalid" message.
-test.fails("BUG: a username typed with a leading @ signs in by username", async () => {
+test("a username typed with a leading @ signs in by username", async () => {
   auth.username.mockResolvedValue({ error: null });
   auth.email.mockResolvedValue({ error: { message: "Invalid email" } });
   render(LoginPage);
@@ -73,10 +70,7 @@ test("an unverified account is told to check its inbox and can resend the link",
   );
 });
 
-// BUG: the Resend button sits inside the sign-in <form> with no type, so it is
-// a submit button. Clicking it also re-runs sign-in, which clears the resend
-// message (and with an email, signs in a second time).
-test.fails("BUG: clicking Resend doesn't submit the sign-in form again", async () => {
+test("clicking Resend doesn't submit the sign-in form again", async () => {
   auth.username.mockResolvedValue({ error: { message: "Please verify your email first" } });
   render(LoginPage);
   await signIn("ada");
@@ -89,8 +83,6 @@ test("resending needs an email address, not a username", async () => {
   render(LoginPage);
   await signIn("ada");
   const resend = await screen.findByRole("button", { name: "Resend confirmation link" });
-  // Bypass the form submit (see the bug above) to reach the handler itself.
-  resend.addEventListener("click", (e) => e.preventDefault());
   await fireEvent.click(resend);
   await screen.findByText("Enter your email address above to resend the confirmation link.");
   expect(auth.sendVerificationEmail).not.toHaveBeenCalled();

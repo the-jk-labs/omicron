@@ -46,11 +46,8 @@ test("a bad link explains and offers a new one", async () => {
   expect(screen.getByText("Token expired")).toBeInTheDocument();
 });
 
-// BUG: onMount awaits verifyEmail without a try/catch. A network failure (or
-// any thrown error) leaves the page on "Confirming your email…" forever, with
-// an unhandled rejection instead of the error view.
-test.fails("BUG: a network failure while verifying shows the error view", async () => {
-  auth.verifyEmail.mockRejectedValue(new TypeError("Failed to fetch [BUG pin]"));
+test("a network failure while verifying shows the error view", async () => {
+  auth.verifyEmail.mockRejectedValue(new TypeError("Failed to fetch"));
   render(VerifyEmailPage);
   await waitFor(() => screen.getByText("Link didn't work"), { timeout: 500 });
 });
