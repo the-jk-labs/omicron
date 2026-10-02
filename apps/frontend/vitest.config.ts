@@ -20,6 +20,8 @@ export default defineConfig({
   plugins: [svelte(), svelteTesting()],
   test: {
     environment: "jsdom",
+    // One jsdom per worker instead of per file (still isolated per file): ~2x faster.
+    pool: "vmThreads",
     setupFiles: ["./tests/setup.ts"],
     fsModuleCache: true,
     include: ["tests/**/*.test.ts"],

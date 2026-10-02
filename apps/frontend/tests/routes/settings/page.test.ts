@@ -215,7 +215,7 @@ test("Remove discards a staged photo without a request, or removes the saved one
   await waitFor(() =>
     expect(api.calls.some((c) => c.method === "DELETE" && c.path === "/api/users/me/avatar")).toBe(true),
   );
-  expect(invalidateAll).toHaveBeenCalled();
+  await waitFor(() => expect(invalidateAll).toHaveBeenCalled());
 });
 
 test("a failed photo removal is shown", async () => {

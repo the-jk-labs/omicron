@@ -73,7 +73,7 @@ describe("RecommendButton toggling", () => {
     render(RecommendButton, { props: { postId: "p1", recommended: false, recommendCount: 2 } });
     await fireEvent.click(screen.getByRole("button"));
     await waitFor(() => expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true"));
-    expect(screen.getByRole("button")).toHaveTextContent("7");
+    await waitFor(() => expect(screen.getByRole("button")).toHaveTextContent("7"));
   });
 
   it("a failed un-recommend puts the button back", async () => {

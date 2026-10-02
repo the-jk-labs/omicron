@@ -14,12 +14,18 @@ function setup(
   return render(ProfileMenu, { props: { username: "bob", muted: false, blocked: false, ...props } });
 }
 
+// The trigger is disabled while a request is in flight.
+async function openMenu() {
+  const trigger = screen.getByRole("button", { name: "More actions" });
+  await waitFor(() => expect(trigger).toBeEnabled());
+  await fireEvent.keyDown(trigger, { key: "Enter" });
+}
 async function choose(item: string) {
-  await fireEvent.keyDown(screen.getByRole("button", { name: "More actions" }), { key: "Enter" });
+  await openMenu();
   await fireEvent.click(await screen.findByRole("menuitem", { name: item }));
 }
 async function labels() {
-  await fireEvent.keyDown(screen.getByRole("button", { name: "More actions" }), { key: "Enter" });
+  await openMenu();
   await screen.findByRole("menu");
   return screen.getAllByRole("menuitem").map((i) => i.textContent?.trim());
 }
