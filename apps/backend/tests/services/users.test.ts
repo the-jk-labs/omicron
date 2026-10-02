@@ -90,10 +90,7 @@ describe("updateProfile", () => {
     await expect(updateProfile("me", { bio: "x".repeat(501) })).rejects.toMatchObject({ status: 400 });
   });
 
-  // BUG: every other field is trimmed before its length check; the bio is
-  // checked first and trimmed after, so a bio that fits once its trailing
-  // newline is dropped is still refused.
-  test.fails("BUG: measures the bio limit after trimming", async () => {
+  test("measures the bio limit after trimming", async () => {
     await expect(updateProfile("me", { bio: `${"x".repeat(499)}\n\n` })).resolves.toBeDefined();
   });
 

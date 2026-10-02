@@ -60,10 +60,7 @@ describe("identifierToUrl", () => {
     expect(identifierToUrl(platform, raw)).toBe(null);
   });
 
-  // BUG (B20, frontend copy): a scheme-less "mailto:ada@example.com" gets
-  // "https://" prepended and parses as user "mailto", password "ada" on host
-  // example.com — a credentialed link that has nothing to do with email.
-  test.fails("BUG: a mailto address typed as a website is refused", () => {
+  test("a mailto address typed as a website is refused", () => {
     expect(identifierToUrl("website", "mailto:ada@example.com")).toBe(null);
   });
 });

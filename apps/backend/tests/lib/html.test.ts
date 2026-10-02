@@ -66,14 +66,11 @@ describe("htmlToText", () => {
     expect(htmlToText('<a href="https://x.test"><b>bold</b> link</a>')).toBe("bold link");
   });
 
-  // BUG: `Number.isFinite` does not bound a code point, and String.fromCodePoint
-  // throws RangeError above 0x10FFFF. A remote actor bio or Note containing an
-  // out-of-range numeric entity makes the whole conversion throw.
-  test.fails("BUG: survives an out-of-range numeric entity from a remote actor", () => {
+  test("survives an out-of-range numeric entity from a remote actor", () => {
     expect(() => htmlToText("<p>hi &#99999999;</p>")).not.toThrow();
   });
 
-  test.fails("BUG: survives an out-of-range hex entity from a remote actor", () => {
+  test("survives an out-of-range hex entity from a remote actor", () => {
     expect(() => htmlToText("&#x110000;")).not.toThrow();
   });
 });

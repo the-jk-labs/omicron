@@ -94,11 +94,7 @@ describe("name, domain and origin", () => {
     expect(await getOrigin()).toBe("http://localhost:5173");
   });
 
-  // BUG: the admin page and the wizard accept any trimmed string as the domain
-  // (z.string().max(253)), and getOrigin prefixes a scheme without normalizing
-  // it. A domain typed with its scheme yields "https://https://…" — every email
-  // link, and the federation origin seeded from it at boot, are broken.
-  test.fails("BUG: a domain saved with a scheme does not double the scheme", async () => {
+  test("a domain saved with a scheme does not double the scheme", async () => {
     settings[SETUP_KEYS.appDomain] = "https://blog.example.com/";
     expect(await getOrigin()).toBe("https://blog.example.com");
   });

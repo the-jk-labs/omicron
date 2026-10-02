@@ -81,8 +81,9 @@ export async function updateProfile(
   }
 
   if (input.bio !== undefined) {
-    if (input.bio.length > 500) throw badRequest("Bio must be 500 characters or fewer.");
-    patch.bio = input.bio.trim();
+    const bio = input.bio.trim();
+    if (bio.length > 500) throw badRequest("Bio must be 500 characters or fewer.");
+    patch.bio = bio;
   }
 
   if (input.publicEmail !== undefined) {

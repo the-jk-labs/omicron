@@ -344,7 +344,8 @@ export function notificationView(row: NotificationRow) {
     : row.remoteActor
       ? relationActorRemote(row.remoteActor)
       : null;
-  const snippet = row.commentContent ? htmlToText(row.commentContent).slice(0, 140) : null;
+  // Cut by code points, so an emoji is never split into a lone surrogate.
+  const snippet = row.commentContent ? [...htmlToText(row.commentContent)].slice(0, 140).join("") : null;
   return {
     id: n.id,
     type: n.type as

@@ -43,7 +43,8 @@ function assertHeaderSafe(value: string, field: string): void {
 
 /** Extract the bare address from a `Name <addr>` or `addr` header value. */
 export function extractAddress(value: string): string {
-  const angle = value.match(/<([^>]+)>/);
+  // The last <…>: a quoted display name may contain "<" itself.
+  const angle = value.match(/<([^<>]+)>\s*$/);
   return (angle ? angle[1] : value).trim();
 }
 
@@ -60,6 +61,27 @@ function rfc5322Date(d = new Date()): string {
 function base64Wrapped(input: string): string {
   const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(input)));
   return (b64.match(/.{1,76}/g) ?? [b64]).join(CRLF);
+}
+
+const ASCII = /^[\x20-\x7e]*$/;
+
+// RFC 2047 encoded-words for non-ASCII header text, each under the 75-char limit.
+function encodeWords(s: string): string {
+  if (ASCII.test(s)) return s;
+  const words = [""];
+  for (const ch of s) {
+    if (new TextEncoder().encode(words.at(-1) + ch).length > 45) words.push("");
+    words[words.length - 1] += ch;
+  }
+  return words.map((w) => `=?UTF-8?B?${base64Wrapped(w)}?=`).join(" ");
+}
+
+// A non-ASCII display name in `Name <addr>` becomes encoded-words (never quoted).
+function encodeFrom(from: string): string {
+  const m = from.match(/^(.*?)\s*(<[^<>]+>)\s*$/);
+  if (!m || ASCII.test(m[1])) return from;
+  const name = m[1].replace(/^"([\s\S]*)"$/, "$1").replace(/\\(.)/g, "$1");
+  return `${encodeWords(name)} ${m[2]}`;
 }
 
 function randomBoundary(): string {
@@ -80,9 +102,9 @@ export function buildMessage(input: MessageInput): BuiltMessage {
   const messageId = `<${crypto.randomUUID()}@${domain}>`;
 
   const headers: [string, string][] = [
-    ["From", input.from],
+    ["From", encodeFrom(input.from)],
     ["To", input.to],
-    ["Subject", input.subject],
+    ["Subject", encodeWords(input.subject)],
     ["Date", rfc5322Date()],
     ["Message-ID", messageId],
     ["MIME-Version", "1.0"],

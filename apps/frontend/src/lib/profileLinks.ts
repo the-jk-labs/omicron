@@ -319,6 +319,8 @@ function normalizeWebUrl(raw: string): string | null {
   try {
     const u = new URL(withScheme);
     if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+    // "mailto:me@x.com" with https:// prepended parses as user "mailto", password "me".
+    if (u.username || u.password) return null;
     if (!u.hostname.includes(".")) return null;
     return u.toString();
   } catch {

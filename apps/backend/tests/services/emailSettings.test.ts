@@ -115,11 +115,7 @@ describe("getEmailConfig", () => {
     expect(cfg.dkim).toEqual({ domain: "mail.example", selector: "omicron", privateKey: "PRIV", publicKey: "PUB" });
   });
 
-  // BUG: the derived From interpolates the admin-chosen instance name as a bare
-  // RFC 5322 display name. A name containing a special (",", "<", "\"", …) must
-  // be quoted; unquoted, "Ada, Inc." reads as two addresses, and a "<" makes
-  // extractAddress pull the wrong envelope sender out of the header.
-  test.fails("BUG: quotes an instance name that contains RFC 5322 specials", async () => {
+  test("quotes an instance name that contains RFC 5322 specials", async () => {
     settings["instance.appName"] = "Ada <3 Blog";
     settings["instance.appDomain"] = "blog.example";
     const { from } = await getEmailConfig();

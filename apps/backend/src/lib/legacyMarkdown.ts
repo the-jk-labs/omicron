@@ -12,13 +12,16 @@
 const HR = /^(?:---|\*\*\*|___)\s*$/;
 const HEADING = /^(#{1,6})\s+([\s\S]*)$/;
 const BULLET = /^[-*+]\s+([\s\S]*)$/;
-const ORDERED = /^\d+\.\s+([\s\S]*)$/;
+const ORDERED = /^\d{1,3}\.\s+([\s\S]*)$/; // a year like `1984.` starts prose, not a list
 const QUOTE = /^&gt;\s+([\s\S]*)$/; // a typed ">" is escaped to "&gt;" in stored HTML
 
 export function upgradeLegacyMarkdown(html: string): string {
   // Phase 1: rewrite each leading-marker paragraph into a tagged token. List and
   // quote items get sentinel tags so consecutive ones can be grouped afterwards.
-  let out = html.replace(/<p>([\s\S]*?)<\/p>/g, (full, inner: string) => {
+  // A blockquote (ours from a previous run, or authored) is kept whole, so its
+  // paragraphs are never re-read as markers: that is what makes this idempotent.
+  let out = html.replace(/<blockquote>[\s\S]*?<\/blockquote>|<p>([\s\S]*?)<\/p>/g, (full, inner?: string) => {
+    if (inner === undefined) return full;
     const lead = inner.replace(/^\s+/, "");
     let m: RegExpMatchArray | null;
 

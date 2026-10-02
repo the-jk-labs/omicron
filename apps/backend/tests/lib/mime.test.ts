@@ -146,11 +146,7 @@ test("serializeMessage: joins headers and body with CRLF and a blank line", () =
   expect(new TextDecoder().decode(bytes)).toBe("From: a@example.com\r\nTo: b@example.com\r\n\r\nBODY");
 });
 
-// BUG: subjects embed the admin-chosen instance name (`Your ${appName} …`), but a
-// non-ASCII subject is written raw into the header instead of as an RFC 2047
-// encoded-word. Without SMTPUTF8 that is an invalid header, and the module's own
-// goal is a pure-ASCII message.
-test.fails("BUG: encodes a non-ASCII subject so the header stays ASCII", () => {
+test("encodes a non-ASCII subject so the header stays ASCII", () => {
   const { headers } = buildMessage({
     from: "Ömicron <no-reply@example.com>",
     to: "b@example.com",
@@ -158,4 +154,34 @@ test.fails("BUG: encodes a non-ASCII subject so the header stays ASCII", () => {
     text: "t",
   });
   for (const [, value] of headers) expect(value).toMatch(/^[\x20-\x7e]*$/);
+});
+
+// RFC 2047 caps an encoded-word at 75 characters, so a long subject is split.
+test("a long non-ASCII subject becomes encoded-words that decode back to it", () => {
+  const subject = "Ölçü ".repeat(30).trim();
+  const value = buildMessage({ from: "a@example.com", to: "b@example.com", subject, text: "t" }).headers.find(
+    ([name]) => name === "Subject",
+  )![1];
+  const words = value.split(" ");
+  for (const w of words) expect(w.length).toBeLessThanOrEqual(75);
+  const bytes = words.flatMap((w) => [...atob(w.slice(10, -2))].map((c) => c.charCodeAt(0)));
+  expect(new TextDecoder().decode(new Uint8Array(bytes))).toBe(subject);
+});
+
+test("an ASCII From and subject are written as-is", () => {
+  const { headers } = buildMessage({
+    from: '"Ada, Inc." <a@example.com>',
+    to: "b@example.com",
+    subject: "Hi",
+    text: "t",
+  });
+  expect(headers.slice(0, 3)).toEqual([
+    ["From", '"Ada, Inc." <a@example.com>'],
+    ["To", "b@example.com"],
+    ["Subject", "Hi"],
+  ]);
+});
+
+test("extractAddress reads the last <…>, past a quoted display name containing one", () => {
+  expect(extractAddress('"Ada <3 Blog" <noreply@blog.example>')).toBe("noreply@blog.example");
 });

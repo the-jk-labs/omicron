@@ -125,11 +125,13 @@ describe("normalizeLinkUrl", () => {
     expect(normalizeLinkUrl("irc://localhost/#x")).toBe(null);
   });
 
-  // BUG: an email address entered as a link ("mailto:…") is not rejected; the
-  // "add https://" fallback turns it into a credentialed https URL pointing at
-  // the mail domain, which is never what the user meant.
-  test.fails("BUG: rejects a mailto: address instead of turning it into a credentialed https URL", () => {
+  test("rejects a mailto: address instead of turning it into a credentialed https URL", () => {
     expect(normalizeLinkUrl("mailto:me@example.com")).toBe(null);
+  });
+
+  test("rejects a web address carrying a username or password", () => {
+    expect(normalizeLinkUrl("https://user:pw@example.com/")).toBe(null);
+    expect(normalizeLinkUrl("user@example.com")).toBe(null);
   });
 });
 

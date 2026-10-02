@@ -105,6 +105,8 @@ export function normalizeLinkUrl(raw: string): string | null {
     return null;
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+  // "mailto:me@x.com" with https:// prepended parses as user "mailto", password "me".
+  if (parsed.username || parsed.password) return null;
   if (!parsed.hostname.includes(".")) return null;
   return parsed.toString();
 }

@@ -20,7 +20,8 @@ function decodeEntities(s: string): string {
     const lower = body.toLowerCase();
     if (lower[0] === "#") {
       const code = lower[1] === "x" ? parseInt(lower.slice(2), 16) : parseInt(lower.slice(1), 10);
-      return Number.isFinite(code) ? String.fromCodePoint(code) : match;
+      // fromCodePoint throws past U+10FFFF, and remote HTML can say anything.
+      return Number.isFinite(code) && code <= 0x10ffff ? String.fromCodePoint(code) : match;
     }
     return NAMED_ENTITIES[lower] ?? match;
   });

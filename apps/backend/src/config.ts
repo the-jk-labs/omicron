@@ -114,7 +114,7 @@ function resolveDatabaseUrl(): string | undefined {
   const dbname = env.POSTGRES_DB?.trim() || "omicron";
   const host = env.POSTGRES_HOST?.trim() || "postgres";
   const port = env.POSTGRES_PORT?.trim() || "5432";
-  return `postgres://${user}:${encodeURIComponent(password)}@${host}:${port}/${dbname}`;
+  return `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${dbname}`;
 }
 
 // Centralized, validated environment config. Fail fast on misconfiguration.
@@ -265,7 +265,7 @@ function load() {
     SESSION_SECRET: resolveSessionSecret(),
     PORT: env.PORT,
     UPLOADS_DIR: env.UPLOADS_DIR,
-    REDIS_URL: env.REDIS_URL,
+    REDIS_URL: env.REDIS_URL?.trim() || undefined,
     RATE_LIMIT_ENABLED: env.RATE_LIMIT_ENABLED,
     RL_LOGIN_MAX: env.RL_LOGIN_MAX,
     RL_REGISTER_MAX: env.RL_REGISTER_MAX,

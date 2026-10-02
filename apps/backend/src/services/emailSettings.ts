@@ -86,7 +86,9 @@ async function defaultFrom(): Promise<string> {
   const domain = bareHost(domainRaw) || "localhost";
   const name =
     (await settingsRepo.get<string>("instance.appName"))?.trim() || process.env.PUBLIC_APP_NAME?.trim() || "Omicron";
-  return `${name} <noreply@${domain}>`;
+  // RFC 5322 specials (`,`, `<`, `"`, …) in a display name must be quoted.
+  const display = /[()<>[\]:;@\\,."]/.test(name) ? `"${name.replace(/["\\]/g, "\\$&")}"` : name;
+  return `${display} <noreply@${domain}>`;
 }
 
 /**

@@ -43,7 +43,13 @@ export async function getAppName(): Promise<string> {
 // (which enabling federation requires anyway).
 export async function getAppDomain(): Promise<string> {
   const fromDb = await settingsRepo.get<string>(SETUP_KEYS.appDomain);
-  return fromDb?.trim() || config.APP_DOMAIN;
+  // A domain typed as a URL ("https://blog.example.com/") is reduced to host[:port].
+  return (
+    fromDb
+      ?.trim()
+      .replace(/^https?:\/\//i, "")
+      .split("/")[0] || config.APP_DOMAIN
+  );
 }
 
 // Effective (desired) federation state: admin toggle → FEDERATION_ENABLED

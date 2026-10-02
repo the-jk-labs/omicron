@@ -91,10 +91,7 @@ test("deletedUserView: carries the restore metadata and no credentials", () => {
   expect("actorKeyPair" in out).toBe(false);
 });
 
-// BUG: the notification snippet is cut with String#slice(0, 140), which counts
-// UTF-16 code units. A comment of emoji (two units each) cut at an odd offset
-// ends in a lone high surrogate, which renders as U+FFFD in the bell.
-test.fails("BUG: notificationView never cuts the comment snippet inside a surrogate pair", async () => {
+test("notificationView never cuts the comment snippet inside a surrogate pair", async () => {
   const { notificationView } = await import("@/routes/serializers.ts");
   const view = notificationView({
     notification: {

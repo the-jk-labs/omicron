@@ -73,19 +73,12 @@ describe("upgradeLegacyMarkdown", () => {
     expect(upgradeLegacyMarkdown(once)).toBe(once);
   });
 
-  // BUG: the module promises a transform that is idempotent and "safe to run
-  // repeatedly", but a quoted line whose text starts with a block marker becomes
-  // a `<p>` inside the blockquote on the first run, and that `<p>` is matched
-  // again as a list item on the second run.
-  test.fails("BUG: is idempotent for a quoted line that starts with a list marker", () => {
+  test("is idempotent for a quoted line that starts with a list marker", () => {
     const once = upgradeLegacyMarkdown("<p>&gt; - item</p>");
     expect(upgradeLegacyMarkdown(once)).toBe(once);
   });
 
-  // BUG: a correctly-authored paragraph that starts with "<number>. " (an escaped
-  // Markdown `1984\. That year`, or a webhook body) is not a legacy list item,
-  // but the backfill turns it into an ordered list anyway.
-  test.fails("BUG: leaves a correctly-authored paragraph that starts with a year and a period alone", () => {
+  test("leaves a correctly-authored paragraph that starts with a year and a period alone", () => {
     expect(upgradeLegacyMarkdown("<p>1984. That was the year.</p>")).toBe("<p>1984. That was the year.</p>");
   });
 });

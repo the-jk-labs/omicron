@@ -224,9 +224,7 @@ describe("DATABASE_URL", () => {
     await expect(load()).rejects.toThrow("exit 1");
   });
 
-  // BUG: the password is percent-encoded but the user name is not. A ":" in
-  // POSTGRES_USER moves the user/password split, so the URL names the wrong user.
-  test.fails("BUG: percent-encodes a POSTGRES_USER containing a colon", async () => {
+  test("percent-encodes a POSTGRES_USER containing a colon", async () => {
     vi.stubEnv("DATABASE_URL", undefined);
     vi.stubEnv("POSTGRES_PASSWORD", "pw");
     vi.stubEnv("POSTGRES_USER", "blog:ops");
@@ -373,10 +371,7 @@ describe("invalid values fail fast", () => {
     await expect(load()).rejects.toThrow("exit 1");
   });
 
-  // BUG: docker-compose.yml says REDIS_URL can be "blanked out" to run without
-  // Redis, but an empty value is validated as a URL and aborts the boot
-  // instead of being treated as unset (as WEBHOOK_SECRET is).
-  test.fails("BUG: a blank REDIS_URL is treated as unset", async () => {
+  test("a blank REDIS_URL is treated as unset", async () => {
     trapExit();
     vi.stubEnv("REDIS_URL", "");
     expect((await load()).config.REDIS_URL).toBeUndefined();
