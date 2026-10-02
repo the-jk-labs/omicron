@@ -392,8 +392,9 @@ adminRoutes.get("/users/deleted", async (c) => {
 
 // Permanently erase a deleted account before its window ends (frees the handle
 // immediately; cannot be undone).
+// Admin-only: unlike the soft delete it skips the 30-day restore window.
 adminRoutes.delete("/users/deleted/:id", async (c) => {
-  requireModerator(c);
+  requireAdmin(c);
   await moderation.purgeDeletedUser(c.req.param("id"));
   return c.json({ ok: true });
 });

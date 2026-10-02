@@ -76,10 +76,7 @@ test.for([
   expect(f.sent).toEqual([]);
 });
 
-// BUG: like outbound.ts, the follower fan-out here never consults the domain
-// blocklist (deliver.ts does), so list activity keeps reaching defederated
-// instances whose follower edges survived the block.
-test.fails("BUG: never delivers to a follower on a defederated domain", async () => {
+test("never delivers to a follower on a defederated domain", async () => {
   vi.mocked(blockedDomainsRepo.isBlocked).mockImplementation(async (host) => host === "remote.example");
   await deliverListItem("l1", "p1", "add");
   expect(f.sent).toEqual([]);

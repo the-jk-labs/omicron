@@ -59,7 +59,15 @@ export async function removeById(id: string): Promise<void> {
 export async function removeByDomain(domain: string): Promise<number> {
   const rows = await db
     .delete(remoteActors)
-    .where(or(eq(remoteActors.host, domain), sql`${remoteActors.host} like ${"%." + domain}`))
+    // `host` keeps a non-default port, so `domain:port` and `sub.domain:port` count too.
+    .where(
+      or(
+        eq(remoteActors.host, domain),
+        sql`${remoteActors.host} like ${"%." + domain}`,
+        sql`${remoteActors.host} like ${domain + ":%"}`,
+        sql`${remoteActors.host} like ${"%." + domain + ":%"}`,
+      ),
+    )
     .returning({ id: remoteActors.id });
   return rows.length;
 }

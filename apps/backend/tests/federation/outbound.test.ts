@@ -161,12 +161,7 @@ describe("to every remote follower", () => {
     expect(f.sent).toEqual([]);
   });
 
-  // BUG: deliver.ts skips followers on a defederated domain, but the follower
-  // fan-out here does not consult the blocklist at all. Remote follower edges
-  // are stored as actor URIs and survive a domain block (which only purges
-  // cached remote_actors rows), so recommendations and account deletions keep
-  // being delivered to instances the admin defederated.
-  test.fails("BUG: never delivers to a follower on a defederated domain", async () => {
+  test("never delivers to a follower on a defederated domain", async () => {
     vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ id: "p1" }));
     vi.mocked(blockedDomainsRepo.isBlocked).mockImplementation(async (host) => host === "remote.example");
     await sendRecommend("u1", "p1");

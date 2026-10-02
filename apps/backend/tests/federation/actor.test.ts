@@ -105,11 +105,7 @@ describe("buildPerson", () => {
     expect(fields).toEqual([]);
   });
 
-  // BUG: ActivityPub's `summary` is HTML, but the local bio is plain text and
-  // is sent as-is. A bio such as "I <3 cats & dogs" arrives as broken markup on
-  // Mastodon (and newlines collapse); comments already go through
-  // textToNoteHtml for exactly this reason, the actor bio does not.
-  test.fails("BUG: the plain-text bio is published as escaped HTML", async () => {
+  test("the plain-text bio is published as escaped HTML", async () => {
     const p = await buildPerson(ctx, "ada", userRow({ bio: "I <3 cats & dogs" }), [], []);
     expect(p.summary?.toString()).toBe("<p>I &lt;3 cats &amp; dogs</p>");
   });

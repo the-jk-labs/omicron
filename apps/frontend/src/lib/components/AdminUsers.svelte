@@ -1259,10 +1259,12 @@
                   <Icon name="check" size={15} />
                   Restore
                 </Button>
-                <Button variant="destructive" size="sm" disabled={busyId === d.id} onclick={() => purgeDeleted(d)}>
-                  <Icon name="trash" size={15} />
-                  Erase
-                </Button>
+                {#if isViewerAdmin}
+                  <Button variant="destructive" size="sm" disabled={busyId === d.id} onclick={() => purgeDeleted(d)}>
+                    <Icon name="trash" size={15} />
+                    Erase
+                  </Button>
+                {/if}
               </div>
             </li>
           {/each}

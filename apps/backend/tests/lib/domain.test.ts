@@ -32,6 +32,13 @@ test("hostMatchesDomain: exact host matches", () => {
   expect(hostMatchesDomain("Example.com", "example.com")).toBe(true);
 });
 
+test("hostMatchesDomain: a port never hides the host; a bracketed IPv6 keeps its colons", () => {
+  expect(hostMatchesDomain("example.com:8443", "example.com")).toBe(true);
+  expect(hostMatchesDomain("mastodon.example.com:443", "example.com")).toBe(true);
+  expect(hostMatchesDomain("[::1]:8443", "[::1]")).toBe(true);
+  expect(hostMatchesDomain("[::1]", "[::1]")).toBe(true);
+});
+
 test("hostMatchesDomain: subdomains match (block cascades down)", () => {
   expect(hostMatchesDomain("mastodon.example.com", "example.com")).toBe(true);
   expect(hostMatchesDomain("a.b.example.com", "example.com")).toBe(true);

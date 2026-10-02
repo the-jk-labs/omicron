@@ -66,7 +66,7 @@ const routes: Route[] = [
   ["POST", `/users/${UUID}/delete`, { username: "ada", password: "p" }, "moderator"],
   ["POST", `/users/${UUID}/restore`, {}, "moderator"],
   ["GET", "/users/deleted", undefined, "moderator"],
-  ["DELETE", `/users/deleted/${UUID}`, undefined, "moderator"],
+  ["DELETE", `/users/deleted/${UUID}`, undefined, "admin"],
   ["GET", `/users/${UUID}`, undefined, "moderator"],
   ["PATCH", `/users/${UUID}`, { bio: "x" }, "moderator"],
   ["POST", `/users/${UUID}/avatar`, "raw", "moderator"],
@@ -150,12 +150,7 @@ describe("role boundary", () => {
     expect((await call(route)).status).toBeLessThan(300);
   });
 
-  // BUG: deleting an account re-verifies the acting moderator's password so "a
-  // stolen admin session alone cannot wipe accounts", and keeps the row for a
-  // 30-day restore window. Purging — the irreversible step — needs neither:
-  // any moderator session can hard-delete any soft-deleted account at once,
-  // skipping both safeguards.
-  test.fails("BUG: purging a deleted account needs more than a moderator session", async () => {
+  test("purging a deleted account needs more than a moderator session", async () => {
     api.signIn({ isModerator: true });
     vi.mocked(moderation.purgeDeletedUser).mockResolvedValue();
     const res = await api.request(`/api/admin/users/deleted/${UUID}`, { method: "DELETE" });

@@ -11,7 +11,7 @@ import { articleLanguage, isPubliclyAddressed } from "@/federation/article.ts";
 import { getFederation } from "@/federation/mod.ts";
 import { runOutbound } from "@/federation/outboundGuard.ts";
 import { extractHandleHost, isBlockedHandle, isHostAllowed } from "@/federation/ssrf.ts";
-import { sameOrigin } from "@/lib/domain.ts";
+import { hostMatchesDomain, sameOrigin } from "@/lib/domain.ts";
 import { sanitizePostHtml } from "@/lib/sanitize.ts";
 import { normalizeTags } from "@/lib/tags.ts";
 import { federationOrigin } from "@/services/federationState.ts";
@@ -84,6 +84,9 @@ export async function resolveActor(handle: string): Promise<RemoteActor | null> 
       if (signal.aborted) return null;
       const object = await ctx.lookupObject(fediHandle(handle), { documentLoader, signal });
       if (!isActor(object) || !object.id) return null;
+      // A server may only vouch for actors on its own host (or a subdomain, the
+      // usual split-domain setup); otherwise it could pass off anyone's account as its own.
+      if (!hostMatchesDomain(object.id.host, handleHost(handle).toLowerCase())) return null;
       return await cacheActor(object, handle);
     } catch {
       // A timeout/cancellation surfaces as an AbortError; treat every failure as

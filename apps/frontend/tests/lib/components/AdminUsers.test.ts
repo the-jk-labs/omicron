@@ -597,6 +597,17 @@ test("erasing confirms; a failure is shown under the deleted list", async () => 
   expect(screen.getByText("Gone")).toBeInTheDocument();
 });
 
+// Erasing skips the restore window, so the server allows it to admins only.
+test("a moderator can restore a deleted account but is not offered Erase", async () => {
+  setup(
+    { "GET /api/admin/users/deleted": { users: [deletedUser()], nextCursor: null, total: 1, filteredTotal: 1 } },
+    { isViewerAdmin: false },
+  );
+  await screen.findByText("Gone");
+  expect(screen.getByRole("button", { name: "Restore" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Erase" })).toBeNull();
+});
+
 test("the deleted list searches and pages on its own", async () => {
   const { calls } = setup({
     "GET /api/admin/users/deleted?cursor=d1": {

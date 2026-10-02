@@ -84,12 +84,7 @@ describe("profile", () => {
     }
   });
 
-  // BUG: the discovery limiter is registered with use("/users/:handle"), which
-  // Hono matches as that exact path only. RL_REMOTE_MAX is documented as the
-  // budget for GET /api/remote/*, but /users/:handle/posts and
-  // /users/:handle/recommendations — which also resolve actors and crawl
-  // outboxes — are never counted against it.
-  test.fails("BUG: anonymous GET /users/:handle/posts counts against the discovery budget", async () => {
+  test("anonymous GET /users/:handle/posts counts against the discovery budget", async () => {
     const headers = fromIp();
     for (let i = 0; i < config.RL_REMOTE_MAX; i++) {
       await api.request("/api/remote/users/bob@x.example/posts", { headers });

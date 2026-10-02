@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { Add, isActor, OrderedCollection, PUBLIC_COLLECTION, Remove } from "@fedify/fedify/vocab";
+import { Add, OrderedCollection, PUBLIC_COLLECTION, Remove } from "@fedify/fedify/vocab";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as listsRepo from "@/db/repositories/readingLists.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
+import { resolveRecipients } from "@/federation/deliver.ts";
 import { getFederation } from "@/federation/mod.ts";
 import { federationOrigin } from "@/services/federationState.ts";
 
@@ -31,11 +32,7 @@ export async function deliverListItem(listId: string, postId: string, action: "a
     row.post.remote && row.post.apId ? new URL(row.post.apId) : new URL(`/posts/${row.post.id}`, federationOrigin());
 
   const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
-  const recipients = [];
-  for (const uri of followerUris) {
-    const actor = await ctx.lookupObject(uri);
-    if (isActor(actor)) recipients.push(actor);
-  }
+  const recipients = await resolveRecipients(ctx, followerUris);
   if (recipients.length === 0) return;
 
   const actorUri = ctx.getActorUri(owner.username);

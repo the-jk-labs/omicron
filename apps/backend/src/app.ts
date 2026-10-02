@@ -14,6 +14,7 @@ import { repliesRoutes } from "@/routes/replies.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import { wellKnownRoutes } from "@/routes/wellKnown.ts";
 import { federationRunning } from "@/services/federationState.ts";
+import { getAppDomain } from "@/services/instanceSetup.ts";
 
 // Read-only requests are cheap and safe; the general limiter targets mutations.
 const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -165,7 +166,7 @@ export async function buildApp() {
           contextData: undefined,
           onNotAcceptable,
         });
-        return isActorDoc(c.req.method, path) ? await withAttributionDomains(res, config.APP_DOMAIN) : res;
+        return isActorDoc(c.req.method, path) ? await withAttributionDomains(res, await getAppDomain()) : res;
       }
       return await next();
     });

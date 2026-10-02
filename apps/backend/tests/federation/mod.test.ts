@@ -202,10 +202,7 @@ describe("inbox: Follow", () => {
     expect(usersRepo.findByUsername).not.toHaveBeenCalled();
   });
 
-  // BUG: the inbox passes actorId.host to the blocklist, and URL.host keeps a
-  // non-default port, which hostMatchesDomain never strips. A defederated
-  // server that serves its actors on e.g. :8443 walks straight past the block.
-  it.fails("BUG: a defederated domain is ignored on a non-default port too", async () => {
+  it("a defederated domain is ignored on a non-default port too", async () => {
     vi.mocked(blockedDomainsRepo.isBlocked).mockImplementation(async (host) =>
       hostMatchesDomain(host, "remote.example"),
     );
@@ -232,6 +229,7 @@ describe("inbox: Undo, Block, Accept", () => {
 
   it("Undo(Announce) removes the recommendation and its notification", async () => {
     vi.mocked(postsRepo.findByApId).mockResolvedValue(postRow({ id: "p1", authorId: "ada-id" }) as never);
+    vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ id: "p1" }, { id: "ada-id" }));
     await on(Undo)(
       new Undo({
         actor: new URL(BOB),
@@ -372,17 +370,13 @@ describe("inbox: Announce", () => {
 
   it("a boost of a cached remote post is recorded and its local author notified", async () => {
     vi.mocked(postsRepo.findByApId).mockResolvedValue(postRow({ id: "p1", authorId: "ada-id" }) as never);
+    vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ id: "p1" }, { id: "ada-id" }));
     await on(Announce)(new Announce({ actor: bobPerson(), object: new URL("https://remote.example/posts/1") }));
     expect(recommendationsRepo.addRemote).toHaveBeenCalledWith("p1", "actor-bob");
     expect(notificationsRepo.create).toHaveBeenCalledWith(expect.objectContaining({ type: "recommend", postId: "p1" }));
   });
 
-  // BUG: a boost is matched to its post with postsRepo.findByApId, but local
-  // posts store no apId — their ActivityPub id is derived (/posts/{id}). The
-  // fallback then fetches our own /posts/{id}, which the frontend serves as an
-  // HTML page, not JSON-LD. So when anyone on Mastodon boosts one of our
-  // articles, nothing is recorded and the author is never told.
-  it.fails("BUG: a remote boost of one of our own posts is recorded and notified", async () => {
+  it("a remote boost of one of our own posts is recorded and notified", async () => {
     vi.mocked(postsRepo.findByApId).mockResolvedValue(undefined);
     vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ id: POST_ID }, { id: "ada-id" }));
     await on(Announce)(new Announce({ actor: bobPerson(), object: new URL(`${ORIGIN}/posts/${POST_ID}`) })).catch(
@@ -425,11 +419,7 @@ describe("dispatchers", () => {
     expect(items.map((i) => i.id.href)).toEqual([`${ORIGIN}/users/bea`, BOB]);
   });
 
-  // BUG: the web profile hides a private account's follower list from anyone
-  // who isn't an approved follower (follows.followersOf returns []), but the
-  // ActivityPub followers collection serves the full list to any anonymous
-  // fetch of /users/<name>/followers.
-  it.fails("BUG: a private account's followers are not served to the public", async () => {
+  it("a private account's followers are not served to the public", async () => {
     vi.mocked(usersRepo.findByUsername).mockResolvedValue(userRow({ id: "ada-id", username: "ada", isPrivate: true }));
     vi.mocked(followsRepo.localFollowerUsernames).mockResolvedValue(["bea"]);
     vi.mocked(followsRepo.remoteFollowerActors).mockResolvedValue([BOB]);

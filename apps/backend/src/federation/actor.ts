@@ -5,7 +5,7 @@ import * as linksRepo from "@/db/repositories/profileLinks.ts";
 import * as listsRepo from "@/db/repositories/readingLists.ts";
 import type { TagSummary } from "@/db/repositories/tags.ts";
 import type { User } from "@/db/schema.ts";
-import { escapeHtml } from "@/lib/html.ts";
+import { escapeHtml, textToNoteHtml } from "@/lib/html.ts";
 import { linkDisplayText, linkLabel } from "@/lib/profileLinks.ts";
 import { federationOrigin } from "@/services/federationState.ts";
 
@@ -46,7 +46,8 @@ export async function buildPerson(
     id: ctx.getActorUri(identifier),
     preferredUsername: identifier,
     name: user.displayName,
-    summary: user.bio,
+    // `summary` is HTML; the bio is plain text.
+    summary: textToNoteHtml(user.bio),
     inbox: ctx.getInboxUri(identifier),
     outbox: ctx.getOutboxUri(identifier),
     followers: ctx.getFollowersUri(identifier),

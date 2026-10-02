@@ -10,12 +10,14 @@ import * as usersRepo from "@/db/repositories/users.ts";
 import { accounts, sessions, users, verifications } from "@/db/schema.ts";
 import { queue } from "@/queue/queue.ts";
 import { notifyPasswordChanged, notifySelfDeleted } from "@/services/accountNotices.ts";
+import { getOrigin } from "@/services/instanceSetup.ts";
 
 const BCRYPT_COST = 12;
 const SESSION_TTL_S = 60 * 60 * 24 * 30;
 const USERNAME_RE = /^[a-z0-9_]{3,30}$/;
 
-// Public origin for /api/auth; a wizard-changed domain is covered by forwarded headers below.
+// Public origin for /api/auth; a wizard-changed domain is covered by forwarded headers
+// below. Links in emails are built from getOrigin() at send time instead.
 const baseURL = `${config.APP_DOMAIN.startsWith("localhost") ? "http" : "https"}://${config.APP_DOMAIN}`;
 
 export const auth = betterAuth({
@@ -78,9 +80,13 @@ export const auth = betterAuth({
       hash: (password) => bcrypt.hash(password, BCRYPT_COST),
       verify: ({ hash, password }) => bcrypt.compare(password, hash),
     },
-    sendResetPassword: ({ user, url }) => {
-      queue.add("send_password_reset", { to: user.email, url });
-      return Promise.resolve();
+    sendResetPassword: async ({ user, url }) => {
+      // Better Auth builds `url` on the boot-time baseURL; swap in the live origin.
+      const origin = await getOrigin();
+      queue.add("send_password_reset", {
+        to: user.email,
+        url: url.startsWith(baseURL) ? origin + url.slice(baseURL.length) : url,
+      });
     },
   },
   emailVerification: {
@@ -91,12 +97,11 @@ export const auth = betterAuth({
     sendOnSignIn: true,
     autoSignInAfterVerification: true,
     expiresIn: 60 * 60 * 24,
-    sendVerificationEmail: ({ user, token }) => {
+    sendVerificationEmail: async ({ user, token }) => {
       queue.add("send_email_verification", {
         to: user.email,
-        url: `${baseURL}/verify-email?token=${encodeURIComponent(token)}`,
+        url: `${await getOrigin()}/verify-email?token=${encodeURIComponent(token)}`,
       });
-      return Promise.resolve();
     },
   },
   user: {

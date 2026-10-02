@@ -344,8 +344,12 @@ export function notificationView(row: NotificationRow) {
     : row.remoteActor
       ? relationActorRemote(row.remoteActor)
       : null;
-  // Cut by code points, so an emoji is never split into a lone surrogate.
-  const snippet = row.commentContent ? [...htmlToText(row.commentContent)].slice(0, 140).join("") : null;
+  // Cut by graphemes, so an emoji is never split (a lone surrogate renders as U+FFFD).
+  const snippet = row.commentContent
+    ? Array.from(new Intl.Segmenter().segment(htmlToText(row.commentContent)), (s) => s.segment)
+        .slice(0, 140)
+        .join("")
+    : null;
   return {
     id: n.id,
     type: n.type as

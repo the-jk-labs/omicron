@@ -31,7 +31,11 @@ export function normalizeDomain(input: string): string | null {
 // Whether `host` falls under `domain` — an exact match or a subdomain. Blocking
 // `example.com` therefore also blocks `mastodon.example.com`.
 export function hostMatchesDomain(host: string, domain: string): boolean {
-  host = host.trim().toLowerCase();
+  // `URL.host` keeps a non-default port (`evil.example:8443`); compare the bare host.
+  host = host
+    .trim()
+    .toLowerCase()
+    .replace(/^(\[[^\]]*\]|[^:]*):\d+$/, "$1");
   return host === domain || host.endsWith(`.${domain}`);
 }
 

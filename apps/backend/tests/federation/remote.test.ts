@@ -141,16 +141,17 @@ describe("resolveActor", () => {
     expect(await resolveActor("bob@remote.example")).toBe(null);
   });
 
-  // BUG: the actor WebFinger returns is cached under the handle that was
-  // *asked for*, without checking it against the actor's own
-  // preferredUsername@host (Mastodon round-trips WebFinger for this). A hostile
-  // server can answer for ceo@evil.example with someone else's real actor, and
-  // the instance then shows that person's profile and posts as @ceo@evil.example.
-  test.fails("BUG: refuses an actor whose id is not on the requested handle's host", async () => {
+  test("refuses an actor whose id is not on the requested handle's host", async () => {
     f.ctx.lookupObject.mockResolvedValue(
       bob({ id: new URL("https://mastodon.social/users/Gargron"), preferredUsername: "Gargron" }),
     );
     expect(await resolveActor("ceo@evil.example")).toBe(null);
+  });
+
+  // The usual split-domain setup: handles on the apex, the server on a subdomain.
+  test("accepts an actor served from a subdomain of the handle's host", async () => {
+    f.ctx.lookupObject.mockResolvedValue(bob({ id: new URL("https://social.remote.example/users/bob") }));
+    expect(await resolveActor("bob@remote.example")).not.toBe(null);
   });
 });
 

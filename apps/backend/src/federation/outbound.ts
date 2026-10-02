@@ -15,6 +15,7 @@ import {
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
+import { resolveRecipients } from "@/federation/deliver.ts";
 import { getFederation } from "@/federation/mod.ts";
 import { federationOrigin } from "@/services/federationState.ts";
 
@@ -148,18 +149,9 @@ export async function sendAcceptFollow(
 }
 
 // Resolves a local user's remote followers into deliverable actor objects.
-// Shared by sendRecommend/sendUnrecommend, mirroring deliver.ts's
-// remoteRecipients (kept separate — that one also checks the blocklist, which
-// a recommend/undo-recommend doesn't need since the recipients are the
-// recommender's own approved followers).
+// Shared by sendRecommend/sendUnrecommend.
 async function followerRecipients(ctx: Context<unknown>, userId: string): Promise<Actor[]> {
-  const uris = await followsRepo.remoteFollowerActors(userId);
-  const recipients: Actor[] = [];
-  for (const uri of uris) {
-    const actor = await ctx.lookupObject(uri);
-    if (isActor(actor)) recipients.push(actor);
-  }
-  return recipients;
+  return resolveRecipients(ctx, await followsRepo.remoteFollowerActors(userId));
 }
 
 // Outbound Announce — a local user "recommending" (reposting) a post to their
@@ -229,11 +221,7 @@ export async function sendActorDelete(userId: string): Promise<void> {
   if (followerUris.length === 0) return;
 
   const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
-  const recipients = [];
-  for (const uri of followerUris) {
-    const actor = await ctx.lookupObject(uri);
-    if (isActor(actor)) recipients.push(actor);
-  }
+  const recipients = await resolveRecipients(ctx, followerUris);
   if (recipients.length === 0) return;
 
   const actorUri = ctx.getActorUri(user.username);

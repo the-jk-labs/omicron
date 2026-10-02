@@ -143,7 +143,12 @@ async function commentRecipients(
 // skipping any on a defederated domain (exact host or subdomain). Shared by
 // every outbound post activity (Create / Update / Delete).
 async function remoteRecipients(ctx: Context<unknown>, authorId: string): Promise<Actor[]> {
-  const uris = await followsRepo.remoteFollowerActors(authorId);
+  return resolveRecipients(ctx, await followsRepo.remoteFollowerActors(authorId));
+}
+
+// Follower URIs → deliverable actors, skipping defederated domains. Follower
+// edges survive a domain block, so every fan-out must go through here.
+export async function resolveRecipients(ctx: Context<unknown>, uris: string[]): Promise<Actor[]> {
   const recipients: Actor[] = [];
   for (const uri of uris) {
     try {

@@ -90,10 +90,7 @@ describe("removal", () => {
     ]);
   });
 
-  // BUG: cacheActor stores `host` from URL.host, which keeps a non-default port,
-  // but the purge compares the bare domain, so defederating bad.example leaves
-  // every actor on bad.example:8443 (and its cached posts) in place. See B40.
-  test.fails("BUG: by domain also takes actors on a non-default port", async () => {
+  test("by domain also takes actors on a non-default port", async () => {
     await mkRemoteActor("a@bad.example:8443");
     expect(await remoteActorsRepo.removeByDomain("bad.example")).toBe(1);
   });

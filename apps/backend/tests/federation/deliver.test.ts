@@ -109,10 +109,7 @@ describe("deliverPost", () => {
     expect(f.sent[0].recipients).toEqual([CAROL]);
   });
 
-  // BUG: like the inbox, the fan-out checks new URL(uri).host, which keeps the
-  // port, so a follower on a defederated domain's non-default port still gets
-  // every post.
-  test.fails("BUG: skips followers on a defederated domain's non-default port", async () => {
+  test("skips followers on a defederated domain's non-default port", async () => {
     const PORTED = "https://remote.example:8443/users/eve";
     f.remote(PORTED);
     vi.mocked(followsRepo.remoteFollowerActors).mockResolvedValue([PORTED, CAROL]);

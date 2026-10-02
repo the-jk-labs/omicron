@@ -164,7 +164,7 @@ test("a long non-ASCII subject becomes encoded-words that decode back to it", ()
   )![1];
   const words = value.split(" ");
   for (const w of words) expect(w.length).toBeLessThanOrEqual(75);
-  const bytes = words.flatMap((w) => [...atob(w.slice(10, -2))].map((c) => c.charCodeAt(0)));
+  const bytes = words.flatMap((w) => Array.from(atob(w.slice(10, -2)), (c) => c.charCodeAt(0)));
   expect(new TextDecoder().decode(new Uint8Array(bytes))).toBe(subject);
 });
 

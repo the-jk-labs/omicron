@@ -106,18 +106,42 @@ describe.each([true, false])("registration (email verification required: %s)", (
     });
   });
 
-  // BUG: the verification link is built from Better Auth's baseURL, which is
-  // fixed at import from the boot-time APP_DOMAIN. docker-compose defaults that
-  // to localhost:5173 and .env.example says the setup wizard is enough to go
-  // public — so on a wizard-configured instance every confirmation link points
-  // at localhost and new accounts can never verify (and, with verification
-  // required by default, never sign in). Password-reset links share baseURL.
-  it.fails("BUG: the verification link uses the domain set in the setup wizard", async () => {
+  it("the verification link uses the domain set in the setup wizard", async () => {
     settings["instance.appDomain"] = "blog.example.com";
     await signUp("NEW@example.com");
     expect(addMail).toHaveBeenCalledWith("send_email_verification", {
       to: "new@example.com",
       url: expect.stringMatching(/^https:\/\/blog\.example\.com\/verify-email\?token=/),
+    });
+  });
+});
+
+describe("password reset", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    for (const rows of Object.values(store)) rows.length = 0;
+    for (const key of Object.keys(settings)) delete settings[key];
+    addMail.mockClear();
+    vi.stubEnv("APP_DOMAIN", "localhost:3000");
+    vi.stubEnv("HIBP_CHECK_ENABLED", "false");
+  });
+
+  // Better Auth builds the link on its boot-time baseURL; the wizard's domain must win.
+  it("the reset link uses the domain set in the setup wizard", async () => {
+    store.user.push(existingUser(true));
+    settings["instance.appDomain"] = "blog.example.com";
+    const { auth } = await import("@/auth/auth.ts");
+    const res = await auth.handler(
+      new Request("http://localhost:3000/api/auth/request-password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: "http://localhost:3000" },
+        body: JSON.stringify({ email: "taken@example.com", redirectTo: "/reset-password" }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(addMail).toHaveBeenCalledWith("send_password_reset", {
+      to: "taken@example.com",
+      url: expect.stringMatching(/^https:\/\/blog\.example\.com\/api\/auth\/reset-password\//),
     });
   });
 });

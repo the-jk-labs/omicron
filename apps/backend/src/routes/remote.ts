@@ -34,7 +34,8 @@ const discoveryLimiter = rateLimit({
   key: (c) => `ip:${clientIp(c)}`,
 });
 
-remoteRoutes.use("/users/:handle", (c, next) =>
+// `/*` matches the profile itself and its posts/recommendations, which crawl too.
+remoteRoutes.use("/users/:handle/*", (c, next) =>
   c.req.method === "GET" && !c.get("user") ? discoveryLimiter(c, next) : next(),
 );
 

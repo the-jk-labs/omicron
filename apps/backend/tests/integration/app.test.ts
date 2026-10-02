@@ -93,9 +93,7 @@ describe("the ActivityPub actor document", () => {
     expect(res.headers.get("location")).toBe("/@ada");
   });
 
-  // BUG (B39): app.ts passes the boot-time config.APP_DOMAIN, not the domain the
-  // setup wizard stored, so a wizard-configured instance vouches for localhost.
-  test.fails("BUG: vouches for the domain set in the setup wizard", async () => {
+  test("vouches for the domain set in the setup wizard", async () => {
     await settingsRepo.set(SETUP_KEYS.appDomain, "blog.example");
     expect((await actorDoc()).attributionDomains).toEqual(["blog.example"]);
   });
