@@ -142,8 +142,8 @@ describe("counts and discovery", () => {
     await tagsRepo.setPostTags((await mkPost(ada.id, "x")).id, ["single"]);
     const rows = await tagsRepo.listSitemapTags();
     expect(rows.map((r) => r.slug)).toEqual(["deno"]);
-    // Typed Date, but the raw `max()` arrives as Postgres timestamp text.
-    expect(new Date(rows[0].lastPostAt)).toEqual(at(3));
+    // A real Date, as typed: the raw `max()` would arrive as timestamp text.
+    expect(rows[0].lastPostAt).toEqual(at(3));
   });
 
   test("search is a substring match ranked by use; suggest also tolerates typos", async () => {

@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { goto } from "$app/navigation";
+  import { beforeNavigate, goto } from "$app/navigation";
   import { endpoints, ApiError } from "$lib/api";
   import BannerPicker from "$lib/components/BannerPicker.svelte";
   import Icon from "$lib/components/Icon.svelte";
@@ -9,6 +9,7 @@
   import SummaryField from "$lib/components/SummaryField.svelte";
   import TagInput from "$lib/components/TagInput.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import { confirm } from "$lib/components/ui/confirm";
   import { postPath } from "$lib/links";
   import type { CoverCredit } from "$lib/types";
   import type { Content } from "@tiptap/core";
@@ -48,6 +49,41 @@
     json = j;
   }
 
+  // Nothing autosaves here (a save federates an Update), so leaving with changes
+  // asks first: in-app navigation through a confirm, closing the tab through the
+  // browser. `leaving` lets our own post-save navigation through.
+  let leaving = false;
+  const snapshot = () => JSON.stringify({ title, tags, language, summary, coverUrl, coverCredit, html });
+  const initial = untrack(snapshot);
+  const dirty = $derived(snapshot() !== initial);
+
+  function onBeforeUnload(e: BeforeUnloadEvent) {
+    if (dirty && !leaving) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+  }
+  onMount(() => {
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  });
+
+  beforeNavigate(async (nav) => {
+    if (leaving || nav.willUnload || !dirty) return;
+    nav.cancel();
+    const target = nav.to?.url;
+    const { ok } = await confirm({
+      title: "Discard your changes?",
+      description: "Your edits to this post haven't been saved. Leaving now loses them.",
+      confirmText: "Discard",
+      cancelText: "Keep editing",
+      destructive: true,
+    });
+    if (!ok || !target) return;
+    leaving = true;
+    goto(target);
+  });
+
   async function save() {
     if (!title.trim()) {
       error = "A blog post must have a title.";
@@ -72,6 +108,7 @@
       });
       // A retitle moves the post to a new slug, so navigate to the one the
       // save came back with rather than to the address it had on open.
+      leaving = true;
       goto(postPath({ ...post, slug: saved.slug }));
     } catch (err) {
       error = err instanceof ApiError ? err.message : "Failed to save.";

@@ -263,7 +263,7 @@ export function listSitemapTags(): Promise<{ slug: string; lastPostAt: Date }[]>
     db
       .select({
         slug: tags.slug,
-        lastPostAt: sql<Date>`max(${posts.createdAt})`,
+        lastPostAt: sql<Date>`max(${posts.createdAt})`.mapWith(posts.createdAt),
       })
       .from(tags)
       .innerJoin(postTags, eq(postTags.tagId, tags.id))

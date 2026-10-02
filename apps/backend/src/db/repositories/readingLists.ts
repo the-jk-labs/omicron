@@ -92,7 +92,7 @@ export function listSitemapLists(): Promise<{ id: string; title: string; lastIte
     .select({
       id: readingLists.id,
       title: readingLists.title,
-      lastItemAt: sql<Date>`max(${readingListItems.createdAt})`,
+      lastItemAt: sql<Date>`max(${readingListItems.createdAt})`.mapWith(readingListItems.createdAt),
     })
     .from(readingLists)
     .innerJoin(readingListItems, eq(readingListItems.listId, readingLists.id))

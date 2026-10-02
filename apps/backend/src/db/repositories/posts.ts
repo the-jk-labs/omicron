@@ -414,7 +414,7 @@ export function listSitemapProfiles() {
   return db
     .select({
       username: users.username,
-      lastPostAt: sql<Date>`max(${posts.createdAt})`.as("last_post_at"),
+      lastPostAt: sql<Date>`max(${posts.createdAt})`.mapWith(posts.createdAt).as("last_post_at"),
     })
     .from(users)
     .innerJoin(posts, and(eq(posts.authorId, users.id), eq(posts.status, "published"), eq(posts.remote, false)))

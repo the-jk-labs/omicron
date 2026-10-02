@@ -483,11 +483,8 @@ test("edit is seeded from the detail and saves only what changed", async () => {
   expect(save).toBeEnabled();
   await fireEvent.click(save);
   await screen.findByText("Saved.");
-  // Unchanged links ride along too (saveEdit's link fallback); tags, bio and emails don't.
-  expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({
-    displayName: "Robert",
-    links: [{ platform: "github", url: "https://github.com/bob", label: "" }],
-  });
+  // Only the changed field: the untouched tags and links aren't rewritten.
+  expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ displayName: "Robert" });
   expect(screen.getByText("Robert")).toBeInTheDocument();
   expect(screen.queryByText("Edit @bob")).toBe(null);
 });

@@ -1,8 +1,15 @@
 import ScheduleDialog from "$lib/components/ScheduleDialog.svelte";
+import { timeZone } from "$lib/timezone";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // The $app/stores stand-in renders in UTC, so every time below is UTC.
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
+import type { Writable } from "svelte/store";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+
+vi.mock(import("$lib/timezone"), async (importOriginal) => {
+  const { writable } = await import("svelte/store");
+  return { ...(await importOriginal()), timeZone: writable("UTC") };
+});
 
 beforeEach(() => {
   // Thursday.
@@ -47,6 +54,24 @@ test.for([
   await fireEvent.click(screen.getByRole("button", { name: label }));
   await fireEvent.click(confirmButton());
   expect(onconfirm).toHaveBeenCalledWith(iso);
+});
+
+// The weekday must be the chosen zone's, not the browser's: in Kiritimati
+// (UTC+14) it is already Friday, and a browser in Los Angeles is a day behind.
+test("Next Monday is a Monday in the chosen zone, whatever the browser's zone", async () => {
+  const tz = process.env.TZ;
+  process.env.TZ = "America/Los_Angeles";
+  (timeZone as Writable<string>).set("Pacific/Kiritimati");
+  try {
+    const onconfirm = setup();
+    await waitFor(() => screen.getByText("Schedule post"));
+    await fireEvent.click(screen.getByRole("button", { name: "Next Monday, 09:00" }));
+    await fireEvent.click(confirmButton());
+    expect(onconfirm).toHaveBeenCalledWith("2026-06-14T19:00:00.000Z");
+  } finally {
+    process.env.TZ = tz;
+    (timeZone as Writable<string>).set("UTC");
+  }
 });
 
 test("a time less than a minute away is refused", async () => {

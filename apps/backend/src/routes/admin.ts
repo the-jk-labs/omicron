@@ -11,7 +11,7 @@ import {
 import { badRequest } from "@/lib/http.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { jsonBody } from "@/lib/validate.ts";
-import { requireAdmin, requireModerator } from "@/routes/middleware.ts";
+import { readUpload, requireAdmin, requireModerator } from "@/routes/middleware.ts";
 import { adminUserDetailView, adminUserView, deletedUserView } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import * as anubis from "@/services/anubisProtection.ts";
@@ -27,6 +27,7 @@ import * as seo from "@/services/seo.ts";
 import * as settings from "@/services/settings.ts";
 import * as tagsService from "@/services/tags.ts";
 import * as unsplash from "@/services/unsplash.ts";
+import { MAX_AVATAR_BYTES } from "@/services/users.ts";
 
 export const adminRoutes = new Hono<AppEnv>();
 
@@ -181,7 +182,7 @@ adminRoutes.put("/instance", jsonBody(instanceSchema), async (c) => {
 adminRoutes.post("/instance/banner", async (c) => {
   const viewer = requireAdmin(c);
   const contentType = (c.req.header("content-type") ?? "").split(";")[0].trim();
-  const bytes = new Uint8Array(await c.req.arrayBuffer());
+  const bytes = await readUpload(c, mediaService.MAX_IMAGE_BYTES, "Image too large (max 5 MB).");
   const url = await mediaService.saveImage(viewer.id, bytes, contentType);
   await setup.setBannerImageUrl(url);
   return c.json(await instanceSnapshot(), 201);
@@ -473,7 +474,7 @@ adminRoutes.patch("/users/:id", jsonBody(adminUpdateUserSchema), async (c) => {
 adminRoutes.post("/users/:id/avatar", async (c) => {
   const viewer = requireModerator(c);
   const contentType = (c.req.header("content-type") ?? "").split(";")[0].trim();
-  const bytes = new Uint8Array(await c.req.arrayBuffer());
+  const bytes = await readUpload(c, MAX_AVATAR_BYTES, "Image too large (max 2 MB).");
   const user = await moderation.setUserAvatar(viewer.id, c.req.param("id"), bytes, contentType);
   return c.json({ user: adminUserView(user) });
 });

@@ -91,3 +91,16 @@ test("renders a well-formed RSS 2.0 channel with escaped fields", () => {
   expect(xml).toContain(`<atom:link href="${ORIGIN}/@ada/feed.xml" rel="self" type="application/rss+xml" />`);
   expect(FEED_HEADERS["access-control-allow-origin"]).toBe("*");
 });
+
+// pubDate is optional in RSS; "Invalid Date" in it is not.
+test("an unreadable date leaves pubDate out rather than printing Invalid Date", () => {
+  const xml = renderRssFeed({
+    title: "Ada",
+    description: "",
+    link: `${ORIGIN}/@ada`,
+    feedUrl: `${ORIGIN}/@ada/feed.xml`,
+    items: [{ title: "A", link: `${ORIGIN}/@ada/a`, pubDate: "not a date", creator: "Ada", descriptionHtml: "" }],
+  });
+  expect(xml).not.toContain("Invalid Date");
+  expect(new DOMParser().parseFromString(xml, "application/xml").querySelector("item > pubDate")).toBe(null);
+});

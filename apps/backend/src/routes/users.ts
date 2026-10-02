@@ -7,7 +7,7 @@ import { badRequest, notFound } from "@/lib/http.ts";
 import { renderMarkdown } from "@/lib/markdown.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { jsonBody } from "@/lib/validate.ts";
-import { requireUser } from "@/routes/middleware.ts";
+import { readUpload, requireUser } from "@/routes/middleware.ts";
 import { profileLinkView, publicUser } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import { enrichPosts } from "@/services/engagement.ts";
@@ -17,7 +17,7 @@ import * as postsService from "@/services/posts.ts";
 import * as recommendationsService from "@/services/recommendations.ts";
 import * as relationsService from "@/services/relations.ts";
 import * as usersService from "@/services/users.ts";
-import { MAX_CUSTOM_SECTION_LEN } from "@/services/users.ts";
+import { MAX_AVATAR_BYTES, MAX_CUSTOM_SECTION_LEN } from "@/services/users.ts";
 
 export const userRoutes = new Hono<AppEnv>();
 
@@ -91,7 +91,7 @@ userRoutes.post("/me/follow-requests/:id/reject", async (c) => {
 userRoutes.post("/me/avatar", async (c) => {
   const viewer = requireUser(c);
   const contentType = (c.req.header("content-type") ?? "").split(";")[0].trim();
-  const bytes = new Uint8Array(await c.req.arrayBuffer());
+  const bytes = await readUpload(c, MAX_AVATAR_BYTES, "Image too large (max 2 MB).");
   const user = await usersService.setAvatar(viewer.id, bytes, contentType);
   return c.json({ user: publicUser(user) });
 });

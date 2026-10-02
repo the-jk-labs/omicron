@@ -140,11 +140,26 @@ describe("POST /api/setup/test-email", () => {
     expect(sendTestEmail).toHaveBeenCalledWith("me@x.test", { mode: "smtp" });
   });
 
-  test("a transport failure is a 400 with the reason", async () => {
-    vi.mocked(sendTestEmail).mockRejectedValue(new Error("Connection refused"));
+  // Open to anyone before setup, so the reply must not say what the connection
+  // ran into ("Could not connect to 10.0.0.5:6379"); only the server log does.
+  test("a transport failure is a 400 that names no host, port or network error", async () => {
+    vi.mocked(sendTestEmail).mockRejectedValue(new Error("Could not connect to 10.0.0.5:6379: ECONNREFUSED"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const res = await wizard.json("/api/setup/test-email", "POST", { to: "me@x.test" });
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "Could not send the test email: Connection refused" });
+    expect(await res.json()).toEqual({
+      error: "Couldn't send the test email. Check the settings; the server log has the details.",
+    });
+    expect(warn).toHaveBeenCalledWith("setup: test email failed:", "Could not connect to 10.0.0.5:6379: ECONNREFUSED");
+  });
+
+  test("is rate-limited per IP", async () => {
+    vi.mocked(sendTestEmail).mockResolvedValue();
+    const headers = { "x-forwarded-for": "203.0.113.77" };
+    for (let i = 0; i < 10; i++) {
+      expect((await wizard.json("/api/setup/test-email", "POST", { to: "me@x.test" }, headers)).status).toBe(200);
+    }
+    expect((await wizard.json("/api/setup/test-email", "POST", { to: "me@x.test" }, headers)).status).toBe(429);
   });
 
   test("refuses once the instance is set up", async () => {

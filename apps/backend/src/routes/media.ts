@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { Hono } from "hono";
 import { config } from "@/config.ts";
 import { notFound } from "@/lib/http.ts";
-import { requireUser } from "@/routes/middleware.ts";
+import { readUpload, requireUser } from "@/routes/middleware.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import * as mediaService from "@/services/media.ts";
 import * as shareImageService from "@/services/shareImage.ts";
@@ -18,7 +18,7 @@ export const mediaRoutes = new Hono<AppEnv>();
 mediaRoutes.post("/", async (c) => {
   const viewer = requireUser(c);
   const contentType = (c.req.header("content-type") ?? "").split(";")[0].trim();
-  const bytes = new Uint8Array(await c.req.arrayBuffer());
+  const bytes = await readUpload(c, mediaService.MAX_IMAGE_BYTES, "Image too large (max 5 MB).");
   const url = await mediaService.saveImage(viewer.id, bytes, contentType);
   return c.json({ url }, 201);
 });

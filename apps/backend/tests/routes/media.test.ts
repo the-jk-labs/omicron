@@ -52,6 +52,42 @@ describe("upload", () => {
     expect(await res.json()).toEqual({ url: "/api/uploads/x.png" });
     expect(mediaService.saveImage).toHaveBeenCalledWith("me", new Uint8Array([9, 8, 7]), "Image/PNG");
   });
+
+  // A backend exposed without the frontend's body limit in front of it must not
+  // buffer whatever a client streams at it.
+  test("an oversized body is refused once it passes the cap, without reading the rest", async () => {
+    api.signIn();
+    const chunk = new Uint8Array(1024 * 1024);
+    let sent = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(ctl) {
+        if (sent >= 50 * chunk.length) return ctl.close();
+        sent += chunk.length;
+        ctl.enqueue(chunk);
+      },
+    });
+    const res = await api.request("/api/uploads", {
+      method: "POST",
+      headers: { "content-type": "image/png" },
+      body,
+      duplex: "half",
+    } as RequestInit);
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Image too large (max 5 MB)." });
+    expect(sent).toBeLessThan(10 * chunk.length);
+    expect(mediaService.saveImage).not.toHaveBeenCalled();
+  });
+
+  test("a declared length over the cap is refused before the body is read", async () => {
+    api.signIn();
+    const res = await api.request("/api/uploads", {
+      method: "POST",
+      headers: { "content-type": "image/png", "content-length": String(6 * 1024 * 1024) },
+      body: new Uint8Array([1]),
+    });
+    expect(res.status).toBe(400);
+    expect(mediaService.saveImage).not.toHaveBeenCalled();
+  });
 });
 
 describe("serving uploads", () => {

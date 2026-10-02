@@ -1,7 +1,9 @@
-import { goto } from "$app/navigation";
+import { beforeNavigate, goto } from "$app/navigation";
+import { confirmRequest } from "$lib/components/ui/confirm";
 import type { Post } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
+import { get } from "svelte/store";
 import { expect, test, vi } from "vitest";
 import EditPage from "../../../../../src/routes/posts/[id]/edit/+page.svelte";
 import { apiError, fakeFetch } from "../../../../fakeFetch";
@@ -98,4 +100,55 @@ test("a failed save is shown and Save comes back", async () => {
   await screen.findByText("Slug conflict");
   expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
   expect(goto).not.toHaveBeenCalled();
+});
+
+// Nothing autosaves on this page (a save federates an Update), so leaving with
+// edits must ask; leaving untouched, or after saving, must not.
+type Nav = { willUnload: boolean; to: { url: URL } | null; cancel: () => void };
+const navGuard = () => vi.mocked(beforeNavigate).mock.calls.at(-1)![0] as unknown as (nav: Nav) => Promise<void>;
+const unload = () => {
+  const event = new Event("beforeunload", { cancelable: true });
+  window.dispatchEvent(event);
+  return event.defaultPrevented;
+};
+
+test("an untouched edit lets the reader leave without asking", async () => {
+  setup();
+  expect(unload()).toBe(false);
+  const cancel = vi.fn();
+  await navGuard()({ willUnload: false, to: { url: new URL("http://localhost/") }, cancel });
+  expect(cancel).not.toHaveBeenCalled();
+});
+
+test("leaving with unsaved edits asks first, and stays when told to", async () => {
+  setup();
+  await fireEvent.input(title(), { target: { value: "Changed" } });
+  expect(unload()).toBe(true);
+  const cancel = vi.fn();
+  const leaving = navGuard()({ willUnload: false, to: { url: new URL("http://localhost/") }, cancel });
+  await waitFor(() => expect(get(confirmRequest)?.title).toBe("Discard your changes?"));
+  expect(cancel).toHaveBeenCalled();
+  get(confirmRequest)!.resolve({ ok: false, notify: false });
+  confirmRequest.set(null);
+  await leaving;
+  expect(goto).not.toHaveBeenCalled();
+});
+
+test("discarding the edits continues to where the reader was going", async () => {
+  setup();
+  await fireEvent.input(title(), { target: { value: "Changed" } });
+  const leaving = navGuard()({ willUnload: false, to: { url: new URL("http://localhost/settings") }, cancel: vi.fn() });
+  await waitFor(() => expect(get(confirmRequest)).not.toBe(null));
+  get(confirmRequest)!.resolve({ ok: true, notify: false });
+  confirmRequest.set(null);
+  await leaving;
+  expect(goto).toHaveBeenCalledWith(new URL("http://localhost/settings"));
+});
+
+test("saving lets its own navigation through", async () => {
+  setup();
+  await fireEvent.input(title(), { target: { value: "Changed" } });
+  await save();
+  await waitFor(() => expect(goto).toHaveBeenCalledWith("/@ada/new-slug"));
+  expect(unload()).toBe(false);
 });

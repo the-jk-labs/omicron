@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import { auth } from "@/auth/auth.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
-import { forbidden, unauthorized } from "@/lib/http.ts";
+import { badRequest, forbidden, unauthorized } from "@/lib/http.ts";
+import { readCappedBody } from "@/lib/inboxBody.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 // Resolves the Better Auth session → full user row on every request (null if
@@ -39,4 +41,14 @@ export function requireAdmin(c: { get: (k: "user") => AppEnv["Variables"]["user"
   const user = requireUser(c);
   if (!user.isAdmin) throw forbidden("Admin access required.");
   return user;
+}
+
+// A raw upload body, read only up to `max`: an oversized one is refused by its
+// declared length, or as soon as the stream passes the cap, rather than being
+// buffered whole first. The services re-check the exact limit.
+export async function readUpload(c: Context<AppEnv>, max: number, tooLarge: string): Promise<Uint8Array> {
+  if (Number(c.req.header("content-length")) > max) throw badRequest(tooLarge);
+  const bytes = await readCappedBody(c.req.raw, max);
+  if (!bytes) throw badRequest(tooLarge);
+  return bytes;
 }

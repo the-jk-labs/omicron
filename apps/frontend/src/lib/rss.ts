@@ -115,12 +115,14 @@ export function postFeedItem(post: Post, origin: string): FeedItem {
 
 function renderItem(item: FeedItem): string {
   const categories = (item.categories ?? []).map((c) => `\n    <category>${escapeXml(c)}</category>`).join("");
+  const published = new Date(item.pubDate);
   return [
     "  <item>",
     `    <title>${escapeXml(item.title)}</title>`,
     `    <link>${escapeXml(item.link)}</link>`,
     `    <guid isPermaLink="true">${escapeXml(item.link)}</guid>`,
-    `    <pubDate>${new Date(item.pubDate).toUTCString()}</pubDate>`,
+    // Optional in RSS: an unreadable date is left out, never printed as "Invalid Date".
+    ...(Number.isNaN(published.getTime()) ? [] : [`    <pubDate>${published.toUTCString()}</pubDate>`]),
     `    <dc:creator>${escapeXml(item.creator)}</dc:creator>${categories}`,
     // The body is HTML inside an XML text node, so it is escaped whole; readers
     // unescape it back to markup. Entities already in the post (&amp;) survive

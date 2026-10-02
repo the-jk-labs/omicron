@@ -741,11 +741,12 @@
     if (publicEmail !== initial.publicEmail) body.publicEmail = publicEmail;
     if (editCustomSection !== initial.customSection) body.customSection = editCustomSection;
     if (JSON.stringify(editTags) !== JSON.stringify(initial.tags)) body.tags = editTags;
-    if (JSON.stringify(editLinks) !== JSON.stringify(initial.links)) body.links = links;
-    // Links with only blank rows removed still count as a change when the row
-    // set differs; cover the case where the comparison above missed it because
-    // blank rows were skipped during conversion.
-    if (body.links === undefined && JSON.stringify(links) !== JSON.stringify(initial.links)) body.links = links;
+    // Compared in the form they're sent (canonical URL, blank rows skipped), so
+    // an untouched list isn't rewritten and a blank row alone is no change.
+    const initialLinks = (initial.links as ProfileLink[])
+      .filter((l) => l.url.trim())
+      .map((l) => ({ platform: l.platform, url: identifierToUrl(l.platform, l.url) ?? l.url, label: l.label.trim() }));
+    if (JSON.stringify(links) !== JSON.stringify(initialLinks)) body.links = links;
     if (!editHasDetail) {
       delete body.tags;
       delete body.links;

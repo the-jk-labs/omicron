@@ -359,7 +359,9 @@ describe("related posts and the sitemap", () => {
     expect(await postsRepo.listSitemapEntries(2)).toEqual([]);
     expect(await postsRepo.countSitemapEntries()).toBe(2);
     expect(await postsRepo.countLocalPublished()).toBe(3);
-    expect((await postsRepo.listSitemapProfiles()).map((p) => p.username)).toEqual(["ada"]);
+    const profiles = await postsRepo.listSitemapProfiles();
+    expect(profiles.map((p) => p.username)).toEqual(["ada"]);
+    expect(profiles[0].lastPostAt).toBeInstanceOf(Date);
   });
 });
 

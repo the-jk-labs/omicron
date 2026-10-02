@@ -97,10 +97,11 @@
       label: "Next Monday, 09:00",
       at: () => {
         // `dayOfWeek` is not on the plain calendar type, so step forward a day
-        // at a time until the local weekday reads Monday. At most seven hops,
-        // and immune to whichever day the locale considers the week's first.
+        // at a time until the weekday reads Monday. At most seven hops, and
+        // immune to whichever day the locale considers the week's first. Read at
+        // UTC midnight: getDay() would use the browser's zone, not `zone`.
         let d = today(zone).add({ days: 1 });
-        while (d.toDate(zone).getDay() !== 1) d = d.add({ days: 1 });
+        while (d.toDate("UTC").getUTCDay() !== 1) d = d.add({ days: 1 });
         return { date: d, time: new Time(9, 0) };
       },
     },

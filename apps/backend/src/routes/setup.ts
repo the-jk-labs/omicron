@@ -4,6 +4,7 @@ import { z } from "zod";
 import { auth } from "@/auth/auth.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { badRequest, conflict } from "@/lib/http.ts";
+import { clientIp, rateLimit } from "@/lib/rateLimit.ts";
 import { privateUser } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import { sendTestEmail } from "@/services/email.ts";
@@ -116,7 +117,17 @@ const testEmailSchema = z.object({
   email: emailInputSchema,
 });
 
-setupRoutes.post("/test-email", async (c) => {
+// Anyone can call this until setup completes, and it connects wherever it's told,
+// so it's rate-limited and its errors carry no network detail: otherwise it is a
+// scanner for the server's internal network. The real reason goes to the log.
+const testEmailLimiter = rateLimit({
+  name: "setup-test-email",
+  windowMs: 15 * 60_000,
+  max: 10,
+  key: (c) => `ip:${clientIp(c)}`,
+});
+
+setupRoutes.post("/test-email", testEmailLimiter, async (c) => {
   if (await setup.isSetupComplete()) {
     throw conflict("This instance has already been set up.");
   }
@@ -128,7 +139,8 @@ setupRoutes.post("/test-email", async (c) => {
   try {
     await sendTestEmail(parsed.data.to, candidate);
   } catch (err) {
-    throw badRequest(`Could not send the test email: ${err instanceof Error ? err.message : String(err)}`);
+    console.warn("setup: test email failed:", err instanceof Error ? err.message : err);
+    throw badRequest("Couldn't send the test email. Check the settings; the server log has the details.");
   }
   return c.json({ ok: true });
 });

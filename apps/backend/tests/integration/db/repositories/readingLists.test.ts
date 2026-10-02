@@ -77,7 +77,9 @@ describe("lists", () => {
     const later = await listsRepo.ensureReadLater(ada.id);
     await listsRepo.update(later.id, { visibility: "public" });
     for (const l of [shown, priv, susList, later]) await addToList(l.id, post.id);
-    expect((await listsRepo.listSitemapLists()).map((l) => l.title)).toEqual(["Shown"]);
+    const lists = await listsRepo.listSitemapLists();
+    expect(lists.map((l) => l.title)).toEqual(["Shown"]);
+    expect(lists[0].lastItemAt).toBeInstanceOf(Date);
   });
 });
 
