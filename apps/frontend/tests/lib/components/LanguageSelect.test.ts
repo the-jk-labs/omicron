@@ -24,9 +24,10 @@ async function choose(name: RegExp) {
   await fireEvent.pointerUp(option, { pointerType: "mouse", button: 0 });
 }
 
+const trigger = () => screen.getByRole("button", { name: "Article language" });
+
 test("choosing a language sets it; No language clears it", async () => {
   render(LanguageSelect, { props: { value: null } });
-  const trigger = () => screen.getByRole("button", { name: "Article language" });
   await choose(/^German/);
   expect(trigger()).toHaveTextContent("German");
   await choose(/^No language/);

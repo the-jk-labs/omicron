@@ -37,28 +37,29 @@
     else if (page.url.pathname === "/search") goto("/search");
   }
 
-  onMount(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      const target = e.target as HTMLElement | null;
-      const isTyping =
-        !!target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
-      // "/" — like GitHub / Mastodon. Only when not already typing.
-      if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey && !isTyping) {
-        e.preventDefault();
-        if (window.innerWidth < 640) goto("/search");
-        else inputEl?.focus();
-        return;
-      }
-      // Ctrl+K / Cmd+K — like Slack / Linear.
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        if (window.innerWidth < 640) goto("/search");
-        else {
-          inputEl?.focus();
-          inputEl?.select();
-        }
+  function onKeyDown(e: KeyboardEvent) {
+    const target = e.target as HTMLElement | null;
+    const isTyping =
+      !!target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+    // "/" — like GitHub / Mastodon. Only when not already typing.
+    if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey && !isTyping) {
+      e.preventDefault();
+      if (window.innerWidth < 640) goto("/search");
+      else inputEl?.focus();
+      return;
+    }
+    // Ctrl+K / Cmd+K — like Slack / Linear.
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      if (window.innerWidth < 640) goto("/search");
+      else {
+        inputEl?.focus();
+        inputEl?.select();
       }
     }
+  }
+
+  onMount(() => {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   });

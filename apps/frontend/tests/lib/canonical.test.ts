@@ -20,9 +20,9 @@ describe("canonicalOrigin", () => {
   });
 });
 
-describe("isNonCanonicalHost", () => {
-  const at = (href: string) => new URL(href);
+const at = (href: string) => new URL(href);
 
+describe("isNonCanonicalHost", () => {
   test("another hostname for the same instance is non-canonical", () => {
     expect(isNonCanonicalHost(at("https://www.blog.example/x"), "blog.example")).toBe(true);
     expect(isNonCanonicalHost(at("http://203.0.113.5/x"), "blog.example")).toBe(true);

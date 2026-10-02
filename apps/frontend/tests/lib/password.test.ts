@@ -30,15 +30,15 @@ test("requirements report each rule independently", () => {
   expect(passwordRequirements("")[0].label).toBe(`At least ${MIN_PASSWORD_LEN} characters`);
 });
 
-describe("isPwnedPasswordClient", () => {
-  async function sha1(pw: string) {
-    const buf = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(pw));
-    return [...new Uint8Array(buf)]
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("")
-      .toUpperCase();
-  }
+async function sha1(pw: string) {
+  const buf = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(pw));
+  return [...new Uint8Array(buf)]
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase();
+}
 
+describe("isPwnedPasswordClient", () => {
   test("sends only the 5-char prefix, padded, and matches the suffix case-insensitively", async () => {
     const pw = "correct horse battery";
     const hash = await sha1(pw);
