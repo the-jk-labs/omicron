@@ -102,7 +102,7 @@ user or operator will hit, **Low** = edge case or cosmetic.
 - **Test:** `tests/services/moderation_test.ts` ("a moderator takedown of a
   published post is federated as a Delete").
 
-### B7. Admins can defederate their own instance — Medium
+### B7. The "can't block your own instance" check misses wizard-set and ported domains — Low
 - **Where:** `src/services/moderation.ts` `blockDomain` (self-check at line 572).
 - **Symptom:** the "You can't block your own instance" guard can be bypassed
   in two ways:
