@@ -64,7 +64,7 @@ test("removing a follower takes a second click, then drops the row and reports i
   await open();
   await screen.findByText("BOB");
   const [remove] = screen.getAllByRole("button", { name: "Remove" });
-  await fireEvent.click(remove!);
+  await fireEvent.click(remove);
   expect(api.calls.some((c) => c.method === "DELETE")).toBe(false);
   await fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
   await waitFor(() => expect(screen.queryByText("BOB")).toBe(null));
@@ -76,7 +76,7 @@ test("a remote follower is removed by its full handle", async () => {
   setup({ canRemove: true });
   await open();
   await screen.findByText("ZED@SOCIAL.EXAMPLE");
-  const remove = screen.getAllByRole("button", { name: "Remove" })[1]!;
+  const remove = screen.getAllByRole("button", { name: "Remove" })[1];
   await fireEvent.click(remove);
   await fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
   await waitFor(() => expect(api.calls.at(-1)?.path).toBe("/api/users/me/followers/zed%40social.example"));

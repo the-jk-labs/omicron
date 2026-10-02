@@ -37,7 +37,7 @@ async function setup(content?: string, routes: Parameters<typeof fakeFetch>[0] =
 }
 
 const tool = (label: string) => fireEvent.click(screen.getByRole("button", { name: label }));
-const status = () => document.body.textContent!.match(/[\d,]+ characters?.*?(min read|words?)/)?.[0];
+const status = () => document.body.textContent.match(/[\d,]+ characters?.*?(min read|words?)/)?.[0];
 
 test("stored HTML is parsed as HTML, not escaped as Markdown text", async () => {
   const { editor } = await setup("<p>alpha <strong>beta</strong></p>");
@@ -146,7 +146,7 @@ test("an uploaded image is inserted with a paragraph to keep writing in", async 
   const { editor } = await setup("<p></p>");
   await fireEvent.change(imageInput(), { target: { files: [png("a.png")] } });
   await waitFor(() => expect(editor.getHTML()).toContain('src="/api/uploads/img1.webp"'));
-  expect(api.calls[0]!.headers.get("content-type")).toBe("image/webp");
+  expect(api.calls[0].headers.get("content-type")).toBe("image/webp");
 });
 
 test("an unsupported file and a failed upload are both reported", async () => {
@@ -174,7 +174,7 @@ test("an image's alt text is edited through the dialog and stored trimmed", asyn
   const field = await screen.findByLabelText("Alt text");
   await fireEvent.input(field, { target: { value: "  A rabbit  " } });
   await fireEvent.click(screen.getByRole("button", { name: "Save" }));
-  expect(editor.getJSON().content![0]!.attrs).toMatchObject({ alt: "A rabbit" });
+  expect(editor.getJSON().content[0].attrs).toMatchObject({ alt: "A rabbit" });
 });
 
 test("alt text isn't written to a position that's no longer the image", async () => {
@@ -182,6 +182,6 @@ test("alt text isn't written to a position that's no longer the image", async ()
   dom.dispatchEvent(new CustomEvent(EDIT_ALT_EVENT, { detail: { pos: 0, alt: "old" } }));
   await fireEvent.input(await screen.findByLabelText("Alt text"), { target: { value: "new" } });
   await fireEvent.click(screen.getByRole("button", { name: "Save" }));
-  expect(editor.getJSON().content![0]!.type).toBe("paragraph");
+  expect(editor.getJSON().content[0].type).toBe("paragraph");
   expect(JSON.stringify(editor.getJSON())).not.toContain('"alt":"new"');
 });

@@ -49,7 +49,7 @@ test("Apply renders the visible square to a 512px WebP and closes", async () => 
   await fireEvent.click(screen.getByRole("button", { name: "Apply" }));
   await waitFor(() => expect(onCrop).toHaveBeenCalled());
   expect(drawImage).toHaveBeenCalledWith(img, 140, -0, 280, 280, 0, 0, 512, 512);
-  const file = onCrop.mock.calls[0]![0];
+  const file = onCrop.mock.calls[0][0];
   expect([file.name, file.type]).toEqual(["avatar.webp", "image/webp"]);
   await waitFor(() => expect(screen.queryByRole("dialog")).toBe(null));
 });

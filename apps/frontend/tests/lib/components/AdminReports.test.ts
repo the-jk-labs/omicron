@@ -24,7 +24,7 @@ function report(overrides: Partial<Report>): Report {
     userUsername: null,
     userDisplayName: null,
     ...overrides,
-  } as Report;
+  };
 }
 
 function setup(reports: Report[], routes: Parameters<typeof fakeFetch>[0] = {}) {

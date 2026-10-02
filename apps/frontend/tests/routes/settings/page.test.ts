@@ -8,13 +8,9 @@ import { beforeEach, expect, test, vi } from "vitest";
 import SettingsPage from "../../../src/routes/settings/+page.svelte";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
-vi.mock(
-  import("$lib/components/AvatarCropper.svelte"),
-  async () =>
-    ({
-      default: (await import("../../mocks/AvatarCropperStub.svelte")).default,
-    }) as never,
-);
+vi.mock(import("$lib/components/AvatarCropper.svelte"), async () => ({
+  default: (await import("../../mocks/AvatarCropperStub.svelte")).default,
+}));
 vi.mock(import("$lib/editor/image"), async (importOriginal) => ({
   ...(await importOriginal()),
   prepareImage: async (file: Blob) => ({ blob: file, type: "image/png" }),
@@ -189,11 +185,10 @@ test("an oversized photo after compression is refused without uploading", async 
   setup();
   await pickPhoto();
   await fireEvent.click(await screen.findByRole("button", { name: "Apply crop" }));
-  const { prepareImage } = await import("$lib/editor/image");
   vi.spyOn(await import("$lib/editor/image"), "prepareImage").mockResolvedValueOnce({
     blob: new Blob([new Uint8Array(3 * 1024 * 1024)]),
     type: "image/jpeg",
-  } as Awaited<ReturnType<typeof prepareImage>>);
+  });
   await fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await screen.findByText(/Image too large \(max 2 MB\) even after compression/);
   expect(api.calls.some((c) => c.path === "/api/users/me/avatar")).toBe(false);

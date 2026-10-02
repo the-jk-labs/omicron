@@ -11,8 +11,8 @@ function setup(user: { isAdmin: boolean; isModerator: boolean }) {
 
 // Page-level tabs and panel; AdminReports nests its own tabs inside, and hidden
 // panels stay mounted, so queries are scoped to what's on screen.
-const pageTabs = () => within(screen.getAllByRole("tablist")[0]!).getAllByRole("tab");
-const panel = () => within(screen.getAllByRole("tabpanel")[0]!);
+const pageTabs = () => within(screen.getAllByRole("tablist")[0]).getAllByRole("tab");
+const panel = () => within(screen.getAllByRole("tabpanel")[0]);
 
 async function openTab(name: string) {
   const tab = screen.getByRole("tab", { name });

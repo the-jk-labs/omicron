@@ -9,13 +9,9 @@ import EditPage from "../../../../../src/routes/posts/[id]/edit/+page.svelte";
 import { apiError, fakeFetch } from "../../../../fakeFetch";
 import { post } from "../../../../fixtures";
 
-vi.mock(
-  import("$lib/editor/Editor.svelte"),
-  async () =>
-    ({
-      default: (await import("../../../../mocks/EditorStub.svelte")).default,
-    }) as never,
-);
+vi.mock(import("$lib/editor/Editor.svelte"), async () => ({
+  default: (await import("../../../../mocks/EditorStub.svelte")).default,
+}));
 
 const ID = post().id;
 let api: ReturnType<typeof fakeFetch>;
@@ -50,7 +46,7 @@ test("saving sends every field and follows the post to its new slug", async () =
   await fireEvent.input(title(), { target: { value: "  New title " } });
   await save();
   await waitFor(() => expect(goto).toHaveBeenCalledWith("/@ada/new-slug"));
-  expect(saves()[0]!.body).toEqual({
+  expect(saves()[0].body).toEqual({
     title: "New title",
     contentHtml: "<p>Body</p>",
     contentJson: null,
@@ -68,7 +64,7 @@ test("an emptied summary is saved as cleared", async () => {
   await fireEvent.input(summary, { target: { value: "   " } });
   await save();
   await waitFor(() => expect(saves()).toHaveLength(1));
-  expect((saves()[0]!.body as { summary: unknown }).summary).toBe(null);
+  expect((saves()[0].body as { summary: unknown }).summary).toBe(null);
 });
 
 test("edited body content is what gets saved", async () => {
@@ -76,7 +72,7 @@ test("edited body content is what gets saved", async () => {
   await fireEvent.input(await screen.findByRole("textbox", { name: "Body" }), { target: { value: "Rewritten" } });
   await save();
   await waitFor(() => expect(saves()).toHaveLength(1));
-  expect(saves()[0]!.body).toMatchObject({
+  expect(saves()[0].body).toMatchObject({
     contentHtml: "<p>Rewritten</p>",
     contentJson: { type: "doc", text: "Rewritten" },
   });

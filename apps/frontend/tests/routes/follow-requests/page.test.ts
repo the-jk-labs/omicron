@@ -32,7 +32,7 @@ test("each request links the person once", () => {
 test("approving and rejecting answer the request and drop its row", async () => {
   setup([req("r1", "bob"), req("r2", "cy")]);
   const [approveBob] = screen.getAllByRole("button", { name: /Approve/ });
-  await fireEvent.click(approveBob!);
+  await fireEvent.click(approveBob);
   await waitFor(() => expect(screen.queryByText("BOB")).toBe(null));
   await fireEvent.click(screen.getByRole("button", { name: /Reject/ }));
   await screen.findByText("You have no pending follow requests.");

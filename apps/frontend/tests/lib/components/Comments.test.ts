@@ -171,6 +171,6 @@ test("more responses load after the current ones", async () => {
   await waitFor(() => screen.getByText("comment c2"));
   expect(calls[0].path).toBe("/api/posts/p1/comments?cursor=cur");
   expect(screen.queryByRole("button", { name: "Show more responses" })).toBe(null);
-  const text = document.body.textContent!;
+  const text = document.body.textContent;
   expect(text.indexOf("comment c1")).toBeLessThan(text.indexOf("comment c2"));
 });

@@ -10,14 +10,14 @@ import { apiError, fakeFetch } from "../../../fakeFetch";
 import { post } from "../../../fixtures";
 
 type Counts = Record<OwnPostStatus, number>;
-const draft = post({ id: "d1", title: "A draft", status: "draft" } as Partial<Post>);
-const live = post({ id: "p1", title: "Live post", slug: "live-post", status: "published" } as Partial<Post>);
+const draft = post({ id: "d1", title: "A draft", status: "draft" });
+const live = post({ id: "p1", title: "Live post", slug: "live-post", status: "published" });
 const queued = post({
   id: "s1",
   title: "Queued post",
   status: "scheduled",
   publishAt: "2099-01-01T09:00:00Z",
-} as Partial<Post>);
+});
 
 function data(
   tab: OwnPostStatus,

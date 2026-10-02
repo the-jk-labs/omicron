@@ -12,7 +12,7 @@ function user(o: Partial<AdminUser> = {}): AdminUser {
   return {
     id: `u-${username}`,
     username,
-    displayName: username[0]!.toUpperCase() + username.slice(1),
+    displayName: username[0].toUpperCase() + username.slice(1),
     bio: "",
     publicEmail: "",
     customSection: "",
@@ -52,7 +52,7 @@ function deletedUser(o: Partial<DeletedUser> = {}): DeletedUser {
     deletedAt: "2026-01-01T00:00:00Z",
     expiresAt: new Date(Date.now() + 2.5 * 86_400_000).toISOString(),
     ...o,
-  } as DeletedUser;
+  };
 }
 
 const page = (users: AdminUser[], o: { total?: number; filteredTotal?: number; nextCursor?: string | null } = {}) => ({
@@ -203,12 +203,12 @@ test("suspending confirms first and marks the row", async () => {
   const { calls } = setup({ "POST /api/admin/users/u-bob/suspend": { ok: true } });
   await screen.findByText("2 accounts total");
   const [, bobSuspend] = screen.getAllByRole("button", { name: "Suspend" });
-  await fireEvent.click(bobSuspend!);
+  await fireEvent.click(bobSuspend);
   expect(get(confirmRequest)?.title).toBe("Suspend @bob?");
   await confirmWith({ ok: false });
   expect(calls.some((c) => c.path.endsWith("/suspend"))).toBe(false);
 
-  await fireEvent.click(bobSuspend!);
+  await fireEvent.click(bobSuspend);
   await confirmWith({ ok: true, notify: true });
   await screen.findByRole("button", { name: "Reinstate" });
   expect(calls.find((c) => c.path.endsWith("/suspend"))?.body).toEqual({ suspend: true, notify: true });
@@ -220,7 +220,7 @@ test("suspending under the Active filter drops the row", async () => {
   await screen.findByText("2 accounts total");
   await fireEvent.click(screen.getByRole("radio", { name: "Status: Active" }));
   await screen.findByText(/2 of 2 accounts/);
-  await fireEvent.click(screen.getAllByRole("button", { name: "Suspend" })[1]!);
+  await fireEvent.click(screen.getAllByRole("button", { name: "Suspend" })[1]);
   await confirmWith({ ok: true });
   await waitFor(() => expect(screen.queryByText("Bob")).toBe(null));
   expect(screen.getByText(/1 of 2 accounts · showing 1/)).toBeInTheDocument();
@@ -229,7 +229,7 @@ test("suspending under the Active filter drops the row", async () => {
 test("a failed suspend is shown", async () => {
   setup({ "POST /api/admin/users/u-bob/suspend": apiError(403, "Not allowed") });
   await screen.findByText("2 accounts total");
-  await fireEvent.click(screen.getAllByRole("button", { name: "Suspend" })[1]!);
+  await fireEvent.click(screen.getAllByRole("button", { name: "Suspend" })[1]);
   await confirmWith({ ok: true });
   await screen.findByText("Not allowed");
 });

@@ -17,7 +17,7 @@ const credit: CoverCredit = {
   sourceUrl: "https://unsplash.com",
   license: "Unsplash License",
   licenseUrl: "https://unsplash.com/license",
-} as CoverCredit;
+};
 
 let api: ReturnType<typeof fakeFetch>;
 function setup(props: Record<string, unknown> = {}, routes: Parameters<typeof fakeFetch>[0] = {}) {

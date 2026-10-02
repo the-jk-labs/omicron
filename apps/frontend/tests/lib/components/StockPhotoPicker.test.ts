@@ -21,7 +21,7 @@ function photo(id: string, o: Partial<StockPhoto> = {}): StockPhoto {
     },
     useToken: null,
     ...o,
-  } as StockPhoto;
+  };
 }
 
 let api: ReturnType<typeof fakeFetch>;

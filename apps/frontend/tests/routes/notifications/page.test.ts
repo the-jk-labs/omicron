@@ -45,7 +45,7 @@ test("each row names who did what and links to it", () => {
   ]);
   const [follow, comment] = screen.getAllByRole("link", { name: /Bob/ });
   expect(follow).toHaveAttribute("href", "/@bob");
-  expect(comment!.getAttribute("href")).toMatch(/^\/posts\/p1/);
+  expect(comment.getAttribute("href")).toMatch(/^\/posts\/p1/);
   expect(screen.getByText("Great post")).toBeInTheDocument();
 });
 

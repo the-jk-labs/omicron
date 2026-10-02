@@ -24,7 +24,7 @@ afterEach(() => {
   state.instance = null;
 });
 
-const text = () => document.body.textContent!.replace(/\s+/g, " ");
+const text = () => document.body.textContent.replace(/\s+/g, " ");
 
 test("without configured addresses it explains how to report and how to configure", () => {
   render(ContactPage);

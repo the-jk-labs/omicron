@@ -29,7 +29,7 @@ function setup(
   });
 }
 
-const stats = () => document.querySelector("header .mt-2")!.textContent!.replace(/\s+/g, " ").trim();
+const stats = () => document.querySelector("header .mt-2")!.textContent.replace(/\s+/g, " ").trim();
 
 test("names the tag with pluralized counts", () => {
   setup();
@@ -62,5 +62,5 @@ test("Show more pages through the tag by its slug", async () => {
   );
   await fireEvent.click(screen.getByRole("button", { name: "Show more" }));
   await screen.findByText("More Deno");
-  expect(api.calls[0]!.path).toMatch(/^\/api\/tags\/deno\/posts\?cursor=c1/);
+  expect(api.calls[0].path).toMatch(/^\/api\/tags\/deno\/posts\?cursor=c1/);
 });

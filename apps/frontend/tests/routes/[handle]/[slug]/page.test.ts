@@ -106,9 +106,9 @@ test("code blocks get a copy button that copies the code and flashes a check", a
     const buttons = screen.getAllByRole("button", { name: "Copy code" });
     expect(buttons).toHaveLength(2);
     // A captioned block hosts its button in the caption, not the <pre>.
-    expect(buttons[1]!.parentElement).toHaveClass("code-title");
-    expect(buttons[0]!.parentElement).toHaveClass("code-block");
-    await fireEvent.click(buttons[0]!);
+    expect(buttons[1].parentElement).toHaveClass("code-title");
+    expect(buttons[0].parentElement).toHaveClass("code-block");
+    await fireEvent.click(buttons[0]);
     await vi.waitFor(() => expect(buttons[0]).toHaveClass("copied"));
     expect(writeText).toHaveBeenCalledWith("const x = 1;");
     await vi.advanceTimersByTimeAsync(1600);

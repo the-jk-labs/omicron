@@ -10,13 +10,9 @@ import ComposePage from "../../../src/routes/compose/+page.svelte";
 import { apiError, fakeFetch } from "../../fakeFetch";
 import { post } from "../../fixtures";
 
-vi.mock(
-  import("$lib/editor/Editor.svelte"),
-  async () =>
-    ({
-      default: (await import("../../mocks/EditorStub.svelte")).default,
-    }) as never,
-);
+vi.mock(import("$lib/editor/Editor.svelte"), async () => ({
+  default: (await import("../../mocks/EditorStub.svelte")).default,
+}));
 
 afterEach(() => {
   vi.useRealTimers();
@@ -98,7 +94,7 @@ test("Save draft creates the draft and goes to the drafts tab", async () => {
   await click("Save draft");
   await waitFor(() => expect(goto).toHaveBeenCalledWith("/posts/manage?tab=draft"));
   expect(writes()).toHaveLength(1);
-  expect(writes()[0]!.body).toMatchObject({ title: "Half an idea", status: "draft", publishAt: null });
+  expect(writes()[0].body).toMatchObject({ title: "Half an idea", status: "draft", publishAt: null });
 });
 
 test("a reopened draft is seeded and saved in place", async () => {
@@ -129,13 +125,13 @@ test("scheduling sends the chosen moment and goes to the scheduled tab", async (
 });
 
 test("a scheduled post shows when it goes out and offers Publish now", () => {
-  setup({ status: "scheduled", publishAt: "2099-01-01T09:00:00Z" } as Partial<Post>);
+  setup({ status: "scheduled", publishAt: "2099-01-01T09:00:00Z" });
   expect(screen.getByText(/^Scheduled ·/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Publish now" })).toBeInTheDocument();
 });
 
 test("unscheduling an edited scheduled post saves it as a draft", async () => {
-  setup({ status: "scheduled", publishAt: "2099-01-01T09:00:00Z" } as Partial<Post>);
+  setup({ status: "scheduled", publishAt: "2099-01-01T09:00:00Z" });
   await typeTitle("Edited");
   await publishingMenu("Unschedule, keep as draft");
   await waitFor(() => expect(goto).toHaveBeenCalledWith("/posts/manage?tab=draft"));
@@ -143,7 +139,7 @@ test("unscheduling an edited scheduled post saves it as a draft", async () => {
 });
 
 test("an untouched scheduled post can be unscheduled", async () => {
-  setup({ status: "scheduled", publishAt: "2099-01-01T09:00:00Z" } as Partial<Post>);
+  setup({ status: "scheduled", publishAt: "2099-01-01T09:00:00Z" });
   await publishingMenu("Unschedule, keep as draft");
   await waitFor(() => expect(writes().at(-1)?.body).toMatchObject({ status: "draft", publishAt: null }), {
     timeout: 500,
@@ -171,8 +167,8 @@ test("autosave creates the draft once, puts its id in the URL, then updates it",
   await vi.waitFor(() => expect(writes()).toHaveLength(2));
   expect(writes().map((c) => c.method)).toEqual(["POST", "PATCH"]);
   // Autosave never publishes: the create says draft, the update says nothing.
-  expect(writes()[0]!.body).toMatchObject({ status: "draft" });
-  expect(writes()[1]!.body).not.toHaveProperty("status");
+  expect(writes()[0].body).toMatchObject({ status: "draft" });
+  expect(writes()[1].body).not.toHaveProperty("status");
 });
 
 test("closing the tab with an unsaved change asks the browser to confirm", async () => {
@@ -191,7 +187,7 @@ test("an untouched composer lets the tab close", () => {
 });
 
 type Nav = { willUnload: boolean; to: { url: URL } | null; cancel: () => void };
-const navGuard = () => vi.mocked(beforeNavigate).mock.calls[0]![0] as unknown as (nav: Nav) => Promise<void>;
+const navGuard = () => vi.mocked(beforeNavigate).mock.calls[0][0] as unknown as (nav: Nav) => Promise<void>;
 
 test("leaving with a pending change saves it first, then continues", async () => {
   setup();

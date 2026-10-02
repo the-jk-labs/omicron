@@ -27,7 +27,7 @@ function stat(o: Partial<PostStat> = {}): PostStat {
     likes: 0,
     comments: 0,
     ...o,
-  } as PostStat;
+  };
 }
 
 function summary(o: Partial<DashboardSummary> = {}): DashboardSummary {
@@ -41,12 +41,12 @@ function summary(o: Partial<DashboardSummary> = {}): DashboardSummary {
     ],
     posts: [stat()],
     ...o,
-  } as DashboardSummary;
+  };
 }
 
 const setup = (s: DashboardSummary) =>
   render(DashboardPage, { props: { data: { summary: s, username: "ada" } as never } });
-const card = (label: string) => screen.getAllByText(label, { selector: "span" })[0]!.closest("div")!.parentElement!;
+const card = (label: string) => screen.getAllByText(label, { selector: "span" })[0].closest("div")!.parentElement!;
 
 test("an author with no posts is told stats appear after publishing", () => {
   setup(summary({ posts: [] }));
@@ -111,10 +111,10 @@ test("posts are ranked by reach, the leader is marked Top, and rows link to the 
     }),
   );
   const rows = screen.getAllByRole("row").slice(1);
-  expect(within(rows[0]!).getByText("Top")).toBeInTheDocument();
+  expect(within(rows[0]).getByText("Top")).toBeInTheDocument();
   // An untitled post has no slug, so it links by its short id.
-  expect(within(rows[0]!).getByRole("link", { name: "Untitled" }).getAttribute("href")).toMatch(/^\/@ada\/[^/]+$/);
-  expect(within(rows[1]!).getByRole("link", { name: "Quiet" })).toHaveAttribute("href", "/@ada/quiet");
+  expect(within(rows[0]).getByRole("link", { name: "Untitled" }).getAttribute("href")).toMatch(/^\/@ada\/[^/]+$/);
+  expect(within(rows[1]).getByRole("link", { name: "Quiet" })).toHaveAttribute("href", "/@ada/quiet");
 });
 
 test("per-day engagement is likes + comments over days live, a dash when none", () => {
@@ -124,8 +124,8 @@ test("per-day engagement is likes + comments over days live, a dash when none", 
     }),
   );
   const rows = screen.getAllByRole("row").slice(1);
-  expect(within(rows[0]!).getByText("2.5/d")).toBeInTheDocument();
-  expect(within(rows[1]!).getByText("-")).toBeInTheDocument();
+  expect(within(rows[0]).getByText("2.5/d")).toBeInTheDocument();
+  expect(within(rows[1]).getByText("-")).toBeInTheDocument();
 });
 
 test("nobody is crowned Top when nothing has any reach", () => {
