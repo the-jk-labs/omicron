@@ -11,7 +11,7 @@ beforeEach(() => {
   vi.stubGlobal(
     "fetch",
     vi.fn<typeof globalThis.fetch>(async (url, init) => {
-      seen = { url: String(url), init: init! };
+      seen = { url: url instanceof Request ? url.url : url.toString(), init: init! };
       return reply();
     }),
   );

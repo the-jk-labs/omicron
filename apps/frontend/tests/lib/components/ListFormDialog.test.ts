@@ -14,7 +14,8 @@ const trigger = createRawSnippet((props: () => Record<string, unknown>) => ({
     for (const [key, value] of Object.entries(props())) {
       if (typeof value === "function" && key.startsWith("on"))
         el.addEventListener(key.slice(2), value as EventListener);
-      else if (value !== undefined && typeof value !== "object") el.setAttribute(key, String(value));
+      else if (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+        el.setAttribute(key, String(value));
     }
   },
 }));

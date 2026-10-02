@@ -40,8 +40,7 @@ describe("prepareImage", () => {
       })),
     );
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function (this: HTMLCanvasElement) {
-      const canvas = this;
-      return { drawImage: () => drawn.push({ width: canvas.width, height: canvas.height }) } as never;
+      return { drawImage: () => drawn.push({ width: this.width, height: this.height }) } as never;
     });
     vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation((cb, type, quality) => {
       const size = sizes.shift() ?? 10;
@@ -78,7 +77,7 @@ describe("prepareImage", () => {
 
   test("stops halving at a floor even if the cap is still not met", async () => {
     sizes = Array.from({ length: 20 }, () => 5000);
-    vi.mocked(createImageBitmap).mockResolvedValue({ width: 100, height: 100, close: () => {} } as never);
+    vi.mocked(createImageBitmap).mockResolvedValue({ width: 100, height: 100, close: () => {} });
     const original = file("a.png", "image/png", 100_000);
     const out = await prepareImage(original, 1600, 10);
     expect(drawn.at(-1)!.width).toBeLessThanOrEqual(48);
@@ -87,7 +86,7 @@ describe("prepareImage", () => {
 
   test("no 2D context, or a decode failure, falls back to the original file", async () => {
     const original = file("a.png", "image/png");
-    vi.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValue(null);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
     expect(await prepareImage(original)).toEqual({ blob: original, type: "image/png" });
     vi.mocked(createImageBitmap).mockRejectedValue(new Error("undecodable"));
     expect(await prepareImage(original)).toEqual({ blob: original, type: "image/png" });

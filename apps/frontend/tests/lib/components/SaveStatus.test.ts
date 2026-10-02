@@ -17,10 +17,10 @@ test("nothing is shown before the first save", () => {
   expect(container.textContent?.trim()).toBe("");
 });
 
-test("saving and failure states", () => {
+test("saving and failure states", async () => {
   const { rerender } = render(SaveStatus, { props: { status: "saving", savedAt: null } });
   expect(screen.getByText("Saving…")).toBeInTheDocument();
-  rerender({ status: "error", savedAt: null, error: "Offline" });
+  await rerender({ status: "error", savedAt: null, error: "Offline" });
   expect(screen.getByText("Couldn't save")).toHaveAttribute("title", "Offline");
 });
 

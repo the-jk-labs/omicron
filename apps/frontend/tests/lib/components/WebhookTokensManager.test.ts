@@ -35,7 +35,7 @@ test("issues a token, shows the secret once, and lists it first", async () => {
 
 test("copies the fresh token to the clipboard", async () => {
   const writeText = vi.fn<(s: string) => Promise<void>>(async () => {});
-  vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+  vi.stubGlobal("navigator", { clipboard: { writeText } });
   setup({ "POST /api/webhooks/tokens": { token: "whk_secret", tokenInfo: token("t2", "S") } });
   await waitFor(() => screen.getByText("CI"));
   await fireEvent.input(screen.getByPlaceholderText(/What is it for/), { target: { value: "S" } });

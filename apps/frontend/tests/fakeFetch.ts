@@ -31,7 +31,7 @@ export function fakeFetch(routes: Routes = {}) {
     if (raw && typeof raw.arrayBuffer === "function") {
       init = { ...init, body: new Uint8Array(await raw.arrayBuffer()) };
     }
-    const req = new Request(new URL(String(input), "http://app.test"), init);
+    const req = new Request(new URL(input instanceof Request ? input.url : input, "http://app.test"), init);
     const url = new URL(req.url);
     const text = req.method === "GET" || req.method === "HEAD" ? "" : await req.clone().text();
     let body: unknown = text;
