@@ -35,6 +35,13 @@ describe("lists", () => {
     expect(await listsRepo.findById("ffffffff-ffff-ffff-ffff-ffffffffffff")).toBeUndefined();
   });
 
+  test("findById matches nothing for a LIKE wildcard or a too-short prefix", async () => {
+    const list = await mkList((await mkUser("ada")).id, "Reads", "public");
+    for (const id of ["%", "_", "________", list.id.slice(0, 7)]) {
+      expect(await listsRepo.findById(id)).toBeUndefined();
+    }
+  });
+
   test("a user's lists: read-later pinned first, then newest; strangers see public only", async () => {
     const ada = await mkUser("ada");
     await mkList(ada.id, "Public", "public");

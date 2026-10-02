@@ -8,12 +8,22 @@ export function encodeCursor(c: Cursor): string {
   return btoa(`${c.createdAt}|${c.id}`);
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// A client-supplied cursor, or null unless both fields are what the repositories
+// bind into SQL (a timestamp and a uuid); anything else would be a 500.
+export function validCursor(c: { createdAt?: unknown; id?: unknown } | null | undefined): Cursor | null {
+  const { createdAt, id } = c ?? {};
+  if (typeof createdAt !== "string" || typeof id !== "string") return null;
+  if (Number.isNaN(Date.parse(createdAt)) || !UUID.test(id)) return null;
+  return { createdAt, id };
+}
+
 export function decodeCursor(raw: string | undefined | null): Cursor | null {
   if (!raw) return null;
   try {
     const [createdAt, id] = atob(raw).split("|");
-    if (!createdAt || !id) return null;
-    return { createdAt, id };
+    return validCursor({ createdAt, id });
   } catch {
     return null;
   }

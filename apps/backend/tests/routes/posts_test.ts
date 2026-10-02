@@ -69,13 +69,17 @@ describe("auth guards", () => {
 describe("timelines", () => {
   test("the global timeline is the default, with viewer and language filter", async () => {
     vi.mocked(postsService.globalTimeline).mockResolvedValue({ items: [row], nextCursor: "next" });
-    const cursor = encodeCursor({ createdAt: "2026-01-01T00:00:00.000Z", id: "x" });
+    const cursor = encodeCursor({ createdAt: "2026-01-01T00:00:00.000Z", id: "00000000-0000-4000-8000-000000000001" });
     const res = await api.request(`/api/posts?cursor=${cursor}&langMode=show&langs=en,az`);
     expect(await res.json()).toEqual({ items: [{ id: "p1" }], nextCursor: "next" });
-    expect(postsService.globalTimeline).toHaveBeenCalledWith({ createdAt: "2026-01-01T00:00:00.000Z", id: "x" }, null, {
-      mode: "show",
-      langs: ["en", "az"],
-    });
+    expect(postsService.globalTimeline).toHaveBeenCalledWith(
+      { createdAt: "2026-01-01T00:00:00.000Z", id: "00000000-0000-4000-8000-000000000001" },
+      null,
+      {
+        mode: "show",
+        langs: ["en", "az"],
+      },
+    );
   });
 
   test("?scope=local serves the local timeline", async () => {

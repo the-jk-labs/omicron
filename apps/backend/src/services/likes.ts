@@ -4,6 +4,7 @@ import * as postsRepo from "@/db/repositories/posts.ts";
 import * as relationsRepo from "@/db/repositories/relations.ts";
 import { forbidden, notFound } from "@/lib/http.ts";
 import * as notifications from "@/services/notifications.ts";
+import { assertVisible } from "@/services/posts.ts";
 
 // Business logic for likes. Returns the fresh stats so the client can update
 // the count + toggle state without a second request.
@@ -23,6 +24,8 @@ export async function like(userId: string, postId: string) {
       ? await relationsRepo.hasRemote("block", userId, post.post.remoteActorId)
       : false;
   if (blocked) throw forbidden("You cannot like this post.");
+  // Only a post the viewer may read can be liked (not a draft, nor a private account's).
+  await assertVisible(post, userId);
   await likesRepo.add(postId, userId);
   // Notify the post's author (local posts only; remote posts have no local
   // recipient and remote likes aren't federated out from here).

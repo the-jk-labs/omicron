@@ -34,6 +34,15 @@ describe("lookups", () => {
     expect(await postsRepo.findById("ffffffff-ffff-ffff-ffff-ffffffffffff")).toBe(null);
   });
 
+  // Route params and remote inReplyTo URLs reach this lookup raw, so `%` and `_`
+  // must never act as LIKE wildcards, nor a short prefix match some post.
+  test("findById matches nothing for a LIKE wildcard or a too-short prefix", async () => {
+    const post = await mkPost((await mkUser("ada")).id, "p");
+    for (const id of ["%", "_", "________", `${post.id.slice(0, 7)}%`, post.id.slice(0, 7)]) {
+      expect(await postsRepo.findById(id)).toBe(null);
+    }
+  });
+
   test("by author slug, by retired slug, by apId, by external id", async () => {
     const [ada, bob] = [await mkUser("ada"), await mkUser("bob")];
     const post = await mkPost(ada.id, "hello");

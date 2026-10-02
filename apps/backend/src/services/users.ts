@@ -108,6 +108,9 @@ export async function updateProfile(
     patch.customSectionHtml = renderMarkdown(source);
   }
 
+  // Validate the links before the first write, so a bad one leaves nothing saved.
+  const links = input.links === undefined ? undefined : sanitizeLinks(input.links);
+
   if (input.tags !== undefined) {
     const slugs = normalizeTags(input.tags);
     if (slugs.length > MAX_PROFILE_TAGS) {
@@ -116,8 +119,8 @@ export async function updateProfile(
     await tagsRepo.setUserTags(userId, slugs);
   }
 
-  if (input.links !== undefined) {
-    await linksRepo.replaceForUser(userId, sanitizeLinks(input.links));
+  if (links !== undefined) {
+    await linksRepo.replaceForUser(userId, links);
   }
 
   // A tags/links-only update touches no user columns; drizzle rejects an empty

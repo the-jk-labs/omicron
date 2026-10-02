@@ -6,6 +6,7 @@ import { forbidden, notFound } from "@/lib/http.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { queue } from "@/queue/queue.ts";
 import * as notifications from "@/services/notifications.ts";
+import { assertVisible } from "@/services/posts.ts";
 
 // Business logic for recommending ("reposting") a post — federates as an
 // ActivityPub Announce/Undo(Announce) to the recommender's remote followers.
@@ -28,6 +29,8 @@ export async function recommend(userId: string, postId: string) {
       ? await relationsRepo.hasRemote("block", userId, post.post.remoteActorId)
       : false;
   if (blocked) throw forbidden("You cannot recommend this post.");
+  // Recommending federates an Announce, so it must never reach a post others can't read.
+  await assertVisible(post, userId);
 
   await recommendationsRepo.add(postId, userId);
   // Notify the post's author (local posts only; a remote post's author has no

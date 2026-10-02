@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { commentRow, commentWithAuthor, postWithAuthor, remotePostWithAuthor, userRow } from "../fixtures.ts";
+import { commentRow, commentWithAuthor, postWithAuthor, remotePostWithAuthor, userRow, uuid } from "../fixtures.ts";
 
 vi.mock(import("@/db/repositories/commentLikes.ts"));
 vi.mock(import("@/db/repositories/comments.ts"));
@@ -137,27 +137,16 @@ describe("create", () => {
     expect(commentsRepo.create).not.toHaveBeenCalled();
   });
 
-  // BUG: create() looks the post up with the unfiltered postsRepo.findById and
-  // never applies the visibility rules a reader gets (assertVisible in
-  // services/posts.ts). Anyone who knows a post id can comment on — and notify
-  // the author of — a draft, a scheduled post, or a private account's post.
-  test.fails("BUG: refuses to comment on someone else's draft", async () => {
+  // Commenting also notifies the author, so it follows the reader's visibility rules.
+  test("refuses to comment on someone else's draft", async () => {
     vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ id: "p1", status: "draft" }, { id: "author" }));
     await expect(create("viewer", "p1", "hi")).rejects.toMatchObject({ status: 404 });
   });
 
-  test.fails("BUG: refuses to comment on a private account's post from a non-follower", async () => {
+  test("refuses to comment on a private account's post from a non-follower", async () => {
     vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ id: "p1" }, { id: "author", isPrivate: true }));
     vi.mocked(usersRepo.findById).mockResolvedValue(userRow({ id: "author", isPrivate: true }));
     await expect(create("viewer", "p1", "hi")).rejects.toMatchObject({ status: 404 });
-  });
-
-  // BUG: getPost() refuses any id that is not hex (so LIKE wildcards never reach
-  // the prefix match), but create() hands the raw route param to findById,
-  // whose prefix lookup is `id::text like '<id>%'`. "%" then matches every post.
-  test.fails("BUG: never passes a LIKE wildcard through to the post lookup", async () => {
-    await create("viewer", "%", "hi").catch(() => {});
-    expect(postsRepo.findById).not.toHaveBeenCalledWith("%");
   });
 });
 
@@ -260,7 +249,7 @@ describe("list", () => {
 
   test("pages top-level comments and only fetches replies for the kept page", async () => {
     const tops = Array.from({ length: DEFAULT_PAGE_SIZE + 1 }, (_, i) =>
-      commentWithAuthor({ id: `t${i}`, createdAt: new Date(Date.UTC(2026, 0, 1, 0, 0, 59 - i)) }),
+      commentWithAuthor({ id: uuid(i), createdAt: new Date(Date.UTC(2026, 0, 1, 0, 0, 59 - i)) }),
     );
     vi.mocked(commentsRepo.listByPost).mockResolvedValue(tops);
     vi.mocked(commentsRepo.listReplies).mockResolvedValue([]);
@@ -277,10 +266,7 @@ describe("list", () => {
     expect(await list("p1", null, null)).toEqual({ items: [], nextCursor: null });
   });
 
-  // BUG: list() reads comments straight off the post id with no visibility
-  // check, so the responses on a draft or a private account's post are
-  // readable by anyone who has the post id.
-  test.fails("BUG: hides the comments on someone else's draft", async () => {
+  test("hides the comments on someone else's draft", async () => {
     vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ id: "p1", status: "draft" }, { id: "author" }));
     vi.mocked(commentsRepo.listByPost).mockResolvedValue([commentWithAuthor({ id: "t1" })]);
     vi.mocked(commentsRepo.listReplies).mockResolvedValue([]);

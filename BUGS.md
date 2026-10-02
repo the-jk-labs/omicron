@@ -17,136 +17,7 @@ user or operator will hit, **Low** = edge case or cosmetic.
 
 ---
 
-## Access control and visibility
-
-### B1. Likes, comments and recommendations ignore post visibility — High
-- **Where:** `src/services/likes.ts` `like` (line 16), `src/services/comments.ts`
-  `create` (line 25), `src/services/recommendations.ts` `recommend` (line 20).
-- **Symptom:** any signed-in user who has a post's id can like, comment on, or
-  recommend someone else's **draft**, **scheduled** post, or a **private
-  account's** post they don't follow. Commenting also notifies the author;
-  recommending queues `send_recommend`, which **federates an Announce of the
-  unpublished/private post** to the recommender's remote followers.
-- **Root cause:** these services load the post with the unfiltered
-  `postsRepo.findById` and never apply the reader rules that `getPost` applies
-  via `assertVisible` (`src/services/posts.ts`).
-- **Fix idea:** load through `postsService.getPost(id, viewerId)` (or export and
-  reuse `assertVisible`) before acting.
-- **Tests:** `tests/services/likes_test.ts` ("refuses to like someone else's
-  draft / scheduled post"), `tests/services/comments_test.ts` ("refuses to
-  comment on someone else's draft", "… private account's post …"),
-  `tests/services/recommendations_test.ts` ("refuses to recommend (and
-  federate) someone else's draft").
-
-### B2. Comment listing ignores post visibility — High
-- **Where:** `src/services/comments.ts` `list` (line 129), reached by
-  `GET /api/posts/:id/comments`.
-- **Symptom:** the comments on a draft or on a private account's post are
-  readable by anyone who has the post id, signed in or not.
-- **Root cause:** `list` reads comments straight off the post id with no
-  visibility check on the post.
-- **Fix idea:** resolve the post through `getPost(id, viewerId)` first.
-- **Test:** `tests/services/comments_test.ts` ("hides the comments on someone
-  else's draft").
-
-### B3. LIKE-wildcard ids reach the post prefix lookup — High
-- **Where:** `src/db/repositories/posts.ts` `findById` (line 99) does
-  `id::text like '<id>%'` for non-UUID input. Callers that pass the raw route
-  param: `likes.like`, `comments.create`, `recommendations.recommend`,
-  `moderation.report`, `posts.deletePost`, `posts.updatePost`.
-- **Symptom:** an id of `%` matches every post, so `POST /api/posts/%/like`
-  likes (or comments on / recommends / reports) the instance's **oldest post**.
-  A moderator's `DELETE /api/posts/%` deletes the oldest post.
-- **Root cause:** only `getPost` validates the id (`/^[0-9a-f-]{8,}$/i`) before
-  calling `findById`; the other paths don't.
-- **Reachable from other servers too:** `src/federation/note.ts`
-  `findPostByApUri` takes the post id from the path of a remote Note's
-  `inReplyTo` URL (`https://<us>/posts/<id>`) and passes it to the same prefix
-  lookup. `_` is a LIKE wildcard that URLs carry unencoded, so a hostile instance
-  can thread a reply onto whichever public post sorts first. Pinned in
-  `tests/federation/note_test.ts` ("a LIKE wildcard in a remote inReplyTo never
-  reaches the post lookup").
-- **Same pattern, lower impact:** `src/db/repositories/readingLists.ts`
-  `findById` (line 53) does the same prefix `like` for list ids from
-  `/api/lists/:id`. Visibility and ownership checks still apply afterwards, so
-  `%` only ever reaches the oldest public (or own) list.
-- **Fix idea:** validate inside `findById` itself (hex/dash only, minimum length)
-  so no caller can forget, or escape `%`/`_`.
-- **Tests:** "never passes a LIKE wildcard through to the post lookup" in
-  `tests/services/{likes,comments,recommendations,moderation,posts}_test.ts`.
-
-### B4. Deleted accounts can still be followed — Medium
-- **Where:** `src/services/follows.ts` `follow` (line 19).
-- **Symptom:** an admin-deleted account (inside its 30-day restore window) can
-  still be followed, and gets a follow notification row.
-- **Root cause:** `follow` doesn't check `target.deletedAt`, while `profile`,
-  `followersOf` and `followingOf` treat a deleted account as not found.
-- **Test:** `tests/services/follows_test.ts` ("refuses to follow a deleted account").
-
-### B5. Deleted accounts' reading lists stay visible — Medium
-- **Where:** `src/services/readingLists.ts` `listsForProfile` (line 43).
-- **Symptom:** a deleted account's public reading lists are still listed.
-- **Root cause:** no `deletedAt` check, unlike the other profile surfaces.
-- **Test:** `tests/services/readingLists_test.ts` ("a deleted account's lists are not found").
-
-## Moderation and federation
-
-### B6. Moderator post takedowns are never federated — High
-- **Where:** `src/services/moderation.ts` `removePost` (line 544), used by
-  `DELETE /api/admin/posts/:id` (`src/routes/admin.ts` line 508).
-- **Symptom:** a published post removed by a moderator disappears locally but
-  stays on every remote instance it was delivered to. This is the case where
-  removal matters most (abuse, illegal content).
-- **Root cause:** unlike `posts.deletePost`, it never queues
-  `federate_post_delete`.
-- **Test:** `tests/services/moderation_test.ts` ("a moderator takedown of a
-  published post is federated as a Delete").
-
-### B7. The "can't block your own instance" check misses wizard-set and ported domains — Low
-- **Where:** `src/services/moderation.ts` `blockDomain` (self-check at line 572).
-- **Symptom:** the "You can't block your own instance" guard can be bypassed
-  in two ways:
-  1. it compares against the boot-time `config.APP_DOMAIN`, not the domain
-     saved by the setup wizard (`getAppDomain()`), so on a wizard-configured
-     instance (`APP_DOMAIN` still `localhost:5173`) the real domain is blockable;
-  2. `APP_DOMAIN` may carry a port (`blog.example.com:8443`), which
-     `hostMatchesDomain` doesn't strip, so the guard misses the host.
-- **Tests:** `tests/services/moderation_test.ts` ("refuses to block the domain
-  configured in the setup wizard", "… when APP_DOMAIN includes a port").
-
-## Partial writes on rejected requests
-
-### B8. Profile update saves tags, then fails on a bad link — Medium
-- **Where:** `src/services/users.ts` `updateProfile`: tags are written at line
-  115, links are validated at line 119.
-- **Symptom:** `PATCH` with new tags plus an invalid link answers **400**, but
-  the new tags are already saved.
-- **Fix idea:** validate everything (including `sanitizeLinks`) before the
-  first write, or wrap it in a transaction.
-- **Test:** `tests/services/users_test.ts` ("a rejected update leaves the profile tags untouched").
-
-### B9. Admin user edit saves the profile, then fails on a bad email — Medium
-- **Where:** `src/services/moderation.ts` `updateUserDetails` (line 492).
-- **Symptom:** an admin edit with a new display name and an invalid or taken
-  email answers **400**, but the display name has already changed.
-- **Root cause:** `usersService.updateProfile` runs before the email is validated.
-- **Test:** `tests/services/moderation_test.ts` ("a rejected email leaves the profile fields untouched").
-
 ## Input handling and robustness
-
-### B10. Crafted pagination cursors cause 500s — Medium
-- **Where:** `src/lib/pagination.ts` `decodeCursor` (line 11);
-  `src/services/feed.ts` `decodeFeedCursor` (line 25).
-- **Symptom:** a base64 cursor like `btoa("x|y")` passes decoding. The
-  repositories then get `new Date("x")` (Invalid Date, which throws when
-  serialized) and a non-UUID id, so **public feeds answer 500** for a malformed
-  query parameter. The home feed's JSON cursor has the same problem in its
-  inner fields.
-- **Fix idea:** reject a cursor whose timestamp isn't a valid date or whose id
-  isn't a UUID (return `null`, i.e. start from the top).
-- **Tests:** `tests/lib/pagination_test.ts` (two `BUG:` tests),
-  `tests/services/feed_test.ts` ("a cursor with an invalid inner timestamp restarts from the top"),
-  `tests/integration/app_test.ts` ("a crafted cursor on the public timeline is not a 500", end to end).
 
 ### B11. `htmlToText` throws on out-of-range numeric entities — Medium
 - **Where:** `src/lib/html.ts` line 23.
@@ -291,7 +162,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   publish and on edit; `ingestContent` says it mirrors them but never does.
 - **Test:** "a published ingest is submitted to IndexNow like an editor publish".
 
-## Wizard-configured domain ignored (continued)
+## Wizard-configured domain ignored
 
 ### B27. IndexNow never submits on a wizard-configured instance — Medium
 - **Where:** `src/services/indexNow.ts` `origin()`.
@@ -299,7 +170,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   not the domain saved by the setup wizard (`getAppDomain()`). An instance set
   up through the wizard keeps `APP_DOMAIN` at its `localhost:5173` default, so
   `origin()` returns null and IndexNow silently does nothing, even when switched
-  on. Same root cause as B7.
+  on. (`moderation.blockDomain` already reads `getAppDomain()`.)
 - **Test:** `tests/services/indexNow_test.ts` ("submits on an instance whose domain was set in the setup wizard").
 
 ## Stock photos
@@ -324,7 +195,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
 - **Tests:** "a cache directory that cannot be created still returns the card/image"
   in `tests/services/{ogCard,profileCard,shareImage}_test.ts`.
 
-## Profiles of deleted accounts (continued)
+## Profiles of deleted accounts
 
 ### B30. A deleted account's recommendations tab keeps listing its boosts — Low
 - **Where:** `src/routes/users.ts`, `GET /api/users/:username/posts` and
@@ -375,7 +246,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
 - **Fix idea:** build email links from `getOrigin()` (the wizard → env →
   default chain) at send time, not from the import-time `baseURL`.
 - **Test:** `tests/auth/auth_test.ts` ("the verification link uses the domain set in the setup wizard").
-- Related: B7, B27, B39 share the root cause (boot-time `APP_DOMAIN` used where
+- Related: B27, B39 share the root cause (boot-time `APP_DOMAIN` used where
   the effective domain is meant).
 
 ## Federation output
@@ -452,7 +323,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   `attributionDomains`. That value is the boot-time `APP_DOMAIN`, so on an
   instance configured through the setup wizard every actor advertises
   `localhost:5173`, and shared articles never get the byline. Same root cause
-  as B7, B27 and B33.
+  as B27 and B33.
 - **Fix idea:** pass `await getAppDomain()` instead.
 - **Test:** `tests/integration/app_test.ts` ("vouches for the domain set in the setup wizard").
 
@@ -467,8 +338,8 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   deletes, and keeps receiving our posts. `federation/remote.ts` already strips
   the port (`handleHost`), so handle lookups are blocked correctly.
 - **Fix idea:** use `URL.hostname`, or strip a port inside `isBlocked` /
-  `hostMatchesDomain` so every caller is covered. Same port blindness as the
-  second B7 test.
+  `hostMatchesDomain` so every caller is covered. (`moderation.blockDomain`
+  already strips the port via `normalizeDomain`.)
 - **Also:** `remoteActorsRepo.removeByDomain` compares the stored `host`, which
   `cacheActor` takes from `URL.host` (port included), so defederating
   `evil.example` leaves cached actors on `evil.example:8443`, and their posts, in place.
@@ -521,18 +392,6 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
 - **Fix idea:** `comments.author_id is distinct from posts.author_id` (same for the
   likes subquery, for symmetry).
 - **Test:** `tests/integration/db/repositories/posts_test.ts` ("federated replies count toward a local post's trending score").
-
-### B45. A malformed post id in the comments URL is a 500 — Low
-- **Where:** `src/routes/posts.ts` `GET /api/posts/:id/comments` →
-  `services/comments.ts` `list` → `commentsRepo.listByPost`, which compares the raw
-  route param with the uuid `post_id` column. (No post lookup happens first; see
-  also B2.)
-- **Symptom:** `GET /api/posts/not-a-uuid/comments` (or a short id prefix, which
-  every other post route accepts) makes Postgres reject the query and the API
-  answers 500, logging an error for what is a bad URL.
-- **Fix idea:** resolve the post first (`postsRepo.findById`, which also fixes B2's
-  visibility gap) and 404 when it is missing.
-- **Test:** `tests/integration/app_test.ts` ("comments of a malformed post id are not a 500").
 
 ## Rate limiting
 

@@ -4,7 +4,7 @@
 // service hands them, then page through to the end — so they check what a
 // reader scrolling the feed actually receives, not how the merge is written.
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { postWithAuthor } from "../fixtures.ts";
+import { postWithAuthor, uuid } from "../fixtures.ts";
 
 vi.mock(import("@/db/repositories/posts.ts"));
 vi.mock(import("@/db/repositories/recommendations.ts"));
@@ -24,7 +24,7 @@ function authored(id: string, s: number): Authored {
   return postWithAuthor({ id, createdAt: at(s) });
 }
 
-function recommended(postId: string, s: number, recId = `rec-${postId}-${s}`): FeedRecommendationRow {
+function recommended(postId: string, s: number, recId = uuid(s)): FeedRecommendationRow {
   return {
     ...postWithAuthor({ id: postId, createdAt: at(0) }),
     recommendationId: recId,
@@ -124,7 +124,7 @@ describe("homeFeed", () => {
   });
 
   test("pages through two large streams without skipping or repeating anything", async () => {
-    const a = Array.from({ length: 45 }, (_, i) => authored(`a${String(i).padStart(2, "0")}`, i * 2));
+    const a = Array.from({ length: 45 }, (_, i) => authored(uuid(i), i * 2));
     const r = Array.from({ length: 37 }, (_, i) => recommended(`r${String(i).padStart(2, "0")}`, i * 2 + 1));
     serve(a, r);
     const pages = await scrollAll();
@@ -135,12 +135,12 @@ describe("homeFeed", () => {
   });
 
   test("a stream that is entirely older than the other is re-offered, not lost", async () => {
-    const old = Array.from({ length: 5 }, (_, i) => authored(`old${i}`, i));
+    const old = Array.from({ length: 5 }, (_, i) => authored(uuid(i), i));
     const fresh = Array.from({ length: 30 }, (_, i) => recommended(`new${i}`, 1_000 + i));
     serve(old, fresh);
     const all = (await scrollAll()).flat();
     expect(all.slice(0, 30).every((id) => id.startsWith("new"))).toBe(true);
-    expect(all.slice(30).toSorted()).toEqual(["old0", "old1", "old2", "old3", "old4"]);
+    expect(all.slice(30).toSorted()).toEqual([0, 1, 2, 3, 4].map((i) => uuid(i)));
   });
 
   test("terminates even when every authored row is a duplicate of a recommendation", async () => {
@@ -170,12 +170,8 @@ describe("homeFeed", () => {
     expect(second.nextCursor).toBe(null);
   });
 
-  // BUG: the cursor is a base64 JSON blob that is trusted field by field. A
-  // crafted `{"authored":{"cursor":{"createdAt":"x","id":"y"}}}` reaches the
-  // repository as a cursor whose timestamp is not a date — a 500 from a public
-  // query parameter. A cursor whose inner fields are invalid should be treated
-  // like any other malformed cursor (restart from the top).
-  test.fails("BUG: a cursor with an invalid inner timestamp restarts from the top", async () => {
+  // The cursor is client-supplied; a bad inner field would otherwise be a 500.
+  test("a cursor with an invalid inner timestamp restarts from the top", async () => {
     serve([authored("a", 1)], []);
     const crafted = btoa(JSON.stringify({ authored: { cursor: { createdAt: "x", id: "y" }, done: false } }));
     await homeFeed("me", crafted);

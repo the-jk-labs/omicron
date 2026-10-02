@@ -7,6 +7,11 @@ import type { Comment, Post, RemoteActor, User } from "@/db/schema.ts";
 
 const T0 = new Date("2026-01-01T00:00:00.000Z");
 
+/** A valid uuid that sorts by `n`, for rows whose id ends up in a pagination cursor. */
+export function uuid(n: number): string {
+  return `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+}
+
 export function userRow(overrides: Partial<User> = {}): User {
   return {
     id: "user-1",

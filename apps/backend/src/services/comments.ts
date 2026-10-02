@@ -8,6 +8,7 @@ import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { queue } from "@/queue/queue.ts";
 import * as notifications from "@/services/notifications.ts";
+import { assertVisible } from "@/services/posts.ts";
 
 // Business logic for comments. Content is plain text (max 2 000 chars); the
 // client renders it escaped, never as HTML. Comments are single-level threaded:
@@ -38,6 +39,7 @@ export async function create(authorId: string, postId: string, content: string, 
       ? await relationsRepo.hasRemote("block", authorId, post.post.remoteActorId)
       : false;
   if (blocked) throw forbidden("You cannot comment on this post.");
+  await assertVisible(post, authorId);
 
   // Resolve the parent: replies attach to a top-level comment, so replying to a
   // reply re-targets its parent (keeps the thread one level deep).
@@ -131,7 +133,11 @@ export async function list(
   cursor: Cursor | null,
   viewerId: string | null,
 ): Promise<{ items: EnrichedComment[]; nextCursor: string | null }> {
-  const rows = await commentsRepo.listByPost(postId, cursor, viewerId, DEFAULT_PAGE_SIZE);
+  // The responses on a post are as private as the post itself.
+  const post = await postsRepo.findById(postId);
+  if (!post) throw notFound("Post not found.");
+  await assertVisible(post, viewerId);
+  const rows = await commentsRepo.listByPost(post.post.id, cursor, viewerId, DEFAULT_PAGE_SIZE);
   const hasMore = rows.length > DEFAULT_PAGE_SIZE;
   const tops = hasMore ? rows.slice(0, DEFAULT_PAGE_SIZE) : rows;
   const last = tops.at(-1);

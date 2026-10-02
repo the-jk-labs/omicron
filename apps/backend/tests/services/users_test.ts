@@ -167,9 +167,7 @@ describe("updateProfile", () => {
     expect(linksRepo.replaceForUser).toHaveBeenCalledWith("me", []);
   });
 
-  // BUG: tags are written before links are validated. A request carrying new
-  // tags and one bad link answers 400 — and the new tags are already saved.
-  test.fails("BUG: a rejected update leaves the profile tags untouched", async () => {
+  test("a rejected update leaves the profile tags untouched", async () => {
     await updateProfile("me", { tags: ["new"], links: [{ platform: "myspace", url: "x.com" }] }).catch(() => {});
     expect(tagsRepo.setUserTags).not.toHaveBeenCalled();
   });

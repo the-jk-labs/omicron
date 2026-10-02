@@ -53,16 +53,12 @@ describe("malformed input is a client error, never a 500", () => {
     expect((await res.json()).items.length).toBeGreaterThan(0);
   });
 
-  // BUG (B10): decodeCursor accepts any base64 "a|b"; the repository then binds
-  // an Invalid Date and a non-UUID id, and Postgres rejects the query.
-  test.fails("BUG: a crafted cursor on the public timeline is not a 500", async () => {
+  test("a crafted cursor on the public timeline is not a 500", async () => {
     const res = await get(`/api/posts?cursor=${encodeURIComponent(btoa("x|y"))}`);
     expect(res.status).toBeLessThan(500);
   });
 
-  // BUG (B45): the comments listing passes the raw route id to a uuid column
-  // with no lookup or validation first, so any non-UUID id is a database error.
-  test.fails("BUG: comments of a malformed post id are not a 500", async () => {
+  test("comments of a malformed post id are not a 500", async () => {
     const res = await get("/api/posts/not-a-uuid/comments");
     expect(res.status).toBeLessThan(500);
   });

@@ -24,12 +24,15 @@ describe("signed in", () => {
   test("lists with a decoded cursor", async () => {
     api.signIn();
     vi.mocked(notifications.list).mockResolvedValue({ items: [], nextCursor: null });
-    const cursor = encodeCursor({ createdAt: "2026-01-01T00:00:00.000Z", id: "n9" });
+    const cursor = encodeCursor({ createdAt: "2026-01-01T00:00:00.000Z", id: "00000000-0000-4000-8000-000000000009" });
     expect(await (await api.request(`/api/notifications?cursor=${cursor}`)).json()).toEqual({
       items: [],
       nextCursor: null,
     });
-    expect(notifications.list).toHaveBeenCalledWith("me", { createdAt: "2026-01-01T00:00:00.000Z", id: "n9" });
+    expect(notifications.list).toHaveBeenCalledWith("me", {
+      createdAt: "2026-01-01T00:00:00.000Z",
+      id: "00000000-0000-4000-8000-000000000009",
+    });
   });
 
   test("an undecodable cursor starts from the top", async () => {

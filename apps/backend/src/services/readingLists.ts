@@ -42,7 +42,7 @@ export async function myLists(userId: string): Promise<ListWithCount[]> {
 // else sees only public lists.
 export async function listsForProfile(username: string, viewerId: string | null): Promise<ListWithCount[]> {
   const owner = await usersRepo.findByUsername(username);
-  if (!owner) throw notFound("User not found.");
+  if (!owner || owner.deletedAt) throw notFound("User not found.");
   const isOwner = viewerId === owner.id;
   if (isOwner) await listsRepo.ensureReadLater(owner.id);
   return withCounts(await listsRepo.listForUser(owner.id, !isOwner), viewerId);

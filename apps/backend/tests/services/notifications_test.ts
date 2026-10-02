@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, test, vi } from "vitest";
+import { uuid } from "../fixtures.ts";
 
 vi.mock(import("@/db/repositories/notifications.ts"));
 
@@ -68,7 +69,7 @@ describe("unnotify", () => {
 function row(i: number, overrides: Partial<NotificationRow> = {}): NotificationRow {
   return {
     notification: {
-      id: `n${i}`,
+      id: uuid(i),
       recipientId: "r",
       type: "like",
       actorId: "a",
@@ -91,7 +92,7 @@ describe("list", () => {
     vi.mocked(notificationsRepo.listFor).mockResolvedValue([row(1), row(2)]);
     const page = await list("r", null);
     expect(page.nextCursor).toBe(null);
-    expect(page.items.map((n) => n.id)).toEqual(["n1", "n2"]);
+    expect(page.items.map((n) => n.id)).toEqual([uuid(1), uuid(2)]);
     expect(notificationsRepo.listFor).toHaveBeenCalledWith("r", null, DEFAULT_PAGE_SIZE);
   });
 

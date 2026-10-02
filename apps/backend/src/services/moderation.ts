@@ -1,5 +1,4 @@
 import bcrypt from "bcryptjs";
-import { config } from "@/config.ts";
 import * as accountsRepo from "@/db/repositories/accounts.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
@@ -25,13 +24,14 @@ import {
   notifyModeratorDeleted,
   notifyModeratorGranted,
   notifyModeratorRevoked,
-  notifyPostAuthorRemoved,
   notifyReinstated,
   notifyRestored,
   notifySuspended,
   notifyVerified,
 } from "@/services/accountNotices.ts";
 import { federationRunning } from "@/services/federationState.ts";
+import { getAppDomain } from "@/services/instanceSetup.ts";
+import * as postsService from "@/services/posts.ts";
 import type { ProfileLinkInput } from "@/services/users.ts";
 import * as usersService from "@/services/users.ts";
 
@@ -496,25 +496,31 @@ export async function updateUserDetails(actorId: string, targetId: string, input
   assertCanModerateAccount(actor, target);
 
   const { email, ...profileInput } = input;
-  if (Object.keys(profileInput).length > 0) {
-    await usersService.updateProfile(targetId, profileInput);
-  }
-
-  if (email !== undefined) {
-    const normalized = email.trim().toLowerCase();
+  // Validate the email before any write, so a rejected one leaves the profile untouched.
+  const normalized = email?.trim().toLowerCase();
+  if (normalized !== undefined) {
     if (!normalized) throw badRequest("Enter a valid email address.");
     if (normalized.length > 254) throw badRequest("Email must be 254 characters or fewer.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
       throw badRequest("Enter a valid email address.");
     }
+    if (normalized !== target.email.toLowerCase()) {
+      const existing = await usersRepo.findByEmail(normalized);
+      if (existing && existing.id !== targetId) throw badRequest("That email is already in use.");
+    }
+  }
+
+  if (Object.keys(profileInput).length > 0) {
+    await usersService.updateProfile(targetId, profileInput);
+  }
+
+  if (normalized !== undefined) {
     // Case-only canonicalisation needs no verification round-trip.
     if (normalized !== target.email) {
       if (normalized === target.email.toLowerCase()) {
         await usersRepo.update(targetId, { email: normalized });
         await accountsRepo.setCredentialAccountId(targetId, normalized);
       } else {
-        const existing = await usersRepo.findByEmail(normalized);
-        if (existing && existing.id !== targetId) throw badRequest("That email is already in use.");
         const oldEmail = (await usersRepo.findById(targetId))?.email ?? target.email;
         await usersRepo.update(targetId, { email: normalized, emailVerified: false });
         await accountsRepo.setCredentialAccountId(targetId, normalized);
@@ -538,17 +544,11 @@ export async function updateUserDetails(actorId: string, targetId: string, input
 
 // ── Posts (moderator) ──────────────────────────────────────────────────────
 
-// Removes any local post (a moderator override — the author check in
-// services/posts.ts is bypassed here). Remote/cached posts cannot be deleted.
-// The author is told only on opt-in.
-export async function removePost(postId: string, deleterId: string, opts: NotifyOpt = {}): Promise<void> {
-  const row = await postsRepo.findById(postId);
-  if (!row) throw notFound("Post not found.");
-  if (row.post.remote) throw forbidden("Federated posts cannot be removed here.");
-  await postsRepo.remove(postId);
-  if (opts.notify) {
-    await notifyPostAuthorRemoved(row.post.authorId, deleterId, row.post.title);
-  }
+// Removes any local post (a moderator override of the author check). Goes
+// through deletePost so the takedown is federated as a Delete too. Remote/cached
+// posts cannot be deleted. The author is told only on opt-in.
+export function removePost(postId: string, deleterId: string, opts: NotifyOpt = {}): Promise<void> {
+  return postsService.deletePost(deleterId, true, postId, opts);
 }
 
 // ── Defederation (admin) ─────────────────────────────────────────────────
@@ -568,8 +568,10 @@ export function isDomainBlocked(host: string): Promise<boolean> {
 export async function blockDomain(input: string, reason: string): Promise<{ domain: string; purged: number }> {
   const domain = normalizeDomain(input);
   if (!domain) throw badRequest("Enter a valid domain, e.g. example.social.");
-  // Guard against locking ourselves out of our own instance.
-  if (hostMatchesDomain(config.APP_DOMAIN, domain)) {
+  // Guard against locking ourselves out of our own instance. The effective domain
+  // may be wizard-set and carry a port; normalizing reduces it to the bare host.
+  const ownHost = normalizeDomain(await getAppDomain());
+  if (ownHost && hostMatchesDomain(ownHost, domain)) {
     throw badRequest("You can't block your own instance.");
   }
   await blockedDomainsRepo.add(domain, (reason ?? "").trim().slice(0, 1000));

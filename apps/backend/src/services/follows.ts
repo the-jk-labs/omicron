@@ -21,7 +21,7 @@ export async function follow(
   targetUsername: string,
 ): Promise<{ state: "requested" | "following" }> {
   const target = await usersRepo.findByUsername(targetUsername);
-  if (!target) throw notFound("User not found.");
+  if (!target || target.deletedAt) throw notFound("User not found.");
   if (target.id === followerId) throw badRequest("You cannot follow yourself.");
   // A block (either direction) forbids following — the blocked user can't
   // re-follow, and the blocker can't follow whom they've blocked.

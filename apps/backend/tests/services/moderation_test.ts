@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import bcrypt from "bcryptjs";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { postWithAuthor, remotePostWithAuthor, userRow } from "../fixtures.ts";
+import { postWithAuthor, remotePostWithAuthor, userRow, uuid } from "../fixtures.ts";
 
 vi.mock(import("@/db/repositories/accounts.ts"));
 vi.mock(import("@/db/repositories/blockedDomains.ts"));
@@ -117,14 +117,6 @@ describe("report", () => {
       status: 400,
       message: "You can't report yourself.",
     });
-  });
-
-  // BUG: the raw subject id reaches findById's `id::text like '<id>%'` prefix
-  // lookup, so "%" files a report against whichever post is oldest.
-  test.fails("BUG: never passes a LIKE wildcard through to the post lookup", async () => {
-    vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ id: "oldest" }));
-    await mod.report("user", { subjectType: "post", subjectId: "%" }).catch(() => {});
-    expect(reportsRepo.create).not.toHaveBeenCalled();
   });
 });
 
@@ -409,18 +401,18 @@ describe("restore / purge / expiry", () => {
 
   test("listDeletedUsers attaches post counts and expiry, keyed on deletion time", async () => {
     const rows = [0, 1, 2].map((i) => ({
-      user: userRow({ id: `d${i}`, deletedAt: new Date(Date.UTC(2026, 4, 10 - i)) }),
+      user: userRow({ id: uuid(i), deletedAt: new Date(Date.UTC(2026, 4, 10 - i)) }),
       deletedByUsername: "mod",
     }));
     vi.mocked(usersRepo.listDeleted).mockResolvedValue(rows);
-    vi.mocked(postsRepo.countLocalByAuthors).mockResolvedValue(new Map([["d0", 4]]));
+    vi.mocked(postsRepo.countLocalByAuthors).mockResolvedValue(new Map([[uuid(0), 4]]));
     const out = await mod.listDeletedUsers(null, 2);
     expect(out.users.map((u) => [u.user.id, u.postCount])).toEqual([
-      ["d0", 4],
-      ["d1", 0],
+      [uuid(0), 4],
+      [uuid(1), 0],
     ]);
     expect(out.users[0].expiresAt).toEqual(mod.deletionExpiresAt(rows[0].user.deletedAt!));
-    expect(decodeCursor(out.nextCursor)).toEqual({ createdAt: rows[1].user.deletedAt!.toISOString(), id: "d1" });
+    expect(decodeCursor(out.nextCursor)).toEqual({ createdAt: rows[1].user.deletedAt!.toISOString(), id: uuid(1) });
     vi.mocked(usersRepo.countDeleted).mockResolvedValue(3);
     expect(await mod.countDeletedUsers("q")).toBe(3);
   });
@@ -541,10 +533,7 @@ describe("updateUserDetails", () => {
     await expect(mod.updateUserDetails("mod", "gone", { bio: "x" })).rejects.toMatchObject({ status: 404 });
   });
 
-  // BUG: the profile edit is applied before the email is validated. A request
-  // with a new display name and a malformed (or taken) email answers 400 —
-  // and the display name has already been changed.
-  test.fails("BUG: a rejected email leaves the profile fields untouched", async () => {
+  test("a rejected email leaves the profile fields untouched", async () => {
     await mod.updateUserDetails("mod", "user", { displayName: "Changed", email: "not-an-email" }).catch(() => {});
     expect(usersService.updateProfile).not.toHaveBeenCalled();
   });
@@ -565,11 +554,7 @@ describe("removePost", () => {
     await expect(mod.removePost("p", "mod")).rejects.toMatchObject({ status: 404 });
   });
 
-  // BUG: posts.deletePost tombstones a published post on remote instances
-  // (federate_post_delete); the moderator takedown path does not. A post
-  // removed by a moderator — the case where removal matters most — stays on
-  // every instance it was federated to.
-  test.fails("BUG: a moderator takedown of a published post is federated as a Delete", async () => {
+  test("a moderator takedown of a published post is federated as a Delete", async () => {
     vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ id: "p1" }, { id: "user" }));
     await mod.removePost("p1", "mod");
     expect(queue.add).toHaveBeenCalledWith("federate_post_delete", { postId: "p1", authorId: "user" });
@@ -607,10 +592,8 @@ describe("domain blocks", () => {
     await expect(mod.blockDomain("spam.example.com", "")).resolves.toBeDefined();
   });
 
-  // BUG: the self-block guard compares against the boot-time APP_DOMAIN, not the
-  // domain the setup wizard stored (the effective one, see getAppDomain). On a
-  // wizard-configured instance the admin can defederate their own domain.
-  test.fails("BUG: refuses to block the domain configured in the setup wizard", async () => {
+  // The guard reads the effective domain (getAppDomain), not the boot-time APP_DOMAIN.
+  test("refuses to block the domain configured in the setup wizard", async () => {
     config.APP_DOMAIN = "localhost:5173";
     vi.mocked(settingsRepo.get).mockImplementation(async (key: string) =>
       key === "instance.appDomain" ? "blog.example.com" : undefined,
@@ -618,9 +601,7 @@ describe("domain blocks", () => {
     await expect(mod.blockDomain("blog.example.com", "")).rejects.toMatchObject({ status: 400 });
   });
 
-  // BUG: APP_DOMAIN may carry a port, which hostMatchesDomain does not strip,
-  // so the guard misses the instance's own host.
-  test.fails("BUG: refuses to block this instance when APP_DOMAIN includes a port", async () => {
+  test("refuses to block this instance when APP_DOMAIN includes a port", async () => {
     config.APP_DOMAIN = "blog.example.com:8443";
     await expect(mod.blockDomain("blog.example.com", "")).rejects.toMatchObject({ status: 400 });
   });

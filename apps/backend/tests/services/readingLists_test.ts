@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { userRow } from "../fixtures.ts";
+import { userRow, uuid } from "../fixtures.ts";
 
 vi.mock(import("@/db/repositories/readingLists.ts"));
 vi.mock(import("@/db/repositories/users.ts"));
@@ -94,9 +94,7 @@ describe("listsForProfile", () => {
     await expect(listsForProfile("ghost", null)).rejects.toMatchObject({ status: 404 });
   });
 
-  // BUG: every other profile surface treats a deleted account as not found
-  // (follows.profile, followersOf, …), but its reading lists stay listed.
-  test.fails("BUG: a deleted account's lists are not found", async () => {
+  test("a deleted account's lists are not found", async () => {
     vi.mocked(usersRepo.findByUsername).mockResolvedValue(userRow({ id: "owner", deletedAt: new Date() }));
     vi.mocked(listsRepo.listForUser).mockResolvedValue([list({ userId: "owner" })]);
     await expect(listsForProfile("ada", null)).rejects.toMatchObject({ status: 404 });
@@ -175,7 +173,7 @@ describe("listItems", () => {
   test("queries by the resolved full id and pages on the item's own clock", async () => {
     vi.mocked(listsRepo.findById).mockResolvedValue(list({ id: "full-uuid" }));
     const rows = Array.from({ length: DEFAULT_PAGE_SIZE + 1 }, (_, i) => ({
-      itemId: `i${i}`,
+      itemId: uuid(i),
       itemCreatedAt: new Date(Date.UTC(2026, 0, 1, 0, 0, 59 - i)),
     }));
     vi.mocked(listsRepo.listItems).mockResolvedValue(rows as never);
@@ -184,7 +182,7 @@ describe("listItems", () => {
     expect(page.items).toHaveLength(DEFAULT_PAGE_SIZE);
     expect(decodeCursor(page.nextCursor)).toEqual({
       createdAt: rows[DEFAULT_PAGE_SIZE - 1].itemCreatedAt.toISOString(),
-      id: `i${DEFAULT_PAGE_SIZE - 1}`,
+      id: uuid(DEFAULT_PAGE_SIZE - 1),
     });
   });
 

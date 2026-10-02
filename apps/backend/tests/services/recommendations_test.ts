@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { postWithAuthor, remotePostWithAuthor } from "../fixtures.ts";
+import { postWithAuthor, remotePostWithAuthor, uuid } from "../fixtures.ts";
 
 vi.mock(import("@/db/repositories/posts.ts"));
 vi.mock(import("@/db/repositories/recommendations.ts"));
 vi.mock(import("@/db/repositories/relations.ts"));
 vi.mock(import("@/db/repositories/notifications.ts"));
+vi.mock(import("@/db/repositories/users.ts"));
+vi.mock(import("@/db/repositories/follows.ts"));
 vi.mock(import("@/queue/queue.ts"), () => ({ queue: { add: vi.fn<(...args: unknown[]) => void>() } as never }));
 
 import * as notificationsRepo from "@/db/repositories/notifications.ts";
@@ -63,19 +65,12 @@ describe("recommend", () => {
     await expect(recommend("me", "p2")).rejects.toMatchObject({ status: 403 });
   });
 
-  // BUG: recommend() uses the unfiltered findById with no visibility check.
-  // Recommending someone else's draft or a private account's post not only
-  // records it but queues send_recommend, which federates an Announce of a post
-  // nobody else may read to the recommender's remote followers.
-  test.fails("BUG: refuses to recommend (and federate) someone else's draft", async () => {
+  // Recommending queues send_recommend, which would federate an Announce of a
+  // post nobody else may read.
+  test("refuses to recommend (and federate) someone else's draft", async () => {
     vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ id: "p1", status: "draft" }, { id: "author" }));
     await expect(recommend("me", "p1")).rejects.toMatchObject({ status: 404 });
     expect(queue.add).not.toHaveBeenCalled();
-  });
-
-  test.fails("BUG: never passes a LIKE wildcard through to the post lookup", async () => {
-    await recommend("me", "%").catch(() => {});
-    expect(postsRepo.findById).not.toHaveBeenCalledWith("%");
   });
 });
 
@@ -105,7 +100,7 @@ describe("unrecommend", () => {
 function recRows(n: number): RecommendedPostRow[] {
   return Array.from({ length: n }, (_, i) => ({
     ...postWithAuthor({ id: `p${i}` }),
-    recommendationId: `r${i}`,
+    recommendationId: uuid(i),
     recommendedAt: new Date(Date.UTC(2026, 0, 1, 0, 0, 59 - i)),
   }));
 }

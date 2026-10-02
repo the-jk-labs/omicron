@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { postRow, postWithAuthor, remotePostWithAuthor, userRow } from "../fixtures.ts";
+import { postRow, postWithAuthor, remotePostWithAuthor, userRow, uuid } from "../fixtures.ts";
 
 vi.mock(import("@/db/repositories/follows.ts"));
 vi.mock(import("@/db/repositories/posts.ts"));
@@ -488,21 +488,12 @@ describe("deletePost", () => {
     vi.mocked(postsRepo.findById).mockResolvedValue(null);
     await expect(deletePost("me", true, "x")).rejects.toMatchObject({ status: 404 });
   });
-
-  // BUG: like getPost should, the delete path does not validate the id before
-  // findById's prefix match (`id::text like '<id>%'`). A moderator's
-  // DELETE /api/posts/% deletes the oldest post on the instance.
-  test.fails("BUG: never passes a LIKE wildcard through to the post lookup", async () => {
-    vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({}, { id: "author" }));
-    await deletePost("mod", true, "%").catch(() => {});
-    expect(postsRepo.remove).not.toHaveBeenCalled();
-  });
 });
 
 const pagedRows = (n: number, due = true) =>
   Array.from({ length: n }, (_, i) =>
     postWithAuthor({
-      id: `p${i}`,
+      id: uuid(i),
       createdAt: new Date(Date.UTC(2026, 0, 1, 0, 0, 59 - i)),
       publishAt: due ? new Date(Date.UTC(2027, 0, 1, 0, 0, i)) : null,
     }),
@@ -513,14 +504,14 @@ describe("pageOf / pageOfDue", () => {
     const r = pagedRows(3);
     const page = pageOf(r, 2);
     expect(page.items).toHaveLength(2);
-    expect(decodeCursor(page.nextCursor)).toEqual({ createdAt: r[1].post.createdAt.toISOString(), id: "p1" });
+    expect(decodeCursor(page.nextCursor)).toEqual({ createdAt: r[1].post.createdAt.toISOString(), id: uuid(1) });
     expect(pageOf(r, 3).nextCursor).toBe(null);
   });
 
   test("pageOfDue keys the cursor on publishAt", () => {
     const r = pagedRows(3);
     const page = pageOfDue(r, 2);
-    expect(decodeCursor(page.nextCursor)).toEqual({ createdAt: r[1].post.publishAt!.toISOString(), id: "p1" });
+    expect(decodeCursor(page.nextCursor)).toEqual({ createdAt: r[1].post.publishAt!.toISOString(), id: uuid(1) });
   });
 });
 
@@ -569,10 +560,7 @@ describe("relatedPosts", () => {
 
 function stream(authors: string[]): PostWithAuthor[] {
   return authors.map((a, i) =>
-    postWithAuthor(
-      { id: `p${String(i).padStart(4, "0")}`, createdAt: new Date(Date.UTC(2026, 0, 1) + (10_000 - i) * 1000) },
-      { id: a },
-    ),
+    postWithAuthor({ id: uuid(i), createdAt: new Date(Date.UTC(2026, 0, 1) + (10_000 - i) * 1000) }, { id: a }),
   );
 }
 

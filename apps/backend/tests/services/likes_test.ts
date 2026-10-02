@@ -6,6 +6,8 @@ vi.mock(import("@/db/repositories/likes.ts"));
 vi.mock(import("@/db/repositories/posts.ts"));
 vi.mock(import("@/db/repositories/relations.ts"));
 vi.mock(import("@/db/repositories/notifications.ts"));
+vi.mock(import("@/db/repositories/users.ts"));
+vi.mock(import("@/db/repositories/follows.ts"));
 
 import * as likesRepo from "@/db/repositories/likes.ts";
 import * as notificationsRepo from "@/db/repositories/notifications.ts";
@@ -113,27 +115,16 @@ describe("unlike", () => {
 });
 
 describe("visibility", () => {
-  // BUG: like() uses the unfiltered postsRepo.findById and never applies the
-  // reader's visibility rules (assertVisible in services/posts.ts), so a post
-  // its author has not published, or that a private account keeps to its
-  // followers, can still be liked by anyone with its id.
-  test.fails("BUG: refuses to like someone else's draft", async () => {
+  // Only a post the viewer may read can be liked (assertVisible in services/posts.ts).
+  test("refuses to like someone else's draft", async () => {
     vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ id: "p1", status: "draft" }, { id: "author" }));
     await expect(like("viewer", "p1")).rejects.toMatchObject({ status: 404 });
   });
 
-  test.fails("BUG: refuses to like someone else's scheduled post", async () => {
+  test("refuses to like someone else's scheduled post", async () => {
     vi.mocked(postsRepo.findById).mockResolvedValue(
       postWithAuthor({ id: "p1", status: "scheduled", publishAt: new Date(Date.now() + 3_600_000) }, { id: "author" }),
     );
     await expect(like("viewer", "p1")).rejects.toMatchObject({ status: 404 });
-  });
-
-  // BUG: the raw route param reaches findById's `id::text like '<id>%'` prefix
-  // lookup; "%" matches every post (getPost guards this, like() does not).
-  test.fails("BUG: never passes a LIKE wildcard through to the post lookup", async () => {
-    vi.mocked(postsRepo.findById).mockResolvedValue(localPost);
-    await like("viewer", "%").catch(() => {});
-    expect(postsRepo.findById).not.toHaveBeenCalledWith("%");
   });
 });

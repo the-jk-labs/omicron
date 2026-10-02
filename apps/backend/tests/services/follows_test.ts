@@ -76,10 +76,8 @@ describe("follow", () => {
     expect(followsRepo.createLocal).not.toHaveBeenCalled();
   });
 
-  // BUG: profile() treats a deleted account as not found, but follow() does
-  // not look at deletedAt, so anyone can still follow (and notify) an account
-  // an admin deleted.
-  test.fails("BUG: refuses to follow a deleted account", async () => {
+  // Like profile(), follow() treats an admin-deleted account as not found.
+  test("refuses to follow a deleted account", async () => {
     vi.mocked(usersRepo.findByUsername).mockResolvedValue(userRow({ id: "bob", deletedAt: new Date() }));
     await expect(follow("me", "bob")).rejects.toMatchObject({ status: 404 });
   });

@@ -96,7 +96,9 @@ export async function upsertRemotePost(data: {
 // canonical post URLs, e.g. `9e962281`). The prefix path matches on the text
 // form of the id; 8 hex chars is 32 bits, so collisions are negligible for a
 // single instance and we deterministically return the oldest match.
-export function findById(id: string) {
+export function findById(id: string): Promise<PostWithAuthor | null> {
+  // Hex and dashes only, so `%` / `_` can't act as LIKE wildcards in the prefix match.
+  if (!/^[0-9a-f-]{8,}$/i.test(id)) return Promise.resolve(null);
   const isFullUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
   const match = isFullUuid ? eq(posts.id, id) : sql`${posts.id}::text like ${`${id.toLowerCase()}%`}`;
   return selectPosts()

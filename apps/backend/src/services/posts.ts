@@ -264,7 +264,7 @@ export async function getPostBySlug(username: string, slug: string, viewerId: st
 
 // Who may read a single post. Feeds filter in SQL (visibleToViewer); a direct
 // permalink is gated here, whichever way the reader addressed it.
-async function assertVisible(row: postsRepo.PostWithAuthor, viewerId: string | null) {
+export async function assertVisible(row: postsRepo.PostWithAuthor, viewerId: string | null) {
   // Anything not yet published — a draft, or a post waiting for its scheduled
   // moment — is private to its author, and anyone else gets a plain not-found.
   // Written as "not published" rather than "is a draft" so that a state added

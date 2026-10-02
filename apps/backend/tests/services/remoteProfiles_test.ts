@@ -4,7 +4,7 @@
 // coalescing (federation/outboundGuard.ts) are real, so every test uses its own
 // handle to keep their in-process state apart.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { postWithAuthor, remoteActorRow } from "../fixtures.ts";
+import { postWithAuthor, remoteActorRow, uuid } from "../fixtures.ts";
 
 vi.mock(import("@/db/repositories/follows.ts"));
 vi.mock(import("@/db/repositories/posts.ts"));
@@ -196,7 +196,7 @@ describe("follow / unfollow", () => {
 
 const rows = (k: number) =>
   Array.from({ length: k }, (_, i) =>
-    postWithAuthor({ id: `p${i}`, createdAt: new Date(Date.UTC(2026, 0, 1, 0, 0, 59 - i)) }),
+    postWithAuthor({ id: uuid(i), createdAt: new Date(Date.UTC(2026, 0, 1, 0, 0, 59 - i)) }),
   );
 
 describe("getPosts", () => {

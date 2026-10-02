@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as recommendationsRepo from "@/db/repositories/recommendations.ts";
-import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
+import { type Cursor, DEFAULT_PAGE_SIZE, validCursor } from "@/lib/pagination.ts";
 import type { EnrichableRow } from "@/services/engagement.ts";
 
 // Personalized home timeline ("For you"): own + followed-author posts, merged
@@ -22,11 +22,16 @@ type FeedCursor = { authored: StreamCursor; recommended: StreamCursor };
 const START: StreamCursor = { cursor: null, done: false };
 const DONE: StreamCursor = { cursor: null, done: true };
 
+// A stream whose inner cursor is malformed restarts from the top.
+function decodeStream(s: Partial<StreamCursor> | undefined): StreamCursor {
+  return s ? { cursor: validCursor(s.cursor), done: s.done === true } : START;
+}
+
 function decodeFeedCursor(raw: string | null): FeedCursor {
   if (!raw) return { authored: START, recommended: START };
   try {
     const parsed = JSON.parse(atob(raw));
-    return { authored: parsed.authored ?? START, recommended: parsed.recommended ?? START };
+    return { authored: decodeStream(parsed?.authored), recommended: decodeStream(parsed?.recommended) };
   } catch {
     return { authored: START, recommended: START };
   }

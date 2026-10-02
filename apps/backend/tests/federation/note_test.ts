@@ -88,15 +88,6 @@ describe("findPostByApUri", () => {
   test("a /posts/ path on another origin is not ours", async () => {
     expect(await findPostByApUri(`https://evil.example/posts/${POST_ID}`)).toBe(null);
   });
-
-  // BUG: the id comes from a remote server's `inReplyTo` URL path and is passed
-  // to postsRepo.findById's `id::text like '<id>%'` prefix lookup unvalidated.
-  // `_` is a LIKE wildcard that URLs carry unencoded, so a hostile instance can
-  // thread a reply onto whichever post sorts first (see BUGS.md B3).
-  test.fails("BUG: a LIKE wildcard in a remote inReplyTo never reaches the post lookup", async () => {
-    await findPostByApUri(`${ORIGIN}/posts/_`);
-    expect(postsRepo.findById).not.toHaveBeenCalledWith("_");
-  });
 });
 
 describe("findCommentByApUri", () => {
