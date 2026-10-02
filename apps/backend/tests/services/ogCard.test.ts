@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Caching is exercised on real files in a temp UPLOADS_DIR; the drawing itself
-// is covered by tests/lib/ogCard_test.ts, so the renderer is stubbed here.
+// is covered by tests/lib/ogCard.test.ts, so the renderer is stubbed here.
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

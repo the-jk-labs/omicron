@@ -28,7 +28,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: "unit",
-          include: ["tests/**/*_test.ts"],
+          include: ["tests/**/*.test.ts"],
           exclude: [...configDefaults.exclude, "tests/integration/**"],
         },
       },
@@ -36,7 +36,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: "integration",
-          include: ["tests/integration/**/*_test.ts"],
+          include: ["tests/integration/**/*.test.ts"],
           // Every file truncates the same database, so they must not overlap.
           fileParallelism: false,
         },

@@ -4,7 +4,7 @@ import { renderMarkdown } from "@/lib/markdown.ts";
 
 // `renderMarkdown` feeds author-written Markdown (the profile's custom section)
 // into storage, and its output is rendered with {@html}. The security tests here
-// matter as much as the ones in sanitize_test.ts: raw HTML is deliberately
+// matter as much as the ones in sanitize.test.ts: raw HTML is deliberately
 // *parsed* rather than escaped, so the sanitizer is the only thing standing
 // between an author's input and every reader's browser.
 

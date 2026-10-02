@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Real files in a temp UPLOADS_DIR; the transcode is covered by
-// tests/lib/shareImage_test.ts, so it is stubbed here.
+// tests/lib/shareImage.test.ts, so it is stubbed here.
 import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

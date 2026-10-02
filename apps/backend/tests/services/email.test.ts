@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // The SMTP wire protocol is covered against a real server in
-// tests/lib/smtp_test.ts; here sendSmtp is the boundary, so these tests are
+// tests/lib/smtp.test.ts; here sendSmtp is the boundary, so these tests are
 // about which transport runs, what envelope and bytes it is handed, and what
 // the templates say.
 import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest";

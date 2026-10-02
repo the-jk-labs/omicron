@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Caching on real files in a temp UPLOADS_DIR; the drawing is covered by
-// tests/lib/profileCard_test.ts, so the renderer is stubbed here.
+// tests/lib/profileCard.test.ts, so the renderer is stubbed here.
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

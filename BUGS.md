@@ -27,7 +27,7 @@ user or operator will hit, **Low** = edge case or cosmetic.
 - **Root cause:** `Number.isFinite` doesn't bound the code point;
   `String.fromCodePoint` throws above `0x10FFFF`.
 - **Fix idea:** check `code <= 0x10FFFF` (and arguably reject surrogates and 0).
-- **Tests:** `tests/lib/html_test.ts` (two `BUG:` tests).
+- **Tests:** `tests/lib/html.test.ts` (two `BUG:` tests).
 
 ### B12. Setting the domain with its scheme breaks every absolute URL — Medium
 - **Where:** `src/services/instanceSetup.ts` `getOrigin` (line 67); the input
@@ -38,7 +38,7 @@ user or operator will hit, **Low** = edge case or cosmetic.
   does the federation origin seeded from it at boot.
 - **Fix idea:** normalize to a bare host on write (and/or in `getAppDomain`), or
   validate the shape in the route schemas.
-- **Test:** `tests/services/instanceSetup_test.ts` ("a domain saved with a scheme does not double the scheme").
+- **Test:** `tests/services/instanceSetup.test.ts` ("a domain saved with a scheme does not double the scheme").
 
 ### B13. Instance name with RFC 5322 specials corrupts the From header — Medium
 - **Where:** `src/services/emailSettings.ts` `defaultFrom` (line 89).
@@ -46,7 +46,7 @@ user or operator will hit, **Low** = edge case or cosmetic.
   admin-chosen name unquoted. `Ada, Inc.` reads as two addresses, and with
   `Ada <3 Blog`, `extractAddress` picks the wrong envelope sender.
 - **Fix idea:** quote the display name (escape `"` and `\`) when it contains specials.
-- **Test:** `tests/services/emailSettings_test.ts` ("quotes an instance name that contains RFC 5322 specials").
+- **Test:** `tests/services/emailSettings.test.ts` ("quotes an instance name that contains RFC 5322 specials").
 
 ### B14. Non-ASCII email subjects are written raw — Low
 - **Where:** `src/lib/mime.ts` line 85.
@@ -54,7 +54,7 @@ user or operator will hit, **Low** = edge case or cosmetic.
   non-ASCII name is written into the `Subject:` header as raw UTF-8 instead of
   an RFC 2047 encoded-word, so the header is invalid without SMTPUTF8. That
   contradicts the module's own pure-ASCII goal.
-- **Test:** `tests/lib/mime_test.ts` ("encodes a non-ASCII subject so the header stays ASCII").
+- **Test:** `tests/lib/mime.test.ts` ("encodes a non-ASCII subject so the header stays ASCII").
 
 ### B15. A blank `REDIS_URL` aborts the boot — Low
 - **Where:** `src/config.ts` line 150 (`z.string().url().optional()`).
@@ -62,26 +62,26 @@ user or operator will hit, **Low** = edge case or cosmetic.
   without Redis, but an empty value fails URL validation and the process exits.
 - **Fix idea:** treat a blank value as unset (`?.trim() || undefined`), as
   `WEBHOOK_SECRET` already does.
-- **Test:** `tests/config_test.ts` ("a blank REDIS_URL is treated as unset").
+- **Test:** `tests/config.test.ts` ("a blank REDIS_URL is treated as unset").
 
 ### B16. `POSTGRES_USER` isn't URL-encoded — Low
 - **Where:** `src/config.ts` line 117.
 - **Symptom:** the assembled `DATABASE_URL` encodes the password but not the
   user name. A `:` in `POSTGRES_USER` shifts the user/password split.
-- **Test:** `tests/config_test.ts` ("percent-encodes a POSTGRES_USER containing a colon").
+- **Test:** `tests/config.test.ts` ("percent-encodes a POSTGRES_USER containing a colon").
 
 ### B17. Bio length is checked before trimming — Low
 - **Where:** `src/services/users.ts` line 83.
 - **Symptom:** a bio that is 500 characters or fewer once trimmed, but over 500
   with a trailing newline, is refused. Every other field trims first.
-- **Test:** `tests/services/users_test.ts` ("measures the bio limit after trimming").
+- **Test:** `tests/services/users.test.ts` ("measures the bio limit after trimming").
 
 ### B18. Notification snippet can split an emoji — Low
 - **Where:** `src/routes/serializers.ts` line 347 (`.slice(0, 140)`).
 - **Symptom:** the comment snippet in the bell is cut by UTF-16 code units, so
   it can end in a lone surrogate, which renders as `�`.
 - **Fix idea:** slice by code points (`[...text].slice(0, 140).join("")`).
-- **Test:** `tests/routes/serializers_test.ts` ("notificationView never cuts the comment snippet inside a surrogate pair").
+- **Test:** `tests/routes/serializers.test.ts` ("notificationView never cuts the comment snippet inside a surrogate pair").
 
 ### B19. Legacy-Markdown backfill isn't idempotent, and has false positives — Low
 - **Where:** `src/lib/legacyMarkdown.ts` (`upgradeLegacyMarkdown`, line 18;
@@ -91,7 +91,7 @@ user or operator will hit, **Low** = edge case or cosmetic.
      again on a second run, despite the "safe to run repeatedly" promise.
   2. A real paragraph that starts with `<number>. `, such as an escaped
      Markdown `1984\. That year`, is turned into an ordered list.
-- **Tests:** `tests/lib/legacyMarkdown_test.ts` (two `BUG:` tests).
+- **Tests:** `tests/lib/legacyMarkdown.test.ts` (two `BUG:` tests).
 
 ### B20. A `mailto:` profile link becomes a credentialed https URL — Low
 - **Where:** backend `src/lib/profileLinks.ts` `normalizeLinkUrl` (line 100), and
@@ -102,7 +102,7 @@ user or operator will hit, **Low** = edge case or cosmetic.
   the mail domain.
 - **Fix idea:** refuse input that already carries a non-http scheme, and any
   URL with a username or password, in both copies.
-- **Test:** backend `tests/lib/profileLinks_test.ts` ("rejects a mailto: address …"),
+- **Test:** backend `tests/lib/profileLinks.test.ts` ("rejects a mailto: address …"),
   frontend `tests/lib/profileLinks.test.ts` ("a mailto address typed as a website is refused").
 
 ## Email
@@ -117,14 +117,14 @@ user or operator will hit, **Low** = edge case or cosmetic.
   same way.
 - **Fix idea:** HTML-escape every interpolated value (`escapeHtml` in
   `src/lib/html.ts`), including inside the `href`.
-- **Test:** `tests/services/email_test.ts` ("escapes the post title in the HTML of the removal notice").
+- **Test:** `tests/services/email.test.ts` ("escapes the post title in the HTML of the removal notice").
 
 ### B22. Password-reset and verification emails hardcode "Omicron" — Low
 - **Where:** `src/services/email.ts` `sendPasswordReset` / `sendEmailVerification`.
 - **Symptom:** every account notice uses the instance name (`Your ${appName} …`),
   but the two emails a new or locked-out user most needs say "Reset your Omicron
   password" / "Welcome to Omicron!", whatever the instance is called.
-- **Test:** `tests/services/email_test.ts` ("the password-reset email names the instance, not the software").
+- **Test:** `tests/services/email.test.ts` ("the password-reset email names the instance, not the software").
 
 ### B23. SMTP AUTH fails for non-Latin-1 credentials — Medium
 - **Where:** `src/lib/smtp.ts` (`AUTH LOGIN` uses `btoa(opts.username)` / `btoa(opts.password)`).
@@ -133,12 +133,12 @@ user or operator will hit, **Low** = edge case or cosmetic.
   no mail can be sent. Latin-1 characters that do get through are encoded as
   Latin-1, not UTF-8.
 - **Fix idea:** base64 the UTF-8 bytes (`TextEncoder` and then base64).
-- **Test:** `tests/lib/smtp_test.ts` ("authenticates with a non-Latin-1 password", runs where openssl is available).
+- **Test:** `tests/lib/smtp.test.ts` ("authenticates with a non-Latin-1 password", runs where openssl is available).
 
 ## Content webhook
 
 All three are in `src/services/webhooks.ts` `ingestContent`; tests in
-`tests/services/webhooks_test.ts`.
+`tests/services/webhooks.test.ts`.
 
 ### B24. Too many tags are rejected only after the post is written — Medium
 - **Symptom:** the payload schema allows up to 50 tags (`src/lib/webhook.ts`),
@@ -171,7 +171,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   up through the wizard keeps `APP_DOMAIN` at its `localhost:5173` default, so
   `origin()` returns null and IndexNow silently does nothing, even when switched
   on. (`moderation.blockDomain` already reads `getAppDomain()`.)
-- **Test:** `tests/services/indexNow_test.ts` ("submits on an instance whose domain was set in the setup wizard").
+- **Test:** `tests/services/indexNow.test.ts` ("submits on an instance whose domain was set in the setup wizard").
 
 ## Stock photos
 
@@ -179,7 +179,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
 - **Where:** `src/services/openverse.ts` `toPhoto` (`source.charAt(0).toUpperCase() + …`).
 - **Symptom:** Openverse source keys are snake_case (`wikimedia_commons`), so
   the credit line under a published banner reads "Wikimedia_commons".
-- **Test:** `tests/services/openverse_test.ts` ("a multi-word source key reads as words in the credit line").
+- **Test:** `tests/services/openverse.test.ts` ("a multi-word source key reads as words in the credit line").
 
 ## Image caches
 
@@ -193,7 +193,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   not cost the caller" comment.
 - **Fix idea:** move the `mkdir` inside the `try`.
 - **Tests:** "a cache directory that cannot be created still returns the card/image"
-  in `tests/services/{ogCard,profileCard,shareImage}_test.ts`.
+  in `tests/services/{ogCard,profileCard,shareImage}.test.ts`.
 
 ## Profiles of deleted accounts
 
@@ -209,8 +209,8 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   still lists every post the deleted account recommended.
 - **Fix idea:** treat a deleted (and suspended) user as not found in both routes,
   as `follows.profile` does.
-- **Test:** `tests/routes/users_test.ts` ("a deleted account's posts tab is not found"),
-  `tests/integration/app_test.ts` ("the recommendations tab lists nothing for a deleted account").
+- **Test:** `tests/routes/users.test.ts` ("a deleted account's posts tab is not found"),
+  `tests/integration/app.test.ts` ("the recommendations tab lists nothing for a deleted account").
 
 ## Admin authorization
 
@@ -226,7 +226,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   ones an admin deleted), skipping both safeguards.
 - **Fix idea:** require the actor's password (as `deleteUser` does), and
   consider making purge admin-only.
-- **Test:** `tests/routes/admin_test.ts` ("purging a deleted account needs more than a moderator session").
+- **Test:** `tests/routes/admin.test.ts` ("purging a deleted account needs more than a moderator session").
 
 ## Wrong domain in generated URLs
 
@@ -245,7 +245,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   is true only for `trustedOrigins`, not for links in emails.
 - **Fix idea:** build email links from `getOrigin()` (the wizard → env →
   default chain) at send time, not from the import-time `baseURL`.
-- **Test:** `tests/auth/auth_test.ts` ("the verification link uses the domain set in the setup wizard").
+- **Test:** `tests/auth/auth.test.ts` ("the verification link uses the domain set in the setup wizard").
 - Related: B27, B39 share the root cause (boot-time `APP_DOMAIN` used where
   the effective domain is meant).
 
@@ -258,7 +258,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   newlines collapse; the remote sanitizer is the only thing between a bio and
   injected markup. Comments already go through `textToNoteHtml` for exactly this.
 - **Fix idea:** `summary: textToNoteHtml(user.bio)`.
-- **Test:** `tests/federation/actor_test.ts` ("the plain-text bio is published as escaped HTML").
+- **Test:** `tests/federation/actor.test.ts` ("the plain-text bio is published as escaped HTML").
 
 ### B35. Defederation doesn't stop recommendations, list activity or account deletes — Medium
 - **Where:** `src/federation/outbound.ts` (`followerRecipients`, used by
@@ -273,7 +273,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
 - **Fix idea:** share `deliver.ts`'s `remoteRecipients` (it already filters), or
   remove inbound follower edges for a domain when it's blocked.
 - **Tests:** "never delivers to a follower on a defederated domain" in
-  `tests/federation/{outbound,lists}_test.ts`.
+  `tests/federation/{outbound,lists}.test.ts`.
 
 ### B36. A remote server can show someone else's account under its own handle — Medium
 - **Where:** `src/federation/remote.ts` `resolveActor` → `cacheActor(object, handle)`.
@@ -288,7 +288,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
 - **Fix idea:** accept the result only if the actor's id host equals the
   handle's host, or WebFinger on `preferredUsername@<actor host>` points back
   at the same actor id.
-- **Test:** `tests/federation/remote_test.ts` ("refuses an actor whose id is not on the requested handle's host").
+- **Test:** `tests/federation/remote.test.ts` ("refuses an actor whose id is not on the requested handle's host").
 
 ### B37. A private account's followers are public over ActivityPub — Medium
 - **Where:** `src/federation/mod.ts`, `setFollowersDispatcher("/users/{identifier}/followers", …)`.
@@ -300,7 +300,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
 - **Fix idea:** return `null` (or an empty collection that keeps only
   `totalItems`, as Mastodon does for hidden networks) when the user is private,
   or allow it only for a signed request from an approved follower.
-- **Test:** `tests/federation/mod_test.ts` ("a private account's followers are not served to the public").
+- **Test:** `tests/federation/mod.test.ts` ("a private account's followers are not served to the public").
 
 ### B38. Remote boosts of local posts are lost — Medium
 - **Where:** `src/federation/mod.ts`, the inbox `Announce` listener.
@@ -314,7 +314,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   same lookup, so un-boosts of local posts are lost too.
 - **Fix idea:** when the object id is on our own origin, parse `/posts/<uuid>`
   and use `postsRepo.findById`, before any remote lookup.
-- **Test:** `tests/federation/mod_test.ts` ("a remote boost of one of our own posts is recorded and notified").
+- **Test:** `tests/federation/mod.test.ts` ("a remote boost of one of our own posts is recorded and notified").
 
 ### B39. Actor documents vouch for the boot-time domain — Low
 - **Where:** `src/app.ts`, `withAttributionDomains(res, config.APP_DOMAIN)`.
@@ -325,7 +325,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   `localhost:5173`, and shared articles never get the byline. Same root cause
   as B27 and B33.
 - **Fix idea:** pass `await getAppDomain()` instead.
-- **Test:** `tests/integration/app_test.ts` ("vouches for the domain set in the setup wizard").
+- **Test:** `tests/integration/app.test.ts` ("vouches for the domain set in the setup wizard").
 
 ### B40. A defederated server bypasses the block on a non-default port — Medium
 - **Where:** `src/federation/mod.ts` `fromBlockedDomain` (`actorId.host`) and
@@ -343,9 +343,9 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
 - **Also:** `remoteActorsRepo.removeByDomain` compares the stored `host`, which
   `cacheActor` takes from `URL.host` (port included), so defederating
   `evil.example` leaves cached actors on `evil.example:8443`, and their posts, in place.
-- **Test:** `tests/federation/mod_test.ts` ("a defederated domain is ignored on a non-default port too"),
-  `tests/federation/deliver_test.ts` ("skips followers on a defederated domain's non-default port"),
-  `tests/integration/db/repositories/remoteActors_test.ts` ("by domain also takes actors on a non-default port").
+- **Test:** `tests/federation/mod.test.ts` ("a defederated domain is ignored on a non-default port too"),
+  `tests/federation/deliver.test.ts` ("skips followers on a defederated domain's non-default port"),
+  `tests/integration/db/repositories/remoteActors.test.ts` ("by domain also takes actors on a non-default port").
 
 ### B41. A repeated remote Follow creates a duplicate follower edge — Medium
 - **Where:** `src/db/repositories/follows.ts` `createRemoteFollower` (plain insert)
@@ -360,7 +360,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   `remote_actor is not null` (deduplicating existing rows in the migration), and
   `onConflictDoNothing` in `createRemoteFollower`. On a duplicate, still re-send the
   Accept so the remote side gets unstuck.
-- **Test:** `tests/integration/db/repositories/follows_test.ts` ("a repeated Follow from the same remote actor is one edge").
+- **Test:** `tests/integration/db/repositories/follows.test.ts` ("a repeated Follow from the same remote actor is one edge").
 
 ### B42. A remote actor's Recommendations tab shows unpublished posts — Medium
 - **Where:** `src/db/repositories/recommendations.ts` `listByRemoteActor`.
@@ -369,7 +369,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   title and body, on that actor's profile tab (`/api/remote/users/:handle/recommendations`)
   after its author moves it back to draft, or is suspended or deleted.
 - **Fix idea:** add `isPublished` and `notSuspended` to the `where`.
-- **Test:** `tests/integration/db/repositories/recommendations_test.ts` ("never lists a local post that is no longer published, or whose author is suspended").
+- **Test:** `tests/integration/db/repositories/recommendations.test.ts` ("never lists a local post that is no longer published, or whose author is suspended").
 
 ### B43. Public tag search exposes tags used only on drafts — Low
 - **Where:** `src/db/repositories/tags.ts` `search`, `suggest`, `listFollowedByUser`.
@@ -381,7 +381,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   a disclosure.
 - **Fix idea:** join `posts`/`users` and count with `isPublished`, `notSuspended`,
   `visibleToViewer(null)` (as `trending` does), and drop tags whose visible count is 0.
-- **Test:** `tests/integration/db/repositories/tags_test.ts` ("search and suggest never surface a tag used only on a draft", "search counts only posts an anonymous reader can see").
+- **Test:** `tests/integration/db/repositories/tags.test.ts` ("search and suggest never surface a tag used only on a draft", "search counts only posts an anonymous reader can see").
 
 ### B44. Federated replies never count toward trending — Low
 - **Where:** `src/db/repositories/posts.ts` `listTrending`, the comment subquery
@@ -391,7 +391,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   NULL. A local post discussed across the fediverse ranks as if nobody replied.
 - **Fix idea:** `comments.author_id is distinct from posts.author_id` (same for the
   likes subquery, for symmetry).
-- **Test:** `tests/integration/db/repositories/posts_test.ts` ("federated replies count toward a local post's trending score").
+- **Test:** `tests/integration/db/repositories/posts.test.ts` ("federated replies count toward a local post's trending score").
 
 ## Rate limiting
 
@@ -406,7 +406,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   an open door.)
 - **Fix idea:** `remoteRoutes.use("/users/:handle/*", …)` in addition, or match
   every GET under the router.
-- **Test:** `tests/routes/remote_test.ts` ("anonymous GET /users/:handle/posts counts against the discovery budget").
+- **Test:** `tests/routes/remote.test.ts` ("anonymous GET /users/:handle/posts counts against the discovery budget").
 
 ---
 
@@ -421,7 +421,7 @@ All three are in `src/services/webhooks.ts` `ingestContent`; tests in
   also documents full-UUID permalinks as resolvable.
 - **Fix idea:** in `getPostBySlug`, try a full UUID (anywhere in the slug) before
   the trailing short id; and have `subjectHref` build links with `postPath`.
-- **Test:** `tests/services/posts_test.ts` ("a full-UUID permalink resolves the post").
+- **Test:** `tests/services/posts.test.ts` ("a full-UUID permalink resolves the post").
 
 ## Frontend
 

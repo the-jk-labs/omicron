@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Lookups, writes and the listings not already covered by visibility_test.ts
+// Lookups, writes and the listings not already covered by visibility.test.ts
 // (which owns the cross-listing visibility rules).
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, test } from "vitest";

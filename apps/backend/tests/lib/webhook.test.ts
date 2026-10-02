@@ -255,7 +255,7 @@ test("externalKey: a titleless partial update is addressed by its slug alone", (
 test("ingested Markdown is sanitized before it can reach a row", () => {
   // The service stores `renderMarkdown(body)`, so the sanitizer is what stands
   // between an untrusted webhook and every reader's browser. Mirror of the
-  // guarantees in sanitize_test.ts, asserted at this entry point.
+  // guarantees in sanitize.test.ts, asserted at this entry point.
   const html = renderMarkdown(
     "Hi\n\n<script>alert(1)</script>\n\n<img src=x onerror=alert(1)>\n\n[click](javascript:alert(1))",
   );

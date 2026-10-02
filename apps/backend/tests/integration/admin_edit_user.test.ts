@@ -52,7 +52,7 @@ async function captureRejection(promise: Promise<unknown>): Promise<unknown> {
 }
 
 // Leading bytes of a real PNG signature, zero-padded — enough to pass the
-// magic-byte check, mirroring uploads_test.ts.
+// magic-byte check, mirroring uploads.test.ts.
 function pngBytes(size: number): Uint8Array {
   const bytes = new Uint8Array(size);
   bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);

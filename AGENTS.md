@@ -145,8 +145,8 @@ every pin fails for the stated reason, not by accident.
 ### Where tests live
 
 - Each app has a root `tests/` folder mirroring `src/`
-  (`src/services/posts.ts` → `tests/services/posts_test.ts`).
-- Backend: `*_test.ts`; integration tests (real Postgres) in
+  (`src/services/posts.ts` → `tests/services/posts.test.ts`).
+- Backend: `*.test.ts`; integration tests (real Postgres) in
   `tests/integration/`, sharing `tests/integration/harness.ts`.
 - Frontend: `*.test.ts`; `*.svelte.test.ts` when the test itself uses runes.
   Route files map to `page.test.ts` (`+page.svelte`), `page.server.test.ts`,
