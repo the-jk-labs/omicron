@@ -14,6 +14,7 @@ export default defineConfig({
     "import/no-unassigned-import": ["warn", { allow: ["**/app.css", "@testing-library/jest-dom/vitest"] }],
     "unicorn/prefer-node-protocol": "warn",
     "typescript/consistent-type-imports": "warn",
+    "typescript/no-unsafe-type-assertion": "off",
   },
   overrides: [
     {
