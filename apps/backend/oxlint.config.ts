@@ -21,7 +21,7 @@ export default defineConfig({
       // Asserting on a mocked method (`expect(queue.add)`) is the whole point
       // of a spy; there is no `this` to lose.
       files: ["tests/**"],
-      rules: { "typescript/unbound-method": "off" },
+      rules: { "typescript/unbound-method": "off", "unicorn/consistent-function-scoping": "off" },
     },
   ],
 });

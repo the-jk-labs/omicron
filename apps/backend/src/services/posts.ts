@@ -146,10 +146,7 @@ function resolvePublishAt(
  * what `updated_at` records, and re-dating on every typo fix would reshuffle
  * the whole timeline. `claimDue` stamps the same column for the sweeper's path.
  */
-export function firstPublicationFields(
-  previous: PostStatus,
-  next: PostStatus,
-): { createdAt: Date } | Record<never, never> {
+export function firstPublicationFields(previous: PostStatus, next: PostStatus): { createdAt?: Date } {
   return next === "published" && previous !== "published" ? { createdAt: new Date() } : {};
 }
 
