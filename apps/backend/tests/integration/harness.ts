@@ -5,9 +5,9 @@
 // is where the visibility rules actually live and where unit tests cannot
 // reach.
 //
-// Requires DATABASE_URL to point at a THROWAWAY database — `resetDb()` truncates
-// every table it touches. See `pnpm test:integration` and the `postgres`
-// service in .github/workflows/ci.yml.
+// Requires DATABASE_URL (default in tests/test.env) to point at a THROWAWAY
+// database — `resetDb()` truncates every table it touches. The `integration`
+// project in vitest.config.ts runs these files one at a time for that reason.
 import { sql } from "@/db/client.ts";
 import { db } from "@/db/client.ts";
 import { runMigrations } from "@/db/migrate.ts";
@@ -44,8 +44,8 @@ export async function resetDb(): Promise<void> {
     restart identity cascade`;
 }
 
-// Closes the pool so `deno test` does not report a leaked resource. Call from
-// the last step of each test file.
+// Closes the pool so the worker can exit cleanly. Call from the last step of
+// each test file.
 export async function closeDb(): Promise<void> {
   await sql.end();
 }

@@ -113,9 +113,8 @@ jobs:
       # The typecheck reads the backend's serializers to prove this app's API
       # types still match them (apps/frontend/src/lib/api/contract.ts), so it
       # resolves the backend's own npm dependencies — drizzle-orm above all,
-      # which every `db/schema.ts` type flows from. Deno materializes them into
-      # apps/backend/node_modules (`nodeModulesDir: auto` in deno.json). Without
-      # this step svelte-check fails with 45 "Cannot find module 'drizzle-orm'"
+      # which every `db/schema.ts` type flows from. Without this step
+      # svelte-check fails with 45 "Cannot find module 'drizzle-orm'"
       # errors on backend source, none of which are the frontend's fault.
       - name: Install backend dependencies (for the cross-app typecheck)
         working-directory: apps/backend

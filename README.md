@@ -98,23 +98,33 @@ rather than anything you changed.
 
 ```bash
 cd apps/backend
-pnpm test              # unit tests — no database needed
-pnpm test:integration  # visibility rules — needs a throwaway database
+pnpm test              # unit and integration tests (needs Postgres, see below)
+pnpm test:unit         # unit tests only, no database needed
+pnpm test:integration  # visibility rules only
 pnpm check             # typecheck, format, lint and unit tests (run `pnpm fmt` first)
 ```
 
 The integration suite runs the committed migrations and asserts on who can see
 what: drafts, private accounts, suspended authors, across feeds, tag pages,
-reading lists and the sitemap. It reads `DATABASE_URL` and **truncates every
-table it touches**, so point it at a scratch database, never a real one:
+reading lists and the sitemap. Its files run one at a time and **truncate every
+table they touch**, so point it at a scratch database, never a real one.
+
+Any Postgres works, including one installed natively. By default the tests use
+`postgres://omicron:omicron@localhost:5432/omicron_test` (from
+`apps/backend/tests/test.env`), so create that role and database once:
+
+```sql
+CREATE ROLE omicron LOGIN PASSWORD 'omicron';
+CREATE DATABASE omicron_test OWNER omicron;
+```
+
+Set `DATABASE_URL` to use a different one. Without a local Postgres, a
+throwaway container works too:
 
 ```bash
-docker run -d --name omicron-test-db -p 55432:5432 \
-  -e POSTGRES_USER=omicron -e POSTGRES_PASSWORD=omicron \
-  -e POSTGRES_DB=omicron_test postgres:16-alpine
+docker run -d --name omicron-test-db -p 55432:5432   -e POSTGRES_USER=omicron -e POSTGRES_PASSWORD=omicron   -e POSTGRES_DB=omicron_test postgres:16-alpine
 
-DATABASE_URL=postgres://omicron:omicron@localhost:55432/omicron_test \
-SESSION_SECRET=test-secret pnpm test:integration
+DATABASE_URL=postgres://omicron:omicron@localhost:55432/omicron_test pnpm test:integration
 ```
 
 CI runs both on every push and PR against its own Postgres service.

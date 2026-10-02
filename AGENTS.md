@@ -102,15 +102,13 @@ Schema changes: edit `src/db/schema.ts`, then generate a migration with
   `pnpm check`. `check` runs greenly:
   - backend: `deno check`, oxfmt, oxlint, Vitest unit tests
   - frontend: oxfmt, svelte-check, oxlint, Vitest
-- Backend integration tests (need a scratch Postgres):
-
-  ```sh
-  docker run -d --name omicron-test-db -p 55432:5432 \
-    -e POSTGRES_USER=omicron -e POSTGRES_PASSWORD=omicron \
-    -e POSTGRES_DB=omicron_test postgres:16-alpine
-  cd apps/backend
-  DATABASE_URL=postgres://omicron:omicron@localhost:55432/omicron_test pnpm test:integration
-  ```
+- Backend tests are two Vitest projects: `pnpm test` runs both,
+  `pnpm test:unit` / `pnpm test:integration` run one. `pnpm check` runs only the
+  unit project, so it needs no database.
+- The integration project needs Postgres and runs its files one at a time. It
+  defaults to `postgres://omicron:omicron@localhost:5432/omicron_test`
+  (`tests/test.env`); any local Postgres with that role and database works, or
+  set `DATABASE_URL` (e.g. to a throwaway `postgres:16-alpine` container).
 
 - The frontend's svelte-check reads the backend's serializers
   (`apps/frontend/src/lib/api/contract.ts`), so install the backend's

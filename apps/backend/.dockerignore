@@ -1,0 +1,8 @@
+# The Dockerfile copies only what it needs; this just keeps the build context
+# small (node_modules is reinstalled in the image) and local secrets out of it.
+node_modules
+coverage
+coverage-int
+.state
+.env
+.env.*

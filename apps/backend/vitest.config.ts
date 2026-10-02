@@ -1,13 +1,12 @@
 import { fileURLToPath } from "node:url";
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
     alias: [{ find: /^@\//, replacement: fileURLToPath(new URL("./src/", import.meta.url)) }],
   },
   test: {
-    include: ["tests/**/*_test.ts"],
     fsModuleCache: true,
     slowTestThreshold: 2000,
     // Cold imports (Better Auth, Fedify) under a fully parallel run can pass 5s.
@@ -24,5 +23,24 @@ export default defineConfig({
       include: ["src/**/*.ts"],
       reporter: ["text-summary", "json-summary", "html"],
     },
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "unit",
+          include: ["tests/**/*_test.ts"],
+          exclude: [...configDefaults.exclude, "tests/integration/**"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "integration",
+          include: ["tests/integration/**/*_test.ts"],
+          // Every file truncates the same database, so they must not overlap.
+          fileParallelism: false,
+        },
+      },
+    ],
   },
 });
