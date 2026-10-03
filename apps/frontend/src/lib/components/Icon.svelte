@@ -45,6 +45,7 @@
   import ImageIcon from "@lucide/svelte/icons/image";
   import Inbox from "@lucide/svelte/icons/inbox";
   import Italic from "@lucide/svelte/icons/italic";
+  import KeyRound from "@lucide/svelte/icons/key-round";
   import Languages from "@lucide/svelte/icons/languages";
   import Library from "@lucide/svelte/icons/library";
   import LinkIcon from "@lucide/svelte/icons/link";
@@ -163,6 +164,7 @@
     eye: Eye,
     trending: TrendingUp,
     lock: Lock,
+    key: KeyRound,
     plus: Plus,
     minus: Minus,
     flag: Flag,

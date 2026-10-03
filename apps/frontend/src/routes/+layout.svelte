@@ -9,6 +9,7 @@
   import Footer from "#lib/components/Footer.svelte";
   import MobileNav from "#lib/components/MobileNav.svelte";
   import Nav from "#lib/components/Nav.svelte";
+  import PasskeyPrompt from "#lib/components/PasskeyPrompt.svelte";
   import SideNav from "#lib/components/SideNav.svelte";
   import ConfirmDialog from "#lib/components/ui/ConfirmDialog.svelte";
   import { absoluteBanner, postCardUrl, profileCardUrl } from "#lib/cover.js";
@@ -475,3 +476,5 @@
 
 <!-- Global host for the promise-based confirm() helper. -->
 <ConfirmDialog />
+
+<PasskeyPrompt user={data.user} {appName} />

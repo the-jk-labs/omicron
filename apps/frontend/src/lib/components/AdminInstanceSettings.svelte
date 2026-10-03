@@ -4,6 +4,7 @@
   import { endpoints, ApiError } from "#lib/api/index.js";
   import Icon from "#lib/components/Icon.svelte";
   import Button from "#lib/components/ui/Button.svelte";
+  import { confirm } from "#lib/components/ui/confirm.js";
   import { INSTANCE_BANNER_MAX_DIMENSION, isAcceptedImage, prepareImage } from "#lib/editor/image.js";
   import type { AdminInstance } from "#lib/types.js";
 
@@ -15,6 +16,8 @@
   // page).
   let appName = $state("");
   let appDomain = $state("");
+  // The domain as last saved, to spot a change that will remove every passkey.
+  let savedDomain = "";
   // Desired federation state (what applies on restart) vs what's running now.
   let federationEnabled = $state(false);
   let federationRunning = $state(false);
@@ -48,6 +51,7 @@
     appName = s.appName;
     // The bare localhost dev default isn't a real public domain — show it blank.
     appDomain = s.appDomain.startsWith("localhost") ? "" : s.appDomain;
+    savedDomain = appDomain;
     federationEnabled = s.federationEnabled;
     federationRunning = s.federationRunning;
     sessionSecretManaged = s.sessionSecretManaged;
@@ -63,7 +67,27 @@
       .finally(() => (loading = false));
   });
 
+  // Passkeys are bound to the hostname, so only a new host (not a port) matters.
+  const host = (d: string) =>
+    d
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, "")
+      .split("/")[0]
+      .split(":")[0];
+
   async function save() {
+    if (host(appDomain) !== host(savedDomain)) {
+      const { ok } = await confirm({
+        title: "Change the public domain?",
+        description:
+          "A passkey only works on the domain it was created on, so every member's passkeys will be removed. " +
+          "Members sign in with their password instead and can add a new passkey afterwards. This can't be undone.",
+        confirmText: "Change domain",
+        destructive: true,
+      });
+      if (!ok) return;
+    }
     saving = true;
     error = "";
     saved = false;
@@ -153,7 +177,7 @@
     />
     <p class="text-xs text-muted-foreground">
       Used for links in email and share cards. A change applies to app URLs at once, but reaches ActivityPub only after
-      a restart (federation identity binds at boot).
+      a restart (federation identity binds at boot). Changing it removes every member's passkeys.
     </p>
   </div>
 

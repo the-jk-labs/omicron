@@ -2,6 +2,7 @@ import process from "node:process";
 import { config } from "@/config.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
+import * as passkeysRepo from "@/db/repositories/passkeys.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { type EmailInput, getEmailMode, setEmailConfig } from "@/services/emailSettings.ts";
 import { federationRunning } from "@/services/federationState.ts";
@@ -125,7 +126,10 @@ export async function setInstanceIdentity(input: {
   const name = input.appName?.trim();
   if (name) await settingsRepo.set(SETUP_KEYS.appName, name);
   if (input.appDomain !== undefined) {
+    const before = bareHost(await getAppDomain());
     await settingsRepo.set(SETUP_KEYS.appDomain, input.appDomain.trim());
+    // A passkey is bound to the hostname it was made on and can never sign in on another.
+    if (bareHost(await getAppDomain()) !== before) await passkeysRepo.deleteAll();
   }
   if (input.bannerText !== undefined) {
     await settingsRepo.set(SETUP_KEYS.bannerText, input.bannerText.trim());

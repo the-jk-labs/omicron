@@ -4,11 +4,13 @@
   import { goto, refreshAll } from "$app/navigation";
   import { page } from "$app/state";
   import { Checkbox, Label } from "bits-ui";
+  import { onMount } from "svelte";
   import logo from "#lib/assets/omicron.svg";
   import { authClient } from "#lib/auth-client.js";
   import Icon from "#lib/components/Icon.svelte";
   import PageTitle from "#lib/components/PageTitle.svelte";
   import Button from "#lib/components/ui/Button.svelte";
+  import { passkeyAutofill } from "#lib/passkeys.js";
   import { MIN_PASSWORD_LEN, passwordStrength, passwordRequirements, isPwnedPasswordClient } from "#lib/password.js";
   import type { InstanceInfo } from "#lib/types.js";
 
@@ -126,6 +128,15 @@
       !confirmError &&
       pwned !== true,
   );
+
+  // Someone who already has an account can pick their passkey from the username field.
+  onMount(() => {
+    void (async () => {
+      if (!(await passkeyAutofill().catch(() => false))) return;
+      await refreshAll();
+      goto("/");
+    })();
+  });
 
   async function submit(e: SubmitEvent) {
     e.preventDefault();
@@ -270,7 +281,7 @@
         id="username"
         bind:value={username}
         onblur={() => (touched.username = true)}
-        autocomplete="username"
+        autocomplete="username webauthn"
         autocapitalize="off"
         spellcheck={false}
         placeholder="a-z, 0-9, _"

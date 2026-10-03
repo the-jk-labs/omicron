@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Exercise the real Better Auth endpoint with disposable in-memory storage.
 const { store, addMail, settings } = vi.hoisted(() => ({
-  store: { user: [], account: [], session: [], verification: [] } as Record<string, Record<string, unknown>[]>,
+  store: { user: [], account: [], session: [], verification: [], passkey: [] } as Record<
+    string,
+    Record<string, unknown>[]
+  >,
   addMail: vi.fn<(name: string, payload: unknown) => void>(),
   settings: {} as Record<string, unknown>,
 }));
@@ -143,5 +146,134 @@ describe("password reset", () => {
       to: "taken@example.com",
       url: expect.stringMatching(/^https:\/\/blog\.example\.com\/api\/auth\/reset-password\//),
     });
+  });
+});
+
+describe("passkeys", () => {
+  const cookies = new Map<string, string>();
+
+  async function call(path: string, init: { method?: string; body?: unknown } = {}) {
+    const { auth } = await import("@/auth/auth.ts");
+    const res = await auth.handler(
+      new Request(`http://localhost:3000/api/auth${path}`, {
+        method: init.method ?? "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "http://localhost:3000",
+          Cookie: [...cookies].map(([k, v]) => `${k}=${v}`).join("; "),
+        },
+        body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      }),
+    );
+    for (const header of res.headers.getSetCookie()) {
+      const [pair] = header.split(";");
+      const at = pair.indexOf("=");
+      cookies.set(pair.slice(0, at), pair.slice(at + 1));
+    }
+    return res;
+  }
+
+  async function signedIn(username: string) {
+    cookies.clear();
+    const res = await call("/sign-up/email", {
+      method: "POST",
+      body: { email: `${username}@example.com`, password: "Unique-test-password-123!", name: username, username },
+    });
+    expect(res.status).toBe(200);
+    return (await res.json()).user.id as string;
+  }
+
+  function storedPasskey(userId: string, name: string) {
+    const row = {
+      id: crypto.randomUUID(),
+      name,
+      userId,
+      publicKey: "pk",
+      credentialID: crypto.randomUUID(),
+      counter: 0,
+      deviceType: "multiDevice",
+      backedUp: true,
+      transports: "internal",
+      createdAt: new Date(),
+    };
+    store.passkey.push(row);
+    return row;
+  }
+
+  beforeEach(() => {
+    vi.resetModules();
+    for (const rows of Object.values(store)) rows.length = 0;
+    for (const key of Object.keys(settings)) delete settings[key];
+    cookies.clear();
+    vi.stubEnv("APP_DOMAIN", "localhost:3000");
+    vi.stubEnv("HIBP_CHECK_ENABLED", "false");
+    vi.stubEnv("EMAIL_VERIFICATION_REQUIRED", "false");
+  });
+
+  it("registering a passkey needs a session", async () => {
+    expect((await call("/passkey/generate-register-options")).status).toBe(401);
+  });
+
+  // Adding a sign-in method is refused on an old session, before any browser prompt.
+  it("registering a passkey needs a session started within the last day", async () => {
+    await signedIn("ada");
+    store.session[0].createdAt = new Date(Date.now() - 25 * 60 * 60 * 1000);
+    for (const name of cookies.keys()) if (name.includes("session_data")) cookies.delete(name);
+    const res = await call("/passkey/generate-register-options");
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe("SESSION_NOT_FRESH");
+  });
+
+  it("binds new passkeys to the boot domain when the wizard set none", async () => {
+    await signedIn("ada");
+    const options = await (await call("/passkey/generate-register-options")).json();
+    expect(options.rp).toEqual({ id: "localhost", name: "Omicron" });
+    expect(options.user.name).toBe("ada@example.com");
+  });
+
+  // Better Auth would otherwise use its boot-time baseURL (APP_DOMAIN) as the RP ID.
+  it("binds passkeys to the domain and name set in the setup wizard", async () => {
+    settings["instance.appDomain"] = "blog.example.com:8443";
+    settings["instance.appName"] = "Ada's blog";
+    await signedIn("ada");
+
+    const register = await (await call("/passkey/generate-register-options")).json();
+    expect(register.rp).toEqual({ id: "blog.example.com", name: "Ada's blog" });
+
+    cookies.clear();
+    const signIn = await (await call("/passkey/generate-authenticate-options")).json();
+    expect(signIn.rpId).toBe("blog.example.com");
+  });
+
+  it("lists, renames and deletes only the signed-in user's passkeys", async () => {
+    const other = storedPasskey("someone-else", "Their key");
+    const ada = await signedIn("ada");
+    const mine = storedPasskey(ada, "Laptop");
+
+    const listed = await (await call("/passkey/list-user-passkeys")).json();
+    expect(listed.map((p: { id: string }) => p.id)).toEqual([mine.id]);
+
+    const renamed = await call("/passkey/update-passkey", {
+      method: "POST",
+      body: { id: mine.id, name: "Work laptop" },
+    });
+    expect(renamed.status).toBe(200);
+    expect(mine.name).toBe("Work laptop");
+
+    expect(
+      (await call("/passkey/update-passkey", { method: "POST", body: { id: other.id, name: "Mine now" } })).ok,
+    ).toBe(false);
+    expect((await call("/passkey/delete-passkey", { method: "POST", body: { id: other.id } })).ok).toBe(false);
+    expect(other.name).toBe("Their key");
+
+    expect((await call("/passkey/delete-passkey", { method: "POST", body: { id: mine.id } })).status).toBe(200);
+    expect(store.passkey).toEqual([other]);
+  });
+
+  it("refuses a passkey name over 60 characters", async () => {
+    const mine = storedPasskey(await signedIn("ada"), "Laptop");
+    const res = await call("/passkey/update-passkey", { method: "POST", body: { id: mine.id, name: "x".repeat(61) } });
+    expect(res.status).toBe(400);
+    expect(mine.name).toBe("Laptop");
   });
 });

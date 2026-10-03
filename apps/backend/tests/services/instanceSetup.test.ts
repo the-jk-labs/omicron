@@ -2,11 +2,13 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 vi.mock(import("@/db/repositories/instanceSettings.ts"));
+vi.mock(import("@/db/repositories/passkeys.ts"));
 vi.mock(import("@/db/repositories/users.ts"));
 vi.mock(import("@/services/emailSettings.ts"));
 
 import { config } from "@/config.ts";
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
+import * as passkeysRepo from "@/db/repositories/passkeys.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { getEmailMode, setEmailConfig } from "@/services/emailSettings.ts";
 import { seedFederationRunning } from "@/services/federationState.ts";
@@ -161,6 +163,37 @@ describe("setInstanceIdentity", () => {
     await setInstanceIdentity({ appName: "New" });
     expect(settings[SETUP_KEYS.bannerText]).toBe("keep");
     expect(settings[SETUP_KEYS.appName]).toBe("New");
+  });
+
+  describe("passkeys", () => {
+    beforeEach(() => {
+      config.APP_DOMAIN = "localhost:5173";
+      settings[SETUP_KEYS.appDomain] = "blog.example.com";
+    });
+
+    test("a new domain removes every passkey, which are bound to the old one", async () => {
+      await setInstanceIdentity({ appDomain: "news.example.com" });
+      expect(passkeysRepo.deleteAll).toHaveBeenCalledOnce();
+    });
+
+    test("clearing the domain back to the boot default is a change too", async () => {
+      await setInstanceIdentity({ appDomain: "" });
+      expect(passkeysRepo.deleteAll).toHaveBeenCalledOnce();
+    });
+
+    test.each([
+      ["the same domain", "blog.example.com"],
+      ["the same host typed as a URL", "https://Blog.Example.com/"],
+      ["only a new port", "blog.example.com:8443"],
+    ])("%s keeps them", async (_, appDomain) => {
+      await setInstanceIdentity({ appDomain });
+      expect(passkeysRepo.deleteAll).not.toHaveBeenCalled();
+    });
+
+    test("saving without a domain keeps them", async () => {
+      await setInstanceIdentity({ appName: "Renamed", bannerText: "hi" });
+      expect(passkeysRepo.deleteAll).not.toHaveBeenCalled();
+    });
   });
 });
 

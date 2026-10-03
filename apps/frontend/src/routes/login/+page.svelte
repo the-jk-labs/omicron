@@ -3,12 +3,14 @@
   import { PUBLIC_APP_NAME } from "$app/env/public";
   import { goto, refreshAll } from "$app/navigation";
   import { page } from "$app/state";
-  import { Label } from "bits-ui";
+  import { Label, Separator } from "bits-ui";
+  import { onMount } from "svelte";
   import logo from "#lib/assets/omicron.svg";
   import { authClient } from "#lib/auth-client.js";
   import Icon from "#lib/components/Icon.svelte";
   import PageTitle from "#lib/components/PageTitle.svelte";
   import Button from "#lib/components/ui/Button.svelte";
+  import { passkeyAutofill, passkeySignInError, passkeysSupported } from "#lib/passkeys.js";
   import type { InstanceInfo } from "#lib/types.js";
 
   // "Omicron" is the software's name; the site has the operator's. Same
@@ -27,6 +29,9 @@
   let resending = $state(false);
   let resent = $state(false);
   let resendError = $state("");
+  // Rendered after mount: support is only known in the browser.
+  let passkeys = $state(false);
+  let passkeyBusy = $state(false);
 
   const field =
     "h-11 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus:border-foreground";
@@ -59,12 +64,45 @@
         error = res.error.message ?? "Invalid username or password.";
         return;
       }
-      await refreshAll();
-      goto("/");
+      await signedIn();
     } catch (err) {
       error = err instanceof Error ? err.message : "Something went wrong.";
     } finally {
       busy = false;
+    }
+  }
+
+  async function signedIn() {
+    await refreshAll();
+    goto("/");
+  }
+
+  // Lets the password manager offer a saved passkey right in the username field.
+  async function armAutofill() {
+    if (await passkeyAutofill().catch(() => false)) await signedIn();
+  }
+
+  onMount(() => {
+    passkeys = passkeysSupported();
+    void armAutofill();
+  });
+
+  async function signInWithPasskey() {
+    error = "";
+    needsVerification = false;
+    passkeyBusy = true;
+    try {
+      const res = await authClient.signIn.passkey();
+      if (res?.error) {
+        error = passkeySignInError(res.error) ?? "";
+        void armAutofill();
+        return;
+      }
+      await signedIn();
+    } catch (err) {
+      error = err instanceof Error ? err.message : "Something went wrong.";
+    } finally {
+      passkeyBusy = false;
     }
   }
 
@@ -103,7 +141,7 @@
 <form onsubmit={submit} class="flex flex-col gap-4">
   <div class="flex flex-col gap-1.5">
     <Label.Root for="identifier" class={labelClass}>Username or email</Label.Root>
-    <input id="identifier" bind:value={identifier} autocomplete="username" class={field} />
+    <input id="identifier" bind:value={identifier} autocomplete="username webauthn" class={field} />
   </div>
   <div class="flex flex-col gap-1.5">
     <div class="flex items-center justify-between">
@@ -127,7 +165,7 @@
         id="password"
         type={showPassword ? "text" : "password"}
         bind:value={password}
-        autocomplete="current-password"
+        autocomplete="current-password webauthn"
         class={`${field} w-full pr-10`}
       />
       <button
@@ -167,6 +205,18 @@
     {busy ? "Signing in…" : "Sign in"}
   </Button>
 </form>
+
+{#if passkeys}
+  <div class="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+    <Separator.Root class="h-px flex-1 bg-border" />
+    or
+    <Separator.Root class="h-px flex-1 bg-border" />
+  </div>
+  <Button type="button" variant="outline" class="h-11 w-full" disabled={passkeyBusy} onclick={signInWithPasskey}>
+    <Icon name="key" size={16} />
+    {passkeyBusy ? "Waiting for your passkey…" : "Sign in with a passkey"}
+  </Button>
+{/if}
 
 <p class="mt-8 text-center text-sm text-muted-foreground">
   No account?

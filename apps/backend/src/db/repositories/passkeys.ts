@@ -1,0 +1,11 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { db } from "@/db/client.ts";
+import { passkeys } from "@/db/schema.ts";
+
+// Passkey DB access outside Better Auth, which owns the per-user CRUD.
+
+// Removes every passkey on the instance; returns how many were removed.
+export async function deleteAll(): Promise<number> {
+  const rows = await db.delete(passkeys).returning({ id: passkeys.id });
+  return rows.length;
+}

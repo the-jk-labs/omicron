@@ -13,6 +13,7 @@
   import FollowedTagsManager from "#lib/components/FollowedTagsManager.svelte";
   import Icon, { type IconName } from "#lib/components/Icon.svelte";
   import PageTitle from "#lib/components/PageTitle.svelte";
+  import PasskeysManager from "#lib/components/PasskeysManager.svelte";
   import ProfileLinksEditor from "#lib/components/ProfileLinksEditor.svelte";
   import TagInput from "#lib/components/TagInput.svelte";
   import Time from "#lib/components/Time.svelte";
@@ -656,6 +657,19 @@
 
     <div class="mt-4">
       <WebhookTokensManager />
+    </div>
+  </section>
+
+  <!-- Passkeys -->
+  <section id="passkeys" class="rounded-card border border-border bg-background p-6">
+    <h2 class="text-lg font-semibold tracking-tight text-foreground">Passkeys</h2>
+    <p class="mt-1 max-w-prose text-sm text-muted-foreground">
+      Sign in with your fingerprint, face, or screen lock instead of your password. Passkeys are stored by your device
+      or password manager and can't be phished.
+    </p>
+
+    <div class="mt-4">
+      <PasskeysManager username={data.user.username} />
     </div>
   </section>
 

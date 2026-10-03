@@ -20,6 +20,8 @@ const auth = vi.hoisted(() => ({
   sendVerificationEmail: vi.fn<(a: unknown) => Promise<unknown>>(),
   changePassword: vi.fn<(a: unknown) => Promise<{ error?: { message?: string } | null }>>(),
   deleteUser: vi.fn<(a: unknown) => Promise<{ error?: { message?: string } | null }>>(),
+  // The passkeys section loads its own list; an empty one keeps it quiet.
+  passkey: { listUserPasskeys: () => Promise.resolve({ data: [], error: null }) },
 }));
 vi.mock("#lib/auth-client.js", () => ({ authClient: auth }));
 const pwned = vi.hoisted(() => ({ value: false }));

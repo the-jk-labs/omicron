@@ -742,6 +742,28 @@ export const verifications = pgTable(
   (t) => [index("verifications_identifier_idx").on(t.identifier)],
 );
 
+// ── passkeys (Better Auth passkey plugin) ────────────────────────────────
+// WebAuthn credentials. Sign-in looks a row up by `credential_id`.
+export const passkeys = pgTable(
+  "passkeys",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name"),
+    publicKey: text("public_key").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    credentialID: text("credential_id").notNull(),
+    counter: integer("counter").notNull(),
+    deviceType: text("device_type").notNull(),
+    backedUp: boolean("backed_up").notNull(),
+    transports: text("transports"),
+    aaguid: text("aaguid"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("passkeys_user_idx").on(t.userId), uniqueIndex("passkeys_credential_id_idx").on(t.credentialID)],
+);
+
 // ── webhook tokens ─────────────────────────────────────────────────────
 // Per-user publishing credentials for the content webhook. One row is one
 // token a writer minted for one external system, so revoking a leaked Sanity
@@ -952,6 +974,7 @@ export type CommentLike = typeof commentLikes.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type Account = typeof accounts.$inferSelect;
 export type Verification = typeof verifications.$inferSelect;
+export type Passkey = typeof passkeys.$inferSelect;
 export type WebhookToken = typeof webhookTokens.$inferSelect;
 export type Upload = typeof uploads.$inferSelect;
 export type NewUpload = typeof uploads.$inferInsert;

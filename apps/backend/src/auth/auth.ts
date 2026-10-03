@@ -1,3 +1,4 @@
+import { getAuthenticatorName, passkey } from "@better-auth/passkey";
 import bcrypt from "bcryptjs";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { betterAuth } from "better-auth";
@@ -7,14 +8,15 @@ import { haveIBeenPwned, username } from "better-auth/plugins";
 import { config } from "@/config.ts";
 import { db } from "@/db/client.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
-import { accounts, sessions, users, verifications } from "@/db/schema.ts";
+import { accounts, passkeys, sessions, users, verifications } from "@/db/schema.ts";
 import { queue } from "@/queue/queue.ts";
 import { notifyPasswordChanged, notifySelfDeleted } from "@/services/accountNotices.ts";
-import { getOrigin } from "@/services/instanceSetup.ts";
+import { getAppName, getOrigin } from "@/services/instanceSetup.ts";
 
 const BCRYPT_COST = 12;
 const SESSION_TTL_S = 60 * 60 * 24 * 30;
 const USERNAME_RE = /^[a-z0-9_]{3,30}$/;
+const PASSKEY_NAME_MAX = 60;
 
 // Public origin for /api/auth; a wizard-changed domain is covered by forwarded headers
 // below. Links in emails are built from getOrigin() at send time instead.
@@ -25,7 +27,7 @@ export const auth = betterAuth({
   secret: config.SESSION_SECRET,
   database: drizzleAdapter(db, {
     provider: "pg",
-    schema: { user: users, session: sessions, account: accounts, verification: verifications },
+    schema: { user: users, session: sessions, account: accounts, verification: verifications, passkey: passkeys },
   }),
   plugins: [
     username({
@@ -34,6 +36,13 @@ export const auth = betterAuth({
       usernameValidator: (value) => USERNAME_RE.test(value),
     }),
     ...(config.HIBP_CHECK_ENABLED ? [haveIBeenPwned()] : []),
+    passkey({
+      registration: {
+        // Unnamed passkeys get their provider's name ("1Password", "Windows Hello") when it is known.
+        afterVerification: ({ verification }) =>
+          Promise.resolve({ name: getAuthenticatorName(verification.registrationInfo?.aaguid) }),
+      },
+    }),
   ],
   advanced: {
     database: { generateId: "uuid" },
@@ -45,7 +54,16 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
-      if (ctx.path !== "/sign-up/email" || typeof ctx.body?.email !== "string") return;
+      if (ctx.path.startsWith("/passkey/")) {
+        const name: unknown = ctx.body?.name;
+        if (typeof name === "string" && name.trim().length > PASSKEY_NAME_MAX) {
+          throw new APIError("BAD_REQUEST", { message: `Passkey names are at most ${PASSKEY_NAME_MAX} characters.` });
+        }
+        // The plugin takes the WebAuthn RP ID from options.baseURL, fixed at boot to
+        // APP_DOMAIN; a passkey must be bound to the live (wizard-set) domain instead.
+        return { context: { context: { appName: await getAppName(), options: { baseURL: await getOrigin() } } } };
+      }
+      if (ctx.path !== "/sign-up/email" || typeof ctx.body?.email !== "string") return undefined;
       // Better Auth otherwise returns a synthetic success for duplicate emails
       // when verification is required, although no account or email is created.
       if (await usersRepo.findByEmail(ctx.body.email.toLowerCase())) {
@@ -54,6 +72,7 @@ export const auth = betterAuth({
           message: "This email is already registered. Sign in or reset your password.",
         });
       }
+      return undefined;
     }),
   },
   // Trust the real public origin (a wizard-set domain ≠ APP_DOMAIN) from forwarded headers.
