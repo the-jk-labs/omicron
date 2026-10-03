@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { get } from "svelte/store";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-vi.mock(import("$app/environment"), () => ({ browser: true, building: false, dev: true, version: "test" }));
+vi.mock(import("$app/env"), () => ({ browser: true, building: false, dev: true, version: "test" }));
 
-import { LOCALE_COOKIE, locale, localeFromAcceptLanguage, rememberLocale, validLocale } from "$lib/locale";
+import { LOCALE_COOKIE, locale, localeFromAcceptLanguage, rememberLocale, validLocale } from "#lib/locale.svelte.js";
 
 afterEach(() => {
   document.cookie = `${LOCALE_COOKIE}=; max-age=0; path=/`;
@@ -41,11 +40,11 @@ describe("localeFromAcceptLanguage", () => {
   });
 });
 
-test("the store falls back to en-US, then follows the browser once remembered", () => {
-  expect(get(locale)).toBe("en-US");
+test("the value falls back to en-US, then follows the browser once remembered", () => {
+  expect(locale.current).toBe("en-US");
   vi.spyOn(navigator, "language", "get").mockReturnValue("az-az");
   rememberLocale();
-  expect(get(locale)).toBe("az-AZ");
+  expect(locale.current).toBe("az-AZ");
   expect(document.cookie).toContain(`${LOCALE_COOKIE}=az-AZ`);
 });
 

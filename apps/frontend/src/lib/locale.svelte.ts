@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { browser } from "$app/environment";
-import { page } from "$app/stores";
-import { derived, writable, type Readable } from "svelte/store";
+import { browser } from "$app/env";
+import { page } from "$app/state";
 
 // User locale — mirrors `timezone.ts` but for `Intl` formatting. The server has
 // no navigator, so it reads the locale from a cookie (set by the browser) or
@@ -13,14 +12,16 @@ export const LOCALE_COOKIE = "locale";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 const FALLBACK = "en-US";
 
-const localLocale = writable<string | null>(null);
+let localLocale = $state<string | null>(null);
 
 /** The locale every date on the page is formatted with. Falls back to en-US. */
-export const locale: Readable<string> = derived([page, localLocale], ([$page, $local]) => {
-  // oxlint-disable-next-line no-unsafe-type-assertion
-  const fromPage = ($page.data as { locale?: string | null }).locale;
-  return $local ?? fromPage ?? FALLBACK;
-});
+export const locale = {
+  get current(): string {
+    // oxlint-disable-next-line no-unsafe-type-assertion
+    const fromPage = (page.data as { locale?: string | null }).locale;
+    return localLocale ?? fromPage ?? FALLBACK;
+  },
+};
 
 /** Publish the browser's locale to the cookie and to `locale`. Call once, on mount. */
 export function rememberLocale(): void {
@@ -28,7 +29,7 @@ export function rememberLocale(): void {
   const raw = navigator.language;
   const valid = validLocale(raw);
   if (!valid) return;
-  localLocale.set(valid);
+  localLocale = valid;
   document.cookie = `${LOCALE_COOKIE}=${encodeURIComponent(valid)}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
 }
 

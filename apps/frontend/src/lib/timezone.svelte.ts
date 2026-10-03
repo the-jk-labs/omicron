@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { browser } from "$app/environment";
-import { page } from "$app/stores";
-import { derived, type Readable, writable } from "svelte/store";
+import { browser } from "$app/env";
+import { page } from "$app/state";
 
 // Dates are rendered twice — once on the server, once again when the page
 // hydrates — and both renders must agree, or the reader watches the timestamp
@@ -19,24 +18,25 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 // the server's HTML exactly. From then on it wins over the cookie value the
 // server used, which is how a reader who has travelled since their last visit
 // gets the right time (once, on the next paint) instead of their old zone.
-const localZone = writable<string | null>(null);
+let localZone = $state<string | null>(null);
 
 /**
  * The zone every date on the page is formatted in. `"UTC"` is the fallback for
  * a reader's very first pageview, before any cookie exists — deliberately a
  * fixed zone rather than the runtime default, so server and client agree.
  */
-export const timeZone: Readable<string> = derived(
-  [page, localZone],
-  ([$page, $local]) => $local ?? ($page.data as { timeZone?: string | null }).timeZone ?? "UTC",
-);
+export const timeZone = {
+  get current(): string {
+    return localZone ?? (page.data as { timeZone?: string | null }).timeZone ?? "UTC";
+  },
+};
 
 /** Publish the browser's zone to the cookie and to `timeZone`. Call once, on mount. */
 export function rememberTimeZone(): void {
   if (!browser) return;
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   if (!zone) return;
-  localZone.set(zone);
+  localZone = zone;
   // Rewritten on every load rather than only when absent, so both the expiry
   // and the zone itself stay current for a reader who moves.
   document.cookie = `${TZ_COOKIE}=${encodeURIComponent(zone)}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
