@@ -11,16 +11,12 @@
   import { authClient } from "#lib/auth-client.js";
   import Icon from "#lib/components/Icon.svelte";
   import Button from "#lib/components/ui/Button.svelte";
-  import { emailChangeError, needsPassword, rememberNewLogin } from "#lib/emailChange.js";
+  import UsernameHint from "#lib/components/UsernameHint.svelte";
+  import { emailChangeError, needsPassword } from "#lib/emailChange.js";
   import { confirmPassword } from "#lib/passkeys.js";
   import { notALoginField } from "#lib/passwordManagers.js";
 
-  let {
-    open = $bindable(false),
-    username,
-    email,
-    displayName,
-  }: { open?: boolean; username: string; email: string; displayName: string } = $props();
+  let { open = $bindable(false), username, email }: { open?: boolean; username: string; email: string } = $props();
 
   type Step = "password" | "email" | "code" | "done";
   const STEP_NUMBER: Record<Step, number> = { password: 1, email: 2, code: 3, done: 3 };
@@ -118,7 +114,6 @@
       return;
     }
     await authClient.revokeOtherSessions().catch(() => {});
-    await rememberNewLogin(sentTo, password, displayName);
     password = "";
     await refreshAll();
     await go("done");
@@ -170,18 +165,8 @@
       class="fixed top-1/2 left-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[440px]"
     >
       <form onsubmit={submit}>
-        <!-- What password managers read on submit: this account's login, which
-             becomes the new address once there is one, plus the password below. -->
-        <input
-          type="email"
-          name="username"
-          autocomplete="username"
-          value={sentTo || email}
-          readonly
-          tabindex="-1"
-          aria-hidden="true"
-          class="sr-only"
-        />
+        <!-- The login stays the username, so changing the email leaves the saved login as it is. -->
+        <UsernameHint {username} />
 
         <div class="flex items-start justify-between gap-4">
           <div>

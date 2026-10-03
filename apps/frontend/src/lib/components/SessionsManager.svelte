@@ -9,6 +9,7 @@
   import Time from "#lib/components/Time.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
+  import UsernameHint from "#lib/components/UsernameHint.svelte";
   import { confirmPassword, needsFreshSignIn } from "#lib/passkeys.js";
   import { deviceLabel, parseUserAgent } from "#lib/userAgent.js";
 
@@ -109,6 +110,7 @@
 
 {#if confirming}
   <form onsubmit={confirmAndLoad} class="rounded-card border border-border bg-muted p-4">
+    <UsernameHint {username} />
     <p class="text-sm font-semibold text-foreground">Confirm it's you</p>
     <p class="mt-1 text-sm text-muted-foreground">
       For your security, enter your password to see where you're signed in.

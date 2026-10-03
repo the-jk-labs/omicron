@@ -122,6 +122,7 @@ test("an older session confirms the password before the list is shown", async ()
   show();
   await screen.findByText("Confirm it's you");
   expect(screen.queryByRole("listitem")).toBeNull();
+  expect(document.querySelector('input[autocomplete="username"]')).toHaveValue("ada");
 
   await fireEvent.input(screen.getByLabelText("Password"), { target: { value: "correct horse battery" } });
   await fireEvent.click(screen.getByRole("button", { name: "Show sessions" }));

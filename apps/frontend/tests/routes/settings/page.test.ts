@@ -1,7 +1,7 @@
 import { goto, refreshAll } from "$app/navigation";
 import { page } from "$app/state";
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { reading } from "#lib/prefs.svelte.js";
 import { theme } from "#lib/theme.svelte.js";
@@ -290,6 +290,18 @@ async function openPasswordDialog() {
   await fireEvent.click(screen.getByRole("button", { name: /Change password/ }));
   await screen.findByRole("dialog");
 }
+
+// Password managers fill and save against the username, the one login identifier.
+test.each([
+  ["Change password", "Current password"],
+  ["Delete account", "Password"],
+])("the %s dialog names the username as the login", async (button, field) => {
+  setup();
+  await openTab("Account");
+  await fireEvent.click(screen.getByRole("button", { name: new RegExp(button) }));
+  await screen.findByLabelText(field);
+  expect(within(screen.getByRole("dialog")).getByDisplayValue("ada")).toHaveAttribute("autocomplete", "username");
+});
 
 async function fillPasswords(current: string, next: string, confirm = next) {
   await fireEvent.input(screen.getByLabelText("Current password"), { target: { value: current } });

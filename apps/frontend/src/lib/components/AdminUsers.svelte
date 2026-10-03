@@ -11,7 +11,9 @@
   import Avatar from "#lib/components/ui/Avatar.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
+  import UsernameHint from "#lib/components/UsernameHint.svelte";
   import { AVATAR_MAX_DIMENSION, prepareImage } from "#lib/editor/image.js";
+  import { notALoginField } from "#lib/passwordManagers.js";
   import { identifierToUrl, platformMeta, urlToIdentifier } from "#lib/profileLinks.js";
   import { MAX_PROFILE_TAGS } from "#lib/tags.js";
   import type { AdminUser, AdminUserDetail, DeletedUser, ProfileLink } from "#lib/types.js";
@@ -20,7 +22,11 @@
   // (the server also forbids them). `isViewerAdmin` gates the role grants —
   // only admins may hand out the admin or moderator role, and a moderator
   // viewer gets no action buttons on admin/moderator rows at all.
-  let { selfId, isViewerAdmin = false }: { selfId: string; isViewerAdmin?: boolean } = $props();
+  let {
+    selfId,
+    selfUsername,
+    isViewerAdmin = false,
+  }: { selfId: string; selfUsername: string; isViewerAdmin?: boolean } = $props();
 
   // Whether the viewer may act on this row. Moderators work regular accounts
   // only; admins may act on anyone (per-action guards still apply).
@@ -1332,12 +1338,14 @@
             bind:value={deleteUsername}
             placeholder={deleteTarget?.username ?? ""}
             autocomplete="off"
+            {...notALoginField}
             autocapitalize="off"
             spellcheck={false}
             class={field}
           />
         </div>
         <div class="flex flex-col gap-1.5">
+          <UsernameHint username={selfUsername} />
           <Label.Root for="delete-password" class={labelClass}>Your password</Label.Root>
           <input
             id="delete-password"
@@ -1411,6 +1419,7 @@
 
       <div class="mt-5 flex flex-col gap-4">
         <div class="flex flex-col gap-1.5">
+          <UsernameHint username={selfUsername} />
           <Label.Root for="role-password" class={labelClass}>Your password</Label.Root>
           <input
             id="role-password"

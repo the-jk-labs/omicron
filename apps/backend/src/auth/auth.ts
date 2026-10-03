@@ -120,9 +120,18 @@ export const auth = betterAuth({
           const row = await passkeysRepo.findById(ctx.body.id).catch(() => undefined);
           if (row) deletingPasskeys.set(ctx.request, row);
         }
+        // The plugin names a new passkey's account after the email; password managers
+        // key saved logins on it, so use the username, the identifier everywhere else.
+        const session = ctx.path === "/passkey/generate-register-options" ? await getSessionFromCtx(ctx) : null;
+        const handle: unknown = session?.user.username;
         // The plugin takes the WebAuthn RP ID from options.baseURL, fixed at boot to
         // APP_DOMAIN; a passkey must be bound to the live (wizard-set) domain instead.
-        return { context: { context: { appName: await getAppName(), options: { baseURL: await getOrigin() } } } };
+        return {
+          context: {
+            context: { appName: await getAppName(), options: { baseURL: await getOrigin() } },
+            ...(typeof handle === "string" && { query: { ...ctx.query, name: handle } }),
+          },
+        };
       }
       if (EMAIL_CHANGE_PATHS.has(ctx.path)) {
         const session = await getSessionFromCtx(ctx);

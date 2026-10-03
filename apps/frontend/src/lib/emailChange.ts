@@ -20,18 +20,3 @@ export function emailChangeError(error: AuthError): string {
       return error?.message || "Something went wrong. Try again.";
   }
 }
-
-/**
- * Tells the browser's own password manager that the saved login for this site
- * now uses the new email. Chromium only (the Credential Management API); other
- * managers pick it up from the dialog's form instead.
- */
-export async function rememberNewLogin(email: string, password: string, name: string): Promise<void> {
-  const Credential = (globalThis as { PasswordCredential?: new (data: object) => Credential }).PasswordCredential;
-  if (!Credential || !navigator.credentials?.store) return;
-  try {
-    await navigator.credentials.store(new Credential({ id: email, password, name }));
-  } catch {
-    // The browser may refuse (no user gesture, setting off); the change itself is done.
-  }
-}

@@ -113,6 +113,7 @@ test("an old session confirms the password, then the passkey is added", async ()
   render(PasskeysManager, { props: { username: "ada" } });
   await fireEvent.click(await screen.findByRole("button", { name: "Add a passkey" }));
   await fireEvent.input(await screen.findByLabelText("Password"), { target: { value: "hunter2hunter2" } });
+  expect(document.querySelector('input[autocomplete="username"]')).toHaveValue("ada");
   auth.list.mockResolvedValue({ data: [laptop, unnamed, { ...laptop, id: "p3", name: "Phone" }], error: null });
   await fireEvent.click(screen.getByRole("button", { name: "Continue" }));
   await screen.findByText("Phone");

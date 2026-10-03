@@ -77,7 +77,7 @@
         Every local account on this instance. Expand a row for detail; edit, suspend, delete, or change roles.
       </p>
       <div class="mt-5">
-        <AdminUsers selfId={data.user.id} isViewerAdmin={isAdmin} />
+        <AdminUsers selfId={data.user.id} selfUsername={data.user.username} isViewerAdmin={isAdmin} />
       </div>
     </section>
   </Tabs.Content>

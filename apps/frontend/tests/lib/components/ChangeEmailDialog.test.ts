@@ -27,7 +27,7 @@ const ok: Res = { data: {}, error: null };
 
 function show() {
   render(ChangeEmailDialog, {
-    props: { open: true, username: "ada", email: "ada@old.test", displayName: "Ada" },
+    props: { open: true, username: "ada", email: "ada@old.test" },
   });
 }
 
@@ -158,17 +158,16 @@ test("resending waits out a short cooldown", async () => {
   }
 });
 
-test("the form carries the login and password a password manager needs", async () => {
+// The username is the login everywhere, so the saved login doesn't change with the email.
+test("the form names the username as the login through every step", async () => {
   show();
   const login = document.querySelector<HTMLInputElement>('input[autocomplete="username"]')!;
-  expect(login).toHaveValue("ada@old.test");
+  expect(login).toHaveValue("ada");
   await confirmPassword();
   await enterEmail();
   await screen.findByText("Step 3 of 3");
-  // Both stay in the form, now pointing at the new address.
-  expect(login).toHaveValue("ada@new.test");
-  expect(document.querySelector('input[autocomplete="current-password"]')).toHaveValue("correct horse battery");
-  expect(screen.getByLabelText("Code")).toHaveAttribute("autocomplete", "one-time-code");
+  expect(login).toHaveValue("ada");
+  expect(document.querySelectorAll('input[autocomplete="username"]')).toHaveLength(1);
 });
 
 test("the new email field isn't offered to password managers", async () => {

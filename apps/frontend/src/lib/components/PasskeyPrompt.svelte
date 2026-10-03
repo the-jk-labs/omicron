@@ -7,6 +7,7 @@
   import { authClient } from "#lib/auth-client.js";
   import Icon from "#lib/components/Icon.svelte";
   import Button from "#lib/components/ui/Button.svelte";
+  import UsernameHint from "#lib/components/UsernameHint.svelte";
   import { dismissPasskeyPrompt, passkeyPromptDismissed } from "#lib/passkeyPrompt.js";
   import { addPasskeyError, confirmPassword, needsFreshSignIn, passkeysSupported } from "#lib/passkeys.js";
 
@@ -109,6 +110,7 @@
           For your security, enter your password before adding a new way to sign in.
         </Dialog.Description>
         <form id="passkey-confirm" onsubmit={confirmAndAdd} class="mt-4 flex flex-col gap-1.5">
+          <UsernameHint username={user?.username ?? ""} />
           <Label.Root for="passkey-confirm-password" class="text-sm leading-none font-medium text-foreground">
             Password
           </Label.Root>

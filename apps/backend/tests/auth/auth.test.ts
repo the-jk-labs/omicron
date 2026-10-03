@@ -248,7 +248,8 @@ describe("passkeys", () => {
     await signedIn("ada");
     const options = await (await call("/passkey/generate-register-options")).json();
     expect(options.rp).toEqual({ id: "localhost", name: "Omicron" });
-    expect(options.user.name).toBe("ada@example.com");
+    // The username is the one login identifier everywhere; it never changes.
+    expect(options.user.name).toBe("ada");
   });
 
   // Better Auth would otherwise use its boot-time baseURL (APP_DOMAIN) as the RP ID.

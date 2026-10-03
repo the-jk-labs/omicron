@@ -23,6 +23,7 @@
   import Avatar from "#lib/components/ui/Avatar.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import PageTabs from "#lib/components/ui/PageTabs.svelte";
+  import UsernameHint from "#lib/components/UsernameHint.svelte";
   import WebhookTokensManager from "#lib/components/WebhookTokensManager.svelte";
   import { AVATAR_MAX_DIMENSION, prepareImage } from "#lib/editor/image.js";
   import { insertEmojiIntoField, emojiOverlayBtn } from "#lib/emoji.js";
@@ -822,12 +823,7 @@
 </Tabs.Root>
 
 {#if data.user.email}
-  <ChangeEmailDialog
-    bind:open={emailOpen}
-    username={data.user.username}
-    email={data.user.email}
-    displayName={data.user.displayName}
-  />
+  <ChangeEmailDialog bind:open={emailOpen} username={data.user.username} email={data.user.email} />
 {/if}
 
 <Dialog.Root bind:open={pwOpen} onOpenChange={onPwOpenChange}>
@@ -844,6 +840,7 @@
       </Dialog.Description>
 
       <div class="mt-5 flex flex-col gap-4">
+        <UsernameHint username={data.user.username} />
         <div class="flex flex-col gap-1.5">
           <Label.Root for="current-password" class={labelClass}>Current password</Label.Root>
           <input
@@ -907,6 +904,7 @@
       </Dialog.Description>
 
       <div class="mt-5 flex flex-col gap-1.5">
+        <UsernameHint username={data.user.username} />
         <Label.Root for="delete-password" class={labelClass}>Password</Label.Root>
         <input
           id="delete-password"

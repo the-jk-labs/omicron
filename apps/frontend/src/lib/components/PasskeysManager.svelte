@@ -10,6 +10,7 @@
   import Time from "#lib/components/Time.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
+  import UsernameHint from "#lib/components/UsernameHint.svelte";
   import { addPasskeyError, confirmPassword, needsFreshSignIn, passkeysSupported } from "#lib/passkeys.js";
 
   let { username }: { username: string } = $props();
@@ -121,6 +122,7 @@
 
 {#if confirming}
   <form onsubmit={confirmAndAdd} class="rounded-card border border-border bg-muted p-4">
+    <UsernameHint {username} />
     <p class="text-sm font-semibold text-foreground">Confirm it's you</p>
     <p class="mt-1 text-sm text-muted-foreground">
       For your security, enter your password before adding a new way to sign in.

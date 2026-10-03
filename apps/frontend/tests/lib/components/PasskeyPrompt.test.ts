@@ -89,6 +89,7 @@ test("an old session confirms the password, swaps the session, then adds the pas
   show();
   await fireEvent.click(await screen.findByRole("button", { name: "Add a passkey" }));
   await screen.findByText("Confirm it's you");
+  expect(document.querySelector('input[autocomplete="username"]')).toHaveValue("ada");
   await fireEvent.input(screen.getByLabelText("Password"), { target: { value: "hunter2hunter2" } });
   await fireEvent.click(screen.getByRole("button", { name: "Continue" }));
   await screen.findByText("Passkey added");
