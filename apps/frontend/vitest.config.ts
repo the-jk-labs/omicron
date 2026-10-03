@@ -17,7 +17,8 @@ import { svelteTesting } from "@testing-library/svelte/vite";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  plugins: [svelte(), svelteTesting()],
+  // Kit config lives in vite.config.ts now; tests need none of it.
+  plugins: [svelte({ configFile: false }), svelteTesting()],
   test: {
     environment: "jsdom",
     // One jsdom per worker instead of per file (still isolated per file): ~2x faster.
@@ -49,16 +50,15 @@ export default defineConfig({
   resolve: {
     conditions: ["browser"],
     alias: {
-      $lib: fileURLToPath(new URL("./src/lib", import.meta.url)),
       // SvelteKit's `$app/*` modules are virtual — there is no file to resolve
       // outside a kit build. Point them at the jsdom test doubles so components
       // that read `page`/`goto`/`browser` can be rendered directly.
       "$app/state": fileURLToPath(new URL("./tests/mocks/$app/state.ts", import.meta.url)),
       "$app/navigation": fileURLToPath(new URL("./tests/mocks/$app/navigation.ts", import.meta.url)),
-      "$app/stores": fileURLToPath(new URL("./tests/mocks/$app/stores.ts", import.meta.url)),
-      "$app/environment": fileURLToPath(new URL("./tests/mocks/$app/environment.ts", import.meta.url)),
-      "$env/dynamic/public": fileURLToPath(new URL("./tests/mocks/$env/dynamic/public.ts", import.meta.url)),
-      "$env/dynamic/private": fileURLToPath(new URL("./tests/mocks/$env/dynamic/private.ts", import.meta.url)),
+      // Before `$app/env`, which would otherwise match these as `$app/env/…` prefixes.
+      "$app/env/public": fileURLToPath(new URL("./tests/mocks/$app/env/public.ts", import.meta.url)),
+      "$app/env/private": fileURLToPath(new URL("./tests/mocks/$app/env/private.ts", import.meta.url)),
+      "$app/env": fileURLToPath(new URL("./tests/mocks/$app/env.ts", import.meta.url)),
     },
   },
 });
