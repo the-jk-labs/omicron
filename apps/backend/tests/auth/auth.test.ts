@@ -429,6 +429,12 @@ describe("changing the login email", () => {
     expect(notifyEmailChangeCode).not.toHaveBeenCalled();
   });
 
+  // Each request mails a code to an address of the requester's choosing.
+  it("caps code requests so the instance can't be used to flood an inbox", async () => {
+    const { auth } = await import("@/auth/auth.ts");
+    expect(auth.options.rateLimit?.customRules?.["/email-otp/request-email-change"]).toEqual({ window: 60, max: 3 });
+  });
+
   it.each([
     "/sign-in/email-otp",
     "/email-otp/send-verification-otp",

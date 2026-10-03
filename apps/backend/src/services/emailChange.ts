@@ -27,6 +27,10 @@ export async function createUndoLink(userId: string, oldEmail: string, newEmail:
  * every session ends, passkeys are removed and the password is cleared, so
  * whoever made the change is shut out. A password-reset link goes to the
  * restored address. Returns that address.
+ *
+ * This link and every later one for the account are used up, so an undo also
+ * undoes any changes made after it. Earlier links survive: the owner's link from
+ * the first change always wins over an attacker's from a change they made later.
  */
 export async function undoEmailChange(token: string): Promise<string> {
   const tokenHash = await hashToken(token);
@@ -44,7 +48,7 @@ export async function undoEmailChange(token: string): Promise<string> {
     sessionsRepo.removeAllForUser(user.id),
     passkeysRepo.deleteAllForUser(user.id),
     accountsRepo.clearCredentialPassword(user.id),
-    undoRepo.remove(tokenHash),
+    undoRepo.removeIssuedSince(user.id, undo.createdAt),
   ]);
 
   try {

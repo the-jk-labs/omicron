@@ -21,6 +21,8 @@ import { createUndoLink, undoEmailChange } from "@/services/emailChange.ts";
 import { getOrigin } from "@/services/instanceSetup.ts";
 
 const undo = { userId: "u1", oldEmail: "old@x.test", newEmail: "new@x.test" };
+const issuedAt = new Date("2026-10-01T10:00:00Z");
+const found = { ...undo, createdAt: issuedAt };
 
 beforeEach(() => {
   vi.mocked(getOrigin).mockResolvedValue("https://blog.example");
@@ -42,7 +44,7 @@ describe("createUndoLink", () => {
 
 describe("undoEmailChange", () => {
   test("puts the old address back and shuts out whoever changed it", async () => {
-    vi.mocked(undoRepo.find).mockResolvedValue(undo);
+    vi.mocked(undoRepo.find).mockResolvedValue(found);
     vi.mocked(usersRepo.findById).mockResolvedValue(userRow({ id: "u1", email: "new@x.test" }));
     vi.mocked(usersRepo.findByEmail).mockResolvedValue(undefined);
 
@@ -53,7 +55,8 @@ describe("undoEmailChange", () => {
     expect(sessionsRepo.removeAllForUser).toHaveBeenCalledWith("u1");
     expect(passkeysRepo.deleteAllForUser).toHaveBeenCalledWith("u1");
     expect(accountsRepo.clearCredentialPassword).toHaveBeenCalledWith("u1");
-    expect(undoRepo.remove).toHaveBeenCalledWith(await hashToken("tok"));
+    // This link and every later one go; earlier ones stay (see the integration test).
+    expect(undoRepo.removeIssuedSince).toHaveBeenCalledWith("u1", issuedAt);
     expect(requestPasswordReset).toHaveBeenCalledWith({
       body: { email: "old@x.test", redirectTo: "/reset-password" },
     });
@@ -66,14 +69,14 @@ describe("undoEmailChange", () => {
   });
 
   test("a deleted account can't be restored this way", async () => {
-    vi.mocked(undoRepo.find).mockResolvedValue(undo);
+    vi.mocked(undoRepo.find).mockResolvedValue(found);
     vi.mocked(usersRepo.findById).mockResolvedValue(userRow({ id: "u1", deletedAt: new Date() }));
     await expect(undoEmailChange("tok")).rejects.toThrow("This link has expired or was already used.");
     expect(usersRepo.update).not.toHaveBeenCalled();
   });
 
   test("an old address now held by another account is refused", async () => {
-    vi.mocked(undoRepo.find).mockResolvedValue(undo);
+    vi.mocked(undoRepo.find).mockResolvedValue(found);
     vi.mocked(usersRepo.findById).mockResolvedValue(userRow({ id: "u1" }));
     vi.mocked(usersRepo.findByEmail).mockResolvedValue(userRow({ id: "someone-else", email: "old@x.test" }));
     await expect(undoEmailChange("tok")).rejects.toMatchObject({ status: 409 });
@@ -82,7 +85,7 @@ describe("undoEmailChange", () => {
   });
 
   test("a failed reset mail doesn't undo the lockdown", async () => {
-    vi.mocked(undoRepo.find).mockResolvedValue(undo);
+    vi.mocked(undoRepo.find).mockResolvedValue(found);
     vi.mocked(usersRepo.findById).mockResolvedValue(userRow({ id: "u1" }));
     vi.mocked(usersRepo.findByEmail).mockResolvedValue(undefined);
     requestPasswordReset.mockRejectedValue(new Error("smtp down"));

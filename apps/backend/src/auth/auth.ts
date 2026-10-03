@@ -105,6 +105,10 @@ export const auth = betterAuth({
   },
   rateLimit: {
     storage: "memory",
+    customRules: {
+      // Each request mails a code to an address the requester picks.
+      "/email-otp/request-email-change": { window: 60, max: 3 },
+    },
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {

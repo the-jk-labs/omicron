@@ -4,7 +4,7 @@
 // undo token is stored hashed in Better Auth's verifications table, works
 // once, and puts the old address back while locking the account down.
 import { eq, like } from "drizzle-orm";
-import { afterAll, beforeEach, expect, test } from "vitest";
+import { afterAll, beforeEach, describe, expect, test } from "vitest";
 import { db } from "@/db/client.ts";
 import * as undoRepo from "@/db/repositories/emailChangeUndo.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
@@ -104,4 +104,46 @@ test("an old address that now belongs to someone else is not taken from them", a
   expect((await rejection(undoEmailChange(token))).status).toBe(409);
   expect((await usersRepo.findById(ada.id))?.email).toBe("attacker@evil.test");
   expect(await db.select().from(passkeys).where(eq(passkeys.userId, ada.id))).toHaveLength(1);
+});
+
+// An attacker with the password changes A -> B, then B -> C. The owner's link
+// (at A) must win whichever link is clicked first, and must undo both changes.
+describe("a chain of changes", () => {
+  async function chain() {
+    const ada = await hijacked(); // email is now attacker@evil.test (B)
+    const link = async (from: string, to: string) =>
+      new URL(await createUndoLink(ada.id, from, to)).searchParams.get("token")!;
+    const owners = await link("ada@example.test", "attacker@evil.test");
+    // Later than the owner's link, as the second change would be.
+    await new Promise((r) => setTimeout(r, 5));
+    await usersRepo.update(ada.id, { email: "attacker2@evil.test" });
+    const attackers = await link("attacker@evil.test", "attacker2@evil.test");
+    return { ada, owners, attackers };
+  }
+
+  test("the owner's link restores the original address and cancels the later link", async () => {
+    const { ada, owners, attackers } = await chain();
+    expect(await undoEmailChange(owners)).toBe("ada@example.test");
+    expect((await usersRepo.findById(ada.id))?.email).toBe("ada@example.test");
+
+    expect((await rejection(undoEmailChange(attackers))).status).toBe(400);
+    expect((await usersRepo.findById(ada.id))?.email).toBe("ada@example.test");
+  });
+
+  test("the attacker's later link can't cancel the owner's earlier one", async () => {
+    const { ada, owners, attackers } = await chain();
+    expect(await undoEmailChange(attackers)).toBe("attacker@evil.test");
+
+    expect(await undoEmailChange(owners)).toBe("ada@example.test");
+    expect((await usersRepo.findById(ada.id))?.email).toBe("ada@example.test");
+    expect(await db.select().from(sessions).where(eq(sessions.userId, ada.id))).toEqual([]);
+  });
+
+  test("another account's links are left alone", async () => {
+    const { owners } = await chain();
+    const bob = await mkUser("bob");
+    const bobs = new URL(await createUndoLink(bob.id, "bob@old.test", "bob@example.test")).searchParams.get("token")!;
+    await undoEmailChange(owners);
+    expect(await undoEmailChange(bobs)).toBe("bob@old.test");
+  });
 });
