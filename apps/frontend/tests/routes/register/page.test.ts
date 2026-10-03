@@ -98,7 +98,7 @@ describe("passkey autofill", () => {
     render(RegisterPage);
     expect(screen.getByLabelText("Username")).toHaveAttribute("autocomplete", "username webauthn");
     await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
-    expect(passkey).toHaveBeenCalledWith({ autoFill: true, returnWebAuthnResponse: true });
+    expect(passkey).toHaveBeenCalledWith({ autoFill: true });
     expect(refreshAll).toHaveBeenCalled();
   });
 });

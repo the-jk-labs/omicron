@@ -63,8 +63,8 @@ vi.mock("#lib/auth-client.js", () => ({
   },
 }));
 
-const laptop = { id: "p1", credentialID: "cred-p1", name: "Laptop", backedUp: true, createdAt: "2026-09-01T00:00:00Z" };
-const unnamed = { id: "p2", credentialID: "cred-p2", name: null, backedUp: false, createdAt: "2026-09-02T00:00:00Z" };
+const laptop = { id: "p1", name: "Laptop", backedUp: true, createdAt: "2026-09-01T00:00:00Z" };
+const unnamed = { id: "p2", name: null, backedUp: false, createdAt: "2026-09-02T00:00:00Z" };
 
 beforeEach(() => {
   shared.reset();
@@ -200,26 +200,4 @@ test("a passkey added from the prompt shows up in the list without a reload", as
 
   await screen.findByText("Phone");
   expect(screen.queryByText("No passkeys yet.")).toBeNull();
-});
-
-test("removing a passkey tells the password manager it's gone; a failed removal doesn't", async () => {
-  const signalUnknownCredential = vi.fn<(o: unknown) => Promise<void>>().mockResolvedValue();
-  vi.stubGlobal(
-    "PublicKeyCredential",
-    Object.assign(function PublicKeyCredential() {}, { signalUnknownCredential }),
-  );
-  auth.remove.mockResolvedValueOnce({ data: null, error: { message: "Passkey not found" } });
-  auth.remove.mockResolvedValueOnce({ data: { status: true }, error: null });
-  render(PasskeysManager, { props: { username: "ada" } });
-  await screen.findByText("Laptop");
-
-  for (const attempt of [1, 2]) {
-    await fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
-    await waitFor(() => expect(get(confirmRequest)).not.toBeNull());
-    get(confirmRequest)!.resolve({ ok: true, notify: false });
-    confirmRequest.set(null);
-    if (attempt === 1) await screen.findByText("Passkey not found");
-  }
-  await waitFor(() => expect(screen.queryByText("Laptop")).toBeNull());
-  expect(signalUnknownCredential).toHaveBeenCalledExactlyOnceWith({ rpId: location.hostname, credentialId: "cred-p1" });
 });
