@@ -178,11 +178,11 @@ test("a browser without passkeys can't add one", async () => {
   expect(screen.getByRole("button", { name: "Add a passkey" })).toBeDisabled();
 });
 
-// Both are on screen when Settings is reloaded: the prompt opens over the page.
+// Both read Better Auth's one shared list, so an add in either reaches the other.
 test("a passkey added from the prompt shows up in the list without a reload", async () => {
   auth.list.mockResolvedValue({ data: [], error: null });
   render(PasskeysManager, { props: { username: "ada" } });
-  render(PasskeyPrompt, { props: { user: { id: "u1", username: "ada" } } });
+  render(PasskeyPrompt, { props: { user: { id: "u1", username: "ada" }, onHome: true } });
   await screen.findByText("No passkeys yet.");
   const prompt = await screen.findByRole("dialog");
 

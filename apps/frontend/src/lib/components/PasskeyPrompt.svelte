@@ -10,7 +10,9 @@
   import { dismissPasskeyPrompt, passkeyPromptDismissed } from "#lib/passkeyPrompt.js";
   import { addPasskeyError, confirmPassword, needsFreshSignIn, passkeysSupported } from "#lib/passkeys.js";
 
-  let { user }: { user: { id: string; username: string } | null } = $props();
+  // Offered only on the home page, so it never interrupts a flow like sign-up's
+  // email verification; a sign-in elsewhere is offered once the reader gets there.
+  let { user, onHome }: { user: { id: string; username: string } | null; onHome: boolean } = $props();
 
   let open = $state(false);
   // "confirm": the session is too old to add a sign-in method, so the password is asked first.
@@ -43,7 +45,7 @@
       open = false;
       return;
     }
-    if (userId === checkedFor) return;
+    if (!onHome || userId === checkedFor) return;
     checkedFor = userId;
     if (passkeysSupported() && !passkeyPromptDismissed()) void offerIfNone();
   });

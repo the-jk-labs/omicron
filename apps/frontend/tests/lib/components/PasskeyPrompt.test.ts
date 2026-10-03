@@ -23,7 +23,7 @@ vi.mock("#lib/auth-client.js", () => ({
 
 const TITLE = "Sign in faster with a passkey";
 const ada = { id: "u1", username: "ada" };
-const show = (user: typeof ada | null = ada) => render(PasskeyPrompt, { props: { user } });
+const show = (user: typeof ada | null = ada, onHome = true) => render(PasskeyPrompt, { props: { user, onHome } });
 const settle = () => new Promise((r) => setTimeout(r));
 
 beforeEach(() => {
@@ -121,9 +121,36 @@ test("signing out and back in as the same account offers it again, without a rel
 
   // What the auth client does on sign-out and sign-in.
   resetPasskeyPrompt();
-  await rerender({ user: null });
-  await rerender({ user: ada });
+  await rerender({ user: null, onHome: true });
+  await rerender({ user: ada, onHome: true });
 
   await screen.findByText(TITLE);
   expect(auth.list).toHaveBeenCalledTimes(2);
+});
+
+// Signing up lands on /verify-email already signed in; the offer must not
+// interrupt that or any other page.
+test("off the home page it stays quiet and doesn't even check", async () => {
+  show(ada, false);
+  await settle();
+  expect(screen.queryByText(TITLE)).toBeNull();
+  expect(auth.list).not.toHaveBeenCalled();
+});
+
+test("a sign-in elsewhere is offered once the reader reaches home", async () => {
+  const { rerender } = show(ada, false);
+  await settle();
+  await rerender({ user: ada, onHome: true });
+  await screen.findByText(TITLE);
+  expect(auth.list).toHaveBeenCalledOnce();
+});
+
+test("leaving home and coming back doesn't offer it twice in one sign-in", async () => {
+  auth.list.mockResolvedValue({ data: [{ id: "p1" }], error: null });
+  const { rerender } = show();
+  await settle();
+  await rerender({ user: ada, onHome: false });
+  await rerender({ user: ada, onHome: true });
+  await settle();
+  expect(auth.list).toHaveBeenCalledOnce();
 });
