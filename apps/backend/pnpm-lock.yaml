@@ -73,8 +73,8 @@ importers:
         specifier: 0.31.11
         version: 0.31.11
       greenly:
-        specifier: 1.1.6
-        version: 1.1.6
+        specifier: 1.2.0
+        version: 1.2.0
       oxfmt:
         specifier: 0.71.0
         version: 0.71.0
@@ -1525,9 +1525,9 @@ packages:
   get-tsconfig@4.14.3:
     resolution: {integrity: sha512-++QEw4DIY7WGoukz+/+A/8dGYPT9l9yIadnmSgZ8Rjr3YVSVDipQSO9CdnJo9ePqFqUUqh+wk9uIaoiAwsiPkA==}
 
-  greenly@1.1.6:
-    resolution: {integrity: sha512-2AyxJKCW5AE+6Jjn9etxUAaG51+coIMcffRuLTvSo7vrhhlb0+07K6ftkxBaUgKoLxvH0M4sSdmzV3nzEfGpHQ==}
-    engines: {node: '>=18'}
+  greenly@1.2.0:
+    resolution: {integrity: sha512-Rq1SD8gv+xLFXv+an1DTU8oNuyURz+APscnsySZWPlOr1pSn1WTd/0y36sv5cFceN+uVzB1el/XrNp1FD7WbbA==}
+    engines: {node: '>=22.18.0'}
     hasBin: true
 
   hono@4.13.12:
@@ -2884,7 +2884,7 @@ snapshots:
     dependencies:
       resolve-pkg-maps: 1.0.0
 
-  greenly@1.1.6:
+  greenly@1.2.0:
     dependencies:
       jiti: 2.7.0
 
