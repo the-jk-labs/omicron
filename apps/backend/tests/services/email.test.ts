@@ -253,8 +253,8 @@ describe("templates", () => {
     expect(m.subject).toBe(subject);
     expect(m.text).toContain(`A passkey ("Laptop") ${change}`);
     expect(m.text).toContain("@ada");
-    expect(m.text).toContain("https://blog.example/settings#passkeys");
-    expect(m.html).toContain('href="https://blog.example/settings#passkeys"');
+    expect(m.text).toContain("https://blog.example/settings?tab=account#passkeys");
+    expect(m.html).toContain('href="https://blog.example/settings?tab=account#passkeys"');
   });
 
   test("a passkey notice reads naturally without a name, and escapes one in HTML", () => {

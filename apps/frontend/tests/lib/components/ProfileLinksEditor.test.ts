@@ -45,3 +45,25 @@ test("a handle platform shows its base as a prefix; a custom link asks for a lab
   expect(screen.getByPlaceholderText("Label (e.g. My portfolio)")).toHaveValue("Portfolio");
   expect(screen.getAllByRole("button", { name: "Link type" })).toHaveLength(2);
 });
+
+// 1Password ignores autocomplete="off", so a handle field (github.com/<user>)
+// looked like a username box and got filled with the reader's login.
+test("no link field is offered to password managers", () => {
+  render(ProfileLinksEditor, {
+    props: {
+      links: [
+        { platform: "github", url: "ada", label: "" },
+        { platform: "website", url: "https://ada.example", label: "" },
+        { platform: "custom", url: "https://x.example", label: "Portfolio" },
+      ],
+    },
+  });
+  const inputs = [...document.querySelectorAll("input")];
+  expect(inputs).toHaveLength(4);
+  for (const input of inputs) {
+    expect(input).toHaveAttribute("data-1p-ignore");
+    expect(input).toHaveAttribute("data-lpignore", "true");
+    expect(input).toHaveAttribute("data-bwignore");
+    expect(input).toHaveAttribute("data-form-type", "other");
+  }
+});

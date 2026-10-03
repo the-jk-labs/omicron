@@ -656,10 +656,17 @@ export function accountPasskeyAddedEmail(vars: PasskeyNoticeVars): Omit<EmailMes
     "If this was you, you can ignore this email. If it wasn't, remove it in your settings right away and change your password: your account may be compromised.";
   return {
     subject: `A passkey was added to your ${vars.appName} account`,
-    text: [what(['"', '"']), "", advice, `${vars.origin}/settings#passkeys`, "", `The ${vars.appName} team`].join("\n"),
+    text: [
+      what(['"', '"']),
+      "",
+      advice,
+      `${vars.origin}/settings?tab=account#passkeys`,
+      "",
+      `The ${vars.appName} team`,
+    ].join("\n"),
     html: layout("A passkey was added", `${what(["“", "”"])} ${advice}`, {
       label: "Review passkeys",
-      url: `${vars.origin}/settings#passkeys`,
+      url: `${vars.origin}/settings?tab=account#passkeys`,
     }),
   };
 }
@@ -677,10 +684,17 @@ export function accountPasskeyRemovedEmail(vars: PasskeyNoticeVars): Omit<EmailM
     "If this was you, you can ignore this email. If it wasn't, change your password right away: your account may be compromised.";
   return {
     subject: `A passkey was removed from your ${vars.appName} account`,
-    text: [what(['"', '"']), "", advice, `${vars.origin}/settings#passkeys`, "", `The ${vars.appName} team`].join("\n"),
+    text: [
+      what(['"', '"']),
+      "",
+      advice,
+      `${vars.origin}/settings?tab=account#passkeys`,
+      "",
+      `The ${vars.appName} team`,
+    ].join("\n"),
     html: layout("A passkey was removed", `${what(["“", "”"])} ${advice}`, {
       label: "Review passkeys",
-      url: `${vars.origin}/settings#passkeys`,
+      url: `${vars.origin}/settings?tab=account#passkeys`,
     }),
   };
 }

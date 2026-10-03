@@ -3,6 +3,7 @@
   import { Select } from "bits-ui";
   import Icon from "#lib/components/Icon.svelte";
   import ProfileLinkIcon from "#lib/components/ProfileLinkIcon.svelte";
+  import { notALoginField } from "#lib/passwordManagers.js";
   import { inputPrefix, PLATFORMS, platformMeta } from "#lib/profileLinks.js";
   import type { ProfileLink } from "#lib/types.js";
 
@@ -94,6 +95,7 @@
             bind:value={link.url}
             placeholder={meta.placeholder}
             autocomplete="off"
+            {...notALoginField}
             autocapitalize="off"
             spellcheck="false"
             class={bareInputClass}
@@ -105,6 +107,7 @@
           bind:value={link.url}
           placeholder={meta.placeholder}
           autocomplete="off"
+          {...notALoginField}
           autocapitalize="off"
           spellcheck="false"
           class={inputClass}
@@ -136,6 +139,7 @@
         bind:value={link.label}
         placeholder="Label (e.g. My portfolio)"
         maxlength={60}
+        {...notALoginField}
         class={`${inputClass} sm:w-40`}
       />
     {/if}

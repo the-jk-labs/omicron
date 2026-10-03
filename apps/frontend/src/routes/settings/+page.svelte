@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { goto, refreshAll } from "$app/navigation";
-  import { Button as ButtonPrimitive, Dialog, Label, Switch } from "bits-ui";
+  import { page } from "$app/state";
+  import { Button as ButtonPrimitive, Dialog, Label, Switch, Tabs } from "bits-ui";
   import { untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
   import { authClient } from "#lib/auth-client.js";
@@ -19,10 +20,12 @@
   import Time from "#lib/components/Time.svelte";
   import Avatar from "#lib/components/ui/Avatar.svelte";
   import Button from "#lib/components/ui/Button.svelte";
+  import PageTabs from "#lib/components/ui/PageTabs.svelte";
   import WebhookTokensManager from "#lib/components/WebhookTokensManager.svelte";
   import { AVATAR_MAX_DIMENSION, prepareImage } from "#lib/editor/image.js";
   import { insertEmojiIntoField, emojiOverlayBtn } from "#lib/emoji.js";
   import { MIN_PASSWORD_LEN, isPwnedPasswordClient } from "#lib/password.js";
+  import { notALoginField } from "#lib/passwordManagers.js";
   import { reading, type FeedTab } from "#lib/prefs.svelte.js";
   import { identifierToUrl, platformMeta, urlToIdentifier } from "#lib/profileLinks.js";
   import { MAX_PROFILE_TAGS } from "#lib/tags.js";
@@ -31,6 +34,25 @@
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
+
+  const TABS = [
+    { value: "profile", label: "Profile", icon: "user" },
+    { value: "preferences", label: "Preferences", icon: "sliders" },
+    { value: "privacy", label: "Privacy", icon: "eye" },
+    { value: "account", label: "Account", icon: "lock" },
+    { value: "integrations", label: "Integrations", icon: "plug" },
+  ] as const satisfies readonly { value: string; label: string; icon: IconName }[];
+  type Tab = (typeof TABS)[number]["value"];
+
+  // The open tab lives in ?tab= so it renders on the server, survives a reload
+  // and can be linked to (the passkey emails open ?tab=account#passkeys).
+  const asTab = (v: string | null): Tab => TABS.find((t) => t.value === v)?.value ?? "profile";
+  let tab = $state<Tab>(asTab(untrack(() => page.url.searchParams.get("tab"))));
+
+  function selectTab(value: string) {
+    tab = asTab(value);
+    void goto(`?tab=${tab}`, { shallow: true, replace: true });
+  }
 
   // Profile form — seeded once from the loaded user; edits live in the form and
   // are persisted on save, so we intentionally capture the initial value only.
@@ -383,378 +405,403 @@
   <p class="mt-1 text-muted-foreground">Manage your profile, appearance, and account.</p>
 </header>
 
-<div class="flex flex-col gap-8">
-  <!-- Profile -->
-  <section class="rounded-card border border-border bg-background p-6">
-    <h2 class="text-lg font-semibold tracking-tight text-foreground">Profile</h2>
-    <p class="mt-1 text-sm text-muted-foreground">Update how you appear across the fediverse.</p>
+<Tabs.Root value={tab} onValueChange={selectTab}>
+  <PageTabs tabs={TABS} />
 
-    <div class="mt-6 flex flex-col gap-5">
-      <!-- Avatar -->
-      <div class="flex items-center gap-4">
-        <button
-          type="button"
-          onclick={() => fileInput?.click()}
-          class="group relative rounded-full"
-          aria-label="Change profile picture"
-        >
-          <Avatar
-            name={displayName || data.user.displayName}
-            src={previewUrl ?? data.user.avatarUrl ?? undefined}
-            size={72}
-          />
-          <span
-            class="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100"
-          >
-            <Icon name="camera" size={20} />
-          </span>
-        </button>
-        <div class="flex flex-col gap-1.5">
-          <div class="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onclick={() => fileInput?.click()}>
-              <Icon name="camera" size={15} /> Change photo
-            </Button>
-            {#if file || data.user.avatarUrl}
-              <Button
-                variant="ghost"
-                size="sm"
-                onclick={removePhoto}
-                disabled={removingPhoto}
-                class="text-muted-foreground hover:text-destructive"
+  <Tabs.Content value="profile" class="mt-6">
+    <div class="flex flex-col gap-8">
+      <!-- Profile -->
+      <section class="rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Profile</h2>
+        <p class="mt-1 text-sm text-muted-foreground">Update how you appear across the fediverse.</p>
+
+        <div class="mt-6 flex flex-col gap-5">
+          <!-- Avatar -->
+          <div class="flex items-center gap-4">
+            <button
+              type="button"
+              onclick={() => fileInput?.click()}
+              class="group relative rounded-full"
+              aria-label="Change profile picture"
+            >
+              <Avatar
+                name={displayName || data.user.displayName}
+                src={previewUrl ?? data.user.avatarUrl ?? undefined}
+                size={72}
+              />
+              <span
+                class="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100"
               >
-                <Icon name="trash" size={15} />
-                {removingPhoto ? "Removing…" : "Remove"}
-              </Button>
-            {/if}
+                <Icon name="camera" size={20} />
+              </span>
+            </button>
+            <div class="flex flex-col gap-1.5">
+              <div class="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onclick={() => fileInput?.click()}>
+                  <Icon name="camera" size={15} /> Change photo
+                </Button>
+                {#if file || data.user.avatarUrl}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onclick={removePhoto}
+                    disabled={removingPhoto}
+                    class="text-muted-foreground hover:text-destructive"
+                  >
+                    <Icon name="trash" size={15} />
+                    {removingPhoto ? "Removing…" : "Remove"}
+                  </Button>
+                {/if}
+              </div>
+              <p class="text-xs text-muted-foreground">
+                PNG, JPEG, WebP or GIF · large photos are resized automatically
+              </p>
+            </div>
+            <input
+              bind:this={fileInput}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              class="hidden"
+              onchange={onFileChange}
+            />
+            <AvatarCropper bind:open={cropOpen} src={cropSrc} onCrop={onCropped} />
           </div>
-          <p class="text-xs text-muted-foreground">PNG, JPEG, WebP or GIF · large photos are resized automatically</p>
-        </div>
-        <input
-          bind:this={fileInput}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
-          class="hidden"
-          onchange={onFileChange}
-        />
-        <AvatarCropper bind:open={cropOpen} src={cropSrc} onCrop={onCropped} />
-      </div>
 
-      <!-- Display name -->
-      <div class="flex flex-col gap-1.5">
-        <Label.Root for="displayName" class={labelClass}>Display name</Label.Root>
-        <div class="relative">
-          <input
-            id="displayName"
-            bind:this={nameEl}
-            bind:value={displayName}
-            maxlength={60}
-            class={`${field} w-full pr-11`}
-          />
-          <EmojiTrigger
-            onPick={insertNameEmoji}
-            align="end"
-            class={`${emojiOverlayBtn} top-1/2 right-1.5 -translate-y-1/2`}
-          />
-        </div>
-      </div>
+          <!-- Display name -->
+          <div class="flex flex-col gap-1.5">
+            <Label.Root for="displayName" class={labelClass}>Display name</Label.Root>
+            <div class="relative">
+              <input
+                id="displayName"
+                bind:this={nameEl}
+                bind:value={displayName}
+                maxlength={60}
+                class={`${field} w-full pr-11`}
+              />
+              <EmojiTrigger
+                onPick={insertNameEmoji}
+                align="end"
+                class={`${emojiOverlayBtn} top-1/2 right-1.5 -translate-y-1/2`}
+              />
+            </div>
+          </div>
 
-      <!-- Bio -->
-      <div class="flex flex-col gap-1.5">
-        <Label.Root for="bio" class={labelClass}>Bio</Label.Root>
-        <div class="relative">
-          <textarea
-            id="bio"
-            bind:this={bioEl}
-            bind:value={bio}
-            rows={3}
-            maxlength={500}
-            placeholder="Tell people about yourself"
-            class={`${field} w-full resize-none pr-11`}></textarea>
-          <EmojiTrigger onPick={insertBioEmoji} align="end" class={`${emojiOverlayBtn} right-1.5 bottom-2`} />
-        </div>
-        <p class="self-end text-xs text-muted-foreground">{bio.length}/500</p>
-      </div>
+          <!-- Bio -->
+          <div class="flex flex-col gap-1.5">
+            <Label.Root for="bio" class={labelClass}>Bio</Label.Root>
+            <div class="relative">
+              <textarea
+                id="bio"
+                bind:this={bioEl}
+                bind:value={bio}
+                rows={3}
+                maxlength={500}
+                placeholder="Tell people about yourself"
+                class={`${field} w-full resize-none pr-11`}></textarea>
+              <EmojiTrigger onPick={insertBioEmoji} align="end" class={`${emojiOverlayBtn} right-1.5 bottom-2`} />
+            </div>
+            <p class="self-end text-xs text-muted-foreground">{bio.length}/500</p>
+          </div>
 
-      <!-- Public email -->
-      <div class="flex flex-col gap-1.5">
-        <Label.Root for="publicEmail" class={labelClass}>Public email</Label.Root>
-        <input
-          id="publicEmail"
-          type="email"
-          bind:value={publicEmail}
-          maxlength={254}
-          placeholder="you@example.com"
-          autocomplete="off"
-          class={`${field} w-full`}
-        />
-        <p class="text-xs text-muted-foreground">
-          Optional. Shown on your profile for anyone to contact you. Leave blank to hide it.
-        </p>
-      </div>
-
-      <!-- Profile tags -->
-      <div class="flex flex-col gap-1.5">
-        <Label.Root class={labelClass}>Tags</Label.Root>
-        <TagInput
-          bind:tags={profileTags}
-          max={MAX_PROFILE_TAGS}
-          hint="Topics you post about. Shown on your profile and federated to other servers."
-        />
-      </div>
-
-      <!-- Profile links -->
-      <div class="flex flex-col gap-1.5">
-        <Label.Root class={labelClass}>Links</Label.Root>
-        <ProfileLinksEditor bind:links={profileLinks} />
-      </div>
-
-      <!-- Custom section -->
-      <div class="flex flex-col gap-1.5">
-        <Label.Root class={labelClass}>Custom section</Label.Root>
-        <p class="text-xs text-muted-foreground">
-          A free-form space at the top of your profile's About tab. Write it in Markdown and lay it out however you
-          like. Leave it empty to hide the section.
-        </p>
-        <div class="mt-1">
-          <CustomSectionEditor bind:value={customSection} maxLength={MAX_CUSTOM_SECTION_LEN} />
-        </div>
-      </div>
-
-      {#if error}<p class="text-sm text-destructive">{error}</p>{/if}
-
-      <div class="flex items-center justify-end gap-3">
-        {#if saved && !dirty}<p class="text-sm text-muted-foreground">Saved.</p>{/if}
-        <Button variant="solid" disabled={busy || !dirty} onclick={save}>
-          {busy ? "Saving…" : "Save changes"}
-        </Button>
-      </div>
-    </div>
-  </section>
-
-  <!-- Appearance -->
-  <section class="rounded-card border border-border bg-background p-6">
-    <h2 class="text-lg font-semibold tracking-tight text-foreground">Appearance</h2>
-    <p class="mt-1 text-sm text-muted-foreground">Choose how Omicron looks to you.</p>
-
-    <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-      <div>
-        <p class="text-sm font-medium text-foreground">Theme</p>
-        <p class="text-xs text-muted-foreground">Use a fixed theme, or follow your system setting.</p>
-      </div>
-      <div
-        class="inline-flex items-center gap-1 self-start rounded-input border border-input bg-background-alt p-1 shadow-btn sm:self-auto"
-      >
-        {#each themeOptions as opt (opt.value)}
-          <ButtonPrimitive.Root
-            onclick={() => theme.set(opt.value)}
-            aria-pressed={theme.preference === opt.value}
-            class={`inline-flex h-8 items-center gap-1.5 rounded-button px-3 text-sm font-medium whitespace-nowrap active:scale-[0.98] ${
-              theme.preference === opt.value
-                ? "bg-background text-foreground shadow-mini"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Icon name={opt.icon} size={15} />
-            {opt.label}
-          </ButtonPrimitive.Root>
-        {/each}
-      </div>
-    </div>
-  </section>
-
-  <!-- Reading -->
-  <section class="rounded-card border border-border bg-background p-6">
-    <h2 class="text-lg font-semibold tracking-tight text-foreground">Reading</h2>
-    <p class="mt-1 text-sm text-muted-foreground">Customize your reading experience.</p>
-
-    <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-      <div>
-        <p class="text-sm font-medium text-foreground">Default feed</p>
-        <p class="text-xs text-muted-foreground">Which tab opens first on the home page.</p>
-      </div>
-      <div
-        class="inline-flex items-center gap-1 self-start rounded-input border border-input bg-background-alt p-1 shadow-btn sm:self-auto"
-      >
-        {#each feedOptions as opt (opt.value)}
-          <ButtonPrimitive.Root
-            onclick={() => reading.setDefaultFeed(opt.value)}
-            aria-pressed={currentFeed === opt.value}
-            class={`inline-flex h-8 items-center gap-1.5 rounded-button px-3 text-sm font-medium whitespace-nowrap active:scale-[0.98] ${
-              currentFeed === opt.value
-                ? "bg-background text-foreground shadow-mini"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Icon name={opt.icon} size={15} />
-            {opt.label}
-          </ButtonPrimitive.Root>
-        {/each}
-      </div>
-    </div>
-
-    <FeedLanguageFilter />
-  </section>
-
-  <!-- Privacy -->
-  <section class="rounded-card border border-border bg-background p-6">
-    <h2 class="text-lg font-semibold tracking-tight text-foreground">Privacy</h2>
-    <p class="mt-1 text-sm text-muted-foreground">Control who can see your articles.</p>
-
-    <div class="mt-4 flex items-center justify-between gap-4">
-      <div class="min-w-0">
-        <Label.Root for="private-account" class="text-sm font-medium text-foreground">Private account</Label.Root>
-        <p class="mt-0.5 text-xs text-muted-foreground">
-          When on, only followers you approve can see your articles, and new followers must send a request. Turning it
-          off approves everyone waiting.
-        </p>
-      </div>
-      <Switch.Root
-        id="private-account"
-        checked={isPrivate}
-        onCheckedChange={togglePrivacy}
-        disabled={privacyBusy}
-        class="peer inline-flex h-[36px] min-h-[36px] w-[60px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset"
-      >
-        <Switch.Thumb
-          class="pointer-events-none block size-[30px] shrink-0 rounded-full bg-background transition-transform data-[state=checked]:translate-x-6 data-[state=unchecked]:translate-x-0 data-[state=unchecked]:shadow-mini"
-        />
-      </Switch.Root>
-    </div>
-  </section>
-
-  <!-- Followed tags -->
-  <section class="rounded-card border border-border bg-background p-6">
-    <h2 class="text-lg font-semibold tracking-tight text-foreground">Followed tags</h2>
-    <p class="mt-1 text-sm text-muted-foreground">
-      Articles tagged with these show up in your “For you” feed. Open any tag to follow it.
-    </p>
-
-    <div class="mt-4">
-      <FollowedTagsManager />
-    </div>
-  </section>
-
-  <!-- Connections -->
-  <section class="rounded-card border border-border bg-background p-6">
-    <h2 class="text-lg font-semibold tracking-tight text-foreground">Muted &amp; blocked</h2>
-    <p class="mt-1 text-sm text-muted-foreground">
-      Accounts you've muted or blocked. Manage who you follow from your profile.
-    </p>
-
-    <div class="mt-4">
-      <ConnectionsManager />
-    </div>
-  </section>
-
-  <!-- Integrations -->
-  <section class="rounded-card border border-border bg-background p-6">
-    <h2 class="text-lg font-semibold tracking-tight text-foreground">Integrations</h2>
-    <p class="mt-1 max-w-prose text-sm text-muted-foreground">
-      Publish to this blog from an external system (a CMS like Sanity, a build hook, or a script). Create a token, give
-      it to that system, and posts it sends are published as you and federate like anything you write here. Revoke a
-      token any time to cut it off.
-    </p>
-
-    <div class="mt-4">
-      <WebhookTokensManager />
-    </div>
-  </section>
-
-  <!-- Passkeys -->
-  <section id="passkeys" class="rounded-card border border-border bg-background p-6">
-    <h2 class="text-lg font-semibold tracking-tight text-foreground">Passkeys</h2>
-    <p class="mt-1 max-w-prose text-sm text-muted-foreground">
-      Sign in with your fingerprint, face, or screen lock instead of your password. Passkeys are stored by your device
-      or password manager and can't be phished.
-    </p>
-
-    <div class="mt-4">
-      <PasskeysManager username={data.user.username} />
-    </div>
-  </section>
-
-  <!-- Account -->
-  <section class="rounded-card border border-border bg-background p-6">
-    <h2 class="text-lg font-semibold tracking-tight text-foreground">Account</h2>
-
-    <dl class="mt-4 flex flex-col gap-3 text-sm">
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <dt class="text-muted-foreground">Username</dt>
-          <p class="mt-0.5 text-xs text-muted-foreground">Your fediverse handle. Permanent and can't be changed.</p>
-        </div>
-        <dd class="font-medium text-foreground">@{data.user.username}</dd>
-      </div>
-      {#if data.user.email}
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <dt class="text-muted-foreground">Email</dt>
-            <p class="mt-0.5 text-xs text-muted-foreground">
-              Your private login address. Used for sign-in and account recovery.
+          <!-- Public email -->
+          <div class="flex flex-col gap-1.5">
+            <Label.Root for="publicEmail" class={labelClass}>Public email</Label.Root>
+            <input
+              id="publicEmail"
+              type="email"
+              bind:value={publicEmail}
+              maxlength={254}
+              placeholder="you@example.com"
+              autocomplete="off"
+              {...notALoginField}
+              class={`${field} w-full`}
+            />
+            <p class="text-xs text-muted-foreground">
+              Optional. Shown on your profile for anyone to contact you. Leave blank to hide it.
             </p>
           </div>
-          <dd class="flex flex-col items-end gap-1">
-            <span class="font-medium text-foreground">{data.user.email}</span>
-            {#if data.user.emailVerified}
-              <span class="inline-flex items-center gap-1 text-xs font-medium text-foreground">
-                <Icon name="check" size={13} /> Verified
-              </span>
-            {:else if resendDone}
-              <span class="text-xs text-muted-foreground">Verification link sent.</span>
-            {:else}
-              <span class="inline-flex items-center gap-2 text-xs">
-                <span class="text-muted-foreground">Unverified</span>
-                <ButtonPrimitive.Root
-                  onclick={resendVerification}
-                  disabled={resending}
-                  class="font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground disabled:opacity-60"
-                >
-                  {resending ? "Sending…" : "Resend link"}
-                </ButtonPrimitive.Root>
-              </span>
-            {/if}
-          </dd>
+
+          <!-- Profile tags -->
+          <div class="flex flex-col gap-1.5">
+            <Label.Root class={labelClass}>Tags</Label.Root>
+            <TagInput
+              bind:tags={profileTags}
+              max={MAX_PROFILE_TAGS}
+              hint="Topics you post about. Shown on your profile and federated to other servers."
+            />
+          </div>
+
+          <!-- Profile links -->
+          <div class="flex flex-col gap-1.5">
+            <Label.Root class={labelClass}>Links</Label.Root>
+            <ProfileLinksEditor bind:links={profileLinks} />
+          </div>
+
+          <!-- Custom section -->
+          <div class="flex flex-col gap-1.5">
+            <Label.Root class={labelClass}>Custom section</Label.Root>
+            <p class="text-xs text-muted-foreground">
+              A free-form space at the top of your profile's About tab. Write it in Markdown and lay it out however you
+              like. Leave it empty to hide the section.
+            </p>
+            <div class="mt-1">
+              <CustomSectionEditor bind:value={customSection} maxLength={MAX_CUSTOM_SECTION_LEN} />
+            </div>
+          </div>
+
+          {#if error}<p class="text-sm text-destructive">{error}</p>{/if}
+
+          <div class="flex items-center justify-end gap-3">
+            {#if saved && !dirty}<p class="text-sm text-muted-foreground">Saved.</p>{/if}
+            <Button variant="solid" disabled={busy || !dirty} onclick={save}>
+              {busy ? "Saving…" : "Save changes"}
+            </Button>
+          </div>
         </div>
-      {/if}
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <dt class="text-muted-foreground">Password</dt>
-          {#if pwSaved}<p class="mt-0.5 text-xs text-muted-foreground">Password updated.</p>{/if}
+      </section>
+    </div>
+  </Tabs.Content>
+
+  <Tabs.Content value="preferences" class="mt-6">
+    <div class="flex flex-col gap-8">
+      <!-- Appearance -->
+      <section class="rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Appearance</h2>
+        <p class="mt-1 text-sm text-muted-foreground">Choose how Omicron looks to you.</p>
+
+        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div>
+            <p class="text-sm font-medium text-foreground">Theme</p>
+            <p class="text-xs text-muted-foreground">Use a fixed theme, or follow your system setting.</p>
+          </div>
+          <div
+            class="inline-flex items-center gap-1 self-start rounded-input border border-input bg-background-alt p-1 shadow-btn sm:self-auto"
+          >
+            {#each themeOptions as opt (opt.value)}
+              <ButtonPrimitive.Root
+                onclick={() => theme.set(opt.value)}
+                aria-pressed={theme.preference === opt.value}
+                class={`inline-flex h-8 items-center gap-1.5 rounded-button px-3 text-sm font-medium whitespace-nowrap active:scale-[0.98] ${
+                  theme.preference === opt.value
+                    ? "bg-background text-foreground shadow-mini"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon name={opt.icon} size={15} />
+                {opt.label}
+              </ButtonPrimitive.Root>
+            {/each}
+          </div>
         </div>
-        <dd>
-          <Button variant="outline" size="sm" onclick={() => onPwOpenChange(true)}>
-            <Icon name="lock" size={15} /> Change password
+      </section>
+
+      <!-- Reading -->
+      <section class="rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Reading</h2>
+        <p class="mt-1 text-sm text-muted-foreground">Customize your reading experience.</p>
+
+        <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div>
+            <p class="text-sm font-medium text-foreground">Default feed</p>
+            <p class="text-xs text-muted-foreground">Which tab opens first on the home page.</p>
+          </div>
+          <div
+            class="inline-flex items-center gap-1 self-start rounded-input border border-input bg-background-alt p-1 shadow-btn sm:self-auto"
+          >
+            {#each feedOptions as opt (opt.value)}
+              <ButtonPrimitive.Root
+                onclick={() => reading.setDefaultFeed(opt.value)}
+                aria-pressed={currentFeed === opt.value}
+                class={`inline-flex h-8 items-center gap-1.5 rounded-button px-3 text-sm font-medium whitespace-nowrap active:scale-[0.98] ${
+                  currentFeed === opt.value
+                    ? "bg-background text-foreground shadow-mini"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon name={opt.icon} size={15} />
+                {opt.label}
+              </ButtonPrimitive.Root>
+            {/each}
+          </div>
+        </div>
+
+        <FeedLanguageFilter />
+      </section>
+
+      <!-- Followed tags -->
+      <section class="rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Followed tags</h2>
+        <p class="mt-1 text-sm text-muted-foreground">
+          Articles tagged with these show up in your “For you” feed. Open any tag to follow it.
+        </p>
+
+        <div class="mt-4">
+          <FollowedTagsManager />
+        </div>
+      </section>
+    </div>
+  </Tabs.Content>
+
+  <Tabs.Content value="privacy" class="mt-6">
+    <div class="flex flex-col gap-8">
+      <!-- Privacy -->
+      <section class="rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Privacy</h2>
+        <p class="mt-1 text-sm text-muted-foreground">Control who can see your articles.</p>
+
+        <div class="mt-4 flex items-center justify-between gap-4">
+          <div class="min-w-0">
+            <Label.Root for="private-account" class="text-sm font-medium text-foreground">Private account</Label.Root>
+            <p class="mt-0.5 text-xs text-muted-foreground">
+              When on, only followers you approve can see your articles, and new followers must send a request. Turning
+              it off approves everyone waiting.
+            </p>
+          </div>
+          <Switch.Root
+            id="private-account"
+            checked={isPrivate}
+            onCheckedChange={togglePrivacy}
+            disabled={privacyBusy}
+            class="peer inline-flex h-[36px] min-h-[36px] w-[60px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset"
+          >
+            <Switch.Thumb
+              class="pointer-events-none block size-[30px] shrink-0 rounded-full bg-background transition-transform data-[state=checked]:translate-x-6 data-[state=unchecked]:translate-x-0 data-[state=unchecked]:shadow-mini"
+            />
+          </Switch.Root>
+        </div>
+      </section>
+
+      <!-- Connections -->
+      <section class="rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Muted &amp; blocked</h2>
+        <p class="mt-1 text-sm text-muted-foreground">
+          Accounts you've muted or blocked. Manage who you follow from your profile.
+        </p>
+
+        <div class="mt-4">
+          <ConnectionsManager />
+        </div>
+      </section>
+    </div>
+  </Tabs.Content>
+
+  <Tabs.Content value="account" class="mt-6">
+    <div class="flex flex-col gap-8">
+      <!-- Account -->
+      <section class="rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Account</h2>
+
+        <dl class="mt-4 flex flex-col gap-3 text-sm">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <dt class="text-muted-foreground">Username</dt>
+              <p class="mt-0.5 text-xs text-muted-foreground">Your fediverse handle. Permanent and can't be changed.</p>
+            </div>
+            <dd class="font-medium text-foreground">@{data.user.username}</dd>
+          </div>
+          {#if data.user.email}
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <dt class="text-muted-foreground">Email</dt>
+                <p class="mt-0.5 text-xs text-muted-foreground">
+                  Your private login address. Used for sign-in and account recovery.
+                </p>
+              </div>
+              <dd class="flex flex-col items-end gap-1">
+                <span class="font-medium text-foreground">{data.user.email}</span>
+                {#if data.user.emailVerified}
+                  <span class="inline-flex items-center gap-1 text-xs font-medium text-foreground">
+                    <Icon name="check" size={13} /> Verified
+                  </span>
+                {:else if resendDone}
+                  <span class="text-xs text-muted-foreground">Verification link sent.</span>
+                {:else}
+                  <span class="inline-flex items-center gap-2 text-xs">
+                    <span class="text-muted-foreground">Unverified</span>
+                    <ButtonPrimitive.Root
+                      onclick={resendVerification}
+                      disabled={resending}
+                      class="font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground disabled:opacity-60"
+                    >
+                      {resending ? "Sending…" : "Resend link"}
+                    </ButtonPrimitive.Root>
+                  </span>
+                {/if}
+              </dd>
+            </div>
+          {/if}
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <dt class="text-muted-foreground">Password</dt>
+              {#if pwSaved}<p class="mt-0.5 text-xs text-muted-foreground">Password updated.</p>{/if}
+            </div>
+            <dd>
+              <Button variant="outline" size="sm" onclick={() => onPwOpenChange(true)}>
+                <Icon name="lock" size={15} /> Change password
+              </Button>
+            </dd>
+          </div>
+          <div class="flex items-center justify-between gap-4">
+            <dt class="text-muted-foreground">Joined</dt>
+            <dd class="font-medium text-foreground"><Time iso={data.user.createdAt} kind="date" /></dd>
+          </div>
+        </dl>
+
+        <div class="mt-6 flex justify-end">
+          <Button variant="outline" size="sm" onclick={logout}>
+            <Icon name="logout" size={15} /> Sign out
           </Button>
-        </dd>
-      </div>
-      <div class="flex items-center justify-between gap-4">
-        <dt class="text-muted-foreground">Joined</dt>
-        <dd class="font-medium text-foreground"><Time iso={data.user.createdAt} kind="date" /></dd>
-      </div>
-    </dl>
+        </div>
+      </section>
 
-    <div class="mt-6 flex justify-end">
-      <Button variant="outline" size="sm" onclick={logout}>
-        <Icon name="logout" size={15} /> Sign out
-      </Button>
+      <!-- Passkeys -->
+      <section id="passkeys" class="rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Passkeys</h2>
+        <p class="mt-1 max-w-prose text-sm text-muted-foreground">
+          Sign in with your fingerprint, face, or screen lock instead of your password. Passkeys are stored by your
+          device or password manager and can't be phished.
+        </p>
+
+        <div class="mt-4">
+          <PasskeysManager username={data.user.username} />
+        </div>
+      </section>
+
+      <!-- Danger zone -->
+      <section class="rounded-card border border-destructive/40 bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-destructive">Delete account</h2>
+        <p class="mt-1 max-w-prose text-sm text-muted-foreground">
+          Permanently delete your account, posts, and follows. If your instance is federated, other servers are told to
+          remove your profile too. This cannot be undone.
+        </p>
+
+        <div class="mt-4 flex justify-end">
+          <Button variant="destructive" size="sm" onclick={() => onDeleteOpenChange(true)}>
+            <Icon name="trash" size={15} /> Delete account
+          </Button>
+        </div>
+      </section>
     </div>
-  </section>
+  </Tabs.Content>
 
-  <!-- Danger zone -->
-  <section class="rounded-card border border-destructive/40 bg-background p-6">
-    <h2 class="text-lg font-semibold tracking-tight text-destructive">Delete account</h2>
-    <p class="mt-1 max-w-prose text-sm text-muted-foreground">
-      Permanently delete your account, posts, and follows. If your instance is federated, other servers are told to
-      remove your profile too. This cannot be undone.
-    </p>
+  <Tabs.Content value="integrations" class="mt-6">
+    <div class="flex flex-col gap-8">
+      <!-- Integrations -->
+      <section class="rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Integrations</h2>
+        <p class="mt-1 max-w-prose text-sm text-muted-foreground">
+          Publish to this blog from an external system (a CMS like Sanity, a build hook, or a script). Create a token,
+          give it to that system, and posts it sends are published as you and federate like anything you write here.
+          Revoke a token any time to cut it off.
+        </p>
 
-    <div class="mt-4 flex justify-end">
-      <Button variant="destructive" size="sm" onclick={() => onDeleteOpenChange(true)}>
-        <Icon name="trash" size={15} /> Delete account
-      </Button>
+        <div class="mt-4">
+          <WebhookTokensManager />
+        </div>
+      </section>
     </div>
-  </section>
-</div>
+  </Tabs.Content>
+</Tabs.Root>
 
 <Dialog.Root bind:open={pwOpen} onOpenChange={onPwOpenChange}>
   <Dialog.Portal>

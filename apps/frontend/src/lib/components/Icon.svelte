@@ -64,6 +64,7 @@
   import PenLine from "@lucide/svelte/icons/pen-line";
   import Pencil from "@lucide/svelte/icons/pencil";
   import Pilcrow from "@lucide/svelte/icons/pilcrow";
+  import Plug from "@lucide/svelte/icons/plug";
   import Plus from "@lucide/svelte/icons/plus";
   import Quote from "@lucide/svelte/icons/quote";
   import Repeat2 from "@lucide/svelte/icons/repeat-2";
@@ -74,6 +75,7 @@
   import Share from "@lucide/svelte/icons/share";
   import ShieldCheck from "@lucide/svelte/icons/shield-check";
   import ShieldOff from "@lucide/svelte/icons/shield-off";
+  import SlidersHorizontal from "@lucide/svelte/icons/sliders-horizontal";
   import Smile from "@lucide/svelte/icons/smile";
   import Sparkles from "@lucide/svelte/icons/sparkles";
   import Strikethrough from "@lucide/svelte/icons/strikethrough";
@@ -165,6 +167,8 @@
     trending: TrendingUp,
     lock: Lock,
     key: KeyRound,
+    sliders: SlidersHorizontal,
+    plug: Plug,
     plus: Plus,
     minus: Minus,
     flag: Flag,

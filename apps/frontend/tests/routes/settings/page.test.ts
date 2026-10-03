@@ -1,7 +1,8 @@
 import { goto, refreshAll } from "$app/navigation";
+import { page } from "$app/state";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { reading } from "#lib/prefs.svelte.js";
 import { theme } from "#lib/theme.svelte.js";
 import type { User } from "#lib/types.js";
@@ -66,6 +67,11 @@ function setup(user: User = me(), routes: Parameters<typeof fakeFetch>[0] = {}) 
   });
   vi.stubGlobal("fetch", api.fetch);
   return render(SettingsPage, { props: { data: { user } as never } });
+}
+
+async function openTab(name: string) {
+  await fireEvent.click(screen.getByRole("tab", { name }));
+  await waitFor(() => expect(screen.getByRole("tab", { name })).toHaveAttribute("aria-selected", "true"));
 }
 
 const patchBody = () => api.calls.find((c) => c.method === "PATCH" && c.path === "/api/users/me")?.body;
@@ -229,6 +235,7 @@ test("a failed photo removal is shown", async () => {
 
 test("theme and default feed apply immediately", async () => {
   setup();
+  await openTab("Preferences");
   const setTheme = vi.spyOn(theme, "set");
   const setFeed = vi.spyOn(reading, "setDefaultFeed");
   await fireEvent.click(screen.getByRole("button", { name: /Dark/ }));
@@ -239,6 +246,7 @@ test("theme and default feed apply immediately", async () => {
 
 test("the private switch saves, and flips back when the server refuses", async () => {
   setup(me(), { "PATCH /api/users/me/privacy": apiError(500) });
+  await openTab("Privacy");
   const toggle = screen.getByRole("switch", { name: "Private account" });
   expect(toggle).toHaveAttribute("aria-checked", "false");
   await fireEvent.click(toggle);
@@ -251,6 +259,7 @@ test("the private switch saves, and flips back when the server refuses", async (
 test("an unverified email can resend its link", async () => {
   auth.sendVerificationEmail.mockResolvedValue({});
   setup(me({ emailVerified: false }));
+  await openTab("Account");
   expect(screen.getByText("Unverified")).toBeInTheDocument();
   await fireEvent.click(screen.getByRole("button", { name: "Resend link" }));
   await screen.findByText("Verification link sent.");
@@ -265,12 +274,14 @@ test("signing out goes straight home, never through the sign-in page", async () 
     await goto("/login");
   });
   setup();
+  await openTab("Account");
   await fireEvent.click(screen.getByRole("button", { name: /Sign out/ }));
   await waitFor(() => expect(goto).toHaveBeenCalledWith("/", { refreshAll: true }));
   expect(goto).not.toHaveBeenCalledWith("/login");
 });
 
 async function openPasswordDialog() {
+  await openTab("Account");
   await fireEvent.click(screen.getByRole("button", { name: /Change password/ }));
   await screen.findByRole("dialog");
 }
@@ -334,6 +345,7 @@ test("deleting the account needs the password, then goes straight home", async (
     await goto("/login");
   });
   setup();
+  await openTab("Account");
   await fireEvent.click(screen.getByRole("button", { name: /Delete account/ }));
   const confirmBtn = await screen.findByRole("button", { name: "Delete forever" });
   await fireEvent.input(screen.getByLabelText("Password"), { target: { value: "pw" } });
@@ -347,6 +359,7 @@ test("a refused or failed delete is shown", async () => {
   auth.deleteUser.mockResolvedValueOnce({ error: { message: "Invalid password" } });
   auth.deleteUser.mockRejectedValueOnce(new Error("Failed to fetch"));
   setup();
+  await openTab("Account");
   await fireEvent.click(screen.getByRole("button", { name: /Delete account/ }));
   await screen.findByRole("dialog");
   await fireEvent.input(screen.getByLabelText("Password"), { target: { value: "pw" } });
@@ -355,5 +368,60 @@ test("a refused or failed delete is shown", async () => {
   await screen.findByText("Invalid password");
   await fireEvent.click(confirmBtn);
   await screen.findByText("Failed to fetch");
-  expect(goto).not.toHaveBeenCalled();
+  expect(goto).not.toHaveBeenCalledWith("/", expect.anything());
+});
+
+// An email-typed field is a sign-in field to 1Password, which ignores autocomplete="off".
+test("the public email isn't offered to password managers", () => {
+  setup();
+  const input = screen.getByLabelText(/Public email/);
+  expect(input).toHaveAttribute("data-1p-ignore");
+  expect(input).toHaveAttribute("data-lpignore", "true");
+  expect(input).toHaveAttribute("data-bwignore");
+  expect(input).toHaveAttribute("data-form-type", "other");
+});
+
+describe("tabs", () => {
+  afterEach(() => {
+    page.url = new URL("http://localhost/");
+  });
+
+  test("opens on Profile, showing only its own sections", () => {
+    setup();
+    expect(screen.getByRole("tab", { name: "Profile" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("heading", { name: "Profile" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Appearance" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Delete account" })).toBeNull();
+  });
+
+  test.for([
+    ["Preferences", ["Appearance", "Reading", "Followed tags"]],
+    ["Privacy", ["Privacy", "Muted & blocked"]],
+    ["Account", ["Account", "Passkeys", "Delete account"]],
+    ["Integrations", ["Integrations"]],
+  ] as const)("the %s tab groups its sections", async ([tab, headings]) => {
+    setup();
+    await openTab(tab);
+    for (const name of headings) expect(screen.getByRole("heading", { name })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Profile" })).toBeNull();
+  });
+
+  test("switching tabs records it in the URL without a navigation", async () => {
+    setup();
+    await openTab("Account");
+    expect(goto).toHaveBeenCalledWith("?tab=account", { shallow: true, replace: true });
+  });
+
+  test("?tab= opens that tab, so links and reloads land on it", () => {
+    page.url = new URL("http://localhost/settings?tab=account");
+    setup();
+    expect(screen.getByRole("tab", { name: "Account" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("heading", { name: "Passkeys" })).toBeInTheDocument();
+  });
+
+  test("an unknown ?tab= falls back to Profile", () => {
+    page.url = new URL("http://localhost/settings?tab=nope");
+    setup();
+    expect(screen.getByRole("tab", { name: "Profile" })).toHaveAttribute("aria-selected", "true");
+  });
 });
