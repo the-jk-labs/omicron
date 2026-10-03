@@ -36,13 +36,6 @@
   const label = (p: Passkey) => p.name?.trim() || "Passkey";
   const iso = (d: Date | string) => new Date(d).toISOString();
 
-  async function load() {
-    const res = await authClient.passkey.listUserPasskeys();
-    if (res.error) error = res.error.message ?? "Could not load your passkeys.";
-    else passkeys = (res.data ?? []) as Passkey[];
-    loading = false;
-  }
-
   async function add() {
     error = "";
     adding = true;
@@ -51,9 +44,7 @@
       if (res?.error) {
         if (needsFreshSignIn(res.error)) confirming = true;
         else error = addPasskeyError(res.error);
-        return;
       }
-      await load();
     } finally {
       adding = false;
     }
@@ -115,9 +106,16 @@
   }
 
   // Browser-only: support is a browser fact and the client uses relative URLs.
+  // Better Auth's shared list reloads itself after any add, rename or delete,
+  // so a passkey added from the sign-in prompt shows up here too.
   onMount(() => {
     supported = passkeysSupported();
-    load();
+    return authClient.useListPasskeys().subscribe((list) => {
+      if (list.isPending && !list.data) return;
+      loading = false;
+      if (list.error) error = list.error.message ?? "Could not load your passkeys.";
+      else passkeys = (list.data ?? []) as Passkey[];
+    });
   });
 </script>
 

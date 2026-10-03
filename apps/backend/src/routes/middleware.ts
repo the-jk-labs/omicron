@@ -7,11 +7,19 @@ import { badRequest, forbidden, unauthorized } from "@/lib/http.ts";
 import { readCappedBody } from "@/lib/inboxBody.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
+export const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
 // Resolves the Better Auth session → full user row on every request (null if
 // none). Loading the row (not just the session's user) keeps the whole `User`
 // shape — isAdmin, isModerator, isPrivate, suspendedAt, deletedAt, actorKeyPair — available downstream.
 export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
+  // Better Auth's cookie cache can outlive a revoked session by up to 5 minutes.
+  // The identity every page load asks for, and every write, go to the database.
+  const authoritative = !READ_METHODS.has(c.req.method) || c.req.path === "/api/me";
+  const session = await auth.api.getSession({
+    headers: c.req.raw.headers,
+    query: { disableCookieCache: authoritative },
+  });
   const user = session ? await usersRepo.findById(session.user.id) : null;
   // A suspended or deleted account is treated as signed out at once, regardless
   // of the session cookie cache (its sign-in is also blocked in auth/auth.ts).

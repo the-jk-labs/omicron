@@ -26,6 +26,17 @@ const SESSION_TTL_S = 60 * 60 * 24 * 30;
 const USERNAME_RE = /^[a-z0-9_]{3,30}$/;
 const PASSKEY_NAME_MAX = 60;
 
+// Better Auth reads the session for these through its cookie cache, which can
+// outlive a revoked session by up to 5 minutes; they must check the database.
+const AUTHORITATIVE_SESSION_PATHS = new Set([
+  "/list-sessions",
+  "/passkey/generate-register-options",
+  "/passkey/verify-registration",
+  "/passkey/list-user-passkeys",
+  "/passkey/update-passkey",
+  "/passkey/delete-passkey",
+]);
+
 // The settings dialog re-checks the password by signing in again right before
 // an email change, so the change endpoints only take a session that new.
 const EMAIL_CHANGE_SESSION_MAX_AGE_MS = 15 * 60 * 1000;
@@ -97,6 +108,9 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      if (AUTHORITATIVE_SESSION_PATHS.has(ctx.path) && !(await getSessionFromCtx(ctx, { disableCookieCache: true }))) {
+        throw new APIError("UNAUTHORIZED", { message: "Unauthorized" });
+      }
       if (ctx.path.startsWith("/passkey/")) {
         const name: unknown = ctx.body?.name;
         if (typeof name === "string" && name.trim().length > PASSKEY_NAME_MAX) {

@@ -441,3 +441,63 @@ describe("changing the login email", () => {
     expect(res.status).toBe(404);
   });
 });
+
+// Undoing an email change, a revoke and an admin suspension all delete session
+// rows, but the browser keeps Better Auth's cached copy of the session (the
+// `session_data` cookie) for up to 5 minutes. Ordinary reads may trust it;
+// anything sensitive must check the database (Better Auth: `disableCookieCache`).
+describe("a session deleted from the database", () => {
+  let headers: Headers;
+
+  async function call(path: string) {
+    const { auth } = await import("@/auth/auth.ts");
+    return auth.handler(new Request(`http://localhost:3000/api/auth${path}`, { headers }));
+  }
+
+  beforeEach(async () => {
+    vi.resetModules();
+    for (const rows of Object.values(store)) rows.length = 0;
+    for (const key of Object.keys(settings)) delete settings[key];
+    vi.stubEnv("APP_DOMAIN", "localhost:3000");
+    vi.stubEnv("HIBP_CHECK_ENABLED", "false");
+    vi.stubEnv("EMAIL_VERIFICATION_REQUIRED", "false");
+    const { auth } = await import("@/auth/auth.ts");
+    const registered = await auth.handler(
+      new Request("http://localhost:3000/api/auth/sign-up/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: "http://localhost:3000" },
+        body: JSON.stringify({
+          email: "ada@example.com",
+          password: "Unique-test-password-123!",
+          name: "Ada",
+          username: "ada",
+        }),
+      }),
+    );
+    const cookie = registered.headers
+      .getSetCookie()
+      .map((c) => c.split(";")[0])
+      .join("; ");
+    headers = new Headers({ Cookie: cookie, Origin: "http://localhost:3000" });
+    store.session.length = 0;
+  });
+
+  it("can't start registering a passkey with its cached cookie", async () => {
+    expect((await call("/passkey/generate-register-options")).status).toBe(401);
+  });
+
+  it("can't list the account's sessions with its cached cookie", async () => {
+    expect((await call("/list-sessions")).status).toBe(401);
+  });
+
+  it("is gone for a read that skips the cache", async () => {
+    const { auth } = await import("@/auth/auth.ts");
+    expect(await auth.api.getSession({ headers, query: { disableCookieCache: true } })).toBeNull();
+  });
+
+  // The cache stays on for ordinary reads; that's the point of having it.
+  it("still answers an ordinary cached read until the cache expires", async () => {
+    const { auth } = await import("@/auth/auth.ts");
+    expect((await auth.api.getSession({ headers }))?.user.email).toBe("ada@example.com");
+  });
+});

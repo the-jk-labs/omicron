@@ -23,6 +23,9 @@ const auth = vi.hoisted(() => ({
   deleteUser: vi.fn<(a: unknown) => Promise<{ error?: { message?: string } | null }>>(),
   // The passkeys section loads its own list; an empty one keeps it quiet.
   passkey: { listUserPasskeys: () => Promise.resolve({ data: [], error: null }) },
+  useListPasskeys: () => ({
+    subscribe: (fn: (v: unknown) => void) => (fn({ data: [], error: null, isPending: false }), () => {}),
+  }),
   listSessions: () => Promise.resolve({ data: [], error: null }),
   getSession: () => Promise.resolve({ data: null, error: null }),
 }));

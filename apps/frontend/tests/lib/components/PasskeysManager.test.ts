@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { beforeEach, expect, test, vi } from "vitest";
+import PasskeyPrompt from "#lib/components/PasskeyPrompt.svelte";
 import PasskeysManager from "#lib/components/PasskeysManager.svelte";
 import { confirmRequest } from "#lib/components/ui/confirm.js";
 
@@ -15,13 +16,46 @@ const auth = vi.hoisted(() => ({
   signIn: vi.fn<(a: unknown) => Promise<Res>>(),
   revoke: vi.fn<(a: unknown) => Promise<Res>>(),
 }));
+// Better Auth's shared passkey list (`useListPasskeys`): it loads when first
+// subscribed and reloads after any successful add, rename or delete, wherever
+// in the app that happened.
+type ListState = { data: unknown; error: unknown; isPending: boolean };
+const shared = vi.hoisted(() => {
+  const subscribers = new Set<(v: ListState) => void>();
+  const state = { value: { data: null, error: null, isPending: true } as ListState };
+  const refetch = async () => {
+    const res = await auth.list();
+    state.value = { data: res.data ?? null, error: res.error ?? null, isPending: false };
+    for (const fn of subscribers) fn(state.value);
+  };
+  const changes =
+    <A extends unknown[]>(fn: (...args: A) => Promise<Res>) =>
+    async (...args: A) => {
+      const res = await fn(...args);
+      if (!res?.error) await refetch();
+      return res;
+    };
+  return {
+    changes,
+    reset: () => (state.value = { data: null, error: null, isPending: true }),
+    store: {
+      subscribe(fn: (v: ListState) => void) {
+        subscribers.add(fn);
+        fn(state.value);
+        if (subscribers.size === 1) void refetch();
+        return () => void subscribers.delete(fn);
+      },
+    },
+  };
+});
 vi.mock("#lib/auth-client.js", () => ({
   authClient: {
+    useListPasskeys: () => shared.store,
     passkey: {
       listUserPasskeys: auth.list,
-      addPasskey: auth.add,
-      updatePasskey: auth.update,
-      deletePasskey: auth.remove,
+      addPasskey: shared.changes(auth.add),
+      updatePasskey: shared.changes(auth.update),
+      deletePasskey: shared.changes(auth.remove),
     },
     getSession: auth.getSession,
     signIn: { username: auth.signIn },
@@ -33,6 +67,8 @@ const laptop = { id: "p1", name: "Laptop", backedUp: true, createdAt: "2026-09-0
 const unnamed = { id: "p2", name: null, backedUp: false, createdAt: "2026-09-02T00:00:00Z" };
 
 beforeEach(() => {
+  shared.reset();
+  localStorage.clear();
   confirmRequest.set(null);
   vi.stubGlobal("PublicKeyCredential", function PublicKeyCredential() {});
   auth.list.mockResolvedValue({ data: [laptop, unnamed], error: null });
@@ -140,4 +176,20 @@ test("a browser without passkeys can't add one", async () => {
   render(PasskeysManager, { props: { username: "ada" } });
   await screen.findByText("This browser doesn't support passkeys.");
   expect(screen.getByRole("button", { name: "Add a passkey" })).toBeDisabled();
+});
+
+// Both are on screen when Settings is reloaded: the prompt opens over the page.
+test("a passkey added from the prompt shows up in the list without a reload", async () => {
+  auth.list.mockResolvedValue({ data: [], error: null });
+  render(PasskeysManager, { props: { username: "ada" } });
+  render(PasskeyPrompt, { props: { user: { id: "u1", username: "ada" } } });
+  await screen.findByText("No passkeys yet.");
+  const prompt = await screen.findByRole("dialog");
+
+  auth.list.mockResolvedValue({ data: [{ ...laptop, id: "p9", name: "Phone" }], error: null });
+  auth.add.mockResolvedValue({ data: { id: "p9" }, error: null });
+  await fireEvent.click(within(prompt).getByRole("button", { name: "Add a passkey" }));
+
+  await screen.findByText("Phone");
+  expect(screen.queryByText("No passkeys yet.")).toBeNull();
 });
