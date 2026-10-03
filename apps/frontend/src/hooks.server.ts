@@ -1,7 +1,7 @@
-import { canonicalOrigin, instanceDomain, isNonCanonicalHost } from "$lib/canonical";
-import { instanceSnapshot } from "$lib/instance";
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Handle } from "@sveltejs/kit";
+import type { Handle } from "@sveltejs/kit/hooks";
+import { canonicalOrigin, instanceDomain, isNonCanonicalHost } from "#lib/canonical.js";
+import { instanceSnapshot } from "#lib/instance.js";
 
 // Page loads asked for on a non-canonical hostname (`www.` when the instance is
 // the apex, or vice versa) are sent to the canonical one, so every article has

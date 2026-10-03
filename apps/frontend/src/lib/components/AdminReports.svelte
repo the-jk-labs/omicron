@@ -1,13 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints, ApiError } from "$lib/api";
-  import Icon from "$lib/components/Icon.svelte";
-  import Time from "$lib/components/Time.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { confirm } from "$lib/components/ui/confirm";
-  import { postPath } from "$lib/links";
-  import type { Report } from "$lib/types";
   import { Tabs } from "bits-ui";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import Time from "#lib/components/Time.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { confirm } from "#lib/components/ui/confirm.js";
+  import { postPath } from "#lib/links.js";
+  import type { Report } from "#lib/types.js";
 
   let reports = $state<Report[]>([]);
   let openCount = $state(0);

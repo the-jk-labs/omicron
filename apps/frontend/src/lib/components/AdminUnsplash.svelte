@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints, ApiError } from "$lib/api";
-  import Button from "$lib/components/ui/Button.svelte";
   import { Label } from "bits-ui";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import Button from "#lib/components/ui/Button.svelte";
 
   // The Unsplash access key, which adds Unsplash as a second source in the
   // editor's banner picker. Optional, and optional by necessity: Unsplash

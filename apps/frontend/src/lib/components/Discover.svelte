@@ -1,13 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { page } from "$app/state";
-  import FollowButton from "$lib/components/FollowButton.svelte";
-  import Icon from "$lib/components/Icon.svelte";
-  import ReactionCount from "$lib/components/ReactionCount.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { postPath } from "$lib/links";
-  import type { Post, SuggestedUser, TagWithCount } from "$lib/types";
+  import FollowButton from "#lib/components/FollowButton.svelte";
+  import Icon from "#lib/components/Icon.svelte";
+  import ReactionCount from "#lib/components/ReactionCount.svelte";
+  import Avatar from "#lib/components/ui/Avatar.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { postPath } from "#lib/links.js";
+  import type { Post, SuggestedUser, TagWithCount } from "#lib/types.js";
 
   // Discovery rail: what's worth reading and who's worth following right now.
   // The three lists (trending posts, who to follow, topics) are fetched

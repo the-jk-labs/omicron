@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import Icon from "$lib/components/Icon.svelte";
-  import { listPath } from "$lib/links";
-  import type { ReadingList } from "$lib/types";
+  import Icon from "#lib/components/Icon.svelte";
+  import { listPath } from "#lib/links.js";
+  import type { ReadingList } from "#lib/types.js";
 
   // A single reading list in a grid, like a playlist card. Links to the list.
   let { list }: { list: ReadingList } = $props();

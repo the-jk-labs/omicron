@@ -2,11 +2,11 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { endpoints } from "$lib/api";
-  import Icon from "$lib/components/Icon.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { countLabel } from "$lib/format";
   import { untrack } from "svelte";
+  import { endpoints } from "#lib/api/index.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { countLabel } from "#lib/format.js";
 
   // Recommend ("repost") toggle — federates as an ActivityPub
   // Announce/Undo(Announce) to the signed-in user's remote followers. Mirrors

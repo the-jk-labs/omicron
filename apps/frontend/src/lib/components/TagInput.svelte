@@ -3,8 +3,8 @@
      has no tag-input primitive, so this is a small headless component styled
      with the theme tokens. `tags` is bound two-way as an array of tag names. -->
 <script lang="ts">
-  import Icon from "$lib/components/Icon.svelte";
-  import { MAX_TAGS_PER_POST, normalizeTag } from "$lib/tags";
+  import Icon from "#lib/components/Icon.svelte";
+  import { MAX_TAGS_PER_POST, normalizeTag } from "#lib/tags.js";
 
   let {
     tags = $bindable([]),

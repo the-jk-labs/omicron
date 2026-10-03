@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import Icon from "$lib/components/Icon.svelte";
-  import type { IconName } from "$lib/components/Icon.svelte";
-  import { countLabel } from "$lib/format";
+  import Icon from "#lib/components/Icon.svelte";
+  import type { IconName } from "#lib/components/Icon.svelte";
+  import { countLabel } from "#lib/format.js";
 
   let {
     icon,

@@ -12,9 +12,9 @@
   - `withZone` — append the short zone label visibly (e.g. "GMT+4").
 -->
 <script lang="ts">
-  import { formatDate, formatDateTime, formatRelative, formatTime, zoneLabel } from "$lib/format";
-  import { locale } from "$lib/locale";
-  import { timeZone } from "$lib/timezone";
+  import { formatDate, formatDateTime, formatRelative, formatTime, zoneLabel } from "#lib/format.js";
+  import { locale } from "#lib/locale.svelte.js";
+  import { timeZone } from "#lib/timezone.svelte.js";
 
   let {
     iso,
@@ -31,8 +31,8 @@
   } = $props();
 
   const display = $derived.by(() => {
-    const tz = $timeZone;
-    const loc = $locale;
+    const tz = timeZone.current;
+    const loc = locale.current;
     if (relative) {
       const age = Math.abs(Date.now() - new Date(iso).getTime());
       // 30 days: beyond that "3 months ago" is less useful than the calendar date.
@@ -46,8 +46,8 @@
   // Full absolute time + offset for the tooltip and for assistive tech.
   // `Intl` already localizes the zone name when a locale is passed.
   const tooltip = $derived.by(() => {
-    const tz = $timeZone;
-    const loc = $locale;
+    const tz = timeZone.current;
+    const loc = locale.current;
     try {
       const abs = formatDateTime(iso, tz, loc);
       const zl = zoneLabel(tz, loc);
@@ -59,5 +59,5 @@
 </script>
 
 <time datetime={iso} title={tooltip} class={klass}
-  >{display}{#if withZone}{" "}{zoneLabel($timeZone, $locale)}{/if}</time
+  >{display}{#if withZone}{" "}{zoneLabel(timeZone.current, locale.current)}{/if}</time
 >

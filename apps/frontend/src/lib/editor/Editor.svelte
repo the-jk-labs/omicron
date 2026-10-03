@@ -1,14 +1,14 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints, ApiError } from "$lib/api";
-  import { CODE_LANGUAGES, codeLanguageLabel } from "$lib/codeLanguages";
-  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
-  import Icon, { type IconName } from "$lib/components/Icon.svelte";
-  import { countWords, readTimeFromWords } from "$lib/format";
   import { type Content, Editor, generateJSON } from "@tiptap/core";
   import { Placeholder } from "@tiptap/extension-placeholder";
   import { Dialog, DropdownMenu, Label, Select, Toolbar } from "bits-ui";
   import { onDestroy, onMount } from "svelte";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import { CODE_LANGUAGES, codeLanguageLabel } from "#lib/codeLanguages.js";
+  import EmojiTrigger from "#lib/components/EmojiTrigger.svelte";
+  import Icon, { type IconName } from "#lib/components/Icon.svelte";
+  import { countWords, readTimeFromWords } from "#lib/format.js";
   import { extensions } from "./extensions";
   import { isAcceptedImage, prepareImage } from "./image";
   import { EDIT_ALT_EVENT, type EditAltDetail } from "./resizable-image";
@@ -55,8 +55,9 @@
     stats = { characters, words, minutes: readTimeFromWords(words) };
   }
 
-  import { locale } from "$lib/locale";
-  const count = (n: number, one: string) => `${n.toLocaleString($locale ?? "en-US")} ${n === 1 ? one : one + "s"}`;
+  import { locale } from "#lib/locale.svelte.js";
+  const count = (n: number, one: string) =>
+    `${n.toLocaleString(locale.current ?? "en-US")} ${n === 1 ? one : one + "s"}`;
 
   // Heading levels offered in the text-style dropdown.
   const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const;

@@ -1,18 +1,18 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { autoGrow } from "$lib/actions/autoGrow.svelte";
-  import { endpoints, ApiError } from "$lib/api";
-  import CommentNode from "$lib/components/CommentNode.svelte";
-  import type { CommentActions, CommentUiState } from "$lib/components/comments";
-  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
-  import LoadMoreButton from "$lib/components/LoadMoreButton.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { confirm } from "$lib/components/ui/confirm";
-  import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
-  import type { Comment, Page, User } from "$lib/types";
   import { untrack } from "svelte";
+  import { autoGrow } from "#lib/actions/autoGrow.svelte.js";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import CommentNode from "#lib/components/CommentNode.svelte";
+  import type { CommentActions, CommentUiState } from "#lib/components/comments.js";
+  import EmojiTrigger from "#lib/components/EmojiTrigger.svelte";
+  import LoadMoreButton from "#lib/components/LoadMoreButton.svelte";
+  import Avatar from "#lib/components/ui/Avatar.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { confirm } from "#lib/components/ui/confirm.js";
+  import { insertEmojiIntoField, emojiOverlayBtn } from "#lib/emoji.js";
+  import type { Comment, Page, User } from "#lib/types.js";
 
   let {
     postId,

@@ -13,10 +13,10 @@
 // canonical permalink logic lives in $lib/links and the absolute URLs need the
 // request's origin.
 
-import { excerpt, stripHtml } from "$lib/format";
-import { postPath } from "$lib/links";
-import type { Post } from "$lib/types";
-import { escapeXml } from "$lib/xml";
+import { excerpt, stripHtml } from "#lib/format.js";
+import { postPath } from "#lib/links.js";
+import type { Post } from "#lib/types.js";
+import { escapeXml } from "#lib/xml.js";
 
 // The opening section ends at the post's first heading. A post that has no
 // headings (or one long opening section) is capped instead, so a headingless

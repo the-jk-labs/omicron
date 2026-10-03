@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { ApiError, endpoints } from "$lib/api";
-  import Icon, { type IconName } from "$lib/components/Icon.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import type { RelationActor } from "$lib/types";
   import { Tabs } from "bits-ui";
   import { onMount } from "svelte";
+  import { ApiError, endpoints } from "#lib/api/index.js";
+  import Icon, { type IconName } from "#lib/components/Icon.svelte";
+  import Avatar from "#lib/components/ui/Avatar.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import type { RelationActor } from "#lib/types.js";
 
   // One panel per relation kind. Each lazily loads its list the first time its
   // tab is opened, then removes rows optimistically as the action is applied.

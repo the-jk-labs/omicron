@@ -6,17 +6,18 @@
   box at a time across the whole tree); `actions` carries the handlers.
 -->
 <script lang="ts">
-  import { autoGrow } from "$lib/actions/autoGrow.svelte";
-  import Self from "$lib/components/CommentNode.svelte";
-  import type { CommentActions, CommentUiState } from "$lib/components/comments";
-  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
-  import Icon from "$lib/components/Icon.svelte";
-  import Time from "$lib/components/Time.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
-  import { countLabel } from "$lib/format";
-  import type { Comment, User } from "$lib/types";
+  import { autoGrow } from "#lib/actions/autoGrow.svelte.js";
+  // oxlint-disable-next-line import/no-self-import -- a recursive component renders itself
+  import Self from "#lib/components/CommentNode.svelte";
+  import type { CommentActions, CommentUiState } from "#lib/components/comments.js";
+  import EmojiTrigger from "#lib/components/EmojiTrigger.svelte";
+  import Icon from "#lib/components/Icon.svelte";
+  import Time from "#lib/components/Time.svelte";
+  import Avatar from "#lib/components/ui/Avatar.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { insertEmojiIntoField, emojiOverlayBtn } from "#lib/emoji.js";
+  import { countLabel } from "#lib/format.js";
+  import type { Comment, User } from "#lib/types.js";
 
   let {
     comment,

@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { ApiError, endpoints } from "$lib/api";
-  import Icon from "$lib/components/Icon.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
-  import type { RelationActor } from "$lib/types";
   import { Button, Dialog } from "bits-ui";
+  import { ApiError, endpoints } from "#lib/api/index.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import Avatar from "#lib/components/ui/Avatar.svelte";
+  import type { RelationActor } from "#lib/types.js";
 
   // The clickable follower/following count on a profile. Opens a dialog that
   // lazily loads the list the first time it's opened (like other platforms).

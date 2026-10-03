@@ -98,7 +98,7 @@ export function readTimeFromWords(words: number): number {
 // unpinned one turns "Aug 3, 2026" into "3 avq 2026" on hydration. Every helper
 // therefore takes an explicit `locale` (from `$lib/locale`, which mirrors the
 // timezone cookie/Accept-Language dance) and falls back to `en-US` only when
-// nothing was resolved yet. Callers should pass `$locale` alongside `$timeZone`.
+// nothing was resolved yet. Callers should pass `locale.current` alongside `timeZone.current`.
 const FALLBACK_LOCALE = "en-US";
 
 export function formatDate(iso: string, timeZone?: string, locale?: string): string {

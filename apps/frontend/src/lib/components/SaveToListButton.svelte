@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints, ApiError } from "$lib/api";
-  import Icon from "$lib/components/Icon.svelte";
-  import type { ReadingList } from "$lib/types";
   import { Popover } from "bits-ui";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import type { ReadingList } from "#lib/types.js";
 
   // "Save to list" control — the reading-list analogue of YouTube's Save button.
   // Opens a popover of the signed-in user's lists (Read later pinned first),

@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { ApiError, endpoints } from "$lib/api";
-  import Icon from "$lib/components/Icon.svelte";
   import { DropdownMenu } from "bits-ui";
   import { untrack } from "svelte";
+  import { ApiError, endpoints } from "#lib/api/index.js";
+  import Icon from "#lib/components/Icon.svelte";
 
   // Mute / block actions for a profile other than your own. `username` is the
   // plain username for local accounts and the `user@host` handle for remote

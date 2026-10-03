@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints, ApiError } from "$lib/api";
-  import Button from "$lib/components/ui/Button.svelte";
-  import type { SeoSettings, SeoVerification } from "$lib/types";
   import { Label, Switch } from "bits-ui";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import Button from "#lib/components/ui/Button.svelte";
+  import type { SeoSettings, SeoVerification } from "#lib/types.js";
 
   // Discoverability controls (services/seo.ts). Two things: the master indexing
   // switch (drives robots.txt + a site-wide noindex) and per-engine

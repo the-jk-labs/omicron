@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { env } from "$env/dynamic/public";
-  import type { InstanceInfo } from "$lib/types";
+  import { PUBLIC_APP_NAME, PUBLIC_CONTACT_URL, PUBLIC_SOURCE_URL, PUBLIC_STATUS_URL } from "$app/env/public";
+  import type { InstanceInfo } from "#lib/types.js";
 
   let {
-    appName = env.PUBLIC_APP_NAME || "Omicron",
+    appName = PUBLIC_APP_NAME || "Omicron",
     instance = null,
     class: className = "",
   }: {
@@ -14,11 +14,9 @@
   } = $props();
 
   const year = new Date().getFullYear();
-  const sourceUrl = $derived(
-    (env.PUBLIC_SOURCE_URL as string | undefined)?.trim() || "https://github.com/the-jk-labs/omicron",
-  );
-  const statusUrl = $derived((env.PUBLIC_STATUS_URL as string | undefined)?.trim() || "/status");
-  const contactHref = $derived((env.PUBLIC_CONTACT_URL as string | undefined)?.trim() || "/contact");
+  const sourceUrl = $derived(PUBLIC_SOURCE_URL?.trim() || "https://github.com/the-jk-labs/omicron");
+  const statusUrl = $derived(PUBLIC_STATUS_URL?.trim() || "/status");
+  const contactHref = $derived(PUBLIC_CONTACT_URL?.trim() || "/contact");
   const fediverseUrl = $derived.by(() => {
     if (instance?.federationEnabled && instance.domain) return `https://${instance.domain}`;
     return "https://joinmastodon.org/servers";

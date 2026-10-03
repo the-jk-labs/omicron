@@ -9,8 +9,8 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import Icon from "$lib/components/Icon.svelte";
   import { onMount } from "svelte";
+  import Icon from "#lib/components/Icon.svelte";
 
   // Seed from the URL so the field reflects the active query on the results page.
   let query = $state(page.url.pathname === "/search" ? (page.url.searchParams.get("q") ?? "") : "");

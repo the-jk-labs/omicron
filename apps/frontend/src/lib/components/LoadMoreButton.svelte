@@ -2,7 +2,7 @@
 <!-- "Show more" under a paged list. A failed page says so (the list stays as it
      was) instead of only flipping the button back. -->
 <script lang="ts">
-  import Button from "$lib/components/ui/Button.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
 
   let {
     load,

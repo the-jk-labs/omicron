@@ -2,7 +2,7 @@
 <!-- Read-only row of tag pills linking to each tag's page. Reused on post
      cards, the article page and tag pages. -->
 <script lang="ts">
-  import type { Tag } from "$lib/types";
+  import type { Tag } from "#lib/types.js";
 
   let { tags, class: className = "" }: { tags: Tag[]; class?: string } = $props();
 </script>

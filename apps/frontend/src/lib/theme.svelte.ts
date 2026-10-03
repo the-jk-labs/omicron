@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { browser } from "$app/environment";
-import { readStorage, writeStorage } from "$lib/storage";
+import { browser } from "$app/env";
+import { readStorage, writeStorage } from "#lib/storage.js";
 
 // Reactive theme state. The initial `dark` class is applied pre-paint by the
 // inline script in app.html; this keeps the UI in sync and persists the user's

@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import Icon from "$lib/components/Icon.svelte";
-  import { LANGUAGES, languageLabel } from "$lib/languages";
   import { Select } from "bits-ui";
+  import Icon from "#lib/components/Icon.svelte";
+  import { LANGUAGES, languageLabel } from "#lib/languages.js";
 
   // The article's language for the compose / edit screens. `null` means the
   // author hasn't chosen one; it federates without a language tag and is never

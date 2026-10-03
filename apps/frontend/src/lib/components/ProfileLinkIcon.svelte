@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import Icon from "$lib/components/Icon.svelte";
-  import { platformMeta } from "$lib/profileLinks";
+  import Icon from "#lib/components/Icon.svelte";
+  import { platformMeta } from "#lib/profileLinks.js";
 
   // Renders a profile-link platform's glyph: an inlined Simple Icons brand path
   // for known platforms, or a Lucide icon for website/custom. Inherits colour

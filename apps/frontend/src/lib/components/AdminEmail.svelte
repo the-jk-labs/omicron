@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints, ApiError } from "$lib/api";
-  import Icon from "$lib/components/Icon.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import type { EmailInput, EmailMode, EmailSettings, EmailDnsRecords, EmailDnsReport } from "$lib/types";
   import { Checkbox, Label, RadioGroup } from "bits-ui";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import type { EmailInput, EmailMode, EmailSettings, EmailDnsRecords, EmailDnsReport } from "#lib/types.js";
 
   // Runtime email configuration (services/emailSettings.ts). Four modes:
   //   console · smtp · relay (one API key) · direct (self-host + DKIM/DNS).

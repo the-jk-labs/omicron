@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { browser } from "$app/environment";
-import { LANGUAGES } from "$lib/languages";
-import { readStorage, writeStorage } from "$lib/storage";
+import { browser } from "$app/env";
+import { LANGUAGES } from "#lib/languages.js";
+import { readStorage, writeStorage } from "#lib/storage.js";
 
 // Client-side reading preferences, persisted in localStorage. These are personal
 // view settings (not account data), so they live in the browser, not the server.

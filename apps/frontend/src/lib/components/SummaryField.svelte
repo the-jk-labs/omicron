@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import Icon from "$lib/components/Icon.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
   import { Collapsible } from "bits-ui";
+  import Icon from "#lib/components/Icon.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
 
   // The post's description: what a search engine prints under the title and what
   // a link preview shows. Genuinely optional — leave it blank and the opening

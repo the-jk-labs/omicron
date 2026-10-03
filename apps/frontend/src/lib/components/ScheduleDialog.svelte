@@ -1,9 +1,5 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import Icon from "$lib/components/Icon.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { formatScheduleLong, timeUntil, zoneLabel } from "$lib/format";
-  import { timeZone } from "$lib/timezone";
   import {
     type DateValue,
     now,
@@ -15,12 +11,16 @@
     toZoned,
   } from "@internationalized/date";
   import { Calendar, Dialog, Label, TimeField } from "bits-ui";
+  import Icon from "#lib/components/Icon.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { formatScheduleLong, timeUntil, zoneLabel } from "#lib/format.js";
+  import { timeZone } from "#lib/timezone.svelte.js";
 
   // Picks the moment a post goes out.
   //
   // The whole component is built around one hazard: the author is choosing a
   // wall-clock time, and the server stores an instant. Every value below is
-  // therefore resolved in `$timeZone` — the reader's own zone, the same one
+  // therefore resolved in `timeZone.current` — the reader's own zone, the same one
   // every rendered date on the site already uses — and only converted to an
   // absolute instant at the moment it is handed back. The zone is named on
   // screen next to the time, because "09:00 in whose morning?" is a question
@@ -39,7 +39,7 @@
     onconfirm: (isoInstant: string) => void;
   } = $props();
 
-  const zone = $derived($timeZone);
+  const zone = $derived(timeZone.current);
 
   let date = $state<DateValue | undefined>();
   let time = $state<Time | undefined>();

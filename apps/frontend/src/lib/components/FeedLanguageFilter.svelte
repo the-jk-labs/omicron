@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { browser } from "$app/environment";
-  import Icon from "$lib/components/Icon.svelte";
-  import { LANGUAGES, languageLabel } from "$lib/languages";
-  import { reading, type FeedLangMode } from "$lib/prefs.svelte";
-  import { readStorage, writeStorage } from "$lib/storage";
+  import { browser } from "$app/env";
   import { Button as ButtonPrimitive, Select } from "bits-ui";
   import { onMount } from "svelte";
+  import Icon from "#lib/components/Icon.svelte";
+  import { LANGUAGES, languageLabel } from "#lib/languages.js";
+  import { reading, type FeedLangMode } from "#lib/prefs.svelte.js";
+  import { readStorage, writeStorage } from "#lib/storage.js";
 
   let { compact = false }: { compact?: boolean } = $props();
 

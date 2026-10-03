@@ -16,7 +16,7 @@
 // This runs server-side (lib/highlight.ts, called from the post's load), so the
 // path data never reaches a browser — only the one logo a block actually uses.
 
-import { BRAND_ICONS } from "$lib/brandIcons";
+import { BRAND_ICONS } from "#lib/brandIcons.js";
 
 /**
  * A resolved badge: which palette entry paints it, what it says, and — when the

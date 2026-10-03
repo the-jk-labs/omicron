@@ -10,9 +10,9 @@
 -->
 <script lang="ts">
   import { page } from "$app/state";
-  import Icon, { type IconName } from "$lib/components/Icon.svelte";
-  import type { User } from "$lib/types";
   import { Button } from "bits-ui";
+  import Icon, { type IconName } from "#lib/components/Icon.svelte";
+  import type { User } from "#lib/types.js";
 
   let { user }: { user: User } = $props();
 

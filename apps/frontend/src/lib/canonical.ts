@@ -12,7 +12,7 @@
 // page's <head>, hooks.server.ts redirects page loads to it, and robots.txt +
 // sitemap.xml advertise it, so all four agree no matter which host was asked.
 
-import { instanceSnapshot } from "$lib/instance";
+import { instanceSnapshot } from "#lib/instance.js";
 
 // Localhost has no certificate, so it is served over plain HTTP. Mirrors the
 // backend's own scheme rule in config.ts — keep the two in step.

@@ -1,5 +1,3 @@
-import { codeLanguageLabel } from "$lib/codeLanguages";
-import { type FileIcon, fileIcon } from "$lib/fileIcons";
 import type { LanguageFn } from "highlight.js";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import hljs from "highlight.js/lib/common";
@@ -9,6 +7,8 @@ import elixir from "highlight.js/lib/languages/elixir";
 import haskell from "highlight.js/lib/languages/haskell";
 import powershell from "highlight.js/lib/languages/powershell";
 import scala from "highlight.js/lib/languages/scala";
+import { codeLanguageLabel } from "#lib/codeLanguages.js";
+import { type FileIcon, fileIcon } from "#lib/fileIcons.js";
 
 // Syntax highlighting for rendered post bodies.
 //

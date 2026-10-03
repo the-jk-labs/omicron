@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Shared contracts between Comments.svelte (owns the state + handlers) and the
 // recursive CommentNode.svelte (renders a single comment + its replies).
-import type { Comment } from "$lib/types";
+import type { Comment } from "#lib/types.js";
 
 // Mutable per-interaction UI state, shared by reference across the whole tree so
 // that only one reply box / one edit box is ever open at a time. Lives as a

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { browser } from "$app/environment";
-import { endpoints } from "$lib/api";
+import { browser } from "$app/env";
+import { endpoints } from "#lib/api/index.js";
 
 // Reactive unread-notification count for the nav bell badge. Polls the
 // unread-count endpoint on an interval while a user is signed in, pausing when

@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints, ApiError } from "$lib/api";
-  import Icon from "$lib/components/Icon.svelte";
-  import Time from "$lib/components/Time.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { confirm } from "$lib/components/ui/confirm";
-  import type { BlockedDomain } from "$lib/types";
   import { Label } from "bits-ui";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import Time from "#lib/components/Time.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { confirm } from "#lib/components/ui/confirm.js";
+  import type { BlockedDomain } from "#lib/types.js";
 
   let domains = $state<BlockedDomain[]>([]);
   let loading = $state(true);

@@ -1,27 +1,27 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { goto, invalidateAll } from "$app/navigation";
-  import { env } from "$env/dynamic/public";
-  import { endpoints } from "$lib/api";
-  import logo from "$lib/assets/omicron.svg";
-  import { authClient } from "$lib/auth-client";
-  import Icon from "$lib/components/Icon.svelte";
+  import { PUBLIC_APP_NAME } from "$app/env/public";
+  import { goto, refreshAll } from "$app/navigation";
+  import { DropdownMenu } from "bits-ui";
+  import { onMount } from "svelte";
+  import { endpoints } from "#lib/api/index.js";
+  import logo from "#lib/assets/omicron.svg";
+  import { authClient } from "#lib/auth-client.js";
+  import Icon from "#lib/components/Icon.svelte";
   import {
     notificationAction,
     notificationHref,
     notificationIcon,
     notificationSubject,
-  } from "$lib/components/notifications";
-  import SearchBar from "$lib/components/SearchBar.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { timeAgo } from "$lib/format";
-  import { notifications } from "$lib/notifications.svelte";
-  import { theme } from "$lib/theme.svelte";
-  import { timeZone } from "$lib/timezone";
-  import type { Notification, User } from "$lib/types";
-  import { DropdownMenu } from "bits-ui";
-  import { onMount } from "svelte";
+  } from "#lib/components/notifications.js";
+  import SearchBar from "#lib/components/SearchBar.svelte";
+  import Avatar from "#lib/components/ui/Avatar.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { timeAgo } from "#lib/format.js";
+  import { notifications } from "#lib/notifications.svelte.js";
+  import { theme } from "#lib/theme.svelte.js";
+  import { timeZone } from "#lib/timezone.svelte.js";
+  import type { Notification, User } from "#lib/types.js";
 
   // `minimal` strips the nav down to logo + theme toggle for standalone pages
   // (auth screens), which carry their own focused layout. `appName` comes from
@@ -29,7 +29,7 @@
   let {
     user,
     minimal = false,
-    appName = env.PUBLIC_APP_NAME || "Omicron",
+    appName = PUBLIC_APP_NAME || "Omicron",
   }: {
     user: User | null;
     minimal?: boolean;
@@ -43,7 +43,7 @@
 
   async function logout() {
     await authClient.signOut();
-    await invalidateAll();
+    await refreshAll();
     goto("/");
   }
 
@@ -188,7 +188,7 @@
                         {:else if n.commentSnippet}
                           <p class="truncate text-xs text-muted-foreground">{n.commentSnippet}</p>
                         {/if}
-                        <p class="mt-0.5 text-xs text-muted-foreground">{timeAgo(n.createdAt, $timeZone)}</p>
+                        <p class="mt-0.5 text-xs text-muted-foreground">{timeAgo(n.createdAt, timeZone.current)}</p>
                       </div>
                     </DropdownMenu.Item>
                   {/each}

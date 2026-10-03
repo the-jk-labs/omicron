@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { page } from "$app/state";
-  import welcomeBanner from "$lib/assets/welcome-banner.png";
-  import Footer from "$lib/components/Footer.svelte";
-  import Icon, { type IconName } from "$lib/components/Icon.svelte";
-  import UIButton from "$lib/components/ui/Button.svelte";
-  import type { InstanceInfo, User } from "$lib/types";
   import { Button } from "bits-ui";
+  import welcomeBanner from "#lib/assets/welcome-banner.png";
+  import Footer from "#lib/components/Footer.svelte";
+  import Icon, { type IconName } from "#lib/components/Icon.svelte";
+  import UIButton from "#lib/components/ui/Button.svelte";
+  import type { InstanceInfo, User } from "#lib/types.js";
 
   let {
     user,

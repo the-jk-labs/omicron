@@ -11,7 +11,7 @@
 
   Resolution order matches the nav's (`+layout.svelte`): the admin-configured
   instance name, then the build-time env, then the project name as a last
-  resort. Read from `$page.data` rather than a prop so any page can drop this in
+  resort. Read from `page.data` rather than a prop so any page can drop this in
   without threading layout data down to it.
 
   Omit `text` on a page that is the site itself (the home feed) and the title is
@@ -20,14 +20,14 @@
   same promise a reader sees in the hero.
 -->
 <script lang="ts">
-  import { page } from "$app/stores";
-  import { env } from "$env/dynamic/public";
-  import type { InstanceInfo } from "$lib/types";
+  import { PUBLIC_APP_NAME } from "$app/env/public";
+  import { page } from "$app/state";
+  import type { InstanceInfo } from "#lib/types.js";
 
   let { text }: { text?: string | null } = $props();
 
   const appName = $derived(
-    ($page.data as { instance?: InstanceInfo | null }).instance?.name || env.PUBLIC_APP_NAME || "Omicron",
+    (page.data as { instance?: InstanceInfo | null }).instance?.name || PUBLIC_APP_NAME || "Omicron",
   );
   const homeTitle = $derived(`${appName}: an independent blogging platform on the fediverse`);
 </script>

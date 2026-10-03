@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints, ApiError } from "$lib/api";
   import { Label, Switch } from "bits-ui";
+  import { endpoints, ApiError } from "#lib/api/index.js";
 
   // Moderator-only instance settings. Loads the current state on mount and
   // persists each toggle immediately. Only rendered for admins (see settings).

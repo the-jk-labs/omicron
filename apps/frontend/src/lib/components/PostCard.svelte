@@ -1,17 +1,17 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { page } from "$app/state";
-  import Icon from "$lib/components/Icon.svelte";
-  import ReactionCount from "$lib/components/ReactionCount.svelte";
-  import RecommendButton from "$lib/components/RecommendButton.svelte";
-  import SaveToListButton from "$lib/components/SaveToListButton.svelte";
-  import TagList from "$lib/components/TagList.svelte";
-  import Time from "$lib/components/Time.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { excerpt, readTime } from "$lib/format";
-  import { postPath } from "$lib/links";
-  import type { Post } from "$lib/types";
+  import Icon from "#lib/components/Icon.svelte";
+  import ReactionCount from "#lib/components/ReactionCount.svelte";
+  import RecommendButton from "#lib/components/RecommendButton.svelte";
+  import SaveToListButton from "#lib/components/SaveToListButton.svelte";
+  import TagList from "#lib/components/TagList.svelte";
+  import Time from "#lib/components/Time.svelte";
+  import Avatar from "#lib/components/ui/Avatar.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { excerpt, readTime } from "#lib/format.js";
+  import { postPath } from "#lib/links.js";
+  import type { Post } from "#lib/types.js";
 
   let { post }: { post: Post } = $props();
 

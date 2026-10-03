@@ -9,7 +9,7 @@
 //
 // A post with no slug (remote, or untitled) is addressed by that short id alone.
 
-import type { Post, ReadingList } from "$lib/types";
+import type { Post, ReadingList } from "#lib/types.js";
 
 // A trailing short id (8+ hex) or a full UUID anywhere (for legacy links).
 // The short id may follow a slug (`some-title-9e962281`) or stand alone when a

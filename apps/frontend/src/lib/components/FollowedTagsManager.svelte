@@ -2,11 +2,11 @@
 <!-- Lists the tags the signed-in user follows, with an unfollow action per row.
      Following a tag happens from its tag page; this is the management surface. -->
 <script lang="ts">
-  import { ApiError, endpoints } from "$lib/api";
-  import Icon from "$lib/components/Icon.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import type { TagWithCount } from "$lib/types";
   import { onMount } from "svelte";
+  import { ApiError, endpoints } from "#lib/api/index.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import type { TagWithCount } from "#lib/types.js";
 
   const api = endpoints();
 

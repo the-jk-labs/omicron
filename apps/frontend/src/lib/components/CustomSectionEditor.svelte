@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { fitPre } from "$lib/actions/fitPre";
-  import { endpoints, ApiError } from "$lib/api";
-  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
-  import Icon, { type IconName } from "$lib/components/Icon.svelte";
   import { Tabs, Toolbar } from "bits-ui";
+  import { fitPre } from "#lib/actions/fitPre.js";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import EmojiTrigger from "#lib/components/EmojiTrigger.svelte";
+  import Icon, { type IconName } from "#lib/components/Icon.svelte";
 
   // Markdown editor for the profile's custom section — a GitHub-README-style
   // block the author lays out however they like.

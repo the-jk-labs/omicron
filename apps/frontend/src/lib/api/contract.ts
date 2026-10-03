@@ -44,7 +44,7 @@ import type {
   Tag,
   User,
   WebhookToken,
-} from "$lib/types";
+} from "#lib/types.js";
 import type {
   adminUserView,
   adminUserDetailView,

@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import Icon from "$lib/components/Icon.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { confirmRequest } from "$lib/components/ui/confirm";
   import { AlertDialog, Checkbox } from "bits-ui";
+  import Icon from "#lib/components/Icon.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { confirmRequest } from "#lib/components/ui/confirm.js";
 
   // Global host for the promise-based confirm() helper. Mounted once in the root
   // layout; renders the Bits UI AlertDialog whenever a request is pending and

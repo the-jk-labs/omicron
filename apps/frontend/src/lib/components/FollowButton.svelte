@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints } from "$lib/api";
-  import Icon from "$lib/components/Icon.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import type { FollowState } from "$lib/types";
   import { untrack } from "svelte";
+  import { endpoints } from "#lib/api/index.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import type { FollowState } from "#lib/types.js";
 
   // For remote actors `username` is the full `user@host` handle and follows go
   // through the federated endpoints (signed Follow/Undo); local follows are

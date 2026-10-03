@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import type { SaveState } from "$lib/autosave.svelte";
-  import Icon from "$lib/components/Icon.svelte";
-  import { locale } from "$lib/locale";
-  import { timeZone } from "$lib/timezone";
+  import type { SaveState } from "#lib/autosave.svelte.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import { locale } from "#lib/locale.svelte.js";
+  import { timeZone } from "#lib/timezone.svelte.js";
 
   // The composer's autosave indicator: what the editor did with the author's
   // work and when. Its whole job is to make the missing "Save" click feel safe,
@@ -32,7 +32,7 @@
 
   function ago(at: number, from: number): string {
     const s = Math.max(0, Math.round((from - at) / 1000));
-    const loc = $locale;
+    const loc = locale.current;
     // Localized relative for recent saves — "just now" / "2 minutes ago" /
     // "2 dəqiqə əvvəl" etc. via Intl.RelativeTimeFormat.
     try {
@@ -54,7 +54,7 @@
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
-      timeZone: $timeZone,
+      timeZone: timeZone.current,
     });
   }
 

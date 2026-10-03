@@ -5,14 +5,14 @@
      the freshly-minted value is held in local state and surfaced once, with a
      copy button, until the user dismisses it. -->
 <script lang="ts">
-  import { ApiError, endpoints } from "$lib/api";
-  import Icon from "$lib/components/Icon.svelte";
-  import Time from "$lib/components/Time.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { confirm } from "$lib/components/ui/confirm";
-  import type { WebhookToken } from "$lib/types";
   import { Label } from "bits-ui";
   import { onMount } from "svelte";
+  import { ApiError, endpoints } from "#lib/api/index.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import Time from "#lib/components/Time.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { confirm } from "#lib/components/ui/confirm.js";
+  import type { WebhookToken } from "#lib/types.js";
 
   const api = endpoints();
 

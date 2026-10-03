@@ -14,7 +14,7 @@
 // feed or a tag listing is a list of links to those, and annotating it adds
 // nothing an engine cannot already see.
 
-import type { InstanceInfo, Post, Profile } from "$lib/types";
+import type { InstanceInfo, Post, Profile } from "#lib/types.js";
 
 // Serialize for embedding inside <script type="application/ld+json">.
 //

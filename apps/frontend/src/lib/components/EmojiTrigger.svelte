@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import Icon from "$lib/components/Icon.svelte";
   import { Popover } from "bits-ui";
+  import Icon from "#lib/components/Icon.svelte";
   import EmojiPicker from "./EmojiPicker.svelte";
 
   // Reusable emoji-insert control: a smile button that opens the picker in a

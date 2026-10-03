@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import ProfileLinkIcon from "$lib/components/ProfileLinkIcon.svelte";
-  import { linkSubtitle, platformMeta } from "$lib/profileLinks";
-  import type { ProfileLink } from "$lib/types";
+  import ProfileLinkIcon from "#lib/components/ProfileLinkIcon.svelte";
+  import { linkSubtitle, platformMeta } from "#lib/profileLinks.js";
+  import type { ProfileLink } from "#lib/types.js";
 
   // The external links a user features on their profile, shown as a card of
   // clickable rows above the About details. Each row opens in a new tab.

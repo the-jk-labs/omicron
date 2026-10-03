@@ -1,8 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { page } from "$app/stores";
-  import Icon from "$lib/components/Icon.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
+  import { page } from "$app/state";
+  import Icon from "#lib/components/Icon.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
 
   // Copies the feed's absolute URL instead of opening it. A feed reader asks the
   // reader to paste a URL into its "Add a feed" box, so the URL is the thing
@@ -13,7 +13,7 @@
   // request so a copied URL is absolute and works when pasted anywhere.
   let { path, label }: { path: string; label: string } = $props();
 
-  const url = $derived(`${$page.url.origin}${path}`);
+  const url = $derived(`${page.url.origin}${path}`);
   let copied = $state(false);
   let timer: ReturnType<typeof setTimeout>;
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { User } from "$lib/types";
+import type { User } from "#lib/types.js";
 
 declare global {
   namespace App {

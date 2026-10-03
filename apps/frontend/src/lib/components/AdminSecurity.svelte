@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints, ApiError } from "$lib/api";
   import { Label, Switch } from "bits-ui";
+  import { endpoints, ApiError } from "#lib/api/index.js";
 
   // Moderator-only security controls. Currently the AI-scraper shield (Anubis):
   // a proof-of-work challenge shown to browser-like traffic on page loads.

@@ -1,20 +1,20 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints, ApiError } from "$lib/api";
-  import CustomSectionEditor from "$lib/components/CustomSectionEditor.svelte";
-  import Icon from "$lib/components/Icon.svelte";
-  import ProfileLinksEditor from "$lib/components/ProfileLinksEditor.svelte";
-  import TagInput from "$lib/components/TagInput.svelte";
-  import Time from "$lib/components/Time.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { confirm } from "$lib/components/ui/confirm";
-  import { AVATAR_MAX_DIMENSION, prepareImage } from "$lib/editor/image";
-  import { identifierToUrl, platformMeta, urlToIdentifier } from "$lib/profileLinks";
-  import { MAX_PROFILE_TAGS } from "$lib/tags";
-  import type { AdminUser, AdminUserDetail, DeletedUser, ProfileLink } from "$lib/types";
   import { Checkbox, Dialog, DropdownMenu, Label, ToggleGroup } from "bits-ui";
   import { onMount } from "svelte";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import CustomSectionEditor from "#lib/components/CustomSectionEditor.svelte";
+  import Icon from "#lib/components/Icon.svelte";
+  import ProfileLinksEditor from "#lib/components/ProfileLinksEditor.svelte";
+  import TagInput from "#lib/components/TagInput.svelte";
+  import Time from "#lib/components/Time.svelte";
+  import Avatar from "#lib/components/ui/Avatar.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { confirm } from "#lib/components/ui/confirm.js";
+  import { AVATAR_MAX_DIMENSION, prepareImage } from "#lib/editor/image.js";
+  import { identifierToUrl, platformMeta, urlToIdentifier } from "#lib/profileLinks.js";
+  import { MAX_PROFILE_TAGS } from "#lib/tags.js";
+  import type { AdminUser, AdminUserDetail, DeletedUser, ProfileLink } from "#lib/types.js";
 
   // The signed-in admin's own id, so the row for self can hide every action
   // (the server also forbids them). `isViewerAdmin` gates the role grants —

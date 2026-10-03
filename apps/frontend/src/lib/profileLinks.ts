@@ -2,7 +2,7 @@
 // Registry of profile-link platforms — the single source of truth for each
 // platform's label, brand icon, and input placeholder. Brand glyphs are inlined
 // SVG paths from Simple Icons (CC0); website/custom fall back to a Lucide icon.
-import type { IconName } from "$lib/components/Icon.svelte";
+import type { IconName } from "#lib/components/Icon.svelte";
 
 export type LinkPlatform =
   | "website"

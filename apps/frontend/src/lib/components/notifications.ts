@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Presentation helpers shared by the nav bell dropdown and the /notifications
 // page: the action phrase, the target link, and the leading icon for a row.
-import type { IconName } from "$lib/components/Icon.svelte";
-import type { Notification } from "$lib/types";
+import type { IconName } from "#lib/components/Icon.svelte";
+import type { Notification } from "#lib/types.js";
 
 /**
  * The bold half of a notification line — normally who did it.

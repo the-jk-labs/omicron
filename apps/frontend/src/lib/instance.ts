@@ -7,7 +7,7 @@
 // cached as null/false for the same minute, so every reader degrades to "do
 // nothing" rather than to an error.
 
-import { endpoints } from "$lib/api";
+import { endpoints } from "#lib/api/index.js";
 
 const TTL_MS = 60_000;
 

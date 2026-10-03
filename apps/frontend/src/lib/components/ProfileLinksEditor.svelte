@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import Icon from "$lib/components/Icon.svelte";
-  import ProfileLinkIcon from "$lib/components/ProfileLinkIcon.svelte";
-  import { inputPrefix, PLATFORMS, platformMeta } from "$lib/profileLinks";
-  import type { ProfileLink } from "$lib/types";
   import { Select } from "bits-ui";
+  import Icon from "#lib/components/Icon.svelte";
+  import ProfileLinkIcon from "#lib/components/ProfileLinkIcon.svelte";
+  import { inputPrefix, PLATFORMS, platformMeta } from "#lib/profileLinks.js";
+  import type { ProfileLink } from "#lib/types.js";
 
   // Editor for a user's featured profile links: an ordered list of
   // platform + URL rows, with add / remove / reorder. Bound two-way; the parent

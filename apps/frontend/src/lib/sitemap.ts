@@ -9,7 +9,7 @@
 // whose lastmod moved, instead of the whole archive every time one post is
 // edited.
 
-import { escapeXml } from "$lib/xml";
+import { escapeXml } from "#lib/xml.js";
 
 // `<lastmod>` wants a date, and the value reaching us is whatever the API
 // serialized. A malformed one must not become "Invalid Date" in the output — an

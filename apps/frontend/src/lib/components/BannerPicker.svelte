@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints, ApiError } from "$lib/api";
-  import Icon from "$lib/components/Icon.svelte";
-  import StockPhotoPicker from "$lib/components/StockPhotoPicker.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { firstBodyImage } from "$lib/cover";
-  import { isAcceptedImage, prepareImage } from "$lib/editor/image";
-  import type { CoverCredit, StockPhoto } from "$lib/types";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import StockPhotoPicker from "#lib/components/StockPhotoPicker.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { firstBodyImage } from "#lib/cover.js";
+  import { isAcceptedImage, prepareImage } from "#lib/editor/image.js";
+  import type { CoverCredit, StockPhoto } from "#lib/types.js";
 
   // The post's banner: what a reader sees at the top of the article, what a
   // link preview (Open Graph) shows when the post is shared, and what a remote

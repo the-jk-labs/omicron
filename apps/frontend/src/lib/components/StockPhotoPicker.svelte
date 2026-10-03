@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints, ApiError } from "$lib/api";
-  import Icon from "$lib/components/Icon.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import type { PhotoProvider, StockPhoto } from "$lib/types";
   import { Dialog, Tabs } from "bits-ui";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import type { PhotoProvider, StockPhoto } from "#lib/types.js";
 
   // Search for a free, properly-licensed banner photo.
   //

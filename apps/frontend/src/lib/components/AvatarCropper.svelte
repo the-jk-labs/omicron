@@ -1,9 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import Icon from "$lib/components/Icon.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
   import { Dialog, Slider } from "bits-ui";
   import { untrack } from "svelte";
+  import Icon from "#lib/components/Icon.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
 
   // Instagram-style avatar cropper. Given a picked image (`src` object URL), the
   // user pans (drag) and zooms (slider) inside a circular viewport; confirming

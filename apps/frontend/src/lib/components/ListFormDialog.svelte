@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints, ApiError } from "$lib/api";
-  import Icon from "$lib/components/Icon.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import type { ReadingList } from "$lib/types";
   import { Dialog, Switch, Label } from "bits-ui";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import type { ReadingList } from "#lib/types.js";
 
   // Create or edit a reading list. In create mode (`list` omitted) visibility
   // defaults to public, matching the product rule that new lists are public.
