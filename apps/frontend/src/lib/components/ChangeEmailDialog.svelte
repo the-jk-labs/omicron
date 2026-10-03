@@ -237,6 +237,7 @@
                       oninput={() => (code = code.replace(/\D/g, "").slice(0, 6))}
                       inputmode="numeric"
                       autocomplete="one-time-code"
+                      {...notALoginField}
                       maxlength={6}
                       placeholder="123456"
                       data-step-focus

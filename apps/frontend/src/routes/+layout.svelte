@@ -484,4 +484,4 @@
 <!-- Global host for the promise-based confirm() helper. -->
 <ConfirmDialog />
 
-<PasskeyPrompt user={data.user} {appName} />
+<PasskeyPrompt user={data.user} />

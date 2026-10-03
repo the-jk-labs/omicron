@@ -176,3 +176,18 @@ test("the new email field isn't offered to password managers", async () => {
   await confirmPassword();
   expect(await screen.findByLabelText("New email")).toHaveAttribute("data-1p-ignore");
 });
+
+// 1Password skipped the hidden login field and offered to save the code as the
+// new username; the code field has to opt out like the other non-login inputs.
+test("the code field isn't taken for a username by password managers", async () => {
+  show();
+  await confirmPassword();
+  await enterEmail();
+  const input = await screen.findByLabelText("Code");
+  expect(input).toHaveAttribute("data-1p-ignore");
+  expect(input).toHaveAttribute("data-lpignore", "true");
+  expect(input).toHaveAttribute("data-bwignore");
+  expect(input).toHaveAttribute("data-form-type", "other");
+  // Still offered to the browser's own one-time-code autofill (e.g. from Mail).
+  expect(input).toHaveAttribute("autocomplete", "one-time-code");
+});

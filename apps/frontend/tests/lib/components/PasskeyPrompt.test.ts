@@ -2,7 +2,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, expect, test, vi } from "vitest";
 import PasskeyPrompt from "#lib/components/PasskeyPrompt.svelte";
-import { dismissPasskeyPrompt, passkeyPromptDismissed } from "#lib/passkeyPrompt.js";
+import { dismissPasskeyPrompt, passkeyPromptDismissed, resetPasskeyPrompt } from "#lib/passkeyPrompt.js";
 
 type Res = { data?: unknown; error?: { code?: string; message?: string } | null };
 const auth = vi.hoisted(() => ({
@@ -23,7 +23,7 @@ vi.mock("#lib/auth-client.js", () => ({
 
 const TITLE = "Sign in faster with a passkey";
 const ada = { id: "u1", username: "ada" };
-const show = (user: typeof ada | null = ada) => render(PasskeyPrompt, { props: { user, appName: "Blogs" } });
+const show = (user: typeof ada | null = ada) => render(PasskeyPrompt, { props: { user } });
 const settle = () => new Promise((r) => setTimeout(r));
 
 beforeEach(() => {
@@ -35,7 +35,7 @@ beforeEach(() => {
 test("offers a passkey to a signed-in reader who has none", async () => {
   show();
   await screen.findByText(TITLE);
-  expect(screen.getByText(/works only on Blogs/)).toBeInTheDocument();
+  expect(screen.getByText("Use your fingerprint, face, or screen lock instead of your password.")).toBeInTheDocument();
 });
 
 test.each([
@@ -110,4 +110,20 @@ test("a wrong password stays on the confirm step and adds nothing", async () => 
   expect(auth.add).toHaveBeenCalledOnce();
   expect(auth.revoke).not.toHaveBeenCalled();
   expect(passkeyPromptDismissed()).toBe(false);
+});
+
+// The app signs in and out without a page load (refreshAll + goto), so the same
+// component instance sees the account leave and come back.
+test("signing out and back in as the same account offers it again, without a reload", async () => {
+  const { rerender } = show();
+  await fireEvent.click(await screen.findByRole("button", { name: "Not now" }));
+  await waitFor(() => expect(screen.queryByText(TITLE)).toBeNull());
+
+  // What the auth client does on sign-out and sign-in.
+  resetPasskeyPrompt();
+  await rerender({ user: null });
+  await rerender({ user: ada });
+
+  await screen.findByText(TITLE);
+  expect(auth.list).toHaveBeenCalledTimes(2);
 });

@@ -10,15 +10,21 @@
   import { dismissPasskeyPrompt, passkeyPromptDismissed } from "#lib/passkeyPrompt.js";
   import { addPasskeyError, confirmPassword, needsFreshSignIn, passkeysSupported } from "#lib/passkeys.js";
 
-  let { user, appName }: { user: { id: string; username: string } | null; appName: string } = $props();
+  let { user }: { user: { id: string; username: string } | null } = $props();
 
   let open = $state(false);
   // "confirm": the session is too old to add a sign-in method, so the password is asked first.
   let step = $state<"offer" | "added" | "confirm">("offer");
+  const TITLES = {
+    offer: "Sign in faster with a passkey",
+    confirm: "Confirm it's you",
+    added: "Passkey added",
+  } as const;
   let adding = $state(false);
   let password = $state("");
   let error = $state("");
-  // Checked once per page load and signed-in account.
+  // Checked once per sign-in. The app signs in and out without a page load, so a
+  // sign-out must clear this or the same account signing back in is skipped.
   let checkedFor: string | null = null;
 
   async function offerIfNone() {
@@ -32,7 +38,12 @@
 
   $effect(() => {
     const userId = user?.id;
-    if (!userId || userId === checkedFor) return;
+    if (!userId) {
+      checkedFor = null;
+      open = false;
+      return;
+    }
+    if (userId === checkedFor) return;
     checkedFor = userId;
     if (passkeysSupported() && !passkeyPromptDismissed()) void offerIfNone();
   });
@@ -80,18 +91,19 @@
     <Dialog.Content
       class="fixed top-1/2 left-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[420px]"
     >
-      <span class="flex size-11 items-center justify-center rounded-full bg-muted text-foreground">
-        <Icon name={step === "added" ? "check" : "key"} size={20} />
-      </span>
+      <div class="flex items-center gap-3">
+        <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-foreground">
+          <Icon name={step === "added" ? "check" : "key"} size={18} />
+        </span>
+        <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">{TITLES[step]}</Dialog.Title>
+      </div>
 
       {#if step === "added"}
-        <Dialog.Title class="mt-4 text-lg font-semibold tracking-tight text-foreground">Passkey added</Dialog.Title>
-        <Dialog.Description class="mt-1.5 text-sm text-foreground-alt">
+        <Dialog.Description class="mt-3 text-sm text-foreground-alt">
           Next time, choose your passkey when you sign in. You can rename or remove it in Settings.
         </Dialog.Description>
       {:else if step === "confirm"}
-        <Dialog.Title class="mt-4 text-lg font-semibold tracking-tight text-foreground">Confirm it's you</Dialog.Title>
-        <Dialog.Description class="mt-1.5 text-sm text-foreground-alt">
+        <Dialog.Description class="mt-3 text-sm text-foreground-alt">
           For your security, enter your password before adding a new way to sign in.
         </Dialog.Description>
         <form id="passkey-confirm" onsubmit={confirmAndAdd} class="mt-4 flex flex-col gap-1.5">
@@ -107,12 +119,8 @@
           />
         </form>
       {:else}
-        <Dialog.Title class="mt-4 text-lg font-semibold tracking-tight text-foreground">
-          Sign in faster with a passkey
-        </Dialog.Title>
-        <Dialog.Description class="mt-1.5 text-sm text-foreground-alt">
-          Use your fingerprint, face, or screen lock instead of typing your password. Your passkey is kept by your
-          device or password manager, works only on {appName}, and can't be phished.
+        <Dialog.Description class="mt-3 text-sm text-foreground-alt">
+          Use your fingerprint, face, or screen lock instead of your password.
         </Dialog.Description>
       {/if}
 
