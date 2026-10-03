@@ -23,6 +23,8 @@ const auth = vi.hoisted(() => ({
   deleteUser: vi.fn<(a: unknown) => Promise<{ error?: { message?: string } | null }>>(),
   // The passkeys section loads its own list; an empty one keeps it quiet.
   passkey: { listUserPasskeys: () => Promise.resolve({ data: [], error: null }) },
+  listSessions: () => Promise.resolve({ data: [], error: null }),
+  getSession: () => Promise.resolve({ data: null, error: null }),
 }));
 vi.mock("#lib/auth-client.js", () => ({ authClient: auth }));
 const pwned = vi.hoisted(() => ({ value: false }));
@@ -275,7 +277,7 @@ test("signing out goes straight home, never through the sign-in page", async () 
   });
   setup();
   await openTab("Account");
-  await fireEvent.click(screen.getByRole("button", { name: /Sign out/ }));
+  await fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
   await waitFor(() => expect(goto).toHaveBeenCalledWith("/", { refreshAll: true }));
   expect(goto).not.toHaveBeenCalledWith("/login");
 });
@@ -406,7 +408,7 @@ describe("tabs", () => {
   test.for([
     ["Preferences", ["Appearance", "Reading", "Followed tags"]],
     ["Privacy", ["Privacy", "Muted & blocked"]],
-    ["Account", ["Account", "Passkeys", "Delete account"]],
+    ["Account", ["Account", "Passkeys", "Active sessions", "Delete account"]],
     ["Integrations", ["Integrations"]],
   ] as const)("the %s tab groups its sections", async ([tab, headings]) => {
     setup();

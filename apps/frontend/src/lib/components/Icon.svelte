@@ -76,6 +76,7 @@
   import ShieldCheck from "@lucide/svelte/icons/shield-check";
   import ShieldOff from "@lucide/svelte/icons/shield-off";
   import SlidersHorizontal from "@lucide/svelte/icons/sliders-horizontal";
+  import Smartphone from "@lucide/svelte/icons/smartphone";
   import Smile from "@lucide/svelte/icons/smile";
   import Sparkles from "@lucide/svelte/icons/sparkles";
   import Strikethrough from "@lucide/svelte/icons/strikethrough";
@@ -168,6 +169,7 @@
     lock: Lock,
     key: KeyRound,
     sliders: SlidersHorizontal,
+    phone: Smartphone,
     plug: Plug,
     plus: Plus,
     minus: Minus,

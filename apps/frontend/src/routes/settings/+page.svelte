@@ -17,6 +17,7 @@
   import PageTitle from "#lib/components/PageTitle.svelte";
   import PasskeysManager from "#lib/components/PasskeysManager.svelte";
   import ProfileLinksEditor from "#lib/components/ProfileLinksEditor.svelte";
+  import SessionsManager from "#lib/components/SessionsManager.svelte";
   import TagInput from "#lib/components/TagInput.svelte";
   import Time from "#lib/components/Time.svelte";
   import Avatar from "#lib/components/ui/Avatar.svelte";
@@ -769,6 +770,18 @@
 
         <div class="mt-4">
           <PasskeysManager username={data.user.username} />
+        </div>
+      </section>
+
+      <!-- Active sessions -->
+      <section id="sessions" class="rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Active sessions</h2>
+        <p class="mt-1 max-w-prose text-sm text-muted-foreground">
+          Devices signed in to your account. Sign out any you don't recognize, then change your password.
+        </p>
+
+        <div class="mt-4">
+          <SessionsManager username={data.user.username} />
         </div>
       </section>
 
