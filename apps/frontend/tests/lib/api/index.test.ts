@@ -179,6 +179,7 @@ const rows: Row[] = [
   ["webhookTokens", (e) => e.webhookTokens(), "GET", "/api/webhooks/tokens"],
   ["createWebhookToken", (e) => e.createWebhookToken("ci"), "POST", "/api/webhooks/tokens", { label: "ci" }],
   ["revokeWebhookToken", (e) => e.revokeWebhookToken(ID), "DELETE", `/api/webhooks/tokens/${ID}`],
+  ["undoEmailChange", (e) => e.undoEmailChange("tok"), "POST", "/api/email-change/undo", { token: "tok" }],
   // feeds + posts
   ["feed", (e) => e.feed("c"), "GET", "/api/feed?cursor=c"],
   ["globalTimeline", (e) => e.globalTimeline(), "GET", "/api/posts"],

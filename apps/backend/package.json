@@ -24,6 +24,7 @@
     "backfill:email-lowercase": "deno run -A scripts/backfill_email_lowercase.ts"
   },
   "dependencies": {
+    "@better-auth/passkey": "1.7.7",
     "@fedify/fedify": "2.4.0",
     "@fedify/redis": "2.4.0",
     "@hono/zod-validator": "0.9.1",

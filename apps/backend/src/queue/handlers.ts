@@ -9,9 +9,13 @@ import {
   sendAccountVerified,
   sendAdminGranted,
   sendAdminRevoked,
+  sendEmailChangeCode,
+  sendEmailChanged,
   sendEmailVerification,
   sendModeratorGranted,
   sendModeratorRevoked,
+  sendPasskeyAdded,
+  sendPasskeyRemoved,
   sendPasswordChanged,
   sendPasswordReset,
   sendPostRemoved,
@@ -188,5 +192,20 @@ export function registerJobHandlers() {
   // to the new address goes through the standard verification job.
   registerHandler("send_account_email_changed", ({ to, username, appName, origin, newEmail }) =>
     sendAccountEmailChanged(to, { username, appName, origin, newEmail }),
+  );
+  // A passkey was added to or removed from the account: a sign-in method changed.
+  registerHandler("send_passkey_added", ({ to, username, appName, origin, passkeyName }) =>
+    sendPasskeyAdded(to, { username, appName, origin, passkeyName }),
+  );
+  registerHandler("send_passkey_removed", ({ to, username, appName, origin, passkeyName }) =>
+    sendPasskeyRemoved(to, { username, appName, origin, passkeyName }),
+  );
+  // The owner is moving their login email: a code to the new address, then a
+  // notice with an undo link to the old one.
+  registerHandler("send_email_change_code", ({ to, code, appName, origin }) =>
+    sendEmailChangeCode(to, { code, appName, origin }),
+  );
+  registerHandler("send_email_changed", ({ to, username, appName, origin, newEmail, undoUrl }) =>
+    sendEmailChanged(to, { username, appName, origin, newEmail, undoUrl }),
   );
 }

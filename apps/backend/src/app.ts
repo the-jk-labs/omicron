@@ -9,7 +9,7 @@ import { checkRateLimit, clientIp, rateLimit } from "@/lib/rateLimit.ts";
 import { registerJobHandlers } from "@/queue/handlers.ts";
 import { healthRoutes } from "@/routes/health.ts";
 import { apiRoutes } from "@/routes/index.ts";
-import { sessionMiddleware } from "@/routes/middleware.ts";
+import { READ_METHODS, sessionMiddleware } from "@/routes/middleware.ts";
 import { repliesRoutes } from "@/routes/replies.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import { wellKnownRoutes } from "@/routes/wellKnown.ts";
@@ -17,7 +17,6 @@ import { federationRunning } from "@/services/federationState.ts";
 import { getAppDomain } from "@/services/instanceSetup.ts";
 
 // Read-only requests are cheap and safe; the general limiter targets mutations.
-const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 // Broad backstop on API writes: per signed-in user, or per IP for anonymous
 // callers. Endpoint-specific limiters (e.g. auth) layer stricter caps on top.

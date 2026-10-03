@@ -1,17 +1,18 @@
 import { goto, refreshAll } from "$app/navigation";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
-import { expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import LoginPage from "../../../src/routes/login/+page.svelte";
 
 const auth = vi.hoisted(() => ({
   email: vi.fn<(a: unknown) => Promise<{ error?: { message?: string; code?: string } | null }>>(),
   username: vi.fn<(a: unknown) => Promise<{ error?: { message?: string; code?: string } | null }>>(),
   sendVerificationEmail: vi.fn<(a: unknown) => Promise<{ error?: { message?: string } | null }>>(),
+  passkey: vi.fn<(a?: unknown) => Promise<{ data?: unknown; error?: { message?: string; code?: string } | null }>>(),
 }));
 vi.mock("#lib/auth-client.js", () => ({
   authClient: {
-    signIn: { email: auth.email, username: auth.username },
+    signIn: { email: auth.email, username: auth.username, passkey: auth.passkey },
     sendVerificationEmail: auth.sendVerificationEmail,
   },
 }));
@@ -93,4 +94,61 @@ test("a thrown network error is shown rather than swallowed", async () => {
   render(LoginPage);
   await signIn("ada@example.com");
   await waitFor(() => screen.getByText("Failed to fetch"));
+});
+
+function stubWebAuthn(conditional = false) {
+  vi.stubGlobal(
+    "PublicKeyCredential",
+    Object.assign(function PublicKeyCredential() {}, { isConditionalMediationAvailable: async () => conditional }),
+  );
+}
+
+describe("passkeys", () => {
+  test("no passkey button where the browser has no passkeys", () => {
+    render(LoginPage);
+    expect(screen.queryByRole("button", { name: "Sign in with a passkey" })).toBeNull();
+  });
+
+  test("the fields ask the password manager to offer passkeys", () => {
+    render(LoginPage);
+    expect(screen.getByLabelText("Username or email")).toHaveAttribute("autocomplete", "username webauthn");
+    expect(screen.getByLabelText("Password")).toHaveAttribute("autocomplete", "current-password webauthn");
+  });
+
+  test("picking a passkey from autofill signs in", async () => {
+    stubWebAuthn(true);
+    auth.passkey.mockResolvedValue({ data: { user: {} }, error: null });
+    render(LoginPage);
+    await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
+    expect(auth.passkey).toHaveBeenCalledWith({ autoFill: true });
+    expect(refreshAll).toHaveBeenCalled();
+  });
+
+  test("the passkey button signs in", async () => {
+    stubWebAuthn();
+    auth.passkey.mockResolvedValue({ data: { user: {} }, error: null });
+    render(LoginPage);
+    await fireEvent.click(await screen.findByRole("button", { name: "Sign in with a passkey" }));
+    await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
+    expect(auth.passkey).toHaveBeenCalledWith();
+  });
+
+  test("cancelling the passkey prompt says nothing", async () => {
+    stubWebAuthn();
+    auth.passkey.mockResolvedValue({ data: null, error: { code: "AUTH_CANCELLED", message: "Auth cancelled" } });
+    render(LoginPage);
+    await fireEvent.click(await screen.findByRole("button", { name: "Sign in with a passkey" }));
+    await waitFor(() => expect(auth.passkey).toHaveBeenCalled());
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(goto).not.toHaveBeenCalled();
+  });
+
+  test("a refused passkey shows why", async () => {
+    stubWebAuthn();
+    auth.passkey.mockResolvedValue({ data: null, error: { message: "This account has been suspended." } });
+    render(LoginPage);
+    await fireEvent.click(await screen.findByRole("button", { name: "Sign in with a passkey" }));
+    await screen.findByText("This account has been suspended.");
+    expect(goto).not.toHaveBeenCalled();
+  });
 });

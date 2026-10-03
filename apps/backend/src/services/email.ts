@@ -642,3 +642,113 @@ export function accountEmailChangedEmail(vars: AccountEmailChangedVars): Omit<Em
 export function sendAccountEmailChanged(to: string, vars: AccountEmailChangedVars): Promise<void> {
   return sendMail({ to, ...accountEmailChangedEmail(vars) });
 }
+
+export type PasskeyNoticeVars = AccountNoticeVars & { passkeyName: string | null };
+
+const passkeyLabel = (name: string | null, quote: [string, string]) =>
+  name ? `A passkey (${quote[0]}${name}${quote[1]})` : "A passkey";
+
+/** Passkey-added security notice: a new way to sign in exists, so the owner must know. */
+export function accountPasskeyAddedEmail(vars: PasskeyNoticeVars): Omit<EmailMessage, "to"> {
+  const what = (q: [string, string]) =>
+    `${passkeyLabel(vars.passkeyName, q)} was just added to your account (@${vars.username}) on ${vars.appName}. It can be used to sign in without your password.`;
+  const advice =
+    "If this was you, you can ignore this email. If it wasn't, remove it in your settings right away and change your password: your account may be compromised.";
+  return {
+    subject: `A passkey was added to your ${vars.appName} account`,
+    text: [
+      what(['"', '"']),
+      "",
+      advice,
+      `${vars.origin}/settings?tab=account#passkeys`,
+      "",
+      `The ${vars.appName} team`,
+    ].join("\n"),
+    html: layout("A passkey was added", `${what(["“", "”"])} ${advice}`, {
+      label: "Review passkeys",
+      url: `${vars.origin}/settings?tab=account#passkeys`,
+    }),
+  };
+}
+
+/** Passkey-added security notice. Queued off the request path (see queue/handlers.ts). */
+export function sendPasskeyAdded(to: string, vars: PasskeyNoticeVars): Promise<void> {
+  return sendMail({ to, ...accountPasskeyAddedEmail(vars) });
+}
+
+/** Passkey-removed security notice: a way to sign in is gone. */
+export function accountPasskeyRemovedEmail(vars: PasskeyNoticeVars): Omit<EmailMessage, "to"> {
+  const what = (q: [string, string]) =>
+    `${passkeyLabel(vars.passkeyName, q)} was just removed from your account (@${vars.username}) on ${vars.appName} and can no longer be used to sign in.`;
+  const advice =
+    "If this was you, you can ignore this email. If it wasn't, change your password right away: your account may be compromised.";
+  return {
+    subject: `A passkey was removed from your ${vars.appName} account`,
+    text: [
+      what(['"', '"']),
+      "",
+      advice,
+      `${vars.origin}/settings?tab=account#passkeys`,
+      "",
+      `The ${vars.appName} team`,
+    ].join("\n"),
+    html: layout("A passkey was removed", `${what(["“", "”"])} ${advice}`, {
+      label: "Review passkeys",
+      url: `${vars.origin}/settings?tab=account#passkeys`,
+    }),
+  };
+}
+
+/** Passkey-removed security notice. Queued off the request path (see queue/handlers.ts). */
+export function sendPasskeyRemoved(to: string, vars: PasskeyNoticeVars): Promise<void> {
+  return sendMail({ to, ...accountPasskeyRemovedEmail(vars) });
+}
+
+export type EmailChangeCodeVars = { code: string; appName: string; origin: string };
+
+/** The 6-digit code that proves the reader owns the address they're switching to. */
+export function emailChangeCodeEmail(vars: EmailChangeCodeVars): Omit<EmailMessage, "to"> {
+  const ignore = `If you didn't ask to change your email on ${vars.appName}, you can ignore this email.`;
+  return {
+    subject: `${vars.code} is your ${vars.appName} confirmation code`,
+    text: [
+      `Enter this code to make this your login email on ${vars.appName}:`,
+      "",
+      vars.code,
+      "",
+      "It expires in 10 minutes.",
+      ignore,
+      "",
+      `The ${vars.appName} team`,
+    ].join("\n"),
+    html: layout(
+      `Your code: ${vars.code}`,
+      `Enter ${vars.code} to make this your login email on ${vars.appName}. It expires in 10 minutes. ${ignore}`,
+      { label: `Open ${vars.appName}`, url: vars.origin },
+    ),
+  };
+}
+
+/** Change-email code. Queued off the request path (see queue/handlers.ts). */
+export function sendEmailChangeCode(to: string, vars: EmailChangeCodeVars): Promise<void> {
+  return sendMail({ to, ...emailChangeCodeEmail(vars) });
+}
+
+export type EmailChangedVars = AccountNoticeVars & { newEmail: string; undoUrl: string };
+
+/** To the previous address after the owner changed their login email, with a way back. */
+export function accountEmailChangedBySelfEmail(vars: EmailChangedVars): Omit<EmailMessage, "to"> {
+  const what = `The login email for your account (@${vars.username}) on ${vars.appName} was changed to ${vars.newEmail}. This address won't get account emails anymore.`;
+  const advice =
+    "If this was you, you can ignore this email. If it wasn't, undo the change within 7 days. That puts this address back, signs out every session, removes your passkeys, and sends you a link to set a new password.";
+  return {
+    subject: `Your ${vars.appName} email was changed`,
+    text: [what, "", advice, vars.undoUrl, "", `The ${vars.appName} team`].join("\n"),
+    html: layout("Your email was changed", `${what} ${advice}`, { label: "Undo this change", url: vars.undoUrl }),
+  };
+}
+
+/** Self-service email-changed notice. Queued off the request path (see queue/handlers.ts). */
+export function sendEmailChanged(to: string, vars: EmailChangedVars): Promise<void> {
+  return sendMail({ to, ...accountEmailChangedBySelfEmail(vars) });
+}

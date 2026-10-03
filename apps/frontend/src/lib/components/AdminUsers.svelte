@@ -11,7 +11,9 @@
   import Avatar from "#lib/components/ui/Avatar.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
+  import UsernameHint from "#lib/components/UsernameHint.svelte";
   import { AVATAR_MAX_DIMENSION, prepareImage } from "#lib/editor/image.js";
+  import { notALoginField } from "#lib/passwordManagers.js";
   import { identifierToUrl, platformMeta, urlToIdentifier } from "#lib/profileLinks.js";
   import { MAX_PROFILE_TAGS } from "#lib/tags.js";
   import type { AdminUser, AdminUserDetail, DeletedUser, ProfileLink } from "#lib/types.js";
@@ -20,7 +22,11 @@
   // (the server also forbids them). `isViewerAdmin` gates the role grants —
   // only admins may hand out the admin or moderator role, and a moderator
   // viewer gets no action buttons on admin/moderator rows at all.
-  let { selfId, isViewerAdmin = false }: { selfId: string; isViewerAdmin?: boolean } = $props();
+  let {
+    selfId,
+    selfUsername,
+    isViewerAdmin = false,
+  }: { selfId: string; selfUsername: string; isViewerAdmin?: boolean } = $props();
 
   // Whether the viewer may act on this row. Moderators work regular accounts
   // only; admins may act on anyone (per-action guards still apply).
@@ -1322,55 +1328,60 @@
         for a limited time and can be restored from Recently deleted below.
       </Dialog.Description>
 
-      <div class="mt-5 flex flex-col gap-4">
-        <div class="flex flex-col gap-1.5">
-          <Label.Root for="delete-username" class={labelClass}>
-            Type <strong class="text-foreground">{deleteTarget?.username}</strong> to confirm
-          </Label.Root>
-          <input
-            id="delete-username"
-            bind:value={deleteUsername}
-            placeholder={deleteTarget?.username ?? ""}
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck={false}
-            class={field}
-          />
+      <form onsubmit={(e) => (e.preventDefault(), confirmDelete())}>
+        <div class="mt-5 flex flex-col gap-4">
+          <div class="flex flex-col gap-1.5">
+            <Label.Root for="delete-username" class={labelClass}>
+              Type <strong class="text-foreground">{deleteTarget?.username}</strong> to confirm
+            </Label.Root>
+            <input
+              id="delete-username"
+              bind:value={deleteUsername}
+              placeholder={deleteTarget?.username ?? ""}
+              autocomplete="off"
+              {...notALoginField}
+              autocapitalize="off"
+              spellcheck={false}
+              class={field}
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <UsernameHint username={selfUsername} />
+            <Label.Root for="delete-password" class={labelClass}>Your password</Label.Root>
+            <input
+              id="delete-password"
+              type="password"
+              bind:value={deletePassword}
+              autocomplete="current-password"
+              class={field}
+            />
+          </div>
+          <label class="flex cursor-pointer items-start gap-2.5 text-sm text-foreground">
+            <Checkbox.Root
+              bind:checked={deleteNotify}
+              class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border border-input bg-background shadow-btn data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
+            >
+              {#snippet children({ checked })}
+                {#if checked}<Icon name="check" size={12} />{/if}
+              {/snippet}
+            </Checkbox.Root>
+            <span class="leading-snug">Notify @{deleteTarget?.username} by email.</span>
+          </label>
+          {#if deleteError}<p class="text-sm text-destructive">{deleteError}</p>{/if}
         </div>
-        <div class="flex flex-col gap-1.5">
-          <Label.Root for="delete-password" class={labelClass}>Your password</Label.Root>
-          <input
-            id="delete-password"
-            type="password"
-            bind:value={deletePassword}
-            autocomplete="current-password"
-            class={field}
-          />
-        </div>
-        <label class="flex cursor-pointer items-start gap-2.5 text-sm text-foreground">
-          <Checkbox.Root
-            bind:checked={deleteNotify}
-            class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border border-input bg-background shadow-btn data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
-          >
-            {#snippet children({ checked })}
-              {#if checked}<Icon name="check" size={12} />{/if}
-            {/snippet}
-          </Checkbox.Root>
-          <span class="leading-snug">Notify @{deleteTarget?.username} by email.</span>
-        </label>
-        {#if deleteError}<p class="text-sm text-destructive">{deleteError}</p>{/if}
-      </div>
 
-      <div class="mt-6 flex justify-end gap-2">
-        <Dialog.Close
-          class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
-        >
-          Cancel
-        </Dialog.Close>
-        <Button variant="destructive" disabled={!deleteReady || deleteBusy} onclick={confirmDelete}>
-          {deleteBusy ? "Deleting…" : "Delete this account"}
-        </Button>
-      </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <Dialog.Close
+            type="button"
+            class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
+          >
+            Cancel
+          </Dialog.Close>
+          <Button type="submit" variant="destructive" disabled={!deleteReady || deleteBusy}>
+            {deleteBusy ? "Deleting…" : "Delete this account"}
+          </Button>
+        </div>
+      </form>
     </Dialog.Content>
   </Dialog.Portal>
 </Dialog.Root>
@@ -1409,45 +1420,45 @@
         {/if}
       </Dialog.Description>
 
-      <div class="mt-5 flex flex-col gap-4">
-        <div class="flex flex-col gap-1.5">
-          <Label.Root for="role-password" class={labelClass}>Your password</Label.Root>
-          <input
-            id="role-password"
-            type="password"
-            bind:value={rolePassword}
-            autocomplete="current-password"
-            class={field}
-          />
+      <form onsubmit={(e) => (e.preventDefault(), confirmRole())}>
+        <div class="mt-5 flex flex-col gap-4">
+          <div class="flex flex-col gap-1.5">
+            <UsernameHint username={selfUsername} />
+            <Label.Root for="role-password" class={labelClass}>Your password</Label.Root>
+            <input
+              id="role-password"
+              type="password"
+              bind:value={rolePassword}
+              autocomplete="current-password"
+              class={field}
+            />
+          </div>
+          <label class="flex cursor-pointer items-start gap-2.5 text-sm text-foreground">
+            <Checkbox.Root
+              bind:checked={roleNotify}
+              class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border border-input bg-background shadow-btn data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
+            >
+              {#snippet children({ checked })}
+                {#if checked}<Icon name="check" size={12} />{/if}
+              {/snippet}
+            </Checkbox.Root>
+            <span class="leading-snug">Notify @{roleTarget?.username} by email.</span>
+          </label>
+          {#if roleError}<p class="text-sm text-destructive">{roleError}</p>{/if}
         </div>
-        <label class="flex cursor-pointer items-start gap-2.5 text-sm text-foreground">
-          <Checkbox.Root
-            bind:checked={roleNotify}
-            class="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-sm border border-input bg-background shadow-btn data-[state=checked]:border-foreground data-[state=checked]:bg-foreground data-[state=checked]:text-background"
-          >
-            {#snippet children({ checked })}
-              {#if checked}<Icon name="check" size={12} />{/if}
-            {/snippet}
-          </Checkbox.Root>
-          <span class="leading-snug">Notify @{roleTarget?.username} by email.</span>
-        </label>
-        {#if roleError}<p class="text-sm text-destructive">{roleError}</p>{/if}
-      </div>
 
-      <div class="mt-6 flex justify-end gap-2">
-        <Dialog.Close
-          class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
-        >
-          Cancel
-        </Dialog.Close>
-        <Button
-          variant={roleRemoving ? "destructive" : "solid"}
-          disabled={!roleReady || roleBusy}
-          onclick={confirmRole}
-        >
-          {roleBusy ? "Saving…" : roleRemoving ? `Remove ${roleAction}` : `Make ${roleAction}`}
-        </Button>
-      </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <Dialog.Close
+            type="button"
+            class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
+          >
+            Cancel
+          </Dialog.Close>
+          <Button type="submit" variant={roleRemoving ? "destructive" : "solid"} disabled={!roleReady || roleBusy}>
+            {roleBusy ? "Saving…" : roleRemoving ? `Remove ${roleAction}` : `Make ${roleAction}`}
+          </Button>
+        </div>
+      </form>
     </Dialog.Content>
   </Dialog.Portal>
 </Dialog.Root>

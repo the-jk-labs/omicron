@@ -163,7 +163,8 @@ const instanceSchema = z.object({
 // domain change reaches ActivityPub only after a restart (federation identity
 // binds at boot), as does flipping federation on/off (the Fedify mount and
 // queue handlers bind at boot); app-level name/URLs/banner text update at
-// once. The UI surfaces those caveats.
+// once. A new domain also removes every passkey (each is bound to the domain it
+// was made on). The UI surfaces those caveats.
 adminRoutes.put("/instance", jsonBody(instanceSchema), async (c) => {
   requireAdmin(c);
   const body = c.req.valid("json");

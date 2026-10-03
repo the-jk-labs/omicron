@@ -76,7 +76,7 @@ function setup(
     ...routes,
   });
   vi.stubGlobal("fetch", f.fetch);
-  render(AdminUsers, { props: { selfId: "me", ...props } });
+  render(AdminUsers, { props: { selfId: "me", selfUsername: "admin", ...props } });
   return f;
 }
 
@@ -257,6 +257,12 @@ test("deleting needs the typed username and a password, then moves the account t
   await openMenu("bob", "Delete…");
   const confirmBtn = await screen.findByRole("button", { name: "Delete this account" });
   expect(confirmBtn).toBeDisabled();
+  // The password is the admin's own; typing @bob's name must not read as a login.
+  const hint = document.querySelector('input[autocomplete="username"]')!;
+  expect(hint).toHaveValue("admin");
+  expect(hint.closest("form")).not.toBeNull();
+  expect(screen.getByLabelText("Your password").closest("form")).toBe(hint.closest("form"));
+  expect(screen.getByLabelText(/to confirm/)).toHaveAttribute("data-1p-ignore");
   await fireEvent.input(screen.getByLabelText(/to confirm/), { target: { value: "Bob" } });
   await fireEvent.input(screen.getByLabelText("Your password"), { target: { value: "pw" } });
   expect(confirmBtn).toBeDisabled();
@@ -290,6 +296,10 @@ test("making an admin re-verifies the password and updates the row", async () =>
   await screen.findByText("2 accounts total");
   await openMenu("bob", "Make admin…");
   await screen.findByText("Make @bob an admin?");
+  const hint = document.querySelector('input[autocomplete="username"]')!;
+  expect(hint).toHaveValue("admin");
+  expect(screen.getByLabelText("Your password").closest("form")).toBe(hint.closest("form"));
+  expect(hint.closest("form")).not.toBeNull();
   const save = screen.getByRole("button", { name: "Make admin" });
   expect(save).toBeDisabled();
   await fireEvent.input(screen.getByLabelText("Your password"), { target: { value: "pw" } });

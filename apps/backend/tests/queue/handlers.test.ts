@@ -144,6 +144,39 @@ const mailJobs: [JobName, unknown, () => unknown, unknown[]][] = [
     () => email.sendAccountEmailChanged,
     ["a@x.test", expect.objectContaining({ newEmail: "n@x.test" })],
   ],
+  [
+    "send_passkey_added",
+    { ...vars, passkeyName: "Laptop" },
+    () => email.sendPasskeyAdded,
+    ["a@x.test", { username: "ada", appName: "Blog", origin: "https://blog.example", passkeyName: "Laptop" }],
+  ],
+  [
+    "send_passkey_removed",
+    { ...vars, passkeyName: null },
+    () => email.sendPasskeyRemoved,
+    ["a@x.test", { username: "ada", appName: "Blog", origin: "https://blog.example", passkeyName: null }],
+  ],
+  [
+    "send_email_change_code",
+    { to: "a@x.test", code: "123456", appName: "Blog", origin: "https://blog.example" },
+    () => email.sendEmailChangeCode,
+    ["a@x.test", { code: "123456", appName: "Blog", origin: "https://blog.example" }],
+  ],
+  [
+    "send_email_changed",
+    { ...vars, newEmail: "n@x.test", undoUrl: "https://blog.example/undo-email-change?token=t" },
+    () => email.sendEmailChanged,
+    [
+      "a@x.test",
+      {
+        username: "ada",
+        appName: "Blog",
+        origin: "https://blog.example",
+        newEmail: "n@x.test",
+        undoUrl: "https://blog.example/undo-email-change?token=t",
+      },
+    ],
+  ],
 ];
 
 describe("federation jobs", () => {
@@ -180,7 +213,7 @@ test("every job name has a handler (none is silently dropped)", async () => {
   await new Promise((r) => setTimeout(r, 0));
   expect(warn).not.toHaveBeenCalled();
   // Every member of JobName is exercised above.
-  expect(new Set(all.map(([n]) => n)).size).toBe(30);
+  expect(new Set(all.map(([n]) => n)).size).toBe(34);
 });
 
 test("a failing handler is logged, never thrown into the caller", async () => {

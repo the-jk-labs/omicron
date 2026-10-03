@@ -6,9 +6,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type * as passwordHelpers from "#lib/password.js";
 import RegisterPage from "../../../src/routes/register/+page.svelte";
 
-const { signUp } = vi.hoisted(() => ({ signUp: vi.fn() }));
+const { signUp, passkey } = vi.hoisted(() => ({
+  signUp: vi.fn(),
+  passkey: vi.fn<(a: unknown) => Promise<{ data?: unknown; error?: unknown }>>(),
+}));
 vi.mock("#lib/auth-client.js", () => ({
-  authClient: { signUp: { email: signUp }, sendVerificationEmail: vi.fn() },
+  authClient: { signUp: { email: signUp }, signIn: { passkey }, sendVerificationEmail: vi.fn() },
 }));
 vi.mock("#lib/password.js", async (importOriginal) => ({
   ...(await importOriginal<typeof passwordHelpers>()),
@@ -82,5 +85,20 @@ describe("registration", () => {
     await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
     expect(refreshAll).toHaveBeenCalledOnce();
     expect(screen.queryByRole("heading", { name: "Check your inbox" })).not.toBeInTheDocument();
+  });
+});
+
+describe("passkey autofill", () => {
+  it("lets someone who already has an account sign in from the username field", async () => {
+    vi.stubGlobal(
+      "PublicKeyCredential",
+      Object.assign(function PublicKeyCredential() {}, { isConditionalMediationAvailable: async () => true }),
+    );
+    passkey.mockResolvedValue({ data: { user: {} }, error: null });
+    render(RegisterPage);
+    expect(screen.getByLabelText("Username")).toHaveAttribute("autocomplete", "username webauthn");
+    await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
+    expect(passkey).toHaveBeenCalledWith({ autoFill: true });
+    expect(refreshAll).toHaveBeenCalled();
   });
 });

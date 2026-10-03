@@ -281,6 +281,13 @@
       "when": 1789600000000,
       "tag": "0039_unique_remote_follower",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1789700000000,
+      "tag": "0040_passkeys",
+      "breakpoints": true
     }
   ]
 }

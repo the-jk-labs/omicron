@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { PUBLIC_APP_NAME } from "$app/env/public";
-  import { goto, refreshAll } from "$app/navigation";
+  import { goto } from "$app/navigation";
   import { DropdownMenu } from "bits-ui";
   import { onMount } from "svelte";
   import { endpoints } from "#lib/api/index.js";
@@ -43,8 +43,9 @@
 
   async function logout() {
     await authClient.signOut();
-    await refreshAll();
-    goto("/");
+    // Reload data on the way home, not in place: on a protected page that would
+    // rerun its guard and bounce through /login first.
+    await goto("/", { refreshAll: true });
   }
 
   // Verbatim Bits UI docs DropdownMenu.Item class.

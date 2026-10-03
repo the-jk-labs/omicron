@@ -102,6 +102,51 @@ describe("notifyPasswordChanged", () => {
   });
 });
 
+describe("notifyPasskeyChanged", () => {
+  test.for([
+    ["added", "send_passkey_added"],
+    ["removed", "send_passkey_removed"],
+  ] as const)("%s mails the owner, naming the passkey", async ([change, job]) => {
+    vi.mocked(usersRepo.findById).mockResolvedValue(userRow({ id: "u1", email: "ada@x.test", username: "ada" }));
+    await notices.notifyPasskeyChanged(change, "u1", " Laptop ");
+    expect(queue.add).toHaveBeenCalledWith(job, { to: "ada@x.test", username: "ada", passkeyName: "Laptop", ...vars });
+  });
+
+  test("an unnamed passkey is sent without a name", async () => {
+    vi.mocked(usersRepo.findById).mockResolvedValue(userRow({ id: "u1", email: "ada@x.test", username: "ada" }));
+    await notices.notifyPasskeyChanged("added", "u1", undefined);
+    expect(queue.add).toHaveBeenCalledWith("send_passkey_added", expect.objectContaining({ passkeyName: null }));
+  });
+
+  test("does nothing for an unknown account and swallows failures", async () => {
+    vi.mocked(usersRepo.findById).mockResolvedValue(undefined);
+    await notices.notifyPasskeyChanged("removed", "ghost", "Laptop");
+    expect(queue.add).not.toHaveBeenCalled();
+
+    vi.mocked(usersRepo.findById).mockRejectedValue(new Error("db down"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(notices.notifyPasskeyChanged("added", "u1", "Laptop")).resolves.toBeUndefined();
+  });
+});
+
+describe("email change", () => {
+  test("notifyEmailChangeCode sends the code to the new address", async () => {
+    await notices.notifyEmailChangeCode("new@x.test", "482913");
+    expect(queue.add).toHaveBeenCalledWith("send_email_change_code", { to: "new@x.test", code: "482913", ...vars });
+  });
+
+  test("notifyEmailChangedBySelf writes to the old address with the undo link", async () => {
+    await notices.notifyEmailChangedBySelf("old@x.test", "ada", "new@x.test", "https://blog.example/u");
+    expect(queue.add).toHaveBeenCalledWith("send_email_changed", {
+      to: "old@x.test",
+      username: "ada",
+      newEmail: "new@x.test",
+      undoUrl: "https://blog.example/u",
+      ...vars,
+    });
+  });
+});
+
 describe("notifyPostAuthorRemoved", () => {
   test("tells the author whose post a moderator removed", async () => {
     vi.mocked(usersRepo.findById).mockResolvedValue(userRow({ id: "author", email: "a@x.test", username: "ada" }));

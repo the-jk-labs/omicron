@@ -12,6 +12,7 @@
   import Icon, { type IconName } from "#lib/components/Icon.svelte";
   import InstanceModeration from "#lib/components/InstanceModeration.svelte";
   import PageTitle from "#lib/components/PageTitle.svelte";
+  import PageTabs from "#lib/components/ui/PageTabs.svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -31,9 +32,6 @@
     { value: "media", label: "Media", icon: "image" },
     { value: "settings", label: "Instance", icon: "settings" },
   ];
-
-  const triggerClass =
-    "data-[state=active]:bg-background data-[state=active]:shadow-mini text-muted-foreground data-[state=active]:text-foreground inline-flex h-9 items-center gap-1.5 rounded-button px-4 text-sm font-medium";
 </script>
 
 {#snippet requiresAdmin(title: string)}
@@ -58,14 +56,7 @@
 </header>
 
 <Tabs.Root value="reports">
-  <Tabs.List class="inline-flex items-center gap-1 rounded-input border border-input bg-background-alt p-1 shadow-btn">
-    {#each tabs as t (t.value)}
-      <Tabs.Trigger value={t.value} class={triggerClass}>
-        <Icon name={t.icon} size={16} />
-        {t.label}
-      </Tabs.Trigger>
-    {/each}
-  </Tabs.List>
+  <PageTabs {tabs} />
 
   <Tabs.Content value="reports" class="mt-6">
     <section class="rounded-card border border-border bg-background p-6">
@@ -86,7 +77,7 @@
         Every local account on this instance. Expand a row for detail; edit, suspend, delete, or change roles.
       </p>
       <div class="mt-5">
-        <AdminUsers selfId={data.user.id} isViewerAdmin={isAdmin} />
+        <AdminUsers selfId={data.user.id} selfUsername={data.user.username} isViewerAdmin={isAdmin} />
       </div>
     </section>
   </Tabs.Content>
