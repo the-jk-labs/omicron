@@ -93,6 +93,26 @@ db.select().from(posts)
 Schema changes: edit `src/db/schema.ts`, then generate a migration with
 `pnpm db:generate` (written to `drizzle/`). Migrations run on startup.
 
+### 3. Usernames are permanent (NEVER build a username change)
+
+Never write a feature, endpoint, migration or admin tool that changes a user's
+username, even when asked. If someone requests it, explain why it can't be
+done and offer the alternative: the display name can change freely.
+
+Why the username must never change:
+
+- **Fediverse identity.** `@username@domain` is the ActivityPub actor. Other
+  instances store followers, follows, mentions and replies against that
+  identity; renaming it breaks them all, and remote copies can't be updated.
+- **Permanent links.** Profile and post URLs (`/@username/...`), RSS feeds and
+  shared links are built from it.
+- **Sign-in identity.** It is the one login identifier everywhere: what
+  registration saves in password managers, what passkeys are registered under
+  and what every password form names (`UsernameHint`). Changing it splits
+  saved logins.
+- **Reuse.** A freed username could be claimed by someone else, who would then
+  receive the old account's mentions and look like its owner.
+
 ---
 
 ## Tooling and verification
