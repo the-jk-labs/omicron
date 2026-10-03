@@ -1,19 +1,19 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { goto, invalidateAll } from "$app/navigation";
+  import { PUBLIC_APP_NAME } from "$app/env/public";
+  import { goto, refreshAll } from "$app/navigation";
   import { page } from "$app/state";
-  import { env } from "$env/dynamic/public";
-  import logo from "$lib/assets/omicron.svg";
-  import { authClient } from "$lib/auth-client";
-  import Icon from "$lib/components/Icon.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { MIN_PASSWORD_LEN, passwordStrength, passwordRequirements, isPwnedPasswordClient } from "$lib/password";
-  import type { InstanceInfo } from "$lib/types";
   import { Checkbox, Label } from "bits-ui";
+  import logo from "#lib/assets/omicron.svg";
+  import { authClient } from "#lib/auth-client.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { MIN_PASSWORD_LEN, passwordStrength, passwordRequirements, isPwnedPasswordClient } from "#lib/password.js";
+  import type { InstanceInfo } from "#lib/types.js";
 
   const instance = $derived(page.data.instance as InstanceInfo | null);
-  const appName = $derived(instance?.name || env.PUBLIC_APP_NAME || "Omicron");
+  const appName = $derived(instance?.name || PUBLIC_APP_NAME || "Omicron");
   // Fail closed on stale data: an instance that does not advertise the flag
   // is treated as requiring confirmation (the backend default).
   const verificationRequired = $derived(instance?.emailVerificationRequired !== false);
@@ -177,7 +177,7 @@
         registeredEmail = submittedEmail;
         return;
       }
-      await invalidateAll();
+      await refreshAll();
       goto("/");
     } catch (err) {
       error = err instanceof Error ? err.message : "Something went wrong.";

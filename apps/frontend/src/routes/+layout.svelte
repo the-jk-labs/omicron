@@ -1,22 +1,22 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import "../app.css";
-  import { page } from "$app/stores";
-  import { env } from "$env/dynamic/public";
-  import { noPageScroll } from "$lib/actions/noPageScroll";
-  import { canonicalOrigin } from "$lib/canonical";
-  import Discover from "$lib/components/Discover.svelte";
-  import Footer from "$lib/components/Footer.svelte";
-  import MobileNav from "$lib/components/MobileNav.svelte";
-  import Nav from "$lib/components/Nav.svelte";
-  import SideNav from "$lib/components/SideNav.svelte";
-  import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
-  import { absoluteBanner, postCardUrl, profileCardUrl } from "$lib/cover";
-  import { excerpt } from "$lib/format";
-  import { rememberLocale } from "$lib/locale";
-  import { blogPostingLd, breadcrumbLd, profilePageLd, serializeJsonLd, webSiteLd } from "$lib/seo";
-  import { rememberTimeZone } from "$lib/timezone";
-  import type { Post, Profile, ReadingList } from "$lib/types";
+  import { PUBLIC_APP_NAME } from "$app/env/public";
+  import { page } from "$app/state";
+  import { noPageScroll } from "#lib/actions/noPageScroll.js";
+  import { canonicalOrigin } from "#lib/canonical.js";
+  import Discover from "#lib/components/Discover.svelte";
+  import Footer from "#lib/components/Footer.svelte";
+  import MobileNav from "#lib/components/MobileNav.svelte";
+  import Nav from "#lib/components/Nav.svelte";
+  import SideNav from "#lib/components/SideNav.svelte";
+  import ConfirmDialog from "#lib/components/ui/ConfirmDialog.svelte";
+  import { absoluteBanner, postCardUrl, profileCardUrl } from "#lib/cover.js";
+  import { excerpt } from "#lib/format.js";
+  import { rememberLocale } from "#lib/locale.svelte.js";
+  import { blogPostingLd, breadcrumbLd, profilePageLd, serializeJsonLd, webSiteLd } from "#lib/seo.js";
+  import { rememberTimeZone } from "#lib/timezone.svelte.js";
+  import type { Post, Profile, ReadingList } from "#lib/types.js";
   import type { LayoutData } from "./$types";
 
   let { data, children }: { data: LayoutData; children: import("svelte").Snippet } = $props();
@@ -41,7 +41,7 @@
   // provide the brand image/description used in link previews everywhere. The
   // name comes from the instance settings (wizard/admin), falling back to the
   // build-time env and then the default.
-  const appName = $derived(data.instance?.name || env.PUBLIC_APP_NAME || "Omicron");
+  const appName = $derived(data.instance?.name || PUBLIC_APP_NAME || "Omicron");
   const homeTitle = $derived(`${appName}: an independent blogging platform on the fediverse`);
   // 152 chars for `Omicron` (adjusts with instance name): hits the 150–160 target
   // search engines show without truncation and matches the hero.
@@ -53,36 +53,36 @@
   // request happened to arrive on, so an article has one address wherever it is
   // read from. Falls back to the request origin when no domain is configured
   // (a fresh local instance), which is then the only origin there is.
-  const origin = $derived(canonicalOrigin(data.instance?.domain) ?? $page.url.origin);
+  const origin = $derived(canonicalOrigin(data.instance?.domain) ?? page.url.origin);
   // Query strings are tracking noise, never a distinct page here, so the
   // canonical URL is the path alone.
-  const canonical = $derived(`${origin}${$page.url.pathname}`);
+  const canonical = $derived(`${origin}${page.url.pathname}`);
   const ogImage = $derived(`${origin}/og-image.png`);
 
   // On a post page we emit article-specific Open Graph + the Mastodon
   // `fediverse:creator` tag, so shares render an author-attributed link card
   // ("More from <author>"). Driven from `page.data` here (one head block) to
   // avoid duplicate <meta> from a child <svelte:head>.
-  const post = $derived($page.route.id === "/[handle]/[slug]" ? ($page.data as { post?: Post }).post : undefined);
+  const post = $derived(page.route.id === "/[handle]/[slug]" ? (page.data as { post?: Post }).post : undefined);
   // Shared with the feed cards, so a link preview and the card describe a post
   // the same way — decoded entities included.
   const ogExcerpt = (html: string) => excerpt(html, 199);
   // A local author's handle resolves against this instance; a remote author's
   // `username` is already a `user@host` handle.
   const creator = $derived(
-    post ? (post.author.remote ? `@${post.author.username}` : `@${post.author.username}@${$page.url.host}`) : null,
+    post ? (post.author.remote ? `@${post.author.username}` : `@${post.author.username}@${page.url.host}`) : null,
   );
   // Home, tag and profile reuse the same title pattern as PageTitle (homeTitle,
   // `#tag · App`, `DisplayName · App`) so the tab and the link preview agree.
   const ogTitle = $derived.by(() => {
     if (post?.title) return post.title;
-    if ($page.route.id === "/") return homeTitle;
-    const pd = $page.data as {
+    if (page.route.id === "/") return homeTitle;
+    const pd = page.data as {
       profile?: { user: { displayName: string } };
       detail?: { tag: { name: string } };
     };
-    if ($page.route.id === "/[handle]" && pd.profile) return `${pd.profile.user.displayName} · ${appName}`;
-    if ($page.route.id === "/tags/[tag]" && pd.detail?.tag) return `#${pd.detail.tag.name} · ${appName}`;
+    if (page.route.id === "/[handle]" && pd.profile) return `${pd.profile.user.displayName} · ${appName}`;
+    if (page.route.id === "/tags/[tag]" && pd.detail?.tag) return `#${pd.detail.tag.name} · ${appName}`;
     return appName;
   });
   // An ingested post carries the sender's own `description`; prefer it over a
@@ -91,18 +91,18 @@
   // index (home already has one via `description`).
   const ogDescription = $derived.by(() => {
     if (post) return post.summary?.trim() || ogExcerpt(post.contentHtml);
-    if ($page.route.id === "/") return description;
-    const pd = $page.data as {
+    if (page.route.id === "/") return description;
+    const pd = page.data as {
       profile?: { user: { displayName: string; username: string; bio: string } };
       detail?: { tag: { name: string }; postCount: number; followerCount: number };
     };
-    if ($page.route.id === "/[handle]" && pd.profile) {
+    if (page.route.id === "/[handle]" && pd.profile) {
       const u = pd.profile.user;
       const bio = u.bio?.trim();
       if (bio) return bio.length > 160 ? `${bio.slice(0, 157)}…` : bio;
       return `Read articles by ${u.displayName} (@${u.username.split("@")[0]}) on ${appName}. Follow their writing across the fediverse.`;
     }
-    if ($page.route.id === "/tags/[tag]" && pd.detail) {
+    if (page.route.id === "/tags/[tag]" && pd.detail) {
       const d = pd.detail;
       return `Explore #${d.tag.name} on ${appName}: ${d.postCount} ${d.postCount === 1 ? "article" : "articles"}, ${d.followerCount} ${d.followerCount === 1 ? "follower" : "followers"}. Discover writers and posts tagged #${d.tag.name} across the fediverse.`;
     }
@@ -113,7 +113,7 @@
   // handle, bio, stats). Local profiles only — a remote `user@host` handle
   // fails the username check in `profileCardUrl` and keeps the brand tile,
   // since the card is the origin instance's to draw.
-  const profile = $derived($page.route.id === "/[handle]" ? ($page.data as { profile?: Profile }).profile : undefined);
+  const profile = $derived(page.route.id === "/[handle]" ? (page.data as { profile?: Profile }).profile : undefined);
   // A post's banner becomes its share image, falling back to the instance's
   // brand image. `bannerUrl` rather than `coverUrl`, so a post whose banner is
   // simply its first picture still gets a picture on the link card instead of
@@ -137,12 +137,12 @@
   // then.
   const feedLink = $derived.by(() => {
     if (data.seo?.indexingEnabled === false) return null;
-    const pageData = $page.data as { remote?: boolean; profile?: Profile; list?: ReadingList };
-    const href = `${$page.url.pathname}/feed.xml`;
-    if ($page.route.id === "/[handle]" && !pageData.remote && pageData.profile) {
+    const pageData = page.data as { remote?: boolean; profile?: Profile; list?: ReadingList };
+    const href = `${page.url.pathname}/feed.xml`;
+    if (page.route.id === "/[handle]" && !pageData.remote && pageData.profile) {
       return { href, title: `${pageData.profile.user.displayName} · ${appName}` };
     }
-    if ($page.route.id === "/lists/[id]" && pageData.list?.visibility === "public") {
+    if (page.route.id === "/lists/[id]" && pageData.list?.visibility === "public") {
       return { href, title: `${pageData.list.title} · ${appName}` };
     }
     // An article advertises its author's feed, not a feed of its own: paste the
@@ -169,22 +169,22 @@
   // /users/<name> is a 404 otherwise.
   const actorLink = $derived.by(() => {
     if (!data.instance?.federationEnabled) return null;
-    const pageData = $page.data as { remote?: boolean; profile?: Profile };
-    if ($page.route.id !== "/[handle]" || pageData.remote || !pageData.profile) return null;
+    const pageData = page.data as { remote?: boolean; profile?: Profile };
+    if (page.route.id !== "/[handle]" || pageData.remote || !pageData.profile) return null;
     return `${origin}/users/${pageData.profile.user.username}`;
   });
 
   // The right discovery rail only belongs on the home feed and profile pages;
   // every other route (post, compose, settings, auth, …) hides it.
-  const showDiscover = $derived($page.route.id === "/" || $page.route.id === "/[handle]");
+  const showDiscover = $derived(page.route.id === "/" || page.route.id === "/[handle]");
 
   // Auth screens stand alone: no side rails, just the form centered in the
   // viewport. The shared chrome (rails, grid) only applies to in-app routes.
   const AUTH_ROUTES = new Set(["/login", "/register", "/forgot-password", "/reset-password", "/verify-email"]);
-  const isAuth = $derived(AUTH_ROUTES.has($page.route.id ?? ""));
+  const isAuth = $derived(AUTH_ROUTES.has(page.route.id ?? ""));
   // The first-run wizard is also a standalone screen (logo-only nav, no rails),
   // but a touch wider than the auth forms to fit the stepped layout.
-  const isSetup = $derived($page.route.id === "/setup");
+  const isSetup = $derived(page.route.id === "/setup");
   const standalone = $derived(isAuth || isSetup);
 
   // Search-engine discoverability. Verification tokens become <meta> tags so an
@@ -223,7 +223,7 @@
   const noindex = $derived(
     data.seo?.indexingEnabled === false ||
       standalone ||
-      NOINDEX_PREFIXES.some((p) => ($page.url.pathname ?? "").startsWith(p)),
+      NOINDEX_PREFIXES.some((p) => (page.url.pathname ?? "").startsWith(p)),
   );
 
   // Pages that render content this instance caches but did not publish: a
@@ -244,8 +244,8 @@
   // repositories/posts.ts listSitemapEntries), so this closes the other half —
   // what a crawler reaches by following links from the feed.
   const federated = $derived(
-    ($page.route.id === "/[handle]/[slug]" && post?.remote === true) ||
-      ($page.route.id === "/[handle]" && ($page.data as { remote?: boolean }).remote === true),
+    (page.route.id === "/[handle]/[slug]" && post?.remote === true) ||
+      (page.route.id === "/[handle]" && (page.data as { remote?: boolean }).remote === true),
   );
 
   const robots = $derived(noindex ? "noindex, nofollow" : federated ? "noindex, follow" : null);
@@ -275,11 +275,11 @@
         breadcrumbLd(post, { canonical, site }),
       ];
     }
-    const pageData = $page.data as { remote?: boolean; profile?: Profile };
-    if ($page.route.id === "/[handle]" && !pageData.remote && pageData.profile) {
+    const pageData = page.data as { remote?: boolean; profile?: Profile };
+    if (page.route.id === "/[handle]" && !pageData.remote && pageData.profile) {
       return profilePageLd(pageData.profile, { canonical, site });
     }
-    if ($page.route.id === "/") return webSiteLd({ description, site });
+    if (page.route.id === "/") return webSiteLd({ description, site });
     return null;
   });
 </script>

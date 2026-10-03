@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import Icon, { type IconName } from "$lib/components/Icon.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import Time from "$lib/components/Time.svelte";
-  import { postPath } from "$lib/links";
-  import { locale } from "$lib/locale";
-  import { timeZone } from "$lib/timezone";
-  import type { DashboardSummary, PostStat } from "$lib/types";
+  import Icon, { type IconName } from "#lib/components/Icon.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import Time from "#lib/components/Time.svelte";
+  import { postPath } from "#lib/links.js";
+  import { locale } from "#lib/locale.svelte.js";
+  import { timeZone } from "#lib/timezone.svelte.js";
+  import type { DashboardSummary, PostStat } from "#lib/types.js";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -120,7 +120,7 @@
 
   // A series day is a UTC calendar date, not an instant: format it as that date.
   function dayLabel(iso: string): string {
-    return new Date(iso).toLocaleDateString($locale, {
+    return new Date(iso).toLocaleDateString(locale.current, {
       month: "short",
       day: "numeric",
       timeZone: "UTC",

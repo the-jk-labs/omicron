@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { endpoints } from "$lib/api";
-import { canonicalOrigin, instanceDomain } from "$lib/canonical";
+import { endpoints } from "#lib/api/index.js";
+import { canonicalOrigin, instanceDomain } from "#lib/canonical.js";
 import type { RequestHandler } from "./$types";
 
 // Served from the app origin so it governs the same host as the pages. When the

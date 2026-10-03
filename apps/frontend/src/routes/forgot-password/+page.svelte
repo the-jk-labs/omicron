@@ -1,13 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { page } from "$app/state";
-  import logo from "$lib/assets/omicron.svg";
-  import { authClient } from "$lib/auth-client";
-  import Icon from "$lib/components/Icon.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import type { InstanceInfo } from "$lib/types";
   import { Label } from "bits-ui";
+  import logo from "#lib/assets/omicron.svg";
+  import { authClient } from "#lib/auth-client.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import type { InstanceInfo } from "#lib/types.js";
 
   // An instance still on the default `console` transport writes the reset link
   // to the backend log instead of sending it. Offering the form anyway ends the

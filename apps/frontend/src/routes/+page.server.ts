@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { endpoints } from "$lib/api";
+import { endpoints } from "#lib/api/index.js";
 import type { PageServerLoad } from "./$types";
 
 // Home: preload the default tab — "For you" when signed in, otherwise "Global".

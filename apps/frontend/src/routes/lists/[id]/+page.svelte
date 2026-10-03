@@ -1,18 +1,18 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { ApiError, endpoints } from "$lib/api";
-  import Icon from "$lib/components/Icon.svelte";
-  import ListFormDialog from "$lib/components/ListFormDialog.svelte";
-  import LoadMoreButton from "$lib/components/LoadMoreButton.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import PostCard from "$lib/components/PostCard.svelte";
-  import RssButton from "$lib/components/RssButton.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { confirm } from "$lib/components/ui/confirm";
-  import { listPath } from "$lib/links";
-  import type { Post, ReadingList } from "$lib/types";
   import { untrack } from "svelte";
+  import { ApiError, endpoints } from "#lib/api/index.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import ListFormDialog from "#lib/components/ListFormDialog.svelte";
+  import LoadMoreButton from "#lib/components/LoadMoreButton.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import PostCard from "#lib/components/PostCard.svelte";
+  import RssButton from "#lib/components/RssButton.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { confirm } from "#lib/components/ui/confirm.js";
+  import { listPath } from "#lib/links.js";
+  import type { Post, ReadingList } from "#lib/types.js";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();

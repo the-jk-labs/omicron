@@ -1,13 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { page } from "$app/stores";
-  import { env } from "$env/dynamic/public";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import type { InstanceInfo } from "$lib/types";
+  import { PUBLIC_APP_NAME, PUBLIC_SOURCE_URL, PUBLIC_STATUS_URL } from "$app/env/public";
+  import { page } from "$app/state";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import type { InstanceInfo } from "#lib/types.js";
 
-  const instance = $derived(($page.data as { instance?: InstanceInfo | null }).instance ?? null);
-  const appName = $derived(instance?.name || env.PUBLIC_APP_NAME || "Omicron");
-  const statusExternal = (env.PUBLIC_STATUS_URL as string | undefined)?.trim() || "";
+  const instance = $derived((page.data as { instance?: InstanceInfo | null }).instance ?? null);
+  const appName = $derived(instance?.name || PUBLIC_APP_NAME || "Omicron");
+  const statusExternal = PUBLIC_STATUS_URL?.trim() || "";
 </script>
 
 <PageTitle text="Status" />
@@ -45,7 +45,7 @@
     <h2>Source</h2>
     <p>
       Source code per AGPL-3.0 §13: <a
-        href={env.PUBLIC_SOURCE_URL || "https://github.com/the-jk-labs/omicron"}
+        href={PUBLIC_SOURCE_URL || "https://github.com/the-jk-labs/omicron"}
         target="_blank"
         rel="noopener noreferrer">Source</a
       >.

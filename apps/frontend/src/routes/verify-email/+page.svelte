@@ -1,25 +1,25 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { invalidateAll } from "$app/navigation";
-  import { page } from "$app/stores";
-  import logo from "$lib/assets/omicron.svg";
-  import { authClient } from "$lib/auth-client";
-  import Icon from "$lib/components/Icon.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import type { InstanceInfo } from "$lib/types";
+  import { refreshAll } from "$app/navigation";
+  import { page } from "$app/state";
   import { Label } from "bits-ui";
   import { onMount } from "svelte";
+  import logo from "#lib/assets/omicron.svg";
+  import { authClient } from "#lib/auth-client.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import type { InstanceInfo } from "#lib/types.js";
 
   // With a token in the URL we verify immediately; without one we offer to
   // (re)send a verification email.
   type State = "verifying" | "success" | "error" | "resend" | "resent";
 
-  const token = $page.url.searchParams.get("token") ?? "";
+  const token = page.url.searchParams.get("token") ?? "";
   // Only the resend form depends on outbound email. A token already in hand
   // verifies fine either way — it reached the reader somehow — so the check
   // gates the form, not the whole page.
-  const instance = $derived($page.data.instance as InstanceInfo | null);
+  const instance = $derived(page.data.instance as InstanceInfo | null);
   const canSendEmail = $derived(instance?.emailEnabled !== false);
   let view = $state<State>(token ? "verifying" : "resend");
   let errorMsg = $state("");
@@ -44,7 +44,7 @@
     } else {
       // With autoSignInAfterVerification the click also signs the user in —
       // refresh the session so the nav lands in the signed-in state.
-      await invalidateAll();
+      await refreshAll();
       view = "success";
     }
   });

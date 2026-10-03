@@ -1,22 +1,22 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { endpoints } from "$lib/api";
-  import Icon from "$lib/components/Icon.svelte";
-  import LoadMoreButton from "$lib/components/LoadMoreButton.svelte";
+  import { onMount, untrack } from "svelte";
+  import { endpoints } from "#lib/api/index.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import LoadMoreButton from "#lib/components/LoadMoreButton.svelte";
   import {
     notificationAction,
     notificationHref,
     notificationIcon,
     notificationSubject,
-  } from "$lib/components/notifications";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { timeAgo } from "$lib/format";
-  import { notifications as bell } from "$lib/notifications.svelte";
-  import { timeZone } from "$lib/timezone";
-  import type { Notification } from "$lib/types";
-  import { onMount, untrack } from "svelte";
+  } from "#lib/components/notifications.js";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import Avatar from "#lib/components/ui/Avatar.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { timeAgo } from "#lib/format.js";
+  import { notifications as bell } from "#lib/notifications.svelte.js";
+  import { timeZone } from "#lib/timezone.svelte.js";
+  import type { Notification } from "#lib/types.js";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -107,7 +107,7 @@
             {:else if n.commentSnippet}
               <p class="truncate text-sm text-muted-foreground">{n.commentSnippet}</p>
             {/if}
-            <span class="mt-0.5 block text-xs text-muted-foreground">{timeAgo(n.createdAt, $timeZone)}</span>
+            <span class="mt-0.5 block text-xs text-muted-foreground">{timeAgo(n.createdAt, timeZone.current)}</span>
           </div>
         </Button>
       </li>

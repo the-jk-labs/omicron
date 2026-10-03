@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { env } from "$env/dynamic/private";
+import { INTERNAL_API_URL } from "$app/env/private";
 import type { RequestHandler } from "./$types";
 
 // Universal reverse-proxy to the backend. The browser only ever talks to this
@@ -7,7 +7,7 @@ import type { RequestHandler } from "./$types";
 // login/logout — flow through transparently. SSR load functions hit the same
 // path via SvelteKit's `fetch`, so there is a single, consistent API surface.
 
-const BACKEND = env.INTERNAL_API_URL ?? "http://localhost:8000";
+const BACKEND = INTERNAL_API_URL ?? "http://localhost:8000";
 
 const proxy: RequestHandler = async ({ request, url, getClientAddress }) => {
   // The raw pathname, not the decoded `params.path`: an encoded "/" or "?" inside

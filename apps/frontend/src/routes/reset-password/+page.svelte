@@ -1,15 +1,15 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { page } from "$app/stores";
-  import logo from "$lib/assets/omicron.svg";
-  import { authClient } from "$lib/auth-client";
-  import Icon from "$lib/components/Icon.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { MIN_PASSWORD_LEN, passwordStrength, passwordRequirements, isPwnedPasswordClient } from "$lib/password";
+  import { page } from "$app/state";
   import { Label } from "bits-ui";
+  import logo from "#lib/assets/omicron.svg";
+  import { authClient } from "#lib/auth-client.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { MIN_PASSWORD_LEN, passwordStrength, passwordRequirements, isPwnedPasswordClient } from "#lib/password.js";
 
-  const token = $derived($page.url.searchParams.get("token") ?? "");
+  const token = $derived(page.url.searchParams.get("token") ?? "");
 
   let password = $state("");
   let confirm = $state("");

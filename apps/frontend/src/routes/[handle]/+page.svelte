@@ -1,26 +1,26 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { fitPre } from "$lib/actions/fitPre";
-  import { endpoints } from "$lib/api";
-  import FollowButton from "$lib/components/FollowButton.svelte";
-  import FollowListDialog from "$lib/components/FollowListDialog.svelte";
-  import Icon from "$lib/components/Icon.svelte";
-  import LoadMoreButton from "$lib/components/LoadMoreButton.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import PostCard from "$lib/components/PostCard.svelte";
-  import ProfileLinkIcon from "$lib/components/ProfileLinkIcon.svelte";
-  import ProfileLinksCard from "$lib/components/ProfileLinksCard.svelte";
-  import ProfileMenu from "$lib/components/ProfileMenu.svelte";
-  import ReadingListCard from "$lib/components/ReadingListCard.svelte";
-  import RssButton from "$lib/components/RssButton.svelte";
-  import TagList from "$lib/components/TagList.svelte";
-  import Time from "$lib/components/Time.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { platformMeta } from "$lib/profileLinks";
-  import type { Post } from "$lib/types";
   import { Tabs, Separator } from "bits-ui";
   import { onMount, untrack } from "svelte";
+  import { fitPre } from "#lib/actions/fitPre.js";
+  import { endpoints } from "#lib/api/index.js";
+  import FollowButton from "#lib/components/FollowButton.svelte";
+  import FollowListDialog from "#lib/components/FollowListDialog.svelte";
+  import Icon from "#lib/components/Icon.svelte";
+  import LoadMoreButton from "#lib/components/LoadMoreButton.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import PostCard from "#lib/components/PostCard.svelte";
+  import ProfileLinkIcon from "#lib/components/ProfileLinkIcon.svelte";
+  import ProfileLinksCard from "#lib/components/ProfileLinksCard.svelte";
+  import ProfileMenu from "#lib/components/ProfileMenu.svelte";
+  import ReadingListCard from "#lib/components/ReadingListCard.svelte";
+  import RssButton from "#lib/components/RssButton.svelte";
+  import TagList from "#lib/components/TagList.svelte";
+  import Time from "#lib/components/Time.svelte";
+  import Avatar from "#lib/components/ui/Avatar.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { platformMeta } from "#lib/profileLinks.js";
+  import type { Post } from "#lib/types.js";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();

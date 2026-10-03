@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { page } from "$app/stores";
-  import { env } from "$env/dynamic/public";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import type { InstanceInfo } from "$lib/types";
+  import { PUBLIC_APP_NAME } from "$app/env/public";
+  import { page } from "$app/state";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import type { InstanceInfo } from "#lib/types.js";
 
-  const instance = $derived(($page.data as { instance?: InstanceInfo | null }).instance ?? null);
-  const appName = $derived(instance?.name || env.PUBLIC_APP_NAME || "Omicron");
+  const instance = $derived((page.data as { instance?: InstanceInfo | null }).instance ?? null);
+  const appName = $derived(instance?.name || PUBLIC_APP_NAME || "Omicron");
   const domain = $derived(instance?.domain ?? "this instance");
 </script>
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { endpoints } from "$lib/api";
-import { canonicalOrigin, instanceDomain } from "$lib/canonical";
-import { newest, sitemapIndexResponse, urlsetResponse } from "$lib/sitemap";
+import { endpoints } from "#lib/api/index.js";
+import { canonicalOrigin, instanceDomain } from "#lib/canonical.js";
+import { newest, sitemapIndexResponse, urlsetResponse } from "#lib/sitemap.js";
 import type { RequestHandler } from "./$types";
 
 // The sitemap index: a list of the instance's other sitemap files, which is

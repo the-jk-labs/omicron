@@ -1,13 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { goto, invalidateAll } from "$app/navigation";
+  import { goto, refreshAll } from "$app/navigation";
   import { page } from "$app/state";
-  import { endpoints, ApiError } from "$lib/api";
-  import logo from "$lib/assets/omicron.svg";
-  import Icon from "$lib/components/Icon.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import type { EmailInput, InstanceInfo } from "$lib/types";
   import { Checkbox, Label, RadioGroup } from "bits-ui";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import logo from "#lib/assets/omicron.svg";
+  import Icon from "#lib/components/Icon.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import type { EmailInput, InstanceInfo } from "#lib/types.js";
 
   // The public domain the layout gate resolved. Prefill it (unless it's the bare
   // localhost dev default) so an operator on a real domain confirms rather than
@@ -126,7 +126,7 @@
           displayName: displayName.trim() || undefined,
         },
       });
-      await invalidateAll();
+      await refreshAll();
       goto("/");
     } catch (err) {
       error = err instanceof ApiError ? err.message : "Something went wrong.";

@@ -1,17 +1,17 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import AdminDomains from "$lib/components/AdminDomains.svelte";
-  import AdminEmail from "$lib/components/AdminEmail.svelte";
-  import AdminInstanceSettings from "$lib/components/AdminInstanceSettings.svelte";
-  import AdminReports from "$lib/components/AdminReports.svelte";
-  import AdminSecurity from "$lib/components/AdminSecurity.svelte";
-  import AdminSeo from "$lib/components/AdminSeo.svelte";
-  import AdminUnsplash from "$lib/components/AdminUnsplash.svelte";
-  import AdminUsers from "$lib/components/AdminUsers.svelte";
-  import Icon, { type IconName } from "$lib/components/Icon.svelte";
-  import InstanceModeration from "$lib/components/InstanceModeration.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
   import { Tabs } from "bits-ui";
+  import AdminDomains from "#lib/components/AdminDomains.svelte";
+  import AdminEmail from "#lib/components/AdminEmail.svelte";
+  import AdminInstanceSettings from "#lib/components/AdminInstanceSettings.svelte";
+  import AdminReports from "#lib/components/AdminReports.svelte";
+  import AdminSecurity from "#lib/components/AdminSecurity.svelte";
+  import AdminSeo from "#lib/components/AdminSeo.svelte";
+  import AdminUnsplash from "#lib/components/AdminUnsplash.svelte";
+  import AdminUsers from "#lib/components/AdminUsers.svelte";
+  import Icon, { type IconName } from "#lib/components/Icon.svelte";
+  import InstanceModeration from "#lib/components/InstanceModeration.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();

@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-import { endpoints } from "$lib/api";
-import { LOCALE_COOKIE, localeFromAcceptLanguage, validLocale } from "$lib/locale";
-import { TZ_COOKIE, validTimeZone } from "$lib/timezone";
 import { redirect } from "@sveltejs/kit";
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { endpoints } from "#lib/api/index.js";
+import { LOCALE_COOKIE, localeFromAcceptLanguage, validLocale } from "#lib/locale.svelte.js";
+import { TZ_COOKIE, validTimeZone } from "#lib/timezone.svelte.js";
 import type { LayoutServerLoad } from "./$types";
 
 // The discovery rail only renders on the home feed and profile pages (see

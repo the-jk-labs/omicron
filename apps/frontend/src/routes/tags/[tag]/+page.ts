@@ -1,6 +1,6 @@
-import { endpoints, ApiError } from "$lib/api";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { error } from "@sveltejs/kit";
+import { endpoints, ApiError } from "#lib/api/index.js";
 import type { PageLoad } from "./$types";
 
 // A tag page: its meta (counts + follow state) plus the first page of posts.

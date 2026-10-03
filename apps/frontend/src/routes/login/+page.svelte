@@ -1,19 +1,19 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { goto, invalidateAll } from "$app/navigation";
+  import { PUBLIC_APP_NAME } from "$app/env/public";
+  import { goto, refreshAll } from "$app/navigation";
   import { page } from "$app/state";
-  import { env } from "$env/dynamic/public";
-  import logo from "$lib/assets/omicron.svg";
-  import { authClient } from "$lib/auth-client";
-  import Icon from "$lib/components/Icon.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import type { InstanceInfo } from "$lib/types";
   import { Label } from "bits-ui";
+  import logo from "#lib/assets/omicron.svg";
+  import { authClient } from "#lib/auth-client.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import type { InstanceInfo } from "#lib/types.js";
 
   // "Omicron" is the software's name; the site has the operator's. Same
   // resolution order as the nav and PageTitle.
-  const appName = $derived((page.data.instance as InstanceInfo | null)?.name || env.PUBLIC_APP_NAME || "Omicron");
+  const appName = $derived((page.data.instance as InstanceInfo | null)?.name || PUBLIC_APP_NAME || "Omicron");
 
   let identifier = $state("");
   let password = $state("");
@@ -59,7 +59,7 @@
         error = res.error.message ?? "Invalid username or password.";
         return;
       }
-      await invalidateAll();
+      await refreshAll();
       goto("/");
     } catch (err) {
       error = err instanceof Error ? err.message : "Something went wrong.";

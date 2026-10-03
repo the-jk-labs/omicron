@@ -1,8 +1,8 @@
-import { ApiError, endpoints } from "$lib/api";
-import { listIdFromSlug, listPath } from "$lib/links";
-import { FEED_HEADERS, postFeedItem, renderRssFeed } from "$lib/rss";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { error } from "@sveltejs/kit";
+import { ApiError, endpoints } from "#lib/api/index.js";
+import { listIdFromSlug, listPath } from "#lib/links.js";
+import { FEED_HEADERS, postFeedItem, renderRssFeed } from "#lib/rss.js";
 import type { RequestHandler } from "./$types";
 
 // A reading list's RSS feed at /lists/<slug>-<id>/feed.xml.

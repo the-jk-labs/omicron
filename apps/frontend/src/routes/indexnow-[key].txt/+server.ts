@@ -1,6 +1,6 @@
-import { endpoints } from "$lib/api";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { error } from "@sveltejs/kit";
+import { endpoints } from "#lib/api/index.js";
 import type { RequestHandler } from "./$types";
 
 // The IndexNow key file.

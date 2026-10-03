@@ -1,19 +1,19 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { beforeNavigate, goto } from "$app/navigation";
-  import { endpoints, ApiError } from "$lib/api";
-  import BannerPicker from "$lib/components/BannerPicker.svelte";
-  import Icon from "$lib/components/Icon.svelte";
-  import LanguageSelect from "$lib/components/LanguageSelect.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import SummaryField from "$lib/components/SummaryField.svelte";
-  import TagInput from "$lib/components/TagInput.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { confirm } from "$lib/components/ui/confirm";
-  import { postPath } from "$lib/links";
-  import type { CoverCredit } from "$lib/types";
   import type { Content } from "@tiptap/core";
   import { onMount, untrack } from "svelte";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import BannerPicker from "#lib/components/BannerPicker.svelte";
+  import Icon from "#lib/components/Icon.svelte";
+  import LanguageSelect from "#lib/components/LanguageSelect.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import SummaryField from "#lib/components/SummaryField.svelte";
+  import TagInput from "#lib/components/TagInput.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { confirm } from "#lib/components/ui/confirm.js";
+  import { postPath } from "#lib/links.js";
+  import type { CoverCredit } from "#lib/types.js";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -21,10 +21,10 @@
   const post = untrack(() => data.post);
 
   // Lazy-load the Tiptap editor so it stays out of the initial bundle.
-  type EditorComp = typeof import("$lib/editor/Editor.svelte").default;
+  type EditorComp = typeof import("#lib/editor/Editor.svelte").default;
   let EditorComponent = $state<EditorComp | null>(null);
   onMount(async () => {
-    EditorComponent = (await import("$lib/editor/Editor.svelte")).default;
+    EditorComponent = (await import("#lib/editor/Editor.svelte")).default;
   });
 
   let title = $state(post.title ?? "");

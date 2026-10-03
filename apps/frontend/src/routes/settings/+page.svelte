@@ -1,32 +1,32 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { goto, invalidateAll } from "$app/navigation";
-  import { endpoints, ApiError } from "$lib/api";
-  import { authClient } from "$lib/auth-client";
-  import AvatarCropper from "$lib/components/AvatarCropper.svelte";
-  import ConnectionsManager from "$lib/components/ConnectionsManager.svelte";
-  import CustomSectionEditor from "$lib/components/CustomSectionEditor.svelte";
-  import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
-  import FeedLanguageFilter from "$lib/components/FeedLanguageFilter.svelte";
-  import FollowedTagsManager from "$lib/components/FollowedTagsManager.svelte";
-  import Icon, { type IconName } from "$lib/components/Icon.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import ProfileLinksEditor from "$lib/components/ProfileLinksEditor.svelte";
-  import TagInput from "$lib/components/TagInput.svelte";
-  import Time from "$lib/components/Time.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import WebhookTokensManager from "$lib/components/WebhookTokensManager.svelte";
-  import { AVATAR_MAX_DIMENSION, prepareImage } from "$lib/editor/image";
-  import { insertEmojiIntoField, emojiOverlayBtn } from "$lib/emoji";
-  import { MIN_PASSWORD_LEN, isPwnedPasswordClient } from "$lib/password";
-  import { reading, type FeedTab } from "$lib/prefs.svelte";
-  import { identifierToUrl, platformMeta, urlToIdentifier } from "$lib/profileLinks";
-  import { MAX_PROFILE_TAGS } from "$lib/tags";
-  import { theme, type ThemePreference } from "$lib/theme.svelte";
-  import type { ProfileLink } from "$lib/types";
+  import { goto, refreshAll } from "$app/navigation";
   import { Button as ButtonPrimitive, Dialog, Label, Switch } from "bits-ui";
   import { untrack } from "svelte";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import { authClient } from "#lib/auth-client.js";
+  import AvatarCropper from "#lib/components/AvatarCropper.svelte";
+  import ConnectionsManager from "#lib/components/ConnectionsManager.svelte";
+  import CustomSectionEditor from "#lib/components/CustomSectionEditor.svelte";
+  import EmojiTrigger from "#lib/components/EmojiTrigger.svelte";
+  import FeedLanguageFilter from "#lib/components/FeedLanguageFilter.svelte";
+  import FollowedTagsManager from "#lib/components/FollowedTagsManager.svelte";
+  import Icon, { type IconName } from "#lib/components/Icon.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import ProfileLinksEditor from "#lib/components/ProfileLinksEditor.svelte";
+  import TagInput from "#lib/components/TagInput.svelte";
+  import Time from "#lib/components/Time.svelte";
+  import Avatar from "#lib/components/ui/Avatar.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import WebhookTokensManager from "#lib/components/WebhookTokensManager.svelte";
+  import { AVATAR_MAX_DIMENSION, prepareImage } from "#lib/editor/image.js";
+  import { insertEmojiIntoField, emojiOverlayBtn } from "#lib/emoji.js";
+  import { MIN_PASSWORD_LEN, isPwnedPasswordClient } from "#lib/password.js";
+  import { reading, type FeedTab } from "#lib/prefs.svelte.js";
+  import { identifierToUrl, platformMeta, urlToIdentifier } from "#lib/profileLinks.js";
+  import { MAX_PROFILE_TAGS } from "#lib/tags.js";
+  import { theme, type ThemePreference } from "#lib/theme.svelte.js";
+  import type { ProfileLink } from "#lib/types.js";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -42,7 +42,7 @@
   // constants module, so this is kept in sync by hand.
   const MAX_CUSTOM_SECTION_LEN = 20_000;
   let profileTags = $state<string[]>(seed.tags?.map((t) => t.name) ?? []);
-  // Baselines follow the saved profile (refreshed by invalidateAll), like the text fields.
+  // Baselines follow the saved profile (refreshed by refreshAll), like the text fields.
   const initialTags = $derived((data.user.tags?.map((t) => t.name) ?? []).join(","));
   // The editor works in "identifier" form (a handle / username), so seed from
   // the stored canonical URLs and convert back on save. Deep-copied so edits
@@ -152,7 +152,7 @@
     removingPhoto = true;
     try {
       await endpoints().removeAvatar();
-      await invalidateAll();
+      await refreshAll();
     } catch (err) {
       error = err instanceof ApiError ? err.message : "Failed to remove photo.";
     } finally {
@@ -237,7 +237,7 @@
         tags: profileTags,
         links,
       });
-      await invalidateAll();
+      await refreshAll();
       clearFile();
       saved = true;
     } catch (err) {
@@ -249,7 +249,7 @@
 
   async function logout() {
     await authClient.signOut();
-    await invalidateAll();
+    await refreshAll();
     goto("/");
   }
 
@@ -262,7 +262,7 @@
     isPrivate = next;
     try {
       await endpoints().setPrivacy(next);
-      await invalidateAll();
+      await refreshAll();
     } catch {
       isPrivate = !next;
     } finally {
@@ -360,7 +360,7 @@
         deleting = false;
         return;
       }
-      await invalidateAll();
+      await refreshAll();
       goto("/");
     } catch (err) {
       deleteError = err instanceof Error ? err.message : "Failed to delete account.";

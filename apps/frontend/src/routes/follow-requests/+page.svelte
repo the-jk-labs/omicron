@@ -1,14 +1,14 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { ApiError, endpoints } from "$lib/api";
-  import Icon from "$lib/components/Icon.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { timeAgo } from "$lib/format";
-  import { timeZone } from "$lib/timezone";
-  import type { FollowRequest } from "$lib/types";
   import { untrack } from "svelte";
+  import { ApiError, endpoints } from "#lib/api/index.js";
+  import Icon from "#lib/components/Icon.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import Avatar from "#lib/components/ui/Avatar.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { timeAgo } from "#lib/format.js";
+  import { timeZone } from "#lib/timezone.svelte.js";
+  import type { FollowRequest } from "#lib/types.js";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -68,7 +68,7 @@
               {req.actor.displayName}
             </span>
             <span class="block truncate text-xs text-muted-foreground">
-              @{req.actor.username} · {timeAgo(req.createdAt, $timeZone)}
+              @{req.actor.username} · {timeAgo(req.createdAt, timeZone.current)}
             </span>
           </span>
         </a>

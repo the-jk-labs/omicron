@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { endpoints } from "$lib/api";
-import { canonicalOrigin, instanceDomain } from "$lib/canonical";
-import { listPath } from "$lib/links";
-import { lastmod, urlsetResponse } from "$lib/sitemap";
+import { endpoints } from "#lib/api/index.js";
+import { canonicalOrigin, instanceDomain } from "#lib/canonical.js";
+import { listPath } from "#lib/links.js";
+import { lastmod, urlsetResponse } from "#lib/sitemap.js";
 import type { RequestHandler } from "./$types";
 
 // The instance's index pages: author profiles, tag pages, and public reading

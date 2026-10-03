@@ -1,6 +1,6 @@
-import { endpoints, ApiError } from "$lib/api";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { error } from "@sveltejs/kit";
+import { endpoints, ApiError } from "#lib/api/index.js";
 import type { PageServerLoad } from "./$types";
 
 // Profile page at /@username (local) or /@user@host (remote). The leading "@"

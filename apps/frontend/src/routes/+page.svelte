@@ -1,16 +1,16 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { ApiError, endpoints } from "$lib/api";
-  import FeedLanguageFilter from "$lib/components/FeedLanguageFilter.svelte";
-  import Icon, { type IconName } from "$lib/components/Icon.svelte";
-  import LoadMoreButton from "$lib/components/LoadMoreButton.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import PostCard from "$lib/components/PostCard.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { reading } from "$lib/prefs.svelte";
-  import type { Page, Post } from "$lib/types";
   import { Tabs } from "bits-ui";
   import { onMount, untrack } from "svelte";
+  import { ApiError, endpoints } from "#lib/api/index.js";
+  import FeedLanguageFilter from "#lib/components/FeedLanguageFilter.svelte";
+  import Icon, { type IconName } from "#lib/components/Icon.svelte";
+  import LoadMoreButton from "#lib/components/LoadMoreButton.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import PostCard from "#lib/components/PostCard.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { reading } from "#lib/prefs.svelte.js";
+  import type { Page, Post } from "#lib/types.js";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();

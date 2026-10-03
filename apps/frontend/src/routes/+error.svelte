@@ -1,21 +1,21 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { page } from "$app/stores";
-  import Icon from "$lib/components/Icon.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
+  import { page } from "$app/state";
+  import Icon from "#lib/components/Icon.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
 
   // Shared error screen for every status SvelteKit throws our way. 404 is the
   // common case and gets bespoke copy; anything else falls back to a generic
   // message while keeping the same layout and brand mark.
-  const status = $derived($page.status);
+  const status = $derived(page.status);
   const isNotFound = $derived(status === 404);
 
   const heading = $derived(isNotFound ? "Page not found" : "Something went wrong");
   const blurb = $derived(
     isNotFound
       ? "The page you’re looking for doesn’t exist, was moved, or never made it across the fediverse."
-      : $page.error?.message || "An unexpected error occurred. Please try again.",
+      : page.error?.message || "An unexpected error occurred. Please try again.",
   );
 </script>
 

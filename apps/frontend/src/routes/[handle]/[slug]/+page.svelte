@@ -1,22 +1,22 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { endpoints, ApiError } from "$lib/api";
-  import Comments from "$lib/components/Comments.svelte";
-  import Icon from "$lib/components/Icon.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import PostCard from "$lib/components/PostCard.svelte";
-  import RecommendButton from "$lib/components/RecommendButton.svelte";
-  import SaveToListButton from "$lib/components/SaveToListButton.svelte";
-  import TagList from "$lib/components/TagList.svelte";
-  import Time from "$lib/components/Time.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { confirm } from "$lib/components/ui/confirm";
-  import { countLabel, readTime } from "$lib/format";
-  import { languageLabel } from "$lib/languages";
   import { Dialog, DropdownMenu, Label, Separator } from "bits-ui";
   import { untrack } from "svelte";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import Comments from "#lib/components/Comments.svelte";
+  import Icon from "#lib/components/Icon.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import PostCard from "#lib/components/PostCard.svelte";
+  import RecommendButton from "#lib/components/RecommendButton.svelte";
+  import SaveToListButton from "#lib/components/SaveToListButton.svelte";
+  import TagList from "#lib/components/TagList.svelte";
+  import Time from "#lib/components/Time.svelte";
+  import Avatar from "#lib/components/ui/Avatar.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { confirm } from "#lib/components/ui/confirm.js";
+  import { countLabel, readTime } from "#lib/format.js";
+  import { languageLabel } from "#lib/languages.js";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
