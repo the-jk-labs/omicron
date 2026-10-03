@@ -642,3 +642,50 @@ export function accountEmailChangedEmail(vars: AccountEmailChangedVars): Omit<Em
 export function sendAccountEmailChanged(to: string, vars: AccountEmailChangedVars): Promise<void> {
   return sendMail({ to, ...accountEmailChangedEmail(vars) });
 }
+
+export type PasskeyNoticeVars = AccountNoticeVars & { passkeyName: string | null };
+
+const passkeyLabel = (name: string | null, quote: [string, string]) =>
+  name ? `A passkey (${quote[0]}${name}${quote[1]})` : "A passkey";
+
+/** Passkey-added security notice: a new way to sign in exists, so the owner must know. */
+export function accountPasskeyAddedEmail(vars: PasskeyNoticeVars): Omit<EmailMessage, "to"> {
+  const what = (q: [string, string]) =>
+    `${passkeyLabel(vars.passkeyName, q)} was just added to your account (@${vars.username}) on ${vars.appName}. It can be used to sign in without your password.`;
+  const advice =
+    "If this was you, you can ignore this email. If it wasn't, remove it in your settings right away and change your password: your account may be compromised.";
+  return {
+    subject: `A passkey was added to your ${vars.appName} account`,
+    text: [what(['"', '"']), "", advice, `${vars.origin}/settings#passkeys`, "", `The ${vars.appName} team`].join("\n"),
+    html: layout("A passkey was added", `${what(["“", "”"])} ${advice}`, {
+      label: "Review passkeys",
+      url: `${vars.origin}/settings#passkeys`,
+    }),
+  };
+}
+
+/** Passkey-added security notice. Queued off the request path (see queue/handlers.ts). */
+export function sendPasskeyAdded(to: string, vars: PasskeyNoticeVars): Promise<void> {
+  return sendMail({ to, ...accountPasskeyAddedEmail(vars) });
+}
+
+/** Passkey-removed security notice: a way to sign in is gone. */
+export function accountPasskeyRemovedEmail(vars: PasskeyNoticeVars): Omit<EmailMessage, "to"> {
+  const what = (q: [string, string]) =>
+    `${passkeyLabel(vars.passkeyName, q)} was just removed from your account (@${vars.username}) on ${vars.appName} and can no longer be used to sign in.`;
+  const advice =
+    "If this was you, you can ignore this email. If it wasn't, change your password right away: your account may be compromised.";
+  return {
+    subject: `A passkey was removed from your ${vars.appName} account`,
+    text: [what(['"', '"']), "", advice, `${vars.origin}/settings#passkeys`, "", `The ${vars.appName} team`].join("\n"),
+    html: layout("A passkey was removed", `${what(["“", "”"])} ${advice}`, {
+      label: "Review passkeys",
+      url: `${vars.origin}/settings#passkeys`,
+    }),
+  };
+}
+
+/** Passkey-removed security notice. Queued off the request path (see queue/handlers.ts). */
+export function sendPasskeyRemoved(to: string, vars: PasskeyNoticeVars): Promise<void> {
+  return sendMail({ to, ...accountPasskeyRemovedEmail(vars) });
+}

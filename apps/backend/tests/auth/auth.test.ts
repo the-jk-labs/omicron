@@ -1,8 +1,10 @@
+import { APIError } from "better-auth/api";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Exercise the real Better Auth endpoint with disposable in-memory storage.
-const { store, addMail, settings } = vi.hoisted(() => ({
+const { store, addMail, settings, notifyPasskeyChanged } = vi.hoisted(() => ({
+  notifyPasskeyChanged: vi.fn<(change: string, userId: string, name: unknown) => Promise<void>>(),
   store: { user: [], account: [], session: [], verification: [], passkey: [] } as Record<
     string,
     Record<string, unknown>[]
@@ -29,6 +31,10 @@ vi.mock("@/db/repositories/instanceSettings.ts", () => ({
 vi.mock("@/services/accountNotices.ts", () => ({
   notifyPasswordChanged: vi.fn<() => Promise<void>>(),
   notifySelfDeleted: vi.fn<() => Promise<void>>(),
+  notifyPasskeyChanged,
+}));
+vi.mock("@/db/repositories/passkeys.ts", () => ({
+  findById: (id: string) => Promise.resolve(store.passkey.find((row) => row.id === id)),
 }));
 
 function existingUser(emailVerified: boolean) {
@@ -268,6 +274,33 @@ describe("passkeys", () => {
 
     expect((await call("/passkey/delete-passkey", { method: "POST", body: { id: mine.id } })).status).toBe(200);
     expect(store.passkey).toEqual([other]);
+  });
+
+  it("tells the owner when one of their passkeys is removed, and only then", async () => {
+    const other = storedPasskey("someone-else", "Their key");
+    const ada = await signedIn("ada");
+    const mine = storedPasskey(ada, "Laptop");
+
+    await call("/passkey/update-passkey", { method: "POST", body: { id: mine.id, name: "Work laptop" } });
+    await call("/passkey/delete-passkey", { method: "POST", body: { id: other.id } });
+    await call("/passkey/delete-passkey", { method: "POST", body: { id: "no-such-passkey" } });
+    expect(notifyPasskeyChanged).not.toHaveBeenCalled();
+
+    await call("/passkey/delete-passkey", { method: "POST", body: { id: mine.id } });
+    expect(notifyPasskeyChanged).toHaveBeenCalledExactlyOnceWith("removed", ada, "Work laptop");
+  });
+
+  // A real registration needs a WebAuthn ceremony, so the hook gets the plugin's results directly.
+  it("tells the owner when a passkey is added, but not when registration failed", async () => {
+    const { auth } = await import("@/auth/auth.ts");
+    const after = (returned: unknown) =>
+      auth.options.hooks.after({ path: "/passkey/verify-registration", context: { returned } } as never);
+
+    await after(new APIError("BAD_REQUEST", { message: "Failed to verify registration" }));
+    expect(notifyPasskeyChanged).not.toHaveBeenCalled();
+
+    await after({ id: "p1", userId: "u1", name: "1Password" });
+    expect(notifyPasskeyChanged).toHaveBeenCalledExactlyOnceWith("added", "u1", "1Password");
   });
 
   it("refuses a passkey name over 60 characters", async () => {

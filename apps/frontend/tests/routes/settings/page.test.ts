@@ -257,12 +257,17 @@ test("an unverified email can resend its link", async () => {
   expect(auth.sendVerificationEmail).toHaveBeenCalledWith({ email: "ada@example.com", callbackURL: "/verify-email" });
 });
 
-test("signing out reloads the session and goes home", async () => {
+test("signing out goes straight home, never through the sign-in page", async () => {
   auth.signOut.mockResolvedValue({});
+  // As in SvelteKit: refreshing a protected page while signed out runs its guard,
+  // which redirects to the sign-in page.
+  vi.mocked(refreshAll).mockImplementation(async () => {
+    await goto("/login");
+  });
   setup();
   await fireEvent.click(screen.getByRole("button", { name: /Sign out/ }));
-  await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
-  expect(refreshAll).toHaveBeenCalled();
+  await waitFor(() => expect(goto).toHaveBeenCalledWith("/", { refreshAll: true }));
+  expect(goto).not.toHaveBeenCalledWith("/login");
 });
 
 async function openPasswordDialog() {
@@ -322,14 +327,19 @@ test("a wrong current password keeps the dialog open with the reason", async () 
   expect(screen.getByRole("dialog")).toBeInTheDocument();
 });
 
-test("deleting the account needs the password, then goes home", async () => {
+test("deleting the account needs the password, then goes straight home", async () => {
   auth.deleteUser.mockResolvedValue({ error: null });
+  // The deleted account is signed out, so refreshing this protected page in place would hit its guard.
+  vi.mocked(refreshAll).mockImplementation(async () => {
+    await goto("/login");
+  });
   setup();
   await fireEvent.click(screen.getByRole("button", { name: /Delete account/ }));
   const confirmBtn = await screen.findByRole("button", { name: "Delete forever" });
   await fireEvent.input(screen.getByLabelText("Password"), { target: { value: "pw" } });
   await fireEvent.click(confirmBtn);
-  await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
+  await waitFor(() => expect(goto).toHaveBeenCalledWith("/", { refreshAll: true }));
+  expect(goto).not.toHaveBeenCalledWith("/login");
   expect(auth.deleteUser).toHaveBeenCalledWith({ password: "pw" });
 });
 

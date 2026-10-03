@@ -7,16 +7,21 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { haveIBeenPwned, username } from "better-auth/plugins";
 import { config } from "@/config.ts";
 import { db } from "@/db/client.ts";
+import * as passkeysRepo from "@/db/repositories/passkeys.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
-import { accounts, passkeys, sessions, users, verifications } from "@/db/schema.ts";
+import { accounts, type Passkey, passkeys, sessions, users, verifications } from "@/db/schema.ts";
 import { queue } from "@/queue/queue.ts";
-import { notifyPasswordChanged, notifySelfDeleted } from "@/services/accountNotices.ts";
+import { notifyPasskeyChanged, notifyPasswordChanged, notifySelfDeleted } from "@/services/accountNotices.ts";
 import { getAppName, getOrigin } from "@/services/instanceSetup.ts";
 
 const BCRYPT_COST = 12;
 const SESSION_TTL_S = 60 * 60 * 24 * 30;
 const USERNAME_RE = /^[a-z0-9_]{3,30}$/;
 const PASSKEY_NAME_MAX = 60;
+
+// The passkey a delete request targets, read before the plugin removes it so the
+// owner's notice can still name it.
+const deletingPasskeys = new WeakMap<Request, Passkey>();
 
 // Public origin for /api/auth; a wizard-changed domain is covered by forwarded headers
 // below. Links in emails are built from getOrigin() at send time instead.
@@ -59,6 +64,10 @@ export const auth = betterAuth({
         if (typeof name === "string" && name.trim().length > PASSKEY_NAME_MAX) {
           throw new APIError("BAD_REQUEST", { message: `Passkey names are at most ${PASSKEY_NAME_MAX} characters.` });
         }
+        if (ctx.path === "/passkey/delete-passkey" && ctx.request && typeof ctx.body?.id === "string") {
+          const row = await passkeysRepo.findById(ctx.body.id).catch(() => undefined);
+          if (row) deletingPasskeys.set(ctx.request, row);
+        }
         // The plugin takes the WebAuthn RP ID from options.baseURL, fixed at boot to
         // APP_DOMAIN; a passkey must be bound to the live (wizard-set) domain instead.
         return { context: { context: { appName: await getAppName(), options: { baseURL: await getOrigin() } } } };
@@ -71,6 +80,20 @@ export const auth = betterAuth({
           code: "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL",
           message: "This email is already registered. Sign in or reset your password.",
         });
+      }
+      return undefined;
+    }),
+    // Tell the owner whenever a way to sign in is added or removed. Only on
+    // success: a refused request (wrong owner, failed ceremony) returns an error.
+    after: createAuthMiddleware(async (ctx) => {
+      const returned: unknown = ctx.context.returned;
+      if (!returned || returned instanceof Error) return undefined;
+      if (ctx.path === "/passkey/verify-registration") {
+        const added = returned as { userId?: string; name?: string | null };
+        if (added.userId) await notifyPasskeyChanged("added", added.userId, added.name);
+      } else if (ctx.path === "/passkey/delete-passkey" && ctx.request) {
+        const removed = deletingPasskeys.get(ctx.request);
+        if (removed) await notifyPasskeyChanged("removed", removed.userId, removed.name);
       }
       return undefined;
     }),

@@ -148,12 +148,18 @@ test("menu items navigate; an admin's entry says Admin", async () => {
   expect(goto).toHaveBeenCalledWith("/@ada");
 });
 
-test("signing out reloads the session and goes home", async () => {
+// The nav is on protected pages too (settings, compose), where refreshing in place would hit the guard.
+test("signing out goes straight home, never through the sign-in page", async () => {
   signOut.mockResolvedValue({});
+  // As in SvelteKit: refreshing a protected page while signed out runs its guard,
+  // which redirects to the sign-in page.
+  vi.mocked(refreshAll).mockImplementation(async () => {
+    await goto("/login");
+  });
   setup();
   await openMenu("Account menu");
   await fireEvent.click(screen.getByRole("menuitem", { name: "Sign out" }));
-  await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
+  await waitFor(() => expect(goto).toHaveBeenCalledWith("/", { refreshAll: true }));
   expect(signOut).toHaveBeenCalled();
-  expect(refreshAll).toHaveBeenCalled();
+  expect(goto).not.toHaveBeenCalledWith("/login");
 });

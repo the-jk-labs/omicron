@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { eq } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { passkeys } from "@/db/schema.ts";
+import { type Passkey, passkeys } from "@/db/schema.ts";
 
 // Passkey DB access outside Better Auth, which owns the per-user CRUD.
 
@@ -8,4 +9,9 @@ import { passkeys } from "@/db/schema.ts";
 export async function deleteAll(): Promise<number> {
   const rows = await db.delete(passkeys).returning({ id: passkeys.id });
   return rows.length;
+}
+
+export async function findById(id: string): Promise<Passkey | undefined> {
+  const [row] = await db.select().from(passkeys).where(eq(passkeys.id, id));
+  return row;
 }

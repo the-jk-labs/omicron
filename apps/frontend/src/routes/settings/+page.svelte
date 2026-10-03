@@ -250,8 +250,9 @@
 
   async function logout() {
     await authClient.signOut();
-    await refreshAll();
-    goto("/");
+    // Reload data on the way home, not in place: on a protected page that would
+    // rerun its guard and bounce through /login first.
+    await goto("/", { refreshAll: true });
   }
 
   // Private account toggle. Optimistic: flip the switch immediately, revert on
@@ -361,8 +362,7 @@
         deleting = false;
         return;
       }
-      await refreshAll();
-      goto("/");
+      await goto("/", { refreshAll: true });
     } catch (err) {
       deleteError = err instanceof Error ? err.message : "Failed to delete account.";
       deleting = false;

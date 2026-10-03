@@ -39,7 +39,9 @@ export type JobName =
   | "send_moderator_revoked"
   | "send_post_removed"
   | "send_account_verified"
-  | "send_account_email_changed";
+  | "send_account_email_changed"
+  | "send_passkey_added"
+  | "send_passkey_removed";
 
 export type JobPayloads = {
   federate_post: { postId: string; action?: "create" | "update" };
@@ -75,6 +77,8 @@ export type JobPayloads = {
   send_post_removed: { to: string; username: string; postTitle: string; appName: string; origin: string };
   send_account_verified: { to: string; username: string; appName: string; origin: string };
   send_account_email_changed: { to: string; username: string; appName: string; origin: string; newEmail: string };
+  send_passkey_added: { to: string; username: string; appName: string; origin: string; passkeyName: string | null };
+  send_passkey_removed: { to: string; username: string; appName: string; origin: string; passkeyName: string | null };
 };
 
 type Handler<N extends JobName> = (payload: JobPayloads[N]) => Promise<void>;

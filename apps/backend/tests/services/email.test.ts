@@ -245,6 +245,24 @@ describe("templates", () => {
     expect(m.text).toContain('"Hello"');
   });
 
+  test.for([
+    ["accountPasskeyAddedEmail", "A passkey was added to your My Blog account", "was just added"],
+    ["accountPasskeyRemovedEmail", "A passkey was removed from your My Blog account", "was just removed"],
+  ] as const)("%s names the passkey and links to the passkey settings", ([fn, subject, change]) => {
+    const m = email[fn]({ ...vars, passkeyName: "Laptop" });
+    expect(m.subject).toBe(subject);
+    expect(m.text).toContain(`A passkey ("Laptop") ${change}`);
+    expect(m.text).toContain("@ada");
+    expect(m.text).toContain("https://blog.example/settings#passkeys");
+    expect(m.html).toContain('href="https://blog.example/settings#passkeys"');
+  });
+
+  test("a passkey notice reads naturally without a name, and escapes one in HTML", () => {
+    expect(email.accountPasskeyAddedEmail({ ...vars, passkeyName: null }).text).toMatch(/^A passkey was just added/);
+    const m = email.accountPasskeyRemovedEmail({ ...vars, passkeyName: "<b>evil</b>" });
+    expect(m.html).not.toContain("<b>evil</b>");
+  });
+
   test("the email-changed notice names the new address", () => {
     expect(email.accountEmailChangedEmail({ ...vars, newEmail: "new@x.test" }).text).toContain("new@x.test");
   });
@@ -265,6 +283,8 @@ describe("templates", () => {
       ["sendPostRemoved", { ...vars, postTitle: "T" }],
       ["sendAccountVerified", vars],
       ["sendAccountEmailChanged", { ...vars, newEmail: "n@x.test" }],
+      ["sendPasskeyAdded", { ...vars, passkeyName: "Laptop" }],
+      ["sendPasskeyRemoved", { ...vars, passkeyName: null }],
     ];
     for (const [fn, v] of senders) await (email[fn] as (to: string, v: unknown) => Promise<void>)("a@x.test", v);
     await email.sendEmailVerification("a@x.test", "https://blog.example/verify?t=1");
