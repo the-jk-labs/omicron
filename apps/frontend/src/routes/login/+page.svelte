@@ -10,7 +10,7 @@
   import Icon from "#lib/components/Icon.svelte";
   import PageTitle from "#lib/components/PageTitle.svelte";
   import Button from "#lib/components/ui/Button.svelte";
-  import { passkeyAutofill, passkeySignInError, passkeysSupported } from "#lib/passkeys.js";
+  import { passkeyAutofill, passkeySignInError, passkeySignIn, passkeysSupported } from "#lib/passkeys.js";
   import type { InstanceInfo } from "#lib/types.js";
 
   // "Omicron" is the software's name; the site has the operator's. Same
@@ -92,7 +92,7 @@
     needsVerification = false;
     passkeyBusy = true;
     try {
-      const res = await authClient.signIn.passkey();
+      const res = await passkeySignIn();
       if (res?.error) {
         error = passkeySignInError(res.error) ?? "";
         void armAutofill();

@@ -10,4 +10,6 @@ test("names the saved login for password managers, out of sight and out of the t
   expect(input).toHaveAttribute("readonly");
   expect(input).toHaveAttribute("tabindex", "-1");
   expect(input).toHaveAttribute("aria-hidden", "true");
+  // 1Password's guidance for change/reset forms: a display:none username field.
+  expect(input.style.display).toBe("none");
 });

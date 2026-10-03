@@ -11,11 +11,23 @@
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
   import UsernameHint from "#lib/components/UsernameHint.svelte";
-  import { addPasskeyError, confirmPassword, needsFreshSignIn, passkeysSupported } from "#lib/passkeys.js";
+  import {
+    addPasskeyError,
+    confirmPassword,
+    needsFreshSignIn,
+    passkeysSupported,
+    signalPasskeyGone,
+  } from "#lib/passkeys.js";
 
   let { username }: { username: string } = $props();
 
-  type Passkey = { id: string; name?: string | null; backedUp: boolean; createdAt: Date | string };
+  type Passkey = {
+    id: string;
+    credentialID: string;
+    name?: string | null;
+    backedUp: boolean;
+    createdAt: Date | string;
+  };
 
   const NAME_MAX = 60;
 
@@ -104,6 +116,7 @@
       return;
     }
     passkeys = passkeys.filter((x) => x.id !== p.id);
+    await signalPasskeyGone(p.credentialID);
   }
 
   // Browser-only: support is a browser fact and the client uses relative URLs.

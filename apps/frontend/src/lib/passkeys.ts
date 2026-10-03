@@ -46,12 +46,40 @@ export async function confirmPassword(username: string, password: string): Promi
 }
 
 /**
+ * Tells the reader's password manager that a passkey no longer exists here, so
+ * it can hide or delete its copy (WebAuthn Signal API, Chromium 132+). The
+ * manager decides what to do with it; elsewhere this does nothing.
+ */
+export async function signalPasskeyGone(credentialId: string): Promise<void> {
+  if (typeof globalThis.PublicKeyCredential?.signalUnknownCredential !== "function") return;
+  try {
+    // The server binds passkeys to the domain the page is on (see auth/auth.ts).
+    await PublicKeyCredential.signalUnknownCredential({ rpId: location.hostname, credentialId });
+  } catch {
+    // Best effort: the passkey is gone on the server either way.
+  }
+}
+
+/**
+ * Passkey sign-in. When the server no longer knows the passkey the reader picked
+ * (removed in Settings, or by an email-change undo), their password manager is
+ * told so it stops offering it.
+ */
+export async function passkeySignIn(options: { autoFill?: boolean } = {}) {
+  const res = await authClient.signIn.passkey({ ...options, returnWebAuthnResponse: true });
+  const used = (res as { webauthn?: { response?: { id?: string } } } | undefined)?.webauthn?.response?.id;
+  const code = (res?.error as { code?: string } | null | undefined)?.code;
+  if (code === "PASSKEY_NOT_FOUND" && used) await signalPasskeyGone(used);
+  return res;
+}
+
+/**
  * Arms browser autofill (conditional UI): the password manager offers saved
  * passkeys on any `autocomplete="… webauthn"` field. Resolves true once the
  * reader signed in with one; a new passkey ceremony anywhere aborts this one.
  */
 export async function passkeyAutofill(): Promise<boolean> {
   if (!passkeysSupported() || !(await PublicKeyCredential.isConditionalMediationAvailable?.())) return false;
-  const res = await authClient.signIn.passkey({ autoFill: true });
+  const res = await passkeySignIn({ autoFill: true });
   return !!res?.data && !res.error;
 }

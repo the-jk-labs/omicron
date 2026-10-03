@@ -299,8 +299,13 @@ test.each([
   setup();
   await openTab("Account");
   await fireEvent.click(screen.getByRole("button", { name: new RegExp(button) }));
-  await screen.findByLabelText(field);
-  expect(within(screen.getByRole("dialog")).getByDisplayValue("ada")).toHaveAttribute("autocomplete", "username");
+  const password = await screen.findByLabelText(field);
+  const hint = within(screen.getByRole("dialog")).getByDisplayValue("ada");
+  expect(hint).toHaveAttribute("autocomplete", "username");
+  // 1Password ties a username to a password only within one <form>; without it,
+  // it guessed the display name and offered to save a new item.
+  expect(hint.closest("form")).not.toBeNull();
+  expect(password.closest("form")).toBe(hint.closest("form"));
 });
 
 async function fillPasswords(current: string, next: string, confirm = next) {

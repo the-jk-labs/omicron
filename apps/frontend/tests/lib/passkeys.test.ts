@@ -5,7 +5,9 @@ import {
   confirmPassword,
   needsFreshSignIn,
   passkeyAutofill,
+  passkeySignIn,
   passkeySignInError,
+  signalPasskeyGone,
 } from "#lib/passkeys.js";
 
 type Res = { data?: unknown; error?: { code?: string; message?: string } | null };
@@ -60,7 +62,7 @@ test("autofill resolves true once the reader picks a passkey", async () => {
   stubWebAuthn(true);
   signIn.mockResolvedValue({ data: { user: {} }, error: null });
   expect(await passkeyAutofill()).toBe(true);
-  expect(signIn).toHaveBeenCalledWith({ autoFill: true });
+  expect(signIn).toHaveBeenCalledWith({ autoFill: true, returnWebAuthnResponse: true });
 
   signIn.mockResolvedValue({ data: null, error: { code: "AUTH_CANCELLED" } });
   expect(await passkeyAutofill()).toBe(false);
@@ -97,5 +99,56 @@ describe("confirmPassword", () => {
     auth.username.mockResolvedValue({ data: {}, error: null });
     auth.revoke.mockRejectedValue(new Error("offline"));
     expect(await confirmPassword("ada", "secret")).toBeNull();
+  });
+});
+
+function stubSignal() {
+  const signalUnknownCredential = vi.fn<(o: unknown) => Promise<void>>().mockResolvedValue();
+  vi.stubGlobal(
+    "PublicKeyCredential",
+    Object.assign(function PublicKeyCredential() {}, { signalUnknownCredential }),
+  );
+  return signalUnknownCredential;
+}
+
+describe("telling the password manager a passkey is gone", () => {
+  test("names the credential for this site", async () => {
+    const signal = stubSignal();
+    await signalPasskeyGone("cred-1");
+    expect(signal).toHaveBeenCalledWith({ rpId: location.hostname, credentialId: "cred-1" });
+  });
+
+  test("does nothing where the browser lacks the Signal API, or refuses", async () => {
+    vi.stubGlobal("PublicKeyCredential", function PublicKeyCredential() {});
+    await expect(signalPasskeyGone("cred-1")).resolves.toBeUndefined();
+
+    stubSignal().mockRejectedValue(new Error("NotAllowedError"));
+    await expect(signalPasskeyGone("cred-1")).resolves.toBeUndefined();
+  });
+
+  test("a sign-in with a passkey the server no longer knows signals it", async () => {
+    const signal = stubSignal();
+    signIn.mockResolvedValue({
+      data: null,
+      error: { code: "PASSKEY_NOT_FOUND", message: "Passkey not found" },
+      webauthn: { response: { id: "cred-gone" } },
+    } as Res);
+    const res = await passkeySignIn();
+    expect((res.error as { code?: string } | null)?.code).toBe("PASSKEY_NOT_FOUND");
+    expect(signal).toHaveBeenCalledWith({ rpId: location.hostname, credentialId: "cred-gone" });
+  });
+
+  test.each([
+    ["a cancelled prompt", { data: null, error: { code: "AUTH_CANCELLED" }, webauthn: { response: { id: "c" } } }],
+    ["a successful sign-in", { data: { user: {} }, error: null, webauthn: { response: { id: "c" } } }],
+    [
+      "any other refusal",
+      { data: null, error: { code: "AUTHENTICATION_FAILED" }, webauthn: { response: { id: "c" } } },
+    ],
+  ])("%s doesn't", async (_, res) => {
+    const signal = stubSignal();
+    signIn.mockResolvedValue(res);
+    await passkeySignIn();
+    expect(signal).not.toHaveBeenCalled();
   });
 });

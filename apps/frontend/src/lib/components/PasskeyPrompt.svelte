@@ -30,13 +30,18 @@
   // sign-out must clear this or the same account signing back in is skipped.
   let checkedFor: string | null = null;
 
-  async function offerIfNone() {
+  // Let the home page appear first, so the offer doesn't greet the reader on arrival.
+  const OFFER_DELAY_MS = 1500;
+
+  async function offerIfNone(userId: string) {
     const res = await authClient.passkey.listUserPasskeys().catch(() => null);
-    if (res?.data?.length === 0 && !passkeyPromptDismissed()) {
-      step = "offer";
-      error = "";
-      open = true;
-    }
+    if (res?.data?.length !== 0) return;
+    await new Promise((resolve) => setTimeout(resolve, OFFER_DELAY_MS));
+    // Still on home, still the same account, still not declined.
+    if (!onHome || user?.id !== userId || passkeyPromptDismissed()) return;
+    step = "offer";
+    error = "";
+    open = true;
   }
 
   $effect(() => {
@@ -48,7 +53,7 @@
     }
     if (!onHome || userId === checkedFor) return;
     checkedFor = userId;
-    if (passkeysSupported() && !passkeyPromptDismissed()) void offerIfNone();
+    if (passkeysSupported() && !passkeyPromptDismissed()) void offerIfNone(userId);
   });
 
   function onOpenChange(next: boolean) {

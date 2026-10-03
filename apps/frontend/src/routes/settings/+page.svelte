@@ -839,52 +839,55 @@
         Enter your current password, then choose a new one.
       </Dialog.Description>
 
-      <div class="mt-5 flex flex-col gap-4">
-        <UsernameHint username={data.user.username} />
-        <div class="flex flex-col gap-1.5">
-          <Label.Root for="current-password" class={labelClass}>Current password</Label.Root>
-          <input
-            id="current-password"
-            type="password"
-            bind:value={currentPassword}
-            autocomplete="current-password"
-            class={field}
-          />
+      <form onsubmit={(e) => (e.preventDefault(), changePassword())}>
+        <div class="mt-5 flex flex-col gap-4">
+          <UsernameHint username={data.user.username} />
+          <div class="flex flex-col gap-1.5">
+            <Label.Root for="current-password" class={labelClass}>Current password</Label.Root>
+            <input
+              id="current-password"
+              type="password"
+              bind:value={currentPassword}
+              autocomplete="current-password"
+              class={field}
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <Label.Root for="new-password" class={labelClass}>New password</Label.Root>
+            <input
+              id="new-password"
+              type="password"
+              bind:value={newPassword}
+              autocomplete="new-password"
+              placeholder="min 8 characters"
+              class={field}
+            />
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <Label.Root for="confirm-password" class={labelClass}>Confirm new password</Label.Root>
+            <input
+              id="confirm-password"
+              type="password"
+              bind:value={confirmPassword}
+              autocomplete="new-password"
+              class={field}
+            />
+          </div>
+          {#if pwError}<p class="text-sm text-destructive">{pwError}</p>{/if}
         </div>
-        <div class="flex flex-col gap-1.5">
-          <Label.Root for="new-password" class={labelClass}>New password</Label.Root>
-          <input
-            id="new-password"
-            type="password"
-            bind:value={newPassword}
-            autocomplete="new-password"
-            placeholder="min 8 characters"
-            class={field}
-          />
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <Label.Root for="confirm-password" class={labelClass}>Confirm new password</Label.Root>
-          <input
-            id="confirm-password"
-            type="password"
-            bind:value={confirmPassword}
-            autocomplete="new-password"
-            class={field}
-          />
-        </div>
-        {#if pwError}<p class="text-sm text-destructive">{pwError}</p>{/if}
-      </div>
 
-      <div class="mt-6 flex justify-end gap-2">
-        <Dialog.Close
-          class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
-        >
-          Cancel
-        </Dialog.Close>
-        <Button variant="solid" disabled={pwBusy || !currentPassword || !newPassword} onclick={changePassword}>
-          {pwBusy ? "Saving…" : "Update password"}
-        </Button>
-      </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <Dialog.Close
+            type="button"
+            class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
+          >
+            Cancel
+          </Dialog.Close>
+          <Button type="submit" variant="solid" disabled={pwBusy || !currentPassword || !newPassword}>
+            {pwBusy ? "Saving…" : "Update password"}
+          </Button>
+        </div>
+      </form>
     </Dialog.Content>
   </Dialog.Portal>
 </Dialog.Root>
@@ -903,29 +906,32 @@
         your password to confirm.
       </Dialog.Description>
 
-      <div class="mt-5 flex flex-col gap-1.5">
-        <UsernameHint username={data.user.username} />
-        <Label.Root for="delete-password" class={labelClass}>Password</Label.Root>
-        <input
-          id="delete-password"
-          type="password"
-          bind:value={deletePassword}
-          autocomplete="current-password"
-          class={field}
-        />
-        {#if deleteError}<p class="text-sm text-destructive">{deleteError}</p>{/if}
-      </div>
+      <form onsubmit={(e) => (e.preventDefault(), deleteAccount())}>
+        <div class="mt-5 flex flex-col gap-1.5">
+          <UsernameHint username={data.user.username} />
+          <Label.Root for="delete-password" class={labelClass}>Password</Label.Root>
+          <input
+            id="delete-password"
+            type="password"
+            bind:value={deletePassword}
+            autocomplete="current-password"
+            class={field}
+          />
+          {#if deleteError}<p class="text-sm text-destructive">{deleteError}</p>{/if}
+        </div>
 
-      <div class="mt-6 flex justify-end gap-2">
-        <Dialog.Close
-          class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
-        >
-          Cancel
-        </Dialog.Close>
-        <Button variant="destructive" disabled={deleting || deletePassword.length === 0} onclick={deleteAccount}>
-          {deleting ? "Deleting…" : "Delete forever"}
-        </Button>
-      </div>
+        <div class="mt-6 flex justify-end gap-2">
+          <Dialog.Close
+            type="button"
+            class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
+          >
+            Cancel
+          </Dialog.Close>
+          <Button type="submit" variant="destructive" disabled={deleting || deletePassword.length === 0}>
+            {deleting ? "Deleting…" : "Delete forever"}
+          </Button>
+        </div>
+      </form>
     </Dialog.Content>
   </Dialog.Portal>
 </Dialog.Root>

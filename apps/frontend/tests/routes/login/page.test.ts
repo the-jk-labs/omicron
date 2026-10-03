@@ -120,7 +120,7 @@ describe("passkeys", () => {
     auth.passkey.mockResolvedValue({ data: { user: {} }, error: null });
     render(LoginPage);
     await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
-    expect(auth.passkey).toHaveBeenCalledWith({ autoFill: true });
+    expect(auth.passkey).toHaveBeenCalledWith({ autoFill: true, returnWebAuthnResponse: true });
     expect(refreshAll).toHaveBeenCalled();
   });
 
@@ -130,7 +130,7 @@ describe("passkeys", () => {
     render(LoginPage);
     await fireEvent.click(await screen.findByRole("button", { name: "Sign in with a passkey" }));
     await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
-    expect(auth.passkey).toHaveBeenCalledWith();
+    expect(auth.passkey).toHaveBeenCalledWith({ returnWebAuthnResponse: true });
   });
 
   test("cancelling the passkey prompt says nothing", async () => {
