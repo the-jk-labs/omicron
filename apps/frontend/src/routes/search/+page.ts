@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { endpoints } from "$lib/api";
+import { endpoints } from "#lib/api/index.js";
 import type { PageLoad } from "./$types";
 
 // Read the query from the URL and fetch both articles and people in one call.

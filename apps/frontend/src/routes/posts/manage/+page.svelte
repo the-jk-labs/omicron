@@ -1,20 +1,20 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { goto, invalidateAll, replaceState } from "$app/navigation";
-  import { ApiError, endpoints } from "$lib/api";
-  import Icon, { type IconName } from "$lib/components/Icon.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import ScheduleDialog from "$lib/components/ScheduleDialog.svelte";
-  import Time from "$lib/components/Time.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { confirm } from "$lib/components/ui/confirm";
-  import { excerpt, formatScheduleLong, timeUntil } from "$lib/format";
-  import { postPath } from "$lib/links";
-  import { locale } from "$lib/locale";
-  import { timeZone } from "$lib/timezone";
-  import type { OwnPostStatus, Post } from "$lib/types";
+  import { goto, refreshAll } from "$app/navigation";
   import { DropdownMenu, Tabs } from "bits-ui";
   import { untrack } from "svelte";
+  import { ApiError, endpoints } from "#lib/api/index.js";
+  import Icon, { type IconName } from "#lib/components/Icon.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import ScheduleDialog from "#lib/components/ScheduleDialog.svelte";
+  import Time from "#lib/components/Time.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { confirm } from "#lib/components/ui/confirm.js";
+  import { excerpt, formatScheduleLong, timeUntil } from "#lib/format.js";
+  import { postPath } from "#lib/links.js";
+  import { locale } from "#lib/locale.svelte.js";
+  import { timeZone } from "#lib/timezone.svelte.js";
+  import type { OwnPostStatus, Post } from "#lib/types.js";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -84,7 +84,7 @@
   // Re-seed whenever the server load runs again — which is what an action that
   // moved a post between tabs triggers, so the list and the badges refresh
   // together instead of one going stale behind the other.
-  // Tabs switch with replaceState, which SvelteKit's own URL doesn't follow, so a
+  // Tabs switch with a shallow goto, which SvelteKit's own URL doesn't follow, so a
   // reload after an action re-runs the load for the tab the page opened on. Only
   // a real navigation (data.tab changing) picks the tab; act() refreshes the rest.
   let seededTab = untrack(() => data.tab);
@@ -101,10 +101,10 @@
     const status = value as OwnPostStatus;
     active = status;
     // Keep the address bar in step, so a reload reopens the tab the author was
-    // actually looking at. `replaceState` rather than `goto`: a navigation would
+    // actually looking at. A shallow `goto` rather than a real one: a navigation would
     // re-run the server load, which both duplicates the fetch below and resets
     // whatever this tab had already paged in.
-    replaceState(`/posts/manage?tab=${status}`, {});
+    goto(`/posts/manage?tab=${status}`, { shallow: true, replace: true, state: {} });
     if (lanes[status].loaded || lanes[status].loading) return;
     lanes[status].loading = true;
     try {
@@ -148,7 +148,7 @@
     try {
       await run();
       for (const tab of tabs) if (tab.value !== active) lanes[tab.value] = blank();
-      await invalidateAll();
+      await refreshAll();
       // The reload covered the page's original tab; refetch the one on screen.
       if (active !== data.tab) {
         lanes[active] = blank();
@@ -287,9 +287,9 @@
                      record, so it says both when and how soon. -->
                 <span class="inline-flex items-center gap-1 font-medium text-foreground">
                   <Icon name="clock" size={12} />
-                  Publishes {formatScheduleLong(post.publishAt, $timeZone, $locale)}
+                  Publishes {formatScheduleLong(post.publishAt, timeZone.current, locale.current)}
                 </span>
-                · {timeUntil(post.publishAt, $locale)}
+                · {timeUntil(post.publishAt, locale.current)}
               {:else if tab.value === "published"}
                 Published <Time iso={post.createdAt} />
               {:else}

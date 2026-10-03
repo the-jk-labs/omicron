@@ -1,6 +1,6 @@
-import { endpoints, ApiError } from "$lib/api";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { error, redirect } from "@sveltejs/kit";
+import { endpoints, ApiError } from "#lib/api/index.js";
 import type { PageLoad } from "./$types";
 
 // Writing requires authentication. With `?id=<postId>` the page reopens an

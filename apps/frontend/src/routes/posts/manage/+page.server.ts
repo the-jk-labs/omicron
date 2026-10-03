@@ -1,7 +1,7 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
-import { endpoints } from "$lib/api";
-import type { OwnPostStatus } from "$lib/types";
 import { redirect } from "@sveltejs/kit";
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { endpoints } from "#lib/api/index.js";
+import type { OwnPostStatus } from "#lib/types.js";
 import type { PageServerLoad } from "./$types";
 
 const TABS: OwnPostStatus[] = ["draft", "scheduled", "published"];

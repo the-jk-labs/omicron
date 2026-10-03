@@ -1,25 +1,25 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { beforeNavigate, goto, replaceState } from "$app/navigation";
-  import { endpoints, ApiError } from "$lib/api";
-  import { Autosave } from "$lib/autosave.svelte";
-  import BannerPicker from "$lib/components/BannerPicker.svelte";
-  import Icon from "$lib/components/Icon.svelte";
-  import LanguageSelect from "$lib/components/LanguageSelect.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import SaveStatus from "$lib/components/SaveStatus.svelte";
-  import ScheduleDialog from "$lib/components/ScheduleDialog.svelte";
-  import SummaryField from "$lib/components/SummaryField.svelte";
-  import TagInput from "$lib/components/TagInput.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
-  import { confirm } from "$lib/components/ui/confirm";
-  import { formatScheduleLong, timeUntil } from "$lib/format";
-  import { reading } from "$lib/prefs.svelte";
-  import { timeZone } from "$lib/timezone";
-  import type { CoverCredit, OwnPostStatus } from "$lib/types";
+  import { beforeNavigate, goto } from "$app/navigation";
   import type { Content } from "@tiptap/core";
   import { DropdownMenu } from "bits-ui";
   import { onDestroy, onMount, untrack } from "svelte";
+  import { endpoints, ApiError } from "#lib/api/index.js";
+  import { Autosave } from "#lib/autosave.svelte.js";
+  import BannerPicker from "#lib/components/BannerPicker.svelte";
+  import Icon from "#lib/components/Icon.svelte";
+  import LanguageSelect from "#lib/components/LanguageSelect.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import SaveStatus from "#lib/components/SaveStatus.svelte";
+  import ScheduleDialog from "#lib/components/ScheduleDialog.svelte";
+  import SummaryField from "#lib/components/SummaryField.svelte";
+  import TagInput from "#lib/components/TagInput.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
+  import { confirm } from "#lib/components/ui/confirm.js";
+  import { formatScheduleLong, timeUntil } from "#lib/format.js";
+  import { reading } from "#lib/prefs.svelte.js";
+  import { timeZone } from "#lib/timezone.svelte.js";
+  import type { CoverCredit, OwnPostStatus } from "#lib/types.js";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -27,10 +27,10 @@
   const draft = untrack(() => data.draft);
 
   // Lazy-load the Tiptap editor so it stays out of the initial bundle.
-  type EditorComp = typeof import("$lib/editor/Editor.svelte").default;
+  type EditorComp = typeof import("#lib/editor/Editor.svelte").default;
   let EditorComponent = $state<EditorComp | null>(null);
   onMount(async () => {
-    EditorComponent = (await import("$lib/editor/Editor.svelte")).default;
+    EditorComponent = (await import("#lib/editor/Editor.svelte")).default;
   });
 
   // When reopened from the Drafts list, `postId` is set so saving updates the
@@ -146,7 +146,7 @@
       // Put the new draft's id in the address bar, so a reload — or the browser
       // restoring the tab — continues this draft instead of starting a second
       // one and leaving the author with duplicates in the drafts list.
-      replaceState(`/compose?id=${post.id}`, {});
+      goto(`/compose?id=${post.id}`, { shallow: true, replace: true, state: {} });
     },
   });
   onDestroy(() => autosave.stop());
@@ -233,7 +233,7 @@
   // with autosave the draft already exists, so the question had no answer left
   // that changed anything.
   beforeNavigate(async (nav) => {
-    if (bypass || nav.willUnload || !autosave.dirty || !hasContent()) return;
+    if (bypass || nav.shallow || nav.willUnload || !autosave.dirty || !hasContent()) return;
     nav.cancel();
     const target = nav.to?.url;
     await autosave.flush();
@@ -260,7 +260,7 @@
   {#if publishAt}
     <p class="flex items-center gap-1.5 text-sm font-medium text-foreground">
       <Icon name="clock" size={16} />
-      Scheduled · {formatScheduleLong(publishAt, $timeZone)}
+      Scheduled · {formatScheduleLong(publishAt, timeZone.current)}
       <span class="font-normal text-muted-foreground">({timeUntil(publishAt)})</span>
     </p>
   {:else}

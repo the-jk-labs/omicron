@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import Icon from "$lib/components/Icon.svelte";
-  import PageTitle from "$lib/components/PageTitle.svelte";
-  import PostCard from "$lib/components/PostCard.svelte";
-  import Avatar from "$lib/components/ui/Avatar.svelte";
   import { Tabs } from "bits-ui";
   import { untrack } from "svelte";
+  import Icon from "#lib/components/Icon.svelte";
+  import PageTitle from "#lib/components/PageTitle.svelte";
+  import PostCard from "#lib/components/PostCard.svelte";
+  import Avatar from "#lib/components/ui/Avatar.svelte";
   import type { PageData } from "./$types";
 
   let { data }: { data: PageData } = $props();
@@ -53,11 +53,11 @@
   }
 
   function run(q: string, tag: string, author: string) {
-    // replaceState keeps the query out of history so Back doesn't step through
-    // every keystroke; keepFocus leaves the field active as results stream in.
+    // `replace` keeps the query out of history so Back doesn't step through
+    // every keystroke; `reset: false` leaves the field active as results stream in.
     goto(buildUrl(q, tag, author), {
-      keepFocus: true,
-      replaceState: true,
+      reset: false,
+      replace: true,
     });
   }
 
