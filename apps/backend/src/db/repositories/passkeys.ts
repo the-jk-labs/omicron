@@ -15,3 +15,7 @@ export async function findById(id: string): Promise<Passkey | undefined> {
   const [row] = await db.select().from(passkeys).where(eq(passkeys.id, id));
   return row;
 }
+
+export async function deleteAllForUser(userId: string): Promise<void> {
+  await db.delete(passkeys).where(eq(passkeys.userId, userId));
+}

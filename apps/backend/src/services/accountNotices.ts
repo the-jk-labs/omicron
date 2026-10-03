@@ -44,6 +44,29 @@ export async function notifyPasskeyChanged(
   }
 }
 
+/** The code that confirms a new login email, sent to that new address. */
+export async function notifyEmailChangeCode(to: string, code: string): Promise<void> {
+  try {
+    queue.add("send_email_change_code", { to, code, ...(await instanceVars()) });
+  } catch (err) {
+    console.error("accountNotices: failed to queue email-change code (continuing):", err);
+  }
+}
+
+/** Notice to the previous address after the owner changed their login email. */
+export async function notifyEmailChangedBySelf(
+  oldEmail: string,
+  username: string,
+  newEmail: string,
+  undoUrl: string,
+): Promise<void> {
+  try {
+    queue.add("send_email_changed", { to: oldEmail, username, newEmail, undoUrl, ...(await instanceVars()) });
+  } catch (err) {
+    console.error("accountNotices: failed to queue email-changed notice (continuing):", err);
+  }
+}
+
 /** Receipt after self-service account deletion (the row is already gone). */
 export async function notifySelfDeleted(email: string, username: string): Promise<void> {
   try {

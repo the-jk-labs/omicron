@@ -273,6 +273,9 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.post<{ token: string; tokenInfo: WebhookToken }>("/webhooks/tokens", { label }),
     revokeWebhookToken: (id: string) => api.del<{ ok: true }>(`/webhooks/tokens/${encodeURIComponent(id)}`),
 
+    // Public: the token from the "your email was changed" notice is the proof.
+    undoEmailChange: (token: string) => api.post<{ email: string }>("/email-change/undo", { token }),
+
     // feed + posts
     feed: (cursor?: string | null) =>
       api.get<Page<Post>>(`/feed${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),

@@ -181,7 +181,14 @@
 
   // Auth screens stand alone: no side rails, just the form centered in the
   // viewport. The shared chrome (rails, grid) only applies to in-app routes.
-  const AUTH_ROUTES = new Set(["/login", "/register", "/forgot-password", "/reset-password", "/verify-email"]);
+  const AUTH_ROUTES = new Set([
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+    "/verify-email",
+    "/undo-email-change",
+  ]);
   const isAuth = $derived(AUTH_ROUTES.has(page.route.id ?? ""));
   // The first-run wizard is also a standalone screen (logo-only nav, no rails),
   // but a touch wider than the auth forms to fit the stepped layout.

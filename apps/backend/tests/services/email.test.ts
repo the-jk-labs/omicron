@@ -263,6 +263,25 @@ describe("templates", () => {
     expect(m.html).not.toContain("<b>evil</b>");
   });
 
+  test("the change-email code is in the subject and the body", () => {
+    const m = email.emailChangeCodeEmail({ code: "482913", appName: "My Blog", origin: "https://blog.example" });
+    expect(m.subject).toBe("482913 is your My Blog confirmation code");
+    expect(m.text).toContain("482913");
+    expect(m.text).toContain("expires in 10 minutes");
+    expect(m.html).toContain("482913");
+  });
+
+  test("the self-service email-changed notice names the new address and links the undo", () => {
+    const undoUrl = "https://blog.example/undo-email-change?token=abc";
+    const m = email.accountEmailChangedBySelfEmail({ ...vars, newEmail: "new@x.test", undoUrl });
+    expect(m.subject).toBe("Your My Blog email was changed");
+    expect(m.text).toContain("@ada");
+    expect(m.text).toContain("was changed to new@x.test");
+    expect(m.text).toContain(undoUrl);
+    expect(m.html).toContain(`href="${undoUrl}"`);
+    expect(m.text).not.toContain("by an admin");
+  });
+
   test("the email-changed notice names the new address", () => {
     expect(email.accountEmailChangedEmail({ ...vars, newEmail: "new@x.test" }).text).toContain("new@x.test");
   });
@@ -285,6 +304,8 @@ describe("templates", () => {
       ["sendAccountEmailChanged", { ...vars, newEmail: "n@x.test" }],
       ["sendPasskeyAdded", { ...vars, passkeyName: "Laptop" }],
       ["sendPasskeyRemoved", { ...vars, passkeyName: null }],
+      ["sendEmailChangeCode", { code: "123456", appName: "My Blog", origin: "https://blog.example" }],
+      ["sendEmailChanged", { ...vars, newEmail: "n@x.test", undoUrl: "https://blog.example/u" }],
     ];
     for (const [fn, v] of senders) await (email[fn] as (to: string, v: unknown) => Promise<void>)("a@x.test", v);
     await email.sendEmailVerification("a@x.test", "https://blog.example/verify?t=1");

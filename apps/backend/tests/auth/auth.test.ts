@@ -3,7 +3,18 @@ import { APIError } from "better-auth/api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Exercise the real Better Auth endpoint with disposable in-memory storage.
-const { store, addMail, settings, notifyPasskeyChanged } = vi.hoisted(() => ({
+const {
+  store,
+  addMail,
+  settings,
+  notifyPasskeyChanged,
+  notifyEmailChangeCode,
+  notifyEmailChangedBySelf,
+  createUndoLink,
+} = vi.hoisted(() => ({
+  notifyEmailChangeCode: vi.fn<(to: string, code: string) => Promise<void>>(),
+  notifyEmailChangedBySelf: vi.fn<(...args: string[]) => Promise<void>>(),
+  createUndoLink: vi.fn<(...args: string[]) => Promise<string>>(),
   notifyPasskeyChanged: vi.fn<(change: string, userId: string, name: unknown) => Promise<void>>(),
   store: { user: [], account: [], session: [], verification: [], passkey: [] } as Record<
     string,
@@ -32,7 +43,10 @@ vi.mock("@/services/accountNotices.ts", () => ({
   notifyPasswordChanged: vi.fn<() => Promise<void>>(),
   notifySelfDeleted: vi.fn<() => Promise<void>>(),
   notifyPasskeyChanged,
+  notifyEmailChangeCode,
+  notifyEmailChangedBySelf,
 }));
+vi.mock("@/services/emailChange.ts", () => ({ createUndoLink }));
 vi.mock("@/db/repositories/passkeys.ts", () => ({
   findById: (id: string) => Promise.resolve(store.passkey.find((row) => row.id === id)),
 }));
@@ -308,5 +322,122 @@ describe("passkeys", () => {
     const res = await call("/passkey/update-passkey", { method: "POST", body: { id: mine.id, name: "x".repeat(61) } });
     expect(res.status).toBe(400);
     expect(mine.name).toBe("Laptop");
+  });
+});
+
+describe("changing the login email", () => {
+  const cookies = new Map<string, string>();
+
+  async function call(path: string, body?: unknown) {
+    const { auth } = await import("@/auth/auth.ts");
+    const res = await auth.handler(
+      new Request(`http://localhost:3000/api/auth${path}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "http://localhost:3000",
+          Cookie: [...cookies].map(([k, v]) => `${k}=${v}`).join("; "),
+        },
+        body: JSON.stringify(body ?? {}),
+      }),
+    );
+    for (const header of res.headers.getSetCookie()) {
+      const [pair] = header.split(";");
+      const at = pair.indexOf("=");
+      cookies.set(pair.slice(0, at), pair.slice(at + 1));
+    }
+    return res;
+  }
+
+  async function signedIn() {
+    const res = await call("/sign-up/email", {
+      email: "ada@example.com",
+      password: "Unique-test-password-123!",
+      name: "Ada",
+      username: "ada",
+    });
+    expect(res.status).toBe(200);
+    return (await res.json()).user.id as string;
+  }
+
+  // Sessions older than the 15 minutes since the dialog's password re-check.
+  function ageSession(minutes: number) {
+    store.session[0].createdAt = new Date(Date.now() - minutes * 60 * 1000);
+    for (const name of cookies.keys()) if (name.includes("session_data")) cookies.delete(name);
+  }
+
+  beforeEach(() => {
+    vi.resetModules();
+    for (const rows of Object.values(store)) rows.length = 0;
+    for (const key of Object.keys(settings)) delete settings[key];
+    cookies.clear();
+    vi.stubEnv("APP_DOMAIN", "localhost:3000");
+    vi.stubEnv("HIBP_CHECK_ENABLED", "false");
+    vi.stubEnv("EMAIL_VERIFICATION_REQUIRED", "false");
+    createUndoLink.mockResolvedValue("https://blog.example/undo-email-change?token=t");
+  });
+
+  it("changes it with a code sent to the new address, then tells the old one", async () => {
+    const ada = await signedIn();
+
+    expect((await call("/email-otp/request-email-change", { newEmail: "New@Example.com" })).status).toBe(200);
+    expect(notifyEmailChangeCode).toHaveBeenCalledExactlyOnceWith("new@example.com", expect.stringMatching(/^\d{6}$/));
+    expect(store.user[0].email).toBe("ada@example.com");
+
+    const code = notifyEmailChangeCode.mock.calls[0][1];
+    expect((await call("/email-otp/change-email", { newEmail: "new@example.com", otp: code })).status).toBe(200);
+    expect(store.user[0]).toMatchObject({ email: "new@example.com", emailVerified: true });
+    expect(createUndoLink).toHaveBeenCalledWith(ada, "ada@example.com", "new@example.com");
+    expect(notifyEmailChangedBySelf).toHaveBeenCalledWith(
+      "ada@example.com",
+      "ada",
+      "new@example.com",
+      "https://blog.example/undo-email-change?token=t",
+    );
+  });
+
+  it("a wrong code changes nothing and tells no one", async () => {
+    await signedIn();
+    await call("/email-otp/request-email-change", { newEmail: "new@example.com" });
+    const code = notifyEmailChangeCode.mock.calls[0][1];
+    const wrong = code === "000000" ? "111111" : "000000";
+    expect((await call("/email-otp/change-email", { newEmail: "new@example.com", otp: wrong })).ok).toBe(false);
+    expect(store.user[0].email).toBe("ada@example.com");
+    expect(notifyEmailChangedBySelf).not.toHaveBeenCalled();
+  });
+
+  it.each(["/email-otp/request-email-change", "/email-otp/change-email"])(
+    "%s refuses a session older than the password re-check",
+    async (path) => {
+      await signedIn();
+      ageSession(16);
+      const res = await call(path, { newEmail: "new@example.com", otp: "123456" });
+      expect(res.status).toBe(403);
+      expect((await res.json()).code).toBe("PASSWORD_REQUIRED");
+      expect(notifyEmailChangeCode).not.toHaveBeenCalled();
+      expect(store.user[0].email).toBe("ada@example.com");
+    },
+  );
+
+  it("refuses an address another account already uses, without sending a code", async () => {
+    await signedIn();
+    store.user.push({ ...store.user[0], id: "other", email: "taken@example.com", username: "other" });
+    const res = await call("/email-otp/request-email-change", { newEmail: "Taken@example.com" });
+    expect(res.status).toBe(422);
+    expect((await res.json()).message).toBe("This email is already in use.");
+    expect(notifyEmailChangeCode).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "/sign-in/email-otp",
+    "/email-otp/send-verification-otp",
+    "/email-otp/check-verification-otp",
+    "/email-otp/verify-email",
+    "/email-otp/request-password-reset",
+    "/email-otp/reset-password",
+    "/forget-password/email-otp",
+  ])("the plugin's %s is switched off", async (path) => {
+    const res = await call(path, { email: "ada@example.com", type: "sign-in", otp: "123456" });
+    expect(res.status).toBe(404);
   });
 });

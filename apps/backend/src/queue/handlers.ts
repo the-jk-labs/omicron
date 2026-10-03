@@ -9,6 +9,8 @@ import {
   sendAccountVerified,
   sendAdminGranted,
   sendAdminRevoked,
+  sendEmailChangeCode,
+  sendEmailChanged,
   sendEmailVerification,
   sendModeratorGranted,
   sendModeratorRevoked,
@@ -197,5 +199,13 @@ export function registerJobHandlers() {
   );
   registerHandler("send_passkey_removed", ({ to, username, appName, origin, passkeyName }) =>
     sendPasskeyRemoved(to, { username, appName, origin, passkeyName }),
+  );
+  // The owner is moving their login email: a code to the new address, then a
+  // notice with an undo link to the old one.
+  registerHandler("send_email_change_code", ({ to, code, appName, origin }) =>
+    sendEmailChangeCode(to, { code, appName, origin }),
+  );
+  registerHandler("send_email_changed", ({ to, username, appName, origin, newEmail, undoUrl }) =>
+    sendEmailChanged(to, { username, appName, origin, newEmail, undoUrl }),
   );
 }

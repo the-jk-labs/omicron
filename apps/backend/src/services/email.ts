@@ -703,3 +703,52 @@ export function accountPasskeyRemovedEmail(vars: PasskeyNoticeVars): Omit<EmailM
 export function sendPasskeyRemoved(to: string, vars: PasskeyNoticeVars): Promise<void> {
   return sendMail({ to, ...accountPasskeyRemovedEmail(vars) });
 }
+
+export type EmailChangeCodeVars = { code: string; appName: string; origin: string };
+
+/** The 6-digit code that proves the reader owns the address they're switching to. */
+export function emailChangeCodeEmail(vars: EmailChangeCodeVars): Omit<EmailMessage, "to"> {
+  const ignore = `If you didn't ask to change your email on ${vars.appName}, you can ignore this email.`;
+  return {
+    subject: `${vars.code} is your ${vars.appName} confirmation code`,
+    text: [
+      `Enter this code to make this your login email on ${vars.appName}:`,
+      "",
+      vars.code,
+      "",
+      "It expires in 10 minutes.",
+      ignore,
+      "",
+      `The ${vars.appName} team`,
+    ].join("\n"),
+    html: layout(
+      `Your code: ${vars.code}`,
+      `Enter ${vars.code} to make this your login email on ${vars.appName}. It expires in 10 minutes. ${ignore}`,
+      { label: `Open ${vars.appName}`, url: vars.origin },
+    ),
+  };
+}
+
+/** Change-email code. Queued off the request path (see queue/handlers.ts). */
+export function sendEmailChangeCode(to: string, vars: EmailChangeCodeVars): Promise<void> {
+  return sendMail({ to, ...emailChangeCodeEmail(vars) });
+}
+
+export type EmailChangedVars = AccountNoticeVars & { newEmail: string; undoUrl: string };
+
+/** To the previous address after the owner changed their login email, with a way back. */
+export function accountEmailChangedBySelfEmail(vars: EmailChangedVars): Omit<EmailMessage, "to"> {
+  const what = `The login email for your account (@${vars.username}) on ${vars.appName} was changed to ${vars.newEmail}. This address won't get account emails anymore.`;
+  const advice =
+    "If this was you, you can ignore this email. If it wasn't, undo the change within 7 days. That puts this address back, signs out every session, removes your passkeys, and sends you a link to set a new password.";
+  return {
+    subject: `Your ${vars.appName} email was changed`,
+    text: [what, "", advice, vars.undoUrl, "", `The ${vars.appName} team`].join("\n"),
+    html: layout("Your email was changed", `${what} ${advice}`, { label: "Undo this change", url: vars.undoUrl }),
+  };
+}
+
+/** Self-service email-changed notice. Queued off the request path (see queue/handlers.ts). */
+export function sendEmailChanged(to: string, vars: EmailChangedVars): Promise<void> {
+  return sendMail({ to, ...accountEmailChangedBySelfEmail(vars) });
+}

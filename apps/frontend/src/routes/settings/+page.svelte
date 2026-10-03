@@ -7,6 +7,7 @@
   import { endpoints, ApiError } from "#lib/api/index.js";
   import { authClient } from "#lib/auth-client.js";
   import AvatarCropper from "#lib/components/AvatarCropper.svelte";
+  import ChangeEmailDialog from "#lib/components/ChangeEmailDialog.svelte";
   import ConnectionsManager from "#lib/components/ConnectionsManager.svelte";
   import CustomSectionEditor from "#lib/components/CustomSectionEditor.svelte";
   import EmojiTrigger from "#lib/components/EmojiTrigger.svelte";
@@ -312,6 +313,7 @@
 
   // Change password — dialog requiring the current password plus a new one.
   let pwOpen = $state(false);
+  let emailOpen = $state(false);
   let currentPassword = $state("");
   let newPassword = $state("");
   let confirmPassword = $state("");
@@ -727,6 +729,9 @@
                     </ButtonPrimitive.Root>
                   </span>
                 {/if}
+                <Button variant="outline" size="sm" class="mt-1" onclick={() => (emailOpen = true)}>
+                  <Icon name="mail" size={15} /> Change email
+                </Button>
               </dd>
             </div>
           {/if}
@@ -802,6 +807,15 @@
     </div>
   </Tabs.Content>
 </Tabs.Root>
+
+{#if data.user.email}
+  <ChangeEmailDialog
+    bind:open={emailOpen}
+    username={data.user.username}
+    email={data.user.email}
+    displayName={data.user.displayName}
+  />
+{/if}
 
 <Dialog.Root bind:open={pwOpen} onOpenChange={onPwOpenChange}>
   <Dialog.Portal>

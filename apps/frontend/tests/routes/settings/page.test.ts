@@ -381,6 +381,15 @@ test("the public email isn't offered to password managers", () => {
   expect(input).toHaveAttribute("data-form-type", "other");
 });
 
+test("Change email opens the dialog on the password step", async () => {
+  setup();
+  await openTab("Account");
+  await fireEvent.click(screen.getByRole("button", { name: /Change email/ }));
+  await screen.findByRole("dialog");
+  expect(screen.getByText("Step 1 of 3")).toBeInTheDocument();
+  expect(screen.getByText("First, confirm it's you with your password.")).toBeInTheDocument();
+});
+
 describe("tabs", () => {
   afterEach(() => {
     page.url = new URL("http://localhost/");

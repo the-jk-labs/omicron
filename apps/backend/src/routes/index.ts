@@ -2,6 +2,7 @@
 import { Hono } from "hono";
 import { adminRoutes } from "@/routes/admin.ts";
 import { dashboardRoutes } from "@/routes/dashboard.ts";
+import { emailChangeRoutes } from "@/routes/emailChange.ts";
 import { feedRoutes } from "@/routes/feed.ts";
 import { listRoutes } from "@/routes/lists.ts";
 import { meRoutes } from "@/routes/me.ts";
@@ -42,3 +43,4 @@ apiRoutes.route("/setup", setupRoutes);
 apiRoutes.route("/seo", seoRoutes);
 apiRoutes.route("/photos", photoRoutes);
 apiRoutes.route("/webhooks", webhookRoutes);
+apiRoutes.route("/email-change", emailChangeRoutes);

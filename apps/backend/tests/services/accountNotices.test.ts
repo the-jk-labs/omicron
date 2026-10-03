@@ -129,6 +129,24 @@ describe("notifyPasskeyChanged", () => {
   });
 });
 
+describe("email change", () => {
+  test("notifyEmailChangeCode sends the code to the new address", async () => {
+    await notices.notifyEmailChangeCode("new@x.test", "482913");
+    expect(queue.add).toHaveBeenCalledWith("send_email_change_code", { to: "new@x.test", code: "482913", ...vars });
+  });
+
+  test("notifyEmailChangedBySelf writes to the old address with the undo link", async () => {
+    await notices.notifyEmailChangedBySelf("old@x.test", "ada", "new@x.test", "https://blog.example/u");
+    expect(queue.add).toHaveBeenCalledWith("send_email_changed", {
+      to: "old@x.test",
+      username: "ada",
+      newEmail: "new@x.test",
+      undoUrl: "https://blog.example/u",
+      ...vars,
+    });
+  });
+});
+
 describe("notifyPostAuthorRemoved", () => {
   test("tells the author whose post a moderator removed", async () => {
     vi.mocked(usersRepo.findById).mockResolvedValue(userRow({ id: "author", email: "a@x.test", username: "ada" }));

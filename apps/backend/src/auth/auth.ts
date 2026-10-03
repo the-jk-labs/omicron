@@ -3,21 +3,37 @@ import bcrypt from "bcryptjs";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError, createAuthMiddleware } from "better-auth/api";
-import { haveIBeenPwned, username } from "better-auth/plugins";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
+import { emailOTP, haveIBeenPwned, username } from "better-auth/plugins";
 import { config } from "@/config.ts";
 import { db } from "@/db/client.ts";
 import * as passkeysRepo from "@/db/repositories/passkeys.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { accounts, type Passkey, passkeys, sessions, users, verifications } from "@/db/schema.ts";
 import { queue } from "@/queue/queue.ts";
-import { notifyPasskeyChanged, notifyPasswordChanged, notifySelfDeleted } from "@/services/accountNotices.ts";
+import {
+  notifyEmailChangeCode,
+  notifyEmailChangedBySelf,
+  notifyPasskeyChanged,
+  notifyPasswordChanged,
+  notifySelfDeleted,
+} from "@/services/accountNotices.ts";
+import { createUndoLink } from "@/services/emailChange.ts";
 import { getAppName, getOrigin } from "@/services/instanceSetup.ts";
 
 const BCRYPT_COST = 12;
 const SESSION_TTL_S = 60 * 60 * 24 * 30;
 const USERNAME_RE = /^[a-z0-9_]{3,30}$/;
 const PASSKEY_NAME_MAX = 60;
+
+// The settings dialog re-checks the password by signing in again right before
+// an email change, so the change endpoints only take a session that new.
+const EMAIL_CHANGE_SESSION_MAX_AGE_MS = 15 * 60 * 1000;
+const EMAIL_CHANGE_PATHS = new Set(["/email-otp/request-email-change", "/email-otp/change-email"]);
+
+// The account an email change is moving away from, read before the plugin
+// updates it so the old address can be told.
+const changingEmail = new WeakMap<Request, { userId: string; email: string; username: string }>();
 
 // The passkey a delete request targets, read before the plugin removes it so the
 // owner's notice can still name it.
@@ -41,6 +57,19 @@ export const auth = betterAuth({
       usernameValidator: (value) => USERNAME_RE.test(value),
     }),
     ...(config.HIBP_CHECK_ENABLED ? [haveIBeenPwned()] : []),
+    // Only for changing the login email; its sign-in, verification and reset
+    // endpoints are switched off in `disabledPaths` below.
+    emailOTP({
+      disableSignUp: true,
+      otpLength: 6,
+      expiresIn: 10 * 60,
+      allowedAttempts: 5,
+      storeOTP: "hashed",
+      changeEmail: { enabled: true },
+      sendVerificationOTP: async ({ email, otp, type }) => {
+        if (type === "change-email") await notifyEmailChangeCode(email, otp);
+      },
+    }),
     passkey({
       registration: {
         // Unnamed passkeys get their provider's name ("1Password", "Windows Hello") when it is known.
@@ -48,6 +77,15 @@ export const auth = betterAuth({
           Promise.resolve({ name: getAuthenticatorName(verification.registrationInfo?.aaguid) }),
       },
     }),
+  ],
+  disabledPaths: [
+    "/sign-in/email-otp",
+    "/email-otp/send-verification-otp",
+    "/email-otp/check-verification-otp",
+    "/email-otp/verify-email",
+    "/email-otp/request-password-reset",
+    "/email-otp/reset-password",
+    "/forget-password/email-otp",
   ],
   advanced: {
     database: { generateId: "uuid" },
@@ -72,6 +110,29 @@ export const auth = betterAuth({
         // APP_DOMAIN; a passkey must be bound to the live (wizard-set) domain instead.
         return { context: { context: { appName: await getAppName(), options: { baseURL: await getOrigin() } } } };
       }
+      if (EMAIL_CHANGE_PATHS.has(ctx.path)) {
+        const session = await getSessionFromCtx(ctx);
+        if (!session) return undefined;
+        if (Date.now() - new Date(session.session.createdAt).getTime() > EMAIL_CHANGE_SESSION_MAX_AGE_MS) {
+          throw new APIError("FORBIDDEN", {
+            code: "PASSWORD_REQUIRED",
+            message: "Confirm your password to change your email.",
+          });
+        }
+        const newEmail: unknown = ctx.body?.newEmail;
+        if (
+          ctx.path === "/email-otp/request-email-change" &&
+          typeof newEmail === "string" &&
+          (await usersRepo.findByEmail(newEmail.trim().toLowerCase()))
+        ) {
+          throw new APIError("UNPROCESSABLE_ENTITY", { message: "This email is already in use." });
+        }
+        if (ctx.path === "/email-otp/change-email" && ctx.request) {
+          const { id, email } = session.user;
+          changingEmail.set(ctx.request, { userId: id, email, username: String(session.user.username) });
+        }
+        return undefined;
+      }
       if (ctx.path !== "/sign-up/email" || typeof ctx.body?.email !== "string") return undefined;
       // Better Auth otherwise returns a synthetic success for duplicate emails
       // when verification is required, although no account or email is created.
@@ -94,6 +155,15 @@ export const auth = betterAuth({
       } else if (ctx.path === "/passkey/delete-passkey" && ctx.request) {
         const removed = deletingPasskeys.get(ctx.request);
         if (removed) await notifyPasskeyChanged("removed", removed.userId, removed.name);
+      } else if (ctx.path === "/email-otp/change-email" && ctx.request) {
+        const from = changingEmail.get(ctx.request);
+        const newEmail = String(ctx.body?.newEmail ?? "")
+          .trim()
+          .toLowerCase();
+        if (from && newEmail) {
+          const undoUrl = await createUndoLink(from.userId, from.email, newEmail);
+          await notifyEmailChangedBySelf(from.email, from.username, newEmail, undoUrl);
+        }
       }
       return undefined;
     }),
