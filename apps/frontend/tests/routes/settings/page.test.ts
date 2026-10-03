@@ -1,17 +1,17 @@
-import { goto, invalidateAll } from "$app/navigation";
-import { reading } from "$lib/prefs.svelte";
-import { theme } from "$lib/theme.svelte";
-import type { User } from "$lib/types";
+import { goto, refreshAll } from "$app/navigation";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, expect, test, vi } from "vitest";
+import { reading } from "#lib/prefs.svelte.js";
+import { theme } from "#lib/theme.svelte.js";
+import type { User } from "#lib/types.js";
 import SettingsPage from "../../../src/routes/settings/+page.svelte";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
-vi.mock(import("$lib/components/AvatarCropper.svelte"), async () => ({
+vi.mock(import("#lib/components/AvatarCropper.svelte"), async () => ({
   default: (await import("../../mocks/AvatarCropperStub.svelte")).default,
 }));
-vi.mock(import("$lib/editor/image"), async (importOriginal) => ({
+vi.mock(import("#lib/editor/image.js"), async (importOriginal) => ({
   ...(await importOriginal()),
   prepareImage: async (file: Blob) => ({ blob: file, type: "image/png" }),
 }));
@@ -21,9 +21,9 @@ const auth = vi.hoisted(() => ({
   changePassword: vi.fn<(a: unknown) => Promise<{ error?: { message?: string } | null }>>(),
   deleteUser: vi.fn<(a: unknown) => Promise<{ error?: { message?: string } | null }>>(),
 }));
-vi.mock("$lib/auth-client", () => ({ authClient: auth }));
+vi.mock("#lib/auth-client.js", () => ({ authClient: auth }));
 const pwned = vi.hoisted(() => ({ value: false }));
-vi.mock(import("$lib/password"), async (importOriginal) => ({
+vi.mock(import("#lib/password.js"), async (importOriginal) => ({
   ...(await importOriginal()),
   isPwnedPasswordClient: async () => pwned.value,
 }));
@@ -85,7 +85,7 @@ test("Save is disabled until something changes, then sends the whole profile", a
   await fireEvent.input(screen.getByLabelText("Display name"), { target: { value: "Ada L." } });
   expect(save).toBeEnabled();
   await fireEvent.click(save);
-  await waitFor(() => expect(invalidateAll).toHaveBeenCalled());
+  await waitFor(() => expect(refreshAll).toHaveBeenCalled());
   expect(patchBody()).toEqual({
     displayName: "Ada L.",
     bio: "Hi",
@@ -127,7 +127,7 @@ test("after a save the refreshed data clears the dirty state and says Saved", as
   const { rerender } = setup();
   await fireEvent.input(screen.getByLabelText("Display name"), { target: { value: "Ada L." } });
   await fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-  await waitFor(() => expect(invalidateAll).toHaveBeenCalled());
+  await waitFor(() => expect(refreshAll).toHaveBeenCalled());
   await rerender({ data: { user: me({ displayName: "Ada L." }) } as never });
   await screen.findByText("Saved.");
   expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
@@ -139,7 +139,7 @@ test("after saving a tag change the form is no longer dirty", async () => {
   await fireEvent.input(tags, { target: { value: "deno" } });
   await fireEvent.keyDown(tags, { key: "Enter" });
   await fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-  await waitFor(() => expect(invalidateAll).toHaveBeenCalled());
+  await waitFor(() => expect(refreshAll).toHaveBeenCalled());
   await rerender({ data: { user: me({ tags: [{ slug: "deno", name: "deno" }] }) } as never });
   await screen.findByText("Saved.", undefined, { timeout: 500 });
 });
@@ -149,7 +149,7 @@ test("after saving a link typed without its scheme the form is no longer dirty",
   const { rerender } = setup(me({ links: [{ platform: "website", url: "https://old.example/", label: "" }] }));
   await fireEvent.input(screen.getByPlaceholderText("https://example.com"), { target: { value: "ada.example" } });
   await fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-  await waitFor(() => expect(invalidateAll).toHaveBeenCalled());
+  await waitFor(() => expect(refreshAll).toHaveBeenCalled());
   expect(patchBody()).toMatchObject({ links: [{ platform: "website", url: "https://ada.example/", label: "" }] });
   await rerender({
     data: { user: me({ links: [{ platform: "website", url: "https://ada.example/", label: "" }] }) } as never,
@@ -185,7 +185,7 @@ test("an oversized photo after compression is refused without uploading", async 
   setup();
   await pickPhoto();
   await fireEvent.click(await screen.findByRole("button", { name: "Apply crop" }));
-  vi.spyOn(await import("$lib/editor/image"), "prepareImage").mockResolvedValueOnce({
+  vi.spyOn(await import("#lib/editor/image.js"), "prepareImage").mockResolvedValueOnce({
     blob: new Blob([new Uint8Array(3 * 1024 * 1024)]),
     type: "image/jpeg",
   });
@@ -216,7 +216,7 @@ test("Remove discards a staged photo without a request, or removes the saved one
   await waitFor(() =>
     expect(api.calls.some((c) => c.method === "DELETE" && c.path === "/api/users/me/avatar")).toBe(true),
   );
-  await waitFor(() => expect(invalidateAll).toHaveBeenCalled());
+  await waitFor(() => expect(refreshAll).toHaveBeenCalled());
 });
 
 test("a failed photo removal is shown", async () => {
@@ -260,7 +260,7 @@ test("signing out reloads the session and goes home", async () => {
   setup();
   await fireEvent.click(screen.getByRole("button", { name: /Sign out/ }));
   await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
-  expect(invalidateAll).toHaveBeenCalled();
+  expect(refreshAll).toHaveBeenCalled();
 });
 
 async function openPasswordDialog() {

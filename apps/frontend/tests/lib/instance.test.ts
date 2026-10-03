@@ -5,7 +5,7 @@ import { apiError, fakeFetch } from "../fakeFetch";
 // The snapshot lives in module state; each test starts from a fresh copy.
 async function load() {
   vi.resetModules();
-  return await import("$lib/instance");
+  return await import("#lib/instance.js");
 }
 
 beforeEach(() => {

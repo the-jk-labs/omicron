@@ -1,8 +1,8 @@
-import Button from "$lib/components/ui/Button.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render, screen } from "@testing-library/svelte";
 import { createRawSnippet } from "svelte";
 import { expect, test } from "vitest";
+import Button from "#lib/components/ui/Button.svelte";
 
 const children = createRawSnippet(() => ({ render: () => "<span>Go</span>" }));
 

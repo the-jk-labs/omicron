@@ -1,9 +1,9 @@
-import AdminDomains from "$lib/components/AdminDomains.svelte";
-import { confirmRequest } from "$lib/components/ui/confirm";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { expect, test, vi } from "vitest";
+import AdminDomains from "#lib/components/AdminDomains.svelte";
+import { confirmRequest } from "#lib/components/ui/confirm.js";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 const bad = { domain: "bad.example", reason: "", createdAt: "2026-01-01T00:00:00Z" };

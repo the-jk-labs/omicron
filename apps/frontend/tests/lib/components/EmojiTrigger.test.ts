@@ -1,7 +1,7 @@
-import EmojiTrigger from "$lib/components/EmojiTrigger.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
+import EmojiTrigger from "#lib/components/EmojiTrigger.svelte";
 
 vi.mock("emoji-picker-element", () => ({}));
 

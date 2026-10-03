@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const env = vi.hoisted(() => ({ browser: true }));
-vi.mock(import("$app/environment"), () => ({
+vi.mock(import("$app/env"), () => ({
   get browser() {
     return env.browser;
   },
@@ -13,7 +13,7 @@ vi.mock(import("$app/environment"), () => ({
 
 async function load() {
   vi.resetModules();
-  return (await import("$lib/prefs.svelte")).reading;
+  return (await import("#lib/prefs.svelte.js")).reading;
 }
 
 beforeEach(() => {

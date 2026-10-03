@@ -1,7 +1,7 @@
-import type { FollowRequest } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
+import type { FollowRequest } from "#lib/types.js";
 import FollowRequestsPage from "../../../src/routes/follow-requests/+page.svelte";
 import { apiError, fakeFetch } from "../../fakeFetch";
 

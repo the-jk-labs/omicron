@@ -1,9 +1,9 @@
-import PageTitle from "$lib/components/PageTitle.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render } from "@testing-library/svelte";
 import { expect, test } from "vitest";
+import PageTitle from "#lib/components/PageTitle.svelte";
 
-// The $app/stores stand-in carries no instance, so the public env name applies.
+// The $app/state stand-in carries no instance, so the public env name applies.
 test("a page title is suffixed with the instance name", () => {
   render(PageTitle, { props: { text: "Settings" } });
   expect(document.title).toBe("Settings · Omicron");

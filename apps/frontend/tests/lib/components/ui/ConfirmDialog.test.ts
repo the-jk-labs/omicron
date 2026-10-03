@@ -1,9 +1,9 @@
-import { confirm, confirmRequest } from "$lib/components/ui/confirm";
-import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { expect, test } from "vitest";
+import { confirm, confirmRequest } from "#lib/components/ui/confirm.js";
+import ConfirmDialog from "#lib/components/ui/ConfirmDialog.svelte";
 
 test("opens for a request and resolves ok when confirmed", async () => {
   render(ConfirmDialog);

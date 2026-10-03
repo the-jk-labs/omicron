@@ -1,12 +1,12 @@
 import { goto } from "$app/navigation";
 import { page } from "$app/state";
-import SearchBar from "$lib/components/SearchBar.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { afterEach, expect, test, vi } from "vitest";
+import SearchBar from "#lib/components/SearchBar.svelte";
 
 afterEach(() => {
-  page.url = new URL("http://localhost/") as typeof page.url;
+  page.url = new URL("http://localhost/");
 });
 
 const field = () => screen.getByRole("searchbox", { name: "Search articles and people" }) as HTMLInputElement;
@@ -29,14 +29,14 @@ test("an empty submit does nothing, except clear an existing search", async () =
   expect(goto).not.toHaveBeenCalled();
   first.unmount();
 
-  page.url = new URL("http://localhost/search?q=old") as typeof page.url;
+  page.url = new URL("http://localhost/search?q=old");
   render(SearchBar);
   await typeAndSubmit("");
   expect(goto).toHaveBeenCalledWith("/search");
 });
 
 test("on the search page it starts from the current query", () => {
-  page.url = new URL("http://localhost/search?q=perseid") as typeof page.url;
+  page.url = new URL("http://localhost/search?q=perseid");
   render(SearchBar);
   expect(field()).toHaveValue("perseid");
 });

@@ -1,7 +1,7 @@
-import type { ReadingList } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
+import type { ReadingList } from "#lib/types.js";
 import ListsPage from "../../../src/routes/lists/+page.svelte";
 import { fakeFetch } from "../../fakeFetch";
 

@@ -1,7 +1,7 @@
-import type { Post } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
+import type { Post } from "#lib/types.js";
 import TagPage from "../../../../src/routes/tags/[tag]/+page.svelte";
 import { apiError, fakeFetch } from "../../../fakeFetch";
 import { post } from "../../../fixtures";

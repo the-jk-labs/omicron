@@ -1,26 +1,24 @@
-import { env } from "$env/dynamic/public";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render, screen } from "@testing-library/svelte";
-import { readable } from "svelte/store";
 import { afterEach, expect, test, vi } from "vitest";
 import ContactPage from "../../../src/routes/contact/+page.svelte";
+import { setPublicEnv } from "../../mocks/$app/env/public.js";
 
 const state = vi.hoisted(() => ({ instance: null as Record<string, unknown> | null }));
 vi.mock(
-  import("$app/stores"),
+  import("$app/state"),
   () =>
     ({
       get page() {
-        return readable({ data: { instance: state.instance }, url: new URL("http://localhost/contact") });
+        return { data: { instance: state.instance }, url: new URL("http://localhost/contact") };
       },
-      navigating: readable(null),
-      updated: readable({ current: false }),
+      navigating: null,
+      updated: { current: false },
     }) as never,
 );
 
-const original = { ...env };
 afterEach(() => {
-  Object.assign(env, original);
+  setPublicEnv();
   state.instance = null;
 });
 
@@ -36,20 +34,20 @@ test("without configured addresses it explains how to report and how to configur
 });
 
 test("a contact email is used for abuse reports too unless one is set", () => {
-  Object.assign(env, { PUBLIC_CONTACT_EMAIL: " hi@blog.example " });
+  setPublicEnv({ PUBLIC_CONTACT_EMAIL: " hi@blog.example " });
   const { unmount } = render(ContactPage);
   expect(screen.getAllByRole("link", { name: "hi@blog.example" }).map((a) => a.getAttribute("href"))).toEqual([
     "mailto:hi@blog.example",
     "mailto:hi@blog.example",
   ]);
   unmount();
-  Object.assign(env, { PUBLIC_ABUSE_EMAIL: "abuse@blog.example" });
+  setPublicEnv({ PUBLIC_CONTACT_EMAIL: " hi@blog.example ", PUBLIC_ABUSE_EMAIL: "abuse@blog.example" });
   render(ContactPage);
   expect(screen.getByRole("link", { name: "abuse@blog.example" })).toHaveAttribute("href", "mailto:abuse@blog.example");
 });
 
 test("a contact URL is offered when there's no email", () => {
-  Object.assign(env, { PUBLIC_CONTACT_URL: "https://blog.example/imprint" });
+  setPublicEnv({ PUBLIC_CONTACT_URL: "https://blog.example/imprint" });
   render(ContactPage);
   expect(screen.getByRole("link", { name: "https://blog.example/imprint" })).toHaveAttribute("target", "_blank");
 });

@@ -1,6 +1,6 @@
-import { ApiError, makeApi } from "$lib/api/client";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from "vitest";
+import { ApiError, makeApi } from "#lib/api/client.js";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 test("sends JSON to the same-origin /api proxy and parses the reply", async () => {

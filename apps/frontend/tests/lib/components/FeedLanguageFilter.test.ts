@@ -1,8 +1,8 @@
-import FeedLanguageFilter from "$lib/components/FeedLanguageFilter.svelte";
-import { reading } from "$lib/prefs.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, beforeEach, expect, test } from "vitest";
+import FeedLanguageFilter from "#lib/components/FeedLanguageFilter.svelte";
+import { reading } from "#lib/prefs.svelte.js";
 
 beforeEach(() => {
   try {

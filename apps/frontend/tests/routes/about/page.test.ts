@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render, screen } from "@testing-library/svelte";
-import { readable } from "svelte/store";
 import { afterEach, expect, test, vi } from "vitest";
 import AboutPage from "../../../src/routes/about/+page.svelte";
 
 const state = vi.hoisted(() => ({ instance: null as Record<string, unknown> | null }));
 vi.mock(
-  import("$app/stores"),
+  import("$app/state"),
   () =>
     ({
       get page() {
-        return readable({ data: { instance: state.instance }, url: new URL("http://localhost/about") });
+        return { data: { instance: state.instance }, url: new URL("http://localhost/about") };
       },
-      navigating: readable(null),
-      updated: readable({ current: false }),
+      navigating: null,
+      updated: { current: false },
     }) as never,
 );
 

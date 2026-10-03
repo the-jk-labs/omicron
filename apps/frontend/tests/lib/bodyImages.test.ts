@@ -1,6 +1,6 @@
-import { deferBodyImages } from "$lib/bodyImages";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from "vitest";
+import { deferBodyImages } from "#lib/bodyImages.js";
 
 test("adds lazy loading and async decoding to every image, before the self-closing slash", () => {
   expect(deferBodyImages('<p>a</p><img src="/a.png" alt="A" /><img src="/b.png">')).toBe(

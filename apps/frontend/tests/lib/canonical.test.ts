@@ -1,6 +1,6 @@
-import { canonicalOrigin, instanceDomain, isNonCanonicalHost } from "$lib/canonical";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, test } from "vitest";
+import { canonicalOrigin, instanceDomain, isNonCanonicalHost } from "#lib/canonical.js";
 import { fakeFetch } from "../fakeFetch";
 
 describe("canonicalOrigin", () => {

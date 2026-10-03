@@ -1,7 +1,7 @@
-import ConnectionsManager from "$lib/components/ConnectionsManager.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
+import ConnectionsManager from "#lib/components/ConnectionsManager.svelte";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 const bob = { id: "u-bob", username: "bob", displayName: "Bob", avatarUrl: null, remote: false };

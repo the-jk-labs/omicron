@@ -1,6 +1,6 @@
-import { listIdFromSlug, listPath, postIdFromSlug, postPath, slugify } from "$lib/links";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, test } from "vitest";
+import { listIdFromSlug, listPath, postIdFromSlug, postPath, slugify } from "#lib/links.js";
 
 describe("slugify", () => {
   test.for([

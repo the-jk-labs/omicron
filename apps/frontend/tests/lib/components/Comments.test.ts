@@ -1,13 +1,13 @@
 import { goto } from "$app/navigation";
-import Comments from "$lib/components/Comments.svelte";
-import { confirmRequest } from "$lib/components/ui/confirm";
-import type { Comment, User } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // The comment section (Comments.svelte with its CommentNode rows): posting,
 // threads, likes, edits, deletes and paging, against a fake API.
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { expect, test, vi } from "vitest";
+import Comments from "#lib/components/Comments.svelte";
+import { confirmRequest } from "#lib/components/ui/confirm.js";
+import type { Comment, User } from "#lib/types.js";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 const author = (id: string, name: string) => ({ id, username: name.toLowerCase(), displayName: name, avatarUrl: null });

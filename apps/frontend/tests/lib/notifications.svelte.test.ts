@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { apiError, fakeFetch } from "./../fakeFetch";
 
 const env = vi.hoisted(() => ({ browser: true }));
-vi.mock(import("$app/environment"), () => ({
+vi.mock(import("$app/env"), () => ({
   get browser() {
     return env.browser;
   },
@@ -14,7 +14,7 @@ vi.mock(import("$app/environment"), () => ({
 
 async function load() {
   vi.resetModules();
-  return (await import("$lib/notifications.svelte")).notifications;
+  return (await import("#lib/notifications.svelte.js")).notifications;
 }
 
 let hidden = false;

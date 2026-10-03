@@ -1,7 +1,6 @@
-import { invalidateAll } from "$app/navigation";
+import { refreshAll } from "$app/navigation";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
-import { readable } from "svelte/store";
 import { beforeEach, expect, test, vi } from "vitest";
 import VerifyEmailPage from "../../../src/routes/verify-email/+page.svelte";
 
@@ -10,21 +9,21 @@ const state = vi.hoisted(() => ({
   data: {} as Record<string, unknown>,
 }));
 vi.mock(
-  import("$app/stores"),
+  import("$app/state"),
   () =>
     ({
       get page() {
-        return readable({ data: state.data, url: new URL(state.href) });
+        return { data: state.data, url: new URL(state.href) };
       },
-      navigating: readable(null),
-      updated: readable({ current: false }),
+      navigating: null,
+      updated: { current: false },
     }) as never,
 );
 const auth = vi.hoisted(() => ({
   verifyEmail: vi.fn<(a: unknown) => Promise<{ error?: { message?: string } | null }>>(),
   sendVerificationEmail: vi.fn<(a: unknown) => Promise<{ error?: { message?: string } | null }>>(),
 }));
-vi.mock("$lib/auth-client", () => ({ authClient: auth }));
+vi.mock("#lib/auth-client.js", () => ({ authClient: auth }));
 
 beforeEach(() => {
   state.href = "http://localhost/verify-email?token=tok";
@@ -36,7 +35,7 @@ test("a valid link confirms the email and refreshes the session", async () => {
   render(VerifyEmailPage);
   await waitFor(() => screen.getByText("Email confirmed"));
   expect(auth.verifyEmail).toHaveBeenCalledWith({ query: { token: "tok" } });
-  expect(invalidateAll).toHaveBeenCalled();
+  expect(refreshAll).toHaveBeenCalled();
 });
 
 test("a bad link explains and offers a new one", async () => {

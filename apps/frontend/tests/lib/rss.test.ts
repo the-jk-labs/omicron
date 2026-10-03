@@ -1,6 +1,6 @@
-import { FEED_HEADERS, firstSection, postFeedItem, renderRssFeed } from "$lib/rss";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, test } from "vitest";
+import { FEED_HEADERS, firstSection, postFeedItem, renderRssFeed } from "#lib/rss.js";
 import { post } from "../fixtures";
 
 const ORIGIN = "https://blog.example";

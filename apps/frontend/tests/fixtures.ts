@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // API payload factories, shaped like what the backend serializes.
-import type { Post } from "$lib/types";
+import type { Post } from "#lib/types.js";
 
 export function post(overrides: Partial<Post> = {}): Post {
   return {

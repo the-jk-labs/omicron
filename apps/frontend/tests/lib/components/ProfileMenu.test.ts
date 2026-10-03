@@ -1,7 +1,7 @@
-import ProfileMenu from "$lib/components/ProfileMenu.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
+import ProfileMenu from "#lib/components/ProfileMenu.svelte";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 let api: ReturnType<typeof fakeFetch>;

@@ -1,7 +1,7 @@
-import ProfileLinksCard from "$lib/components/ProfileLinksCard.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render, screen } from "@testing-library/svelte";
 import { expect, test } from "vitest";
+import ProfileLinksCard from "#lib/components/ProfileLinksCard.svelte";
 
 test("links open in a new tab and verify identity with rel=me", () => {
   render(ProfileLinksCard, {

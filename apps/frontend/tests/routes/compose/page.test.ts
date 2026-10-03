@@ -1,16 +1,16 @@
-import { beforeNavigate, goto, replaceState } from "$app/navigation";
-import { confirmRequest } from "$lib/components/ui/confirm";
-import { reading } from "$lib/prefs.svelte";
-import type { Post } from "$lib/types";
+import { beforeNavigate, goto } from "$app/navigation";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { afterEach, expect, test, vi } from "vitest";
+import { confirmRequest } from "#lib/components/ui/confirm.js";
+import { reading } from "#lib/prefs.svelte.js";
+import type { Post } from "#lib/types.js";
 import ComposePage from "../../../src/routes/compose/+page.svelte";
 import { apiError, fakeFetch } from "../../fakeFetch";
 import { post } from "../../fixtures";
 
-vi.mock(import("$lib/editor/Editor.svelte"), async () => ({
+vi.mock(import("#lib/editor/Editor.svelte"), async () => ({
   default: (await import("../../mocks/EditorStub.svelte")).default,
 }));
 
@@ -161,7 +161,9 @@ test("autosave creates the draft once, puts its id in the URL, then updates it",
   setup(null, { "PATCH /api/posts/new-1": { post: { id: "new-1" } } });
   await typeTitle("Autosaved");
   await vi.advanceTimersByTimeAsync(2_000);
-  await vi.waitFor(() => expect(replaceState).toHaveBeenCalledWith("/compose?id=new-1", {}));
+  await vi.waitFor(() =>
+    expect(goto).toHaveBeenCalledWith("/compose?id=new-1", { shallow: true, replace: true, state: {} }),
+  );
   await typeTitle("Autosaved again");
   await vi.advanceTimersByTimeAsync(2_000);
   await vi.waitFor(() => expect(writes()).toHaveLength(2));

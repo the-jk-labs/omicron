@@ -1,7 +1,7 @@
-import { confirm, confirmRequest } from "$lib/components/ui/confirm";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { get } from "svelte/store";
 import { expect, test } from "vitest";
+import { confirm, confirmRequest } from "#lib/components/ui/confirm.js";
 
 test("a confirm publishes its request and resolves with the dialog's answer", async () => {
   const pending = confirm({ description: "Delete?", destructive: true, notify: { label: "Tell them" } });

@@ -1,9 +1,9 @@
-import { endpoints } from "$lib/api";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // The typed endpoint table: each helper must hit the backend route it names,
 // with the method, query string and body that route reads. A wrong path here
 // is a feature that silently 404s, so every helper is listed.
 import { describe, expect, test } from "vitest";
+import { endpoints } from "#lib/api/index.js";
 import { fakeFetch } from "../../fakeFetch";
 
 type E = ReturnType<typeof endpoints>;

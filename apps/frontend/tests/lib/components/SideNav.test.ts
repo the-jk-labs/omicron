@@ -1,18 +1,18 @@
 import { page } from "$app/state";
-import SideNav from "$lib/components/SideNav.svelte";
-import type { User } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render, screen } from "@testing-library/svelte";
 import { afterEach, expect, test } from "vitest";
+import SideNav from "#lib/components/SideNav.svelte";
+import type { User } from "#lib/types.js";
 
 const me = { id: "u1", username: "ada", displayName: "Ada", isAdmin: false, isModerator: false } as User;
 
 afterEach(() => {
-  page.url = new URL("http://localhost/") as typeof page.url;
+  page.url = new URL("http://localhost/");
 });
 
 function at(path: string) {
-  page.url = new URL(`http://localhost${path}`) as typeof page.url;
+  page.url = new URL(`http://localhost${path}`);
 }
 const navLinks = () =>
   Array.from(document.querySelectorAll("nav > a, nav > div > a")).map((a) => a.textContent?.trim());

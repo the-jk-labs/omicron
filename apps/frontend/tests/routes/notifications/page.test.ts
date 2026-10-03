@@ -1,8 +1,8 @@
-import { notifications } from "$lib/notifications.svelte";
-import type { Notification } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, expect, test, vi } from "vitest";
+import { notifications } from "#lib/notifications.svelte.js";
+import type { Notification } from "#lib/types.js";
 import NotificationsPage from "../../../src/routes/notifications/+page.svelte";
 import { fakeFetch } from "../../fakeFetch";
 

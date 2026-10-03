@@ -1,12 +1,12 @@
-import Editor from "$lib/editor/Editor.svelte";
-import { EDIT_ALT_EVENT } from "$lib/editor/resizable-image";
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Editor as TiptapEditor } from "@tiptap/core";
 import { beforeEach, expect, test, vi } from "vitest";
+import Editor from "#lib/editor/Editor.svelte";
+import { EDIT_ALT_EVENT } from "#lib/editor/resizable-image.js";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
-vi.mock(import("$lib/editor/image"), async (importOriginal) => ({
+vi.mock(import("#lib/editor/image.js"), async (importOriginal) => ({
   ...(await importOriginal()),
   prepareImage: async (file: Blob) => ({ blob: file, type: "image/webp" }),
 }));

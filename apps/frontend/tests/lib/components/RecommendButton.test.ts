@@ -1,6 +1,5 @@
 import { goto } from "$app/navigation";
 import { page } from "$app/state";
-import RecommendButton from "$lib/components/RecommendButton.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // Regression tests for the recommendation counter rendering as a bare number.
@@ -12,6 +11,7 @@ import RecommendButton from "$lib/components/RecommendButton.svelte";
 // to assistive tech.
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import RecommendButton from "#lib/components/RecommendButton.svelte";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 describe("RecommendButton", () => {

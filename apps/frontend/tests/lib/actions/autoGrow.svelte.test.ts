@@ -1,7 +1,7 @@
-import { autoGrow } from "$lib/actions/autoGrow.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { flushSync } from "svelte";
 import { beforeEach, expect, test, vi } from "vitest";
+import { autoGrow } from "#lib/actions/autoGrow.svelte.js";
 
 let resized: (() => void) | null;
 let disconnected: boolean;

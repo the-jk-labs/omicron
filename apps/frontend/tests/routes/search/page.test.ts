@@ -66,7 +66,7 @@ test("typing re-runs the search after a pause, in place", async () => {
   expect(goto).not.toHaveBeenCalled();
   vi.advanceTimersByTime(1);
   expect(goto).toHaveBeenCalledTimes(1);
-  expect(goto).toHaveBeenCalledWith("/search?q=deno", { keepFocus: true, replaceState: true });
+  expect(goto).toHaveBeenCalledWith("/search?q=deno", { reset: false, replace: true });
 });
 
 test("the same state as shown doesn't navigate", async () => {

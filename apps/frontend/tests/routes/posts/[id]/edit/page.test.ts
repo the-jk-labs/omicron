@@ -1,15 +1,15 @@
 import { beforeNavigate, goto } from "$app/navigation";
-import { confirmRequest } from "$lib/components/ui/confirm";
-import type { Post } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { expect, test, vi } from "vitest";
+import { confirmRequest } from "#lib/components/ui/confirm.js";
+import type { Post } from "#lib/types.js";
 import EditPage from "../../../../../src/routes/posts/[id]/edit/+page.svelte";
 import { apiError, fakeFetch } from "../../../../fakeFetch";
 import { post } from "../../../../fixtures";
 
-vi.mock(import("$lib/editor/Editor.svelte"), async () => ({
+vi.mock(import("#lib/editor/Editor.svelte"), async () => ({
   default: (await import("../../../../mocks/EditorStub.svelte")).default,
 }));
 

@@ -1,6 +1,6 @@
-import { MAX_TAG_LENGTH, normalizeTag } from "$lib/tags";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from "vitest";
+import { MAX_TAG_LENGTH, normalizeTag } from "#lib/tags.js";
 
 test.for([
   ["#Deno", "deno"],

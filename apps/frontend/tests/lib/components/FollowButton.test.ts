@@ -1,7 +1,7 @@
-import FollowButton from "$lib/components/FollowButton.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
+import FollowButton from "#lib/components/FollowButton.svelte";
 import { fakeFetch } from "../../fakeFetch";
 
 const button = () => screen.getByRole("button");

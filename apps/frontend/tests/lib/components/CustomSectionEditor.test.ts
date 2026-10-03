@@ -1,7 +1,7 @@
-import CustomSectionEditor from "$lib/components/CustomSectionEditor.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
+import CustomSectionEditor from "#lib/components/CustomSectionEditor.svelte";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 let api: ReturnType<typeof fakeFetch>;

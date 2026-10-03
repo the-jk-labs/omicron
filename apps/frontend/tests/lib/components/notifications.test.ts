@@ -1,12 +1,12 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { expect, test } from "vitest";
 import {
   notificationAction,
   notificationHref,
   notificationIcon,
   notificationSubject,
-} from "$lib/components/notifications";
-import type { Notification } from "$lib/types";
-// SPDX-License-Identifier: AGPL-3.0-or-later
-import { expect, test } from "vitest";
+} from "#lib/components/notifications.js";
+import type { Notification } from "#lib/types.js";
 
 const TYPES: Notification["type"][] = [
   "follow",

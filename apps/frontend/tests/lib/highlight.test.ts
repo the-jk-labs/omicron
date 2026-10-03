@@ -1,4 +1,3 @@
-import { highlightCodeBlocks } from "$lib/highlight";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 //
 // The reader-side highlighter runs at read time over stored HTML. These tests
@@ -9,6 +8,7 @@ import { highlightCodeBlocks } from "$lib/highlight";
 // since `sudo dnf install …` scores below an English sentence — is rescued by
 // the stopword guard rather than by a lower global threshold.
 import { describe, expect, it } from "vitest";
+import { highlightCodeBlocks } from "#lib/highlight.js";
 
 const wrap = (code: string, codeAttrs = "", preAttrs = "") => `<pre${preAttrs}><code${codeAttrs}>${code}</code></pre>`;
 

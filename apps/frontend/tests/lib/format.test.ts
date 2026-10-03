@@ -1,3 +1,16 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+//
+// Regression tests for Markdown syntax leaking into the excerpt (the bug
+// reported as "#UserID The user ID from our entry in the password file" and
+// "#ProcandprocID An executing instance"). `excerpt` derives its text from
+// rendered HTML; a heading written without the space after `#` is not a
+// heading, so the `#` survives into the plain text. These tests pin that the
+// marker is dropped — on every section, not just the first — while a genuine
+// `#` in code or mid-prose is kept. The `countLabel` tests guard the reaction
+// counters ("2 0 0" on cards, "5 0 0" on the post page) that once rendered as
+// bare numbers: the phrase has to agree in number, or the tooltip and
+// screen-reader label would read as broken English.
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   countLabel,
   countWords,
@@ -13,20 +26,7 @@ import {
   timeAgo,
   timeUntil,
   zoneLabel,
-} from "$lib/format";
-// SPDX-License-Identifier: AGPL-3.0-or-later
-//
-// Regression tests for Markdown syntax leaking into the excerpt (the bug
-// reported as "#UserID The user ID from our entry in the password file" and
-// "#ProcandprocID An executing instance"). `excerpt` derives its text from
-// rendered HTML; a heading written without the space after `#` is not a
-// heading, so the `#` survives into the plain text. These tests pin that the
-// marker is dropped — on every section, not just the first — while a genuine
-// `#` in code or mid-prose is kept. The `countLabel` tests guard the reaction
-// counters ("2 0 0" on cards, "5 0 0" on the post page) that once rendered as
-// bare numbers: the phrase has to agree in number, or the tooltip and
-// screen-reader label would read as broken English.
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+} from "#lib/format.js";
 
 describe("excerpt", () => {
   it("drops a heading marker the renderer leaves literal", () => {

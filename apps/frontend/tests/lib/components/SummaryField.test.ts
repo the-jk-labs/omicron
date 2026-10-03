@@ -1,7 +1,7 @@
-import SummaryField from "$lib/components/SummaryField.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
+import SummaryField from "#lib/components/SummaryField.svelte";
 
 test("collapsed behind a button when empty; opening focuses the field", async () => {
   render(SummaryField, { props: { summary: "" } });

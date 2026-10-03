@@ -1,8 +1,8 @@
-import ProfileLinksEditor from "$lib/components/ProfileLinksEditor.svelte";
-import type { ProfileLink } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { expect, test } from "vitest";
+import ProfileLinksEditor from "#lib/components/ProfileLinksEditor.svelte";
+import type { ProfileLink } from "#lib/types.js";
 
 const links = (n: number): ProfileLink[] =>
   Array.from({ length: n }, (_, i) => ({ platform: "website", url: `https://site${i}.example`, label: "" }));

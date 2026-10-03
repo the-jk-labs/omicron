@@ -1,8 +1,8 @@
-import ReadingListCard from "$lib/components/ReadingListCard.svelte";
-import type { ReadingList } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render, screen } from "@testing-library/svelte";
 import { expect, test } from "vitest";
+import ReadingListCard from "#lib/components/ReadingListCard.svelte";
+import type { ReadingList } from "#lib/types.js";
 
 const list = (over: Partial<ReadingList>): ReadingList => ({
   id: "66635376-aaaa",

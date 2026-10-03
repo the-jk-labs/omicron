@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { describe, expect, test } from "vitest";
 import {
   identifierToUrl,
   inputPrefix,
@@ -5,9 +7,7 @@ import {
   PLATFORMS,
   platformMeta,
   urlToIdentifier,
-} from "$lib/profileLinks";
-// SPDX-License-Identifier: AGPL-3.0-or-later
-import { describe, expect, test } from "vitest";
+} from "#lib/profileLinks.js";
 
 test("every platform is unique and an unknown key falls back to a custom link", () => {
   const keys = PLATFORMS.map((p) => p.key);

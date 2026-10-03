@@ -1,8 +1,8 @@
-import { EDIT_ALT_EVENT, type EditAltDetail, ResizableImage } from "$lib/editor/resizable-image";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Editor } from "@tiptap/core";
 import { StarterKit } from "@tiptap/starter-kit";
 import { afterEach, expect, test, vi } from "vitest";
+import { EDIT_ALT_EVENT, type EditAltDetail, ResizableImage } from "#lib/editor/resizable-image.js";
 
 let editor: Editor | null = null;
 afterEach(() => {

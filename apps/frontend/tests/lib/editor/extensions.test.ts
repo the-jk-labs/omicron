@@ -1,4 +1,3 @@
-import { extensions } from "$lib/editor/extensions";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // The editor's extension set, run in a real Tiptap editor: what it emits is
 // what gets stored, sanitized and federated, so the HTML round trip is the
@@ -6,6 +5,7 @@ import { extensions } from "$lib/editor/extensions";
 // through generateJSON, not as a content string (which would be read as Markdown).
 import { Editor, generateJSON } from "@tiptap/core";
 import { afterEach, expect, test } from "vitest";
+import { extensions } from "#lib/editor/extensions.js";
 
 let editor: Editor | null = null;
 afterEach(() => {

@@ -1,7 +1,7 @@
-import LanguageSelect from "$lib/components/LanguageSelect.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { expect, test } from "vitest";
+import LanguageSelect from "#lib/components/LanguageSelect.svelte";
 
 test("the trigger names the chosen language, or prompts for one", () => {
   const { unmount } = render(LanguageSelect, { props: { value: "az" } });

@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render, screen } from "@testing-library/svelte";
-import { readable } from "svelte/store";
 import { afterEach, expect, test, vi } from "vitest";
 import ErrorPage from "../../src/routes/+error.svelte";
 
 const state = vi.hoisted(() => ({ status: 404, error: null as { message: string } | null }));
 vi.mock(
-  import("$app/stores"),
+  import("$app/state"),
   () =>
     ({
       get page() {
-        return readable({ status: state.status, error: state.error, url: new URL("http://localhost/x"), data: {} });
+        return { status: state.status, error: state.error, url: new URL("http://localhost/x"), data: {} };
       },
-      navigating: readable(null),
-      updated: readable({ current: false }),
+      navigating: null,
+      updated: { current: false },
     }) as never,
 );
 

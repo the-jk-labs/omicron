@@ -1,15 +1,14 @@
-import ScheduleDialog from "$lib/components/ScheduleDialog.svelte";
-import { timeZone } from "$lib/timezone";
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// The $app/stores stand-in renders in UTC, so every time below is UTC.
+// The timezone stand-in renders in UTC, so every time below is UTC.
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
-import type { Writable } from "svelte/store";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import ScheduleDialog from "#lib/components/ScheduleDialog.svelte";
+import { timeZone } from "#lib/timezone.svelte.js";
 
-vi.mock(import("$lib/timezone"), async (importOriginal) => {
-  const { writable } = await import("svelte/store");
-  return { ...(await importOriginal()), timeZone: writable("UTC") };
-});
+vi.mock(import("#lib/timezone.svelte.js"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  timeZone: { current: "UTC" },
+}));
 
 beforeEach(() => {
   // Thursday.
@@ -61,7 +60,7 @@ test.for([
 test("Next Monday is a Monday in the chosen zone, whatever the browser's zone", async () => {
   const tz = process.env.TZ;
   process.env.TZ = "America/Los_Angeles";
-  (timeZone as Writable<string>).set("Pacific/Kiritimati");
+  (timeZone as { current: string }).current = "Pacific/Kiritimati";
   try {
     const onconfirm = setup();
     await waitFor(() => screen.getByText("Schedule post"));
@@ -70,7 +69,7 @@ test("Next Monday is a Monday in the chosen zone, whatever the browser's zone", 
     expect(onconfirm).toHaveBeenCalledWith("2026-06-14T19:00:00.000Z");
   } finally {
     process.env.TZ = tz;
-    (timeZone as Writable<string>).set("UTC");
+    (timeZone as { current: string }).current = "UTC";
   }
 });
 

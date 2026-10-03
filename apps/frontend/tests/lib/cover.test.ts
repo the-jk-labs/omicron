@@ -1,6 +1,6 @@
-import { absoluteBanner, firstBodyImage, postCardUrl, profileCardUrl } from "$lib/cover";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, test } from "vitest";
+import { absoluteBanner, firstBodyImage, postCardUrl, profileCardUrl } from "#lib/cover.js";
 
 const ORIGIN = "https://blog.example";
 

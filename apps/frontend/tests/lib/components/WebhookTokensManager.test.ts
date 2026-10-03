@@ -1,9 +1,9 @@
-import { confirmRequest } from "$lib/components/ui/confirm";
-import WebhookTokensManager from "$lib/components/WebhookTokensManager.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { expect, test, vi } from "vitest";
+import { confirmRequest } from "#lib/components/ui/confirm.js";
+import WebhookTokensManager from "#lib/components/WebhookTokensManager.svelte";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 const token = (id: string, label: string) => ({

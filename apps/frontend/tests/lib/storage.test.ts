@@ -1,6 +1,6 @@
-import { readStorage, writeStorage } from "$lib/storage";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { afterEach, expect, test, vi } from "vitest";
+import { readStorage, writeStorage } from "#lib/storage.js";
 
 afterEach(() => {
   vi.restoreAllMocks();

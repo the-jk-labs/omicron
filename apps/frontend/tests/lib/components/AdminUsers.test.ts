@@ -1,10 +1,10 @@
-import AdminUsers from "$lib/components/AdminUsers.svelte";
-import { confirmRequest } from "$lib/components/ui/confirm";
-import type { AdminUser, AdminUserDetail, DeletedUser } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { expect, test, vi } from "vitest";
+import AdminUsers from "#lib/components/AdminUsers.svelte";
+import { confirmRequest } from "#lib/components/ui/confirm.js";
+import type { AdminUser, AdminUserDetail, DeletedUser } from "#lib/types.js";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 function user(o: Partial<AdminUser> = {}): AdminUser {

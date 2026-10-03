@@ -1,6 +1,6 @@
-import { lastmod, newest, sitemapIndexResponse, urlsetResponse, xmlResponse } from "$lib/sitemap";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, test } from "vitest";
+import { lastmod, newest, sitemapIndexResponse, urlsetResponse, xmlResponse } from "#lib/sitemap.js";
 
 describe("lastmod", () => {
   test("is the UTC date of a timestamp", () => {

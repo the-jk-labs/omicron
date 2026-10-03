@@ -1,25 +1,24 @@
-import { env } from "$env/dynamic/public";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render, screen } from "@testing-library/svelte";
-import { readable } from "svelte/store";
 import { afterEach, expect, test, vi } from "vitest";
 import StatusPage from "../../../src/routes/status/+page.svelte";
+import { setPublicEnv } from "../../mocks/$app/env/public.js";
 
 const state = vi.hoisted(() => ({ instance: null as Record<string, unknown> | null }));
 vi.mock(
-  import("$app/stores"),
+  import("$app/state"),
   () =>
     ({
       get page() {
-        return readable({ data: { instance: state.instance }, url: new URL("http://localhost/status") });
+        return { data: { instance: state.instance }, url: new URL("http://localhost/status") };
       },
-      navigating: readable(null),
-      updated: readable({ current: false }),
+      navigating: null,
+      updated: { current: false },
     }) as never,
 );
 
 afterEach(() => {
-  env.PUBLIC_STATUS_URL = "";
+  setPublicEnv();
   state.instance = null;
 });
 
@@ -33,7 +32,7 @@ test("lists the health endpoints and the federation state", () => {
 });
 
 test("links an external status page when configured", () => {
-  env.PUBLIC_STATUS_URL = " https://status.blog.example ";
+  setPublicEnv({ PUBLIC_STATUS_URL: " https://status.blog.example " });
   render(StatusPage);
   expect(screen.getByRole("link", { name: "https://status.blog.example" })).toHaveAttribute("target", "_blank");
   expect(screen.getByText(/Federation is disabled\./)).toBeInTheDocument();

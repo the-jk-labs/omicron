@@ -1,10 +1,10 @@
-import { goto, invalidateAll, replaceState } from "$app/navigation";
-import { confirmRequest } from "$lib/components/ui/confirm";
-import type { OwnPostStatus, Post } from "$lib/types";
+import { goto, refreshAll } from "$app/navigation";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { expect, test, vi } from "vitest";
+import { confirmRequest } from "#lib/components/ui/confirm.js";
+import type { OwnPostStatus, Post } from "#lib/types.js";
 import ManagePage from "../../../../src/routes/posts/manage/+page.svelte";
 import { apiError, fakeFetch } from "../../../fakeFetch";
 import { post } from "../../../fixtures";
@@ -85,7 +85,7 @@ test("another tab loads once on first open, and the address bar follows", async 
   setup(data("draft", [draft]));
   await openTab("Published");
   await within(panel()).findByText("Live post");
-  expect(replaceState).toHaveBeenCalledWith("/posts/manage?tab=published", {});
+  expect(goto).toHaveBeenCalledWith("/posts/manage?tab=published", { shallow: true, replace: true, state: {} });
   expect(within(panel()).getByRole("link", { name: /Edit/ })).toHaveAttribute("href", "/posts/p1/edit");
   await openTab("Drafts");
   await openTab("Published");
@@ -124,7 +124,7 @@ test.for([
 ] as const)("%s → %s updates the post and reloads", async ([tab, row, item, body]) => {
   setup(data(tab, [row]));
   await rowMenu(item);
-  await waitFor(() => expect(invalidateAll).toHaveBeenCalled());
+  await waitFor(() => expect(refreshAll).toHaveBeenCalled());
   expect(api.calls.find((c) => c.method === "PATCH")).toMatchObject({ path: `/api/posts/${row.id}`, body });
 });
 
@@ -156,7 +156,7 @@ test("a failed action is shown and nothing reloads", async () => {
   setup(data("scheduled", [queued]), { "PATCH /api/posts/s1": apiError(409, "Already published") });
   await rowMenu("Publish now");
   await screen.findByText("Already published");
-  expect(invalidateAll).not.toHaveBeenCalled();
+  expect(refreshAll).not.toHaveBeenCalled();
 });
 
 test("a reload from the server replaces the list and the counts", async () => {
@@ -168,15 +168,15 @@ test("a reload from the server replaces the list and the counts", async () => {
 
 test("acting on another tab keeps the author on that tab", async () => {
   const { rerender } = setup(data("draft", [draft]));
-  // What SvelteKit does on invalidateAll here: re-run the load for the URL the
+  // What SvelteKit does on refreshAll here: re-run the load for the URL the
   // page was loaded with, /posts/manage?tab=draft.
-  vi.mocked(invalidateAll).mockImplementation(async () => {
+  vi.mocked(refreshAll).mockImplementation(async () => {
     await rerender({ data: data("draft", [draft], { draft: 2, scheduled: 1, published: 0 }) as never });
   });
   await openTab("Published");
   await within(panel()).findByText("Live post");
   await rowMenu("Unpublish");
   await answerConfirm(true);
-  await waitFor(() => expect(invalidateAll).toHaveBeenCalled());
+  await waitFor(() => expect(refreshAll).toHaveBeenCalled());
   expect(screen.getByRole("tab", { name: /^Published/ })).toHaveAttribute("aria-selected", "true");
 });

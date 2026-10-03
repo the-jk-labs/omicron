@@ -1,9 +1,9 @@
 import { page } from "$app/state";
-import Discover from "$lib/components/Discover.svelte";
-import type { Post } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render, screen } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
+import Discover from "#lib/components/Discover.svelte";
+import type { Post } from "#lib/types.js";
 
 const post: Post = {
   id: "11111111-2222-3333-4444-555555555555",

@@ -1,6 +1,6 @@
-import { isPwnedPasswordClient, MIN_PASSWORD_LEN, passwordRequirements, passwordStrength } from "$lib/password";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, test, vi } from "vitest";
+import { isPwnedPasswordClient, MIN_PASSWORD_LEN, passwordRequirements, passwordStrength } from "#lib/password.js";
 
 describe("passwordStrength", () => {
   test.for([

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Minimal SvelteKit load / request events: just the fields the app's loaders
 // and endpoints read. `fetch` is a fakeFetch, so the backend is a route table.
-import type { User } from "$lib/types";
+import type { User } from "#lib/types.js";
 import { fakeFetch } from "../fakeFetch";
 
 type Routes = Parameters<typeof fakeFetch>[0];

@@ -1,4 +1,4 @@
-import { goto, invalidateAll } from "$app/navigation";
+import { goto, refreshAll } from "$app/navigation";
 import { page } from "$app/state";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
@@ -86,7 +86,7 @@ test("finishing with console mail submits normalized details, signs in and goes 
   await toEmailStep();
   await fireEvent.click(screen.getByRole("button", { name: "Finish setup" }));
   await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
-  expect(invalidateAll).toHaveBeenCalled();
+  expect(refreshAll).toHaveBeenCalled();
   expect(setupBody()).toEqual({
     appName: "Starlog",
     email: { mode: "console" },

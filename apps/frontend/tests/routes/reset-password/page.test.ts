@@ -1,24 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
-import { readable } from "svelte/store";
 import { beforeEach, expect, test, vi } from "vitest";
 import ResetPasswordPage from "../../../src/routes/reset-password/+page.svelte";
 
 const state = vi.hoisted(() => ({ href: "http://localhost/reset-password?token=tok", pwned: false as boolean | null }));
 vi.mock(
-  import("$app/stores"),
+  import("$app/state"),
   () =>
     ({
       get page() {
-        return readable({ data: { timeZone: "UTC" }, url: new URL(state.href) });
+        return { data: { timeZone: "UTC" }, url: new URL(state.href) };
       },
-      navigating: readable(null),
-      updated: readable({ current: false }),
+      navigating: null,
+      updated: { current: false },
     }) as never,
 );
 const resetPassword = vi.hoisted(() => vi.fn<(a: unknown) => Promise<{ error?: { message?: string } | null }>>());
-vi.mock("$lib/auth-client", () => ({ authClient: { resetPassword } }));
-vi.mock(import("$lib/password"), async (importOriginal) => ({
+vi.mock("#lib/auth-client.js", () => ({ authClient: { resetPassword } }));
+vi.mock(import("#lib/password.js"), async (importOriginal) => ({
   ...(await importOriginal()),
   isPwnedPasswordClient: async () => state.pwned,
 }));

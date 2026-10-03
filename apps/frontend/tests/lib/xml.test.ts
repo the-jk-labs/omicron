@@ -1,6 +1,6 @@
-import { escapeXml } from "$lib/xml";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from "vitest";
+import { escapeXml } from "#lib/xml.js";
 
 test("escapes the five XML specials, ampersand first", () => {
   expect(escapeXml(`<a href="x">Tom & Jerry's</a>`)).toBe(

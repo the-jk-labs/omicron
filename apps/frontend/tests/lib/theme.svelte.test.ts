@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { beforeEach, expect, test, vi } from "vitest";
 
-vi.mock(import("$app/environment"), () => ({ browser: true, building: false, dev: true, version: "test" }));
+vi.mock(import("$app/env"), () => ({ browser: true, building: false, dev: true, version: "test" }));
 
 let osDark = false;
 let onOsChange: ((e: { matches: boolean }) => void) | null = null;
@@ -27,7 +27,7 @@ beforeEach(() => {
 
 async function load() {
   vi.resetModules();
-  return (await import("$lib/theme.svelte")).theme;
+  return (await import("#lib/theme.svelte.js")).theme;
 }
 
 test("with nothing saved it follows the OS", async () => {

@@ -1,6 +1,6 @@
-import { Autosave } from "$lib/autosave.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { Autosave } from "#lib/autosave.svelte.js";
 
 beforeEach(() => {
   vi.useFakeTimers();

@@ -1,11 +1,11 @@
-import BannerPicker from "$lib/components/BannerPicker.svelte";
-import type { CoverCredit } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
+import BannerPicker from "#lib/components/BannerPicker.svelte";
+import type { CoverCredit } from "#lib/types.js";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
-vi.mock(import("$lib/editor/image"), async (importOriginal) => ({
+vi.mock(import("#lib/editor/image.js"), async (importOriginal) => ({
   ...(await importOriginal()),
   prepareImage: async (file: Blob) => ({ blob: file, type: "image/webp" }),
 }));

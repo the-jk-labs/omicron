@@ -1,7 +1,7 @@
-import SaveStatus from "$lib/components/SaveStatus.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render, screen } from "@testing-library/svelte";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import SaveStatus from "#lib/components/SaveStatus.svelte";
 
 const NOW = new Date("2026-06-15T12:00:00Z").getTime();
 beforeEach(() => {

@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render, screen } from "@testing-library/svelte";
-import { readable } from "svelte/store";
 import { expect, test, vi } from "vitest";
 import PrivacyPage from "../../../src/routes/privacy/+page.svelte";
 
 vi.mock(
-  import("$app/stores"),
+  import("$app/state"),
   () =>
     ({
-      page: readable({
+      page: {
         data: { instance: { name: "Starlog", domain: "blog.example" } },
         url: new URL("http://localhost/privacy"),
-      }),
-      navigating: readable(null),
-      updated: readable({ current: false }),
+      },
+      navigating: null,
+      updated: { current: false },
     }) as never,
 );
 

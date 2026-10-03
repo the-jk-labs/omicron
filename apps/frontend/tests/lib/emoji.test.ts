@@ -1,6 +1,6 @@
-import { insertEmojiIntoField } from "$lib/emoji";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test, vi } from "vitest";
+import { insertEmojiIntoField } from "#lib/emoji.js";
 
 function field(value: string, start: number, end = start) {
   const el = document.createElement("textarea");

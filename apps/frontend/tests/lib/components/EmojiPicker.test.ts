@@ -1,7 +1,7 @@
-import EmojiPicker from "$lib/components/EmojiPicker.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render, waitFor } from "@testing-library/svelte";
 import { afterEach, expect, test, vi } from "vitest";
+import EmojiPicker from "#lib/components/EmojiPicker.svelte";
 
 // The real package registers a custom element that needs IndexedDB; an
 // unregistered <emoji-picker> is enough to drive the wrapper.

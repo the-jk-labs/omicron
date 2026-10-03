@@ -1,9 +1,9 @@
-import ListFormDialog from "$lib/components/ListFormDialog.svelte";
-import type { ReadingList } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { createRawSnippet } from "svelte";
 import { expect, test, vi } from "vitest";
+import ListFormDialog from "#lib/components/ListFormDialog.svelte";
+import type { ReadingList } from "#lib/types.js";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 // The page passes its own trigger; bits-ui hands it the props (handlers,

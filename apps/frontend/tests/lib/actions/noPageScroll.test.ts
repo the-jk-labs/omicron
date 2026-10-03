@@ -1,6 +1,6 @@
-import { noPageScroll } from "$lib/actions/noPageScroll";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from "vitest";
+import { noPageScroll } from "#lib/actions/noPageScroll.js";
 
 const wheel = (ctrlKey = false) => new WheelEvent("wheel", { cancelable: true, ctrlKey });
 const touch = () => new Event("touchmove", { cancelable: true });

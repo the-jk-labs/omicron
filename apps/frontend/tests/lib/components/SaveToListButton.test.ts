@@ -1,7 +1,7 @@
-import SaveToListButton from "$lib/components/SaveToListButton.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
+import SaveToListButton from "#lib/components/SaveToListButton.svelte";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 const lists = [

@@ -1,10 +1,10 @@
 import { goto } from "$app/navigation";
-import { confirmRequest } from "$lib/components/ui/confirm";
-import type { Post, User } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { beforeEach, expect, test, vi } from "vitest";
+import { confirmRequest } from "#lib/components/ui/confirm.js";
+import type { Post, User } from "#lib/types.js";
 import PostPage from "../../../../src/routes/[handle]/[slug]/+page.svelte";
 import { apiError, fakeFetch } from "../../../fakeFetch";
 import { post } from "../../../fixtures";

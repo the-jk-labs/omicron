@@ -1,8 +1,8 @@
-import { reading } from "$lib/prefs.svelte";
-import type { Page, Post } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, expect, test, vi } from "vitest";
+import { reading } from "#lib/prefs.svelte.js";
+import type { Page, Post } from "#lib/types.js";
 import HomePage from "../../src/routes/+page.svelte";
 import { apiError, fakeFetch } from "../fakeFetch";
 import { post } from "../fixtures";

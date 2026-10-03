@@ -1,21 +1,22 @@
-import { timeZone } from "$lib/timezone";
-import type { DashboardSummary, PostStat } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, within } from "@testing-library/svelte";
-import type { Writable } from "svelte/store";
 import { afterEach, expect, test, vi } from "vitest";
+import { timeZone } from "#lib/timezone.svelte.js";
+import type { DashboardSummary, PostStat } from "#lib/types.js";
 import DashboardPage from "../../../src/routes/dashboard/+page.svelte";
 
-vi.mock(import("$lib/timezone"), async (importOriginal) => {
-  const { writable } = await import("svelte/store");
-  return { ...(await importOriginal()), timeZone: writable("UTC") };
-});
-vi.mock(import("$lib/locale"), async (importOriginal) => {
-  const { readable } = await import("svelte/store");
-  return { ...(await importOriginal()), locale: readable("en-US") };
-});
+vi.mock(import("#lib/timezone.svelte.js"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  timeZone: { current: "UTC" },
+}));
+vi.mock(import("#lib/locale.svelte.js"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  locale: { current: "en-US" },
+}));
 
-afterEach(() => (timeZone as Writable<string>).set("UTC"));
+afterEach(() => {
+  (timeZone as { current: string }).current = "UTC";
+});
 
 function stat(o: Partial<PostStat> = {}): PostStat {
   return {
@@ -84,7 +85,7 @@ test("an all-quiet range shows no chart", () => {
 });
 
 test("day labels don't shift a day for readers west of UTC", () => {
-  (timeZone as Writable<string>).set("America/New_York");
+  (timeZone as { current: string }).current = "America/New_York";
   setup(summary());
   expect(screen.getByRole("button", { name: "Jan 5: 8 views" })).toBeInTheDocument();
 });

@@ -1,6 +1,6 @@
-import { fitPre } from "$lib/actions/fitPre";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { beforeEach, expect, test, vi } from "vitest";
+import { fitPre } from "#lib/actions/fitPre.js";
 
 let resizeCallbacks: (() => void)[];
 beforeEach(() => {

@@ -1,7 +1,7 @@
-import TagList from "$lib/components/TagList.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render, screen } from "@testing-library/svelte";
 import { expect, test } from "vitest";
+import TagList from "#lib/components/TagList.svelte";
 
 test("each tag links to its page by slug, shown by name", () => {
   render(TagList, {

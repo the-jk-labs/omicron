@@ -1,15 +1,15 @@
 import { page } from "$app/state";
-import MobileNav from "$lib/components/MobileNav.svelte";
-import type { User } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { afterEach, expect, test } from "vitest";
+import MobileNav from "#lib/components/MobileNav.svelte";
+import type { User } from "#lib/types.js";
 
 const me = { id: "u1", username: "ada", displayName: "Ada" } as User;
 const nav = () => screen.getByRole("navigation", { name: "Primary" });
 
 afterEach(() => {
-  page.url = new URL("http://localhost/") as typeof page.url;
+  page.url = new URL("http://localhost/");
   Object.defineProperty(window, "scrollY", { value: 0, configurable: true });
 });
 
@@ -19,7 +19,7 @@ function scrollTo(y: number) {
 }
 
 test("five tabs, the current one marked as the page", () => {
-  page.url = new URL("http://localhost/lists/abc") as typeof page.url;
+  page.url = new URL("http://localhost/lists/abc");
   render(MobileNav, { props: { user: me } });
   expect(screen.getAllByRole("link").map((a) => a.textContent?.trim())).toEqual([
     "Home",
@@ -62,7 +62,7 @@ test("keyboard focus brings a retracted bar back", async () => {
 });
 
 test("another user's profile isn't announced as your Profile", () => {
-  page.url = new URL("http://localhost/@adam") as typeof page.url;
+  page.url = new URL("http://localhost/@adam");
   render(MobileNav, { props: { user: me } });
   expect(screen.getByRole("link", { name: "Profile" })).not.toHaveAttribute("aria-current");
 });

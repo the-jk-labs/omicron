@@ -1,8 +1,8 @@
-import ProfileLinkIcon from "$lib/components/ProfileLinkIcon.svelte";
-import { platformMeta } from "$lib/profileLinks";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render } from "@testing-library/svelte";
 import { expect, test } from "vitest";
+import ProfileLinkIcon from "#lib/components/ProfileLinkIcon.svelte";
+import { platformMeta } from "#lib/profileLinks.js";
 
 test("a brand platform draws its own mark at the requested size", () => {
   const { container } = render(ProfileLinkIcon, { props: { platform: "github", size: 24 } });

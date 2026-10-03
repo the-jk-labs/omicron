@@ -1,7 +1,7 @@
-import { blogPostingLd, breadcrumbLd, profilePageLd, serializeJsonLd, webSiteLd } from "$lib/seo";
-import type { Profile } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, test } from "vitest";
+import { blogPostingLd, breadcrumbLd, profilePageLd, serializeJsonLd, webSiteLd } from "#lib/seo.js";
+import type { Profile } from "#lib/types.js";
 import { post } from "../fixtures";
 
 const site = { origin: "https://blog.example", appName: "Omicron" };

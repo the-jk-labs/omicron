@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { goto, invalidateAll } from "$app/navigation";
+import { goto, refreshAll } from "$app/navigation";
 import { page } from "$app/state";
-import type * as passwordHelpers from "$lib/password";
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type * as passwordHelpers from "#lib/password.js";
 import RegisterPage from "../../../src/routes/register/+page.svelte";
 
 const { signUp } = vi.hoisted(() => ({ signUp: vi.fn() }));
-vi.mock("$lib/auth-client", () => ({
+vi.mock("#lib/auth-client.js", () => ({
   authClient: { signUp: { email: signUp }, sendVerificationEmail: vi.fn() },
 }));
-vi.mock("$lib/password", async (importOriginal) => ({
+vi.mock("#lib/password.js", async (importOriginal) => ({
   ...(await importOriginal<typeof passwordHelpers>()),
   isPwnedPasswordClient: () => Promise.resolve(false),
 }));
@@ -80,7 +80,7 @@ describe("registration", () => {
     await fillRegistration();
 
     await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
-    expect(invalidateAll).toHaveBeenCalledOnce();
+    expect(refreshAll).toHaveBeenCalledOnce();
     expect(screen.queryByRole("heading", { name: "Check your inbox" })).not.toBeInTheDocument();
   });
 });

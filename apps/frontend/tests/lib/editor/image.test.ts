@@ -1,6 +1,6 @@
-import { isAcceptedImage, prepareImage } from "$lib/editor/image";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { beforeEach, describe, expect, test, vi } from "vitest";
+import { isAcceptedImage, prepareImage } from "#lib/editor/image.js";
 
 const file = (name: string, type: string, size = 1000) => new File([new Uint8Array(size)], name, { type });
 

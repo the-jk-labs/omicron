@@ -1,15 +1,15 @@
-import { goto, invalidateAll } from "$app/navigation";
-import Nav from "$lib/components/Nav.svelte";
-import { notifications } from "$lib/notifications.svelte";
-import { theme } from "$lib/theme.svelte";
-import type { Notification, User } from "$lib/types";
+import { goto, refreshAll } from "$app/navigation";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, expect, test, vi } from "vitest";
+import Nav from "#lib/components/Nav.svelte";
+import { notifications } from "#lib/notifications.svelte.js";
+import { theme } from "#lib/theme.svelte.js";
+import type { Notification, User } from "#lib/types.js";
 import { fakeFetch } from "../../fakeFetch";
 
 const signOut = vi.hoisted(() => vi.fn<() => Promise<unknown>>());
-vi.mock("$lib/auth-client", () => ({ authClient: { signOut } }));
+vi.mock("#lib/auth-client.js", () => ({ authClient: { signOut } }));
 
 afterEach(() => {
   notifications.count = 0;
@@ -155,5 +155,5 @@ test("signing out reloads the session and goes home", async () => {
   await fireEvent.click(screen.getByRole("menuitem", { name: "Sign out" }));
   await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
   expect(signOut).toHaveBeenCalled();
-  expect(invalidateAll).toHaveBeenCalled();
+  expect(refreshAll).toHaveBeenCalled();
 });

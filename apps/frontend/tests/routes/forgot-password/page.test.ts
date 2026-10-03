@@ -7,7 +7,7 @@ import ForgotPasswordPage from "../../../src/routes/forgot-password/+page.svelte
 const requestPasswordReset = vi.hoisted(() =>
   vi.fn<(a: unknown) => Promise<{ error?: { message?: string } | null }>>(),
 );
-vi.mock("$lib/auth-client", () => ({ authClient: { requestPasswordReset } }));
+vi.mock("#lib/auth-client.js", () => ({ authClient: { requestPasswordReset } }));
 
 afterEach(() => {
   Object.assign(page.data, { instance: undefined });

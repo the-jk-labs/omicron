@@ -1,9 +1,8 @@
-import type { Post } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render, screen } from "@testing-library/svelte";
 import { createRawSnippet } from "svelte";
-import { readable } from "svelte/store";
 import { beforeEach, expect, test, vi } from "vitest";
+import type { Post } from "#lib/types.js";
 import Layout from "../../src/routes/+layout.svelte";
 import { apiError, fakeFetch } from "../fakeFetch";
 import { post } from "../fixtures";
@@ -14,14 +13,14 @@ const route = vi.hoisted(() => ({
   data: {} as Record<string, unknown>,
 }));
 vi.mock(
-  import("$app/stores"),
+  import("$app/state"),
   () =>
     ({
       get page() {
-        return readable({ url: new URL(route.href), route: { id: route.id }, data: route.data, params: {} });
+        return { url: new URL(route.href), route: { id: route.id }, data: route.data, params: {} };
       },
-      navigating: readable(null),
-      updated: readable({ current: false }),
+      navigating: null,
+      updated: { current: false },
     }) as never,
 );
 

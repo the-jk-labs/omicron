@@ -1,7 +1,7 @@
-import Time from "$lib/components/Time.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { render } from "@testing-library/svelte";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import Time from "#lib/components/Time.svelte";
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -11,7 +11,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-// The $app/stores stand-in renders in UTC, en-US.
+// The $app/state stand-in renders in UTC, en-US.
 const time = (props: Record<string, unknown>) =>
   render(Time, { props: { iso: "2026-06-01T09:05:00Z", ...props } }).container.querySelector("time")!;
 

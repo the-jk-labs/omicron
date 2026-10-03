@@ -1,6 +1,6 @@
-import { findLanguage, LANGUAGES, languageLabel } from "$lib/languages";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from "vitest";
+import { findLanguage, LANGUAGES, languageLabel } from "#lib/languages.js";
 
 test("codes are unique primary subtags, and the list is alphabetized by English name", () => {
   const codes = LANGUAGES.map((l) => l.code);

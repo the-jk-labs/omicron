@@ -1,7 +1,7 @@
-import AdminUnsplash from "$lib/components/AdminUnsplash.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
+import AdminUnsplash from "#lib/components/AdminUnsplash.svelte";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 function setup(configured: boolean, routes: Parameters<typeof fakeFetch>[0] = {}) {

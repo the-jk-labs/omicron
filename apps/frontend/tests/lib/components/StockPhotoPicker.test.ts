@@ -1,8 +1,8 @@
-import StockPhotoPicker from "$lib/components/StockPhotoPicker.svelte";
-import type { StockPhoto } from "$lib/types";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
+import StockPhotoPicker from "#lib/components/StockPhotoPicker.svelte";
+import type { StockPhoto } from "#lib/types.js";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 function photo(id: string, o: Partial<StockPhoto> = {}): StockPhoto {

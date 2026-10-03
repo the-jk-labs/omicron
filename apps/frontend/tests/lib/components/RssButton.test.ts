@@ -1,7 +1,7 @@
-import RssButton from "$lib/components/RssButton.svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import RssButton from "#lib/components/RssButton.svelte";
 
 beforeEach(() => {
   vi.useFakeTimers();

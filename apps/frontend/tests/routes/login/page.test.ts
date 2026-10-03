@@ -1,4 +1,4 @@
-import { goto, invalidateAll } from "$app/navigation";
+import { goto, refreshAll } from "$app/navigation";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
@@ -9,7 +9,7 @@ const auth = vi.hoisted(() => ({
   username: vi.fn<(a: unknown) => Promise<{ error?: { message?: string; code?: string } | null }>>(),
   sendVerificationEmail: vi.fn<(a: unknown) => Promise<{ error?: { message?: string } | null }>>(),
 }));
-vi.mock("$lib/auth-client", () => ({
+vi.mock("#lib/auth-client.js", () => ({
   authClient: {
     signIn: { email: auth.email, username: auth.username },
     sendVerificationEmail: auth.sendVerificationEmail,
@@ -28,7 +28,7 @@ test("an email signs in by email, then the app reloads its data and goes home", 
   await signIn("ada@example.com");
   await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
   expect(auth.email).toHaveBeenCalledWith({ email: "ada@example.com", password: "correct horse battery" });
-  expect(invalidateAll).toHaveBeenCalled();
+  expect(refreshAll).toHaveBeenCalled();
 });
 
 test("a username signs in by username", async () => {
