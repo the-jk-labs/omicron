@@ -12,6 +12,13 @@ vi.mock(import("#lib/editor/image.js"), async (importOriginal) => ({
 }));
 vi.mock("emoji-picker-element", () => ({}));
 
+// Holding back onMount shows what the server renders, before Tiptap starts.
+const mounting = vi.hoisted(() => ({ skip: false }));
+vi.mock(import("svelte"), async (original) => {
+  const svelte = await original();
+  return { ...svelte, onMount: (fn) => (mounting.skip ? undefined : svelte.onMount(fn)) };
+});
+
 beforeEach(() => {
   // ProseMirror measures ranges when focusing/scrolling; jsdom has no layout.
   Object.assign(Range.prototype, {
@@ -38,6 +45,36 @@ async function setup(content?: string, routes: Parameters<typeof fakeFetch>[0] =
 
 const tool = (label: string) => fireEvent.click(screen.getByRole("button", { name: label }));
 const status = () => document.body.textContent.match(/[\d,]+ characters?.*?(min read|words?)/)?.[0];
+
+function renderUnmounted(previewHtml?: string) {
+  mounting.skip = true;
+  try {
+    render(Editor, { props: { onUpdate: () => {}, previewHtml } });
+  } finally {
+    mounting.skip = false;
+  }
+  return document.querySelector<HTMLElement>(".tiptap")!;
+}
+
+test("before Tiptap starts, a new post shows the toolbar and the placeholder line", () => {
+  const body = renderUnmounted();
+  expect(screen.getByRole("toolbar")).toBeInTheDocument();
+  expect(body.querySelector("p.is-editor-empty")).toHaveAttribute("data-placeholder", "Write your article…");
+  expect(screen.queryByText(/Loading/)).toBeNull();
+});
+
+test("before Tiptap starts, a draft shows its stored body", () => {
+  const body = renderUnmounted("<h2>Hello</h2><p>Some <strong>text</strong>.</p>");
+  expect(body.querySelector("h2")).toHaveTextContent("Hello");
+  expect(body.querySelector("strong")).toHaveTextContent("text");
+  expect(body).toHaveAttribute("aria-hidden", "true");
+});
+
+test("once Tiptap starts, it replaces the static body: one editable surface remains", async () => {
+  const { dom } = await setup("<p>Body</p>");
+  expect(document.querySelectorAll(".tiptap")).toHaveLength(1);
+  expect(dom).toHaveAttribute("contenteditable", "true");
+});
 
 test("stored HTML is parsed as HTML, not escaped as Markdown text", async () => {
   const { editor } = await setup("<p>alpha <strong>beta</strong></p>");

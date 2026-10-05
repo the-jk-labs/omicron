@@ -91,7 +91,7 @@
 </script>
 
 <div
-  class="flex flex-wrap items-center gap-2 rounded-input border border-border-input bg-background px-3 py-2 transition-colors focus-within:border-foreground/40"
+  class="flex min-h-10 flex-wrap items-center gap-2 rounded-input border border-border-input bg-background px-3 py-1 transition-colors focus-within:border-foreground/40"
   role="group"
   aria-label="Tags"
 >

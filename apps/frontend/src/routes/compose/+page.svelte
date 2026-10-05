@@ -16,6 +16,7 @@
   import TagInput from "#lib/components/TagInput.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
+  import Editor from "#lib/editor/Editor.svelte";
   import { formatScheduleLong, timeUntil } from "#lib/format.js";
   import { reading } from "#lib/prefs.svelte.js";
   import { timeZone } from "#lib/timezone.svelte.js";
@@ -25,13 +26,6 @@
   let { data }: { data: PageData } = $props();
   // Seed the editor once from the loaded draft; later edits live in the editor.
   const draft = untrack(() => data.draft);
-
-  // Lazy-load the Tiptap editor so it stays out of the initial bundle.
-  type EditorComp = typeof import("#lib/editor/Editor.svelte").default;
-  let EditorComponent = $state<EditorComp | null>(null);
-  onMount(async () => {
-    EditorComponent = (await import("#lib/editor/Editor.svelte")).default;
-  });
 
   // When reopened from the Drafts list, `postId` is set so saving updates the
   // existing draft instead of creating a new one. It also gets set after the
@@ -339,10 +333,10 @@
 
 <BannerPicker bind:coverUrl bind:coverCredit contentHtml={html} onChange={change} />
 
-{#if EditorComponent}
-  <EditorComponent {onUpdate} content={(draft?.contentJson as Content) ?? draft?.contentHtml} />
-{:else}
-  <p class="text-muted-foreground">Loading editor…</p>
-{/if}
+<Editor
+  {onUpdate}
+  content={(draft?.contentJson as Content) ?? draft?.contentHtml}
+  previewHtml={draft?.contentHtml ?? ""}
+/>
 
 {#if error}<p class="mt-4 text-sm text-destructive">{error}</p>{/if}
