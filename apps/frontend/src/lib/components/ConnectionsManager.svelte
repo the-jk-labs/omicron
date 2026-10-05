@@ -104,7 +104,8 @@
 
   {#each panels as p (p.value)}
     <Tabs.Content value={p.value} class="pt-2">
-      {#if p.loading && p.items.length === 0}
+      <!-- Not loaded and no error yet covers SSR, before onMount starts the load. -->
+      {#if !p.loaded && !p.error}
         <p class="py-6 text-center text-sm text-muted-foreground">Loading…</p>
       {:else if !p.loaded}
         <div class="flex flex-col items-center gap-3 py-6 text-center text-sm">
