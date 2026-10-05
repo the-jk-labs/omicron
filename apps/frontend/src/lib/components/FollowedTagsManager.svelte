@@ -2,17 +2,21 @@
 <!-- Lists the tags the signed-in user follows, with an unfollow action per row.
      Following a tag happens from its tag page; this is the management surface. -->
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { ApiError, endpoints } from "#lib/api/index.js";
   import Icon from "#lib/components/Icon.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import type { TagWithCount } from "#lib/types.js";
 
+  // `initial` is the server-loaded list; without it the browser loads it.
+  let { initial = null }: { initial?: TagWithCount[] | null } = $props();
+  const seed = untrack(() => initial);
+
   const api = endpoints();
 
-  let tags = $state<TagWithCount[]>([]);
-  let loaded = $state(false);
-  let loading = $state(true);
+  let tags = $state<TagWithCount[]>(seed ?? []);
+  let loaded = $state(!!seed);
+  let loading = $state(!seed);
   let busy = $state<string | null>(null); // slug whose unfollow is in flight
   let error = $state("");
 
@@ -46,7 +50,7 @@
   // Browser-only: the API client uses relative URLs, which SvelteKit forbids
   // during SSR.
   onMount(() => {
-    load();
+    if (!seed) load();
   });
 </script>
 

@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Tabs } from "bits-ui";
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { ApiError, endpoints } from "#lib/api/index.js";
   import Icon, { type IconName } from "#lib/components/Icon.svelte";
   import Avatar from "#lib/components/ui/Avatar.svelte";
@@ -27,10 +27,15 @@
     error: string;
   };
 
+  // `initial` holds the server-loaded lists; a missing one is loaded by the browser.
+  let { initial = {} }: { initial?: Partial<Record<Kind, RelationActor[] | null>> } = $props();
+  const seed = untrack(() => initial);
+
   const api = endpoints();
 
   function panel(init: Pick<Panel, "value" | "label" | "icon" | "empty" | "actionLabel" | "load" | "act">): Panel {
-    return { ...init, items: [], loaded: false, loading: false, busy: null, error: "" };
+    const items = seed[init.value];
+    return { ...init, items: items ?? [], loaded: !!items, loading: false, busy: null, error: "" };
   }
 
   const panels = $state<Panel[]>([

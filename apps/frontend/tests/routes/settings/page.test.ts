@@ -238,6 +238,18 @@ test("a failed photo removal is shown", async () => {
   await screen.findByText("Storage down");
 });
 
+test("each theme button names its option, which the pre-paint preference styles", async () => {
+  setup();
+  await openTab("Preferences");
+  for (const [label, option] of [
+    ["Light", "light"],
+    ["Dark", "dark"],
+    ["System", "system"],
+  ]) {
+    expect(screen.getByRole("button", { name: new RegExp(`^${label}$`) })).toHaveAttribute("data-theme-option", option);
+  }
+});
+
 test("theme and default feed apply immediately", async () => {
   setup();
   await openTab("Preferences");
@@ -429,7 +441,7 @@ describe("tabs", () => {
     ["Preferences", ["Appearance", "Reading", "Followed tags"]],
     ["Privacy", ["Privacy", "Muted & blocked"]],
     ["Account", ["Account", "Passkeys", "Active sessions", "Delete account"]],
-    ["Integrations", ["Integrations"]],
+    ["Integrations", ["Publishing tokens"]],
   ] as const)("the %s tab groups its sections", async ([tab, headings]) => {
     setup();
     await openTab(tab);

@@ -624,6 +624,15 @@ html {
   font-weight: 600;
 }
 
+/* Settings' theme switch. The chosen option is styled from the preference the
+   app.html script puts on <html> before first paint: the server can't know it,
+   so a class set after hydration would show "System" selected first. */
+:root[data-theme-pref="light"] [data-theme-option="light"],
+:root[data-theme-pref="dark"] [data-theme-option="dark"],
+:root[data-theme-pref="system"] [data-theme-option="system"] {
+  @apply bg-background text-foreground shadow-mini;
+}
+
 /* Tiptap editor surface */
 .tiptap {
   @apply min-h-[320px] outline-hidden;

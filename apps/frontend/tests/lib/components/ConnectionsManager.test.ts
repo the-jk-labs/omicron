@@ -81,3 +81,22 @@ test("before the list starts loading it shows Loading, not a failed load", () =>
     mounting.skip = false;
   }
 });
+
+test("server-loaded lists show straight away, and switching tabs loads nothing", async () => {
+  const { fetch } = fakeFetch({});
+  vi.stubGlobal("fetch", fetch);
+  render(ConnectionsManager, { props: { initial: { muted: [bob], blocked: [eve] } } });
+  expect(screen.getByText("Bob")).toBeInTheDocument();
+  expect(screen.queryByText("Loading…")).toBeNull();
+  await fireEvent.mouseDown(screen.getByRole("tab", { name: "Blocked" }));
+  await screen.findByText("Eve");
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+test("a list the server couldn't load is loaded by the browser", async () => {
+  const { fetch, calls } = fakeFetch({ "GET /api/users/me/muted": { items: [bob] } });
+  vi.stubGlobal("fetch", fetch);
+  render(ConnectionsManager, { props: { initial: { muted: null, blocked: [] } } });
+  await screen.findByText("Bob");
+  expect(calls.map((c) => c.path)).toEqual(["/api/users/me/muted"]);
+});

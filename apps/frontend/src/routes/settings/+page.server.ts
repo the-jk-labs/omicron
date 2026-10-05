@@ -15,13 +15,32 @@ async function sessions(api: Api) {
   }
 }
 
-// Settings are personal, so this page requires authentication. The passkey and
-// session lists load here so they render with the page; a list that fails is
-// left to the browser, which then shows the error.
+// Settings are personal, so this page requires authentication. Every list on
+// the page loads here so it renders with the page; a list that fails is left to
+// the browser, which then shows the error.
 export const load: PageServerLoad = async ({ fetch, parent }) => {
   const { user } = await parent();
   if (!user) redirect(302, "/login");
   const api = endpoints(fetch);
-  const [passkeys, sessionList] = await Promise.all([api.passkeys().catch(() => null), sessions(api)]);
-  return { user, passkeys, sessions: sessionList };
+  const [passkeys, sessionList, followedTags, muted, blocked, webhookTokens] = await Promise.all([
+    api.passkeys().catch(() => null),
+    sessions(api),
+    api.followedTags().then(
+      (r) => r.tags,
+      () => null,
+    ),
+    api.muted().then(
+      (r) => r.items,
+      () => null,
+    ),
+    api.blocked().then(
+      (r) => r.items,
+      () => null,
+    ),
+    api.webhookTokens().then(
+      (r) => r.tokens,
+      () => null,
+    ),
+  ]);
+  return { user, passkeys, sessions: sessionList, followedTags, muted, blocked, webhookTokens };
 };

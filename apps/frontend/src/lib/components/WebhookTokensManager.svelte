@@ -6,7 +6,7 @@
      copy button, until the user dismisses it. -->
 <script lang="ts">
   import { Label } from "bits-ui";
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { ApiError, endpoints } from "#lib/api/index.js";
   import Icon from "#lib/components/Icon.svelte";
   import Time from "#lib/components/Time.svelte";
@@ -14,11 +14,15 @@
   import { confirm } from "#lib/components/ui/confirm.js";
   import type { WebhookToken } from "#lib/types.js";
 
+  // `initial` is the server-loaded list; without it the browser loads it.
+  let { initial = null }: { initial?: WebhookToken[] | null } = $props();
+  const seed = untrack(() => initial);
+
   const api = endpoints();
 
-  let tokens = $state<WebhookToken[]>([]);
-  let loaded = $state(false);
-  let loading = $state(true);
+  let tokens = $state<WebhookToken[]>(seed ?? []);
+  let loaded = $state(!!seed);
+  let loading = $state(!seed);
   let label = $state("");
   let creating = $state(false);
   let busy = $state<string | null>(null); // id whose revoke is in flight
@@ -97,7 +101,7 @@
   // Browser-only: the API client uses relative URLs, which SvelteKit forbids
   // during SSR.
   onMount(() => {
-    load();
+    if (!seed) load();
   });
 </script>
 

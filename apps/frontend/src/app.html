@@ -15,14 +15,14 @@
     <script nonce="%sveltekit.nonce%">
       // Apply the theme before first paint to avoid a flash. An explicit
       // "light"/"dark" choice wins; otherwise ("system" or unset) follow the OS.
+      // The preference itself goes on <html> too, for Settings' theme switch.
       (function () {
         try {
           var stored = localStorage.getItem("theme");
-          var dark =
-            stored === "light" || stored === "dark"
-              ? stored === "dark"
-              : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var fixed = stored === "light" || stored === "dark";
+          var dark = fixed ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
           document.documentElement.classList.toggle("dark", dark);
+          document.documentElement.dataset.themePref = fixed ? stored : "system";
         } catch (e) {}
       })();
     </script>

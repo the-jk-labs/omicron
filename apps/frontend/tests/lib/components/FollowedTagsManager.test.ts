@@ -23,3 +23,20 @@ test("a failed load says so instead of claiming there are no tags", async () => 
   await new Promise((r) => setTimeout(r, 20));
   expect(screen.queryByText(/You don't follow any tags yet/)).toBe(null);
 });
+
+test("a server-loaded list shows straight away, without loading it again", () => {
+  const { fetch } = fakeFetch({});
+  vi.stubGlobal("fetch", fetch);
+  render(FollowedTagsManager, { props: { initial: [{ slug: "deno", name: "deno", postCount: 3 }] } });
+  expect(screen.getByRole("button", { name: "Unfollow" })).toBeInTheDocument();
+  expect(screen.queryByText("Loading…")).toBeNull();
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+test("a server-loaded empty list shows the empty state straight away", () => {
+  const { fetch } = fakeFetch({});
+  vi.stubGlobal("fetch", fetch);
+  render(FollowedTagsManager, { props: { initial: [] } });
+  expect(screen.getByText(/You don't follow any tags yet/)).toBeInTheDocument();
+  expect(fetch).not.toHaveBeenCalled();
+});

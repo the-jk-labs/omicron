@@ -585,11 +585,8 @@
               <ButtonPrimitive.Root
                 onclick={() => theme.set(opt.value)}
                 aria-pressed={theme.preference === opt.value}
-                class={`inline-flex h-8 items-center gap-1.5 rounded-button px-3 text-sm font-medium whitespace-nowrap active:scale-[0.98] ${
-                  theme.preference === opt.value
-                    ? "bg-background text-foreground shadow-mini"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                data-theme-option={opt.value}
+                class="inline-flex h-8 items-center gap-1.5 rounded-button px-3 text-sm font-medium whitespace-nowrap text-muted-foreground hover:text-foreground active:scale-[0.98]"
               >
                 <Icon name={opt.icon} size={15} />
                 {opt.label}
@@ -640,7 +637,7 @@
         </p>
 
         <div class="mt-4">
-          <FollowedTagsManager />
+          <FollowedTagsManager initial={data.followedTags} />
         </div>
       </section>
     </div>
@@ -683,7 +680,7 @@
         </p>
 
         <div class="mt-4">
-          <ConnectionsManager />
+          <ConnectionsManager initial={{ muted: data.muted, blocked: data.blocked }} />
         </div>
       </section>
     </div>
@@ -805,17 +802,16 @@
 
   <Tabs.Content value="integrations" class="mt-6">
     <div class="flex flex-col gap-8">
-      <!-- Integrations -->
+      <!-- Publishing tokens -->
       <section class="rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Integrations</h2>
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Publishing tokens</h2>
         <p class="mt-1 max-w-prose text-sm text-muted-foreground">
           Publish to this blog from an external system (a CMS like Sanity, a build hook, or a script). Create a token,
-          give it to that system, and posts it sends are published as you and federate like anything you write here.
-          Revoke a token any time to cut it off.
+          integrate to your backend, and posts it sends are published as you and federate like anything you write here.
         </p>
 
         <div class="mt-4">
-          <WebhookTokensManager />
+          <WebhookTokensManager initial={data.webhookTokens} />
         </div>
       </section>
     </div>
