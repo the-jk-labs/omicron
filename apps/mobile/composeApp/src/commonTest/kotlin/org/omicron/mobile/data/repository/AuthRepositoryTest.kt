@@ -46,6 +46,15 @@ class AuthRepositoryTest {
     }
 
     @Test
+    fun returnsInvalidCredentialsWithoutTreatingThemAsAnAvailabilityFailure() = runTest {
+        val repository = AuthRepository(FakeAuthApi(session = null, signInFailure = AuthApiException("INVALID_USERNAME_OR_PASSWORD")))
+
+        val result = repository.signInUsername("https://omicron.blog", "ada", "Unique-test-password-123!")
+
+        assertIs<AuthenticationResult.InvalidCredentials>(result)
+    }
+
+    @Test
     fun returnsVerificationRequiredWhenRegistrationDoesNotCreateASession() = runTest {
         val repository = AuthRepository(FakeAuthApi(session = null, signUpToken = null))
 

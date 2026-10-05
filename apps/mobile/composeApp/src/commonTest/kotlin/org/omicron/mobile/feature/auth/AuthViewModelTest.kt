@@ -5,6 +5,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.buildJsonObject
 import org.omicron.mobile.data.api.AuthApi
+import org.omicron.mobile.data.api.AuthApiException
 import org.omicron.mobile.data.api.AuthSessionDto
 import org.omicron.mobile.data.api.AuthSessionCreationDto
 import org.omicron.mobile.data.api.AuthTokenDto
@@ -64,6 +65,26 @@ class AuthViewModelTest {
         testScheduler.advanceUntilIdle()
 
         assertIs<AuthPhase.SignedIn>(viewModel.uiState.value.phase)
+    }
+
+    @Test
+    fun showsAnInvalidCredentialsErrorWithoutTreatingItAsAnAvailabilityFailure() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val viewModel =
+            AuthViewModel(
+                savedInstance = { instance() },
+                repository = AuthRepository(FakeAuthApi(null, signInFailure = AuthApiException("INVALID_USERNAME_OR_PASSWORD"))),
+                scope = TestScope(dispatcher),
+            )
+        testScheduler.advanceUntilIdle()
+
+        viewModel.updateIdentifier("ada")
+        viewModel.updatePassword("Unique-test-password-123!")
+        viewModel.signIn()
+        testScheduler.advanceUntilIdle()
+
+        val state = assertIs<AuthPhase.Credentials>(viewModel.uiState.value.phase)
+        assertEquals(AuthFormError.InvalidCredentials, state.error)
     }
 
     @Test
@@ -134,17 +155,20 @@ class AuthViewModelTest {
 private class FakeAuthApi(
     private var session: AuthSessionDto?,
     private val signUpToken: String? = "session-token",
+    private val signInFailure: Throwable? = null,
 ) : AuthApi {
     override suspend fun getSession(origin: String): AuthSessionDto? = session
 
     override suspend fun getToken(origin: String): AuthTokenDto = AuthTokenDto("signed-token")
 
     override suspend fun signInEmail(origin: String, email: String, password: String): AuthSessionCreationDto {
+        signInFailure?.let { throw it }
         session = session()
         return creation()
     }
 
     override suspend fun signInUsername(origin: String, username: String, password: String): AuthSessionCreationDto {
+        signInFailure?.let { throw it }
         session = session()
         return creation()
     }

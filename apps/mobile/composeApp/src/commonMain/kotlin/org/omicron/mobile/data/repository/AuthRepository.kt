@@ -104,6 +104,7 @@ class AuthRepository(
         return when ((this as? AuthApiException)?.code) {
             "EMAIL_NOT_VERIFIED" -> AuthenticationResult.VerificationRequired
             "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL" -> AuthenticationResult.EmailAlreadyRegistered
+            "INVALID_EMAIL_OR_PASSWORD", "INVALID_USERNAME_OR_PASSWORD" -> AuthenticationResult.InvalidCredentials
             else -> AuthenticationResult.Unavailable
         }
     }
@@ -139,6 +140,8 @@ sealed interface AuthenticationResult {
     data object VerificationRequired : AuthenticationResult
 
     data object EmailAlreadyRegistered : AuthenticationResult
+
+    data object InvalidCredentials : AuthenticationResult
 
     data object Unavailable : AuthenticationResult
 }
