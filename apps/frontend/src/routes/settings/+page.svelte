@@ -95,11 +95,8 @@
   const insertNameEmoji = (emoji: string) =>
     insertEmojiIntoField(nameEl, displayName, 60, emoji, (v) => (displayName = v));
   const insertBioEmoji = (emoji: string) => insertEmojiIntoField(bioEl, bio, 500, emoji, (v) => (bio = v));
-  let file = $state<File | null>(null);
-  let previewUrl = $state<string | null>(null);
   let fileInput = $state<HTMLInputElement | null>(null);
-  // The freshly-picked raw photo, shown in the crop dialog before it becomes the
-  // pending `file`. Kept separate so cancelling the crop discards it cleanly.
+  // The freshly-picked raw photo, shown in the crop dialog until it is saved.
   let cropSrc = $state<string | null>(null);
   let cropOpen = $state(false);
 
@@ -135,45 +132,42 @@
       bio !== data.user.bio ||
       publicEmail !== data.user.publicEmail ||
       customSection !== (data.user.customSection ?? "") ||
-      file !== null ||
       profileTags.join(",") !== initialTags ||
       canonicalLinks(profileLinks) !== initialLinks,
   );
 
   let removingPhoto = $state(false);
 
-  function clearFile() {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    file = null;
-    previewUrl = null;
-  }
-
   function clearCropSrc() {
     if (cropSrc) URL.revokeObjectURL(cropSrc);
     cropSrc = null;
   }
 
-  // Receives the square-cropped photo from the dialog and stages it for upload.
-  function onCropped(cropped: File) {
-    clearFile();
-    file = cropped;
-    previewUrl = URL.createObjectURL(cropped);
-    clearCropSrc();
+  // Uploads the cropped photo straight away: Save in the crop dialog is where
+  // people expect it to be set, not the profile form's Save changes. A thrown
+  // error keeps the dialog open and shows there.
+  async function onCropped(cropped: File) {
+    // Downscale/re-encode to ~160px so avatars aren't shipped at full size.
+    const { blob, type } = await prepareImage(cropped, AVATAR_MAX_DIMENSION, MAX_BYTES);
+    if (blob.size > MAX_BYTES) {
+      throw new Error("Image too large (max 2 MB) even after compression. Please choose a different photo.");
+    }
+    try {
+      await endpoints().uploadAvatar(blob, type);
+    } catch (err) {
+      throw new Error(err instanceof ApiError ? err.message : "Failed to upload photo.", { cause: err });
+    }
+    await refreshAll();
   }
 
-  // Discard the raw pick when the crop dialog is dismissed without applying.
+  // Discard the raw pick once the crop dialog closes.
   $effect(() => {
     if (!cropOpen && cropSrc) clearCropSrc();
   });
 
-  // Discards a freshly-picked (unsaved) photo, or removes the saved avatar so the
-  // profile reverts to initials.
+  // Removes the saved avatar so the profile reverts to initials.
   async function removePhoto() {
     error = "";
-    if (file) {
-      clearFile();
-      return;
-    }
     if (!data.user.avatarUrl) return;
     removingPhoto = true;
     try {
@@ -212,7 +206,6 @@
     busy = true;
     try {
       // Convert each typed identifier to a canonical URL, skipping blank rows.
-      // First, so an invalid link stops the save before the photo is uploaded.
       const links = [];
       for (const l of profileLinks) {
         if (!l.url.trim()) continue;
@@ -239,22 +232,6 @@
         }
         links.push({ platform: l.platform, url, label: l.label.trim() });
       }
-      if (file) {
-        // Downscale/re-encode to ~160px before upload so avatars aren't shipped
-        // at full photo resolution. If it's still over the backend's cap
-        // afterward (only realistic for animated GIFs, which we don't
-        // re-encode), surface a clear error instead of a failed upload.
-        const { blob, type } = await prepareImage(file, AVATAR_MAX_DIMENSION, MAX_BYTES);
-        if (blob.size > MAX_BYTES) {
-          error =
-            type === "image/gif"
-              ? "That GIF is too large (max 2 MB). Try a smaller GIF, or use PNG/JPEG/WebP."
-              : "Image too large (max 2 MB) even after compression. Please choose a different photo.";
-          busy = false;
-          return;
-        }
-        await endpoints().uploadAvatar(blob, type);
-      }
       await endpoints().updateProfile({
         displayName,
         bio,
@@ -264,7 +241,6 @@
         links,
       });
       await refreshAll();
-      clearFile();
       saved = true;
     } catch (err) {
       error = err instanceof ApiError ? err.message : "Failed to save changes.";
@@ -428,11 +404,7 @@
               class="group relative rounded-full"
               aria-label="Change profile picture"
             >
-              <Avatar
-                name={displayName || data.user.displayName}
-                src={previewUrl ?? data.user.avatarUrl ?? undefined}
-                size={72}
-              />
+              <Avatar name={displayName || data.user.displayName} src={data.user.avatarUrl ?? undefined} size={72} />
               <span
                 class="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100"
               >
@@ -444,7 +416,7 @@
                 <Button variant="outline" size="sm" onclick={() => fileInput?.click()}>
                   <Icon name="camera" size={15} /> Change photo
                 </Button>
-                {#if file || data.user.avatarUrl}
+                {#if data.user.avatarUrl}
                   <Button
                     variant="ghost"
                     size="sm"
