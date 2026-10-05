@@ -26,15 +26,11 @@ The Android-first Kotlin Multiplatform foundation and instance connection are co
 
 ## R1: Identity And Account
 
-**Status:** In progress
+**Status:** Done
 
 **Outcome:** A user can choose an instance, establish or restore a Better Auth session, and safely leave it.
 
-**Completed:** HTTPS origin normalization, public instance metadata retrieval, persisted instance configuration, loading, invalid-address, unreachable, retry, and connected states; type-safe navigation and dependency wiring; Android Keystore-encrypted per-origin Better Auth cookie persistence; session restoration and lazy pre-expiry JWT renewal; email and username sign-in; registration; verification-required state; sign-out; and account switching.
-
-**Remaining exit criteria:**
-
-- Add UI tests for first connection, invalid origin, offline retry, sign-in, session restoration, and sign-out.
+**Completed:** HTTPS origin normalization, public instance metadata retrieval, persisted instance configuration, loading, invalid-address, unreachable, retry, and connected states; type-safe navigation and dependency wiring; Android Keystore-encrypted per-origin Better Auth cookie persistence; session restoration and lazy pre-expiry JWT renewal; email and username sign-in; registration; verification-required state; sign-out; account switching; and Compose UI tests for first connection, invalid origin, offline retry, sign-in, session restoration, and sign-out.
 
 ## R2: Guest Reader
 
