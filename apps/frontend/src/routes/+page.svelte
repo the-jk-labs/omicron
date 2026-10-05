@@ -215,8 +215,8 @@
       </div>
     </div>
   {:else}
-    {#each feed.items as post (post.id)}
-      <PostCard {post} />
+    {#each feed.items as post, i (post.id)}
+      <PostCard {post} eager={i < 3} />
     {/each}
     {#if feed.cursor}
       <LoadMoreButton load={() => loadMore(feed)} loading={feed.loading} />

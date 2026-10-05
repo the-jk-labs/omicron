@@ -120,4 +120,17 @@ describe("PostCard reaction counters", () => {
     expect(screen.getByText("0 responses")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Recommend (0 recommendations)" })).toBeInTheDocument();
   });
+
+  // Either attribute let the first paint go out without the image, so even a
+  // cached banner flickered in a frame later.
+  it("loads the banner eagerly near the top of a list, lazily further down, and never decodes async", () => {
+    const withBanner = { ...post, bannerUrl: "/api/uploads/banner.webp" };
+    const { container, unmount } = render(PostCard, { props: { post: withBanner, eager: true } });
+    expect(container.querySelector("img")).toHaveAttribute("loading", "eager");
+    expect(container.querySelector("img")).not.toHaveAttribute("decoding");
+    unmount();
+
+    const later = render(PostCard, { props: { post: withBanner } });
+    expect(later.container.querySelector("img")).toHaveAttribute("loading", "lazy");
+  });
 });

@@ -58,7 +58,6 @@
         width={size}
         height={size}
         loading="lazy"
-        decoding="async"
         onerror={() => (status = "error")}
         class="aspect-square h-full w-full object-cover"
       />

@@ -365,16 +365,16 @@
          still.
 
          `fetchpriority="high"` because it is above the fold and lazy by
-         default in the browser's estimation; `decoding="async"` keeps decode
-         off the main thread. Deliberately not `loading="lazy"` — that would
-         delay the very element being timed. -->
+         default in the browser's estimation. Deliberately not `loading="lazy"`
+         — that would delay the very element being timed — nor
+         `decoding="async"`, which lets the first paint go out without the
+         image, so even a cached cover flickered in a frame later. -->
     <div class="mb-8 aspect-video max-h-112 w-full overflow-hidden rounded-card border border-border">
       <!-- Decorative: the headline above it already names the post. -->
       <img
         src={post.coverUrl}
         alt=""
         fetchpriority="high"
-        decoding="async"
         onerror={() => (coverFailed = true)}
         class="h-full w-full object-cover"
       />

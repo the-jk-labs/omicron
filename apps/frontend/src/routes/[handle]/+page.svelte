@@ -310,8 +310,8 @@
     {:else if posts.length === 0}
       <p class="py-10 text-center text-muted-foreground">No articles yet.</p>
     {:else}
-      {#each posts as post (post.id)}
-        <PostCard {post} />
+      {#each posts as post, i (post.id)}
+        <PostCard {post} eager={i < 3} />
       {/each}
       {#if cursor}
         <LoadMoreButton load={loadMore} {loading} />
@@ -347,8 +347,8 @@
             : `${profile.user.displayName} hasn't recommended anything yet.`}
         </p>
       {:else}
-        {#each recommended as post (post.id)}
-          <PostCard {post} />
+        {#each recommended as post, i (post.id)}
+          <PostCard {post} eager={i < 3} />
         {/each}
         {#if recommendedCursor}
           <LoadMoreButton load={loadMoreRecommended} loading={recommendedLoading} />

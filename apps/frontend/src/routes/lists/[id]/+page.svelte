@@ -134,8 +134,8 @@
     {data.isOwner ? "No articles saved yet. Use the bookmark on any article to add it here." : "This list is empty."}
   </p>
 {:else}
-  {#each posts as post (post.id)}
-    <PostCard {post} />
+  {#each posts as post, i (post.id)}
+    <PostCard {post} eager={i < 3} />
   {/each}
   {#if cursor}
     <LoadMoreButton load={loadMore} {loading} />
