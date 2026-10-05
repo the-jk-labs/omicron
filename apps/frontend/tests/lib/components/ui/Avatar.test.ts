@@ -6,7 +6,7 @@
 // person's name is always rendered as text beside it or as an aria-label on the
 // control wrapping it. If the image's `alt` or the initials fallback ever
 // expose the name again, these tests fail.
-import { render, screen } from "@testing-library/svelte";
+import { fireEvent, render, screen } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
 import Avatar from "#lib/components/ui/Avatar.svelte";
 
@@ -55,5 +55,32 @@ describe("Avatar", () => {
     document.body.appendChild(link);
 
     expect(screen.getByRole("link", { name: "Voctl Voctl" })).toBeInTheDocument();
+  });
+
+  // A cached photo must paint with the page, not after a test load plus delay.
+  it("shows a photo from the first render, without waiting to test-load it", () => {
+    const { container } = render(Avatar, {
+      props: { name: "Yusif Aliyev", src: "https://example.test/avatar.png", size: 40 },
+    });
+
+    expect(container.querySelector("img")).toHaveStyle({ display: "block" });
+    expect(screen.getByText("YA")).toHaveStyle({ display: "none" });
+  });
+
+  it("falls back to the initials when the photo fails to load", async () => {
+    const { container } = render(Avatar, {
+      props: { name: "Yusif Aliyev", src: "https://example.test/missing.png", size: 40 },
+    });
+
+    await fireEvent.error(container.querySelector("img")!);
+    expect(container.querySelector("img")).toHaveStyle({ display: "none" });
+    expect(screen.getByText("YA")).not.toHaveStyle({ display: "none" });
+  });
+
+  it("shows the initials when there is no photo", () => {
+    const { container } = render(Avatar, { props: { name: "Yusif Aliyev" } });
+
+    expect(container.querySelector("img")).toBeNull();
+    expect(screen.getByText("YA")).not.toHaveStyle({ display: "none" });
   });
 });

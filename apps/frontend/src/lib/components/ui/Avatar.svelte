@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Avatar } from "bits-ui";
+  import { untrack } from "svelte";
 
   // Styled with the Bits UI docs' Avatar classes (bg-muted fallback with initials),
   // except the ring: the docs show it only once a photo loads, which made avatars
@@ -36,10 +37,16 @@
       .map((w) => w[0]?.toUpperCase() ?? "")
       .join("") || "?",
   );
+
+  // bits-ui starts every avatar "loading": the server-rendered <img> stays hidden
+  // until a test load after hydration, so even a cached photo appeared late. With
+  // a photo we start "loaded" so the browser paints it at once; a failing image
+  // still falls back to the initials through its own error event.
+  let status = $state<"loading" | "loaded" | "error">(untrack(() => (src ? "loaded" : "error")));
 </script>
 
 <Avatar.Root
-  delayMs={200}
+  bind:loadingStatus={status}
   style={`width:${size}px;height:${size}px;font-size:${Math.round(size * 0.36)}px`}
   class={`shrink-0 rounded-full border border-foreground bg-muted font-medium text-muted-foreground uppercase ${className}`}
 >
@@ -52,6 +59,7 @@
         height={size}
         loading="lazy"
         decoding="async"
+        onerror={() => (status = "error")}
         class="aspect-square h-full w-full object-cover"
       />
     {/if}
