@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import type { Passkey } from "@better-auth/passkey/client";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { beforeEach, expect, test, vi } from "vitest";
@@ -29,8 +30,18 @@ vi.mock("#lib/auth-client.js", () => ({
   },
 }));
 
-const laptop = { id: "p1", name: "Laptop", backedUp: true, createdAt: "2026-09-01T00:00:00Z" };
-const unnamed = { id: "p2", name: null, backedUp: false, createdAt: "2026-09-02T00:00:00Z" };
+// Dates arrive over JSON as strings, though Better Auth types them as Date.
+const passkey = (p: Pick<Passkey, "id" | "name" | "backedUp"> & { createdAt: string }): Passkey => ({
+  publicKey: "pk",
+  userId: "u1",
+  credentialID: `cred-${p.id}`,
+  counter: 0,
+  deviceType: p.backedUp ? "multiDevice" : "singleDevice",
+  ...p,
+  createdAt: p.createdAt as unknown as Date,
+});
+const laptop = passkey({ id: "p1", name: "Laptop", backedUp: true, createdAt: "2026-09-01T00:00:00Z" });
+const unnamed = passkey({ id: "p2", name: undefined, backedUp: false, createdAt: "2026-09-02T00:00:00Z" });
 
 beforeEach(() => {
   localStorage.clear();
@@ -45,6 +56,27 @@ test("lists passkeys; an unnamed one reads as just Passkey", async () => {
   expect(screen.getByText("Passkey")).toBeInTheDocument();
   expect(screen.getByText(/Synced · Added/)).toBeInTheDocument();
   expect(screen.getByText(/This device only · Added/)).toBeInTheDocument();
+});
+
+test("a server-loaded list shows straight away, without loading it again", () => {
+  render(PasskeysManager, { props: { username: "ada", initial: [laptop] } });
+  expect(screen.getByText("Laptop")).toBeInTheDocument();
+  expect(screen.queryByText("Loading…")).toBeNull();
+  expect(auth.list).not.toHaveBeenCalled();
+});
+
+test("a server-loaded empty list shows the empty state straight away", () => {
+  render(PasskeysManager, { props: { username: "ada", initial: [] } });
+  expect(screen.getByText("No passkeys yet.")).toBeInTheDocument();
+  expect(auth.list).not.toHaveBeenCalled();
+});
+
+test("adding to a server-loaded list reloads it", async () => {
+  auth.add.mockResolvedValue({ data: { id: "p3" }, error: null });
+  auth.list.mockResolvedValue({ data: [laptop, { ...laptop, id: "p3", name: "Phone" }], error: null });
+  render(PasskeysManager, { props: { username: "ada", initial: [laptop] } });
+  await fireEvent.click(screen.getByRole("button", { name: "Add a passkey" }));
+  await screen.findByText("Phone");
 });
 
 test("shows an empty state", async () => {

@@ -1,3 +1,4 @@
+import type { Passkey } from "@better-auth/passkey/client";
 import type {
   AdminInstance,
   AdminUser,
@@ -269,6 +270,8 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // publishing tokens for the content webhook (Settings -> Integrations).
     // `createWebhookToken` returns the plaintext token once and never again.
     webhookTokens: () => api.get<{ tokens: WebhookToken[] }>("/webhooks/tokens"),
+    // Better Auth's own route; the browser's passkey client covers everything else.
+    passkeys: () => api.get<Passkey[]>("/auth/passkey/list-user-passkeys"),
     createWebhookToken: (label: string) =>
       api.post<{ token: string; tokenInfo: WebhookToken }>("/webhooks/tokens", { label }),
     revokeWebhookToken: (id: string) => api.del<{ ok: true }>(`/webhooks/tokens/${encodeURIComponent(id)}`),

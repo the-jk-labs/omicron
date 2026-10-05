@@ -770,7 +770,7 @@
         </p>
 
         <div class="mt-4">
-          <PasskeysManager username={data.user.username} />
+          <PasskeysManager username={data.user.username} initial={data.passkeys} />
         </div>
       </section>
 

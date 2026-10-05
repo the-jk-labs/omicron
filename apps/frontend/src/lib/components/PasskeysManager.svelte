@@ -3,7 +3,8 @@
      passkey client does the work; a passkey without a name shows its
      provider's name (set by the server) or just "Passkey". -->
 <script lang="ts">
-  import { onMount } from "svelte";
+  import type { Passkey } from "@better-auth/passkey/client";
+  import { onMount, untrack } from "svelte";
   import { authClient } from "#lib/auth-client.js";
   import ConfirmPasswordDialog from "#lib/components/ConfirmPasswordDialog.svelte";
   import Icon from "#lib/components/Icon.svelte";
@@ -12,20 +13,15 @@
   import { confirm } from "#lib/components/ui/confirm.js";
   import { addPasskeyError, needsFreshSignIn, passkeysSupported } from "#lib/passkeys.js";
 
-  let { username }: { username: string } = $props();
-
-  type Passkey = {
-    id: string;
-    name?: string | null;
-    backedUp: boolean;
-    createdAt: Date | string;
-  };
+  // `initial` is the server-loaded list; without it the browser loads it.
+  let { username, initial = null }: { username: string; initial?: Passkey[] | null } = $props();
+  const seed = untrack(() => initial);
 
   const NAME_MAX = 60;
 
-  let passkeys = $state<Passkey[]>([]);
-  let loading = $state(true);
-  let loaded = $state(false);
+  let passkeys = $state<Passkey[]>(seed ?? []);
+  let loading = $state(!seed);
+  let loaded = $state(!!seed);
   let supported = $state(true);
   let adding = $state(false);
   // The session is too old to add a sign-in method, so the password is asked first.
@@ -106,7 +102,7 @@
   // Browser-only: support is a browser fact and the client uses relative URLs.
   onMount(() => {
     supported = passkeysSupported();
-    load();
+    if (!seed) load();
   });
 </script>
 
