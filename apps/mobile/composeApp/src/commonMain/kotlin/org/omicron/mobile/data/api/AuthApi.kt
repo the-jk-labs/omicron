@@ -9,6 +9,18 @@ interface AuthApi {
 
     suspend fun getToken(origin: String): AuthTokenDto
 
+    suspend fun signInEmail(origin: String, email: String, password: String): AuthSessionCreationDto
+
+    suspend fun signInUsername(origin: String, username: String, password: String): AuthSessionCreationDto
+
+    suspend fun signUpEmail(
+        origin: String,
+        email: String,
+        password: String,
+        username: String,
+        displayName: String,
+    ): AuthSessionCreationDto
+
     suspend fun signOut(origin: String)
 }
 
@@ -30,3 +42,38 @@ data class AuthUserDto(
 data class AuthTokenDto(
     val token: String,
 )
+
+@Serializable
+data class AuthSessionCreationDto(
+    val user: AuthUserDto,
+    val token: String? = null,
+)
+
+@Serializable
+data class EmailSignInRequestDto(
+    val email: String,
+    val password: String,
+)
+
+@Serializable
+data class UsernameSignInRequestDto(
+    val username: String,
+    val password: String,
+)
+
+@Serializable
+data class EmailSignUpRequestDto(
+    val email: String,
+    val password: String,
+    val username: String,
+    @SerialName("name") val displayName: String,
+)
+
+@Serializable
+data class AuthErrorDto(
+    val code: String? = null,
+)
+
+class AuthApiException(
+    val code: String?,
+) : Exception()

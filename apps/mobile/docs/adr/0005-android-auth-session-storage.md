@@ -16,7 +16,7 @@ Type-safe Compose Navigation owns transitions between instance selection and aut
 
 - Restarting the application can restore a Better Auth session for the selected instance.
 - Switching instances cannot reuse cookies or JWTs from the prior origin.
-- Signing in, registration, and sign-out use the same cookie store when they are introduced.
+- Signing in, registration, and sign-out use the same cookie store.
 - Android-only keystore and Ktor cookie integrations remain in `androidMain`; common code depends only on storage contracts.
 
 ## References
