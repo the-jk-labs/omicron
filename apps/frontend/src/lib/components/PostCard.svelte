@@ -142,7 +142,10 @@
       <Time iso={post.createdAt} kind="date" />
       <span class="hidden sm:inline">· <Time iso={post.createdAt} kind="time" /></span>
     </span>
-    <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
+    <!-- The clock says "read time" on screen; screen readers still hear the word. -->
+    <span class="flex items-center gap-1"
+      ><Icon name="clock" size={13} /> {minutes} min <span class="sr-only">read</span></span
+    >
     <ReactionCount icon="heart" count={post.likeCount} singular="like" size={13} />
     <ReactionCount icon="comment" count={post.commentCount} singular="response" size={13} />
     <span class="ml-auto flex shrink-0 items-center gap-1">

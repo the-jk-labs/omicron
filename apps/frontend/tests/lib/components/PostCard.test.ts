@@ -102,6 +102,16 @@ describe("PostCard reaction counters", () => {
     expect(screen.getByRole("button", { name: "Recommend (1 recommendation)" })).toBeInTheDocument();
   });
 
+  it("shows the read time as just minutes, keeping 'read' for screen readers", () => {
+    const { container } = render(PostCard, { props: { post } });
+    const time = [...container.querySelectorAll("span")].find((s) => s.textContent?.trim() === "1 min read")!;
+    expect(time).toBeDefined();
+    const word = time.querySelector(".sr-only");
+    expect(word).toHaveTextContent("read");
+    // Everything else in the line is visible: the clock and "1 min".
+    expect(time.textContent?.replace(word!.textContent ?? "", "").trim()).toBe("1 min");
+  });
+
   it("still labels a zero as a phrase, not a bare digit", () => {
     render(PostCard, { props: { post } });
 
