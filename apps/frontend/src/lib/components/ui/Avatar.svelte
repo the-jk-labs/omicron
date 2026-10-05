@@ -2,8 +2,11 @@
 <script lang="ts">
   import { Avatar } from "bits-ui";
 
-  // Styled with the Bits UI docs' Avatar classes verbatim (bg-muted fallback with
-  // initials). Falls back to initials when `src` is absent or the image fails to load.
+  // Styled with the Bits UI docs' Avatar classes (bg-muted fallback with initials),
+  // except the ring: the docs show it only once a photo loads, which made avatars
+  // change as the page rendered, so here it is always on. The initials get a shade
+  // of their own so the muted gap inside the ring shows around them as around a photo.
+  // Falls back to initials when `src` is absent or the image fails to load.
   //
   // The avatar is decorative, and deliberately so: `name` feeds the initials and
   // nothing else. Every place this renders, the person is already named — as
@@ -38,7 +41,7 @@
 <Avatar.Root
   delayMs={200}
   style={`width:${size}px;height:${size}px;font-size:${Math.round(size * 0.36)}px`}
-  class={`shrink-0 rounded-full border bg-muted font-medium text-muted-foreground uppercase data-[status=loaded]:border-foreground data-[status=loading]:border-transparent ${className}`}
+  class={`shrink-0 rounded-full border border-foreground bg-muted font-medium text-muted-foreground uppercase ${className}`}
 >
   <div class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-transparent">
     {#if src}
@@ -52,10 +55,7 @@
         class="aspect-square h-full w-full object-cover"
       />
     {/if}
-    <Avatar.Fallback
-      aria-hidden="true"
-      class="flex h-full w-full items-center justify-center rounded-full border border-muted"
-    >
+    <Avatar.Fallback aria-hidden="true" class="flex h-full w-full items-center justify-center rounded-full bg-dark-10">
       {initials}
     </Avatar.Fallback>
   </div>
