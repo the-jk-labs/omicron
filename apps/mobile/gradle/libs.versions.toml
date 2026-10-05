@@ -5,6 +5,7 @@ compose = "1.10.3"
 coroutines = "1.11.0"
 ktor = "3.5.2"
 kotlin = "2.4.20"
+navigation = "2.9.7"
 rikkaIcons = "0.1.0"
 rikkaUi = "0.3.0"
 serialization = "1.11.0"
@@ -24,6 +25,7 @@ ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigation" }
 rikka-icons-core = { module = "dev.rikkaui.icons:core", version.ref = "rikkaIcons" }
 rikka-icons-lucide = { module = "dev.rikkaui.icons:pack-lucide", version.ref = "rikkaIcons" }
 rikka-icons-tokens-core = { module = "dev.rikkaui.icons:tokens-core", version.ref = "rikkaIcons" }
