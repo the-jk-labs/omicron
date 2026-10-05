@@ -262,7 +262,9 @@
       <Icon name="compose" size={16} /> Draft
     </p>
   {/if}
-  <div class="flex items-center gap-2">
+  <div class="flex flex-wrap items-center justify-end gap-2">
+    <!-- Beside the buttons that raised it, not below the whole editor. -->
+    {#if error}<p role="alert" class="text-sm text-destructive">{error}</p>{/if}
     <SaveStatus status={autosave.state} savedAt={autosave.savedAt} error={autosave.error} />
     <Button onclick={() => persist("draft")} disabled={busy || savingDraft} variant="ghost">
       {savingDraft ? "Saving…" : "Save draft"}
@@ -338,5 +340,3 @@
   content={(draft?.contentJson as Content) ?? draft?.contentHtml}
   previewHtml={draft?.contentHtml ?? ""}
 />
-
-{#if error}<p class="mt-4 text-sm text-destructive">{error}</p>{/if}

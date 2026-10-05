@@ -88,10 +88,9 @@ test("the status line counts characters and words and estimates reading time", a
   expect(document.body.textContent).toContain("1 min read");
 });
 
-test("an empty document shows no reading time", async () => {
+test("an empty document reads as 0 min, so the status line never grows", async () => {
   await setup();
-  expect(document.body.textContent).toContain("0 words");
-  expect(document.body.textContent).not.toContain("min read");
+  expect(document.body.textContent).toMatch(/0 characters\s*·\s*0 words\s*·\s*0 min read/);
 });
 
 test("toolbar marks apply to the selection, report the change, and light up", async () => {

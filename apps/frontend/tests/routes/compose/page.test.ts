@@ -69,6 +69,16 @@ test("a reopened draft keeps its own language over the default", () => {
   expect(screen.getByText("French")).toBeInTheDocument();
 });
 
+test("an error shows beside the save buttons, not below the editor", async () => {
+  setup();
+  await click("Save draft");
+  const alert = screen.getByRole("alert");
+  expect(alert).toHaveTextContent("Nothing to save yet.");
+  const saveDraft = screen.getByRole("button", { name: "Save draft" });
+  expect(alert.parentElement).toBe(saveDraft.parentElement);
+  expect(alert.compareDocumentPosition(saveDraft) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
 test("publishing needs a title and a body", async () => {
   setup();
   await typeTitle("Hello");

@@ -58,7 +58,7 @@
     const text = ed.getText({ blockSeparator: "\n" });
     const words = countWords(text);
     const characters = text.replace(/\n/g, "").length;
-    stats = { characters, words, minutes: readTimeFromWords(words) };
+    stats = { characters, words, minutes: words ? readTimeFromWords(words) : 0 };
   }
 
   import { locale } from "#lib/locale.svelte.js";
@@ -590,10 +590,9 @@
     <span>{count(stats.characters, "character")}</span>
     <span aria-hidden="true">·</span>
     <span>{count(stats.words, "word")}</span>
-    {#if stats.words > 0}
-      <span aria-hidden="true">·</span>
-      <span>{stats.minutes} min read</span>
-    {/if}
+    <!-- Always shown, so the line doesn't grow once the editor counts a draft. -->
+    <span aria-hidden="true">·</span>
+    <span>{stats.minutes} min read</span>
   </p>
 </div>
 
