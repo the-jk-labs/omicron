@@ -19,7 +19,11 @@ afterEach(() => {
 });
 
 let api: ReturnType<typeof fakeFetch>;
-function setup(draft: Partial<Post> | null = null, routes: Parameters<typeof fakeFetch>[0] = {}) {
+function setup(
+  draft: Partial<Post> | null = null,
+  routes: Parameters<typeof fakeFetch>[0] = {},
+  composeLang: string | null = null,
+) {
   api = fakeFetch({
     "POST /api/posts": { post: { id: "new-1", slug: null } },
     "PATCH /api/posts/d1": { post: { id: "d1" } },
@@ -27,7 +31,8 @@ function setup(draft: Partial<Post> | null = null, routes: Parameters<typeof fak
     ...routes,
   });
   vi.stubGlobal("fetch", api.fetch);
-  return render(ComposePage, { props: { data: { draft: draft ? post({ id: "d1", ...draft }) : null } as never } });
+  const data = { draft: draft ? post({ id: "d1", ...draft }) : null, composeLang };
+  return render(ComposePage, { props: { data: data as never } });
 }
 
 const writes = () => api.calls.filter((c) => c.method === "POST" || c.method === "PATCH");
@@ -42,14 +47,26 @@ async function publishingMenu(item: string) {
   await fireEvent.click(await screen.findByRole("menuitem", { name: item }));
 }
 
-test("a new post starts as a draft in the remembered language, editor loaded lazily", async () => {
-  vi.spyOn(reading, "composeLang", "get").mockReturnValue("de");
-  setup();
+test("a new post starts as a draft in the server's default language, editor loaded lazily", async () => {
+  setup(null, {}, "de");
   expect(screen.getByText("Draft")).toBeInTheDocument();
   expect(screen.getByText("German")).toBeInTheDocument();
   await screen.findByRole("textbox", { name: "Body" });
   await click("Publish");
   expect(screen.getByText("A blog post must have a title.")).toBeInTheDocument();
+});
+
+// The server's default renders before hydration, so the browser-only one must not override it.
+test("the language picker starts from the server's default, not the browser's", () => {
+  vi.spyOn(reading, "composeLang", "get").mockReturnValue("tr");
+  setup(null, {}, "de");
+  expect(screen.getByText("German")).toBeInTheDocument();
+  expect(screen.queryByText("Turkish")).toBeNull();
+});
+
+test("a reopened draft keeps its own language over the default", () => {
+  setup({ status: "draft", language: "fr" }, {}, "de");
+  expect(screen.getByText("French")).toBeInTheDocument();
 });
 
 test("publishing needs a title and a body", async () => {

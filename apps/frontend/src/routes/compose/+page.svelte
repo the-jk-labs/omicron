@@ -42,7 +42,7 @@
   // A reopened draft keeps whatever it was saved with — including a
   // deliberate blank. Only a genuinely new post takes the remembered default,
   // so revisiting a draft never silently relabels it.
-  let language = $state<string | null>(draft ? (draft.language ?? null) : reading.composeLang);
+  let language = $state<string | null>(draft ? (draft.language ?? null) : untrack(() => data.composeLang));
   // The one-line description search engines print under the title, and link
   // previews show. Left empty it falls back to a truncation of the opening
   // paragraph — which is what every post used to get, often cut mid-clause.
@@ -87,7 +87,7 @@
   // starts at the remembered default, and comparing that against null would
   // mark the page dirty the instant it opened, so simply looking at the
   // composer and leaving would raise the unsaved-changes prompt.
-  const initialLanguage = draft ? (draft.language ?? null) : reading.composeLang;
+  const initialLanguage = draft ? (draft.language ?? null) : untrack(() => data.composeLang);
   const initialSummary = draft?.summary ?? "";
   $effect(() => {
     const changed = tags.join(",") !== initialTags || language !== initialLanguage || summary !== initialSummary;

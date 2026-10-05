@@ -16,9 +16,12 @@ async function load() {
   return (await import("#lib/prefs.svelte.js")).reading;
 }
 
+const composeCookie = () => document.cookie.match(/(?:^|; )compose-lang=([^;]*)/)?.[1] ?? null;
+
 beforeEach(() => {
   env.browser = true;
   localStorage.clear();
+  document.cookie = "compose-lang=; path=/; max-age=0";
 });
 
 describe("restoring saved preferences", () => {
@@ -92,6 +95,14 @@ test("changes are applied and persisted", async () => {
   reading.setComposeLang(null);
   expect(localStorage.getItem("compose-lang")).toBe(null);
   expect(reading.composeLang).toBe(null);
+});
+
+test("the composer language is also kept in a cookie, so the server renders it", async () => {
+  const reading = await load();
+  reading.setComposeLang("az");
+  expect(composeCookie()).toBe("az");
+  reading.setComposeLang(null);
+  expect(composeCookie()).toBe(null);
 });
 
 test("the feed query is null when the filter is off, else mode + joined codes", async () => {

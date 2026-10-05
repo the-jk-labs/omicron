@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { browser } from "$app/env";
 import { LANGUAGES } from "#lib/languages.js";
+import { localeFromAcceptLanguage } from "#lib/locale.svelte.js";
 import { readStorage, writeStorage } from "#lib/storage.js";
 
 // Client-side reading preferences, persisted in localStorage. These are personal
@@ -16,6 +17,10 @@ const FEED_KEY = "default-feed";
 const LANG_MODE_KEY = "feed-lang-mode";
 const LANGS_KEY = "feed-langs";
 const COMPOSE_LANG_KEY = "compose-lang";
+// The composer is server-rendered, so its default language also lives in a
+// cookie the server can read; otherwise the picker would flip after hydration.
+export const COMPOSE_LANG_COOKIE = "compose-lang";
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 function initialFeed(): FeedTab | null {
   if (!browser) return null;
@@ -55,13 +60,24 @@ function initialLangs(): string[] {
 // clear it, and doing so is what teaches the next one.
 function initialComposeLang(): string | null {
   if (!browser) return null;
-  const saved = readStorage(COMPOSE_LANG_KEY);
-  if (saved) return saved;
-  // `navigator.language` is a full locale ("az-AZ", "pt-BR"); posts are tagged
-  // with the primary subtag alone, which is what the backend stores and
-  // federates.
-  const nav = navigator.language?.split("-")[0]?.toLowerCase();
-  return nav && LANGUAGES.some((l) => l.code === nav) ? nav : null;
+  return readStorage(COMPOSE_LANG_KEY) || knownLanguage(navigator.language);
+}
+
+// A locale ("az-AZ", "pt-BR") as the primary subtag posts are tagged with, which
+// is what the backend stores and federates; null for a language we don't list.
+function knownLanguage(tag: string | null | undefined): string | null {
+  const code = tag?.split("-")[0]?.toLowerCase();
+  return code && LANGUAGES.some((l) => l.code === code) ? code : null;
+}
+
+function writeComposeLangCookie(code: string | null) {
+  const value = code ? encodeURIComponent(code) : "";
+  document.cookie = `${COMPOSE_LANG_COOKIE}=${value}; path=/; max-age=${code ? COOKIE_MAX_AGE : 0}; SameSite=Lax`;
+}
+
+/** The composer's default as the server sees it: the remembered choice, else the browser's language. */
+export function composeLangFor(cookie: string | undefined, acceptLanguage: string | null): string | null {
+  return knownLanguage(cookie) ?? knownLanguage(localeFromAcceptLanguage(acceptLanguage));
 }
 
 class ReadingPrefs {
@@ -104,7 +120,9 @@ class ReadingPrefs {
   /** Remember the language an author actually published in. */
   setComposeLang(code: string | null) {
     this.composeLang = code;
-    if (browser) writeStorage(COMPOSE_LANG_KEY, code || null);
+    if (!browser) return;
+    writeStorage(COMPOSE_LANG_KEY, code || null);
+    writeComposeLangCookie(code);
   }
 
   /** The active filter as API query params, or null when the filter is off. */
