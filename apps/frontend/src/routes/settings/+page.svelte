@@ -782,7 +782,7 @@
         </p>
 
         <div class="mt-4">
-          <SessionsManager username={data.user.username} />
+          <SessionsManager username={data.user.username} initial={data.sessions} />
         </div>
       </section>
 

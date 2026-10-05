@@ -178,6 +178,8 @@ const rows: Row[] = [
   // webhooks
   ["webhookTokens", (e) => e.webhookTokens(), "GET", "/api/webhooks/tokens"],
   ["passkeys", (e) => e.passkeys(), "GET", "/api/auth/passkey/list-user-passkeys"],
+  ["sessions", (e) => e.sessions(), "GET", "/api/auth/list-sessions"],
+  ["currentSession", (e) => e.currentSession(), "GET", "/api/auth/get-session"],
   ["createWebhookToken", (e) => e.createWebhookToken("ci"), "POST", "/api/webhooks/tokens", { label: "ci" }],
   ["revokeWebhookToken", (e) => e.revokeWebhookToken(ID), "DELETE", `/api/webhooks/tokens/${ID}`],
   ["undoEmailChange", (e) => e.undoEmailChange("tok"), "POST", "/api/email-change/undo", { token: "tok" }],

@@ -47,6 +47,8 @@ const sessions = [
 ];
 
 const show = () => render(SessionsManager, { props: { username: "ada" } });
+// The settings server load's snapshot; fixtures carry JSON strings where Better Auth types Dates.
+const seeded = (initial: unknown) => render(SessionsManager, { props: { username: "ada", initial: initial as never } });
 const row = (name: string) => screen.getByText(name).closest("li")!;
 const labels = () => screen.getAllByRole("listitem").map((li) => li.querySelector(".font-medium")?.textContent);
 
@@ -65,6 +67,35 @@ test("lists each device, this one first and badged, the rest by last activity", 
   expect(within(row("Chrome on Windows")).getByText("Current session")).toBeInTheDocument();
   expect(within(row("Safari on iOS")).queryByText("Current session")).toBeNull();
   expect(within(row("Safari on iOS")).getByText(/203\.0\.113\.7/)).toBeInTheDocument();
+});
+
+test("a server-loaded list shows straight away, sorted, without loading it again", () => {
+  seeded({ locked: false, sessions, currentToken: "mine" });
+  expect(screen.queryByText("Loading…")).toBeNull();
+  expect(labels()).toEqual(["Chrome on Windows", "Firefox on Linux", "Safari on iOS"]);
+  expect(within(row("Chrome on Windows")).getByText("Current session")).toBeInTheDocument();
+  expect(auth.listSessions).not.toHaveBeenCalled();
+});
+
+test("a server-locked list shows the confirm button straight away", () => {
+  seeded({ locked: true });
+  expect(screen.queryByText("Loading…")).toBeNull();
+  expect(screen.getByRole("button", { name: "Confirm it's you" })).toBeInTheDocument();
+  expect(auth.listSessions).not.toHaveBeenCalled();
+});
+
+test("confirming the password on a server-locked list loads it", async () => {
+  seeded({ locked: true });
+  freshSignIn.confirmations += 1;
+  await screen.findByText("Chrome on Windows");
+  expect(auth.listSessions).toHaveBeenCalledOnce();
+});
+
+test("signing out a session from a server-loaded list removes it", async () => {
+  seeded({ locked: false, sessions, currentToken: "mine" });
+  await fireEvent.click(within(row("Safari on iOS")).getByRole("button", { name: "Sign out" }));
+  await waitFor(() => expect(screen.queryByText("Safari on iOS")).toBeNull());
+  expect(auth.revokeSession).toHaveBeenCalledWith({ token: "phone" });
 });
 
 test("the current session has no sign-out button of its own", async () => {

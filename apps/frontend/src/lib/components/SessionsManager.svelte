@@ -2,7 +2,8 @@
 <!-- The reader's signed-in devices, from Better Auth's session list. Other
      sessions can be ended here; this one is ended with Sign out instead. -->
 <script lang="ts">
-  import { onMount } from "svelte";
+  import type { Session } from "better-auth";
+  import { onMount, untrack } from "svelte";
   import { authClient } from "#lib/auth-client.js";
   import ConfirmPasswordDialog from "#lib/components/ConfirmPasswordDialog.svelte";
   import Icon from "#lib/components/Icon.svelte";
@@ -13,23 +14,27 @@
   import { needsFreshSignIn } from "#lib/passkeys.js";
   import { deviceLabel, parseUserAgent } from "#lib/userAgent.js";
 
-  let { username }: { username: string } = $props();
+  type Snapshot = { locked: true } | { locked: false; sessions: Session[]; currentToken: string | null };
 
-  type Session = {
-    token: string;
-    userAgent?: string | null;
-    ipAddress?: string | null;
-    createdAt: Date | string;
-    updatedAt: Date | string;
-  };
+  // `initial` is the server-loaded list; without it the browser loads it.
+  let { username, initial = null }: { username: string; initial?: Snapshot | null } = $props();
+  const seed = untrack(() => initial);
 
-  let sessions = $state<Session[]>([]);
-  let currentToken = $state<string | null>(null);
-  let loading = $state(true);
+  // This device first, then the most recently active.
+  const sorted = (list: Session[], current: string | null) =>
+    list.toSorted(
+      (a, b) =>
+        Number(b.token === current) - Number(a.token === current) ||
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
+
+  let currentToken = $state<string | null>(seed && !seed.locked ? seed.currentToken : null);
+  let sessions = $state<Session[]>(seed && !seed.locked ? sorted(seed.sessions, seed.currentToken) : []);
+  let loading = $state(!seed);
   let error = $state("");
   let busy = $state<string | null>(null); // token being revoked, or "others"
   // Better Auth only lists sessions to a recent sign-in, so an older one confirms the password first.
-  let locked = $state(false);
+  let locked = $state(seed?.locked ?? false);
   let confirming = $state(false);
 
   const others = $derived(sessions.filter((s) => s.token !== currentToken));
@@ -45,12 +50,7 @@
       return;
     }
     currentToken = current.data?.session.token ?? null;
-    // This device first, then the most recently active.
-    sessions = ((list.data ?? []) as Session[]).toSorted(
-      (a, b) =>
-        Number(b.token === currentToken) - Number(a.token === currentToken) ||
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-    );
+    sessions = sorted(list.data ?? [], currentToken);
   }
 
   async function revoke(session: Session) {
@@ -86,7 +86,7 @@
 
   // Browser-only: the client uses relative URLs.
   onMount(() => {
-    load();
+    if (!seed) load();
   });
 
   // A confirmation anywhere on the page (e.g. adding a passkey) unlocks the list
