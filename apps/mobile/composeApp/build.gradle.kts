@@ -49,6 +49,7 @@ kotlin {
             implementation(libs.androidx.compose.ui.test.junit4)
             implementation(libs.androidx.test.junit)
             implementation(libs.androidx.test.runner)
+            implementation(libs.ktor.client.mock)
         }
     }
 }
