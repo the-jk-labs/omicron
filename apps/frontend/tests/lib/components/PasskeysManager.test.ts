@@ -2,7 +2,6 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/svelte";
 import { get } from "svelte/store";
 import { beforeEach, expect, test, vi } from "vitest";
-import PasskeyPrompt from "#lib/components/PasskeyPrompt.svelte";
 import PasskeysManager from "#lib/components/PasskeysManager.svelte";
 import { confirmRequest } from "#lib/components/ui/confirm.js";
 
@@ -16,46 +15,13 @@ const auth = vi.hoisted(() => ({
   signIn: vi.fn<(a: unknown) => Promise<Res>>(),
   revoke: vi.fn<(a: unknown) => Promise<Res>>(),
 }));
-// Better Auth's shared passkey list (`useListPasskeys`): it loads when first
-// subscribed and reloads after any successful add, rename or delete, wherever
-// in the app that happened.
-type ListState = { data: unknown; error: unknown; isPending: boolean };
-const shared = vi.hoisted(() => {
-  const subscribers = new Set<(v: ListState) => void>();
-  const state = { value: { data: null, error: null, isPending: true } as ListState };
-  const refetch = async () => {
-    const res = await auth.list();
-    state.value = { data: res.data ?? null, error: res.error ?? null, isPending: false };
-    for (const fn of subscribers) fn(state.value);
-  };
-  const changes =
-    <A extends unknown[]>(fn: (...args: A) => Promise<Res>) =>
-    async (...args: A) => {
-      const res = await fn(...args);
-      if (!res?.error) await refetch();
-      return res;
-    };
-  return {
-    changes,
-    reset: () => (state.value = { data: null, error: null, isPending: true }),
-    store: {
-      subscribe(fn: (v: ListState) => void) {
-        subscribers.add(fn);
-        fn(state.value);
-        if (subscribers.size === 1) void refetch();
-        return () => void subscribers.delete(fn);
-      },
-    },
-  };
-});
 vi.mock("#lib/auth-client.js", () => ({
   authClient: {
-    useListPasskeys: () => shared.store,
     passkey: {
       listUserPasskeys: auth.list,
-      addPasskey: shared.changes(auth.add),
-      updatePasskey: shared.changes(auth.update),
-      deletePasskey: shared.changes(auth.remove),
+      addPasskey: auth.add,
+      updatePasskey: auth.update,
+      deletePasskey: auth.remove,
     },
     getSession: auth.getSession,
     signIn: { username: auth.signIn },
@@ -67,7 +33,6 @@ const laptop = { id: "p1", name: "Laptop", backedUp: true, createdAt: "2026-09-0
 const unnamed = { id: "p2", name: null, backedUp: false, createdAt: "2026-09-02T00:00:00Z" };
 
 beforeEach(() => {
-  shared.reset();
   localStorage.clear();
   confirmRequest.set(null);
   vi.stubGlobal("PublicKeyCredential", function PublicKeyCredential() {});
@@ -104,7 +69,7 @@ test("a failed add explains itself", async () => {
   await screen.findByText("This device already has a passkey for your account.");
 });
 
-test("an old session confirms the password, then the passkey is added", async () => {
+test("an old session confirms the password in a dialog, then the passkey is added", async () => {
   auth.add.mockResolvedValueOnce({ data: null, error: { code: "SESSION_NOT_FRESH" } });
   auth.add.mockResolvedValueOnce({ data: { id: "p3" }, error: null });
   auth.getSession.mockResolvedValue({ data: { session: { token: "old-token" } }, error: null });
@@ -112,24 +77,26 @@ test("an old session confirms the password, then the passkey is added", async ()
   auth.revoke.mockResolvedValue({ data: {}, error: null });
   render(PasskeysManager, { props: { username: "ada" } });
   await fireEvent.click(await screen.findByRole("button", { name: "Add a passkey" }));
-  await fireEvent.input(await screen.findByLabelText("Password"), { target: { value: "hunter2hunter2" } });
+  const dialog = await screen.findByRole("dialog");
+  await fireEvent.input(within(dialog).getByLabelText("Password"), { target: { value: "hunter2hunter2" } });
   expect(document.querySelector('input[autocomplete="username"]')).toHaveValue("ada");
   auth.list.mockResolvedValue({ data: [laptop, unnamed, { ...laptop, id: "p3", name: "Phone" }], error: null });
-  await fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  await fireEvent.click(within(dialog).getByRole("button", { name: "Continue" }));
   await screen.findByText("Phone");
   expect(auth.signIn).toHaveBeenCalledWith({ username: "ada", password: "hunter2hunter2" });
   expect(auth.revoke).toHaveBeenCalledWith({ token: "old-token" });
-  expect(screen.queryByText("Confirm it's you")).toBeNull();
+  expect(auth.add).toHaveBeenCalledTimes(2);
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 });
 
-test("cancelling the password step adds nothing", async () => {
+test("cancelling the password dialog adds nothing", async () => {
   auth.add.mockResolvedValue({ data: null, error: { code: "SESSION_NOT_FRESH" } });
   render(PasskeysManager, { props: { username: "ada" } });
   await fireEvent.click(await screen.findByRole("button", { name: "Add a passkey" }));
-  await screen.findByText("Confirm it's you");
-  await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-  expect(screen.queryByText("Confirm it's you")).toBeNull();
+  await fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Cancel" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(auth.signIn).not.toHaveBeenCalled();
+  expect(auth.add).toHaveBeenCalledTimes(1);
 });
 
 test("renames a passkey", async () => {
@@ -179,25 +146,18 @@ test("a browser without passkeys can't add one", async () => {
   expect(screen.getByRole("button", { name: "Add a passkey" })).toBeDisabled();
 });
 
-// Both read Better Auth's one shared list, so an add in either reaches the other.
-test("a passkey added from the prompt shows up in the list without a reload", async () => {
-  auth.list.mockResolvedValue({ data: [], error: null });
+test("a failed load says so instead of claiming there are no passkeys", async () => {
+  auth.list.mockResolvedValue({ data: null, error: { message: "Passkeys down" } });
   render(PasskeysManager, { props: { username: "ada" } });
-  vi.useFakeTimers({ shouldAdvanceTime: true });
-  try {
-    render(PasskeyPrompt, { props: { user: { id: "u1", username: "ada" }, onHome: true } });
-    // The prompt waits a moment before it opens.
-    await vi.advanceTimersByTimeAsync(1500);
-  } finally {
-    vi.useRealTimers();
-  }
-  await screen.findByText("No passkeys yet.");
-  const prompt = await screen.findByRole("dialog");
-
-  auth.list.mockResolvedValue({ data: [{ ...laptop, id: "p9", name: "Phone" }], error: null });
-  auth.add.mockResolvedValue({ data: { id: "p9" }, error: null });
-  await fireEvent.click(within(prompt).getByRole("button", { name: "Add a passkey" }));
-
-  await screen.findByText("Phone");
+  await screen.findByText("Passkeys down");
   expect(screen.queryByText("No passkeys yet.")).toBeNull();
+});
+
+test("a failed add leaves the list as it was", async () => {
+  auth.add.mockResolvedValue({ data: null, error: { code: "ERROR_CEREMONY_ABORTED" } });
+  render(PasskeysManager, { props: { username: "ada" } });
+  await fireEvent.click(await screen.findByRole("button", { name: "Add a passkey" }));
+  await screen.findByText("Passkey setup was cancelled or timed out.");
+  expect(auth.list).toHaveBeenCalledTimes(1);
+  expect(screen.getByText("Laptop")).toBeInTheDocument();
 });

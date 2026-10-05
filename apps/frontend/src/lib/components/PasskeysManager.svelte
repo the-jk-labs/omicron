@@ -3,15 +3,14 @@
      passkey client does the work; a passkey without a name shows its
      provider's name (set by the server) or just "Passkey". -->
 <script lang="ts">
-  import { Label } from "bits-ui";
   import { onMount } from "svelte";
   import { authClient } from "#lib/auth-client.js";
+  import ConfirmPasswordDialog from "#lib/components/ConfirmPasswordDialog.svelte";
   import Icon from "#lib/components/Icon.svelte";
   import Time from "#lib/components/Time.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
-  import UsernameHint from "#lib/components/UsernameHint.svelte";
-  import { addPasskeyError, confirmPassword, needsFreshSignIn, passkeysSupported } from "#lib/passkeys.js";
+  import { addPasskeyError, needsFreshSignIn, passkeysSupported } from "#lib/passkeys.js";
 
   let { username }: { username: string } = $props();
 
@@ -26,11 +25,11 @@
 
   let passkeys = $state<Passkey[]>([]);
   let loading = $state(true);
+  let loaded = $state(false);
   let supported = $state(true);
   let adding = $state(false);
   // The session is too old to add a sign-in method, so the password is asked first.
   let confirming = $state(false);
-  let password = $state("");
   let error = $state("");
   let busy = $state<string | null>(null); // id whose rename/delete is in flight
   let editing = $state<string | null>(null);
@@ -42,34 +41,27 @@
   const label = (p: Passkey) => p.name?.trim() || "Passkey";
   const iso = (d: Date | string) => new Date(d).toISOString();
 
+  async function load() {
+    const res = await authClient.passkey.listUserPasskeys();
+    loading = false;
+    if (res.error) error = res.error.message ?? "Could not load your passkeys.";
+    else {
+      passkeys = (res.data ?? []) as Passkey[];
+      loaded = true;
+    }
+  }
+
   async function add() {
     error = "";
     adding = true;
     try {
       const res = await authClient.passkey.addPasskey();
-      if (res?.error) {
-        if (needsFreshSignIn(res.error)) confirming = true;
-        else error = addPasskeyError(res.error);
-      }
+      if (!res?.error) await load();
+      else if (needsFreshSignIn(res.error)) confirming = true;
+      else error = addPasskeyError(res.error);
     } finally {
       adding = false;
     }
-  }
-
-  async function confirmAndAdd(e: SubmitEvent) {
-    e.preventDefault();
-    if (!password) return;
-    error = "";
-    adding = true;
-    const failed = await confirmPassword(username, password);
-    adding = false;
-    if (failed) {
-      error = failed;
-      return;
-    }
-    password = "";
-    confirming = false;
-    await add();
   }
 
   function startRename(p: Passkey) {
@@ -112,46 +104,18 @@
   }
 
   // Browser-only: support is a browser fact and the client uses relative URLs.
-  // Better Auth's shared list reloads itself after any add, rename or delete,
-  // so a passkey added from the sign-in prompt shows up here too.
   onMount(() => {
     supported = passkeysSupported();
-    return authClient.useListPasskeys().subscribe((list) => {
-      if (list.isPending && !list.data) return;
-      loading = false;
-      if (list.error) error = list.error.message ?? "Could not load your passkeys.";
-      else passkeys = (list.data ?? []) as Passkey[];
-    });
+    load();
   });
 </script>
 
-{#if confirming}
-  <form onsubmit={confirmAndAdd} class="rounded-card border border-border bg-muted p-4">
-    <UsernameHint {username} />
-    <p class="text-sm font-semibold text-foreground">Confirm it's you</p>
-    <p class="mt-1 text-sm text-muted-foreground">
-      For your security, enter your password before adding a new way to sign in.
-    </p>
-    <div class="mt-3 flex flex-col gap-1.5">
-      <Label.Root for="passkey-password" class="text-sm leading-none font-medium text-foreground">Password</Label.Root>
-      <input
-        id="passkey-password"
-        type="password"
-        bind:value={password}
-        autocomplete="current-password"
-        class="h-10 rounded-input border border-input bg-background px-3.5 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
-      />
-    </div>
-    <div class="mt-3 flex justify-end gap-2">
-      <Button type="button" variant="ghost" size="sm" onclick={() => ((confirming = false), (password = ""))}>
-        Cancel
-      </Button>
-      <Button type="submit" variant="solid" size="sm" disabled={adding || !password}>
-        {adding ? "Checking…" : "Continue"}
-      </Button>
-    </div>
-  </form>
-{/if}
+<ConfirmPasswordDialog
+  bind:open={confirming}
+  {username}
+  description="For your security, enter your password before adding a new way to sign in."
+  onconfirmed={add}
+/>
 
 {#if error}
   <p class="mt-3 text-sm text-destructive" role="alert">{error}</p>
@@ -159,9 +123,9 @@
 
 {#if loading}
   <p class="py-6 text-center text-sm text-muted-foreground">Loading…</p>
-{:else if passkeys.length === 0}
+{:else if loaded && passkeys.length === 0}
   <p class="py-6 text-center text-sm text-muted-foreground">No passkeys yet.</p>
-{:else}
+{:else if loaded}
   <ul class="mt-2 divide-y divide-border">
     {#each passkeys as p (p.id)}
       <li class="flex items-center justify-between gap-3 py-3">

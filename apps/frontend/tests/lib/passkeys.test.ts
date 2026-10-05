@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, test, vi } from "vitest";
+import { freshSignIn } from "#lib/freshSignIn.svelte.js";
 import {
   addPasskeyError,
   confirmPassword,
@@ -76,14 +77,25 @@ describe("confirmPassword", () => {
     expect(auth.revoke).toHaveBeenCalledWith({ token: "old" });
   });
 
+  test("a confirmation is announced so every section waiting on it can retry", async () => {
+    auth.getSession.mockResolvedValue({ data: { session: { token: "old" } }, error: null });
+    auth.username.mockResolvedValue({ data: {}, error: null });
+    auth.revoke.mockResolvedValue({ data: {}, error: null });
+    const before = freshSignIn.confirmations;
+    await confirmPassword("ada", "secret");
+    expect(freshSignIn.confirmations).toBe(before + 1);
+  });
+
   test("a wrong password keeps the current session", async () => {
     auth.getSession.mockResolvedValue({ data: { session: { token: "old" } }, error: null });
     auth.username.mockResolvedValue({
       data: null,
       error: { code: "INVALID_USERNAME_OR_PASSWORD", message: "Invalid" },
     });
+    const before = freshSignIn.confirmations;
     expect(await confirmPassword("ada", "nope")).toBe("Incorrect password.");
     expect(auth.revoke).not.toHaveBeenCalled();
+    expect(freshSignIn.confirmations).toBe(before);
   });
 
   test("other refusals pass their message through", async () => {

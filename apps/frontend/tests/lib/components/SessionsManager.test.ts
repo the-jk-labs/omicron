@@ -4,6 +4,7 @@ import { get } from "svelte/store";
 import { beforeEach, expect, test, vi } from "vitest";
 import SessionsManager from "#lib/components/SessionsManager.svelte";
 import { confirmRequest } from "#lib/components/ui/confirm.js";
+import { freshSignIn } from "#lib/freshSignIn.svelte.js";
 
 type Res = { data?: unknown; error?: { code?: string; message?: string } | null };
 const auth = vi.hoisted(() => ({
@@ -115,30 +116,73 @@ test("with no other sessions there is nothing to sign out", async () => {
   expect(screen.getByRole("button", { name: /Sign out all other sessions/ })).toBeDisabled();
 });
 
-test("an older session confirms the password before the list is shown", async () => {
-  auth.listSessions.mockResolvedValueOnce({ data: null, error: { code: "SESSION_NOT_FRESH", message: "x" } });
+const STALE = { data: null, error: { code: "SESSION_NOT_FRESH", message: "x" } };
+
+test("an older session confirms the password in a dialog before the list is shown", async () => {
+  auth.listSessions.mockResolvedValueOnce(STALE);
   auth.getSession.mockResolvedValueOnce({ data: { session: { token: "stale" } }, error: null });
   auth.signIn.mockResolvedValue({ data: {}, error: null });
   show();
-  await screen.findByText("Confirm it's you");
+  await fireEvent.click(await screen.findByRole("button", { name: "Confirm it's you" }));
   expect(screen.queryByRole("listitem")).toBeNull();
+  const dialog = await screen.findByRole("dialog");
   expect(document.querySelector('input[autocomplete="username"]')).toHaveValue("ada");
 
-  await fireEvent.input(screen.getByLabelText("Password"), { target: { value: "correct horse battery" } });
-  await fireEvent.click(screen.getByRole("button", { name: "Show sessions" }));
+  await fireEvent.input(within(dialog).getByLabelText("Password"), { target: { value: "correct horse battery" } });
+  await fireEvent.click(within(dialog).getByRole("button", { name: "Continue" }));
   await screen.findByText("Chrome on Windows");
   expect(auth.signIn).toHaveBeenCalledWith({ username: "ada", password: "correct horse battery" });
-  expect(screen.queryByText("Confirm it's you")).toBeNull();
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(screen.queryByRole("button", { name: "Confirm it's you" })).toBeNull();
 });
 
-test("a wrong password keeps the list hidden", async () => {
-  auth.listSessions.mockResolvedValue({ data: null, error: { code: "SESSION_NOT_FRESH", message: "x" } });
+test("a wrong password keeps the dialog open and the list hidden", async () => {
+  auth.listSessions.mockResolvedValue(STALE);
   auth.signIn.mockResolvedValue({ data: null, error: { code: "INVALID_USERNAME_OR_PASSWORD", message: "x" } });
   show();
-  await fireEvent.input(await screen.findByLabelText("Password"), { target: { value: "nope" } });
-  await fireEvent.click(screen.getByRole("button", { name: "Show sessions" }));
-  await screen.findByText("Incorrect password.");
+  await fireEvent.click(await screen.findByRole("button", { name: "Confirm it's you" }));
+  const dialog = await screen.findByRole("dialog");
+  await fireEvent.input(within(dialog).getByLabelText("Password"), { target: { value: "nope" } });
+  await fireEvent.click(within(dialog).getByRole("button", { name: "Continue" }));
+  await within(dialog).findByText("Incorrect password.");
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
   expect(screen.queryByRole("listitem")).toBeNull();
+});
+
+test("cancelling the dialog keeps the list locked", async () => {
+  auth.listSessions.mockResolvedValue(STALE);
+  show();
+  await fireEvent.click(await screen.findByRole("button", { name: "Confirm it's you" }));
+  await fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Cancel" }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  expect(auth.signIn).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "Confirm it's you" })).toBeInTheDocument();
+});
+
+test("a password confirmed elsewhere on the page unlocks the list", async () => {
+  auth.listSessions.mockResolvedValueOnce(STALE);
+  show();
+  await screen.findByRole("button", { name: "Confirm it's you" });
+  freshSignIn.confirmations += 1;
+  await screen.findByText("Chrome on Windows");
+  expect(screen.queryByRole("button", { name: "Confirm it's you" })).toBeNull();
+});
+
+test("a password confirmed elsewhere reloads an open list, since this device's session changed", async () => {
+  show();
+  await screen.findByText("Chrome on Windows");
+  auth.getSession.mockResolvedValue({ data: { session: { token: "phone" } }, error: null });
+  freshSignIn.confirmations += 1;
+  await waitFor(() => expect(within(row("Safari on iOS")).getByText("Current session")).toBeInTheDocument());
+  expect(auth.listSessions).toHaveBeenCalledTimes(2);
+});
+
+test("confirmations from before the section opened don't reload it", async () => {
+  freshSignIn.confirmations += 1;
+  show();
+  await screen.findByText("Chrome on Windows");
+  await new Promise((r) => setTimeout(r, 20));
+  expect(auth.listSessions).toHaveBeenCalledTimes(1);
 });
 
 test("a session without a known agent or address still reads sensibly", async () => {
