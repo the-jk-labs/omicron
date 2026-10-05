@@ -286,12 +286,13 @@
       <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
         <span class="flex items-center gap-1.5">
           <Icon name="calendar" size={14} />
-          <Time iso={post.createdAt} />
+          <Time iso={post.createdAt} kind="date" />
         </span>
         <Separator.Root orientation="vertical" class="h-3 w-px shrink-0 bg-border" />
         <span class="flex items-center gap-1.5">
+          <!-- The clock says "read time" on screen; screen readers still hear the word. -->
           <Icon name="clock" size={14} />
-          {minutes} min read
+          {minutes} min <span class="sr-only">read</span>
         </span>
         {#if post.remote && originInstance}
           <Separator.Root orientation="vertical" class="h-3 w-px shrink-0 bg-border" />
