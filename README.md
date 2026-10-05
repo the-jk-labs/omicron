@@ -10,14 +10,23 @@
 </p>
 
 <p align="center">
-  <img src="https://shieldcn.dev/badge/license-AGPL--3.0-blue.svg?logo=opensourceinitiative&size=xs" alt="License: AGPL-3.0" />
-  <img src="https://shieldcn.dev/badge/protocol-ActivityPub-6364FF.svg?logo=activitypub&size=xs" alt="ActivityPub" />
-  <img src="https://shieldcn.dev/badge/backend-Deno-000000.svg?logo=deno&logoColor=white&size=xs" alt="Deno" />
-  <img src="https://shieldcn.dev/badge/frontend-SvelteKit-FF3E00.svg?logo=svelte&logoColor=white&size=xs" alt="SvelteKit" />
+  <a href="https://github.com/the-jk-labs/omicron/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/the-jk-labs/omicron/ci.yml?branch=main&style=flat-square&label=CI" alt="CI" /></a>
+  <a href="https://github.com/the-jk-labs/omicron/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0" /></a>
+  <a href="https://docs.omicron.blog/federation/overview/"><img src="https://img.shields.io/badge/protocol-ActivityPub-6364FF?style=flat-square" alt="ActivityPub" /></a>
+  <a href="https://github.com/the-jk-labs/omicron/commits/main"><img src="https://img.shields.io/github/last-commit/the-jk-labs/omicron?style=flat-square" alt="Last commit" /></a>
+  <a href="https://github.com/the-jk-labs/omicron/stargazers"><img src="https://img.shields.io/github/stars/the-jk-labs/omicron?style=flat-square" alt="GitHub stars" /></a>
 </p>
 
 <p align="center">
-  <a href="https://docs.omicron.blog"><strong>Documentation →</strong></a>
+  <a href="#features">Features</a> ·
+  <a href="#stack">Stack</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#documentation">Documentation</a> ·
+  <a href="#development">Development</a> ·
+  <a href="#publishing-from-an-external-cms">External CMS</a> ·
+  <a href="#contributing">Contributing</a> ·
+  <a href="#security">Security</a> ·
+  <a href="#license">License</a>
 </p>
 
 Omicron is a federated blogging platform. Write rich-text posts, follow other
@@ -25,7 +34,7 @@ writers, read a personalized feed, and federate with the wider fediverse over
 **ActivityPub** — with no vendor lock-in and no gatekeepers. Run your own
 instance in one command and own your words.
 
-### Why Omicron
+## Features
 
 - **Federated** — every user is an ActivityPub actor; follow and be followed
   across the fediverse.
@@ -36,8 +45,14 @@ instance in one command and own your words.
   upgrades.
 - **Real writing tools** — a Tiptap editor with full Markdown support.
 
-**Stack** — Backend: Deno · Hono · Fedify · Drizzle · PostgreSQL · Frontend:
-SvelteKit · bits-ui · Tiptap · TailwindCSS · Mobile: Kotlin Multiplatform · Compose.
+## Stack
+
+| Layer    | Technology                                            |
+| -------- | ----------------------------------------------------- |
+| Backend  | Deno · Hono · Fedify · Drizzle · PostgreSQL · Redis   |
+| Frontend | SvelteKit · bits-ui · Tiptap · TailwindCSS            |
+| Mobile   | Kotlin Multiplatform · Compose                        |
+| Deploy   | Docker Compose · Caddy (TLS) · Anubis · restic backup |
 
 ---
 
@@ -84,64 +99,36 @@ cd apps/backend && pnpm install && pnpm dev   # http://localhost:8000
 cd apps/frontend && pnpm install && pnpm dev  # http://localhost:5173
 ```
 
-Development uses pnpm throughout; Deno only runs the backend underneath
+Development uses pnpm throughout; Deno runs the backend underneath
 (`pnpm dev` starts it) and in the production container.
 
-Install the backend's dependencies (`pnpm install` in `apps/backend`) before
-the frontend's `pnpm check`, even when working only on the frontend. The
-frontend typecheck reads the backend's serializers to verify its own API types
-still match them (`apps/frontend/src/lib/api/contract.ts`). Skip this and
-`pnpm check` reports `Cannot find module 'drizzle-orm'` against backend files
-rather than anything you changed.
+The frontend typecheck reads the backend's serializers
+(`apps/frontend/src/lib/api/contract.ts`), so install the backend's
+dependencies before running the frontend's `pnpm check`.
 
 ### Tests
 
 ```bash
 cd apps/backend
-pnpm test              # unit and integration tests (needs Postgres, see below)
-pnpm test:unit         # unit tests only, no database needed
-pnpm test:integration  # visibility rules only
+pnpm test:unit         # no database needed
+pnpm test:integration  # needs Postgres, see below
 pnpm check             # typecheck, format, lint and unit tests (run `pnpm fmt` first)
 ```
 
-The backend tests run on Node and need Node 26 or newer for its built-in
-`Temporal`, which the federation code uses (Deno, the runtime, has it too).
-
-The integration suite runs the committed migrations and asserts on who can see
-what: drafts, private accounts, suspended authors, across feeds, tag pages,
-reading lists and the sitemap. Its files run one at a time and **truncate every
-table they touch**, so point it at a scratch database, never a real one.
-
-Any Postgres works, including one installed natively. By default the tests use
-`postgres://omicron:omicron@localhost:5432/omicron_test` (from
-`apps/backend/tests/test.env`), so create that role and database once:
-
-```sql
-CREATE ROLE omicron LOGIN PASSWORD 'omicron';
-CREATE DATABASE omicron_test OWNER omicron;
-```
-
-Set `DATABASE_URL` to use a different one. Without a local Postgres, a
-throwaway container works too:
-
-```bash
-docker run -d --name omicron-test-db -p 55432:5432   -e POSTGRES_USER=omicron -e POSTGRES_PASSWORD=omicron   -e POSTGRES_DB=omicron_test postgres:16-alpine
-
-DATABASE_URL=postgres://omicron:omicron@localhost:55432/omicron_test pnpm test:integration
-```
-
-CI runs both on every push and PR against its own Postgres service.
+The integration suite runs the committed migrations and **truncates every
+table it touches** — point it at a scratch database, never a real one. It
+defaults to `postgres://omicron:omicron@localhost:5432/omicron_test` (see
+`apps/backend/tests/test.env`); override with `DATABASE_URL`.
 
 See the [local setup guide](https://docs.omicron.blog/development/local-setup/)
-for the full picture.
+for the full picture, including Node 26+, the test database, and CI.
 
 ## Publishing from an external CMS
 
-Any writer can publish into their own blog from an external system — Sanity,
-Contentful, a static-site build hook, a script. Mint a token under **Settings →
-Integrations**, give it to that system, and the posts it sends are published
-under your name and federate like anything you write in the editor. Revoke the
-token any time to cut it off.
+Any writer can publish from an external system — Sanity, Contentful, a
+static-site build hook, a script. Mint a token under **Settings →
+Integrations** and POST Markdown to `/api/webhooks/content`. Posts publish
+under your name and federate like anything written in the editor.
 
 ```bash
 curl -X POST https://your-domain/api/webhooks/content \
@@ -150,39 +137,27 @@ curl -X POST https://your-domain/api/webhooks/content \
   -d '{
     "title": "Europe is ditching Visa and Mastercard",
     "body": "## The short version\n\nIt is a **huge** step.",
-    "description": "Why the EU payments shift matters.",
-    "banner": "https://cdn.example.com/covers/eu-payments.jpg",
     "slug": "eu-payments",
     "tags": ["fintech", "europe"]
   }'
 # → 201 {"id":"…","slug":"eu-payments","status":"published","created":true}
 ```
 
-Only `title` and `body` (Markdown) are required. `description` defaults to the
-first ~150 characters of the body; `slug` defaults to the title's slug and is
-what makes re-sends idempotent — POST the same `slug` again and your existing
-post is updated (`200`, `"created": false`) instead of duplicated. Slugs are
-scoped to you, so they never collide with another writer's. The token also
-travels as `Authorization: Bearer <token>`. An unknown credential gets `401`
-and an invalid payload `400` naming the field.
+Only `title` and `body` (Markdown) are required. Re-POST the same `slug` to
+update the post instead of duplicating it; send partial fields to change only
+what you list, or `null` to clear a field. The token also works as
+`Authorization: Bearer <token>`.
 
-Updates are partial: send only what changed, and everything you leave out keeps
-its current value. Once the post exists, `slug` alone identifies it, so `title`
-and `body` are needed only on the first send.
-
-```bash
-# Unpublish, without resending the article.
--d '{"slug": "eu-payments", "status": "draft"}'
-# Retitle it.
--d '{"slug": "eu-payments", "title": "Europe ditches the card networks"}'
-# Drop the cover — `null` clears a field, leaving it out preserves it.
--d '{"slug": "eu-payments", "banner": null}'
-```
-
-Operators can also set an instance-wide `WEBHOOK_SECRET` (see
-[.env.example](.env.example)) for publishing without a user token — a migration
-script, say. Full reference:
+Full reference:
 **[docs.omicron.blog/reference/content-webhook](https://docs.omicron.blog/reference/content-webhook/)**
+
+## Contributing
+
+Pull requests are welcome. For architecture, local setup, migrations, and
+conventions, start with the
+[development docs](https://docs.omicron.blog/development/architecture/).
+Run `pnpm fmt` then `pnpm check` in every app you touched before pushing, and
+open a PR against `main` — never push to it directly.
 
 ## Security
 
@@ -193,8 +168,6 @@ Report vulnerabilities privately — see [SECURITY.md](SECURITY.md).
 Omicron is free software licensed under the **GNU Affero General Public License
 v3.0 or later** (AGPL-3.0-or-later). See [LICENSE](LICENSE) for the full text.
 
-Because Omicron is typically run as a network service, the AGPL's §13 applies:
-if you run a modified version on a server and let users interact with it over a
-network, you must offer those users the corresponding source code of your
-modified version. The app surfaces a "Source" link in the UI for this purpose —
-point it at your fork if you deploy changes.
+If you run a modified version as a network service, the AGPL's §13 requires
+offering users your modified source. The app surfaces a "Source" link for this
+— point it at your fork if you deploy changes.
