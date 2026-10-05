@@ -99,7 +99,7 @@ fun normalizeOrigin(value: String): String? =
         val url = Url(candidate)
         require(url.protocol == URLProtocol.HTTPS)
         require(url.host.isNotBlank())
-        require(url.encodedPath == "/")
+        require(url.encodedPath.isEmpty() || url.encodedPath == "/")
         require(url.parameters.isEmpty())
         require(url.fragment.isEmpty())
         require('@' !in authority)
