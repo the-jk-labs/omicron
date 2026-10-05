@@ -49,13 +49,17 @@ import org.omicron.mobile.resources.omicron_logo
 import zed.rainxch.rikkaui.foundation.RikkaTheme
 
 @Composable
-fun ConnectRoute(viewModel: ConnectViewModel) {
+fun ConnectRoute(
+    viewModel: ConnectViewModel,
+    onContinue: () -> Unit,
+) {
     val state by viewModel.uiState.collectAsState()
     ConnectScreen(
         state = state,
         onOriginChange = viewModel::updateOrigin,
         onConnect = viewModel::connect,
         onChangeInstance = viewModel::changeInstance,
+        onContinue = onContinue,
     )
 }
 
@@ -65,6 +69,7 @@ private fun ConnectScreen(
     onOriginChange: (String) -> Unit,
     onConnect: () -> Unit,
     onChangeInstance: () -> Unit,
+    onContinue: () -> Unit,
 ) {
     Box(
         modifier = Modifier.fillMaxSize().background(RikkaTheme.colors.background).safeDrawingPadding(),
@@ -86,6 +91,7 @@ private fun ConnectScreen(
                     is ConnectPhase.Connected -> ConnectedInstance(
                         instance = phase.instance,
                         onChangeInstance = onChangeInstance,
+                        onContinue = onContinue,
                     )
 
                     else -> ConnectForm(
@@ -144,6 +150,7 @@ private fun ConnectForm(
 private fun ConnectedInstance(
     instance: InstanceConfiguration,
     onChangeInstance: () -> Unit,
+    onContinue: () -> Unit,
 ) {
     Text(
         text = stringResource(Res.string.connect_connected_title, instance.name),
@@ -151,6 +158,12 @@ private fun ConnectedInstance(
     )
     Text(text = instance.domain, variant = TextVariant.Lead)
     Text(text = stringResource(Res.string.connect_connected_description), variant = TextVariant.P)
+    Button(
+        text = stringResource(Res.string.connect_continue),
+        onClick = onContinue,
+        modifier = Modifier.fillMaxWidth(),
+        size = ButtonSize.Lg,
+    )
     Button(
         text = stringResource(Res.string.connect_change_instance),
         onClick = onChangeInstance,

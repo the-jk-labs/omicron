@@ -3,18 +3,55 @@ package org.omicron.mobile
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import kotlinx.serialization.Serializable
 import org.omicron.mobile.core.designsystem.OmicronTheme
+import org.omicron.mobile.data.repository.AuthRepository
 import org.omicron.mobile.data.repository.InstanceRepository
+import org.omicron.mobile.feature.auth.AuthRoute
+import org.omicron.mobile.feature.auth.AuthViewModel
 import org.omicron.mobile.feature.connect.ConnectRoute
 import org.omicron.mobile.feature.connect.ConnectViewModel
 
 @Composable
-fun OmicronApp(instanceRepository: InstanceRepository) {
+fun OmicronApp(
+    instanceRepository: InstanceRepository,
+    authRepository: AuthRepository,
+) {
     OmicronTheme {
-        val viewModel = remember(instanceRepository) { ConnectViewModel(instanceRepository) }
-        DisposableEffect(viewModel) {
-            onDispose(viewModel::close)
+        val navController = rememberNavController()
+        NavHost(navController = navController, startDestination = ConnectDestination) {
+            composable<ConnectDestination> {
+                val viewModel = remember(instanceRepository) { ConnectViewModel(instanceRepository) }
+                DisposableEffect(viewModel) {
+                    onDispose(viewModel::close)
+                }
+                ConnectRoute(
+                    viewModel = viewModel,
+                    onContinue = { navController.navigate(AuthDestination) { launchSingleTop = true } },
+                )
+            }
+            composable<AuthDestination> {
+                val viewModel =
+                    remember(instanceRepository, authRepository) {
+                        AuthViewModel(instanceRepository::savedInstance, authRepository)
+                    }
+                DisposableEffect(viewModel) {
+                    onDispose(viewModel::close)
+                }
+                AuthRoute(
+                    viewModel = viewModel,
+                    onChangeInstance = { navController.popBackStack() },
+                )
+            }
         }
-        ConnectRoute(viewModel)
     }
 }
+
+@Serializable
+private data object ConnectDestination
+
+@Serializable
+private data object AuthDestination

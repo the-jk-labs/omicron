@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Omicron</string>
+    <string name="auth_error_missing_instance">Choose an instance before restoring a session.</string>
+    <string name="auth_error_unavailable">Could not restore your session. Check your connection and try again.</string>
+    <string name="auth_restoring">Restoring session</string>
+    <string name="auth_session_not_found_description">No saved session was found for %1$s. Sign-in and registration are coming next.</string>
+    <string name="auth_session_not_found_title">No saved session</string>
+    <string name="auth_signed_in_description">Signed in as %1$s on %2$s.</string>
+    <string name="auth_signed_in_title">Session restored</string>
+    <string name="auth_try_again">Try again</string>
     <string name="connect_change_instance">Change instance</string>
     <string name="connect_connected_description">The selected instance is saved on this device.</string>
     <string name="connect_connected_title">Connected to %1$s</string>
