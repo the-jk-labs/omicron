@@ -134,14 +134,8 @@
        row the buttons stay on the meta's line while there is room and drop to
        their own right-aligned line when there is not. -->
   <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
-    <!-- Localized date with semantic <time>; clock time stays on `sm+` (phone
-         width). Time.svelte handles locale, timezone (title) and the
-         `datetime` attribute — no manual `, ` concatenation, so the stray
-         "2026 , 13:40" (space before comma) cannot happen. -->
-    <span class="inline-flex items-center gap-1">
-      <Time iso={post.createdAt} kind="date" />
-      <span class="hidden sm:inline">· <Time iso={post.createdAt} kind="time" /></span>
-    </span>
+    <!-- The date alone: the clock time of publishing is noise on a card. -->
+    <Time iso={post.createdAt} kind="date" />
     <!-- The clock says "read time" on screen; screen readers still hear the word. -->
     <span class="flex items-center gap-1"
       ><Icon name="clock" size={13} /> {minutes} min <span class="sr-only">read</span></span
