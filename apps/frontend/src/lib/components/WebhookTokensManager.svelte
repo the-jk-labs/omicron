@@ -108,10 +108,7 @@
 {#if freshToken}
   <div class="rounded-card border border-foreground/30 bg-muted p-4">
     <p class="text-sm font-semibold text-foreground">Copy your token now</p>
-    <p class="mt-1 text-sm text-muted-foreground">
-      This is the only time it is shown. It is stored hashed, so it cannot be displayed again. If you lose it, revoke
-      this token and create another.
-    </p>
+    <p class="mt-1 text-sm text-muted-foreground">Copy it now. It won't be shown again.</p>
     <div class="mt-3 flex items-center gap-2">
       <code
         class="min-w-0 flex-1 overflow-x-auto rounded-input border border-input bg-background px-3 py-2 font-mono text-xs text-foreground"
@@ -153,9 +150,7 @@
 {#if loading && !loaded}
   <p class="py-6 text-center text-sm text-muted-foreground">Loading…</p>
 {:else if tokens.length === 0}
-  <p class="py-6 text-center text-sm text-muted-foreground">
-    No tokens yet. Create one to publish from an external system.
-  </p>
+  <p class="py-6 text-center text-sm text-muted-foreground">No tokens yet.</p>
 {:else}
   <ul class="mt-2 divide-y divide-border">
     {#each tokens as token (token.id)}

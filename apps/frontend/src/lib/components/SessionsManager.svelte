@@ -3,7 +3,7 @@
      sessions can be ended here; this one is ended with Sign out instead. -->
 <script lang="ts">
   import type { Session } from "better-auth";
-  import { onMount, untrack } from "svelte";
+  import { onMount, type Snippet, untrack } from "svelte";
   import { authClient } from "#lib/auth-client.js";
   import ConfirmPasswordDialog from "#lib/components/ConfirmPasswordDialog.svelte";
   import Icon from "#lib/components/Icon.svelte";
@@ -16,8 +16,13 @@
 
   type Snapshot = { locked: true } | { locked: false; sessions: Session[]; currentToken: string | null };
 
-  // `initial` is the server-loaded list; without it the browser loads it.
-  let { username, initial = null }: { username: string; initial?: Snapshot | null } = $props();
+  // `initial` is the server-loaded list; without it the browser loads it. `header`
+  // is the section's title, rendered beside the sign-out-others button.
+  let {
+    username,
+    initial = null,
+    header,
+  }: { username: string; initial?: Snapshot | null; header?: Snippet } = $props();
   const seed = untrack(() => initial);
 
   // This device first, then the most recently active.
@@ -107,8 +112,24 @@
   description="For your security, enter your password to see where you're signed in."
 />
 
+<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+  <div class="min-w-0">{@render header?.()}</div>
+  {#if !locked && !loading}
+    <Button
+      variant="outline"
+      size="sm"
+      class="shrink-0 self-start"
+      disabled={others.length === 0 || busy !== null}
+      onclick={revokeOthers}
+    >
+      <Icon name="logout" size={15} />
+      {busy === "others" ? "Signing out…" : "Sign out all other sessions"}
+    </Button>
+  {/if}
+</div>
+
 {#if locked}
-  <div class="flex flex-col items-center gap-3 py-6 text-center text-sm">
+  <div class="mt-4 flex flex-col items-center gap-3 py-6 text-center text-sm">
     <p class="text-muted-foreground">For your security, confirm it's you to see where you're signed in.</p>
     <Button variant="outline" size="sm" onclick={() => (confirming = true)}>
       <Icon name="lock" size={15} />
@@ -118,9 +139,9 @@
 {:else if loading}
   <p class="py-6 text-center text-sm text-muted-foreground">Loading…</p>
 {:else}
-  {#if error}<p class="text-sm text-destructive" role="alert">{error}</p>{/if}
+  {#if error}<p class="mt-3 text-sm text-destructive" role="alert">{error}</p>{/if}
 
-  <ul class="divide-y divide-border">
+  <ul class="mt-4 divide-y divide-border">
     {#each sessions as session (session.token)}
       {@const device = parseUserAgent(session.userAgent)}
       {@const current = session.token === currentToken}
@@ -155,12 +176,4 @@
       </li>
     {/each}
   </ul>
-
-  <div class="mt-4 flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <p class="text-xs text-muted-foreground">To end this session, use Sign out above.</p>
-    <Button variant="outline" size="sm" disabled={others.length === 0 || busy !== null} onclick={revokeOthers}>
-      <Icon name="logout" size={15} />
-      {busy === "others" ? "Signing out…" : "Sign out all other sessions"}
-    </Button>
-  </div>
 {/if}

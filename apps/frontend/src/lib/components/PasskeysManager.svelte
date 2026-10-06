@@ -4,7 +4,7 @@
      provider's name (set by the server) or just "Passkey". -->
 <script lang="ts">
   import type { Passkey } from "@better-auth/passkey/client";
-  import { onMount, untrack } from "svelte";
+  import { onMount, type Snippet, untrack } from "svelte";
   import { authClient } from "#lib/auth-client.js";
   import ConfirmPasswordDialog from "#lib/components/ConfirmPasswordDialog.svelte";
   import Icon from "#lib/components/Icon.svelte";
@@ -13,8 +13,13 @@
   import { confirm } from "#lib/components/ui/confirm.js";
   import { addPasskeyError, needsFreshSignIn, passkeysSupported } from "#lib/passkeys.js";
 
-  // `initial` is the server-loaded list; without it the browser loads it.
-  let { username, initial = null }: { username: string; initial?: Passkey[] | null } = $props();
+  // `initial` is the server-loaded list; without it the browser loads it. `header`
+  // is the section's title, rendered beside the Add button.
+  let {
+    username,
+    initial = null,
+    header,
+  }: { username: string; initial?: Passkey[] | null; header?: Snippet } = $props();
   const seed = untrack(() => initial);
 
   const NAME_MAX = 60;
@@ -113,6 +118,19 @@
   onconfirmed={add}
 />
 
+<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+  <div class="min-w-0">
+    {@render header?.()}
+    {#if !supported}
+      <p class="mt-1 text-xs text-muted-foreground">This browser doesn't support passkeys.</p>
+    {/if}
+  </div>
+  <Button variant="outline" size="sm" class="shrink-0 self-start" disabled={!supported || adding} onclick={add}>
+    <Icon name="plus" size={15} />
+    {adding ? "Waiting for your device…" : "Add a passkey"}
+  </Button>
+</div>
+
 {#if error}
   <p class="mt-3 text-sm text-destructive" role="alert">{error}</p>
 {/if}
@@ -122,7 +140,7 @@
 {:else if loaded && passkeys.length === 0}
   <p class="py-6 text-center text-sm text-muted-foreground">No passkeys yet.</p>
 {:else if loaded}
-  <ul class="mt-2 divide-y divide-border">
+  <ul class="mt-4 divide-y divide-border">
     {#each passkeys as p (p.id)}
       <li class="flex items-center justify-between gap-3 py-3">
         <span class="flex min-w-0 flex-1 items-center gap-3">
@@ -167,13 +185,3 @@
     {/each}
   </ul>
 {/if}
-
-<div class="mt-4 flex items-center justify-end gap-3">
-  {#if !supported}
-    <p class="text-xs text-muted-foreground">This browser doesn't support passkeys.</p>
-  {/if}
-  <Button variant="outline" size="sm" disabled={!supported || adding} onclick={add}>
-    <Icon name="plus" size={15} />
-    {adding ? "Waiting for your device…" : "Add a passkey"}
-  </Button>
-</div>

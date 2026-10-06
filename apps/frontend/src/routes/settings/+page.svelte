@@ -382,7 +382,6 @@
   <h1 class="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
     <Icon name="settings" size={22} /> Settings
   </h1>
-  <p class="mt-1 text-muted-foreground">Manage your profile, appearance, and account.</p>
 </header>
 
 <Tabs.Root value={tab} onValueChange={selectTab}>
@@ -393,7 +392,7 @@
       <!-- Profile -->
       <section class="rounded-card border border-border bg-background p-6">
         <h2 class="text-lg font-semibold tracking-tight text-foreground">Profile</h2>
-        <p class="mt-1 text-sm text-muted-foreground">Update how you appear across the fediverse.</p>
+        <p class="mt-1 text-sm text-muted-foreground">How you appear across the fediverse.</p>
 
         <div class="mt-6 flex flex-col gap-5">
           <!-- Avatar -->
@@ -411,27 +410,22 @@
                 <Icon name="camera" size={20} />
               </span>
             </button>
-            <div class="flex flex-col gap-1.5">
-              <div class="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onclick={() => fileInput?.click()}>
-                  <Icon name="camera" size={15} /> Change photo
+            <div class="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onclick={() => fileInput?.click()}>
+                <Icon name="camera" size={15} /> Change photo
+              </Button>
+              {#if data.user.avatarUrl}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onclick={removePhoto}
+                  disabled={removingPhoto}
+                  class="text-muted-foreground hover:text-destructive"
+                >
+                  <Icon name="trash" size={15} />
+                  {removingPhoto ? "Removing…" : "Remove"}
                 </Button>
-                {#if data.user.avatarUrl}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onclick={removePhoto}
-                    disabled={removingPhoto}
-                    class="text-muted-foreground hover:text-destructive"
-                  >
-                    <Icon name="trash" size={15} />
-                    {removingPhoto ? "Removing…" : "Remove"}
-                  </Button>
-                {/if}
-              </div>
-              <p class="text-xs text-muted-foreground">
-                PNG, JPEG, WebP or GIF · large photos are resized automatically
-              </p>
+              {/if}
             </div>
             <input
               bind:this={fileInput}
@@ -481,7 +475,9 @@
 
           <!-- Public email -->
           <div class="flex flex-col gap-1.5">
-            <Label.Root for="publicEmail" class={labelClass}>Public email</Label.Root>
+            <Label.Root for="publicEmail" class={labelClass}
+              >Public email <span class="font-normal text-muted-foreground">· optional</span></Label.Root
+            >
             <input
               id="publicEmail"
               type="email"
@@ -492,19 +488,12 @@
               {...notALoginField}
               class={`${field} w-full`}
             />
-            <p class="text-xs text-muted-foreground">
-              Optional. Shown on your profile for anyone to contact you. Leave blank to hide it.
-            </p>
           </div>
 
           <!-- Profile tags -->
           <div class="flex flex-col gap-1.5">
             <Label.Root class={labelClass}>Tags</Label.Root>
-            <TagInput
-              bind:tags={profileTags}
-              max={MAX_PROFILE_TAGS}
-              hint="Topics you post about. Shown on your profile and federated to other servers."
-            />
+            <TagInput bind:tags={profileTags} max={MAX_PROFILE_TAGS} hint="Topics you write about." />
           </div>
 
           <!-- Profile links -->
@@ -515,11 +504,10 @@
 
           <!-- Custom section -->
           <div class="flex flex-col gap-1.5">
-            <Label.Root class={labelClass}>Custom section</Label.Root>
-            <p class="text-xs text-muted-foreground">
-              A free-form space at the top of your profile's About tab. Write it in Markdown and lay it out however you
-              like. Leave it empty to hide the section.
-            </p>
+            <Label.Root class={labelClass}
+              >Custom section <span class="font-normal text-muted-foreground">· optional</span></Label.Root
+            >
+            <p class="text-xs text-muted-foreground">Shown at the top of your About tab. Markdown works.</p>
             <div class="mt-1">
               <CustomSectionEditor bind:value={customSection} maxLength={MAX_CUSTOM_SECTION_LEN} />
             </div>
@@ -543,13 +531,9 @@
       <!-- Appearance -->
       <section class="rounded-card border border-border bg-background p-6">
         <h2 class="text-lg font-semibold tracking-tight text-foreground">Appearance</h2>
-        <p class="mt-1 text-sm text-muted-foreground">Choose how Omicron looks to you.</p>
 
         <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <div>
-            <p class="text-sm font-medium text-foreground">Theme</p>
-            <p class="text-xs text-muted-foreground">Use a fixed theme, or follow your system setting.</p>
-          </div>
+          <p class="text-sm font-medium text-foreground">Theme</p>
           <div
             class="inline-flex items-center gap-1 self-start rounded-input border border-input bg-background-alt p-1 shadow-btn sm:self-auto"
           >
@@ -571,13 +555,9 @@
       <!-- Reading -->
       <section class="rounded-card border border-border bg-background p-6">
         <h2 class="text-lg font-semibold tracking-tight text-foreground">Reading</h2>
-        <p class="mt-1 text-sm text-muted-foreground">Customize your reading experience.</p>
 
         <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <div>
-            <p class="text-sm font-medium text-foreground">Default feed</p>
-            <p class="text-xs text-muted-foreground">Which tab opens first on the home page.</p>
-          </div>
+          <p class="text-sm font-medium text-foreground">Default feed</p>
           <div
             class="inline-flex items-center gap-1 self-start rounded-input border border-input bg-background-alt p-1 shadow-btn sm:self-auto"
           >
@@ -604,9 +584,7 @@
       <!-- Followed tags -->
       <section class="rounded-card border border-border bg-background p-6">
         <h2 class="text-lg font-semibold tracking-tight text-foreground">Followed tags</h2>
-        <p class="mt-1 text-sm text-muted-foreground">
-          Articles tagged with these show up in your “For you” feed. Open any tag to follow it.
-        </p>
+        <p class="mt-1 text-sm text-muted-foreground">Their articles show up in your “For you” feed.</p>
 
         <div class="mt-4">
           <FollowedTagsManager initial={data.followedTags} />
@@ -620,14 +598,11 @@
       <!-- Visibility -->
       <section class="rounded-card border border-border bg-background p-6">
         <h2 class="text-lg font-semibold tracking-tight text-foreground">Visibility</h2>
-        <p class="mt-1 text-sm text-muted-foreground">Control who can see your articles.</p>
 
         <div class="mt-4 flex items-center justify-between gap-4">
           <div class="min-w-0">
             <Label.Root for="private-account" class="text-sm font-medium text-foreground">Private account</Label.Root>
-            <p class="mt-0.5 text-xs text-muted-foreground">
-              Only followers you approve can read your articles. Turning it off approves pending requests.
-            </p>
+            <p class="mt-0.5 text-xs text-muted-foreground">Only followers you approve can read your articles.</p>
           </div>
           <Switch.Root
             id="private-account"
@@ -646,9 +621,6 @@
       <!-- Connections -->
       <section class="rounded-card border border-border bg-background p-6">
         <h2 class="text-lg font-semibold tracking-tight text-foreground">Muted &amp; blocked</h2>
-        <p class="mt-1 text-sm text-muted-foreground">
-          Accounts you've muted or blocked. Manage who you follow from your profile.
-        </p>
 
         <div class="mt-4">
           <ConnectionsManager initial={{ muted: data.muted, blocked: data.blocked }} />
@@ -663,7 +635,7 @@
       <section class="rounded-card border border-border bg-background p-6">
         <h2 class="text-lg font-semibold tracking-tight text-foreground">Sign-in details</h2>
         <p class="mt-1 text-sm text-muted-foreground">
-          How you sign in to this account. Member since <Time iso={data.user.createdAt} kind="date" />.
+          Member since <Time iso={data.user.createdAt} kind="date" />.
         </p>
 
         <!-- One row per detail: what it is and its value on the left, the action on the right. -->
@@ -733,35 +705,33 @@
 
       <!-- Passkeys -->
       <section id="passkeys" class="rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Passkeys</h2>
-        <p class="mt-1 max-w-prose text-sm text-muted-foreground">
-          Sign in with your fingerprint, face, or screen lock instead of your password. Passkeys are stored by your
-          device or password manager and can't be phished.
-        </p>
-
-        <div class="mt-4">
-          <PasskeysManager username={data.user.username} initial={data.passkeys} />
-        </div>
+        <PasskeysManager username={data.user.username} initial={data.passkeys}>
+          {#snippet header()}
+            <h2 class="text-lg font-semibold tracking-tight text-foreground">Passkeys</h2>
+            <p class="mt-1 max-w-prose text-sm text-muted-foreground">
+              Sign in with your fingerprint, face, or screen lock.
+            </p>
+          {/snippet}
+        </PasskeysManager>
       </section>
 
       <!-- Active sessions -->
       <section id="sessions" class="rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Active sessions</h2>
-        <p class="mt-1 max-w-prose text-sm text-muted-foreground">
-          Devices signed in to your account. Sign out any you don't recognize, then change your password.
-        </p>
-
-        <div class="mt-4">
-          <SessionsManager username={data.user.username} initial={data.sessions} />
-        </div>
+        <SessionsManager username={data.user.username} initial={data.sessions}>
+          {#snippet header()}
+            <h2 class="text-lg font-semibold tracking-tight text-foreground">Active sessions</h2>
+            <p class="mt-1 max-w-prose text-sm text-muted-foreground">
+              Don't recognize a device? Sign it out, then change your password.
+            </p>
+          {/snippet}
+        </SessionsManager>
       </section>
 
       <!-- Danger zone -->
       <section class="rounded-card border border-destructive/40 bg-background p-6">
         <h2 class="text-lg font-semibold tracking-tight text-destructive">Delete account</h2>
         <p class="mt-1 max-w-prose text-sm text-muted-foreground">
-          Permanently delete your account, posts, and follows. If your instance is federated, other servers are told to
-          remove your profile too. This cannot be undone.
+          Permanently deletes your account, articles, and follows. This can't be undone.
         </p>
 
         <div class="mt-4 flex justify-end">
@@ -779,8 +749,13 @@
       <section class="rounded-card border border-border bg-background p-6">
         <h2 class="text-lg font-semibold tracking-tight text-foreground">Publishing tokens</h2>
         <p class="mt-1 max-w-prose text-sm text-muted-foreground">
-          Publish to this blog from an external system (a CMS like Sanity, a build hook, or a script). Create a token,
-          integrate to your backend, and posts it sends are published as you and federate like anything you write here.
+          Publish here from a CMS, build hook, or script.
+          <a
+            href="https://docs.omicron.blog/reference/content-webhook/"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="underline underline-offset-4 hover:text-foreground">Learn more</a
+          >
         </p>
 
         <div class="mt-4">

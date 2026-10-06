@@ -21,9 +21,10 @@ afterEach(() => {
 
 const pressed = () => screen.getAllByRole("button", { pressed: true }).map((b) => b.textContent?.trim());
 
-test("with no languages chosen it says every language is shown", () => {
+test("with no languages chosen only the picker is offered", () => {
   render(FeedLanguageFilter);
-  expect(screen.getByText("No filter set. Articles in every language are shown.")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /^Remove / })).toBe(null);
+  expect(screen.getByRole("button", { name: "Add a language" })).toBeInTheDocument();
   expect(pressed()).toEqual(["Show only these"]);
 });
 
@@ -37,7 +38,6 @@ test("the mode toggle switches between show-only and hide", async () => {
 test("chosen languages are listed and can be removed", async () => {
   reading.feedLangs = ["de", "az"];
   render(FeedLanguageFilter);
-  expect(screen.queryByText(/No filter set/)).toBe(null);
   await fireEvent.click(screen.getByRole("button", { name: "Remove German" }));
   expect(reading.feedLangs).toEqual(["az"]);
   expect(screen.queryByRole("button", { name: "Remove German" })).toBe(null);

@@ -53,9 +53,7 @@
         <p class="flex items-center gap-1.5 text-sm font-medium text-foreground">
           <Icon name="languages" size={15} /> Feed languages
         </p>
-        <p class="text-xs text-muted-foreground">
-          Filter which languages appear in your Local and Global feeds. Articles with no set language are always shown.
-        </p>
+        <p class="text-xs text-muted-foreground">Filter the languages in your Local and Global feeds.</p>
       </div>
       <div
         class="inline-flex shrink-0 items-center gap-1 self-start rounded-input border border-input bg-background-alt p-1 shadow-btn sm:self-center"
@@ -122,9 +120,5 @@
         </Select.Root>
       {/if}
     </div>
-
-    {#if langs.length === 0}
-      <p class="mt-2 text-xs text-muted-foreground">No filter set. Articles in every language are shown.</p>
-    {/if}
   </div>
 {/if}

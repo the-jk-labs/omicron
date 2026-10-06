@@ -62,7 +62,7 @@
     <Button variant="outline" size="sm" onclick={load}>Try again</Button>
   </div>
 {:else if tags.length === 0}
-  <p class="py-6 text-center text-sm text-muted-foreground">You don't follow any tags yet. Open a tag to follow it.</p>
+  <p class="py-6 text-center text-sm text-muted-foreground">You don't follow any tags yet.</p>
 {:else}
   <ul class="divide-y divide-border">
     {#each tags as tag (tag.slug)}
