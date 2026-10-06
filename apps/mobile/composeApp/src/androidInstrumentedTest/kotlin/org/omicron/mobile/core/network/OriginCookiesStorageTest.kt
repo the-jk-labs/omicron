@@ -6,8 +6,11 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.http.Cookie
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Url
+import io.ktor.util.date.GMTDate
 import io.ktor.http.headersOf
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.runBlocking
@@ -19,6 +22,27 @@ import org.omicron.mobile.core.storage.StoredSessionCookie
 
 @RunWith(AndroidJUnit4::class)
 class OriginCookiesStorageTest {
+    @Test
+    fun prefersMaxAgeOverAnExpiredExpiresAttribute() = runBlocking {
+        val storage = OriginCookiesStorage(FakeSessionCookieStore())
+        val url = Url("https://omicron.blog/api/auth/sign-in/username")
+
+        storage.addCookie(
+            url,
+            Cookie(
+                name = "__Secure-omicron.session_token",
+                value = "session-token",
+                expires = GMTDate(0),
+                maxAge = 3_600,
+                path = "/",
+                secure = true,
+                httpOnly = true,
+            ),
+        )
+
+        assertEquals(listOf("__Secure-omicron.session_token"), storage.get(url).map(Cookie::name))
+    }
+
     @Test
     fun sendsAStoredSecureCookieToTheSameOrigin() = runBlocking {
         val store = FakeSessionCookieStore()

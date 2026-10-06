@@ -22,8 +22,8 @@ class OriginCookiesStorage(
                         name = cookie.name,
                         value = cookie.value,
                         expiresAt =
-                            cookie.expires?.timestamp
-                                ?: cookie.maxAge?.let { now + it * 1_000 },
+                            cookie.maxAge?.let { now + it * 1_000 }
+                                ?: cookie.expires?.timestamp,
                     ),
                 ).filter { it.expiresAt == null || it.expiresAt > now }
         store.write(origin, updated)
