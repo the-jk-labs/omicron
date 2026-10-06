@@ -42,7 +42,15 @@ test("a signed-in user gets every settings list with the page", async () => {
     muted: [bob],
     blocked: [],
     webhookTokens: [ci],
+    defaultFeed: null,
   });
+});
+
+test("the saved default feed comes with the page, so the switch never flips", async () => {
+  const data = await load(event({ routes, user: user(), cookies: { "default-feed": "global" } }).event);
+  expect(data).toMatchObject({ defaultFeed: "global" });
+  const tampered = await load(event({ routes, user: user(), cookies: { "default-feed": "trending" } }).event);
+  expect(tampered).toMatchObject({ defaultFeed: null });
 });
 
 test("an older sign-in gets the sessions locked, ready to confirm the password", async () => {

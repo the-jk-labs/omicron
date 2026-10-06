@@ -22,11 +22,12 @@ beforeEach(() => {
   env.browser = true;
   localStorage.clear();
   document.cookie = "compose-lang=; path=/; max-age=0";
+  document.cookie = "default-feed=; path=/; max-age=0";
 });
 
 describe("restoring saved preferences", () => {
   test("valid saved values are restored", async () => {
-    localStorage.setItem("default-feed", "local");
+    document.cookie = "default-feed=local; path=/";
     localStorage.setItem("feed-lang-mode", "hide");
     localStorage.setItem("feed-langs", JSON.stringify(["en", 42, "tr"]));
     localStorage.setItem("compose-lang", "az");
@@ -38,7 +39,7 @@ describe("restoring saved preferences", () => {
   });
 
   test("tampered or missing values fall back to defaults", async () => {
-    localStorage.setItem("default-feed", "trending");
+    document.cookie = "default-feed=trending; path=/";
     localStorage.setItem("feed-lang-mode", "maybe");
     localStorage.setItem("feed-langs", "{not json");
     vi.spyOn(navigator, "language", "get").mockReturnValue("tlh-QO");
@@ -58,7 +59,7 @@ describe("restoring saved preferences", () => {
 
   test("on the server everything is the default", async () => {
     env.browser = false;
-    localStorage.setItem("default-feed", "local");
+    document.cookie = "default-feed=local; path=/";
     const reading = await load();
     expect([reading.defaultFeed, reading.feedLangMode, reading.feedLangs, reading.composeLang]).toEqual([
       null,
@@ -67,7 +68,7 @@ describe("restoring saved preferences", () => {
       null,
     ]);
     reading.setDefaultFeed("global");
-    expect(localStorage.getItem("default-feed")).toBe("local");
+    expect(document.cookie).toContain("default-feed=local");
   });
 
   test("a browser that blocks storage still gets the defaults", async () => {
@@ -88,7 +89,7 @@ test("changes are applied and persisted", async () => {
   reading.addFeedLang("tr");
   reading.removeFeedLang("en");
   reading.setComposeLang("az");
-  expect(localStorage.getItem("default-feed")).toBe("global");
+  expect(document.cookie).toContain("default-feed=global");
   expect(localStorage.getItem("feed-lang-mode")).toBe("hide");
   expect(JSON.parse(localStorage.getItem("feed-langs")!)).toEqual(["tr"]);
   expect(localStorage.getItem("compose-lang")).toBe("az");

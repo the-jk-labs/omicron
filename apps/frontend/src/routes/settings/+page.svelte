@@ -124,8 +124,8 @@
     { value: "global", label: "Global", icon: "globe" },
   ];
 
-  // Default to "For you" when no explicit choice has been saved yet.
-  const currentFeed = $derived(reading.defaultFeed ?? "for-you");
+  // The server's copy of the saved choice renders the switch before hydration.
+  const currentFeed = $derived(reading.defaultFeed ?? data.defaultFeed ?? "for-you");
 
   const dirty = $derived(
     displayName !== data.user.displayName ||

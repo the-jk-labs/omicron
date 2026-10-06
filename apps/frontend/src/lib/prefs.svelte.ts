@@ -13,7 +13,9 @@ export type FeedTab = "for-you" | "local" | "global";
 // always kept in both modes (see the backend `languageFilter`).
 export type FeedLangMode = "show" | "hide";
 
-const FEED_KEY = "default-feed";
+// A cookie, not localStorage: the server renders the home tab and the settings
+// switch from it, so neither flips after hydration.
+export const FEED_COOKIE = "default-feed";
 const LANG_MODE_KEY = "feed-lang-mode";
 const LANGS_KEY = "feed-langs";
 const COMPOSE_LANG_KEY = "compose-lang";
@@ -22,10 +24,18 @@ const COMPOSE_LANG_KEY = "compose-lang";
 export const COMPOSE_LANG_COOKIE = "compose-lang";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
-function initialFeed(): FeedTab | null {
-  if (!browser) return null;
-  const v = readStorage(FEED_KEY);
+/** A saved feed tab, or null for anything else. */
+export function feedTab(v: string | null | undefined): FeedTab | null {
   return v === "for-you" || v === "local" || v === "global" ? v : null;
+}
+
+function readCookie(name: string): string | null {
+  const hit = document.cookie.split("; ").find((c) => c.startsWith(`${name}=`));
+  return hit ? decodeURIComponent(hit.slice(name.length + 1)) : null;
+}
+
+function initialFeed(): FeedTab | null {
+  return browser ? feedTab(readCookie(FEED_COOKIE)) : null;
 }
 
 function initialLangMode(): FeedLangMode {
@@ -91,7 +101,7 @@ class ReadingPrefs {
 
   setDefaultFeed(tab: FeedTab) {
     this.defaultFeed = tab;
-    if (browser) writeStorage(FEED_KEY, tab);
+    if (browser) document.cookie = `${FEED_COOKIE}=${tab}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
   }
 
   setFeedLangMode(mode: FeedLangMode) {

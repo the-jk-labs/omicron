@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { redirect } from "@sveltejs/kit";
 import { ApiError, endpoints } from "#lib/api/index.js";
+import { FEED_COOKIE, feedTab } from "#lib/prefs.svelte.js";
 import type { PageServerLoad } from "./$types";
 
 type Api = ReturnType<typeof endpoints>;
@@ -18,7 +19,7 @@ async function sessions(api: Api) {
 // Settings are personal, so this page requires authentication. Every list on
 // the page loads here so it renders with the page; a list that fails is left to
 // the browser, which then shows the error.
-export const load: PageServerLoad = async ({ fetch, parent }) => {
+export const load: PageServerLoad = async ({ fetch, parent, cookies }) => {
   const { user } = await parent();
   if (!user) redirect(302, "/login");
   const api = endpoints(fetch);
@@ -42,5 +43,6 @@ export const load: PageServerLoad = async ({ fetch, parent }) => {
       () => null,
     ),
   ]);
-  return { user, passkeys, sessions: sessionList, followedTags, muted, blocked, webhookTokens };
+  const defaultFeed = feedTab(cookies.get(FEED_COOKIE));
+  return { user, passkeys, sessions: sessionList, followedTags, muted, blocked, webhookTokens, defaultFeed };
 };

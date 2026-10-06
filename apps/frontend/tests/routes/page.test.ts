@@ -16,10 +16,15 @@ afterEach(() => {
 const page = (items: Post[], nextCursor: string | null = null): Page<Post> => ({ items, nextCursor });
 
 let api: ReturnType<typeof fakeFetch>;
-function setup(personalized: boolean, preload: Page<Post>, routes: Parameters<typeof fakeFetch>[0] = {}) {
+function setup(
+  personalized: boolean,
+  preload: Page<Post>,
+  routes: Parameters<typeof fakeFetch>[0] = {},
+  tab = personalized ? "for-you" : "global",
+) {
   api = fakeFetch({ "*": apiError(404), ...routes });
   vi.stubGlobal("fetch", api.fetch);
-  return render(HomePage, { props: { data: { personalized, page: preload } as never } });
+  return render(HomePage, { props: { data: { personalized, page: preload, tab } as never } });
 }
 
 const tabNames = () => screen.getAllByRole("tab").map((t) => t.textContent?.trim());
@@ -77,29 +82,21 @@ test("Show more appends the next page and drops posts already shown", async () =
   expect(screen.queryByRole("button", { name: "Show more" })).toBe(null);
 });
 
-test("a saved default tab opens on mount", async () => {
-  reading.defaultFeed = "local";
-  setup(true, page([post()]), { "GET /api/posts?scope=local": page([post({ id: "l1", title: "Local post" })]) });
-  await screen.findByText("Local post");
+test("the tab the server chose is open from the first render, with its preloaded posts", async () => {
+  setup(true, page([post({ id: "l1", title: "Local post" })]), {}, "local");
   expect(selected()).toBe("Local");
-});
-
-test("a saved default that isn't offered (For you, signed out) is ignored", () => {
-  reading.defaultFeed = "for-you";
-  setup(false, page([post()]));
-  expect(selected()).toBe("Global");
+  await screen.findByText("Local post");
+  expect(feedCalls()).toEqual([]);
 });
 
 test("a signed-in reader's language filter is applied to the preloaded timeline", async () => {
   reading.feedLangs = ["de", "fr"];
-  reading.defaultFeed = "global";
-  setup(true, page([post()]), { "GET /api/posts": page([]) });
+  setup(true, page([post()]), { "GET /api/posts": page([]) }, "global");
   await waitFor(() => expect(feedCalls()).toEqual(["/api/posts?langMode=show&langs=de%2Cfr"]));
 });
 
 test("changing the language filter refetches the visible timeline", async () => {
-  reading.defaultFeed = "local";
-  setup(true, page([]), { "GET /api/posts": page([]) });
+  setup(true, page([]), { "GET /api/posts": page([]) }, "local");
   await screen.findByText("No articles on this instance yet.");
   reading.addFeedLang("az");
   await waitFor(() => expect(feedCalls().at(-1)).toBe("/api/posts?scope=local&langMode=show&langs=az"));
@@ -123,13 +120,13 @@ test("a tab that fails to load doesn't claim to be empty", async () => {
 test("a filter change made mid-load still applies", async () => {
   let release!: () => void;
   const gate = new Promise<void>((r) => (release = r));
-  reading.defaultFeed = "local";
   setup(true, page([]), {
     "GET /api/posts": async (req) => {
       if (!new URL(req.url).searchParams.has("langs")) await gate;
       return Response.json(page([]));
     },
   });
+  await openTab("Local");
   await waitFor(() => expect(feedCalls()).toEqual(["/api/posts?scope=local"]));
   reading.addFeedLang("az");
   release();
