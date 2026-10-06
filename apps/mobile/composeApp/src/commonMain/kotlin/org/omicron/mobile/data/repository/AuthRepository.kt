@@ -4,6 +4,7 @@ import io.ktor.util.date.getTimeMillis
 import kotlinx.coroutines.CancellationException
 import org.omicron.mobile.data.api.AuthApi
 import org.omicron.mobile.data.api.AuthApiException
+import org.omicron.mobile.data.api.AuthUserDto
 import org.omicron.mobile.domain.model.AuthenticatedSession
 import org.omicron.mobile.domain.model.AuthenticatedUser
 
@@ -58,7 +59,7 @@ class AuthRepository(
             if (result.token == null) {
                 AuthenticationResult.VerificationRequired
             } else {
-                restoredResult(origin)
+                authenticatedResult(origin, result.user)
             }
         } catch (exception: Throwable) {
             exception.toAuthenticationResult()
@@ -87,17 +88,28 @@ class AuthRepository(
 
     private suspend fun authenticate(
         origin: String,
-        request: suspend () -> Unit,
+        request: suspend () -> org.omicron.mobile.data.api.AuthSessionCreationDto,
     ): AuthenticationResult =
         try {
-            request()
-            restoredResult(origin)
+            authenticatedResult(origin, request().user)
         } catch (exception: Throwable) {
             exception.toAuthenticationResult()
         }
 
     private suspend fun restoredResult(origin: String): AuthenticationResult =
         restore(origin)?.let(AuthenticationResult::Authenticated) ?: AuthenticationResult.Unavailable
+
+    private suspend fun authenticatedResult(
+        origin: String,
+        user: AuthUserDto,
+    ): AuthenticationResult =
+        AuthenticationResult.Authenticated(
+            rememberSession(
+                origin = origin,
+                user = AuthenticatedUser(user.id, user.email, user.username, user.displayName),
+                accessToken = api.getToken(origin).token,
+            ),
+        )
 
     private fun Throwable.toAuthenticationResult(): AuthenticationResult {
         if (this is CancellationException) throw this
