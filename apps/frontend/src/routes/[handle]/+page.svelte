@@ -1,7 +1,8 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { page } from "$app/state";
   import { Tabs, Separator } from "bits-ui";
-  import { onMount, untrack } from "svelte";
+  import { untrack } from "svelte";
   import { fitPre } from "#lib/actions/fitPre.js";
   import { endpoints } from "#lib/api/index.js";
   import FollowButton from "#lib/components/FollowButton.svelte";
@@ -89,17 +90,8 @@
   }
 
   // The full fediverse address (@user@host). Remote handles already carry the
-  // host; for local users the host is the instance we're being served from, so
-  // we read it from the browser once mounted (unknown during SSR).
-  let host = $state("");
-  onMount(() => (host = location.host));
-  const fediHandle = $derived(
-    data.remote
-      ? `@${profile.user.username}`
-      : host
-        ? `@${profile.user.username}@${host}`
-        : `@${profile.user.username}`,
-  );
+  // host; for local users it is the host this page was requested from.
+  const fediHandle = $derived(data.remote ? `@${profile.user.username}` : `@${profile.user.username}@${page.url.host}`);
 
   let copied = $state(false);
   async function copyHandle() {

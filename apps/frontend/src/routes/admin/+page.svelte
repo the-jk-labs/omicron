@@ -1,6 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { replaceState } from "$app/navigation";
   import { Tabs } from "bits-ui";
+  import { untrack } from "svelte";
+  import { ADMIN_TABS, type AdminTab, asAdminTab } from "#lib/adminTabs.js";
   import AdminDomains from "#lib/components/AdminDomains.svelte";
   import AdminEmail from "#lib/components/AdminEmail.svelte";
   import AdminInstanceSettings from "#lib/components/AdminInstanceSettings.svelte";
@@ -9,7 +12,7 @@
   import AdminSeo from "#lib/components/AdminSeo.svelte";
   import AdminUnsplash from "#lib/components/AdminUnsplash.svelte";
   import AdminUsers from "#lib/components/AdminUsers.svelte";
-  import Icon, { type IconName } from "#lib/components/Icon.svelte";
+  import Icon from "#lib/components/Icon.svelte";
   import InstanceModeration from "#lib/components/InstanceModeration.svelte";
   import PageTitle from "#lib/components/PageTitle.svelte";
   import PageTabs from "#lib/components/ui/PageTabs.svelte";
@@ -22,16 +25,14 @@
   // role (the server enforces the same boundary).
   const isAdmin = $derived(data.user.isAdmin);
 
-  const tabs: { value: string; label: string; icon: IconName }[] = [
-    { value: "reports", label: "Reports", icon: "flag" },
-    { value: "users", label: "Users", icon: "users" },
-    { value: "federation", label: "Federation", icon: "globe" },
-    { value: "email", label: "Email", icon: "mail" },
-    { value: "security", label: "Security", icon: "lock" },
-    { value: "discoverability", label: "Discoverability", icon: "globe" },
-    { value: "media", label: "Media", icon: "image" },
-    { value: "settings", label: "Instance", icon: "settings" },
-  ];
+  // Shallow: switching tabs updates ?tab= without rerunning the server load.
+  let tab = $state<AdminTab>(untrack(() => data.tab));
+  function selectTab(value: string) {
+    tab = asAdminTab(value);
+    replaceState(`?tab=${tab}`, {});
+  }
+  // Only the tab the page was opened on comes loaded; the others load themselves.
+  const initial = untrack(() => data.initial);
 </script>
 
 {#snippet requiresAdmin(title: string)}
@@ -55,8 +56,8 @@
   </p>
 </header>
 
-<Tabs.Root value="reports">
-  <PageTabs {tabs} />
+<Tabs.Root value={tab} onValueChange={selectTab}>
+  <PageTabs tabs={ADMIN_TABS} />
 
   <Tabs.Content value="reports" class="mt-6">
     <section class="rounded-card border border-border bg-background p-6">
@@ -65,7 +66,7 @@
         Reports filed by users. Remove content or suspend accounts, then resolve.
       </p>
       <div class="mt-5">
-        <AdminReports />
+        <AdminReports initial={initial.reports} />
       </div>
     </section>
   </Tabs.Content>
@@ -77,7 +78,12 @@
         Every local account on this instance. Expand a row for detail; edit, suspend, delete, or change roles.
       </p>
       <div class="mt-5">
-        <AdminUsers selfId={data.user.id} selfUsername={data.user.username} isViewerAdmin={isAdmin} />
+        <AdminUsers
+          selfId={data.user.id}
+          selfUsername={data.user.username}
+          isViewerAdmin={isAdmin}
+          initial={initial.users}
+        />
       </div>
     </section>
   </Tabs.Content>
@@ -91,7 +97,7 @@
           content stops surfacing here.
         </p>
         <div class="mt-5">
-          <AdminDomains />
+          <AdminDomains initial={initial.domains} />
         </div>
       </section>
     {:else}
@@ -107,7 +113,7 @@
           How this instance sends password-reset and verification mail. Configure and test it here. No config files.
         </p>
         <div class="mt-5">
-          <AdminEmail />
+          <AdminEmail initial={initial.email} />
         </div>
       </section>
     {:else}
@@ -123,7 +129,7 @@
           Defenses against automated abuse. Toggles apply live. No config files, no restart.
         </p>
         <div class="mt-5">
-          <AdminSecurity />
+          <AdminSecurity initial={initial.security} />
         </div>
       </section>
     {:else}
@@ -139,7 +145,7 @@
           Search-engine indexing, sitemap, and per-engine site verification. Applies live.
         </p>
         <div class="mt-5">
-          <AdminSeo />
+          <AdminSeo initial={initial.seo} />
         </div>
       </section>
     {:else}
@@ -156,7 +162,7 @@
           Unsplash key here to offer their library as a second source.
         </p>
         <div class="mt-5">
-          <AdminUnsplash />
+          <AdminUnsplash initial={initial.unsplash} />
         </div>
       </section>
     {:else}
@@ -170,7 +176,7 @@
         <h2 class="text-lg font-semibold tracking-tight text-foreground">Instance identity</h2>
         <p class="mt-1 text-sm text-muted-foreground">The public name and domain for this server.</p>
         <div class="mt-5">
-          <AdminInstanceSettings />
+          <AdminInstanceSettings initial={initial.instance?.identity} />
         </div>
       </section>
 
@@ -178,7 +184,7 @@
         <h2 class="text-lg font-semibold tracking-tight text-foreground">Instance settings</h2>
         <p class="mt-1 text-sm text-muted-foreground">Settings that apply to everyone on this instance.</p>
         <div class="mt-5">
-          <InstanceModeration />
+          <InstanceModeration initial={initial.instance?.settings} />
         </div>
       </section>
     {:else}

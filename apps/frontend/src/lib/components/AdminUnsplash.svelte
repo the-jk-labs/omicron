@@ -1,8 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Label } from "bits-ui";
+  import { untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
   import Button from "#lib/components/ui/Button.svelte";
+
+  // `initial` is the server-loaded state; without it the browser loads it.
+  let { initial = null }: { initial?: { configured: boolean } | null } = $props();
+  const seed = untrack(() => initial);
 
   // The Unsplash access key, which adds Unsplash as a second source in the
   // editor's banner picker. Optional, and optional by necessity: Unsplash
@@ -23,7 +28,12 @@
   const field =
     "h-11 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus:border-foreground";
 
+  if (seed) {
+    configured = seed.configured;
+    loading = false;
+  }
   $effect(() => {
+    if (seed) return;
     endpoints()
       .adminUnsplash()
       .then((r) => (configured = r.configured))

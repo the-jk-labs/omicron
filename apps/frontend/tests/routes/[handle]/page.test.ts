@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { page as appPage } from "$app/state";
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { Post, User } from "#lib/types.js";
 import ProfilePage from "../../../src/routes/[handle]/+page.svelte";
 import { apiError, fakeFetch } from "../../fakeFetch";
@@ -176,7 +177,13 @@ test("empty Lists and Recommendations read differently for you and for visitors"
   expect(screen.getByText("Ada Lovelace hasn't recommended anything yet.")).toBeInTheDocument();
 });
 
+afterEach(() => {
+  appPage.url = new URL("http://localhost/");
+});
+
+// The host comes from the request, so the server renders the full address too.
 test("About shows the custom section, links, public email, role and full address", async () => {
+  appPage.url = new URL("https://blog.example/@ada");
   setup(
     data(
       {},
@@ -194,10 +201,10 @@ test("About shows the custom section, links, public email, role and full address
   expect(screen.getByText("about").tagName).toBe("STRONG");
   expect(screen.getByRole("link", { name: "ada@example.com" })).toHaveAttribute("href", "mailto:ada@example.com");
   expect(screen.getByText("Moderator")).toBeInTheDocument();
-  expect(screen.getByText(`@ada@${location.host}`)).toBeInTheDocument();
+  expect(screen.getByText("@ada@blog.example")).toBeInTheDocument();
   expect(screen.getAllByRole("link", { name: "GitHub" })[0]).toHaveAttribute("rel", "me noopener noreferrer");
   await fireEvent.click(screen.getByRole("button", { name: "Copy fediverse address" }));
-  expect(writeText).toHaveBeenCalledWith(`@ada@${location.host}`);
+  expect(writeText).toHaveBeenCalledWith("@ada@blog.example");
 });
 
 test("a remote profile is read-only, links to its origin and uses the remote endpoints", async () => {

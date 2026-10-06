@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Checkbox, Dialog, DropdownMenu, Label, ToggleGroup } from "bits-ui";
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
   import CustomSectionEditor from "#lib/components/CustomSectionEditor.svelte";
   import Icon from "#lib/components/Icon.svelte";
@@ -22,11 +22,21 @@
   // (the server also forbids them). `isViewerAdmin` gates the role grants —
   // only admins may hand out the admin or moderator role, and a moderator
   // viewer gets no action buttons on admin/moderator rows at all.
+  type Listed<T> = { users: T[]; nextCursor: string | null; total: number; filteredTotal: number };
+
+  // `initial` holds the server-loaded first pages; a missing one is loaded by the browser.
   let {
     selfId,
     selfUsername,
     isViewerAdmin = false,
-  }: { selfId: string; selfUsername: string; isViewerAdmin?: boolean } = $props();
+    initial = null,
+  }: {
+    selfId: string;
+    selfUsername: string;
+    isViewerAdmin?: boolean;
+    initial?: { users: Listed<AdminUser> | null; deleted: Listed<DeletedUser> | null } | null;
+  } = $props();
+  const seed = untrack(() => initial);
 
   // Whether the viewer may act on this row. Moderators work regular accounts
   // only; admins may act on anyone (per-action guards still apply).
@@ -34,11 +44,11 @@
     return isViewerAdmin || (!u.isAdmin && !u.isModerator);
   }
 
-  let users = $state<AdminUser[]>([]);
-  let total = $state(0);
-  let filteredTotal = $state(0);
-  let nextCursor = $state<string | null>(null);
-  let loading = $state(true);
+  let users = $state<AdminUser[]>(seed?.users?.users ?? []);
+  let total = $state(seed?.users?.total ?? 0);
+  let filteredTotal = $state(seed?.users?.filteredTotal ?? 0);
+  let nextCursor = $state<string | null>(seed?.users?.nextCursor ?? null);
+  let loading = $state(!seed?.users);
   let loadingMore = $state(false);
   let error = $state("");
   let query = $state("");
@@ -84,11 +94,11 @@
 
   // Recently deleted accounts: the retention window's restore list, newest
   // deletion first, cursor-paginated like the live table.
-  let deleted = $state<DeletedUser[]>([]);
-  let deletedTotal = $state(0);
-  let deletedFilteredTotal = $state(0);
-  let deletedNextCursor = $state<string | null>(null);
-  let deletedLoading = $state(true);
+  let deleted = $state<DeletedUser[]>(seed?.deleted?.users ?? []);
+  let deletedTotal = $state(seed?.deleted?.total ?? 0);
+  let deletedFilteredTotal = $state(seed?.deleted?.filteredTotal ?? 0);
+  let deletedNextCursor = $state<string | null>(seed?.deleted?.nextCursor ?? null);
+  let deletedLoading = $state(!seed?.deleted);
   let deletedLoadingMore = $state(false);
   let deletedError = $state("");
   let deletedQuery = $state("");
@@ -192,8 +202,8 @@
   }
 
   onMount(() => {
-    load();
-    loadDeleted();
+    if (!seed?.users) load();
+    if (!seed?.deleted) loadDeleted();
     // The retention countdown reads this, so "N days left" rolls over while
     // the tab sits open rather than freezing at load time.
     const clock = setInterval(() => (now = Date.now()), 60_000);
@@ -731,7 +741,7 @@
       }
       links.push({ platform: l.platform, url, label: l.label.trim() });
     }
-    const initial = JSON.parse(editInitial);
+    const saved = JSON.parse(editInitial);
     const body: {
       displayName?: string;
       bio?: string;
@@ -741,15 +751,15 @@
       links?: { platform: string; url: string; label: string }[];
       email?: string;
     } = {};
-    if (displayName !== initial.displayName) body.displayName = displayName;
-    if (editBio !== initial.bio) body.bio = editBio;
-    if (email !== initial.email) body.email = email;
-    if (publicEmail !== initial.publicEmail) body.publicEmail = publicEmail;
-    if (editCustomSection !== initial.customSection) body.customSection = editCustomSection;
-    if (JSON.stringify(editTags) !== JSON.stringify(initial.tags)) body.tags = editTags;
+    if (displayName !== saved.displayName) body.displayName = displayName;
+    if (editBio !== saved.bio) body.bio = editBio;
+    if (email !== saved.email) body.email = email;
+    if (publicEmail !== saved.publicEmail) body.publicEmail = publicEmail;
+    if (editCustomSection !== saved.customSection) body.customSection = editCustomSection;
+    if (JSON.stringify(editTags) !== JSON.stringify(saved.tags)) body.tags = editTags;
     // Compared in the form they're sent (canonical URL, blank rows skipped), so
     // an untouched list isn't rewritten and a blank row alone is no change.
-    const initialLinks = (initial.links as ProfileLink[])
+    const initialLinks = (saved.links as ProfileLink[])
       .filter((l) => l.url.trim())
       .map((l) => ({ platform: l.platform, url: identifierToUrl(l.platform, l.url) ?? l.url, label: l.label.trim() }));
     if (JSON.stringify(links) !== JSON.stringify(initialLinks)) body.links = links;
@@ -762,7 +772,7 @@
       return;
     }
     const target = editTarget;
-    const emailChanged = body.email !== undefined && body.email.trim() !== initial.email;
+    const emailChanged = body.email !== undefined && body.email.trim() !== saved.email;
     editBusy = true;
     try {
       const { user } = await endpoints().updateUserAsAdmin(target.id, body);

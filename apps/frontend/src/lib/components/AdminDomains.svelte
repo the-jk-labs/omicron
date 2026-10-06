@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Label } from "bits-ui";
+  import { untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
   import Icon from "#lib/components/Icon.svelte";
   import Time from "#lib/components/Time.svelte";
@@ -8,8 +9,12 @@
   import { confirm } from "#lib/components/ui/confirm.js";
   import type { BlockedDomain } from "#lib/types.js";
 
-  let domains = $state<BlockedDomain[]>([]);
-  let loading = $state(true);
+  // `initial` is the server-loaded blocklist; without it the browser loads it.
+  let { initial = null }: { initial?: { domains: BlockedDomain[] } | null } = $props();
+  const seed = untrack(() => initial);
+
+  let domains = $state<BlockedDomain[]>(seed?.domains ?? []);
+  let loading = $state(!seed);
   let error = $state("");
 
   let domain = $state("");
@@ -32,7 +37,7 @@
   }
 
   $effect(() => {
-    load();
+    if (!seed) load();
   });
 
   async function block() {

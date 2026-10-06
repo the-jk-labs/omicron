@@ -1,7 +1,13 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Label, Switch } from "bits-ui";
+  import { untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
+  import type { InstanceSettings } from "#lib/types.js";
+
+  // `initial` is the server-loaded state; without it the browser loads it.
+  let { initial = null }: { initial?: InstanceSettings | null } = $props();
+  const seed = untrack(() => initial);
 
   // Moderator-only instance settings. Loads the current state on mount and
   // persists each toggle immediately. Only rendered for admins (see settings).
@@ -10,7 +16,12 @@
   let saving = $state(false);
   let error = $state("");
 
+  if (seed) {
+    enabled = seed.onInstanceViews;
+    loading = false;
+  }
   $effect(() => {
+    if (seed) return;
     endpoints()
       .adminSettings()
       .then((s) => (enabled = s.onInstanceViews))
