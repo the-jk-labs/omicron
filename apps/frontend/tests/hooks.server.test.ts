@@ -161,13 +161,13 @@ describe("security headers", () => {
   });
 });
 
-describe("preloading", () => {
-  const font = (file: string) => ({
-    type: "font" as const,
-    path: `/_app/immutable/assets/${file}`,
-    filename: `node_modules/@fontsource-variable/${file.startsWith("inter") ? "inter" : "source-sans-3"}/files/${file}`,
-  });
+const font = (file: string) => ({
+  type: "font" as const,
+  path: `/_app/immutable/assets/${file}`,
+  filename: `node_modules/@fontsource-variable/${file.startsWith("inter") ? "inter" : "source-sans-3"}/files/${file}`,
+});
 
+describe("preloading", () => {
   // Found only after the stylesheet parsed, they arrived after first paint and the text swapped font.
   test("the interface font's Latin subsets are preloaded on every page", async () => {
     const { preloadFile } = await import("../src/hooks.server");
