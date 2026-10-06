@@ -617,17 +617,16 @@
 
   <Tabs.Content value="privacy" class="mt-6">
     <div class="flex flex-col gap-8">
-      <!-- Privacy -->
+      <!-- Visibility -->
       <section class="rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Privacy</h2>
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Visibility</h2>
         <p class="mt-1 text-sm text-muted-foreground">Control who can see your articles.</p>
 
         <div class="mt-4 flex items-center justify-between gap-4">
           <div class="min-w-0">
             <Label.Root for="private-account" class="text-sm font-medium text-foreground">Private account</Label.Root>
             <p class="mt-0.5 text-xs text-muted-foreground">
-              When on, only followers you approve can see your articles, and new followers must send a request. Turning
-              it off approves everyone waiting.
+              Only followers you approve can read your articles. Turning it off approves pending requests.
             </p>
           </div>
           <Switch.Root

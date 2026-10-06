@@ -433,7 +433,7 @@ describe("tabs", () => {
 
   test.for([
     ["Preferences", ["Appearance", "Reading", "Followed tags"]],
-    ["Privacy", ["Privacy", "Muted & blocked"]],
+    ["Privacy", ["Visibility", "Muted & blocked"]],
     ["Account", ["Sign-in details", "Passkeys", "Active sessions", "Delete account"]],
     ["Integrations", ["Publishing tokens"]],
   ] as const)("the %s tab groups its sections", async ([tab, headings]) => {
