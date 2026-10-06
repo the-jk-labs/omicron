@@ -33,7 +33,7 @@ class OriginCookiesStorageTest {
                 name = "__Secure-omicron.session_token",
                 value = "session-token",
                 expires = GMTDate(0),
-                maxAge = 3_600,
+                maxAge = 30 * 24 * 60 * 60,
                 path = "/",
                 secure = true,
                 httpOnly = true,

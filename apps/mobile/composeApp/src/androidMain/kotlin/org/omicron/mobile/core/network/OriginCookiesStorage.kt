@@ -22,7 +22,7 @@ class OriginCookiesStorage(
                         name = cookie.name,
                         value = cookie.value,
                         expiresAt =
-                            cookie.maxAge?.let { now + it * 1_000 }
+                            cookie.maxAge?.let { now + it * 1_000L }
                                 ?: cookie.expires?.timestamp,
                     ),
                 ).filter { it.expiresAt == null || it.expiresAt > now }
