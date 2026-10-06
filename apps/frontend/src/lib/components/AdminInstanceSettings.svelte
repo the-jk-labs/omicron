@@ -29,6 +29,13 @@
   let sessionSecretManaged = $state(false);
   let bannerText = $state("");
   let bannerImageUrl = $state<string | null>(null);
+  let about = $state("");
+  let rules = $state("");
+  let privacyPolicy = $state("");
+  let contactEmail = $state("");
+  let contactUrl = $state("");
+  let abuseEmail = $state("");
+  let statusUrl = $state("");
 
   let loading = $state(true);
   let saving = $state(false);
@@ -47,6 +54,8 @@
 
   const field =
     "h-11 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus:border-foreground";
+  const textarea =
+    "min-h-32 w-full resize-y rounded-input border border-input bg-background px-3.5 py-2.5 text-sm leading-relaxed shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground";
   const labelClass = "text-sm font-medium leading-none text-foreground";
 
   // A saved federation choice that differs from what's mounted needs a restart.
@@ -62,6 +71,13 @@
     sessionSecretManaged = s.sessionSecretManaged;
     bannerText = s.bannerText ?? "";
     bannerImageUrl = s.bannerImageUrl;
+    about = s.about;
+    rules = s.rules;
+    privacyPolicy = s.privacyPolicy;
+    contactEmail = s.contactEmail;
+    contactUrl = s.contactUrl;
+    abuseEmail = s.abuseEmail;
+    statusUrl = s.statusUrl;
   }
 
   if (seed) {
@@ -108,6 +124,13 @@
           appDomain: appDomain.trim(),
           federationEnabled,
           bannerText: bannerText.trim(),
+          about: about.trim(),
+          rules: rules.trim(),
+          privacyPolicy: privacyPolicy.trim(),
+          contactEmail: contactEmail.trim(),
+          contactUrl: contactUrl.trim(),
+          abuseEmail: abuseEmail.trim(),
+          statusUrl: statusUrl.trim(),
         }),
       );
       saved = true;
@@ -255,6 +278,54 @@
         onchange={onBannerFile}
         class="hidden"
       />
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-4 rounded-card border border-border bg-background-alt p-3.5">
+    <div class="flex flex-col gap-0.5">
+      <span class={labelClass}>Public information</span>
+      <p class="text-xs text-muted-foreground">
+        Shown on this instance's About, rules, privacy, contact, and status pages. Markdown is supported for the three
+        page sections.
+      </p>
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+      <Label.Root for="admin-about" class={labelClass}>About this instance</Label.Root>
+      <textarea id="admin-about" bind:value={about} disabled={loading} maxlength={20_000} class={textarea}></textarea>
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+      <Label.Root for="admin-rules" class={labelClass}>Instance rules</Label.Root>
+      <textarea id="admin-rules" bind:value={rules} disabled={loading} maxlength={20_000} class={textarea}></textarea>
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+      <Label.Root for="admin-privacy" class={labelClass}>Privacy policy</Label.Root>
+      <textarea id="admin-privacy" bind:value={privacyPolicy} disabled={loading} maxlength={20_000} class={textarea}
+      ></textarea>
+    </div>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div class="flex flex-col gap-1.5">
+        <Label.Root for="admin-contactEmail" class={labelClass}>Contact email</Label.Root>
+        <input id="admin-contactEmail" bind:value={contactEmail} disabled={loading} type="email" class={field} />
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <Label.Root for="admin-abuseEmail" class={labelClass}>Abuse email</Label.Root>
+        <input id="admin-abuseEmail" bind:value={abuseEmail} disabled={loading} type="email" class={field} />
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <Label.Root for="admin-contactUrl" class={labelClass}>Contact page URL</Label.Root>
+        <input id="admin-contactUrl" bind:value={contactUrl} disabled={loading} type="url" class={field} />
+      </div>
+
+      <div class="flex flex-col gap-1.5">
+        <Label.Root for="admin-statusUrl" class={labelClass}>Status page URL</Label.Root>
+        <input id="admin-statusUrl" bind:value={statusUrl} disabled={loading} type="url" class={field} />
+      </div>
     </div>
   </div>
 

@@ -143,6 +143,7 @@ async function instanceSnapshot() {
     sessionSecretManaged: sessionSecretManaged(),
     bannerText: await setup.getBannerText(),
     bannerImageUrl: await setup.getBannerImageUrl(),
+    ...(await setup.getInstancePublicSettings()),
   };
 }
 
@@ -151,6 +152,20 @@ adminRoutes.get("/instance", async (c) => {
   return c.json(await instanceSnapshot());
 });
 
+const email = z
+  .string()
+  .trim()
+  .max(320)
+  .refine((value) => !value || z.email().safeParse(value).success, "Enter a valid email address.");
+const externalUrl = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine(
+    (value) => !value || (URL.canParse(value) && ["http:", "https:"].includes(new URL(value).protocol)),
+    "Enter a valid HTTP(S) URL.",
+  );
+
 const instanceSchema = z.object({
   appName: z.string().trim().min(1, "An instance name is required.").max(100).optional(),
   appDomain: z.string().trim().max(253).optional(),
@@ -158,6 +173,13 @@ const instanceSchema = z.object({
   // The tagline on the signed-out visitor card. An empty string clears it back
   // to the built-in default sentence.
   bannerText: z.string().trim().max(280).optional(),
+  about: z.string().trim().max(20_000).optional(),
+  rules: z.string().trim().max(20_000).optional(),
+  privacyPolicy: z.string().trim().max(20_000).optional(),
+  contactEmail: email.optional(),
+  contactUrl: externalUrl.optional(),
+  abuseEmail: email.optional(),
+  statusUrl: externalUrl.optional(),
 });
 
 // Update the app name / public domain / federation toggle / banner tagline. A

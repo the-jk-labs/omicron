@@ -17,6 +17,13 @@ describe("Footer", () => {
           emailVerificationRequired: true,
           bannerText: null,
           bannerImageUrl: null,
+          aboutHtml: null,
+          rulesHtml: null,
+          privacyPolicyHtml: null,
+          contactEmail: null,
+          contactUrl: "https://example.com/contact",
+          abuseEmail: null,
+          statusUrl: "https://status.example.com",
         },
       },
     });
@@ -28,7 +35,7 @@ describe("Footer", () => {
     expect(screen.getByRole("link", { name: "About" })).toHaveAttribute("href", "/about");
     expect(screen.getByRole("link", { name: "Instance rules" })).toHaveAttribute("href", "/about#rules");
     expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
-    expect(screen.getByRole("link", { name: "Contact" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Contact" })).toHaveAttribute("href", "https://example.com/contact");
     // Source appears twice (brand line + nav) — at least one external source link
     const sources = screen.getAllByRole("link", { name: "Source" });
     expect(sources.length).toBeGreaterThanOrEqual(1);
@@ -36,7 +43,7 @@ describe("Footer", () => {
     expect(sources[0]).toHaveAttribute("target", "_blank");
     expect(sources[0].getAttribute("rel")).toContain("noopener");
 
-    expect(screen.getByRole("link", { name: "Status" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Status" })).toHaveAttribute("href", "https://status.example.com");
     // Fediverse profile link should be present
     const fediCandidates = screen.getAllByText(/@example\.com|Fediverse/);
     expect(fediCandidates.length).toBeGreaterThanOrEqual(1);

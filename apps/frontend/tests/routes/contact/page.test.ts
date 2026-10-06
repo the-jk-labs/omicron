@@ -63,3 +63,19 @@ test("the federation sentence keeps its space", () => {
   render(ContactPage);
   expect(text()).toContain("federates via ActivityPub at blog.example.");
 });
+
+test("instance-managed contacts override environment defaults", () => {
+  setPublicEnv({ PUBLIC_CONTACT_EMAIL: "env@blog.example" });
+  state.instance = {
+    name: "Starlog",
+    domain: "blog.example",
+    contactEmail: "operator@blog.example",
+    abuseEmail: "abuse@blog.example",
+  };
+  render(ContactPage);
+  expect(screen.getByRole("link", { name: "operator@blog.example" })).toHaveAttribute(
+    "href",
+    "mailto:operator@blog.example",
+  );
+  expect(screen.getByRole("link", { name: "abuse@blog.example" })).toHaveAttribute("href", "mailto:abuse@blog.example");
+});

@@ -38,3 +38,16 @@ test("falls back to the default name and says federation is off", () => {
   expect(screen.getByText("this instance")).toBeInTheDocument();
   expect(screen.getByText("Federation is currently disabled on this instance.")).toBeInTheDocument();
 });
+
+test("renders administrator-managed About and rules content", () => {
+  state.instance = {
+    name: "Starlog",
+    domain: "blog.example",
+    aboutHtml: "<p>Writing about art and science.</p>",
+    rulesHtml: "<p>No spam.</p>",
+  };
+  render(AboutPage);
+  expect(screen.getByText("Writing about art and science.")).toBeInTheDocument();
+  expect(screen.getByText("No spam.")).toBeInTheDocument();
+  expect(screen.queryByText(/Until custom rules are published here/)).not.toBeInTheDocument();
+});

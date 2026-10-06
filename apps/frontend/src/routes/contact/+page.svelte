@@ -14,9 +14,9 @@
   const instance = $derived((page.data as { instance?: InstanceInfo | null }).instance ?? null);
   const appName = $derived(instance?.name || PUBLIC_APP_NAME || "Omicron");
   const domain = $derived(instance?.domain ?? "this instance");
-  const contactUrl = PUBLIC_CONTACT_URL?.trim() || "";
-  const contactEmail = PUBLIC_CONTACT_EMAIL?.trim() || "";
-  const abuseEmail = PUBLIC_ABUSE_EMAIL?.trim() || contactEmail;
+  const contactUrl = $derived(instance?.contactUrl || PUBLIC_CONTACT_URL?.trim() || "");
+  const contactEmail = $derived(instance?.contactEmail || PUBLIC_CONTACT_EMAIL?.trim() || "");
+  const abuseEmail = $derived(instance?.abuseEmail || PUBLIC_ABUSE_EMAIL?.trim() || contactEmail);
 </script>
 
 <PageTitle text="Contact" />
@@ -39,8 +39,7 @@
         action on the relevant post or profile. It creates a report for the moderators.
       </p>
       <p class="text-sm text-muted-foreground">
-        Operators: set <code>PUBLIC_CONTACT_EMAIL</code> or <code>PUBLIC_CONTACT_URL</code> to surface your address here,
-        and replace this placeholder with your imprint.
+        Operators: add contact details in Admin &gt; Instance &gt; Public information.
       </p>
     {/if}
 

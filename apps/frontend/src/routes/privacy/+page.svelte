@@ -19,51 +19,56 @@
   </p>
 
   <div class="prose-omicron mt-8">
-    <p>
-      This is a placeholder privacy notice for <strong>{appName} ({domain})</strong>. If you operate a public instance
-      in the EU/EEA you <em>must</em> replace it with your own policy before offering the service. It is not legal advice.
-    </p>
+    {#if instance?.privacyPolicyHtml}
+      <!-- Rendered and sanitized server-side; see backend lib/markdown.ts. -->
+      {@html instance.privacyPolicyHtml}
+    {:else}
+      <p>
+        This is a placeholder privacy notice for <strong>{appName} ({domain})</strong>. If you operate a public instance
+        in the EU/EEA you <em>must</em> replace it with your own policy before offering the service. It is not legal advice.
+      </p>
 
-    <h2>Data we collect</h2>
-    <ul>
-      <li>Account data you provide (username, display name, email, profile content).</li>
-      <li>Content you publish (posts, comments, media, reading lists).</li>
-      <li>Usage data necessary to operate the service (logs, federation delivery, rate-limit counters).</li>
-    </ul>
+      <h2>Data we collect</h2>
+      <ul>
+        <li>Account data you provide (username, display name, email, profile content).</li>
+        <li>Content you publish (posts, comments, media, reading lists).</li>
+        <li>Usage data necessary to operate the service (logs, federation delivery, rate-limit counters).</li>
+      </ul>
 
-    <h2>How we use it</h2>
-    <p>
-      To provide the blogging and federation features, moderate the community, and keep the service secure. We do not
-      sell your data.
-    </p>
+      <h2>How we use it</h2>
+      <p>
+        To provide the blogging and federation features, moderate the community, and keep the service secure. We do not
+        sell your data.
+      </p>
 
-    <h2>Federation</h2>
-    <p>
-      Public posts and your public profile federate over ActivityPub to other instances that follow you or are otherwise
-      addressed. Those instances apply their own privacy policies once they receive your data.
-    </p>
+      <h2>Federation</h2>
+      <p>
+        Public posts and your public profile federate over ActivityPub to other instances that follow you or are
+        otherwise addressed. Those instances apply their own privacy policies once they receive your data.
+      </p>
 
-    <h2>Cookies and storage</h2>
-    <p>
-      A session cookie authenticates you. A timezone cookie improves date rendering. Local storage keeps your editor
-      drafts and preferences. No tracking cookies.
-    </p>
+      <h2>Cookies and storage</h2>
+      <p>
+        A session cookie authenticates you. A timezone cookie improves date rendering. Local storage keeps your editor
+        drafts and preferences. No tracking cookies.
+      </p>
 
-    <h2>Your rights</h2>
-    <p>
-      You can edit or delete your content and account from <a href="/settings">Settings</a>. Contact the operator via
-      <a href="/contact">Contact</a> for access, correction, or deletion requests.
-    </p>
+      <h2>Your rights</h2>
+      <p>
+        You can edit or delete your content and account from <a href="/settings">Settings</a>. Contact the operator via
+        <a href="/contact">Contact</a> for access, correction, or deletion requests.
+      </p>
 
-    <h2>Contact</h2>
-    <p>
-      Questions about this policy: <a href="/contact">contact the operator</a>. For abuse reports, use the Flag action
-      on the relevant post or profile, or the contact page.
-    </p>
+      <h2>Contact</h2>
+      <p>
+        Questions about this policy: <a href="/contact">contact the operator</a>. For abuse reports, use the Flag action
+        on the relevant post or profile, or the contact page.
+      </p>
 
-    <p class="text-sm text-muted-foreground">
-      Operator: replace this template with the identity and contact details required for your jurisdiction (e.g. GDPR
-      controller, imprint).
-    </p>
+      <p class="text-sm text-muted-foreground">
+        Operator: replace this template with the identity and contact details required for your jurisdiction (e.g. GDPR
+        controller, imprint).
+      </p>
+    {/if}
   </div>
 </article>
