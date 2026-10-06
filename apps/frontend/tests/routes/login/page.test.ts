@@ -104,9 +104,10 @@ function stubWebAuthn(conditional = false) {
 }
 
 describe("passkeys", () => {
-  test("no passkey button where the browser has no passkeys", () => {
+  // Removing it after hydration shifted the page, so it stays and is disabled.
+  test("the passkey button stays, disabled, where the browser has no passkeys", () => {
     render(LoginPage);
-    expect(screen.queryByRole("button", { name: "Sign in with a passkey" })).toBeNull();
+    expect(screen.getByRole("button", { name: "This browser doesn't support passkeys" })).toBeDisabled();
   });
 
   test("the fields ask the password manager to offer passkeys", () => {
