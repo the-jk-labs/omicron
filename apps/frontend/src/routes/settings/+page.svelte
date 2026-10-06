@@ -660,70 +660,72 @@
 
   <Tabs.Content value="account" class="mt-6">
     <div class="flex flex-col gap-8">
-      <!-- Account -->
+      <!-- Sign-in details -->
       <section class="rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Account</h2>
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Sign-in details</h2>
+        <p class="mt-1 text-sm text-muted-foreground">
+          How you sign in to this account. Member since <Time iso={data.user.createdAt} kind="date" />.
+        </p>
 
-        <dl class="mt-4 flex flex-col gap-3 text-sm">
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <dt class="text-muted-foreground">Username</dt>
-              <p class="mt-0.5 text-xs text-muted-foreground">Your fediverse handle. Permanent and can't be changed.</p>
-            </div>
-            <dd class="font-medium text-foreground">@{data.user.username}</dd>
-          </div>
-          {#if data.user.email}
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <dt class="text-muted-foreground">Email</dt>
-                <p class="mt-0.5 text-xs text-muted-foreground">
-                  Your private login address. Used for sign-in and account recovery.
-                </p>
-              </div>
-              <dd class="flex flex-col items-end gap-1">
-                <span class="font-medium text-foreground">{data.user.email}</span>
-                {#if data.user.emailVerified}
-                  <span class="inline-flex items-center gap-1 text-xs font-medium text-foreground">
-                    <Icon name="check" size={13} /> Verified
-                  </span>
-                {:else if resendDone}
-                  <span class="text-xs text-muted-foreground">Verification link sent.</span>
-                {:else}
-                  <span class="inline-flex items-center gap-2 text-xs">
-                    <span class="text-muted-foreground">Unverified</span>
-                    <ButtonPrimitive.Root
-                      onclick={resendVerification}
-                      disabled={resending}
-                      class="font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground disabled:opacity-60"
-                    >
-                      {resending ? "Sending…" : "Resend link"}
-                    </ButtonPrimitive.Root>
-                  </span>
-                {/if}
-                <Button variant="outline" size="sm" class="mt-1" onclick={() => (emailOpen = true)}>
-                  <Icon name="mail" size={15} /> Change email
-                </Button>
+        <!-- One row per detail: what it is and its value on the left, the action on the right. -->
+        <dl class="mt-4 divide-y divide-border text-sm">
+          <div class="flex items-center justify-between gap-4 py-4 first:pt-0">
+            <div class="min-w-0">
+              <dt class="font-medium text-foreground">Username</dt>
+              <dd class="mt-0.5 text-muted-foreground">
+                <span class="text-foreground">@{data.user.username}</span> · your fediverse address, permanent
               </dd>
             </div>
-          {/if}
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <dt class="text-muted-foreground">Password</dt>
-              {#if pwSaved}<p class="mt-0.5 text-xs text-muted-foreground">Password updated.</p>{/if}
-            </div>
-            <dd>
-              <Button variant="outline" size="sm" onclick={() => onPwOpenChange(true)}>
-                <Icon name="lock" size={15} /> Change password
-              </Button>
-            </dd>
           </div>
-          <div class="flex items-center justify-between gap-4">
-            <dt class="text-muted-foreground">Joined</dt>
-            <dd class="font-medium text-foreground"><Time iso={data.user.createdAt} kind="date" /></dd>
+
+          {#if data.user.email}
+            <div class="flex items-center justify-between gap-4 py-4">
+              <div class="min-w-0">
+                <dt class="font-medium text-foreground">Email</dt>
+                <dd class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
+                  <span class="min-w-0 truncate text-foreground" title={data.user.email}>{data.user.email}</span>
+                  {#if data.user.emailVerified}
+                    <span
+                      class="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground"
+                    >
+                      <Icon name="check" size={12} /> Verified
+                    </span>
+                  {:else}
+                    <span class="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-destructive"
+                      >Unverified</span
+                    >
+                    {#if resendDone}
+                      <span class="text-xs">Verification link sent.</span>
+                    {:else}
+                      <ButtonPrimitive.Root
+                        onclick={resendVerification}
+                        disabled={resending}
+                        class="text-xs font-medium text-foreground underline underline-offset-4 hover:text-muted-foreground disabled:opacity-60"
+                      >
+                        {resending ? "Sending…" : "Resend link"}
+                      </ButtonPrimitive.Root>
+                    {/if}
+                  {/if}
+                </dd>
+              </div>
+              <Button variant="outline" size="sm" class="shrink-0" onclick={() => (emailOpen = true)}>
+                <Icon name="mail" size={15} /> Change email
+              </Button>
+            </div>
+          {/if}
+
+          <div class="flex items-center justify-between gap-4 py-4">
+            <div class="min-w-0">
+              <dt class="font-medium text-foreground">Password</dt>
+              <dd class="mt-0.5 text-muted-foreground">{pwSaved ? "Password updated." : "••••••••••"}</dd>
+            </div>
+            <Button variant="outline" size="sm" class="shrink-0" onclick={() => onPwOpenChange(true)}>
+              <Icon name="lock" size={15} /> Change password
+            </Button>
           </div>
         </dl>
 
-        <div class="mt-6 flex justify-end">
+        <div class="mt-2 flex justify-end border-t border-border pt-4">
           <Button variant="outline" size="sm" onclick={logout}>
             <Icon name="logout" size={15} /> Sign out
           </Button>
