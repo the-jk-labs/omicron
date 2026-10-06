@@ -4,6 +4,13 @@ import { expect, test, vi } from "vitest";
 import ConnectionsManager from "#lib/components/ConnectionsManager.svelte";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
+// Holding back onMount shows what the server renders before the browser starts the load.
+const mounting = vi.hoisted(() => ({ skip: false }));
+vi.mock(import("svelte"), async (original) => {
+  const svelte = await original();
+  return { ...svelte, onMount: (fn) => (mounting.skip ? undefined : svelte.onMount(fn)) };
+});
+
 const bob = { id: "u-bob", username: "bob", displayName: "Bob", avatarUrl: null, remote: false };
 const eve = { id: "r-eve", username: "eve@remote.example", displayName: "Eve", avatarUrl: null, remote: true };
 
@@ -62,4 +69,34 @@ test("a failed unmute says so and keeps the row", async () => {
   await fireEvent.click(await screen.findByRole("button", { name: "Unmute" }));
   await screen.findByText("Unmute failed");
   expect(screen.getByText("Bob")).toBeInTheDocument();
+});
+
+test("before the list starts loading it shows Loading, not a failed load", () => {
+  mounting.skip = true;
+  try {
+    render(ConnectionsManager);
+    expect(screen.getAllByText("Loading…").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Try again" })).toBe(null);
+  } finally {
+    mounting.skip = false;
+  }
+});
+
+test("server-loaded lists show straight away, and switching tabs loads nothing", async () => {
+  const { fetch } = fakeFetch({});
+  vi.stubGlobal("fetch", fetch);
+  render(ConnectionsManager, { props: { initial: { muted: [bob], blocked: [eve] } } });
+  expect(screen.getByText("Bob")).toBeInTheDocument();
+  expect(screen.queryByText("Loading…")).toBeNull();
+  await fireEvent.mouseDown(screen.getByRole("tab", { name: "Blocked" }));
+  await screen.findByText("Eve");
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+test("a list the server couldn't load is loaded by the browser", async () => {
+  const { fetch, calls } = fakeFetch({ "GET /api/users/me/muted": { items: [bob] } });
+  vi.stubGlobal("fetch", fetch);
+  render(ConnectionsManager, { props: { initial: { muted: null, blocked: [] } } });
+  await screen.findByText("Bob");
+  expect(calls.map((c) => c.path)).toEqual(["/api/users/me/muted"]);
 });

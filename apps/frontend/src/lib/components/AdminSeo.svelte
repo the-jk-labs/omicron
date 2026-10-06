@@ -1,9 +1,14 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Label, Switch } from "bits-ui";
+  import { untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
   import Button from "#lib/components/ui/Button.svelte";
   import type { SeoSettings, SeoVerification } from "#lib/types.js";
+
+  // `initial` is the server-loaded config; without it the browser loads it.
+  let { initial = null }: { initial?: SeoSettings | null } = $props();
+  const seed = untrack(() => initial);
 
   // Discoverability controls (services/seo.ts). Two things: the master indexing
   // switch (drives robots.txt + a site-wide noindex) and per-engine
@@ -54,7 +59,12 @@
     indexNowKey = s.indexNowKey ?? null;
   }
 
+  if (seed) {
+    apply(seed);
+    loading = false;
+  }
   $effect(() => {
+    if (seed) return;
     endpoints()
       .adminSeo()
       .then(apply)

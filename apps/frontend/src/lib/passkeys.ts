@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { authClient } from "#lib/auth-client.js";
+import { freshSignIn } from "#lib/freshSignIn.svelte.js";
 
 type AuthError = { code?: string; message?: string } | null | undefined;
 
@@ -42,6 +43,7 @@ export async function confirmPassword(username: string, password: string): Promi
     return code === "INVALID_USERNAME_OR_PASSWORD" ? "Incorrect password." : res.error.message || "Incorrect password.";
   }
   if (previous) await authClient.revokeSession({ token: previous }).catch(() => {});
+  freshSignIn.confirmations += 1;
   return null;
 }
 

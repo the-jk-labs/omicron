@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Tabs } from "bits-ui";
+  import { untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
   import Icon from "#lib/components/Icon.svelte";
   import Time from "#lib/components/Time.svelte";
@@ -9,9 +10,13 @@
   import { postPath } from "#lib/links.js";
   import type { Report } from "#lib/types.js";
 
-  let reports = $state<Report[]>([]);
-  let openCount = $state(0);
-  let loading = $state(true);
+  // `initial` is the server-loaded open queue; without it the browser loads it.
+  let { initial = null }: { initial?: { reports: Report[]; openCount: number } | null } = $props();
+  const seed = untrack(() => initial);
+
+  let reports = $state<Report[]>(seed?.reports ?? []);
+  let openCount = $state(seed?.openCount ?? 0);
+  let loading = $state(!seed);
   let error = $state("");
   let filter = $state<"open" | "resolved">("open");
   let busyId = $state<string | null>(null);
@@ -30,9 +35,15 @@
     }
   }
 
+  // The first run would refetch what the server just loaded.
+  let skipFirst = !!seed;
   $effect(() => {
     // Re-run whenever the filter changes.
     filter;
+    if (skipFirst) {
+      skipFirst = false;
+      return;
+    }
     load();
   });
 

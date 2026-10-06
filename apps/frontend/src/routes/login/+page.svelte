@@ -29,8 +29,9 @@
   let resending = $state(false);
   let resent = $state(false);
   let resendError = $state("");
-  // Rendered after mount: support is only known in the browser.
-  let passkeys = $state(false);
+  // Support is only known in the browser, so the server assumes it: hiding the
+  // button until mount shifted the page. Where it's missing the button is disabled.
+  let passkeys = $state(true);
   let passkeyBusy = $state(false);
 
   const field =
@@ -206,17 +207,25 @@
   </Button>
 </form>
 
-{#if passkeys}
-  <div class="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-    <Separator.Root class="h-px flex-1 bg-border" />
-    or
-    <Separator.Root class="h-px flex-1 bg-border" />
-  </div>
-  <Button type="button" variant="outline" class="h-11 w-full" disabled={passkeyBusy} onclick={signInWithPasskey}>
-    <Icon name="key" size={16} />
+<div class="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+  <Separator.Root class="h-px flex-1 bg-border" />
+  or
+  <Separator.Root class="h-px flex-1 bg-border" />
+</div>
+<Button
+  type="button"
+  variant="outline"
+  class="h-11 w-full"
+  disabled={!passkeys || passkeyBusy}
+  onclick={signInWithPasskey}
+>
+  <Icon name="key" size={16} />
+  {#if !passkeys}
+    This browser doesn't support passkeys
+  {:else}
     {passkeyBusy ? "Waiting for your passkey…" : "Sign in with a passkey"}
-  </Button>
-{/if}
+  {/if}
+</Button>
 
 <p class="mt-8 text-center text-sm text-muted-foreground">
   No account?

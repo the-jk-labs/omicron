@@ -170,15 +170,16 @@ test("after saving a link typed without its scheme the form is no longer dirty",
   await screen.findByText("Saved.", undefined, { timeout: 500 });
 });
 
-test("a picked photo goes through the cropper and uploads on save", async () => {
+test("a cropped photo uploads as soon as the crop is saved, without Save changes", async () => {
   setup();
   await pickPhoto();
-  await fireEvent.click(await screen.findByRole("button", { name: "Apply crop" }));
-  await fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-  await waitFor(() => expect(patchBody()).toBeDefined());
+  await fireEvent.click(await screen.findByRole("button", { name: "Save crop" }));
+  await waitFor(() => expect(refreshAll).toHaveBeenCalled());
   const upload = api.calls.find((c) => c.path === "/api/users/me/avatar");
   expect(upload?.method).toBe("POST");
   expect(upload?.headers.get("content-type")).toBe("image/png");
+  expect(patchBody()).toBeUndefined();
+  expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
 });
 
 test.for([
@@ -191,40 +192,33 @@ test.for([
   setup();
   await pickPhoto(file);
   await screen.findByText(message);
-  expect(screen.queryByRole("button", { name: "Apply crop" })).toBe(null);
+  expect(screen.queryByRole("button", { name: "Save crop" })).toBe(null);
 });
 
-test("an oversized photo after compression is refused without uploading", async () => {
+test("an oversized photo after compression is refused in the crop dialog without uploading", async () => {
   setup();
   await pickPhoto();
-  await fireEvent.click(await screen.findByRole("button", { name: "Apply crop" }));
   vi.spyOn(await import("#lib/editor/image.js"), "prepareImage").mockResolvedValueOnce({
     blob: new Blob([new Uint8Array(3 * 1024 * 1024)]),
     type: "image/jpeg",
   });
-  await fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await fireEvent.click(await screen.findByRole("button", { name: "Save crop" }));
   await screen.findByText(/Image too large \(max 2 MB\) even after compression/);
   expect(api.calls.some((c) => c.path === "/api/users/me/avatar")).toBe(false);
+  expect(screen.getByRole("button", { name: "Save crop" })).toBeInTheDocument();
 });
 
-test("an invalid link stops the save before the photo is uploaded", async () => {
-  setup(me({ links: [{ platform: "website", url: "https://ada.example", label: "" }] }));
+test("a failed upload keeps the crop dialog open with the reason", async () => {
+  setup(me(), { "POST /api/users/me/avatar": apiError(500, "Storage full") });
   await pickPhoto();
-  await fireEvent.click(await screen.findByRole("button", { name: "Apply crop" }));
-  await fireEvent.input(screen.getByPlaceholderText("https://example.com"), { target: { value: "not a url" } });
-  await fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-  await screen.findByText(/^Enter a valid .+ web address\.$/);
-  expect(api.calls.some((c) => c.path === "/api/users/me/avatar")).toBe(false);
+  await fireEvent.click(await screen.findByRole("button", { name: "Save crop" }));
+  await screen.findByText("Storage full");
+  expect(screen.getByRole("button", { name: "Save crop" })).toBeInTheDocument();
+  expect(refreshAll).not.toHaveBeenCalled();
 });
 
-test("Remove discards a staged photo without a request, or removes the saved one", async () => {
+test("Remove deletes the saved photo", async () => {
   setup(me({ avatarUrl: "/media/a.png" }));
-  await pickPhoto();
-  await fireEvent.click(await screen.findByRole("button", { name: "Apply crop" }));
-  await fireEvent.click(screen.getByRole("button", { name: /Remove/ }));
-  expect(api.calls.some((c) => c.method === "DELETE")).toBe(false);
-  expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
-
   await fireEvent.click(screen.getByRole("button", { name: /Remove/ }));
   await waitFor(() =>
     expect(api.calls.some((c) => c.method === "DELETE" && c.path === "/api/users/me/avatar")).toBe(true),
@@ -236,6 +230,18 @@ test("a failed photo removal is shown", async () => {
   setup(me({ avatarUrl: "/media/a.png" }), { "DELETE /api/users/me/avatar": apiError(500, "Storage down") });
   await fireEvent.click(screen.getByRole("button", { name: /Remove/ }));
   await screen.findByText("Storage down");
+});
+
+test("each theme button names its option, which the pre-paint preference styles", async () => {
+  setup();
+  await openTab("Preferences");
+  for (const [label, option] of [
+    ["Light", "light"],
+    ["Dark", "dark"],
+    ["System", "system"],
+  ]) {
+    expect(screen.getByRole("button", { name: new RegExp(`^${label}$`) })).toHaveAttribute("data-theme-option", option);
+  }
 });
 
 test("theme and default feed apply immediately", async () => {
@@ -427,9 +433,9 @@ describe("tabs", () => {
 
   test.for([
     ["Preferences", ["Appearance", "Reading", "Followed tags"]],
-    ["Privacy", ["Privacy", "Muted & blocked"]],
-    ["Account", ["Account", "Passkeys", "Active sessions", "Delete account"]],
-    ["Integrations", ["Integrations"]],
+    ["Privacy", ["Visibility", "Muted & blocked"]],
+    ["Account", ["Sign-in details", "Passkeys", "Active sessions", "Delete account"]],
+    ["Integrations", ["Publishing tokens"]],
   ] as const)("the %s tab groups its sections", async ([tab, headings]) => {
     setup();
     await openTab(tab);

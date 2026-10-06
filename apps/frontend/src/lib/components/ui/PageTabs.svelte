@@ -11,9 +11,10 @@
     "data-[state=active]:bg-background data-[state=active]:shadow-mini text-muted-foreground data-[state=active]:text-foreground inline-flex h-9 shrink-0 items-center gap-1.5 rounded-button px-4 text-sm font-medium";
 </script>
 
-<!-- Scrolls sideways rather than overflowing the page on a narrow screen. -->
+<!-- Scrolls sideways rather than overflowing the page on a narrow screen, with
+     no scrollbar: a bar a few pixels long under the tabs read as broken. -->
 <Tabs.List
-  class="inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-input border border-input bg-background-alt p-1 shadow-btn"
+  class="inline-flex max-w-full [scrollbar-width:none] items-center gap-1 overflow-x-auto rounded-input border border-input bg-background-alt p-1 shadow-btn [&::-webkit-scrollbar]:hidden"
 >
   {#each tabs as t (t.value)}
     <Tabs.Trigger value={t.value} class={triggerClass}>

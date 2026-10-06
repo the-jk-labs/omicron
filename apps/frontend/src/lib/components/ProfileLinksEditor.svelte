@@ -155,7 +155,5 @@
       <Icon name="plus" size={16} /> Add link
     </button>
   </div>
-  <p class="text-xs text-muted-foreground">
-    {links.length}/{MAX_LINKS} links. Shown on your profile. Drag-free reordering with the arrows.
-  </p>
+  <p class="self-end text-xs text-muted-foreground">{links.length}/{MAX_LINKS}</p>
 </div>

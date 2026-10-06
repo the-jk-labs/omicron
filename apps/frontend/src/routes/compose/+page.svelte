@@ -16,6 +16,7 @@
   import TagInput from "#lib/components/TagInput.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
+  import Editor from "#lib/editor/Editor.svelte";
   import { formatScheduleLong, timeUntil } from "#lib/format.js";
   import { reading } from "#lib/prefs.svelte.js";
   import { timeZone } from "#lib/timezone.svelte.js";
@@ -26,13 +27,6 @@
   // Seed the editor once from the loaded draft; later edits live in the editor.
   const draft = untrack(() => data.draft);
 
-  // Lazy-load the Tiptap editor so it stays out of the initial bundle.
-  type EditorComp = typeof import("#lib/editor/Editor.svelte").default;
-  let EditorComponent = $state<EditorComp | null>(null);
-  onMount(async () => {
-    EditorComponent = (await import("#lib/editor/Editor.svelte")).default;
-  });
-
   // When reopened from the Drafts list, `postId` is set so saving updates the
   // existing draft instead of creating a new one. It also gets set after the
   // first "Save draft" of a fresh post.
@@ -42,7 +36,7 @@
   // A reopened draft keeps whatever it was saved with — including a
   // deliberate blank. Only a genuinely new post takes the remembered default,
   // so revisiting a draft never silently relabels it.
-  let language = $state<string | null>(draft ? (draft.language ?? null) : reading.composeLang);
+  let language = $state<string | null>(draft ? (draft.language ?? null) : untrack(() => data.composeLang));
   // The one-line description search engines print under the title, and link
   // previews show. Left empty it falls back to a truncation of the opening
   // paragraph — which is what every post used to get, often cut mid-clause.
@@ -87,7 +81,7 @@
   // starts at the remembered default, and comparing that against null would
   // mark the page dirty the instant it opened, so simply looking at the
   // composer and leaving would raise the unsaved-changes prompt.
-  const initialLanguage = draft ? (draft.language ?? null) : reading.composeLang;
+  const initialLanguage = draft ? (draft.language ?? null) : untrack(() => data.composeLang);
   const initialSummary = draft?.summary ?? "";
   $effect(() => {
     const changed = tags.join(",") !== initialTags || language !== initialLanguage || summary !== initialSummary;
@@ -268,7 +262,9 @@
       <Icon name="compose" size={16} /> Draft
     </p>
   {/if}
-  <div class="flex items-center gap-2">
+  <div class="flex flex-wrap items-center justify-end gap-2">
+    <!-- Beside the buttons that raised it, not below the whole editor. -->
+    {#if error}<p role="alert" class="text-sm text-destructive">{error}</p>{/if}
     <SaveStatus status={autosave.state} savedAt={autosave.savedAt} error={autosave.error} />
     <Button onclick={() => persist("draft")} disabled={busy || savingDraft} variant="ghost">
       {savingDraft ? "Saving…" : "Save draft"}
@@ -339,10 +335,8 @@
 
 <BannerPicker bind:coverUrl bind:coverCredit contentHtml={html} onChange={change} />
 
-{#if EditorComponent}
-  <EditorComponent {onUpdate} content={(draft?.contentJson as Content) ?? draft?.contentHtml} />
-{:else}
-  <p class="text-muted-foreground">Loading editor…</p>
-{/if}
-
-{#if error}<p class="mt-4 text-sm text-destructive">{error}</p>{/if}
+<Editor
+  {onUpdate}
+  content={(draft?.contentJson as Content) ?? draft?.contentHtml}
+  previewHtml={draft?.contentHtml ?? ""}
+/>

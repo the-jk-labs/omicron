@@ -36,9 +36,11 @@
               {i + 1}
             </span>
             <div class="min-w-0">
+              <!-- Block-level flex: inline-flex took its baseline from the avatar, which
+                   moves as the photo loads and shifted the whole rail. -->
               <a
                 href={`/@${post.author.username}`}
-                class="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+                class="flex w-fit max-w-full items-center gap-1.5 text-muted-foreground hover:text-foreground"
               >
                 <Avatar
                   name={post.author.displayName}

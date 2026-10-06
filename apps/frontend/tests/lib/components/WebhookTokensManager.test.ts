@@ -63,3 +63,12 @@ test("a load failure is shown", async () => {
   setup({ "GET /api/webhooks/tokens": apiError(500, "Tokens unavailable") });
   await waitFor(() => screen.getByText("Tokens unavailable"));
 });
+
+test("a server-loaded list shows straight away, without loading it again", () => {
+  const { fetch } = fakeFetch({});
+  vi.stubGlobal("fetch", fetch);
+  render(WebhookTokensManager, { props: { initial: [token("t1", "CI")] } });
+  expect(screen.getByText("CI")).toBeInTheDocument();
+  expect(screen.queryByText("Loading…")).toBeNull();
+  expect(fetch).not.toHaveBeenCalled();
+});

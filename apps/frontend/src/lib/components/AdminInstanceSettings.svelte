@@ -1,12 +1,17 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Dialog, Label, Switch } from "bits-ui";
+  import { untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
   import Icon from "#lib/components/Icon.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
   import { INSTANCE_BANNER_MAX_DIMENSION, isAcceptedImage, prepareImage } from "#lib/editor/image.js";
   import type { AdminInstance } from "#lib/types.js";
+
+  // `initial` is the server-loaded config; without it the browser loads it.
+  let { initial = null }: { initial?: AdminInstance | null } = $props();
+  const seed = untrack(() => initial);
 
   // Runtime instance identity: app name + public domain + the federation toggle
   // + the signed-out visitor card (banner text + image), all editable after
@@ -59,7 +64,12 @@
     bannerImageUrl = s.bannerImageUrl;
   }
 
+  if (seed) {
+    apply(seed);
+    loading = false;
+  }
   $effect(() => {
+    if (seed) return;
     endpoints()
       .adminInstance()
       .then(apply)

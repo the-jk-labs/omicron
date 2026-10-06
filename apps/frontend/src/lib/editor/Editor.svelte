@@ -3,7 +3,7 @@
   import { type Content, Editor, generateJSON } from "@tiptap/core";
   import { Placeholder } from "@tiptap/extension-placeholder";
   import { Dialog, DropdownMenu, Label, Select, Toolbar } from "bits-ui";
-  import { onDestroy, onMount } from "svelte";
+  import { onDestroy, onMount, untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
   import { CODE_LANGUAGES, codeLanguageLabel } from "#lib/codeLanguages.js";
   import EmojiTrigger from "#lib/components/EmojiTrigger.svelte";
@@ -14,8 +14,8 @@
   import { EDIT_ALT_EVENT, type EditAltDetail } from "./resizable-image";
 
   // Isolated Tiptap integration. The parent receives content via `onUpdate`.
-  // This component is lazy-loaded (dynamic import) so Tiptap stays out of the
-  // initial bundle — see /compose.
+  // Server-rendered: the toolbar and a static copy of the body (`previewHtml`)
+  // show at once, and Tiptap takes over the body on mount.
   //
   // `content` is Tiptap's native JSON (ProseMirror doc) when the post has one,
   // and the post's stored HTML otherwise. Both rehydrate the same document —
@@ -24,11 +24,17 @@
     onUpdate,
     placeholder = "Write your article…",
     content,
+    previewHtml = "",
   }: {
     onUpdate: (html: string, json: unknown) => void;
     placeholder?: string;
     content?: Content;
+    /** The body as stored HTML, shown until Tiptap mounts. */
+    previewHtml?: string;
   } = $props();
+  // Read once: after mount the live editor owns the body.
+  const preview = untrack(() => previewHtml);
+  let mounted = $state(false);
 
   let element = $state<HTMLDivElement | null>(null);
   let editor: Editor;
@@ -52,7 +58,7 @@
     const text = ed.getText({ blockSeparator: "\n" });
     const words = countWords(text);
     const characters = text.replace(/\n/g, "").length;
-    stats = { characters, words, minutes: readTimeFromWords(words) };
+    stats = { characters, words, minutes: words ? readTimeFromWords(words) : 0 };
   }
 
   import { locale } from "#lib/locale.svelte.js";
@@ -387,6 +393,7 @@
     // The alt-text button lives inside a node view, so its event surfaces on
     // the editor's own DOM rather than anywhere Svelte can bind to directly.
     editor.view.dom.addEventListener(EDIT_ALT_EVENT, openAltDialog);
+    mounted = true;
   });
 
   onDestroy(() => {
@@ -562,6 +569,20 @@
     <p class="mb-3 text-sm text-destructive">{uploadError}</p>
   {/if}
 
+  <!-- The body as the server can render it, in the editor's own classes and
+       ProseMirror's base styles, so nothing moves when Tiptap replaces it. -->
+  {#if !mounted}
+    <div
+      class="tiptap prose-omicron relative break-words whitespace-break-spaces [font-variant-ligatures:none]"
+      aria-hidden="true"
+    >
+      {#if preview}
+        {@html preview}
+      {:else}
+        <p class="is-empty is-editor-empty" data-placeholder={placeholder}><br class="ProseMirror-trailingBreak" /></p>
+      {/if}
+    </div>
+  {/if}
   <div bind:this={element}></div>
 
   <!-- Bottom right, out of the way: read when wanted, ignored otherwise. -->
@@ -569,10 +590,9 @@
     <span>{count(stats.characters, "character")}</span>
     <span aria-hidden="true">·</span>
     <span>{count(stats.words, "word")}</span>
-    {#if stats.words > 0}
-      <span aria-hidden="true">·</span>
-      <span>{stats.minutes} min read</span>
-    {/if}
+    <!-- Always shown, so the line doesn't grow once the editor counts a draft. -->
+    <span aria-hidden="true">·</span>
+    <span>{stats.minutes} min read</span>
   </p>
 </div>
 

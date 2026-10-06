@@ -3,7 +3,6 @@
   import { PUBLIC_APP_NAME } from "$app/env/public";
   import { goto } from "$app/navigation";
   import { DropdownMenu } from "bits-ui";
-  import { onMount } from "svelte";
   import { endpoints } from "#lib/api/index.js";
   import logo from "#lib/assets/omicron.svg";
   import { authClient } from "#lib/auth-client.js";
@@ -35,11 +34,6 @@
     minimal?: boolean;
     appName?: string;
   } = $props();
-
-  // Render the resolved icon only after mount so SSR (always "light") and the
-  // first client render match — avoids a hydration mismatch on the toggle.
-  let ready = $state(false);
-  onMount(() => (ready = true));
 
   async function logout() {
     await authClient.signOut();
@@ -119,7 +113,10 @@
         aria-label="Toggle dark mode"
         title="Toggle theme"
       >
-        <Icon name={ready && theme.current === "dark" ? "sun" : "moon"} size={18} />
+        <!-- Both icons render; the `dark` class app.html sets before first paint picks
+             one, since the server can't know the theme and the icon would flip. -->
+        <span class="inline-flex dark:hidden"><Icon name="moon" size={18} /></span>
+        <span class="hidden dark:inline-flex"><Icon name="sun" size={18} /></span>
       </Button>
 
       {#if minimal}

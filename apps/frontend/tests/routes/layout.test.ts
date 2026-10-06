@@ -229,3 +229,19 @@ test("a render error in a page is contained with a way back", () => {
   expect(screen.getByRole("link", { name: "Go home" })).toHaveAttribute("href", "/");
   expect(error).toHaveBeenCalledWith("Unhandled render error:", expect.any(Error));
 });
+
+// SvelteKit sets "manual" and never hands it back, so a reload paints at the top
+// and only jumps to the saved position once the router has started.
+test("leaving the page hands scroll restoration to the browser so a reload paints in place", () => {
+  setup();
+  history.scrollRestoration = "manual";
+  dispatchEvent(new PageTransitionEvent("pagehide", { persisted: false }));
+  expect(history.scrollRestoration).toBe("auto");
+});
+
+test("returning from the back/forward cache gives scroll restoration back to the router", () => {
+  setup();
+  history.scrollRestoration = "auto";
+  dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+  expect(history.scrollRestoration).toBe("manual");
+});

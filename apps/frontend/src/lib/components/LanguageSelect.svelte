@@ -30,11 +30,13 @@
     <Icon name="chevronDown" size={15} class="shrink-0 text-muted-foreground" />
   </Select.Trigger>
   <Select.Portal>
+    <!-- z-10: under the sticky header (z-20), so a page scrolled with the list open
+         slides it beneath the header. Overscroll stays in the list, not the page. -->
     <Select.Content
-      class="z-50 max-h-72 w-52 overflow-y-auto rounded-card border border-muted bg-background p-1 shadow-popover"
+      class="z-10 max-h-72 w-52 overflow-y-auto overscroll-contain rounded-card border border-muted bg-background p-1 shadow-popover"
       sideOffset={6}
     >
-      <Select.Viewport>
+      <Select.Viewport class="overscroll-contain">
         <Select.Item
           value={UNSET}
           label="No language"

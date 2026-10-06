@@ -317,8 +317,8 @@
         {/if}
       {:else}
         <p id="email-hint" class="text-xs text-muted-foreground">
-          {#if verificationRequired}We’ll send a confirmation link to this address. You’ll need it to sign in.{:else}We’ll
-            send a verification link to this address.{/if}
+          {#if verificationRequired}We’ll send a confirmation link to this address.{:else}We’ll send a verification link
+            to this address.{/if}
         </p>
       {/if}
     </div>
@@ -438,16 +438,6 @@
       </span>
     </label>
     {#if termsError}<p id="terms-error" class={errClass} aria-live="polite">{termsError}</p>{/if}
-
-    <div class="rounded-input border border-border bg-background px-3 py-2.5">
-      <p class="flex items-center gap-1.5 text-xs font-medium text-foreground">
-        <Icon name="shieldOff" size={14} /> Bot protection
-      </p>
-      <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
-        This form is protected by Anubis proof-of-work. Most visitors see no challenge; automated abuse is slowed at the
-        edge.
-      </p>
-    </div>
 
     {#if error}<p class="text-sm font-medium text-destructive" role="alert" aria-live="assertive">{error}</p>{/if}
 

@@ -41,7 +41,10 @@ class ThemeState {
   /** Set the preference — persisted — and apply the resolved theme. */
   set(pref: ThemePreference) {
     this.preference = pref;
-    if (browser) writeStorage(STORAGE_KEY, pref);
+    if (browser) {
+      writeStorage(STORAGE_KEY, pref);
+      document.documentElement.dataset.themePref = pref;
+    }
     this.#apply(resolve(pref));
   }
 

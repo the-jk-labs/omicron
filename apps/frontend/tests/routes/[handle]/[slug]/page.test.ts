@@ -82,7 +82,10 @@ test("shows the title, author, read time and language", () => {
   setup({ language: "de" });
   expect(screen.getByRole("heading", { level: 1, name: "Hello world" })).toBeInTheDocument();
   expect(screen.getAllByRole("link", { name: /Ada/ })[0]).toHaveAttribute("href", "/@ada");
-  expect(screen.getByText(/min read/)).toBeInTheDocument();
+  // "read" is for screen readers only; on screen the clock says it.
+  const readTime = screen.getByText(/\d+ min/);
+  expect(readTime).toHaveTextContent(/^\d+ min read$/);
+  expect(readTime.querySelector(".sr-only")).toHaveTextContent("read");
   expect(screen.getByText("German")).toBeInTheDocument();
 });
 

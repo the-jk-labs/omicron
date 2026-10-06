@@ -1,10 +1,15 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Checkbox, Label, RadioGroup } from "bits-ui";
+  import { untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
   import Icon from "#lib/components/Icon.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import type { EmailInput, EmailMode, EmailSettings, EmailDnsRecords, EmailDnsReport } from "#lib/types.js";
+
+  // `initial` is the server-loaded config; without it the browser loads it.
+  let { initial = null }: { initial?: EmailSettings | null } = $props();
+  const seed = untrack(() => initial);
 
   // Runtime email configuration (services/emailSettings.ts). Four modes:
   //   console · smtp · relay (one API key) · direct (self-host + DKIM/DNS).
@@ -143,7 +148,12 @@
     if (!dnsDomain) dnsDomain = s.dkim.domain ?? domainFromAddress(s.from);
   }
 
+  if (seed) {
+    apply(seed);
+    loading = false;
+  }
   $effect(() => {
+    if (seed) return;
     endpoints()
       .adminEmail()
       .then(apply)

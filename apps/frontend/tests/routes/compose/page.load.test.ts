@@ -14,6 +14,14 @@ test("a guest is sent to sign in", async () => {
   await expect(compose(null, {}, null as never)).rejects.toMatchObject({ status: 302, location: "/login" });
 });
 
+test("the server's default language is passed through to the page", async () => {
+  const { event: e } = event({ url: "https://blog.example/compose", user: me });
+  expect(await load({ ...(e as object), data: { composeLang: "az" } } as never)).toEqual({
+    composeLang: "az",
+    draft: null,
+  });
+});
+
 test("a blank composer has no draft", async () => {
   expect(await compose(null)).toEqual({ draft: null });
 });

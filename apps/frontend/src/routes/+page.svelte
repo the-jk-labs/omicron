@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Tabs } from "bits-ui";
-  import { onMount, untrack } from "svelte";
+  import { untrack } from "svelte";
   import { ApiError, endpoints } from "#lib/api/index.js";
   import FeedLanguageFilter from "#lib/components/FeedLanguageFilter.svelte";
   import Icon, { type IconName } from "#lib/components/Icon.svelte";
@@ -48,6 +48,8 @@
   // read the loaded data once when building them.
   const personalized = untrack(() => data.personalized);
   const preload = untrack(() => data.page);
+  // The server picks the tab from the saved default, so it is right from the first paint.
+  const tab = untrack(() => data.tab);
 
   function makeFeed(init: Pick<Feed, "value" | "label" | "icon" | "empty" | "fetch"> & { preload?: Page<Post> }): Feed {
     return {
@@ -68,7 +70,7 @@
     icon: "sparkles",
     empty: "Your feed is empty. Follow some writers to fill it.",
     fetch: api.feed,
-    preload: personalized ? preload : undefined,
+    preload: tab === "for-you" ? preload : undefined,
   });
 
   // Local & global honour the signed-in reader's language filter (read live
@@ -81,6 +83,7 @@
     icon: "users",
     empty: "No articles on this instance yet.",
     fetch: (c) => api.localTimeline(c, personalized ? reading.feedLangQuery() : null),
+    preload: tab === "local" ? preload : undefined,
   });
 
   const global = makeFeed({
@@ -89,34 +92,17 @@
     icon: "globe",
     empty: "No federated articles yet.",
     fetch: (c) => api.globalTimeline(c, personalized ? reading.feedLangQuery() : null),
-    preload: personalized ? undefined : preload,
+    preload: tab === "global" ? preload : undefined,
   });
 
   const feeds = $state<Feed[]>(personalized ? [forYou, local, global] : [global, local]);
-  const defaultTab = personalized ? "for-you" : "global";
-
-  // Controlled active tab. SSR and the first client render both use `defaultTab`
-  // (the preloaded feed) so hydration matches; after mount we honour the user's
-  // saved reading preference if it points at an available tab.
-  let activeTab = $state(defaultTab);
-
-  onMount(() => {
-    const pref = reading.defaultFeed;
-    if (pref && pref !== activeTab && feeds.some((f) => f.value === pref)) {
-      activeTab = pref;
-      ensureLoaded(pref);
-    }
-    // The SSR-preloaded feed (Global for guests) is fetched without the reader's
-    // language filter — localStorage isn't readable on the server. If a signed-in
-    // reader has a filter, refetch the active feed client-side so it applies
-    // immediately. Guests stay unfiltered.
-    if (personalized && reading.feedLangQuery() && activeTab !== "for-you") refetch(activeTab);
-  });
+  let activeTab = $state<string>(tab);
 
   // When a signed-in reader changes their language filter (home card or
   // settings), reload the currently visible timeline (Local/Global) so the mixed
   // AZ/EN/PL/IT feed immediately reflects the choice. For-you is excluded — it
   // is personal; guests have no filter UI and stay unfiltered.
+  let filterSeen = false;
   $effect(() => {
     if (!personalized) return;
     // Only the language prefs are tracked. Everything else — the active tab and
@@ -128,6 +114,11 @@
     // the filter live at call time.
     void reading.feedLangs;
     void reading.feedLangMode;
+    // The first run is mount, not a change: the server already applied the filter.
+    if (!filterSeen) {
+      filterSeen = true;
+      return;
+    }
     untrack(() => {
       if (activeTab === "for-you") return;
       // don't refetch before the tab's first load has settled
@@ -215,8 +206,8 @@
       </div>
     </div>
   {:else}
-    {#each feed.items as post (post.id)}
-      <PostCard {post} />
+    {#each feed.items as post, i (post.id)}
+      <PostCard {post} eager={i < 3} />
     {/each}
     {#if feed.cursor}
       <LoadMoreButton load={() => loadMore(feed)} loading={feed.loading} />

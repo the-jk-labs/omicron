@@ -60,6 +60,16 @@ test("bad cookies are dropped; the locale falls back to Accept-Language", async 
   expect((await run({ routes: base })).locale).toBe(null);
 });
 
+// Kept in localStorage before, the card and its switches flipped after hydration.
+test("the feed language filter comes from its cookies, ignoring unknown languages", async () => {
+  const data = await run({
+    routes: base,
+    cookies: { "feed-lang-mode": "hide", "feed-langs": "de,zz,az", "feed-lang-card-dismissed": "1" },
+  });
+  expect(data.feedFilter).toEqual({ mode: "hide", langs: ["de", "az"], cardDismissed: true });
+  expect((await run({ routes: base })).feedFilter).toEqual({ mode: "show", langs: [], cardDismissed: false });
+});
+
 test("a failed /me or /seo degrades to signed out and indexable", async () => {
   const data = await run({
     routes: { ...base, "GET /api/me": apiError(500), "GET /api/seo": apiError(500) },

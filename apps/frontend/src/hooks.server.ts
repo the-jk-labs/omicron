@@ -110,6 +110,22 @@ function pageLang(locals: App.Locals): string {
   return tag && BCP47.test(tag) ? tag : DEFAULT_LANG;
 }
 
+// Fonts are found only after the stylesheet is parsed, so a page could paint in
+// the fallback and swap a moment later. Preloading the subsets every page uses
+// (Latin + Latin Extended, which covers Azerbaijani) gets them in before paint;
+// the other scripts and italics stay lazy so no page pays for unused files.
+const UI_FONTS = /\/inter-latin(-ext)?-wght-normal\.woff2$/;
+const POST_FONTS = /\/source-sans-3-latin(-ext)?-wght-normal\.woff2$/;
+const POST_ROUTE = "/[handle]/[slug]";
+
+export function preloadFile(
+  input: { type: "css" | "js" | "asset"; path: string } | { type: "font"; path: string; filename: string },
+  routeId: string | null,
+): boolean {
+  if (input.type !== "font") return input.type === "js" || input.type === "css";
+  return UI_FONTS.test(input.filename) || (routeId === POST_ROUTE && POST_FONTS.test(input.filename));
+}
+
 // Security response headers applied to every response (pages, API proxy, and
 // proxied media alike). The Content-Security-Policy itself is configured in
 // svelte.config.js (`kit.csp`) so SvelteKit can nonce its own inline scripts;
@@ -122,6 +138,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     // the rendered chunks come back through the transform.
     (await resolve(event, {
       transformPageChunk: ({ html }) => html.replace(LANG_PLACEHOLDER, pageLang(event.locals)),
+      preload: (input) => preloadFile(input, event.route.id),
     }));
 
   // State the encoding in the header, not only in the document.

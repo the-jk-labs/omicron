@@ -1,12 +1,11 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { browser } from "$app/env";
+  import { page } from "$app/state";
   import { Button as ButtonPrimitive, Select } from "bits-ui";
-  import { onMount } from "svelte";
   import Icon from "#lib/components/Icon.svelte";
   import { LANGUAGES, languageLabel } from "#lib/languages.js";
-  import { reading, type FeedLangMode } from "#lib/prefs.svelte.js";
-  import { readStorage, writeStorage } from "#lib/storage.js";
+  import { type FeedFilter, type FeedLangMode, reading } from "#lib/prefs.svelte.js";
 
   let { compact = false }: { compact?: boolean } = $props();
 
@@ -15,18 +14,13 @@
     { value: "hide", label: "Hide these" },
   ];
 
-  const DISMISSED_KEY = "feed-lang-card-dismissed";
-  // Optimistically hidden (dismissed for most readers, and SSR can't read
-  // localStorage) — reveal after mount only when not dismissed, avoiding a flash.
-  let dismissed = $state(true);
-  onMount(() => {
-    if (readStorage(DISMISSED_KEY) !== "1") dismissed = false;
-  });
-  function dismiss() {
-    dismissed = true;
-    if (browser) writeStorage(DISMISSED_KEY, "1");
-  }
-  const availableLanguages = $derived(LANGUAGES.filter((l) => !reading.feedLangs.includes(l.code)));
+  // The browser reads the saved filter from cookies; the server gets the same
+  // cookies through the layout data, so both renders agree.
+  const saved = $derived(page.data.feedFilter as FeedFilter | undefined);
+  const mode = $derived(browser || !saved ? reading.feedLangMode : saved.mode);
+  const langs = $derived(browser || !saved ? reading.feedLangs : saved.langs);
+  const dismissed = $derived(browser || !saved ? reading.feedLangCardDismissed : saved.cardDismissed);
+  const availableLanguages = $derived(LANGUAGES.filter((l) => !langs.includes(l.code)));
   let addLangValue = $state("");
   function addLanguage(code: string) {
     if (code) reading.addFeedLang(code);
@@ -42,7 +36,7 @@
   >
     {#if compact}
       <ButtonPrimitive.Root
-        onclick={dismiss}
+        onclick={() => reading.dismissFeedLangCard()}
         aria-label="Hide this card"
         class="absolute top-3 right-3 inline-flex size-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
       >
@@ -59,9 +53,7 @@
         <p class="flex items-center gap-1.5 text-sm font-medium text-foreground">
           <Icon name="languages" size={15} /> Feed languages
         </p>
-        <p class="text-xs text-muted-foreground">
-          Filter which languages appear in your Local and Global feeds. Articles with no set language are always shown.
-        </p>
+        <p class="text-xs text-muted-foreground">Filter the languages in your Local and Global feeds.</p>
       </div>
       <div
         class="inline-flex shrink-0 items-center gap-1 self-start rounded-input border border-input bg-background-alt p-1 shadow-btn sm:self-center"
@@ -69,9 +61,9 @@
         {#each langModeOptions as opt (opt.value)}
           <ButtonPrimitive.Root
             onclick={() => reading.setFeedLangMode(opt.value)}
-            aria-pressed={reading.feedLangMode === opt.value}
+            aria-pressed={mode === opt.value}
             class={`inline-flex h-8 items-center rounded-button px-3 text-sm font-medium whitespace-nowrap active:scale-[0.98] ${
-              reading.feedLangMode === opt.value
+              mode === opt.value
                 ? "bg-background text-foreground shadow-mini"
                 : "text-muted-foreground hover:text-foreground"
             }`}
@@ -83,7 +75,7 @@
     </div>
 
     <div class="mt-4 flex flex-wrap items-center gap-2">
-      {#each reading.feedLangs as code (code)}
+      {#each langs as code (code)}
         <span
           class="inline-flex items-center gap-1.5 rounded-button border border-border bg-muted py-1 pr-1.5 pl-3 text-sm text-foreground"
         >
@@ -128,9 +120,5 @@
         </Select.Root>
       {/if}
     </div>
-
-    {#if reading.feedLangs.length === 0}
-      <p class="mt-2 text-xs text-muted-foreground">No filter set. Articles in every language are shown.</p>
-    {/if}
   </div>
 {/if}

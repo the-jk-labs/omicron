@@ -12,6 +12,7 @@
   import TagInput from "#lib/components/TagInput.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
+  import Editor from "#lib/editor/Editor.svelte";
   import { postPath } from "#lib/links.js";
   import type { CoverCredit } from "#lib/types.js";
   import type { PageData } from "./$types";
@@ -19,13 +20,6 @@
   let { data }: { data: PageData } = $props();
   // Seed the editor once from the loaded post; later edits live in the editor.
   const post = untrack(() => data.post);
-
-  // Lazy-load the Tiptap editor so it stays out of the initial bundle.
-  type EditorComp = typeof import("#lib/editor/Editor.svelte").default;
-  let EditorComponent = $state<EditorComp | null>(null);
-  onMount(async () => {
-    EditorComponent = (await import("#lib/editor/Editor.svelte")).default;
-  });
 
   let title = $state(post.title ?? "");
   let tags = $state<string[]>(post.tags?.map((t) => t.name) ?? []);
@@ -148,10 +142,6 @@
 
 <BannerPicker bind:coverUrl bind:coverCredit contentHtml={html} />
 
-{#if EditorComponent}
-  <EditorComponent {onUpdate} content={(post.contentJson as Content) ?? post.contentHtml} />
-{:else}
-  <p class="text-muted-foreground">Loading editor…</p>
-{/if}
+<Editor {onUpdate} content={(post.contentJson as Content) ?? post.contentHtml} previewHtml={post.contentHtml} />
 
 {#if error}<p class="mt-4 text-sm text-destructive">{error}</p>{/if}

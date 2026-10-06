@@ -9,8 +9,8 @@ import { federationOrigin } from "@/services/federationState.ts";
 
 // The post's banner as an ActivityPub Image.
 //
-// A banner uploaded here is stored root-relative (`/api/uploads/…`), which a
-// receiving instance would resolve against its own host, so it is absolutized
+// A banner uploaded here is stored root-relative (`/api/uploads/…`), which
+// a receiving instance would resolve against its own host, so it is absolutized
 // against ours first. Anything still unparseable is dropped rather than
 // federated as a broken attachment.
 function coverImage(url: string | null): Image | undefined {

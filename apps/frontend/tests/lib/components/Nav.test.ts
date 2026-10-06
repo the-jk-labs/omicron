@@ -83,6 +83,22 @@ test("the theme button toggles the theme", async () => {
   expect(toggle).toHaveBeenCalled();
 });
 
+// The server can't know the theme, so the toggle must not depend on it: CSS picks
+// the icon from the `dark` class set before first paint.
+function toggleMarkup(current: "light" | "dark") {
+  theme.current = current;
+  const { unmount } = setup(null);
+  const html = screen.getByRole("button", { name: "Toggle dark mode" }).innerHTML;
+  unmount();
+  return html;
+}
+
+test("the theme button renders the same in either theme, so its icon never flips", () => {
+  const light = toggleMarkup("light");
+  expect(toggleMarkup("dark")).toBe(light);
+  expect(document.createRange().createContextualFragment(light).querySelectorAll("svg")).toHaveLength(2);
+});
+
 test("the bell shows the unread count, capped at 99+", () => {
   notifications.count = 150;
   setup();

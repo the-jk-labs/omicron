@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Collapsible } from "bits-ui";
+  import { tick } from "svelte";
   import Icon from "#lib/components/Icon.svelte";
   import Button from "#lib/components/ui/Button.svelte";
 
@@ -38,8 +39,11 @@
 
   $effect(() => {
     if (!focusOnOpen || !input) return;
-    input.focus();
+    const el = input;
     focusOnOpen = false;
+    // The content is still `hidden` when the input mounts; bits-ui shows it on the
+    // next update, and a hidden element can't take focus.
+    void tick().then(() => el.focus());
   });
 
   // Closing discards the text: leaving a description stored but hidden behind a

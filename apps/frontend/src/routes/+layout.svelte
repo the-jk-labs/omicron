@@ -38,6 +38,19 @@
     rememberLocale();
   });
 
+  // SvelteKit leaves scroll restoration on "manual", so a reload paints at the
+  // top and jumps once the router starts; let the browser restore it before paint.
+  const toBrowser = () => (history.scrollRestoration = "auto");
+  const toRouter = () => (history.scrollRestoration = "manual");
+  $effect(() => {
+    addEventListener("pagehide", toBrowser);
+    addEventListener("pageshow", toRouter);
+    return () => {
+      removeEventListener("pagehide", toBrowser);
+      removeEventListener("pageshow", toRouter);
+    };
+  });
+
   // Site-wide social-share defaults. Pages may set their own <title>; these
   // provide the brand image/description used in link previews everywhere. The
   // name comes from the instance settings (wizard/admin), falling back to the

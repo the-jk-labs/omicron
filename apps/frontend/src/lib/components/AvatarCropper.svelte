@@ -18,7 +18,8 @@
   }: {
     open?: boolean;
     src: string | null;
-    onCrop: (file: File) => void;
+    /** Saves the crop; the dialog stays open, showing the message, if it throws. */
+    onCrop: (file: File) => void | Promise<void>;
   } = $props();
 
   // CSS size of the square editing viewport, and the size of the exported image.
@@ -34,6 +35,10 @@
   // Top-left of the image relative to the viewport top-left, in CSS px.
   let offset = $state({ x: 0, y: 0 });
   let busy = $state(false);
+  let error = $state("");
+  $effect(() => {
+    if (!open) error = "";
+  });
 
   // Scale at which the image exactly covers the viewport (zoom = 1).
   const coverScale = $derived(natural.w && natural.h ? VIEWPORT / Math.min(natural.w, natural.h) : 1);
@@ -108,6 +113,7 @@
   async function confirm() {
     if (!img) return;
     busy = true;
+    error = "";
     try {
       // Map the viewport square back to source-image pixels.
       const srcSize = VIEWPORT / scale;
@@ -123,8 +129,10 @@
 
       const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.9));
       if (!blob) return;
-      onCrop(new File([blob], "avatar.webp", { type: "image/webp" }));
+      await onCrop(new File([blob], "avatar.webp", { type: "image/webp" }));
       open = false;
+    } catch (err) {
+      error = err instanceof Error ? err.message : "Could not save the photo.";
     } finally {
       busy = false;
     }
@@ -198,6 +206,8 @@
         </div>
       </div>
 
+      {#if error}<p class="mt-4 text-sm text-destructive" role="alert">{error}</p>{/if}
+
       <div class="mt-6 flex justify-end gap-2">
         <Dialog.Close
           class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
@@ -205,7 +215,7 @@
           Cancel
         </Dialog.Close>
         <Button variant="solid" class="h-10 px-5 text-sm" disabled={busy} onclick={confirm}>
-          {busy ? "Saving…" : "Apply"}
+          {busy ? "Saving…" : "Save"}
         </Button>
       </div>
     </Dialog.Content>

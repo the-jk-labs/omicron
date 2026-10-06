@@ -13,7 +13,8 @@
   import { postPath } from "#lib/links.js";
   import type { Post } from "#lib/types.js";
 
-  let { post }: { post: Post } = $props();
+  // `eager` for the first cards of a list: they are on screen at first paint.
+  let { post, eager = false }: { post: Post; eager?: boolean } = $props();
 
   // The card's body is one big link over the title, the summary and the
   // thumbnail, so its accessible name was everything inside it concatenated:
@@ -108,15 +109,15 @@
         <!-- Decorative: the title beside it already names the post. -->
         <!-- The CSS box is already fixed, so this thumbnail cannot shift the
              layout; `width`/`height` are set anyway so the space is reserved
-             even before the stylesheet applies. `decoding="async"` keeps a
-             long feed of these off the main thread. -->
+             even before the stylesheet applies. No `decoding="async"`, and eager
+             near the top: both let the first paint go out without the image, so
+             even a cached one flickered in a frame later. -->
         <img
           src={post.bannerUrl}
           alt=""
           width="144"
           height="96"
-          loading="lazy"
-          decoding="async"
+          loading={eager ? "eager" : "lazy"}
           onerror={() => (coverFailed = true)}
           class="mt-1 h-20 w-28 shrink-0 rounded-card border border-border object-cover sm:h-24 sm:w-36"
         />
@@ -134,15 +135,12 @@
        row the buttons stay on the meta's line while there is room and drop to
        their own right-aligned line when there is not. -->
   <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
-    <!-- Localized date with semantic <time>; clock time stays on `sm+` (phone
-         width). Time.svelte handles locale, timezone (title) and the
-         `datetime` attribute — no manual `, ` concatenation, so the stray
-         "2026 , 13:40" (space before comma) cannot happen. -->
-    <span class="inline-flex items-center gap-1">
-      <Time iso={post.createdAt} kind="date" />
-      <span class="hidden sm:inline">· <Time iso={post.createdAt} kind="time" /></span>
-    </span>
-    <span class="flex items-center gap-1"><Icon name="clock" size={13} /> {minutes} min read</span>
+    <!-- The date alone: the clock time of publishing is noise on a card. -->
+    <Time iso={post.createdAt} kind="date" />
+    <!-- The clock says "read time" on screen; screen readers still hear the word. -->
+    <span class="flex items-center gap-1"
+      ><Icon name="clock" size={13} /> {minutes} min <span class="sr-only">read</span></span
+    >
     <ReactionCount icon="heart" count={post.likeCount} singular="like" size={13} />
     <ReactionCount icon="comment" count={post.commentCount} singular="response" size={13} />
     <span class="ml-auto flex shrink-0 items-center gap-1">

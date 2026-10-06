@@ -276,8 +276,8 @@
             {/if}
           </p>
         {:else}
-          {#each posts as post (post.id)}
-            <PostCard {post} />
+          {#each posts as post, i (post.id)}
+            <PostCard {post} eager={i < 3} />
           {/each}
         {/if}
       </Tabs.Content>

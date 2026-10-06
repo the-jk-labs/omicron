@@ -49,12 +49,15 @@ test("set persists and applies the class; toggle flips what is showing", async (
   theme.set("dark");
   expect(localStorage.getItem("theme")).toBe("dark");
   expect(document.documentElement.classList.contains("dark")).toBe(true);
+  // Settings' theme switch is styled from this, so it must follow every change.
+  expect(document.documentElement.dataset.themePref).toBe("dark");
   theme.toggle();
   expect([theme.preference, theme.current]).toEqual(["light", "light"]);
   expect(document.documentElement.classList.contains("dark")).toBe(false);
   osDark = true;
   theme.set("system");
   expect(theme.current).toBe("dark");
+  expect(document.documentElement.dataset.themePref).toBe("system");
 });
 
 test("an OS change is followed only while the preference is system", async () => {
