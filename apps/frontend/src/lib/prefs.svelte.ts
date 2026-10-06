@@ -4,8 +4,8 @@ import { LANGUAGES } from "#lib/languages.js";
 import { localeFromAcceptLanguage } from "#lib/locale.svelte.js";
 import { readStorage, writeStorage } from "#lib/storage.js";
 
-// Client-side reading preferences, persisted in localStorage. These are personal
-// view settings (not account data), so they live in the browser, not the server.
+// Client-side reading preferences. These are personal view settings (not account
+// data), so they live in the browser, not the server.
 export type FeedTab = "for-you" | "local" | "global";
 
 // How the feed language filter treats the chosen `feedLangs`: "show" keeps only
@@ -13,11 +13,12 @@ export type FeedTab = "for-you" | "local" | "global";
 // always kept in both modes (see the backend `languageFilter`).
 export type FeedLangMode = "show" | "hide";
 
-// A cookie, not localStorage: the server renders the home tab and the settings
-// switch from it, so neither flips after hydration.
+// Cookies, not localStorage: the server renders the home feed, the language card
+// and the settings switches from them, so nothing flips after hydration.
 export const FEED_COOKIE = "default-feed";
-const LANG_MODE_KEY = "feed-lang-mode";
-const LANGS_KEY = "feed-langs";
+export const LANG_MODE_COOKIE = "feed-lang-mode";
+export const LANGS_COOKIE = "feed-langs";
+export const LANG_CARD_COOKIE = "feed-lang-card-dismissed";
 const COMPOSE_LANG_KEY = "compose-lang";
 // The composer is server-rendered, so its default language also lives in a
 // cookie the server can read; otherwise the picker would flip after hydration.
@@ -29,32 +30,39 @@ export function feedTab(v: string | null | undefined): FeedTab | null {
   return v === "for-you" || v === "local" || v === "global" ? v : null;
 }
 
+export type FeedFilter = { mode: FeedLangMode; langs: string[]; cardDismissed: boolean };
+
+/** The feed language filter as saved in cookies; `get` reads one by name. */
+export function feedFilterFrom(get: (name: string) => string | null | undefined): FeedFilter {
+  const langs = (get(LANGS_COOKIE) ?? "").split(",").filter((c) => LANGUAGES.some((l) => l.code === c));
+  return {
+    mode: get(LANG_MODE_COOKIE) === "hide" ? "hide" : "show",
+    langs: [...new Set(langs)],
+    cardDismissed: get(LANG_CARD_COOKIE) === "1",
+  };
+}
+
+/** A filter as API query params, or null when it is off. */
+export function langQuery(mode: FeedLangMode, langs: string[]): { langMode: FeedLangMode; langs: string } | null {
+  return langs.length === 0 ? null : { langMode: mode, langs: langs.join(",") };
+}
+
 function readCookie(name: string): string | null {
   const hit = document.cookie.split("; ").find((c) => c.startsWith(`${name}=`));
   return hit ? decodeURIComponent(hit.slice(name.length + 1)) : null;
+}
+
+function writeCookie(name: string, value: string | null) {
+  const v = value ? encodeURIComponent(value) : "";
+  document.cookie = `${name}=${v}; path=/; max-age=${value ? COOKIE_MAX_AGE : 0}; SameSite=Lax`;
 }
 
 function initialFeed(): FeedTab | null {
   return browser ? feedTab(readCookie(FEED_COOKIE)) : null;
 }
 
-function initialLangMode(): FeedLangMode {
-  if (!browser) return "show";
-  const v = readStorage(LANG_MODE_KEY);
-  return v === "hide" ? "hide" : "show";
-}
-
-function initialLangs(): string[] {
-  if (!browser) return [];
-  const raw = readStorage(LANGS_KEY);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((c) => typeof c === "string") : [];
-  } catch {
-    return [];
-  }
-}
+const initialFilter = (): FeedFilter =>
+  browser ? feedFilterFrom(readCookie) : { mode: "show", langs: [], cardDismissed: false };
 
 // The language to preselect when composing: whatever the author chose last,
 // falling back to the language their browser is set to.
@@ -80,11 +88,6 @@ function knownLanguage(tag: string | null | undefined): string | null {
   return code && LANGUAGES.some((l) => l.code === code) ? code : null;
 }
 
-function writeComposeLangCookie(code: string | null) {
-  const value = code ? encodeURIComponent(code) : "";
-  document.cookie = `${COMPOSE_LANG_COOKIE}=${value}; path=/; max-age=${code ? COOKIE_MAX_AGE : 0}; SameSite=Lax`;
-}
-
 /** The composer's default as the server sees it: the remembered choice, else the browser's language. */
 export function composeLangFor(cookie: string | undefined, acceptLanguage: string | null): string | null {
   return knownLanguage(cookie) ?? knownLanguage(localeFromAcceptLanguage(acceptLanguage));
@@ -95,18 +98,25 @@ class ReadingPrefs {
   defaultFeed = $state<FeedTab | null>(initialFeed());
 
   /** Feed language filter mode — whether `feedLangs` is a show- or hide-list. */
-  feedLangMode = $state<FeedLangMode>(initialLangMode());
+  feedLangMode = $state<FeedLangMode>(initialFilter().mode);
   /** Language codes the filter applies to. Empty = filter off (see all). */
-  feedLangs = $state<string[]>(initialLangs());
+  feedLangs = $state<string[]>(initialFilter().langs);
+  /** Whether the reader closed the language card on the home page. */
+  feedLangCardDismissed = $state(initialFilter().cardDismissed);
 
   setDefaultFeed(tab: FeedTab) {
     this.defaultFeed = tab;
-    if (browser) document.cookie = `${FEED_COOKIE}=${tab}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
+    if (browser) writeCookie(FEED_COOKIE, tab);
   }
 
   setFeedLangMode(mode: FeedLangMode) {
     this.feedLangMode = mode;
-    if (browser) writeStorage(LANG_MODE_KEY, mode);
+    if (browser) writeCookie(LANG_MODE_COOKIE, mode);
+  }
+
+  dismissFeedLangCard() {
+    this.feedLangCardDismissed = true;
+    if (browser) writeCookie(LANG_CARD_COOKIE, "1");
   }
 
   addFeedLang(code: string) {
@@ -121,7 +131,7 @@ class ReadingPrefs {
   }
 
   private persistLangs() {
-    if (browser) writeStorage(LANGS_KEY, JSON.stringify(this.feedLangs));
+    if (browser) writeCookie(LANGS_COOKIE, this.feedLangs.join(",") || null);
   }
 
   /** Language to preselect in the composer; null when nothing is known. */
@@ -132,13 +142,12 @@ class ReadingPrefs {
     this.composeLang = code;
     if (!browser) return;
     writeStorage(COMPOSE_LANG_KEY, code || null);
-    writeComposeLangCookie(code);
+    writeCookie(COMPOSE_LANG_COOKIE, code);
   }
 
   /** The active filter as API query params, or null when the filter is off. */
-  feedLangQuery(): { langMode: FeedLangMode; langs: string } | null {
-    if (this.feedLangs.length === 0) return null;
-    return { langMode: this.feedLangMode, langs: this.feedLangs.join(",") };
+  feedLangQuery() {
+    return langQuery(this.feedLangMode, this.feedLangs);
   }
 }
 

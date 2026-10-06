@@ -89,10 +89,11 @@ test("the tab the server chose is open from the first render, with its preloaded
   expect(feedCalls()).toEqual([]);
 });
 
-test("a signed-in reader's language filter is applied to the preloaded timeline", async () => {
+test("a saved language filter doesn't refetch the timeline the server already filtered", async () => {
   reading.feedLangs = ["de", "fr"];
   setup(true, page([post()]), { "GET /api/posts": page([]) }, "global");
-  await waitFor(() => expect(feedCalls()).toEqual(["/api/posts?langMode=show&langs=de%2Cfr"]));
+  await new Promise((r) => setTimeout(r, 20));
+  expect(feedCalls()).toEqual([]);
 });
 
 test("changing the language filter refetches the visible timeline", async () => {

@@ -1,3 +1,4 @@
+import { page } from "$app/state";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, beforeEach, expect, test } from "vitest";
@@ -14,6 +15,8 @@ beforeEach(() => {
 afterEach(() => {
   reading.feedLangs = [];
   reading.feedLangMode = "show";
+  reading.feedLangCardDismissed = false;
+  page.data = { user: null };
 });
 
 const pressed = () => screen.getAllByRole("button", { pressed: true }).map((b) => b.textContent?.trim());
@@ -55,17 +58,25 @@ test("adding a language from the picker, which then no longer offers it", async 
   expect(screen.queryByRole("option", { name: /German/ })).toBe(null);
 });
 
-test("the compact card appears after mount and can be dismissed for good", async () => {
-  const { unmount } = render(FeedLanguageFilter, { props: { compact: true } });
-  await screen.findByText("Feed languages");
+test("the compact card shows from the first render and can be dismissed", async () => {
+  render(FeedLanguageFilter, { props: { compact: true } });
+  expect(screen.getByText("Feed languages")).toBeInTheDocument();
   await fireEvent.click(screen.getByRole("button", { name: "Hide this card" }));
   await waitFor(() => expect(screen.queryByText("Feed languages")).toBe(null));
-  unmount();
-  // `browser` is false under test, so dismissal isn't persisted here; a
-  // previously stored dismissal keeps the card hidden.
-  localStorage.setItem("feed-lang-card-dismissed", "1");
+  expect(reading.feedLangCardDismissed).toBe(true);
+});
+
+// `browser` is false here, as on the server: the saved filter comes from the layout data.
+test("the server renders the saved filter, so nothing flips on hydration", () => {
+  page.data = { user: null, feedFilter: { mode: "hide", langs: ["de"], cardDismissed: false } } as never;
+  render(FeedLanguageFilter);
+  expect(pressed()).toEqual(["Hide these"]);
+  expect(screen.getByRole("button", { name: "Remove German" })).toBeInTheDocument();
+});
+
+test("the server leaves out a card the reader dismissed", () => {
+  page.data = { user: null, feedFilter: { mode: "show", langs: [], cardDismissed: true } } as never;
   render(FeedLanguageFilter, { props: { compact: true } });
-  await new Promise((r) => setTimeout(r, 0));
   expect(screen.queryByText("Feed languages")).toBe(null);
 });
 

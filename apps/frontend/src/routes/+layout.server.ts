@@ -2,6 +2,7 @@ import { redirect } from "@sveltejs/kit";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { endpoints } from "#lib/api/index.js";
 import { LOCALE_COOKIE, localeFromAcceptLanguage, validLocale } from "#lib/locale.svelte.js";
+import { feedFilterFrom } from "#lib/prefs.svelte.js";
 import { TZ_COOKIE, validTimeZone } from "#lib/timezone.svelte.js";
 import type { LayoutServerLoad } from "./$types";
 
@@ -65,5 +66,8 @@ export const load: LayoutServerLoad = async ({ cookies, fetch, route, request })
 
   const seo = await seoPromise;
 
-  return { user, discover, instance, seo, timeZone, locale };
+  // The feed language filter, so its card and switches render as saved.
+  const feedFilter = feedFilterFrom((name) => cookies.get(name));
+
+  return { user, discover, instance, seo, timeZone, locale, feedFilter };
 };

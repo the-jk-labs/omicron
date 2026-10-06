@@ -35,6 +35,16 @@ test("the saved default feed is the tab the server renders", async () => {
   expect(await load(event({ routes, cookies: { "default-feed": "local" } }).event)).toMatchObject({ tab: "local" });
 });
 
+test("a signed-in reader's timeline is preloaded with their language filter; a guest's never is", async () => {
+  const cookies = { "default-feed": "local", "feed-lang-mode": "hide", "feed-langs": "de,fr" };
+  const signedIn = event({ routes, user: user(), cookies });
+  await load(signedIn.event);
+  expect(signedIn.calls.map((c) => c.path)).toEqual(["/api/posts?scope=local&langMode=hide&langs=de%2Cfr"]);
+  const guest = event({ routes, cookies });
+  await load(guest.event);
+  expect(guest.calls.map((c) => c.path)).toEqual(["/api/posts?scope=local"]);
+});
+
 test("a saved default that isn't offered or isn't a feed falls back", async () => {
   expect(await load(event({ routes, cookies: { "default-feed": "for-you" } }).event)).toMatchObject({
     tab: "global",

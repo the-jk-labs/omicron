@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Tabs } from "bits-ui";
-  import { onMount, untrack } from "svelte";
+  import { untrack } from "svelte";
   import { ApiError, endpoints } from "#lib/api/index.js";
   import FeedLanguageFilter from "#lib/components/FeedLanguageFilter.svelte";
   import Icon, { type IconName } from "#lib/components/Icon.svelte";
@@ -98,14 +98,6 @@
   const feeds = $state<Feed[]>(personalized ? [forYou, local, global] : [global, local]);
   let activeTab = $state<string>(tab);
 
-  onMount(() => {
-    // The SSR-preloaded feed (Global for guests) is fetched without the reader's
-    // language filter — localStorage isn't readable on the server. If a signed-in
-    // reader has a filter, refetch the active feed client-side so it applies
-    // immediately. Guests stay unfiltered.
-    if (personalized && reading.feedLangQuery() && activeTab !== "for-you") refetch(activeTab);
-  });
-
   // When a signed-in reader changes their language filter (home card or
   // settings), reload the currently visible timeline (Local/Global) so the mixed
   // AZ/EN/PL/IT feed immediately reflects the choice. For-you is excluded — it
@@ -122,7 +114,7 @@
     // the filter live at call time.
     void reading.feedLangs;
     void reading.feedLangMode;
-    // The first run is mount, not a change; onMount handles a filter present then.
+    // The first run is mount, not a change: the server already applied the filter.
     if (!filterSeen) {
       filterSeen = true;
       return;
