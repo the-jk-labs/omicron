@@ -55,10 +55,10 @@ class OriginCookiesStorageTest {
                         respond(
                             content = "{}",
                             status = HttpStatusCode.OK,
-                            headers = headersOf(HttpHeaders.SetCookie, "omicron.session_token=session-token; Max-Age=3600; Path=/; Secure; HttpOnly"),
+                            headers = headersOf(HttpHeaders.SetCookie, "omicron.session_token=session-token=signature; Max-Age=3600; Path=/; Secure; HttpOnly"),
                         )
                     } else {
-                        assertEquals("omicron.session_token=session-token", request.headers[HttpHeaders.Cookie])
+                        assertEquals("omicron.session_token=session-token=signature", request.headers[HttpHeaders.Cookie])
                         respond("{}", HttpStatusCode.OK)
                     }
                 },

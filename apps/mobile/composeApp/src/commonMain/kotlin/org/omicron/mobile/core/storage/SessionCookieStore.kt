@@ -13,4 +13,5 @@ data class StoredSessionCookie(
     val name: String,
     val value: String,
     val expiresAt: Long?,
+    val encoding: String = "RAW",
 )
