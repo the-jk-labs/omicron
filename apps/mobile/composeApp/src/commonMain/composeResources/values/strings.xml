@@ -8,6 +8,7 @@
     <string name="auth_error_display_name_too_long">Display name must be at most 60 characters.</string>
     <string name="auth_error_email_already_registered">This email is already registered. Sign in instead.</string>
     <string name="auth_error_identifier_required">Enter your username or email address.</string>
+    <string name="auth_error_invalid_credentials">Invalid username or password.</string>
     <string name="auth_error_invalid_email">Enter a valid email address.</string>
     <string name="auth_error_invalid_username">Use 3 to 30 lowercase letters, numbers, or underscores.</string>
     <string name="auth_error_missing_instance">Choose an instance before restoring a session.</string>

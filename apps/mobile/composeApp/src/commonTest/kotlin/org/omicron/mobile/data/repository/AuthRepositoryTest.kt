@@ -46,6 +46,24 @@ class AuthRepositoryTest {
     }
 
     @Test
+    fun returnsInvalidCredentialsWithoutTreatingThemAsAnAvailabilityFailure() = runTest {
+        val repository = AuthRepository(FakeAuthApi(session = null, signInFailure = AuthApiException("INVALID_USERNAME_OR_PASSWORD")))
+
+        val result = repository.signInUsername("https://omicron.blog", "ada", "Unique-test-password-123!")
+
+        assertIs<AuthenticationResult.InvalidCredentials>(result)
+    }
+
+    @Test
+    fun usesTheSignInResponseWhileMintingTheApiToken() = runTest {
+        val repository = AuthRepository(FakeAuthApi(session = null, createSessionOnSignIn = false))
+
+        val result = repository.signInUsername("https://omicron.blog", "ada", "Unique-test-password-123!")
+
+        assertIs<AuthenticationResult.Authenticated>(result)
+    }
+
+    @Test
     fun returnsVerificationRequiredWhenRegistrationDoesNotCreateASession() = runTest {
         val repository = AuthRepository(FakeAuthApi(session = null, signUpToken = null))
 
@@ -80,6 +98,7 @@ private class FakeAuthApi(
     var session: AuthSessionDto?,
     private val signInFailure: Throwable? = null,
     private val signUpToken: String? = "session-token",
+    private val createSessionOnSignIn: Boolean = true,
 ) : AuthApi {
     var accessToken = "signed-token"
     var tokenRequests = 0
@@ -93,13 +112,13 @@ private class FakeAuthApi(
 
     override suspend fun signInEmail(origin: String, email: String, password: String): AuthSessionCreationDto {
         signInFailure?.let { throw it }
-        session = session()
+        if (createSessionOnSignIn) session = session()
         return creation()
     }
 
     override suspend fun signInUsername(origin: String, username: String, password: String): AuthSessionCreationDto {
         signInFailure?.let { throw it }
-        session = session()
+        if (createSessionOnSignIn) session = session()
         return creation()
     }
 

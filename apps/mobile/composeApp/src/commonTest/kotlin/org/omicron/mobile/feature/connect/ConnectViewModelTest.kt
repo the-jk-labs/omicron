@@ -14,6 +14,11 @@ import kotlin.test.assertIs
 
 class ConnectViewModelTest {
     @Test
+    fun acceptsAnHttpsOriginWithoutATrailingSlash() {
+        assertEquals("https://omicron.blog", normalizeOrigin("https://omicron.blog"))
+    }
+
+    @Test
     fun connectsAndPersistsTheNormalizedHttpsOrigin() = runTest {
         val dispatcher = StandardTestDispatcher(testScheduler)
         val store = FakeInstanceStore()

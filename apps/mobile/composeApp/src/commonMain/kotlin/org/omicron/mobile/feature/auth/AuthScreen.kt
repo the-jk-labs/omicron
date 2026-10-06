@@ -37,6 +37,7 @@ import org.omicron.mobile.resources.auth_email
 import org.omicron.mobile.resources.auth_error_display_name_too_long
 import org.omicron.mobile.resources.auth_error_email_already_registered
 import org.omicron.mobile.resources.auth_error_identifier_required
+import org.omicron.mobile.resources.auth_error_invalid_credentials
 import org.omicron.mobile.resources.auth_error_invalid_email
 import org.omicron.mobile.resources.auth_error_invalid_username
 import org.omicron.mobile.resources.auth_error_missing_instance
@@ -245,6 +246,7 @@ private fun FormError(error: AuthFormError) {
     val message =
         when (error) {
             AuthFormError.IdentifierRequired -> Res.string.auth_error_identifier_required
+            AuthFormError.InvalidCredentials -> Res.string.auth_error_invalid_credentials
             AuthFormError.InvalidUsername -> Res.string.auth_error_invalid_username
             AuthFormError.InvalidEmail -> Res.string.auth_error_invalid_email
             AuthFormError.PasswordTooShort -> Res.string.auth_error_password_too_short

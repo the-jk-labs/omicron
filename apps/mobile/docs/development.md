@@ -20,6 +20,12 @@ Install a debug build on a connected device when applicable:
 ./gradlew :composeApp:installDebug
 ```
 
+Run connected Compose UI tests on a device when a critical journey changes:
+
+```sh
+./gradlew :composeApp:connectedDebugAndroidTest
+```
+
 The app package is `org.omicron.mobile`.
 
 ## Delivery Workflow

@@ -2,6 +2,7 @@ package org.omicron.mobile.core.network
 
 import io.ktor.client.plugins.cookies.CookiesStorage
 import io.ktor.http.Cookie
+import io.ktor.http.CookieEncoding
 import io.ktor.http.Url
 import io.ktor.util.date.GMTDate
 import org.omicron.mobile.core.storage.SessionCookieStore
@@ -21,9 +22,10 @@ class OriginCookiesStorage(
                     StoredSessionCookie(
                         name = cookie.name,
                         value = cookie.value,
+                        encoding = cookie.encoding.name,
                         expiresAt =
-                            cookie.expires?.timestamp
-                                ?: cookie.maxAge?.let { now + it * 1_000 },
+                            cookie.maxAge?.let { now + it * 1_000L }
+                                ?: cookie.expires?.timestamp,
                     ),
                 ).filter { it.expiresAt == null || it.expiresAt > now }
         store.write(origin, updated)
@@ -38,6 +40,9 @@ class OriginCookiesStorage(
             Cookie(
                 name = it.name,
                 value = it.value,
+                encoding =
+                    runCatching { CookieEncoding.valueOf(it.encoding) }
+                        .getOrDefault(CookieEncoding.RAW),
                 expires = it.expiresAt?.let(::GMTDate),
                 domain = requestUrl.host,
                 path = "/",

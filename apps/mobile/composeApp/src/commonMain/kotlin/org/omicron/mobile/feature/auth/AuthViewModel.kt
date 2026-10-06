@@ -155,6 +155,9 @@ class AuthViewModel(
                         AuthenticationResult.EmailAlreadyRegistered ->
                             credentials.copy(mode = AuthMode.Register, isSubmitting = false, error = AuthFormError.EmailAlreadyRegistered)
 
+                        AuthenticationResult.InvalidCredentials ->
+                            credentials.copy(isSubmitting = false, error = AuthFormError.InvalidCredentials)
+
                         AuthenticationResult.Unavailable ->
                             credentials.copy(isSubmitting = false, error = AuthFormError.Unavailable)
                     },
@@ -227,6 +230,7 @@ data class AuthForm(
 
 enum class AuthFormError {
     IdentifierRequired,
+    InvalidCredentials,
     InvalidUsername,
     InvalidEmail,
     PasswordTooShort,
