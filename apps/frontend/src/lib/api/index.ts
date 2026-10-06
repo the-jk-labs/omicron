@@ -99,6 +99,13 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       appDomain?: string;
       federationEnabled?: boolean;
       bannerText?: string;
+      about?: string;
+      rules?: string;
+      privacyPolicy?: string;
+      contactEmail?: string;
+      contactUrl?: string;
+      abuseEmail?: string;
+      statusUrl?: string;
     }) => api.put<AdminInstance>("/admin/instance", body),
     // Rotate the auto-managed session secret (takes effect on restart, signs out).
     rotateSessionSecret: () => api.post<{ ok: true }>("/admin/instance/rotate-secret", {}),

@@ -187,6 +187,28 @@ describe("admin endpoints", () => {
     expect((await api.json("/api/admin/instance", "PUT", { bannerText: "x".repeat(281) })).status).toBe(400);
   });
 
+  test("instance update accepts public information and rejects invalid operator links", async () => {
+    await api.json("/api/admin/instance", "PUT", {
+      about: "# Welcome",
+      rules: "Be kind.",
+      privacyPolicy: "No trackers.",
+      contactEmail: "operator@blog.example",
+      contactUrl: "https://blog.example/contact",
+      abuseEmail: "abuse@blog.example",
+      statusUrl: "https://status.blog.example",
+    });
+    expect(setup.setInstanceIdentity).toHaveBeenLastCalledWith({
+      about: "# Welcome",
+      rules: "Be kind.",
+      privacyPolicy: "No trackers.",
+      contactEmail: "operator@blog.example",
+      contactUrl: "https://blog.example/contact",
+      abuseEmail: "abuse@blog.example",
+      statusUrl: "https://status.blog.example",
+    });
+    expect((await api.json("/api/admin/instance", "PUT", { statusUrl: "javascript:alert(1)" })).status).toBe(400);
+  });
+
   test("banner upload stores the image and the URL", async () => {
     const res = await api.request("/api/admin/instance/banner", {
       method: "POST",

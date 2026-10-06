@@ -22,26 +22,37 @@
 
   <div class="prose-omicron mt-8">
     <h2 id="instance">This instance</h2>
-    <p>
-      You are reading <strong>{domain}</strong> running <strong>{appName}</strong>. The operator configured this domain
-      and instance name via the setup wizard. When federation is enabled this instance participates in the fediverse.
-    </p>
-    {#if instance?.federationEnabled}
-      <p>This instance is federating. Profiles and posts can be followed from any ActivityPub server.</p>
+    {#if instance?.aboutHtml}
+      <!-- Rendered and sanitized server-side; see backend lib/markdown.ts. -->
+      {@html instance.aboutHtml}
     {:else}
-      <p>Federation is currently disabled on this instance.</p>
+      <p>
+        You are reading <strong>{domain}</strong> running <strong>{appName}</strong>. The operator configured this
+        domain and instance name via the setup wizard. When federation is enabled this instance participates in the
+        fediverse.
+      </p>
+      {#if instance?.federationEnabled}
+        <p>This instance is federating. Profiles and posts can be followed from any ActivityPub server.</p>
+      {:else}
+        <p>Federation is currently disabled on this instance.</p>
+      {/if}
     {/if}
 
     <h2 id="rules">Instance rules</h2>
-    <p>
-      The operator sets the rules for this instance. Until custom rules are published here, the baseline is: be
-      respectful, no illegal content, no harassment, no spam. Reports are reviewed by the instance moderators via the
-      <em>Flag</em> action on posts and profiles.
-    </p>
-    <p>
-      For the full moderation policy or to report abuse, see <a href="/contact">Contact</a>. Admins can edit this page’s
-      copy to reflect their real community guidelines. Replace this placeholder before operating a public service.
-    </p>
+    {#if instance?.rulesHtml}
+      <!-- Rendered and sanitized server-side; see backend lib/markdown.ts. -->
+      {@html instance.rulesHtml}
+    {:else}
+      <p>
+        The operator sets the rules for this instance. Until custom rules are published here, the baseline is: be
+        respectful, no illegal content, no harassment, no spam. Reports are reviewed by the instance moderators via the
+        <em>Flag</em> action on posts and profiles.
+      </p>
+      <p>
+        For the full moderation policy or to report abuse, see <a href="/contact">Contact</a>. Replace this placeholder
+        before operating a public service.
+      </p>
+    {/if}
 
     <h2 id="source">Source code</h2>
     <p>

@@ -19,6 +19,7 @@ import {
   getBannerImageUrl,
   getBannerText,
   getFederationEnabled,
+  getInstancePublicSettings,
   getOrigin,
   isSetupComplete,
   isTlsDomainAllowed,
@@ -165,6 +166,30 @@ describe("setInstanceIdentity", () => {
     expect(settings[SETUP_KEYS.appName]).toBe("New");
   });
 
+  test("stores public page source alongside sanitized HTML", async () => {
+    await setInstanceIdentity({
+      about: "# Welcome",
+      rules: "Be kind.",
+      privacyPolicy: "No trackers.",
+      contactEmail: " hello@blog.example ",
+      contactUrl: " https://blog.example/contact ",
+      abuseEmail: "abuse@blog.example",
+      statusUrl: "https://status.blog.example",
+    });
+    expect(await getInstancePublicSettings()).toEqual({
+      about: "# Welcome",
+      rules: "Be kind.",
+      privacyPolicy: "No trackers.",
+      contactEmail: "hello@blog.example",
+      contactUrl: "https://blog.example/contact",
+      abuseEmail: "abuse@blog.example",
+      statusUrl: "https://status.blog.example",
+    });
+    expect(settings[SETUP_KEYS.aboutHtml]).toContain("<h1>Welcome</h1>");
+    expect(settings[SETUP_KEYS.rulesHtml]).toContain("<p>Be kind.</p>");
+    expect(settings[SETUP_KEYS.privacyPolicyHtml]).toContain("<p>No trackers.</p>");
+  });
+
   describe("passkeys", () => {
     beforeEach(() => {
       config.APP_DOMAIN = "localhost:5173";
@@ -224,6 +249,13 @@ describe("publicInfo", () => {
       emailVerificationRequired: config.EMAIL_VERIFICATION_REQUIRED,
       bannerText: null,
       bannerImageUrl: null,
+      aboutHtml: null,
+      rulesHtml: null,
+      privacyPolicyHtml: null,
+      contactEmail: null,
+      contactUrl: null,
+      abuseEmail: null,
+      statusUrl: null,
     });
     seedFederationRunning(false);
   });

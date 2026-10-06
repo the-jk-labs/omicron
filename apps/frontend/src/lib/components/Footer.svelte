@@ -15,8 +15,8 @@
 
   const year = new Date().getFullYear();
   const sourceUrl = $derived(PUBLIC_SOURCE_URL?.trim() || "https://github.com/the-jk-labs/omicron");
-  const statusUrl = $derived(PUBLIC_STATUS_URL?.trim() || "/status");
-  const contactHref = $derived(PUBLIC_CONTACT_URL?.trim() || "/contact");
+  const statusUrl = $derived(instance?.statusUrl || PUBLIC_STATUS_URL?.trim() || "/status");
+  const contactHref = $derived(instance?.contactUrl || PUBLIC_CONTACT_URL?.trim() || "/contact");
   const fediverseUrl = $derived.by(() => {
     if (instance?.federationEnabled && instance.domain) return `https://${instance.domain}`;
     return "https://joinmastodon.org/servers";

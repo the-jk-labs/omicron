@@ -4,6 +4,7 @@ import { config } from "@/config.ts";
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
 import * as passkeysRepo from "@/db/repositories/passkeys.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
+import { renderMarkdown } from "@/lib/markdown.ts";
 import { type EmailInput, getEmailMode, setEmailConfig } from "@/services/emailSettings.ts";
 import { federationRunning } from "@/services/federationState.ts";
 
@@ -20,6 +21,16 @@ export const SETUP_KEYS = {
   federationEnabled: "instance.federationEnabled",
   bannerText: "instance.bannerText",
   bannerImageUrl: "instance.bannerImageUrl",
+  about: "instance.about",
+  aboutHtml: "instance.aboutHtml",
+  rules: "instance.rules",
+  rulesHtml: "instance.rulesHtml",
+  privacyPolicy: "instance.privacyPolicy",
+  privacyPolicyHtml: "instance.privacyPolicyHtml",
+  contactEmail: "instance.contactEmail",
+  contactUrl: "instance.contactUrl",
+  abuseEmail: "instance.abuseEmail",
+  statusUrl: "instance.statusUrl",
 } as const;
 
 // Setup is complete once the wizard has finished — or, as a fallback, once any
@@ -122,6 +133,13 @@ export async function setInstanceIdentity(input: {
   appName?: string;
   appDomain?: string;
   bannerText?: string;
+  about?: string;
+  rules?: string;
+  privacyPolicy?: string;
+  contactEmail?: string;
+  contactUrl?: string;
+  abuseEmail?: string;
+  statusUrl?: string;
 }): Promise<void> {
   const name = input.appName?.trim();
   if (name) await settingsRepo.set(SETUP_KEYS.appName, name);
@@ -134,6 +152,54 @@ export async function setInstanceIdentity(input: {
   if (input.bannerText !== undefined) {
     await settingsRepo.set(SETUP_KEYS.bannerText, input.bannerText.trim());
   }
+  await Promise.all([
+    setMarkdownSetting(SETUP_KEYS.about, SETUP_KEYS.aboutHtml, input.about),
+    setMarkdownSetting(SETUP_KEYS.rules, SETUP_KEYS.rulesHtml, input.rules),
+    setMarkdownSetting(SETUP_KEYS.privacyPolicy, SETUP_KEYS.privacyPolicyHtml, input.privacyPolicy),
+    setStringSetting(SETUP_KEYS.contactEmail, input.contactEmail),
+    setStringSetting(SETUP_KEYS.contactUrl, input.contactUrl),
+    setStringSetting(SETUP_KEYS.abuseEmail, input.abuseEmail),
+    setStringSetting(SETUP_KEYS.statusUrl, input.statusUrl),
+  ]);
+}
+
+async function setMarkdownSetting(sourceKey: string, htmlKey: string, value: string | undefined): Promise<void> {
+  if (value === undefined) return;
+  const source = value.trim();
+  await Promise.all([settingsRepo.set(sourceKey, source), settingsRepo.set(htmlKey, renderMarkdown(source))]);
+}
+
+async function setStringSetting(key: string, value: string | undefined): Promise<void> {
+  if (value !== undefined) await settingsRepo.set(key, value.trim());
+}
+
+export async function getInstancePublicSettings(): Promise<{
+  about: string;
+  rules: string;
+  privacyPolicy: string;
+  contactEmail: string;
+  contactUrl: string;
+  abuseEmail: string;
+  statusUrl: string;
+}> {
+  const [about, rules, privacyPolicy, contactEmail, contactUrl, abuseEmail, statusUrl] = await Promise.all([
+    settingsRepo.get<string>(SETUP_KEYS.about),
+    settingsRepo.get<string>(SETUP_KEYS.rules),
+    settingsRepo.get<string>(SETUP_KEYS.privacyPolicy),
+    settingsRepo.get<string>(SETUP_KEYS.contactEmail),
+    settingsRepo.get<string>(SETUP_KEYS.contactUrl),
+    settingsRepo.get<string>(SETUP_KEYS.abuseEmail),
+    settingsRepo.get<string>(SETUP_KEYS.statusUrl),
+  ]);
+  return {
+    about: about?.trim() ?? "",
+    rules: rules?.trim() ?? "",
+    privacyPolicy: privacyPolicy?.trim() ?? "",
+    contactEmail: contactEmail?.trim() ?? "",
+    contactUrl: contactUrl?.trim() ?? "",
+    abuseEmail: abuseEmail?.trim() ?? "",
+    statusUrl: statusUrl?.trim() ?? "",
+  };
 }
 
 // The admin-set tagline for the signed-out visitor card, or null when unset —
@@ -181,14 +247,42 @@ export async function publicInfo(): Promise<{
   emailVerificationRequired: boolean;
   bannerText: string | null;
   bannerImageUrl: string | null;
+  aboutHtml: string | null;
+  rulesHtml: string | null;
+  privacyPolicyHtml: string | null;
+  contactEmail: string | null;
+  contactUrl: string | null;
+  abuseEmail: string | null;
+  statusUrl: string | null;
 }> {
-  const [name, domain, setupComplete, emailMode, bannerText, bannerImageUrl] = await Promise.all([
+  const [
+    name,
+    domain,
+    setupComplete,
+    emailMode,
+    bannerText,
+    bannerImageUrl,
+    aboutHtml,
+    rulesHtml,
+    privacyPolicyHtml,
+    contactEmail,
+    contactUrl,
+    abuseEmail,
+    statusUrl,
+  ] = await Promise.all([
     getAppName(),
     getAppDomain(),
     isSetupComplete(),
     getEmailMode(),
     getBannerText(),
     getBannerImageUrl(),
+    settingsRepo.get<string>(SETUP_KEYS.aboutHtml),
+    settingsRepo.get<string>(SETUP_KEYS.rulesHtml),
+    settingsRepo.get<string>(SETUP_KEYS.privacyPolicyHtml),
+    settingsRepo.get<string>(SETUP_KEYS.contactEmail),
+    settingsRepo.get<string>(SETUP_KEYS.contactUrl),
+    settingsRepo.get<string>(SETUP_KEYS.abuseEmail),
+    settingsRepo.get<string>(SETUP_KEYS.statusUrl),
   ]);
   return {
     name,
@@ -199,6 +293,13 @@ export async function publicInfo(): Promise<{
     emailVerificationRequired: config.EMAIL_VERIFICATION_REQUIRED,
     bannerText,
     bannerImageUrl,
+    aboutHtml: aboutHtml?.trim() || null,
+    rulesHtml: rulesHtml?.trim() || null,
+    privacyPolicyHtml: privacyPolicyHtml?.trim() || null,
+    contactEmail: contactEmail?.trim() || null,
+    contactUrl: contactUrl?.trim() || null,
+    abuseEmail: abuseEmail?.trim() || null,
+    statusUrl: statusUrl?.trim() || null,
   };
 }
 

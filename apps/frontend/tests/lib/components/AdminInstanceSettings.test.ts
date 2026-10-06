@@ -14,6 +14,13 @@ const instance = {
   sessionSecretManaged: true,
   bannerText: null,
   bannerImageUrl: null,
+  about: "",
+  rules: "",
+  privacyPolicy: "",
+  contactEmail: "",
+  contactUrl: "",
+  abuseEmail: "",
+  statusUrl: "",
 };
 
 function setup(over: Partial<typeof instance> = {}, routes: Parameters<typeof fakeFetch>[0] = {}) {
@@ -41,6 +48,32 @@ test("saves trimmed values and the federation switch", async () => {
     appDomain: "blog.example",
     federationEnabled: false,
     bannerText: "",
+    about: "",
+    rules: "",
+    privacyPolicy: "",
+    contactEmail: "",
+    contactUrl: "",
+    abuseEmail: "",
+    statusUrl: "",
+  });
+});
+
+test("saves the public page content and operator links", async () => {
+  const { calls } = setup(
+    { about: "# Welcome", contactEmail: "operator@blog.example" },
+    { "PUT /api/admin/instance": { ...instance, about: "About us", statusUrl: "https://status.blog.example" } },
+  );
+  await waitFor(() => expect(screen.getByLabelText("About this instance")).toHaveValue("# Welcome"));
+  await fireEvent.input(screen.getByLabelText("About this instance"), { target: { value: "About us" } });
+  await fireEvent.input(screen.getByLabelText("Status page URL"), {
+    target: { value: "https://status.blog.example" },
+  });
+  await fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await waitFor(() => screen.getByText("Saved."));
+  expect(calls.at(-1)?.body).toMatchObject({
+    about: "About us",
+    contactEmail: "operator@blog.example",
+    statusUrl: "https://status.blog.example",
   });
 });
 

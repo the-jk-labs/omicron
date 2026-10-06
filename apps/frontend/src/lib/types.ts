@@ -417,6 +417,13 @@ export type InstanceInfo = {
   // default" (a generated sentence / the bundled artwork).
   bannerText: string | null;
   bannerImageUrl: string | null;
+  aboutHtml: string | null;
+  rulesHtml: string | null;
+  privacyPolicyHtml: string | null;
+  contactEmail: string | null;
+  contactUrl: string | null;
+  abuseEmail: string | null;
+  statusUrl: string | null;
 };
 
 // Web-managed email settings. `EmailInput` is what the wizard/admin form sends
@@ -479,6 +486,13 @@ export type AdminInstance = {
   sessionSecretManaged: boolean;
   bannerText: string | null;
   bannerImageUrl: string | null;
+  about: string;
+  rules: string;
+  privacyPolicy: string;
+  contactEmail: string;
+  contactUrl: string;
+  abuseEmail: string;
+  statusUrl: string;
 };
 
 // ── moderation (admin only) ──

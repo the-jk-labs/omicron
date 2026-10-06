@@ -7,7 +7,7 @@
 
   const instance = $derived((page.data as { instance?: InstanceInfo | null }).instance ?? null);
   const appName = $derived(instance?.name || PUBLIC_APP_NAME || "Omicron");
-  const statusExternal = PUBLIC_STATUS_URL?.trim() || "";
+  const statusExternal = $derived(instance?.statusUrl || PUBLIC_STATUS_URL?.trim() || "");
 </script>
 
 <PageTitle text="Status" />
@@ -26,7 +26,7 @@
     {:else}
       <p>This instance does not publish an external status page.</p>
       <p class="text-sm text-muted-foreground">
-        Operators: set <code>PUBLIC_STATUS_URL</code> to link your status page here.
+        Operators: add a status page URL in Admin &gt; Instance &gt; Public information.
       </p>
     {/if}
 
