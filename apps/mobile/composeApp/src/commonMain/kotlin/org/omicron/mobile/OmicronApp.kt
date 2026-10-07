@@ -10,15 +10,19 @@ import kotlinx.serialization.Serializable
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.data.repository.AuthRepository
 import org.omicron.mobile.data.repository.InstanceRepository
+import org.omicron.mobile.data.repository.PostsRepository
 import org.omicron.mobile.feature.auth.AuthRoute
 import org.omicron.mobile.feature.auth.AuthViewModel
 import org.omicron.mobile.feature.connect.ConnectRoute
 import org.omicron.mobile.feature.connect.ConnectViewModel
+import org.omicron.mobile.feature.reader.TimelineRoute
+import org.omicron.mobile.feature.reader.TimelineViewModel
 
 @Composable
 fun OmicronApp(
     instanceRepository: InstanceRepository,
     authRepository: AuthRepository,
+    postsRepository: PostsRepository,
 ) {
     OmicronTheme {
         val navController = rememberNavController()
@@ -30,7 +34,18 @@ fun OmicronApp(
                 }
                 ConnectRoute(
                     viewModel = viewModel,
-                    onContinue = { navController.navigate(AuthDestination) { launchSingleTop = true } },
+                    onContinue = { navController.navigate(TimelineDestination) { launchSingleTop = true } },
+                )
+            }
+            composable<TimelineDestination> {
+                val viewModel = remember(postsRepository) { TimelineViewModel(postsRepository) }
+                DisposableEffect(viewModel) {
+                    onDispose(viewModel::close)
+                }
+                TimelineRoute(
+                    viewModel = viewModel,
+                    onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
+                    onChangeInstance = { navController.popBackStack(ConnectDestination, false) },
                 )
             }
             composable<AuthDestination> {
@@ -52,6 +67,9 @@ fun OmicronApp(
 
 @Serializable
 private data object ConnectDestination
+
+@Serializable
+private data object TimelineDestination
 
 @Serializable
 private data object AuthDestination

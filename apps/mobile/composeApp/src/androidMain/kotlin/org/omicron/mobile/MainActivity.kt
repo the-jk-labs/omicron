@@ -8,8 +8,10 @@ import org.omicron.mobile.core.storage.EncryptedSessionCookieStore
 import org.omicron.mobile.core.storage.SharedPreferencesInstanceStore
 import org.omicron.mobile.data.api.KtorAuthApi
 import org.omicron.mobile.data.api.KtorInstanceApi
+import org.omicron.mobile.data.api.KtorPostsApi
 import org.omicron.mobile.data.repository.AuthRepository
 import org.omicron.mobile.data.repository.InstanceRepository
+import org.omicron.mobile.data.repository.PostsRepository
 
 class MainActivity : ComponentActivity() {
     private lateinit var appContainer: AppContainer
@@ -18,7 +20,13 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         appContainer = AppContainer(applicationContext)
-        setContent { OmicronApp(appContainer.instanceRepository, appContainer.authRepository) }
+        setContent {
+            OmicronApp(
+                appContainer.instanceRepository,
+                appContainer.authRepository,
+                appContainer.postsRepository,
+            )
+        }
     }
 
     override fun onDestroy() {
@@ -38,6 +46,12 @@ private class AppContainer(context: android.content.Context) {
         )
 
     val authRepository = AuthRepository(KtorAuthApi(httpClient))
+
+    val postsRepository =
+        PostsRepository(
+            api = KtorPostsApi(httpClient),
+            savedInstance = instanceRepository::savedInstance,
+        )
 
     fun close() {
         httpClient.close()

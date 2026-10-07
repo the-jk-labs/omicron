@@ -34,9 +34,11 @@ The Android-first Kotlin Multiplatform foundation and instance connection are co
 
 ## R2: Guest Reader
 
-**Status:** Planned
+**Status:** In progress
 
 **Outcome:** A guest can discover and read public Omicron posts natively.
+
+**Progress:** Guest Global/Local timeline list is implemented (`GET /api/posts` with confirmed scopes and opaque cursors, loading, empty, error, offline, refresh, retry, stable keys and content types). Remaining: post detail with native `contentHtml` rendering, cover media and image loading, author metadata, tags, related posts, and reader tests.
 
 **Exit criteria:**
 
