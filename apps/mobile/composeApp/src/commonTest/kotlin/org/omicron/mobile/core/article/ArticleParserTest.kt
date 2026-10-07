@@ -63,6 +63,22 @@ class ArticleParserTest {
     }
 
     @Test
+    fun parsesFooterRowsAndHeaderlessTables() {
+        val blocks =
+            parseArticle(
+                "<table><tbody><tr><td>A</td></tr></tbody><tfoot><tr><td>Total</td></tr></tfoot></table>" +
+                    "<table><tbody><tr><td>x</td><td>y</td></tr></tbody></table>",
+            )
+
+        val footed = blocks[0] as ArticleBlock.Table
+        assertTrue(footed.headers.isEmpty())
+        assertEquals(listOf("A", "Total"), footed.rows.map { it.single().single().text })
+        val headerless = blocks[1] as ArticleBlock.Table
+        assertTrue(headerless.headers.isEmpty())
+        assertEquals(2, headerless.rows.single().size)
+    }
+
+    @Test
     fun degradesUnsupportedConstructsToReadableText() {
         val blocks =
             parseArticle(
