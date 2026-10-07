@@ -50,9 +50,11 @@ The Android-first Kotlin Multiplatform foundation, instance connection, and gues
 
 ## R3: Signed-In Reading And Social
 
-**Status:** Planned
+**Status:** In progress
 
 **Outcome:** Signed-in readers can use their feed and interact safely with posts and people.
+
+**Progress:** Authenticated transport implements ADR-0004: app API calls send the in-memory JWT as `Authorization: Bearer` when a session exists and stay anonymous otherwise; a 401 invalidates the in-memory session and surfaces `UnauthorizedException`, while token minting clears the session only on `UNAUTHORIZED` and otherwise serves the stale token until its 15-minute expiry. Explicit session-loss recovery UI is still missing — a rejected token currently surfaces as a generic server error that degrades to guest content on retry. Remaining: For you feed, interactions, profiles, and recovery states.
 
 **Exit criteria:**
 

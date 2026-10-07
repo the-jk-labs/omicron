@@ -58,6 +58,8 @@ private class AppContainer(context: android.content.Context) {
         PostsRepository(
             api = KtorPostsApi(httpClient),
             savedInstance = instanceRepository::savedInstance,
+            accessToken = authRepository::accessToken,
+            onUnauthorized = { authRepository.invalidateSession() },
         )
 
     fun close() {

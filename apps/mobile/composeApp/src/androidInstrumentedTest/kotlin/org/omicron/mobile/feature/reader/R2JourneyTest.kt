@@ -252,6 +252,7 @@ private class JourneyPostsApi(
         origin: String,
         scope: TimelineScope,
         cursor: String?,
+        accessToken: String?,
     ): TimelinePageDto {
         scopes += scope
         timelineCalls += 1
@@ -262,6 +263,7 @@ private class JourneyPostsApi(
     override suspend fun post(
         origin: String,
         id: String,
+        accessToken: String?,
     ): PostDto {
         detailCalls += 1
         detailFailure?.let { throw it }
@@ -272,5 +274,6 @@ private class JourneyPostsApi(
     override suspend fun relatedPosts(
         origin: String,
         id: String,
+        accessToken: String?,
     ): List<PostDto> = listOf(timelineDto("post-2"))
 }

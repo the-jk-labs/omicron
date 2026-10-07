@@ -73,6 +73,10 @@ class AuthRepository(
 
     fun currentSession(): AuthenticatedSession? = activeSession
 
+    fun invalidateSession() {
+        clearSession()
+    }
+
     suspend fun accessToken(origin: String): String? {
         val session = activeSession ?: return null
         val mintedAt = tokenMintedAt ?: return null
@@ -83,7 +87,10 @@ class AuthRepository(
             rememberSession(origin, session.user, api.getToken(origin).token).accessToken
         } catch (exception: Throwable) {
             if (exception is CancellationException) throw exception
-            if (age < TOKEN_EXPIRES_AFTER_MILLIS) {
+            if ((exception as? AuthApiException)?.code == UNAUTHORIZED_CODE) {
+                clearSession()
+                null
+            } else if (age < TOKEN_EXPIRES_AFTER_MILLIS) {
                 session.accessToken
             } else {
                 clearSession()
@@ -147,6 +154,7 @@ class AuthRepository(
     private companion object {
         const val TOKEN_REFRESH_AFTER_MILLIS = 14 * 60 * 1_000L
         const val TOKEN_EXPIRES_AFTER_MILLIS = 15 * 60 * 1_000L
+        const val UNAUTHORIZED_CODE = "UNAUTHORIZED"
     }
 }
 
