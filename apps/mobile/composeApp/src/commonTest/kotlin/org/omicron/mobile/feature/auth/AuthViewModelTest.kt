@@ -11,10 +11,13 @@ import org.omicron.mobile.data.api.AuthSessionCreationDto
 import org.omicron.mobile.data.api.AuthTokenDto
 import org.omicron.mobile.data.api.AuthUserDto
 import org.omicron.mobile.data.repository.AuthRepository
+import org.omicron.mobile.core.storage.SessionCookieStore
+import org.omicron.mobile.core.storage.StoredSessionCookie
 import org.omicron.mobile.domain.model.InstanceConfiguration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class AuthViewModelTest {
     @Test
@@ -23,7 +26,7 @@ class AuthViewModelTest {
         val viewModel =
             AuthViewModel(
                 savedInstance = { instance() },
-                repository = AuthRepository(FakeAuthApi(session())),
+                repository = authRepository(FakeAuthApi(session())),
                 scope = TestScope(dispatcher),
             )
 
@@ -39,7 +42,7 @@ class AuthViewModelTest {
         val viewModel =
             AuthViewModel(
                 savedInstance = { instance() },
-                repository = AuthRepository(FakeAuthApi(null)),
+                repository = authRepository(FakeAuthApi(null)),
                 scope = TestScope(dispatcher),
             )
 
@@ -54,7 +57,7 @@ class AuthViewModelTest {
         val viewModel =
             AuthViewModel(
                 savedInstance = { instance() },
-                repository = AuthRepository(FakeAuthApi(null)),
+                repository = authRepository(FakeAuthApi(null)),
                 scope = TestScope(dispatcher),
             )
         testScheduler.advanceUntilIdle()
@@ -73,7 +76,7 @@ class AuthViewModelTest {
         val viewModel =
             AuthViewModel(
                 savedInstance = { instance() },
-                repository = AuthRepository(FakeAuthApi(null, signInFailure = AuthApiException("INVALID_USERNAME_OR_PASSWORD"))),
+                repository = authRepository(FakeAuthApi(null, signInFailure = AuthApiException("INVALID_USERNAME_OR_PASSWORD"))),
                 scope = TestScope(dispatcher),
             )
         testScheduler.advanceUntilIdle()
@@ -93,7 +96,7 @@ class AuthViewModelTest {
         val viewModel =
             AuthViewModel(
                 savedInstance = { instance() },
-                repository = AuthRepository(FakeAuthApi(null)),
+                repository = authRepository(FakeAuthApi(null)),
                 scope = TestScope(dispatcher),
             )
         testScheduler.advanceUntilIdle()
@@ -112,7 +115,7 @@ class AuthViewModelTest {
         val viewModel =
             AuthViewModel(
                 savedInstance = { instance() },
-                repository = AuthRepository(FakeAuthApi(null, signUpToken = null)),
+                repository = authRepository(FakeAuthApi(null, signUpToken = null)),
                 scope = TestScope(dispatcher),
             )
         testScheduler.advanceUntilIdle()
@@ -140,7 +143,7 @@ class AuthViewModelTest {
         val viewModel =
             AuthViewModel(
                 savedInstance = { instance() },
-                repository = AuthRepository(FakeAuthApi(session())),
+                repository = authRepository(FakeAuthApi(session())),
                 scope = TestScope(dispatcher),
             )
         testScheduler.advanceUntilIdle()
@@ -150,12 +153,43 @@ class AuthViewModelTest {
 
         assertIs<AuthPhase.Credentials>(viewModel.uiState.value.phase)
     }
+
+    @Test
+    fun signsOutLocallyWhenTheRemoteSignOutRequestFails() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val viewModel =
+            AuthViewModel(
+                savedInstance = { instance() },
+                repository = authRepository(FakeAuthApi(session(), signOutFailure = IllegalStateException("offline"))),
+                scope = TestScope(dispatcher),
+            )
+        testScheduler.advanceUntilIdle()
+
+        viewModel.signOut()
+        testScheduler.advanceUntilIdle()
+
+        val credentials = assertIs<AuthPhase.Credentials>(viewModel.uiState.value.phase)
+        assertTrue(credentials.signOutWarning)
+    }
+}
+
+private fun authRepository(api: AuthApi) = AuthRepository(api, FakeSessionCookieStore())
+
+private class FakeSessionCookieStore : SessionCookieStore {
+    private val cookies = mutableMapOf<String, List<StoredSessionCookie>>()
+
+    override suspend fun read(origin: String): List<StoredSessionCookie> = cookies[origin].orEmpty()
+
+    override suspend fun write(origin: String, cookies: List<StoredSessionCookie>) {
+        this.cookies[origin] = cookies
+    }
 }
 
 private class FakeAuthApi(
     private var session: AuthSessionDto?,
     private val signUpToken: String? = "session-token",
     private val signInFailure: Throwable? = null,
+    private val signOutFailure: Throwable? = null,
 ) : AuthApi {
     override suspend fun getSession(origin: String): AuthSessionDto? = session
 
@@ -184,7 +218,9 @@ private class FakeAuthApi(
         return creation(signUpToken)
     }
 
-    override suspend fun signOut(origin: String) = Unit
+    override suspend fun signOut(origin: String) {
+        signOutFailure?.let { throw it }
+    }
 }
 
 private fun instance() =

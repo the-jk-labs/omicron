@@ -2,6 +2,7 @@ package org.omicron.mobile.data.repository
 
 import io.ktor.util.date.getTimeMillis
 import kotlinx.coroutines.CancellationException
+import org.omicron.mobile.core.storage.SessionCookieStore
 import org.omicron.mobile.data.api.AuthApi
 import org.omicron.mobile.data.api.AuthApiException
 import org.omicron.mobile.data.api.AuthUserDto
@@ -10,6 +11,7 @@ import org.omicron.mobile.domain.model.AuthenticatedUser
 
 class AuthRepository(
     private val api: AuthApi,
+    private val sessionCookieStore: SessionCookieStore,
     private val now: () -> Long = ::getTimeMillis,
 ) {
     private var activeSession: AuthenticatedSession? = null
@@ -37,8 +39,12 @@ class AuthRepository(
     }
 
     suspend fun signOut(origin: String) {
-        api.signOut(origin)
-        clearSession()
+        try {
+            api.signOut(origin)
+        } finally {
+            clearSession()
+            sessionCookieStore.clear(origin)
+        }
     }
 
     suspend fun signInEmail(origin: String, email: String, password: String): AuthenticationResult =

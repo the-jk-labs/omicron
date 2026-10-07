@@ -31,6 +31,7 @@
     <string name="auth_signed_in_description">Signed in as %1$s on %2$s.</string>
     <string name="auth_signed_in_title">Session restored</string>
     <string name="auth_sign_out">Sign out</string>
+    <string name="auth_sign_out_remote_failed">Signed out on this device, but the server could not confirm sign-out. The remote session may remain active.</string>
     <string name="auth_try_again">Try again</string>
     <string name="auth_username">Username</string>
     <string name="auth_username_or_email">Username or email</string>

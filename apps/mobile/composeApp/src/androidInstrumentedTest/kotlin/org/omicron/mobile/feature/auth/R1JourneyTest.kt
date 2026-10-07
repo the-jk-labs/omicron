@@ -18,6 +18,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.storage.InstanceStore
+import org.omicron.mobile.core.storage.SessionCookieStore
+import org.omicron.mobile.core.storage.StoredSessionCookie
 import org.omicron.mobile.data.api.AuthApi
 import org.omicron.mobile.data.api.AuthSessionCreationDto
 import org.omicron.mobile.data.api.AuthSessionDto
@@ -106,7 +108,7 @@ class R1JourneyTest {
     @Test
     fun signInSubmitsUsernameCredentialsAndShowsTheSession() {
         val api = FakeAuthApi()
-        val viewModel = AuthViewModel(savedInstance = ::instance, repository = AuthRepository(api))
+        val viewModel = AuthViewModel(savedInstance = ::instance, repository = AuthRepository(api, FakeSessionCookieStore()))
 
         composeTestRule.setContent {
             OmicronTheme {
@@ -126,7 +128,7 @@ class R1JourneyTest {
 
     @Test
     fun sessionRestorationShowsTheSavedAccount() {
-        val viewModel = AuthViewModel(savedInstance = ::instance, repository = AuthRepository(FakeAuthApi(session())))
+        val viewModel = AuthViewModel(savedInstance = ::instance, repository = AuthRepository(FakeAuthApi(session()), FakeSessionCookieStore()))
 
         composeTestRule.setContent {
             OmicronTheme {
@@ -142,7 +144,7 @@ class R1JourneyTest {
     @Test
     fun signOutReturnsToCredentials() {
         val api = FakeAuthApi(session())
-        val viewModel = AuthViewModel(savedInstance = ::instance, repository = AuthRepository(api))
+        val viewModel = AuthViewModel(savedInstance = ::instance, repository = AuthRepository(api, FakeSessionCookieStore()))
 
         composeTestRule.setContent {
             OmicronTheme {
@@ -153,6 +155,26 @@ class R1JourneyTest {
 
         composeTestRule.onNodeWithContentDescription("Sign out").performClick()
         composeTestRule.waitForText("Welcome back")
+
+        check(api.signOutCount == 1)
+        viewModel.close()
+    }
+
+    @Test
+    fun signOutFailureStillReturnsToCredentialsAndExplainsTheRemoteSession() {
+        val api = FakeAuthApi(session(), signOutFails = true)
+        val viewModel = AuthViewModel(savedInstance = ::instance, repository = AuthRepository(api, FakeSessionCookieStore()))
+
+        composeTestRule.setContent {
+            OmicronTheme {
+                AuthRoute(viewModel = viewModel, onChangeInstance = {})
+            }
+        }
+        composeTestRule.waitForText("Session restored")
+
+        composeTestRule.onNodeWithContentDescription("Sign out").performClick()
+        composeTestRule.waitForText("Welcome back")
+        composeTestRule.waitForText("Signed out on this device")
 
         check(api.signOutCount == 1)
         viewModel.close()
@@ -184,6 +206,16 @@ private class FakeInstanceStore : InstanceStore {
     }
 }
 
+private class FakeSessionCookieStore : SessionCookieStore {
+    private val cookies = mutableMapOf<String, List<StoredSessionCookie>>()
+
+    override suspend fun read(origin: String): List<StoredSessionCookie> = cookies[origin].orEmpty()
+
+    override suspend fun write(origin: String, cookies: List<StoredSessionCookie>) {
+        this.cookies[origin] = cookies
+    }
+}
+
 private class FakeInstanceApi(
     private var failuresRemaining: Int = 0,
 ) : InstanceApi {
@@ -208,6 +240,7 @@ private class FakeInstanceApi(
 
 private class FakeAuthApi(
     private var session: AuthSessionDto? = null,
+    private val signOutFails: Boolean = false,
 ) : AuthApi {
     var signOutCount = 0
     var usernameSignIn: String? = null
@@ -237,6 +270,7 @@ private class FakeAuthApi(
 
     override suspend fun signOut(origin: String) {
         signOutCount += 1
+        if (signOutFails) error("Offline")
         session = null
     }
 }

@@ -6,6 +6,8 @@ interface SessionCookieStore {
     suspend fun read(origin: String): List<StoredSessionCookie>
 
     suspend fun write(origin: String, cookies: List<StoredSessionCookie>)
+
+    suspend fun clear(origin: String) = write(origin, emptyList())
 }
 
 @Serializable

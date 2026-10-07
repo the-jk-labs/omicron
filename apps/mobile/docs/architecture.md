@@ -44,6 +44,7 @@ Keep the package layout stable inside the single `composeApp` module. Split Grad
 
 - Instance configuration is public metadata and may be persisted after a successful metadata request.
 - Session cookies are credentials. The auth release must store them securely, partition them by instance origin, and use them only with Better Auth to restore a session or mint a new token.
+- Sign-out clears the in-memory JWT and that origin's stored cookies even when remote revocation fails; the UI warns when the server could not confirm sign-out.
 - Authenticated API calls use a short-lived JWT in the `Authorization: Bearer` header. Keep it in memory, refresh it through `GET /api/auth/token` before expiry, and never send it to another origin.
 - Cache ownership, freshness, eviction, and offline behavior must be documented with the release that introduces a cache.
 - Never persist passwords, opaque editor documents, or server data without a confirmed product requirement and retention strategy.
