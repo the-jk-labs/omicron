@@ -9,7 +9,7 @@
 
 ## Product State
 
-The Android-first Kotlin Multiplatform foundation and instance connection are complete. The app can normalize an HTTPS origin, retrieve `GET /api/instance`, retain public configuration, and recover the selected instance. Android is the active target; `commonMain` remains the location for product code shared by future targets.
+The Android-first Kotlin Multiplatform foundation, instance connection, and guest reading are complete. The app can normalize an HTTPS origin, retrieve `GET /api/instance`, retain public configuration, and recover the selected instance. Guests can browse Global/Local timelines and read posts natively with web-parity tables, syntax highlighting, and math. Android is the active target; `commonMain` remains the location for product code shared by future targets.
 
 ## R0: Foundation And Design System
 
@@ -34,11 +34,11 @@ The Android-first Kotlin Multiplatform foundation and instance connection are co
 
 ## R2: Guest Reader
 
-**Status:** In progress
+**Status:** Done
 
 **Outcome:** A guest can discover and read public Omicron posts natively.
 
-**Progress:** Guest Global/Local timeline list is implemented (`GET /api/posts` with confirmed scopes and opaque cursors, loading, empty, error, offline, refresh, retry, stable keys and content types). Timeline cards follow the web mobile layout with author/avatar, excerpt, thumbnail, tags, publication date, reading time, and reaction metadata. Post detail is implemented (`GET /api/posts/:id` with explicit cover, `contentHtml` rendered natively with Coil image loading, author metadata, tags, counts, and `related` read-next). Tables render with bordered web-parity styling (bordered cells, muted header, row dividers, horizontal scrolling for wide tables). Fenced code blocks highlight client-side with SnipMe Highlights mapped onto the tokenized web six-hue palette (plain fallback for undeclared or uncovered languages). Formulas render natively from the KaTeX MathML subset (linearized inline and display math, TeX-source fallback, `katex-error` as code). Remaining: reader tests on device.
+**Completed:** Guest Global/Local timeline lists (`GET /api/posts` with confirmed scopes and opaque cursors preserved unchanged, loading, empty, error, offline, refresh, retry, stable keys and content types) with web-mobile-parity cards; post detail (`GET /api/posts/:id`, cover, natively rendered `contentHtml` with Coil image loading, author metadata, tags, counts, `related` read-next); bordered web-parity tables with wide-table scrolling; client-side syntax highlighting on the tokenized web palette; native MathML-subset formulas with TeX fallback; media URLs resolved against the instance origin; and connected Compose UI journeys for timeline content, empty, offline retry, scope switching, detail rendering, and not-found. No app-level content cache was introduced; images rely on Coil defaults.
 
 **Exit criteria:**
 
