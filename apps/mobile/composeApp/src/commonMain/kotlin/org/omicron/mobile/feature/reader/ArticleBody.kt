@@ -18,6 +18,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -38,9 +39,15 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.omicron.mobile.core.article.ArticleBlock
 import org.omicron.mobile.core.article.ArticleSpan
+import org.omicron.mobile.core.article.CodePalette
 import org.omicron.mobile.core.article.InlineContent
+import org.omicron.mobile.core.article.highlightCode
+import org.omicron.mobile.core.article.highlightLanguage
+import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.rikkaui.text.TextVariant
 import zed.rainxch.rikkaui.foundation.RikkaTheme
 
@@ -73,20 +80,7 @@ fun ArticleBody(
                         ) {
                             ArticleBody(blocks = block.blocks)
                         }
-                    is ArticleBlock.CodeBlock ->
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .background(RikkaTheme.colors.muted, RikkaTheme.shapes.md)
-                                    .padding(12.dp),
-                        ) {
-                            RichText(
-                                text = AnnotatedString(block.code),
-                                variant = TextVariant.Small,
-                                style = TextStyle(fontFamily = FontFamily.Monospace),
-                            )
-                        }
+                    is ArticleBlock.CodeBlock -> HighlightedCodeBlock(block = block)
                     is ArticleBlock.BulletList ->
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             block.items.forEach { item ->
@@ -128,6 +122,43 @@ fun ArticleBody(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HighlightedCodeBlock(block: ArticleBlock.CodeBlock) {
+    val code = OmicronTheme.code
+    val palette =
+        remember(code) {
+            CodePalette(
+                comment = code.comment,
+                keyword = code.keyword,
+                string = code.string,
+                literal = code.literal,
+                type = code.type,
+            )
+        }
+    val language = remember(block.language) { highlightLanguage(block.language) }
+    val highlighted by produceState(AnnotatedString(block.code), block.code, language, palette) {
+        value =
+            if (language == null) {
+                AnnotatedString(block.code)
+            } else {
+                withContext(Dispatchers.Default) { highlightCode(block.code, language, palette) }
+            }
+    }
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(RikkaTheme.colors.muted, RikkaTheme.shapes.md)
+                .padding(12.dp),
+    ) {
+        RichText(
+            text = highlighted,
+            variant = TextVariant.Small,
+            style = TextStyle(fontFamily = FontFamily.Monospace),
+        )
     }
 }
 

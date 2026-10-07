@@ -13,6 +13,7 @@ navigation = "2.9.7"
 rikkaIcons = "0.1.0"
 rikkaUi = "0.3.0"
 serialization = "1.11.0"
+snipmeHighlights = "1.0.0"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
@@ -41,6 +42,7 @@ rikka-icons-core = { module = "dev.rikkaui.icons:core", version.ref = "rikkaIcon
 rikka-icons-lucide = { module = "dev.rikkaui.icons:pack-lucide", version.ref = "rikkaIcons" }
 rikka-icons-tokens-core = { module = "dev.rikkaui.icons:tokens-core", version.ref = "rikkaIcons" }
 rikka-ui-foundation = { module = "dev.rikkaui:foundation", version.ref = "rikkaUi" }
+snipme-highlights = { module = "dev.snipme:highlights", version.ref = "snipmeHighlights" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
