@@ -1,5 +1,7 @@
 package org.omicron.mobile.data.repository
 
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.http.HttpStatusCode
 import org.omicron.mobile.data.api.CoverCreditDto
 import org.omicron.mobile.data.api.PostAuthorDto
 import org.omicron.mobile.data.api.PostDto
@@ -15,9 +17,13 @@ import org.omicron.mobile.domain.model.PostTag
 
 class MissingInstanceException : IllegalStateException("No instance selected")
 
+class UnauthorizedException : IllegalStateException("Signed in session is no longer valid")
+
 class PostsRepository(
     private val api: PostsApi,
     private val savedInstance: suspend () -> InstanceConfiguration?,
+    private val accessToken: (suspend (origin: String) -> String?)? = null,
+    private val onUnauthorized: (suspend () -> Unit)? = null,
 ) {
     suspend fun origin(): String? = savedInstance()?.origin
     suspend fun timeline(
@@ -25,7 +31,7 @@ class PostsRepository(
         cursor: String?,
     ): TimelinePage {
         val origin = savedInstance()?.origin ?: throw MissingInstanceException()
-        val page = api.timeline(origin, scope, cursor)
+        val page = authorizedCall(origin) { token -> api.timeline(origin, scope, cursor, token) }
         return TimelinePage(
             items = page.items.map { it.toDomain(origin) },
             nextCursor = page.nextCursor,
@@ -34,13 +40,25 @@ class PostsRepository(
 
     suspend fun postDetail(id: String): PostDetail {
         val origin = savedInstance()?.origin ?: throw MissingInstanceException()
-        return api.post(origin, id).toDetail(origin)
+        return authorizedCall(origin) { token -> api.post(origin, id, token) }.toDetail(origin)
     }
 
     suspend fun relatedPosts(id: String): List<Post> {
         val origin = savedInstance()?.origin ?: throw MissingInstanceException()
-        return api.relatedPosts(origin, id).map { it.toDomain(origin) }
+        return authorizedCall(origin) { token -> api.relatedPosts(origin, id, token) }.map { it.toDomain(origin) }
     }
+
+    private suspend fun <T> authorizedCall(
+        origin: String,
+        block: suspend (accessToken: String?) -> T,
+    ): T =
+        try {
+            block(accessToken?.invoke(origin))
+        } catch (exception: ClientRequestException) {
+            if (exception.response.status != HttpStatusCode.Unauthorized) throw exception
+            onUnauthorized?.invoke()
+            throw UnauthorizedException()
+        }
 }
 
 data class TimelinePage(

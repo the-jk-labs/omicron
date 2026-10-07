@@ -176,6 +176,7 @@ private class SequencedPostsApi(
         origin: String,
         scope: TimelineScope,
         cursor: String?,
+        accessToken: String?,
     ): TimelinePageDto {
         scopes += scope
         cursors += cursor
@@ -187,11 +188,13 @@ private class SequencedPostsApi(
     override suspend fun post(
         origin: String,
         id: String,
+        accessToken: String?,
     ): PostDto = throw UnsupportedOperationException()
 
     override suspend fun relatedPosts(
         origin: String,
         id: String,
+        accessToken: String?,
     ): List<PostDto> = emptyList()
 }
 
@@ -202,15 +205,18 @@ private class FailingPostsApi(
         origin: String,
         scope: TimelineScope,
         cursor: String?,
+        accessToken: String?,
     ): TimelinePageDto = throw failure
 
     override suspend fun post(
         origin: String,
         id: String,
+        accessToken: String?,
     ): PostDto = throw failure
 
     override suspend fun relatedPosts(
         origin: String,
         id: String,
+        accessToken: String?,
     ): List<PostDto> = throw failure
 }

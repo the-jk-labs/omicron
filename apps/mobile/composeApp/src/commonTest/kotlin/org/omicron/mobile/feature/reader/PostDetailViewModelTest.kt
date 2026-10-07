@@ -151,11 +151,13 @@ private class DetailApi(
         origin: String,
         scope: TimelineScope,
         cursor: String?,
+        accessToken: String?,
     ): TimelinePageDto = TimelinePageDto()
 
     override suspend fun post(
         origin: String,
         id: String,
+        accessToken: String?,
     ): PostDto {
         calls += 1
         if (failFirst && calls == 1) throw IOException("unresolved")
@@ -165,6 +167,7 @@ private class DetailApi(
     override suspend fun relatedPosts(
         origin: String,
         id: String,
+        accessToken: String?,
     ): List<PostDto> {
         if (failRelated) throw IOException("unresolved")
         return listOf(detailDto("post-2"))
@@ -178,15 +181,18 @@ private class FailingDetailApi(
         origin: String,
         scope: TimelineScope,
         cursor: String?,
+        accessToken: String?,
     ): TimelinePageDto = throw failure
 
     override suspend fun post(
         origin: String,
         id: String,
+        accessToken: String?,
     ): PostDto = throw failure
 
     override suspend fun relatedPosts(
         origin: String,
         id: String,
+        accessToken: String?,
     ): List<PostDto> = throw failure
 }

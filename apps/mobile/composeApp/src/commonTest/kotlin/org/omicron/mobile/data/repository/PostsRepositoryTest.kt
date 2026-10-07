@@ -1,6 +1,18 @@
 package org.omicron.mobile.data.repository
 
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.respondError
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import org.omicron.mobile.data.api.KtorPostsApi
 import org.omicron.mobile.data.api.PostAuthorDto
 import org.omicron.mobile.data.api.PostDto
 import org.omicron.mobile.data.api.PostsApi
@@ -11,6 +23,8 @@ import org.omicron.mobile.domain.model.InstanceConfiguration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class PostsRepositoryTest {
     @Test
@@ -61,6 +75,58 @@ class PostsRepositoryTest {
         val repository = PostsRepository(FakePostsApi(), savedInstance = { null })
 
         assertFailsWith<MissingInstanceException> { repository.timeline(TimelineScope.Global, null) }
+    }
+
+    @Test
+    fun passesTheMintedTokenToEveryCall() = runTest {
+        val api = FakePostsApi(pages = listOf(TimelinePageDto(items = listOf(postDto()), nextCursor = null)))
+        val repository = PostsRepository(api, savedInstance = { instance() }, accessToken = { "signed-token" })
+
+        repository.timeline(TimelineScope.Global, null)
+        repository.postDetail("post-1")
+        repository.relatedPosts("post-1")
+
+        assertEquals(listOf<String?>("signed-token", "signed-token", "signed-token"), api.tokens)
+    }
+
+    @Test
+    fun staysAnonymousWithoutATokenProvider() = runTest {
+        val api = FakePostsApi(pages = listOf(TimelinePageDto(items = listOf(postDto()), nextCursor = null)))
+        val repository = PostsRepository(api, savedInstance = { instance() })
+
+        repository.timeline(TimelineScope.Global, null)
+
+        assertEquals(listOf<String?>(null), api.tokens)
+    }
+
+    @Test
+    fun invalidatesTheSessionWhenTheServerRejectsTheToken() = runTest {
+        var invalidated = false
+        val repository =
+            PostsRepository(
+                api = KtorPostsApi(rejectingClient(HttpStatusCode.Unauthorized)),
+                savedInstance = { instance() },
+                accessToken = { "stale-token" },
+                onUnauthorized = { invalidated = true },
+            )
+
+        assertFailsWith<UnauthorizedException> { repository.timeline(TimelineScope.Global, null) }
+        assertTrue(invalidated)
+    }
+
+    @Test
+    fun surfacesOtherClientFailuresUnchanged() = runTest {
+        var invalidated = false
+        val repository =
+            PostsRepository(
+                api = KtorPostsApi(rejectingClient(HttpStatusCode.Forbidden)),
+                savedInstance = { instance() },
+                accessToken = { "signed-token" },
+                onUnauthorized = { invalidated = true },
+            )
+
+        assertFailsWith<ClientRequestException> { repository.timeline(TimelineScope.Global, null) }
+        assertEquals(false, invalidated)
     }
 
     @Test
@@ -138,27 +204,44 @@ class PostsRepositoryTest {
         )
 }
 
+private fun rejectingClient(status: HttpStatusCode): HttpClient =
+    HttpClient(MockEngine { respondError(status) }) {
+        expectSuccess = true
+        install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+    }
+
 private class FakePostsApi(
     private val pages: List<TimelinePageDto> = listOf(TimelinePageDto()),
 ) : PostsApi {
     val requests = mutableListOf<Pair<TimelineScope, String?>>()
+    val tokens = mutableListOf<String?>()
 
     override suspend fun timeline(
         origin: String,
         scope: TimelineScope,
         cursor: String?,
+        accessToken: String?,
     ): TimelinePageDto {
         requests += scope to cursor
+        tokens += accessToken
         return pages[minOf(requests.size - 1, pages.size - 1)]
     }
 
     override suspend fun post(
         origin: String,
         id: String,
-    ): PostDto = pages.first().items.single { it.id == id }
+        accessToken: String?,
+    ): PostDto {
+        tokens += accessToken
+        return pages.first().items.single { it.id == id }
+    }
 
     override suspend fun relatedPosts(
         origin: String,
         id: String,
-    ): List<PostDto> = pages.first().items.filter { it.id != id }
+        accessToken: String?,
+    ): List<PostDto> {
+        tokens += accessToken
+        return pages.first().items.filter { it.id != id }
+    }
 }

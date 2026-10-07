@@ -12,16 +12,19 @@ interface PostsApi {
         origin: String,
         scope: TimelineScope,
         cursor: String?,
+        accessToken: String? = null,
     ): TimelinePageDto
 
     suspend fun post(
         origin: String,
         id: String,
+        accessToken: String? = null,
     ): PostDto
 
     suspend fun relatedPosts(
         origin: String,
         id: String,
+        accessToken: String? = null,
     ): List<PostDto>
 }
 

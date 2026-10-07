@@ -1,6 +1,7 @@
 package org.omicron.mobile.data.repository
 
 import kotlinx.coroutines.test.runTest
+import kotlinx.io.IOException
 import kotlinx.serialization.json.buildJsonObject
 import org.omicron.mobile.data.api.AuthApi
 import org.omicron.mobile.data.api.AuthApiException
@@ -109,6 +110,51 @@ class AuthRepositoryTest {
         assertNull(repository.accessToken("https://other.example"))
         assertEquals(2, api.tokenRequests)
     }
+
+    @Test
+    fun clearsTheSessionWhenMintingIsRejectedAsUnauthorized() = runTest {
+        var now = 0L
+        val api = FakeAuthApi(session = session())
+        val repository = AuthRepository(api, FakeSessionCookieStore(), now = { now })
+        repository.restore("https://omicron.blog")
+        now = 14 * 60 * 1_000L
+        api.tokenFailure = AuthApiException("UNAUTHORIZED")
+
+        assertNull(repository.accessToken("https://omicron.blog"))
+        assertNull(repository.currentSession())
+    }
+
+    @Test
+    fun servesTheStaleTokenWhenMintingFailsTransiently() = runTest {
+        var now = 0L
+        val api = FakeAuthApi(session = session())
+        val repository = AuthRepository(api, FakeSessionCookieStore(), now = { now })
+        repository.restore("https://omicron.blog")
+        now = 14 * 60 * 1_000L
+        api.tokenFailure = IOException("offline")
+
+        assertEquals("signed-token", repository.accessToken("https://omicron.blog"))
+
+        now = 15 * 60 * 1_000L
+
+        assertNull(repository.accessToken("https://omicron.blog"))
+        assertNull(repository.currentSession())
+    }
+
+    @Test
+    fun invalidatesTheInMemorySessionWithoutTouchingCookies() = runTest {
+        val api = FakeAuthApi(session = session())
+        val cookieStore = FakeSessionCookieStore()
+        val origin = "https://omicron.blog"
+        cookieStore.write(origin, listOf(StoredSessionCookie("session", "secret", null)))
+        val repository = AuthRepository(api, cookieStore)
+        repository.restore(origin)
+
+        repository.invalidateSession()
+
+        assertNull(repository.currentSession())
+        assertEquals(listOf(StoredSessionCookie("session", "secret", null)), cookieStore.read(origin))
+    }
 }
 
 private class FakeSessionCookieStore : SessionCookieStore {
@@ -127,6 +173,7 @@ private class FakeAuthApi(
     private val signUpToken: String? = "session-token",
     private val createSessionOnSignIn: Boolean = true,
     private val signOutFailure: Throwable? = null,
+    var tokenFailure: Throwable? = null,
 ) : AuthApi {
     var accessToken = "signed-token"
     var tokenRequests = 0
@@ -135,6 +182,7 @@ private class FakeAuthApi(
 
     override suspend fun getToken(origin: String): AuthTokenDto {
         tokenRequests += 1
+        tokenFailure?.let { throw it }
         return AuthTokenDto(accessToken)
     }
 
