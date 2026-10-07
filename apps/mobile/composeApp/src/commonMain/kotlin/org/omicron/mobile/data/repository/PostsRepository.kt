@@ -61,6 +61,7 @@ private fun PostDto.toDomain(origin: String) =
         commentCount = commentCount,
         recommendCount = recommendCount,
         remote = remote,
+        contentHtml = contentHtml,
     )
 
 private fun PostAuthorDto.toDomain(origin: String) =

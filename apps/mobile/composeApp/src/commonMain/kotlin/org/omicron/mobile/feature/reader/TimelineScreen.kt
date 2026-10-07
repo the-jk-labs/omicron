@@ -1,29 +1,59 @@
 package org.omicron.mobile.feature.reader
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import org.omicron.mobile.core.article.PostPreview
+import org.omicron.mobile.core.article.postPreview
+import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
+import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonAnimation
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonVariant
+import org.omicron.mobile.core.designsystem.rikkaui.button.IconButton
+import org.omicron.mobile.core.designsystem.rikkaui.button.IconButtonSize
+import org.omicron.mobile.core.designsystem.rikkaui.icon.Icon
+import org.omicron.mobile.core.designsystem.rikkaui.icon.IconSize
+import org.omicron.mobile.core.designsystem.rikkaui.icon.RikkaIcons
 import org.omicron.mobile.core.designsystem.rikkaui.spinner.Spinner
 import org.omicron.mobile.core.designsystem.rikkaui.spinner.SpinnerSize
 import org.omicron.mobile.core.designsystem.rikkaui.text.Text
@@ -31,7 +61,10 @@ import org.omicron.mobile.core.designsystem.rikkaui.text.TextVariant
 import org.omicron.mobile.data.api.TimelineScope
 import org.omicron.mobile.domain.model.Post
 import org.omicron.mobile.resources.Res
+import org.omicron.mobile.resources.app_name
+import org.omicron.mobile.resources.omicron_logo
 import org.omicron.mobile.resources.timeline_change_instance
+import org.omicron.mobile.resources.timeline_date_format
 import org.omicron.mobile.resources.timeline_empty_description
 import org.omicron.mobile.resources.timeline_empty_title
 import org.omicron.mobile.resources.timeline_error_missing_instance
@@ -40,13 +73,24 @@ import org.omicron.mobile.resources.timeline_error_server
 import org.omicron.mobile.resources.timeline_load_more
 import org.omicron.mobile.resources.timeline_loading
 import org.omicron.mobile.resources.timeline_loading_more
-import org.omicron.mobile.resources.timeline_post_meta
+import org.omicron.mobile.resources.timeline_month_apr
+import org.omicron.mobile.resources.timeline_month_aug
+import org.omicron.mobile.resources.timeline_month_dec
+import org.omicron.mobile.resources.timeline_month_feb
+import org.omicron.mobile.resources.timeline_month_jan
+import org.omicron.mobile.resources.timeline_month_jul
+import org.omicron.mobile.resources.timeline_month_jun
+import org.omicron.mobile.resources.timeline_month_mar
+import org.omicron.mobile.resources.timeline_month_may
+import org.omicron.mobile.resources.timeline_month_nov
+import org.omicron.mobile.resources.timeline_month_oct
+import org.omicron.mobile.resources.timeline_month_sep
+import org.omicron.mobile.resources.timeline_reading_time
 import org.omicron.mobile.resources.timeline_refresh
 import org.omicron.mobile.resources.timeline_retry
 import org.omicron.mobile.resources.timeline_scope_global
 import org.omicron.mobile.resources.timeline_scope_local
 import org.omicron.mobile.resources.timeline_sign_in
-import org.omicron.mobile.resources.timeline_title
 import org.omicron.mobile.resources.timeline_untitled
 import zed.rainxch.rikkaui.foundation.RikkaTheme
 
@@ -84,7 +128,7 @@ private fun TimelineScreen(
     onOpenPost: (String) -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxSize().background(RikkaTheme.colors.background).safeDrawingPadding(),
+        modifier = Modifier.fillMaxSize().background(OmicronTheme.colors.background).safeDrawingPadding(),
     ) {
         TimelineHeader(
             scope = state.scope,
@@ -92,7 +136,7 @@ private fun TimelineScreen(
             onSignIn = onSignIn,
             onChangeInstance = onChangeInstance,
         )
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
             when (val phase = state.phase) {
                 is TimelinePhase.Loading -> TimelineLoading()
                 is TimelinePhase.Empty -> TimelineEmpty(onRefresh = onRefresh)
@@ -122,44 +166,104 @@ private fun TimelineHeader(
     onChangeInstance: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = stringResource(Res.string.timeline_title), variant = TextVariant.H2)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    text = stringResource(Res.string.timeline_change_instance),
-                    onClick = onChangeInstance,
-                    variant = ButtonVariant.Ghost,
-                    size = ButtonSize.Sm,
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    painter = painterResource(Res.drawable.omicron_logo),
+                    contentDescription = null,
+                    modifier = Modifier.size(30.dp),
                 )
-                Button(
-                    text = stringResource(Res.string.timeline_sign_in),
+                Text(
+                    text = stringResource(Res.string.app_name),
+                    variant = TextVariant.H2,
+                    color = OmicronTheme.colors.foreground,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                IconButton(
+                    icon = RikkaIcons.Settings,
+                    contentDescription = stringResource(Res.string.timeline_change_instance),
+                    onClick = onChangeInstance,
+                    size = IconButtonSize.Default,
+                )
+                IconButton(
+                    icon = RikkaIcons.User,
+                    contentDescription = stringResource(Res.string.timeline_sign_in),
                     onClick = onSignIn,
-                    variant = ButtonVariant.Secondary,
-                    size = ButtonSize.Sm,
+                    size = IconButtonSize.Default,
                 )
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                text = stringResource(Res.string.timeline_scope_global),
-                onClick = { onSelectScope(TimelineScope.Global) },
-                variant = if (scope == TimelineScope.Global) ButtonVariant.Default else ButtonVariant.Outline,
-                size = ButtonSize.Sm,
-            )
-            Button(
-                text = stringResource(Res.string.timeline_scope_local),
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 30.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TimelineScopeTab(
+                label = stringResource(Res.string.timeline_scope_local),
+                icon = RikkaIcons.Users,
+                selected = scope == TimelineScope.Local,
                 onClick = { onSelectScope(TimelineScope.Local) },
-                variant = if (scope == TimelineScope.Local) ButtonVariant.Default else ButtonVariant.Outline,
-                size = ButtonSize.Sm,
+            )
+            TimelineScopeTab(
+                label = stringResource(Res.string.timeline_scope_global),
+                icon = RikkaIcons.Globe,
+                selected = scope == TimelineScope.Global,
+                onClick = { onSelectScope(TimelineScope.Global) },
             )
         }
+    }
+}
+
+@Composable
+private fun TimelineScopeTab(
+    label: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val tint = if (selected) OmicronTheme.colors.foreground else OmicronTheme.colors.mutedForeground
+    Column(
+        modifier = Modifier.width(IntrinsicSize.Min),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Button(
+            onClick = onClick,
+            modifier = Modifier.height(44.dp),
+            variant = ButtonVariant.Ghost,
+            size = ButtonSize.Sm,
+            animation = ButtonAnimation.None,
+            label = label,
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(imageVector = icon, contentDescription = null, tint = tint, size = IconSize.Default)
+                Text(
+                    text = label,
+                    variant = TextVariant.P,
+                    color = tint,
+                    style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium),
+                )
+            }
+        }
+        Spacer(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(if (selected) OmicronTheme.colors.foreground else Color.Transparent),
+        )
     }
 }
 
@@ -230,8 +334,7 @@ private fun TimelineList(
     onOpenPost: (String) -> Unit,
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth().fillMaxHeight(),
     ) {
         item(key = "refresh", contentType = "refresh") {
             Row(
@@ -296,45 +399,200 @@ private fun PostCard(
     post: Post,
     onOpen: () -> Unit,
 ) {
+    val preview = remember(post.summary, post.contentHtml) { postPreview(post.summary, post.contentHtml) }
     Column(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .clickable(role = Role.Button, onClick = onOpen)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+                .padding(horizontal = 16.dp, vertical = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(
-            text = post.author.displayName,
-            variant = TextVariant.Small,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            text = post.title?.ifBlank { null } ?: stringResource(Res.string.timeline_untitled),
-            variant = TextVariant.H3,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (post.summary != null) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AuthorAvatar(post = post)
             Text(
-                text = post.summary,
-                variant = TextVariant.Muted,
-                maxLines = 3,
+                text = post.author.displayName,
+                variant = TextVariant.P,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                color = OmicronTheme.colors.foreground,
+                style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium),
             )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = post.title?.ifBlank { null } ?: stringResource(Res.string.timeline_untitled),
+                    variant = TextVariant.H3,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                    color = OmicronTheme.colors.foreground,
+                    style = TextStyle(fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold),
+                )
+                if (preview.excerpt.isNotBlank()) {
+                    Text(
+                        text = preview.excerpt,
+                        variant = TextVariant.P,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        color = OmicronTheme.colors.mutedForeground,
+                        style = TextStyle(fontSize = 20.sp, lineHeight = 27.sp),
+                    )
+                }
+            }
+            if (post.bannerUrl != null) BannerThumbnail(post.bannerUrl)
         }
         if (post.tags.isNotEmpty()) {
-            Text(
-                text = post.tags.joinToString("  ") { "#${it.name}" },
-                variant = TextVariant.Small,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                post.tags.forEach { tag ->
+                    Text(
+                        text = "#${tag.name}",
+                        variant = TextVariant.Small,
+                        color = OmicronTheme.colors.foregroundAlt,
+                        modifier =
+                            Modifier
+                                .clip(RikkaTheme.shapes.full)
+                                .background(RikkaTheme.colors.muted)
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+            }
+        }
+        PostMetadata(post = post, preview = preview)
+    }
+}
+
+@Composable
+private fun AuthorAvatar(post: Post) {
+    val shape = RikkaTheme.shapes.full
+    Box(
+        modifier =
+            Modifier
+                .size(30.dp)
+                .clip(shape)
+                .background(RikkaTheme.colors.muted)
+                .border(1.dp, OmicronTheme.colors.borderCard, shape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = post.author.displayName.trim().firstOrNull()?.uppercase() ?: "?",
+            variant = TextVariant.Small,
+            color = OmicronTheme.colors.mutedForeground,
+        )
+        post.author.avatarUrl?.let { avatarUrl ->
+            AsyncImage(
+                model = avatarUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().clip(shape),
             )
         }
+    }
+}
+
+@Composable
+private fun BannerThumbnail(url: String) {
+    val shape = RikkaTheme.shapes.lg
+    AsyncImage(
+        model = url,
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier =
+            Modifier
+                .padding(top = 4.dp)
+                .size(width = 112.dp, height = 80.dp)
+                .clip(shape)
+                .border(1.dp, OmicronTheme.colors.borderCard, shape),
+    )
+}
+
+@Composable
+private fun PostMetadata(
+    post: Post,
+    preview: PostPreview,
+) {
+    val metadataColor = OmicronTheme.colors.mutedForeground
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Text(
-            text = stringResource(Res.string.timeline_post_meta, post.likeCount, post.commentCount, post.recommendCount),
+            text = formattedDate(post.createdAt),
             variant = TextVariant.Small,
+            color = metadataColor,
+            maxLines = 1,
+        )
+        MetadataItem(
+            icon = RikkaIcons.Clock,
+            label = stringResource(Res.string.timeline_reading_time, preview.readingMinutes),
+            tint = metadataColor,
+        )
+        MetadataItem(icon = RikkaIcons.Heart, label = post.likeCount.toString(), tint = metadataColor)
+        MetadataItem(icon = RikkaIcons.MessageCircle, label = post.commentCount.toString(), tint = metadataColor)
+        Spacer(modifier = Modifier.weight(1f))
+        MetadataItem(icon = RikkaIcons.Repeat, label = post.recommendCount.toString(), tint = metadataColor)
+        Icon(
+            imageVector = RikkaIcons.Bookmark,
+            contentDescription = null,
+            tint = metadataColor,
+            size = IconSize.Default,
         )
     }
 }
+
+@Composable
+private fun MetadataItem(
+    icon: ImageVector,
+    label: String,
+    tint: Color,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = tint, size = IconSize.Sm)
+        Text(
+            text = label,
+            variant = TextVariant.Small,
+            color = tint,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun formattedDate(createdAt: String): String {
+    val dateParts = createdAt.take(10).split('-')
+    val year = dateParts.getOrNull(0)?.toIntOrNull() ?: return createdAt.take(10)
+    val month = dateParts.getOrNull(1)?.toIntOrNull() ?: return createdAt.take(10)
+    val day = dateParts.getOrNull(2)?.toIntOrNull() ?: return createdAt.take(10)
+    val monthResource = TIMELINE_MONTHS.getOrNull(month - 1) ?: return createdAt.take(10)
+    return stringResource(Res.string.timeline_date_format, stringResource(monthResource), day, year)
+}
+
+private val TIMELINE_MONTHS =
+    listOf(
+        Res.string.timeline_month_jan,
+        Res.string.timeline_month_feb,
+        Res.string.timeline_month_mar,
+        Res.string.timeline_month_apr,
+        Res.string.timeline_month_may,
+        Res.string.timeline_month_jun,
+        Res.string.timeline_month_jul,
+        Res.string.timeline_month_aug,
+        Res.string.timeline_month_sep,
+        Res.string.timeline_month_oct,
+        Res.string.timeline_month_nov,
+        Res.string.timeline_month_dec,
+    )

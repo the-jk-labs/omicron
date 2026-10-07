@@ -25,4 +25,5 @@ data class Post(
     val commentCount: Int,
     val recommendCount: Int,
     val remote: Boolean,
+    val contentHtml: String = "",
 )
