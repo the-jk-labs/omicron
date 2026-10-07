@@ -39,6 +39,14 @@ data class OmicronColorTokens(
     val scrollbarThumbHover: Color,
 )
 
+data class OmicronCodeTokens(
+    val comment: Color,
+    val keyword: Color,
+    val string: Color,
+    val literal: Color,
+    val type: Color,
+)
+
 data class OmicronRadii(
     val card: Dp,
     val cardLarge: Dp,
@@ -121,6 +129,22 @@ val OmicronDarkColors = OmicronColorTokens(
     scrollbarThumbHover = hsl(0f, 0f, 100f, 0.4f),
 )
 
+val OmicronLightCode = OmicronCodeTokens(
+    comment = hsl(215f, 14f, 47f),
+    keyword = hsl(356f, 76f, 47f),
+    string = hsl(213f, 82f, 27f),
+    literal = hsl(212f, 92f, 35f),
+    type = hsl(137f, 69f, 24f),
+)
+
+val OmicronDarkCode = OmicronCodeTokens(
+    comment = hsl(213f, 8f, 62f),
+    keyword = hsl(5f, 100f, 72f),
+    string = hsl(208f, 100f, 82f),
+    literal = hsl(208f, 100f, 74f),
+    type = hsl(138f, 74f, 73f),
+)
+
 val OmicronRadiiTokens = OmicronRadii(
     card = 16.dp,
     cardLarge = 20.dp,
@@ -146,6 +170,10 @@ private val LocalOmicronColors = staticCompositionLocalOf<OmicronColorTokens> {
     error("OmicronTheme has not been provided")
 }
 
+private val LocalOmicronCode = staticCompositionLocalOf<OmicronCodeTokens> {
+    error("OmicronTheme has not been provided")
+}
+
 private val LocalOmicronRadii = staticCompositionLocalOf<OmicronRadii> {
     error("OmicronTheme has not been provided")
 }
@@ -159,6 +187,11 @@ object OmicronTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalOmicronColors.current
+
+    val code: OmicronCodeTokens
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalOmicronCode.current
 
     val radii: OmicronRadii
         @Composable
@@ -177,6 +210,7 @@ fun OmicronTheme(
     content: @Composable () -> Unit,
 ) {
     val colors = if (darkTheme) OmicronDarkColors else OmicronLightColors
+    val code = if (darkTheme) OmicronDarkCode else OmicronLightCode
     RikkaTheme(
         colors = colors.toRikkaColors(),
         typography = rikkaTypography(fontFamily = FontFamily.SansSerif),
@@ -196,6 +230,7 @@ fun OmicronTheme(
     ) {
         CompositionLocalProvider(
             LocalOmicronColors provides colors,
+            LocalOmicronCode provides code,
             LocalOmicronRadii provides OmicronRadiiTokens,
             LocalOmicronShadows provides OmicronShadowTokens,
             content = content,

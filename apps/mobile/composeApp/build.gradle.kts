@@ -35,6 +35,7 @@ kotlin {
             implementation(libs.rikka.icons.lucide)
             implementation(libs.rikka.icons.tokens.core)
             implementation(libs.rikka.ui.foundation)
+            implementation(libs.snipme.highlights)
         }
 
         commonTest.dependencies {
