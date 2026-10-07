@@ -13,6 +13,7 @@ data class ArticleSpan(
     val strikethrough: Boolean = false,
     val underline: Boolean = false,
     val link: String? = null,
+    val math: MathContent? = null,
 )
 
 typealias InlineContent = List<ArticleSpan>
@@ -54,6 +55,10 @@ sealed interface ArticleBlock {
         val rows: List<List<InlineContent>>,
     ) : ArticleBlock
 
+    data class Math(
+        val content: MathContent,
+    ) : ArticleBlock
+
     data object Divider : ArticleBlock
 
     data class PlainText(
@@ -84,7 +89,18 @@ private fun parseBlock(
             val content = parseInline(node, Formatting(), resolveUrl)
             if (content.isEmpty()) emptyList() else listOf(ArticleBlock.Heading(node.tagName()[1].digitToInt(), content))
         }
-        "p", "div" -> paragraphBlocks(node, resolveUrl)
+        "p", "div" -> {
+            if (node.tagName() == "p" && node.classNames().contains("katex-block")) {
+                val math = node.selectFirst("math")?.mathContent()
+                if (math != null && math.text.isNotEmpty()) {
+                    listOf(ArticleBlock.Math(math))
+                } else {
+                    paragraphBlocks(node, resolveUrl)
+                }
+            } else {
+                paragraphBlocks(node, resolveUrl)
+            }
+        }
         "blockquote" ->
             listOf(
                 ArticleBlock.Quote(
@@ -128,7 +144,9 @@ private fun paragraphBlocks(
 ): List<ArticleBlock> {
     val blocks = mutableListOf<ArticleBlock>()
     val content = parseInline(element, Formatting(), resolveUrl)
-    if (content.any { it.text.isNotBlank() }) blocks += ArticleBlock.Paragraph(content)
+    if (content.any { it.text.isNotBlank() } || content.any { it.math != null }) {
+        blocks += ArticleBlock.Paragraph(content)
+    }
     element.select("img").forEach { img ->
         val src = img.attr("src")
         if (src.isNotBlank()) blocks += ArticleBlock.Image(resolveUrl(src), img.attr("alt").ifBlank { null })
@@ -165,6 +183,21 @@ private fun parseInline(
         "a" -> {
             val href = node.attr("href").ifBlank { null }?.let(resolveUrl)
             node.childNodes().flatMap { parseInline(it, formatting.copy(link = href), resolveUrl) }
+        }
+        "span" -> {
+            if (node.classNames().contains("katex-error")) {
+                node.childNodes().flatMap { parseInline(it, formatting.copy(code = true), resolveUrl) }
+            } else {
+                node.childNodes().flatMap { parseInline(it, formatting, resolveUrl) }
+            }
+        }
+        "math" -> {
+            val content = node.mathContent()
+            if (content.text.isEmpty()) {
+                emptyList()
+            } else {
+                listOf(ArticleSpan(text = "", link = formatting.link, math = content))
+            }
         }
         "img" -> emptyList()
         else -> node.childNodes().flatMap { parseInline(it, formatting, resolveUrl) }
