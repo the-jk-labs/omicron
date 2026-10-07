@@ -41,7 +41,7 @@ fun OmicronApp(
                 )
             }
             composable<TimelineDestination> {
-                val viewModel = remember(postsRepository) { TimelineViewModel(postsRepository) }
+                val viewModel = remember(postsRepository, authRepository) { TimelineViewModel(postsRepository, session = authRepository.session) }
                 DisposableEffect(viewModel) {
                     onDispose(viewModel::close)
                 }

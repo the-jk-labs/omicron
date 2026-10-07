@@ -2,6 +2,9 @@ package org.omicron.mobile.data.repository
 
 import io.ktor.util.date.getTimeMillis
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.omicron.mobile.core.storage.SessionCookieStore
 import org.omicron.mobile.data.api.AuthApi
 import org.omicron.mobile.data.api.AuthApiException
@@ -17,6 +20,8 @@ class AuthRepository(
     private var activeSession: AuthenticatedSession? = null
     private var activeOrigin: String? = null
     private var tokenMintedAt: Long? = null
+    private val mutableSession = MutableStateFlow<AuthenticatedSession?>(null)
+    val session: StateFlow<AuthenticatedSession?> = mutableSession.asStateFlow()
 
     suspend fun restore(origin: String): AuthenticatedSession? {
         val session =
@@ -143,12 +148,14 @@ class AuthRepository(
             activeSession = it
             activeOrigin = origin
             tokenMintedAt = now()
+            mutableSession.value = it
         }
 
     private fun clearSession() {
         activeSession = null
         activeOrigin = null
         tokenMintedAt = null
+        mutableSession.value = null
     }
 
     private companion object {

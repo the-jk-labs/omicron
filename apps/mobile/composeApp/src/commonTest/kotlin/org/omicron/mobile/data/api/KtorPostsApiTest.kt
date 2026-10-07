@@ -157,6 +157,35 @@ class KtorPostsApiTest {
         assertNull(authorization)
     }
 
+    @Test
+    fun feedPreservesCursorAndRequiresBearerToken() = runTest {
+        var requestPath = ""
+        var requestQuery = ""
+        var authorization: String? = null
+        val client =
+            HttpClient(
+                MockEngine {
+                    requestPath = it.url.encodedPath
+                    requestQuery = it.url.encodedQuery
+                    authorization = it.headers[HttpHeaders.Authorization]
+                    respond(
+                        content = TIMELINE_JSON,
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                    )
+                },
+            ) {
+                install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+            }
+
+        val page = KtorPostsApi(client).feed("https://omicron.blog", "merged-cursor-1", "signed-token")
+
+        assertEquals("/api/feed", requestPath)
+        assertEquals("cursor=merged-cursor-1", requestQuery)
+        assertEquals("Bearer signed-token", authorization)
+        assertEquals("opaque-cursor-1", page.nextCursor)
+    }
+
     private companion object {
         const val TIMELINE_JSON =
             """{"items":[{"id":"post-1","title":"Hello","contentHtml":"<p>Hello</p>","remote":false,"summary":"A greeting","bannerUrl":"/api/uploads/cover.jpg","createdAt":"2026-01-01T00:00:00Z","author":{"id":"user-1","username":"alice","displayName":"Alice","avatarUrl":null,"remote":false},"tags":[{"slug":"intro","name":"Intro"}],"likeCount":3,"liked":false,"commentCount":1,"recommendCount":0,"recommended":false}],"nextCursor":"opaque-cursor-1"}"""

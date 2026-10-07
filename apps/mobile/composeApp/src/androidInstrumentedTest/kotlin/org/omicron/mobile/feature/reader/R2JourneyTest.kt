@@ -1,6 +1,7 @@
 package org.omicron.mobile.feature.reader
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -8,6 +9,7 @@ import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.ktor.client.HttpClient
@@ -18,6 +20,7 @@ import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
 import kotlinx.io.IOException
 import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,12 +31,28 @@ import org.omicron.mobile.data.api.PostsApi
 import org.omicron.mobile.data.api.TimelinePageDto
 import org.omicron.mobile.data.api.TimelineScope
 import org.omicron.mobile.data.repository.PostsRepository
+import org.omicron.mobile.data.repository.UnauthorizedException
 import org.omicron.mobile.domain.model.InstanceConfiguration
 
 @RunWith(AndroidJUnit4::class)
 class R2JourneyTest {
     @get:Rule
     val composeTestRule = createAndroidComposeRule<ComponentActivity>()
+
+    @Test
+    fun guestTimelineOffersOnlyLocalAndGlobalTabs() {
+        val viewModel = TimelineViewModel(PostsRepository(JourneyPostsApi(), savedInstance = { instance() }))
+
+        composeTestRule.setContent {
+            OmicronTheme {
+                TimelineRoute(viewModel = viewModel, onSignIn = {}, onChangeInstance = {}, onOpenPost = {})
+            }
+        }
+
+        composeTestRule.onNodeWithText("Local", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Global", substring = true).assertIsDisplayed()
+        assertTrue(composeTestRule.onAllNodesWithText("For you", substring = true).fetchSemanticsNodes().isEmpty())
+    }
 
     @Test
     fun guestTimelineShowsPostsAndOpensDetail() {
@@ -276,4 +295,10 @@ private class JourneyPostsApi(
         id: String,
         accessToken: String?,
     ): List<PostDto> = listOf(timelineDto("post-2"))
+
+    override suspend fun feed(
+        origin: String,
+        cursor: String?,
+        accessToken: String,
+    ): TimelinePageDto = throw UnauthorizedException()
 }

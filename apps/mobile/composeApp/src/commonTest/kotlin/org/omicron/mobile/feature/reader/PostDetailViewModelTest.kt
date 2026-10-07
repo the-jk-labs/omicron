@@ -172,6 +172,12 @@ private class DetailApi(
         if (failRelated) throw IOException("unresolved")
         return listOf(detailDto("post-2"))
     }
+
+    override suspend fun feed(
+        origin: String,
+        cursor: String?,
+        accessToken: String,
+    ): TimelinePageDto = TimelinePageDto()
 }
 
 private class FailingDetailApi(
@@ -195,4 +201,10 @@ private class FailingDetailApi(
         id: String,
         accessToken: String?,
     ): List<PostDto> = throw failure
+
+    override suspend fun feed(
+        origin: String,
+        cursor: String?,
+        accessToken: String,
+    ): TimelinePageDto = throw failure
 }

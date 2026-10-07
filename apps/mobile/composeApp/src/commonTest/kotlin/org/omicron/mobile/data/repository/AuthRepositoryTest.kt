@@ -155,6 +155,21 @@ class AuthRepositoryTest {
         assertNull(repository.currentSession())
         assertEquals(listOf(StoredSessionCookie("session", "secret", null)), cookieStore.read(origin))
     }
+
+    @Test
+    fun exposesSessionChangesAsAFlow() = runTest {
+        val repository = AuthRepository(FakeAuthApi(session = session()), FakeSessionCookieStore())
+
+        assertNull(repository.session.value)
+
+        repository.restore("https://omicron.blog")
+
+        assertEquals("ada", repository.session.value?.user?.username)
+
+        repository.invalidateSession()
+
+        assertNull(repository.session.value)
+    }
 }
 
 private class FakeSessionCookieStore : SessionCookieStore {

@@ -100,6 +100,28 @@ class PostsRepositoryTest {
     }
 
     @Test
+    fun feedPreservesTheMergedCursorUnchanged() = runTest {
+        val api = FakePostsApi(pages = listOf(TimelinePageDto(items = listOf(postDto()), nextCursor = "merged-1")))
+        val repository = PostsRepository(api, savedInstance = { instance() }, accessToken = { "signed-token" })
+
+        val page = repository.feed(null)
+        repository.feed(page.nextCursor)
+
+        assertEquals(listOf(null, "merged-1"), api.feedRequests)
+        assertEquals(listOf("signed-token", "signed-token"), api.feedTokens)
+        assertEquals("merged-1", page.nextCursor)
+    }
+
+    @Test
+    fun feedRequiresASignedInSession() = runTest {
+        val api = FakePostsApi()
+        val repository = PostsRepository(api, savedInstance = { instance() })
+
+        assertFailsWith<UnauthorizedException> { repository.feed(null) }
+        assertEquals(emptyList(), api.feedRequests)
+    }
+
+    @Test
     fun invalidatesTheSessionWhenTheServerRejectsTheToken() = runTest {
         var invalidated = false
         val repository =
@@ -215,6 +237,8 @@ private class FakePostsApi(
 ) : PostsApi {
     val requests = mutableListOf<Pair<TimelineScope, String?>>()
     val tokens = mutableListOf<String?>()
+    val feedRequests = mutableListOf<String?>()
+    val feedTokens = mutableListOf<String>()
 
     override suspend fun timeline(
         origin: String,
@@ -243,5 +267,15 @@ private class FakePostsApi(
     ): List<PostDto> {
         tokens += accessToken
         return pages.first().items.filter { it.id != id }
+    }
+
+    override suspend fun feed(
+        origin: String,
+        cursor: String?,
+        accessToken: String,
+    ): TimelinePageDto {
+        feedRequests += cursor
+        feedTokens += accessToken
+        return pages[minOf(feedRequests.size - 1, pages.size - 1)]
     }
 }

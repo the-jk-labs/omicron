@@ -1,6 +1,7 @@
 package org.omicron.mobile.feature.reader
 
 import kotlinx.io.IOException
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -10,13 +11,17 @@ import org.omicron.mobile.data.api.TimelinePageDto
 import org.omicron.mobile.data.api.TimelineScope
 import org.omicron.mobile.data.repository.MissingInstanceException
 import org.omicron.mobile.data.repository.PostsRepository
+import org.omicron.mobile.domain.model.AuthenticatedSession
+import org.omicron.mobile.domain.model.AuthenticatedUser
 import org.omicron.mobile.domain.model.InstanceConfiguration
 import org.omicron.mobile.domain.model.Post
 import org.omicron.mobile.domain.model.PostAuthor
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class TimelineViewModelTest {
     @Test
@@ -108,6 +113,111 @@ class TimelineViewModelTest {
         assertIs<TimelinePhase.Content>(viewModel.uiState.value.phase)
         assertEquals(listOf("post-1"), viewModel.uiState.value.posts.map(Post::id))
     }
+
+    @Test
+    fun staysOnGlobalWithoutASession() = runTest {
+        val viewModel = timelineViewModel(posts = listOf(post("post-1")))
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(TimelineScope.Global, state.scope)
+        assertFalse(state.signedIn)
+        assertEquals(listOf("post-1"), state.posts.map(Post::id))
+    }
+
+    @Test
+    fun loadsForYouByDefaultWhenSignedIn() = runTest {
+        val api = SequencedPostsApi(feedPages = listOf(page(listOf(post("feed-1")), "merged-1")))
+        val viewModel = signedTimelineViewModel(api, MutableStateFlow(signedSession()))
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(TimelineScope.ForYou, state.scope)
+        assertTrue(state.signedIn)
+        assertEquals(listOf("feed-1"), state.posts.map(Post::id))
+        assertEquals(listOf<String?>(null), api.feedCursors)
+    }
+
+    @Test
+    fun preservesTheMergedFeedCursorAndDedupesRepeats() = runTest {
+        val api =
+            SequencedPostsApi(
+                feedPages =
+                    listOf(
+                        page(listOf(post("feed-1")), "merged-1"),
+                        page(listOf(post("feed-1"), post("feed-2")), null),
+                    ),
+            )
+        val viewModel = signedTimelineViewModel(api, MutableStateFlow(signedSession()))
+        testScheduler.advanceUntilIdle()
+
+        viewModel.loadMore()
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf("feed-1", "feed-2"), state.posts.map(Post::id))
+        assertEquals(listOf(null, "merged-1"), api.feedCursors)
+    }
+
+    @Test
+    fun switchesToForYouWhenSignInArrives() = runTest {
+        val api =
+            SequencedPostsApi(
+                pages = listOf(page(listOf(post("global-1")), null)),
+                feedPages = listOf(page(listOf(post("feed-1")), null)),
+            )
+        val sessions = MutableStateFlow<AuthenticatedSession?>(null)
+        val viewModel = signedTimelineViewModel(api, sessions)
+        testScheduler.advanceUntilIdle()
+        assertEquals(TimelineScope.Global, viewModel.uiState.value.scope)
+
+        sessions.value = signedSession()
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(TimelineScope.ForYou, state.scope)
+        assertEquals(listOf("feed-1"), state.posts.map(Post::id))
+    }
+
+    @Test
+    fun keepsAManuallySelectedScopeWhenSignInArrives() = runTest {
+        val api =
+            SequencedPostsApi(
+                pages = listOf(page(listOf(post("global-1")), null), page(listOf(post("local-1")), null)),
+                feedPages = listOf(page(listOf(post("feed-1")), null)),
+            )
+        val sessions = MutableStateFlow<AuthenticatedSession?>(null)
+        val viewModel = signedTimelineViewModel(api, sessions)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.selectScope(TimelineScope.Local)
+        testScheduler.advanceUntilIdle()
+        sessions.value = signedSession()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(TimelineScope.Local, viewModel.uiState.value.scope)
+    }
+
+    @Test
+    fun fallsBackToGlobalWhenTheSessionEndsOnForYou() = runTest {
+        val api =
+            SequencedPostsApi(
+                pages = listOf(page(listOf(post("global-1")), null)),
+                feedPages = listOf(page(listOf(post("feed-1")), null)),
+            )
+        val sessions = MutableStateFlow<AuthenticatedSession?>(signedSession())
+        val viewModel = signedTimelineViewModel(api, sessions)
+        testScheduler.advanceUntilIdle()
+        assertEquals(TimelineScope.ForYou, viewModel.uiState.value.scope)
+
+        sessions.value = null
+        testScheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(TimelineScope.Global, state.scope)
+        assertFalse(state.signedIn)
+        assertEquals(listOf("global-1"), state.posts.map(Post::id))
+    }
 }
 
 private fun TestScope.timelineViewModel(
@@ -119,6 +229,21 @@ private fun TestScope.timelineViewModel(
     val dispatcher = StandardTestDispatcher(testScheduler)
     return TimelineViewModel(PostsRepository(api, savedInstance = { instance() }), TestScope(dispatcher))
 }
+
+private fun TestScope.signedTimelineViewModel(
+    api: PostsApi,
+    sessions: MutableStateFlow<AuthenticatedSession?>,
+): TimelineViewModel {
+    val dispatcher = StandardTestDispatcher(testScheduler)
+    val repository = PostsRepository(api, savedInstance = { instance() }, accessToken = { "signed-token" })
+    return TimelineViewModel(repository, TestScope(dispatcher), sessions)
+}
+
+private fun signedSession() =
+    AuthenticatedSession(
+        AuthenticatedUser("user-1", "ada@example.com", "ada", "Ada"),
+        "signed-token",
+    )
 
 private fun page(
     posts: List<Post>,
@@ -165,11 +290,13 @@ private fun instance() =
     )
 
 private class SequencedPostsApi(
-    private val pages: List<TimelinePageDto>,
+    private val pages: List<TimelinePageDto> = listOf(TimelinePageDto()),
     private val failFirst: Boolean = false,
+    private val feedPages: List<TimelinePageDto>? = null,
 ) : PostsApi {
     val scopes = mutableListOf<TimelineScope>()
     val cursors = mutableListOf<String?>()
+    val feedCursors = mutableListOf<String?>()
     private var calls = 0
 
     override suspend fun timeline(
@@ -196,6 +323,15 @@ private class SequencedPostsApi(
         id: String,
         accessToken: String?,
     ): List<PostDto> = emptyList()
+
+    override suspend fun feed(
+        origin: String,
+        cursor: String?,
+        accessToken: String,
+    ): TimelinePageDto {
+        feedCursors += cursor
+        return (feedPages ?: pages)[minOf(feedCursors.size - 1, (feedPages ?: pages).size - 1)]
+    }
 }
 
 private class FailingPostsApi(
@@ -219,4 +355,10 @@ private class FailingPostsApi(
         id: String,
         accessToken: String?,
     ): List<PostDto> = throw failure
+
+    override suspend fun feed(
+        origin: String,
+        cursor: String?,
+        accessToken: String,
+    ): TimelinePageDto = throw failure
 }
