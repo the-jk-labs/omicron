@@ -84,10 +84,12 @@ class PostsRepositoryTest {
         val repository = PostsRepository(api, savedInstance = { instance() })
 
         val detail = repository.postDetail("post-1")
+        val timelinePost = repository.timeline(TimelineScope.Global, null).items.single()
 
         assertEquals("<p>Hello</p>", detail.contentHtml)
         assertEquals("https://omicron.blog/uploads/cover.jpg", detail.coverUrl)
-        assertEquals("A greeting", repository.timeline(TimelineScope.Global, null).items.single().summary)
+        assertEquals("A greeting", timelinePost.summary)
+        assertEquals("<p>Hello</p>", timelinePost.contentHtml)
     }
 
     @Test
