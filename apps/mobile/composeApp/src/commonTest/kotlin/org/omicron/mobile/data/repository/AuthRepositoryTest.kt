@@ -13,8 +13,10 @@ import org.omicron.mobile.core.storage.SessionCookieStore
 import org.omicron.mobile.core.storage.StoredSessionCookie
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class AuthRepositoryTest {
     @Test
@@ -37,6 +39,19 @@ class AuthRepositoryTest {
 
         assertNull(repository.restore("https://omicron.blog"))
         assertNull(repository.currentSession())
+    }
+
+    @Test
+    fun restoresToSignInWhenTheSavedSessionCannotMintAToken() = runTest {
+        val origin = "https://omicron.blog"
+        val api = FakeAuthApi(session = session(), tokenFailure = AuthApiException("UNAUTHORIZED"))
+        val cookieStore = FakeSessionCookieStore()
+        cookieStore.write(origin, listOf(StoredSessionCookie("session", "secret", null)))
+        val repository = AuthRepository(api, cookieStore)
+
+        assertNull(repository.restore(origin))
+        assertNull(repository.currentSession())
+        assertEquals(emptyList(), cookieStore.read(origin))
     }
 
     @Test
@@ -122,6 +137,7 @@ class AuthRepositoryTest {
 
         assertNull(repository.accessToken("https://omicron.blog"))
         assertNull(repository.currentSession())
+        assertTrue(repository.sessionExpired.value)
     }
 
     @Test
@@ -139,6 +155,7 @@ class AuthRepositoryTest {
 
         assertNull(repository.accessToken("https://omicron.blog"))
         assertNull(repository.currentSession())
+        assertTrue(repository.sessionExpired.value)
     }
 
     @Test
@@ -154,6 +171,20 @@ class AuthRepositoryTest {
 
         assertNull(repository.currentSession())
         assertEquals(listOf(StoredSessionCookie("session", "secret", null)), cookieStore.read(origin))
+        assertTrue(repository.sessionExpired.value)
+    }
+
+    @Test
+    fun explicitSignOutClearsTheExpiredSessionNotice() = runTest {
+        val repository = AuthRepository(FakeAuthApi(session = session()), FakeSessionCookieStore())
+        val origin = "https://omicron.blog"
+        repository.restore(origin)
+        repository.invalidateSession()
+        assertTrue(repository.sessionExpired.value)
+
+        repository.signOut(origin)
+
+        assertFalse(repository.sessionExpired.value)
     }
 
     @Test

@@ -76,7 +76,7 @@ data class TimelinePage(
     val nextCursor: String?,
 )
 
-private fun PostDto.toDomain(origin: String) =
+internal fun PostDto.toDomain(origin: String) =
     Post(
         id = id,
         title = title,
@@ -90,9 +90,11 @@ private fun PostDto.toDomain(origin: String) =
         recommendCount = recommendCount,
         remote = remote,
         contentHtml = contentHtml,
+        liked = liked,
+        recommended = recommended,
     )
 
-private fun PostAuthorDto.toDomain(origin: String) =
+internal fun PostAuthorDto.toDomain(origin: String) =
     PostAuthor(
         id = id,
         username = username,
@@ -116,6 +118,8 @@ private fun PostDto.toDetail(origin: String) =
         commentCount = commentCount,
         recommendCount = recommendCount,
         remote = remote,
+        liked = liked,
+        recommended = recommended,
     )
 
 private fun CoverCreditDto.toDomain() =

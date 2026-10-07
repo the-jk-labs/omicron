@@ -206,17 +206,34 @@ class TimelineViewModelTest {
                 feedPages = listOf(page(listOf(post("feed-1")), null)),
             )
         val sessions = MutableStateFlow<AuthenticatedSession?>(signedSession())
-        val viewModel = signedTimelineViewModel(api, sessions)
+        val expiration = MutableStateFlow(false)
+        val viewModel = signedTimelineViewModel(api, sessions, expiration)
         testScheduler.advanceUntilIdle()
         assertEquals(TimelineScope.ForYou, viewModel.uiState.value.scope)
 
         sessions.value = null
+        expiration.value = true
         testScheduler.advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertEquals(TimelineScope.Global, state.scope)
         assertFalse(state.signedIn)
+        assertTrue(state.sessionExpired)
         assertEquals(listOf("global-1"), state.posts.map(Post::id))
+    }
+
+    @Test
+    fun explicitSignOutDoesNotLookLikeSessionExpiry() = runTest {
+        val api = SequencedPostsApi(feedPages = listOf(page(listOf(post("feed-1")), null)))
+        val sessions = MutableStateFlow<AuthenticatedSession?>(signedSession())
+        val expiration = MutableStateFlow(false)
+        val viewModel = signedTimelineViewModel(api, sessions, expiration)
+        testScheduler.advanceUntilIdle()
+
+        sessions.value = null
+        testScheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.sessionExpired)
     }
 }
 
@@ -233,10 +250,11 @@ private fun TestScope.timelineViewModel(
 private fun TestScope.signedTimelineViewModel(
     api: PostsApi,
     sessions: MutableStateFlow<AuthenticatedSession?>,
+    sessionExpired: MutableStateFlow<Boolean>? = null,
 ): TimelineViewModel {
     val dispatcher = StandardTestDispatcher(testScheduler)
     val repository = PostsRepository(api, savedInstance = { instance() }, accessToken = { "signed-token" })
-    return TimelineViewModel(repository, TestScope(dispatcher), sessions)
+    return TimelineViewModel(repository, TestScope(dispatcher), sessions, sessionExpired)
 }
 
 private fun signedSession() =

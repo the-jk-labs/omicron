@@ -9,7 +9,7 @@
 
 ## Product State
 
-The Android-first Kotlin Multiplatform foundation, instance connection, and guest reading are complete. The app can normalize an HTTPS origin, retrieve `GET /api/instance`, retain public configuration, and recover the selected instance. Guests can browse Global/Local timelines and read posts natively with web-parity tables, syntax highlighting, and math. Android is the active target; `commonMain` remains the location for product code shared by future targets.
+The Android-first Kotlin Multiplatform foundation, instance connection, guest reading, and signed-in social reading are complete. The app can normalize an HTTPS origin, retrieve `GET /api/instance`, retain public configuration, and recover the selected instance. Readers can browse Global/Local timelines and the authenticated For you feed, read posts natively with web-parity tables, syntax highlighting, and math, interact with posts and comments, and browse local or supported remote profiles. Android is the active target; `commonMain` remains the location for product code shared by future targets.
 
 ## R0: Foundation And Design System
 
@@ -50,11 +50,11 @@ The Android-first Kotlin Multiplatform foundation, instance connection, and gues
 
 ## R3: Signed-In Reading And Social
 
-**Status:** In progress
+**Status:** Done
 
 **Outcome:** Signed-in readers can use their feed and interact safely with posts and people.
 
-**Progress:** Authenticated transport implements ADR-0004: app API calls send the in-memory JWT as `Authorization: Bearer` when a session exists and stay anonymous otherwise; a 401 invalidates the in-memory session and surfaces `UnauthorizedException`, while token minting clears the session only on `UNAUTHORIZED` and otherwise serves the stale token until its 15-minute expiry. The For you timeline (`GET /api/feed` with the merged cursor preserved exactly, cross-page duplicates removed client-side per the service contract) is offered first to signed-in readers with web-parity empty copy; scope labels retain natural width and the tab strip scrolls on narrow screens. Guests keep Local/Global and a lost session falls back to Global. Explicit session-loss recovery UI is still missing — a rejected token currently surfaces as a generic server error that degrades to guest content on retry. Remaining: interactions, profiles, and recovery states.
+**Completed:** Authenticated transport implements ADR-0004: app API calls send the in-memory JWT as `Authorization: Bearer` when a session exists and stay anonymous otherwise; a 401 invalidates the in-memory session, and confirmed Better Auth `UNAUTHORIZED` responses clear the stale per-origin cookie so sign-in recovery is available. The For you timeline (`GET /api/feed` with the merged cursor preserved exactly, cross-page duplicates removed client-side per the service contract) is offered first to signed-in readers with web-parity empty copy; scope labels retain natural width and the tab strip scrolls on narrow screens. Guests keep Local/Global, and an expired session falls back to Global with a visible sign-in action, distinct from intentional sign-out. Post likes, recommendations, and Read later saves use optimistic state with rollback; comments support listing, cursor pagination, replies, likes, editing, and deletion with failure recovery. Local and remote profiles expose posts and recommendations; local profiles additionally expose the confirmed follower/following member lists, while remote profiles show the server-provided counts. Follow, mute, and block actions reflect private-account requests and clear follow state when blocking. Navigation returns to the prior reading surface after sign-in.
 
 **Exit criteria:**
 

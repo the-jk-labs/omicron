@@ -13,9 +13,11 @@ import org.omicron.mobile.core.storage.SharedPreferencesInstanceStore
 import org.omicron.mobile.data.api.KtorAuthApi
 import org.omicron.mobile.data.api.KtorInstanceApi
 import org.omicron.mobile.data.api.KtorPostsApi
+import org.omicron.mobile.data.api.KtorSocialApi
 import org.omicron.mobile.data.repository.AuthRepository
 import org.omicron.mobile.data.repository.InstanceRepository
 import org.omicron.mobile.data.repository.PostsRepository
+import org.omicron.mobile.data.repository.SocialRepository
 
 class MainActivity : ComponentActivity() {
     private lateinit var appContainer: AppContainer
@@ -32,6 +34,7 @@ class MainActivity : ComponentActivity() {
                 appContainer.instanceRepository,
                 appContainer.authRepository,
                 appContainer.postsRepository,
+                appContainer.socialRepository,
             )
         }
     }
@@ -57,6 +60,14 @@ private class AppContainer(context: android.content.Context) {
     val postsRepository =
         PostsRepository(
             api = KtorPostsApi(httpClient),
+            savedInstance = instanceRepository::savedInstance,
+            accessToken = authRepository::accessToken,
+            onUnauthorized = { authRepository.invalidateSession() },
+        )
+
+    val socialRepository =
+        SocialRepository(
+            api = KtorSocialApi(httpClient),
             savedInstance = instanceRepository::savedInstance,
             accessToken = authRepository::accessToken,
             onUnauthorized = { authRepository.invalidateSession() },

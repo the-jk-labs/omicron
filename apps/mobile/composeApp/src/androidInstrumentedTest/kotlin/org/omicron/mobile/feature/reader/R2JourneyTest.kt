@@ -59,6 +59,43 @@ class R2JourneyTest {
     }
 
     @Test
+    fun expiredSessionOffersAWorkingSignInAction() {
+        val session =
+            MutableStateFlow<AuthenticatedSession?>(
+                AuthenticatedSession(
+                    AuthenticatedUser("user-1", "ada@example.com", "ada", "Ada"),
+                    "signed-token",
+                ),
+            )
+        val sessionExpired = MutableStateFlow(false)
+        var signInRequested = false
+        val viewModel =
+            TimelineViewModel(
+                PostsRepository(JourneyPostsApi(), savedInstance = { instance() }),
+                session = session,
+                sessionExpired = sessionExpired,
+            )
+
+        composeTestRule.setContent {
+            OmicronTheme {
+                TimelineRoute(
+                    viewModel = viewModel,
+                    onSignIn = { signInRequested = true },
+                    onChangeInstance = {},
+                    onOpenPost = {},
+                )
+            }
+        }
+        session.value = null
+        sessionExpired.value = true
+        composeTestRule.waitForText("Your session expired")
+        composeTestRule.onNodeWithText("Sign in").performClick()
+
+        assertTrue(signInRequested)
+        viewModel.close()
+    }
+
+    @Test
     fun forYouTabLabelFitsOnOneLine() {
         val session =
             MutableStateFlow(
