@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -18,6 +19,7 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.io.IOException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
@@ -32,6 +34,8 @@ import org.omicron.mobile.data.api.TimelinePageDto
 import org.omicron.mobile.data.api.TimelineScope
 import org.omicron.mobile.data.repository.PostsRepository
 import org.omicron.mobile.data.repository.UnauthorizedException
+import org.omicron.mobile.domain.model.AuthenticatedSession
+import org.omicron.mobile.domain.model.AuthenticatedUser
 import org.omicron.mobile.domain.model.InstanceConfiguration
 
 @RunWith(AndroidJUnit4::class)
@@ -52,6 +56,36 @@ class R2JourneyTest {
         composeTestRule.onNodeWithText("Local", substring = true).assertIsDisplayed()
         composeTestRule.onNodeWithText("Global", substring = true).assertIsDisplayed()
         assertTrue(composeTestRule.onAllNodesWithText("For you", substring = true).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test
+    fun forYouTabLabelFitsOnOneLine() {
+        val session =
+            MutableStateFlow(
+                AuthenticatedSession(
+                    AuthenticatedUser("user-1", "ada@example.com", "ada", "Ada"),
+                    "signed-token",
+                ),
+            )
+        val viewModel =
+            TimelineViewModel(
+                PostsRepository(JourneyPostsApi(), savedInstance = { instance() }),
+                session = session,
+            )
+
+        composeTestRule.setContent {
+            OmicronTheme {
+                TimelineRoute(viewModel = viewModel, onSignIn = {}, onChangeInstance = {}, onOpenPost = {})
+            }
+        }
+
+        composeTestRule.waitForIdle()
+        composeTestRule.waitForText("For you")
+        val label = composeTestRule.onNodeWithText("For you", useUnmergedTree = true).fetchSemanticsNode()
+        assertTrue(
+            "For you label wrapped: ${label.size.height}px",
+            label.size.height < composeTestRule.density.run { 30.dp.toPx() },
+        )
     }
 
     @Test

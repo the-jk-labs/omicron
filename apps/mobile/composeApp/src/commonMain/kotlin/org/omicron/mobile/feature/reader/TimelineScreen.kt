@@ -209,7 +209,11 @@ private fun TimelineHeader(
             }
         }
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 30.dp, bottom = 8.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, top = 30.dp, bottom = 8.dp)
+                    .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -246,7 +250,7 @@ private fun TimelineScopeTab(
 ) {
     val tint = if (selected) OmicronTheme.colors.foreground else OmicronTheme.colors.mutedForeground
     Column(
-        modifier = Modifier.width(IntrinsicSize.Min),
+        modifier = Modifier.width(IntrinsicSize.Max),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Button(
