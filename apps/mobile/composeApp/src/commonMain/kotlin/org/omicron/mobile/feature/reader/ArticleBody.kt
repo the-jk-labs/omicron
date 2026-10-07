@@ -1,13 +1,18 @@
 package org.omicron.mobile.feature.reader
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.Composable
@@ -30,6 +35,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import org.omicron.mobile.core.article.ArticleBlock
@@ -193,35 +199,103 @@ fun CoverImage(
 private fun ArticleTable(block: ArticleBlock.Table) {
     val linkColor = RikkaTheme.colors.primary
     val textColor = RikkaTheme.colors.onBackground
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(RikkaTheme.colors.muted, RikkaTheme.shapes.md)
-                .padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        if (block.headers.isNotEmpty()) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                block.headers.forEach { cell ->
-                    RichText(
-                        text = cell.toAnnotatedString(linkColor, textColor),
-                        variant = TextVariant.Small,
-                        style = TextStyle(fontWeight = FontWeight.Bold),
-                        modifier = Modifier.weight(1f),
+    val columnCount = tableColumnCount(block)
+    if (columnCount == 0) return
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val cellWidth = tableCellWidth(columnCount, maxWidth)
+        val tableModifier =
+            if (cellWidth == null) {
+                Modifier.fillMaxWidth()
+            } else {
+                Modifier.width(cellWidth * columnCount).horizontalScroll(rememberScrollState())
+            }
+        Column(
+            modifier =
+                tableModifier
+                    .border(1.dp, RikkaTheme.colors.border)
+                    .background(RikkaTheme.colors.background),
+        ) {
+            if (block.headers.isNotEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth().background(RikkaTheme.colors.muted)) {
+                    TableRow(
+                        cells = block.headers.padTo(columnCount),
+                        linkColor = linkColor,
+                        textColor = textColor,
+                        cellWidth = cellWidth,
+                        header = true,
                     )
                 }
+                TableDivider()
             }
-        }
-        block.rows.forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { cell ->
-                    RichText(text = cell.toAnnotatedString(linkColor, textColor), variant = TextVariant.Small, modifier = Modifier.weight(1f))
-                }
+            block.rows.forEachIndexed { index, row ->
+                TableRow(
+                    cells = row.padTo(columnCount),
+                    linkColor = linkColor,
+                    textColor = textColor,
+                    cellWidth = cellWidth,
+                    header = false,
+                )
+                if (index != block.rows.lastIndex) TableDivider()
             }
         }
     }
 }
+
+@Composable
+private fun TableRow(
+    cells: List<InlineContent>,
+    linkColor: Color,
+    textColor: Color,
+    cellWidth: Dp?,
+    header: Boolean,
+) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        cells.forEach { cell ->
+            val cellModifier =
+                if (cellWidth == null) {
+                    Modifier.weight(1f)
+                } else {
+                    Modifier.width(cellWidth)
+                }
+            RichText(
+                text = cell.toAnnotatedString(linkColor, textColor),
+                variant = TextVariant.Small,
+                style = if (header) TextStyle(fontWeight = FontWeight.Bold) else TextStyle.Default,
+                modifier = cellModifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun TableDivider() {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(RikkaTheme.colors.border)
+                .padding(vertical = 0.5.dp),
+    )
+}
+
+internal fun tableColumnCount(block: ArticleBlock.Table): Int =
+    maxOf(block.headers.size, block.rows.maxOfOrNull { it.size } ?: 0)
+
+internal fun tableCellWidth(
+    columnCount: Int,
+    maxWidth: Dp,
+    minCellWidth: Dp = 120.dp,
+): Dp? {
+    if (columnCount <= 0) return null
+    return if (minCellWidth * columnCount <= maxWidth) null else minCellWidth
+}
+
+private fun List<InlineContent>.padTo(columnCount: Int): List<InlineContent> =
+    if (size >= columnCount) {
+        take(columnCount)
+    } else {
+        this + List(columnCount - size) { emptyList() }
+    }
 
 private fun InlineContent.toAnnotatedString(linkColor: Color, textColor: Color): AnnotatedString =
     buildAnnotatedString {
