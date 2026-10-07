@@ -4,6 +4,7 @@ import kotlinx.io.IOException
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
+import org.omicron.mobile.data.api.PostDto
 import org.omicron.mobile.data.api.PostsApi
 import org.omicron.mobile.data.api.TimelinePageDto
 import org.omicron.mobile.data.api.TimelineScope
@@ -126,7 +127,7 @@ private fun page(
     TimelinePageDto(
         items =
             posts.map {
-                org.omicron.mobile.data.api.PostDto(
+                PostDto(
                     id = it.id,
                     title = "Title ${it.id}",
                     contentHtml = "<p>Body</p>",
@@ -182,6 +183,16 @@ private class SequencedPostsApi(
         if (failFirst && calls == 1) throw IOException("unresolved")
         return pages[minOf(calls - 1, pages.size - 1)]
     }
+
+    override suspend fun post(
+        origin: String,
+        id: String,
+    ): PostDto = throw UnsupportedOperationException()
+
+    override suspend fun relatedPosts(
+        origin: String,
+        id: String,
+    ): List<PostDto> = emptyList()
 }
 
 private class FailingPostsApi(
@@ -192,4 +203,14 @@ private class FailingPostsApi(
         scope: TimelineScope,
         cursor: String?,
     ): TimelinePageDto = throw failure
+
+    override suspend fun post(
+        origin: String,
+        id: String,
+    ): PostDto = throw failure
+
+    override suspend fun relatedPosts(
+        origin: String,
+        id: String,
+    ): List<PostDto> = throw failure
 }

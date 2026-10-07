@@ -1,6 +1,7 @@
 package org.omicron.mobile.feature.reader
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
@@ -55,6 +57,7 @@ fun TimelineRoute(
     viewModel: TimelineViewModel,
     onSignIn: () -> Unit,
     onChangeInstance: () -> Unit,
+    onOpenPost: (String) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsState()
     TimelineScreen(
@@ -65,6 +68,7 @@ fun TimelineRoute(
         onLoadMore = viewModel::loadMore,
         onSignIn = onSignIn,
         onChangeInstance = onChangeInstance,
+        onOpenPost = onOpenPost,
     )
 }
 
@@ -77,6 +81,7 @@ private fun TimelineScreen(
     onLoadMore: () -> Unit,
     onSignIn: () -> Unit,
     onChangeInstance: () -> Unit,
+    onOpenPost: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxSize().background(RikkaTheme.colors.background).safeDrawingPadding(),
@@ -102,6 +107,7 @@ private fun TimelineScreen(
                         state = state,
                         onRefresh = onRefresh,
                         onLoadMore = onLoadMore,
+                        onOpenPost = onOpenPost,
                     )
             }
         }
@@ -221,6 +227,7 @@ private fun TimelineList(
     state: TimelineUiState,
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
+    onOpenPost: (String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -244,7 +251,7 @@ private fun TimelineList(
             key = { post -> post.id },
             contentType = { POST_CONTENT_TYPE },
         ) { post ->
-            PostCard(post = post)
+            PostCard(post = post, onOpen = { onOpenPost(post.id) })
         }
         if (state.nextCursor != null) {
             item(key = "load-more", contentType = "load-more") {
@@ -285,9 +292,16 @@ private fun TimelineList(
 }
 
 @Composable
-private fun PostCard(post: Post) {
+private fun PostCard(
+    post: Post,
+    onOpen: () -> Unit,
+) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(role = Role.Button, onClick = onOpen)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(

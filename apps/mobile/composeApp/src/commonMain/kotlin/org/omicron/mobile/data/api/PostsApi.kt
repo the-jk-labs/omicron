@@ -13,12 +13,32 @@ interface PostsApi {
         scope: TimelineScope,
         cursor: String?,
     ): TimelinePageDto
+
+    suspend fun post(
+        origin: String,
+        id: String,
+    ): PostDto
+
+    suspend fun relatedPosts(
+        origin: String,
+        id: String,
+    ): List<PostDto>
 }
 
 @Serializable
 data class TimelinePageDto(
     val items: List<PostDto> = emptyList(),
     val nextCursor: String? = null,
+)
+
+@Serializable
+data class SinglePostDto(
+    val post: PostDto,
+)
+
+@Serializable
+data class RelatedPostsDto(
+    val items: List<PostDto> = emptyList(),
 )
 
 @Serializable
@@ -31,6 +51,8 @@ data class PostDto(
     val language: String? = null,
     val summary: String? = null,
     val bannerUrl: String? = null,
+    val coverUrl: String? = null,
+    val coverCredit: CoverCreditDto? = null,
     val createdAt: String,
     val updatedAt: String? = null,
     val author: PostAuthorDto,
@@ -40,6 +62,16 @@ data class PostDto(
     val commentCount: Int = 0,
     val recommendCount: Int = 0,
     val recommended: Boolean = false,
+)
+
+@Serializable
+data class CoverCreditDto(
+    val name: String,
+    val nameUrl: String,
+    val source: String,
+    val sourceUrl: String,
+    val license: String? = null,
+    val licenseUrl: String? = null,
 )
 
 @Serializable

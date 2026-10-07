@@ -63,6 +63,47 @@ class PostsRepositoryTest {
         assertFailsWith<MissingInstanceException> { repository.timeline(TimelineScope.Global, null) }
     }
 
+    @Test
+    fun mapsPostDetailWithExplicitCoverOnly() = runTest {
+        val api =
+            FakePostsApi(
+                pages =
+                    listOf(
+                        TimelinePageDto(
+                            items =
+                                listOf(
+                                    postDto().copy(
+                                        bannerUrl = "/api/uploads/fallback.jpg",
+                                        coverUrl = "/uploads/cover.jpg",
+                                    ),
+                                ),
+                            nextCursor = null,
+                        ),
+                    ),
+            )
+        val repository = PostsRepository(api, savedInstance = { instance() })
+
+        val detail = repository.postDetail("post-1")
+
+        assertEquals("<p>Hello</p>", detail.contentHtml)
+        assertEquals("https://omicron.blog/uploads/cover.jpg", detail.coverUrl)
+        assertEquals("A greeting", repository.timeline(TimelineScope.Global, null).items.single().summary)
+    }
+
+    @Test
+    fun mapsRelatedPosts() = runTest {
+        val api =
+            FakePostsApi(
+                pages = listOf(TimelinePageDto(items = listOf(postDto().copy(id = "post-2")), nextCursor = null)),
+            )
+        val repository = PostsRepository(api, savedInstance = { instance() })
+
+        val related = repository.relatedPosts("post-1")
+
+        assertEquals(listOf("post-2"), related.map { it.id })
+        assertEquals("https://omicron.blog/api/uploads/cover.jpg", related.single().bannerUrl)
+    }
+
     private fun instance() =
         InstanceConfiguration(
             origin = "https://omicron.blog",
@@ -108,4 +149,14 @@ private class FakePostsApi(
         requests += scope to cursor
         return pages[minOf(requests.size - 1, pages.size - 1)]
     }
+
+    override suspend fun post(
+        origin: String,
+        id: String,
+    ): PostDto = pages.first().items.single { it.id == id }
+
+    override suspend fun relatedPosts(
+        origin: String,
+        id: String,
+    ): List<PostDto> = pages.first().items.filter { it.id != id }
 }

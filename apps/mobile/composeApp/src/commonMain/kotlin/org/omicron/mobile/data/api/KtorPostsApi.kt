@@ -19,4 +19,20 @@ class KtorPostsApi(
             if (cursor != null) parameter("cursor", cursor)
         }.body()
     }
+
+    override suspend fun post(
+        origin: String,
+        id: String,
+    ): PostDto {
+        val url = "${origin.trimEnd('/')}/api/posts/$id"
+        return client.get(url).body<SinglePostDto>().post
+    }
+
+    override suspend fun relatedPosts(
+        origin: String,
+        id: String,
+    ): List<PostDto> {
+        val url = "${origin.trimEnd('/')}/api/posts/$id/related"
+        return client.get(url).body<RelatedPostsDto>().items
+    }
 }
