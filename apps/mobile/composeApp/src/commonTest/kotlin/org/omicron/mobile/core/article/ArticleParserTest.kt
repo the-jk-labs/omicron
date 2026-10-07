@@ -85,8 +85,10 @@ class ArticleParserTest {
                 "<details><summary>More</summary><p>Hidden</p></details><p><math><mi>x</mi></math></p>",
             )
 
-        val texts = blocks.map { (it as ArticleBlock.Paragraph).content.single().text }
-        assertEquals(listOf("More", "Hidden", "x"), texts)
+        val texts = blocks.take(2).map { (it as ArticleBlock.Paragraph).content.single().text }
+        assertEquals(listOf("More", "Hidden"), texts)
+        val math = (blocks[2] as ArticleBlock.Paragraph).content.single().math!!
+        assertEquals("x", math.text.text)
     }
 
     @Test

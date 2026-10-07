@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -34,6 +35,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
@@ -47,6 +49,7 @@ import org.omicron.mobile.core.article.CodePalette
 import org.omicron.mobile.core.article.InlineContent
 import org.omicron.mobile.core.article.highlightCode
 import org.omicron.mobile.core.article.highlightLanguage
+import org.omicron.mobile.core.article.styled
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.rikkaui.text.TextVariant
 import zed.rainxch.rikkaui.foundation.RikkaTheme
@@ -109,6 +112,7 @@ fun ArticleBody(
                         }
                     is ArticleBlock.Image -> ArticleImage(url = block.url, description = block.alt)
                     is ArticleBlock.Table -> ArticleTable(block = block)
+                    is ArticleBlock.Math -> ArticleMath(block = block)
                     is ArticleBlock.Divider ->
                         Box(
                             modifier =
@@ -328,11 +332,29 @@ private fun List<InlineContent>.padTo(columnCount: Int): List<InlineContent> =
         this + List(columnCount - size) { emptyList() }
     }
 
+@Composable
+private fun ArticleMath(block: ArticleBlock.Math) {
+    Box(
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        contentAlignment = Alignment.Center,
+    ) {
+        RichText(
+            text = block.content.styled(),
+            variant = TextVariant.P,
+            style = TextStyle(textAlign = TextAlign.Center),
+        )
+    }
+}
+
 private fun InlineContent.toAnnotatedString(linkColor: Color, textColor: Color): AnnotatedString =
     buildAnnotatedString {
         forEach { span ->
             if (span.link != null) pushLink(LinkAnnotation.Url(span.link))
-            withStyle(span.toStyle(linkColor, textColor)) { append(span.text) }
+            if (span.math != null) {
+                append(span.math.styled())
+            } else {
+                withStyle(span.toStyle(linkColor, textColor)) { append(span.text) }
+            }
             if (span.link != null) pop()
         }
     }
