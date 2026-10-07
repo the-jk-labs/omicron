@@ -52,7 +52,7 @@ private class AppContainer(context: android.content.Context) {
             store = SharedPreferencesInstanceStore(context),
         )
 
-    val authRepository = AuthRepository(KtorAuthApi(httpClient))
+    val authRepository = AuthRepository(api = KtorAuthApi(httpClient), sessionCookieStore = sessionCookieStore)
 
     val postsRepository =
         PostsRepository(

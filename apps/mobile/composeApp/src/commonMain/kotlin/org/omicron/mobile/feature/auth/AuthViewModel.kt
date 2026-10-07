@@ -1,5 +1,6 @@
 package org.omicron.mobile.feature.auth
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -64,7 +65,8 @@ class AuthViewModel(
     fun showSignIn() {
         mutableUiState.update { state ->
             when (val phase = state.phase) {
-                is AuthPhase.Credentials -> state.copy(phase = phase.copy(mode = AuthMode.SignIn, error = null))
+                is AuthPhase.Credentials ->
+                    state.copy(phase = phase.copy(mode = AuthMode.SignIn, error = null, signOutWarning = false))
                 is AuthPhase.VerificationRequired ->
                     AuthUiState(
                         phase =
@@ -79,7 +81,7 @@ class AuthViewModel(
         }
     }
 
-    fun showRegistration() = updateCredentials { it.copy(mode = AuthMode.Register, error = null) }
+    fun showRegistration() = updateCredentials { it.copy(mode = AuthMode.Register, error = null, signOutWarning = false) }
 
     fun signIn() {
         val credentials = mutableUiState.value.phase as? AuthPhase.Credentials ?: return
@@ -130,14 +132,16 @@ class AuthViewModel(
         val signedIn = mutableUiState.value.phase as? AuthPhase.SignedIn ?: return
         mutableUiState.update { it.copy(phase = signedIn.copy(isSigningOut = true, error = null)) }
         scope.launch {
-            runCatching { repository.signOut(signedIn.instance.origin) }
-                .onSuccess {
-                    mutableUiState.update { AuthUiState(phase = AuthPhase.Credentials(signedIn.instance)) }
-                }.onFailure {
-                    mutableUiState.update {
-                        AuthUiState(phase = signedIn.copy(isSigningOut = false, error = AuthError.Unavailable))
-                    }
+            try {
+                repository.signOut(signedIn.instance.origin)
+                mutableUiState.update { AuthUiState(phase = AuthPhase.Credentials(signedIn.instance)) }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (_: Throwable) {
+                mutableUiState.update {
+                    AuthUiState(phase = AuthPhase.Credentials(signedIn.instance, signOutWarning = true))
                 }
+            }
         }
     }
 
@@ -168,7 +172,7 @@ class AuthViewModel(
     private fun updateCredentials(update: (AuthPhase.Credentials) -> AuthPhase.Credentials) {
         mutableUiState.update { state ->
             val phase = state.phase as? AuthPhase.Credentials ?: return@update state
-            state.copy(phase = update(phase))
+            state.copy(phase = update(phase).copy(signOutWarning = false))
         }
     }
 
@@ -190,6 +194,7 @@ sealed interface AuthPhase {
         val form: AuthForm = AuthForm(),
         val isSubmitting: Boolean = false,
         val error: AuthFormError? = null,
+        val signOutWarning: Boolean = false,
     ) : AuthPhase
 
     data class SignedIn(

@@ -60,6 +60,7 @@ import org.omicron.mobile.resources.auth_sign_in_title
 import org.omicron.mobile.resources.auth_signed_in_description
 import org.omicron.mobile.resources.auth_signed_in_title
 import org.omicron.mobile.resources.auth_sign_out
+import org.omicron.mobile.resources.auth_sign_out_remote_failed
 import org.omicron.mobile.resources.auth_try_again
 import org.omicron.mobile.resources.auth_username
 import org.omicron.mobile.resources.auth_username_or_email
@@ -170,6 +171,13 @@ private fun CredentialsForm(
             ),
         variant = TextVariant.P,
     )
+    if (phase.signOutWarning) {
+        Text(
+            text = stringResource(Res.string.auth_sign_out_remote_failed),
+            variant = TextVariant.Small,
+            color = RikkaTheme.colors.onMuted,
+        )
+    }
     if (isRegistering) {
         Input(
             value = phase.form.username,
