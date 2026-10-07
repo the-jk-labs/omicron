@@ -23,4 +23,6 @@ data class PostDetail(
     val commentCount: Int,
     val recommendCount: Int,
     val remote: Boolean,
+    val liked: Boolean = false,
+    val recommended: Boolean = false,
 )

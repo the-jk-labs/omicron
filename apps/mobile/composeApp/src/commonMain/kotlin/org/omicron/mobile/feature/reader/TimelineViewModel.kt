@@ -22,6 +22,7 @@ class TimelineViewModel(
     private val repository: PostsRepository,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val session: StateFlow<AuthenticatedSession?>? = null,
+    private val sessionExpired: StateFlow<Boolean>? = null,
 ) {
     private val mutableUiState = MutableStateFlow(TimelineUiState())
     val uiState: StateFlow<TimelineUiState> = mutableUiState.asStateFlow()
@@ -29,13 +30,20 @@ class TimelineViewModel(
 
     init {
         val signedIn = session?.value != null
-        mutableUiState.update { it.copy(scope = if (signedIn) TimelineScope.ForYou else TimelineScope.Global, signedIn = signedIn) }
+        mutableUiState.update {
+            it.copy(
+                scope = if (signedIn) TimelineScope.ForYou else TimelineScope.Global,
+                signedIn = signedIn,
+                username = session?.value?.user?.username,
+                sessionExpired = sessionExpired?.value ?: false,
+            )
+        }
         session?.let { sessions ->
             scope.launch {
                 var wasSignedIn = signedIn
                 sessions.collect { current ->
                     val nowSignedIn = current != null
-                    mutableUiState.update { it.copy(signedIn = nowSignedIn) }
+                    mutableUiState.update { it.copy(signedIn = nowSignedIn, username = current?.user?.username) }
                     if (nowSignedIn == wasSignedIn) return@collect
                     wasSignedIn = nowSignedIn
                     if (nowSignedIn && !scopeSelectedByUser && mutableUiState.value.scope != TimelineScope.ForYou) {
@@ -48,6 +56,9 @@ class TimelineViewModel(
                     }
                 }
             }
+        }
+        sessionExpired?.let { expirations ->
+            scope.launch { expirations.collect { expired -> mutableUiState.update { it.copy(sessionExpired = expired) } } }
         }
         loadInitial()
     }
@@ -140,6 +151,8 @@ class TimelineViewModel(
 data class TimelineUiState(
     val scope: TimelineScope = TimelineScope.Global,
     val signedIn: Boolean = false,
+    val username: String? = null,
+    val sessionExpired: Boolean = false,
     val posts: List<Post> = emptyList(),
     val nextCursor: String? = null,
     val phase: TimelinePhase = TimelinePhase.Loading,

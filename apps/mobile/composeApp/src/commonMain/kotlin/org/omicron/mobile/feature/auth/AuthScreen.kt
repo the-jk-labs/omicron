@@ -32,6 +32,7 @@ import org.omicron.mobile.core.designsystem.rikkaui.text.TextVariant
 import org.omicron.mobile.resources.Res
 import org.omicron.mobile.resources.auth_change_to_register
 import org.omicron.mobile.resources.auth_change_to_sign_in
+import org.omicron.mobile.resources.auth_continue
 import org.omicron.mobile.resources.auth_display_name
 import org.omicron.mobile.resources.auth_email
 import org.omicron.mobile.resources.auth_error_display_name_too_long
@@ -74,12 +75,14 @@ import zed.rainxch.rikkaui.foundation.RikkaTheme
 fun AuthRoute(
     viewModel: AuthViewModel,
     onChangeInstance: () -> Unit,
+    onContinue: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
     AuthScreen(
         state = state,
         onRetry = viewModel::restore,
         onChangeInstance = onChangeInstance,
+        onContinue = onContinue,
         onIdentifierChange = viewModel::updateIdentifier,
         onUsernameChange = viewModel::updateUsername,
         onEmailChange = viewModel::updateEmail,
@@ -99,6 +102,7 @@ private fun AuthScreen(
     state: AuthUiState,
     onRetry: () -> Unit,
     onChangeInstance: () -> Unit,
+    onContinue: () -> Unit,
     onIdentifierChange: (String) -> Unit,
     onUsernameChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
@@ -136,7 +140,7 @@ private fun AuthScreen(
                         onRegister = onRegister,
                     )
 
-                is AuthPhase.SignedIn -> SignedIn(phase, onSignOut, onChangeInstance)
+                is AuthPhase.SignedIn -> SignedIn(phase, onSignOut, onChangeInstance, onContinue)
                 is AuthPhase.VerificationRequired -> VerificationRequired(phase, onShowSignIn, onChangeInstance)
                 is AuthPhase.Error -> AuthError(phase.error, onRetry, onChangeInstance)
             }
@@ -272,6 +276,7 @@ private fun SignedIn(
     phase: AuthPhase.SignedIn,
     onSignOut: () -> Unit,
     onChangeInstance: () -> Unit,
+    onContinue: () -> Unit,
 ) {
     Text(text = stringResource(Res.string.auth_signed_in_title), variant = TextVariant.H2)
     Text(
@@ -279,6 +284,12 @@ private fun SignedIn(
         variant = TextVariant.P,
     )
     phase.error?.let { FormError(AuthFormError.Unavailable) }
+    Button(
+        text = stringResource(Res.string.auth_continue),
+        onClick = onContinue,
+        modifier = Modifier.fillMaxWidth(),
+        size = ButtonSize.Lg,
+    )
     Button(
         text = stringResource(Res.string.auth_sign_out),
         onClick = onSignOut,

@@ -26,4 +26,6 @@ data class Post(
     val recommendCount: Int,
     val remote: Boolean,
     val contentHtml: String = "",
+    val liked: Boolean = false,
+    val recommended: Boolean = false,
 )

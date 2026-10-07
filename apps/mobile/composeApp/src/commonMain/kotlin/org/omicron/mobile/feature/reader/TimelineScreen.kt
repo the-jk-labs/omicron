@@ -45,6 +45,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.omicron.mobile.core.article.PostPreview
 import org.omicron.mobile.core.article.postPreview
 import org.omicron.mobile.core.designsystem.OmicronTheme
+import org.omicron.mobile.core.designsystem.SessionExpiredNotice
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonAnimation
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
@@ -93,8 +94,10 @@ import org.omicron.mobile.resources.timeline_retry
 import org.omicron.mobile.resources.timeline_scope_for_you
 import org.omicron.mobile.resources.timeline_scope_global
 import org.omicron.mobile.resources.timeline_scope_local
+import org.omicron.mobile.resources.timeline_session_expired
 import org.omicron.mobile.resources.timeline_sign_in
 import org.omicron.mobile.resources.timeline_untitled
+import org.omicron.mobile.resources.timeline_open_profile
 import zed.rainxch.rikkaui.foundation.RikkaTheme
 
 private const val POST_CONTENT_TYPE = "post"
@@ -105,6 +108,7 @@ fun TimelineRoute(
     onSignIn: () -> Unit,
     onChangeInstance: () -> Unit,
     onOpenPost: (String) -> Unit,
+    onOpenProfile: (String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
     TimelineScreen(
@@ -116,6 +120,7 @@ fun TimelineRoute(
         onSignIn = onSignIn,
         onChangeInstance = onChangeInstance,
         onOpenPost = onOpenPost,
+        onOpenProfile = onOpenProfile,
     )
 }
 
@@ -129,6 +134,7 @@ private fun TimelineScreen(
     onSignIn: () -> Unit,
     onChangeInstance: () -> Unit,
     onOpenPost: (String) -> Unit,
+    onOpenProfile: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxSize().background(OmicronTheme.colors.background).safeDrawingPadding(),
@@ -139,7 +145,14 @@ private fun TimelineScreen(
             onSelectScope = onSelectScope,
             onSignIn = onSignIn,
             onChangeInstance = onChangeInstance,
+            onOpenProfile = { state.username?.let(onOpenProfile) },
         )
+        if (state.sessionExpired) {
+            SessionExpiredNotice(
+                message = stringResource(Res.string.timeline_session_expired),
+                onSignIn = onSignIn,
+            )
+        }
         Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
             when (val phase = state.phase) {
                 is TimelinePhase.Loading -> TimelineLoading()
@@ -156,6 +169,7 @@ private fun TimelineScreen(
                         onRefresh = onRefresh,
                         onLoadMore = onLoadMore,
                         onOpenPost = onOpenPost,
+                        onOpenProfile = onOpenProfile,
                     )
             }
         }
@@ -169,6 +183,7 @@ private fun TimelineHeader(
     onSelectScope: (TimelineScope) -> Unit,
     onSignIn: () -> Unit,
     onChangeInstance: () -> Unit,
+    onOpenProfile: () -> Unit,
 ) {
     Column(
         modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth(),
@@ -202,8 +217,8 @@ private fun TimelineHeader(
                 )
                 IconButton(
                     icon = RikkaIcons.User,
-                    contentDescription = stringResource(Res.string.timeline_sign_in),
-                    onClick = onSignIn,
+                    contentDescription = stringResource(if (signedIn) Res.string.timeline_open_profile else Res.string.timeline_sign_in),
+                    onClick = if (signedIn) onOpenProfile else onSignIn,
                     size = IconButtonSize.Default,
                 )
             }
@@ -372,6 +387,7 @@ private fun TimelineList(
     onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     onOpenPost: (String) -> Unit,
+    onOpenProfile: (String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth().fillMaxHeight(),
@@ -394,7 +410,11 @@ private fun TimelineList(
             key = { post -> post.id },
             contentType = { POST_CONTENT_TYPE },
         ) { post ->
-            PostCard(post = post, onOpen = { onOpenPost(post.id) })
+            PostCard(
+                post = post,
+                onOpen = { onOpenPost(post.id) },
+                onOpenProfile = { onOpenProfile(post.author.username) },
+            )
         }
         if (state.nextCursor != null) {
             item(key = "load-more", contentType = "load-more") {
@@ -438,6 +458,7 @@ private fun TimelineList(
 private fun PostCard(
     post: Post,
     onOpen: () -> Unit,
+    onOpenProfile: () -> Unit,
 ) {
     val preview = remember(post.summary, post.contentHtml) { postPreview(post.summary, post.contentHtml) }
     Column(
@@ -452,10 +473,13 @@ private fun PostCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AuthorAvatar(post = post)
+            Box(modifier = Modifier.clickable(role = Role.Button, onClick = onOpenProfile)) {
+                AuthorAvatar(post = post)
+            }
             Text(
                 text = post.author.displayName,
                 variant = TextVariant.P,
+                modifier = Modifier.clickable(role = Role.Button, onClick = onOpenProfile),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 color = OmicronTheme.colors.foreground,

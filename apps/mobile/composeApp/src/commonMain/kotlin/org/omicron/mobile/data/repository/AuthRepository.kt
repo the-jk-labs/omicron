@@ -22,14 +22,25 @@ class AuthRepository(
     private var tokenMintedAt: Long? = null
     private val mutableSession = MutableStateFlow<AuthenticatedSession?>(null)
     val session: StateFlow<AuthenticatedSession?> = mutableSession.asStateFlow()
+    private val mutableSessionExpired = MutableStateFlow(false)
+    val sessionExpired: StateFlow<Boolean> = mutableSessionExpired.asStateFlow()
 
     suspend fun restore(origin: String): AuthenticatedSession? {
         val session =
             api.getSession(origin) ?: run {
                 clearSession()
+                sessionCookieStore.clear(origin)
                 return null
             }
-        val token = api.getToken(origin)
+        val token =
+            try {
+                api.getToken(origin)
+            } catch (exception: AuthApiException) {
+                if (exception.code != UNAUTHORIZED_CODE) throw exception
+                expireSession()
+                sessionCookieStore.clear(origin)
+                return null
+            }
         return rememberSession(
             origin = origin,
             user =
@@ -49,6 +60,7 @@ class AuthRepository(
         } finally {
             clearSession()
             sessionCookieStore.clear(origin)
+            mutableSessionExpired.value = false
         }
     }
 
@@ -79,6 +91,7 @@ class AuthRepository(
     fun currentSession(): AuthenticatedSession? = activeSession
 
     fun invalidateSession() {
+        if (activeSession != null) mutableSessionExpired.value = true
         clearSession()
     }
 
@@ -93,11 +106,13 @@ class AuthRepository(
         } catch (exception: Throwable) {
             if (exception is CancellationException) throw exception
             if ((exception as? AuthApiException)?.code == UNAUTHORIZED_CODE) {
-                clearSession()
+                expireSession()
+                sessionCookieStore.clear(origin)
                 null
             } else if (age < TOKEN_EXPIRES_AFTER_MILLIS) {
                 session.accessToken
             } else {
+                mutableSessionExpired.value = true
                 clearSession()
                 null
             }
@@ -145,6 +160,7 @@ class AuthRepository(
         accessToken: String,
     ): AuthenticatedSession =
         AuthenticatedSession(user, accessToken).also {
+            mutableSessionExpired.value = false
             activeSession = it
             activeOrigin = origin
             tokenMintedAt = now()
@@ -156,6 +172,11 @@ class AuthRepository(
         activeOrigin = null
         tokenMintedAt = null
         mutableSession.value = null
+    }
+
+    private fun expireSession() {
+        mutableSessionExpired.value = true
+        clearSession()
     }
 
     private companion object {
