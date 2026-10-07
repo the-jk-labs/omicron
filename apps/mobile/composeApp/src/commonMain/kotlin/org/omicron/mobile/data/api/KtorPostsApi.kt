@@ -24,6 +24,18 @@ class KtorPostsApi(
         }.body()
     }
 
+    override suspend fun feed(
+        origin: String,
+        cursor: String?,
+        accessToken: String,
+    ): TimelinePageDto {
+        val url = "${origin.trimEnd('/')}/api/feed"
+        return client.get(url) {
+            authorized(accessToken)
+            if (cursor != null) parameter("cursor", cursor)
+        }.body()
+    }
+
     override suspend fun post(
         origin: String,
         id: String,

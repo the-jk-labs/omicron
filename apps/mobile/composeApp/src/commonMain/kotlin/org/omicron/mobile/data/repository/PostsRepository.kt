@@ -30,8 +30,18 @@ class PostsRepository(
         scope: TimelineScope,
         cursor: String?,
     ): TimelinePage {
+        require(scope != TimelineScope.ForYou) { "For you loads through feed()" }
         val origin = savedInstance()?.origin ?: throw MissingInstanceException()
         val page = authorizedCall(origin) { token -> api.timeline(origin, scope, cursor, token) }
+        return TimelinePage(
+            items = page.items.map { it.toDomain(origin) },
+            nextCursor = page.nextCursor,
+        )
+    }
+
+    suspend fun feed(cursor: String?): TimelinePage {
+        val origin = savedInstance()?.origin ?: throw MissingInstanceException()
+        val page = authorizedCall(origin) { token -> api.feed(origin, cursor, token ?: throw UnauthorizedException()) }
         return TimelinePage(
             items = page.items.map { it.toDomain(origin) },
             nextCursor = page.nextCursor,

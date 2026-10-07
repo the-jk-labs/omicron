@@ -3,6 +3,7 @@ package org.omicron.mobile.data.api
 import kotlinx.serialization.Serializable
 
 enum class TimelineScope {
+    ForYou,
     Global,
     Local,
 }
@@ -13,6 +14,12 @@ interface PostsApi {
         scope: TimelineScope,
         cursor: String?,
         accessToken: String? = null,
+    ): TimelinePageDto
+
+    suspend fun feed(
+        origin: String,
+        cursor: String?,
+        accessToken: String,
     ): TimelinePageDto
 
     suspend fun post(

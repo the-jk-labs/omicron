@@ -66,6 +66,8 @@ import org.omicron.mobile.resources.omicron_logo
 import org.omicron.mobile.resources.timeline_change_instance
 import org.omicron.mobile.resources.timeline_date_format
 import org.omicron.mobile.resources.timeline_empty_description
+import org.omicron.mobile.resources.timeline_empty_for_you_description
+import org.omicron.mobile.resources.timeline_empty_for_you_title
 import org.omicron.mobile.resources.timeline_empty_title
 import org.omicron.mobile.resources.timeline_error_missing_instance
 import org.omicron.mobile.resources.timeline_error_offline
@@ -88,6 +90,7 @@ import org.omicron.mobile.resources.timeline_month_sep
 import org.omicron.mobile.resources.timeline_reading_time
 import org.omicron.mobile.resources.timeline_refresh
 import org.omicron.mobile.resources.timeline_retry
+import org.omicron.mobile.resources.timeline_scope_for_you
 import org.omicron.mobile.resources.timeline_scope_global
 import org.omicron.mobile.resources.timeline_scope_local
 import org.omicron.mobile.resources.timeline_sign_in
@@ -132,6 +135,7 @@ private fun TimelineScreen(
     ) {
         TimelineHeader(
             scope = state.scope,
+            signedIn = state.signedIn,
             onSelectScope = onSelectScope,
             onSignIn = onSignIn,
             onChangeInstance = onChangeInstance,
@@ -139,7 +143,7 @@ private fun TimelineScreen(
         Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
             when (val phase = state.phase) {
                 is TimelinePhase.Loading -> TimelineLoading()
-                is TimelinePhase.Empty -> TimelineEmpty(onRefresh = onRefresh)
+                is TimelinePhase.Empty -> TimelineEmpty(scope = state.scope, onRefresh = onRefresh)
                 is TimelinePhase.Error ->
                     TimelineError(
                         error = phase.error,
@@ -161,6 +165,7 @@ private fun TimelineScreen(
 @Composable
 private fun TimelineHeader(
     scope: TimelineScope,
+    signedIn: Boolean,
     onSelectScope: (TimelineScope) -> Unit,
     onSignIn: () -> Unit,
     onChangeInstance: () -> Unit,
@@ -208,6 +213,14 @@ private fun TimelineHeader(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (signedIn) {
+                TimelineScopeTab(
+                    label = stringResource(Res.string.timeline_scope_for_you),
+                    icon = RikkaIcons.Star,
+                    selected = scope == TimelineScope.ForYou,
+                    onClick = { onSelectScope(TimelineScope.ForYou) },
+                )
+            }
             TimelineScopeTab(
                 label = stringResource(Res.string.timeline_scope_local),
                 icon = RikkaIcons.Users,
@@ -275,14 +288,37 @@ private fun TimelineLoading() {
 }
 
 @Composable
-private fun TimelineEmpty(onRefresh: () -> Unit) {
+private fun TimelineEmpty(
+    scope: TimelineScope,
+    onRefresh: () -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(text = stringResource(Res.string.timeline_empty_title), variant = TextVariant.H3)
-        Text(text = stringResource(Res.string.timeline_empty_description), variant = TextVariant.Muted)
+        Text(
+            text =
+                stringResource(
+                    if (scope == TimelineScope.ForYou) {
+                        Res.string.timeline_empty_for_you_title
+                    } else {
+                        Res.string.timeline_empty_title
+                    },
+                ),
+            variant = TextVariant.H3,
+        )
+        Text(
+            text =
+                stringResource(
+                    if (scope == TimelineScope.ForYou) {
+                        Res.string.timeline_empty_for_you_description
+                    } else {
+                        Res.string.timeline_empty_description
+                    },
+                ),
+            variant = TextVariant.Muted,
+        )
         Button(
             text = stringResource(Res.string.timeline_refresh),
             onClick = onRefresh,
