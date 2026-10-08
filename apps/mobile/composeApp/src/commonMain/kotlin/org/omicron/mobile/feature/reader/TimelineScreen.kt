@@ -97,6 +97,8 @@ import org.omicron.mobile.resources.timeline_scope_local
 import org.omicron.mobile.resources.timeline_session_expired
 import org.omicron.mobile.resources.timeline_sign_in
 import org.omicron.mobile.resources.timeline_untitled
+import org.omicron.mobile.resources.timeline_search
+import org.omicron.mobile.resources.timeline_discover
 import org.omicron.mobile.resources.timeline_open_profile
 import zed.rainxch.rikkaui.foundation.RikkaTheme
 
@@ -109,6 +111,8 @@ fun TimelineRoute(
     onChangeInstance: () -> Unit,
     onOpenPost: (String) -> Unit,
     onOpenProfile: (String) -> Unit = {},
+    onOpenSearch: () -> Unit = {},
+    onOpenDiscover: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
     TimelineScreen(
@@ -121,6 +125,8 @@ fun TimelineRoute(
         onChangeInstance = onChangeInstance,
         onOpenPost = onOpenPost,
         onOpenProfile = onOpenProfile,
+        onOpenSearch = onOpenSearch,
+        onOpenDiscover = onOpenDiscover,
     )
 }
 
@@ -135,6 +141,8 @@ private fun TimelineScreen(
     onChangeInstance: () -> Unit,
     onOpenPost: (String) -> Unit,
     onOpenProfile: (String) -> Unit,
+    onOpenSearch: () -> Unit,
+    onOpenDiscover: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxSize().background(OmicronTheme.colors.background).safeDrawingPadding(),
@@ -146,6 +154,8 @@ private fun TimelineScreen(
             onSignIn = onSignIn,
             onChangeInstance = onChangeInstance,
             onOpenProfile = { state.username?.let(onOpenProfile) },
+            onOpenSearch = onOpenSearch,
+            onOpenDiscover = onOpenDiscover,
         )
         if (state.sessionExpired) {
             SessionExpiredNotice(
@@ -184,6 +194,8 @@ private fun TimelineHeader(
     onSignIn: () -> Unit,
     onChangeInstance: () -> Unit,
     onOpenProfile: () -> Unit,
+    onOpenSearch: () -> Unit,
+    onOpenDiscover: () -> Unit,
 ) {
     Column(
         modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth(),
@@ -209,6 +221,18 @@ private fun TimelineHeader(
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                IconButton(
+                    icon = RikkaIcons.Search,
+                    contentDescription = stringResource(Res.string.timeline_search),
+                    onClick = onOpenSearch,
+                    size = IconButtonSize.Default,
+                )
+                IconButton(
+                    icon = RikkaIcons.Users,
+                    contentDescription = stringResource(Res.string.timeline_discover),
+                    onClick = onOpenDiscover,
+                    size = IconButtonSize.Default,
+                )
                 IconButton(
                     icon = RikkaIcons.Settings,
                     contentDescription = stringResource(Res.string.timeline_change_instance),

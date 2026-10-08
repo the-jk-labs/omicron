@@ -65,9 +65,11 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 
 ## R4: Discovery
 
-**Status:** Planned
+**Status:** In progress
 
 **Outcome:** Readers can find content, tags, topics, and people.
+
+**Completed:** Discovery data layer (`DiscoveryApi`, `KtorDiscoveryApi`, `DiscoveryRepository` with optional Bearer transport, opaque tag-post cursors preserved unchanged, blank-query short-circuit) and `feature.discovery` screens: search with article/tag/person tabs plus tag and author filters narrowing articles only, tag pages with counts, cursor-paginated posts, and optimistic follow with rollback, and a discover landing for trending posts, topics, and suggested people. Non-paginated server lists are rendered without manufactured cursors. Timeline header links to search and discover; all surfaces expose loading, empty, error, offline, and retry states. Unit coverage spans API, repository, and ViewModel layers with fake engines; 6 connected Compose journeys cover search prompt, results tabs, offline retry, discover sections, and tag detail.
 
 **Exit criteria:**
 
