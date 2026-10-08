@@ -65,7 +65,7 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 
 ## R4: Discovery
 
-**Status:** In progress
+**Status:** Done
 
 **Outcome:** Readers can find content, tags, topics, and people.
 
