@@ -269,4 +269,8 @@
     <string name="composer_uploading">Uploading image</string>
     <string name="composer_error_too_large">Images must be 5 MB or smaller.</string>
     <string name="composer_error_unsupported_type">Unsupported image type. Use PNG, JPEG, WebP, or GIF.</string>
+    <string name="composer_cover_label">Cover (optional)</string>
+    <string name="composer_cover_empty">No cover image</string>
+    <string name="composer_set_cover">Set cover</string>
+    <string name="composer_remove_cover">Remove</string>
 </resources>

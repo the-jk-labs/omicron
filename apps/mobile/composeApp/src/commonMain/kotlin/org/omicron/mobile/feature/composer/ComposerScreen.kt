@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import org.jetbrains.compose.resources.stringResource
@@ -55,6 +57,8 @@ import org.omicron.mobile.resources.composer_block_paragraph
 import org.omicron.mobile.resources.composer_block_quote
 import org.omicron.mobile.resources.composer_block_hint
 import org.omicron.mobile.resources.composer_code_hint
+import org.omicron.mobile.resources.composer_cover_empty
+import org.omicron.mobile.resources.composer_cover_label
 import org.omicron.mobile.resources.composer_draft_badge
 import org.omicron.mobile.resources.composer_error_missing_instance
 import org.omicron.mobile.resources.composer_error_offline
@@ -76,11 +80,13 @@ import org.omicron.mobile.resources.composer_publish
 import org.omicron.mobile.resources.composer_published_message
 import org.omicron.mobile.resources.composer_quote_hint
 import org.omicron.mobile.resources.composer_remove_block
+import org.omicron.mobile.resources.composer_remove_cover
 import org.omicron.mobile.resources.composer_remove_item
 import org.omicron.mobile.resources.composer_retry
 import org.omicron.mobile.resources.composer_save_draft
 import org.omicron.mobile.resources.composer_saved
 import org.omicron.mobile.resources.composer_saving
+import org.omicron.mobile.resources.composer_set_cover
 import org.omicron.mobile.resources.composer_scheduled_badge
 import org.omicron.mobile.resources.composer_sign_in
 import org.omicron.mobile.resources.composer_summary
@@ -104,6 +110,7 @@ fun ComposerRoute(
 ) {
     val state by viewModel.uiState.collectAsState()
     val launchPicker = rememberImagePickerLauncher { bytes, mime -> viewModel.pickImageResult(bytes, mime) }
+    val launchCoverPicker = rememberImagePickerLauncher { bytes, mime -> viewModel.pickCoverResult(bytes, mime) }
     ComposerScreen(
         state = state,
         onBack = onBack,
@@ -120,8 +127,11 @@ fun ComposerRoute(
         onAddBlock = viewModel::addBlock,
         onRemoveBlock = viewModel::removeBlock,
         onPickImage = launchPicker,
+        onPickCover = launchCoverPicker,
+        onRemoveCover = viewModel::removeCover,
         onImageAltChange = viewModel::updateImageAlt,
         onRetryImageUpload = viewModel::retryImageUpload,
+        onRetryCoverUpload = viewModel::retryCoverUpload,
         onSaveDraft = viewModel::saveDraft,
         onPublish = viewModel::publish,
         onRetryLoad = viewModel::retryLoad,
@@ -146,8 +156,11 @@ private fun ComposerScreen(
     onAddBlock: (ComposerBlockType) -> Unit,
     onRemoveBlock: (String) -> Unit,
     onPickImage: () -> Unit,
+    onPickCover: () -> Unit,
+    onRemoveCover: () -> Unit,
     onImageAltChange: (String, String) -> Unit,
     onRetryImageUpload: () -> Unit,
+    onRetryCoverUpload: () -> Unit,
     onSaveDraft: () -> Unit,
     onPublish: () -> Unit,
     onRetryLoad: () -> Unit,
@@ -196,8 +209,11 @@ private fun ComposerScreen(
                     onAddBlock = onAddBlock,
                     onRemoveBlock = onRemoveBlock,
                     onPickImage = onPickImage,
+                    onPickCover = onPickCover,
+                    onRemoveCover = onRemoveCover,
                     onImageAltChange = onImageAltChange,
                     onRetryImageUpload = onRetryImageUpload,
+                    onRetryCoverUpload = onRetryCoverUpload,
                     onSaveDraft = onSaveDraft,
                     onPublish = onPublish,
                     onRetrySave = onRetrySave,
@@ -273,8 +289,11 @@ private fun ComposerEditor(
     onAddBlock: (ComposerBlockType) -> Unit,
     onRemoveBlock: (String) -> Unit,
     onPickImage: () -> Unit,
+    onPickCover: () -> Unit,
+    onRemoveCover: () -> Unit,
     onImageAltChange: (String, String) -> Unit,
     onRetryImageUpload: () -> Unit,
+    onRetryCoverUpload: () -> Unit,
     onSaveDraft: () -> Unit,
     onPublish: () -> Unit,
     onRetrySave: () -> Unit,
@@ -304,6 +323,16 @@ private fun ComposerEditor(
                 onValueChange = onTitleChange,
                 placeholder = stringResource(Res.string.composer_title_hint),
                 label = stringResource(Res.string.composer_title_hint),
+            )
+        }
+        item(key = "cover") {
+            ComposerCoverSection(
+                previewUrl = state.coverUrl?.ifEmpty { null } ?: state.sourceCoverUrl ?: state.blocks.firstImageUrl(),
+                hasCover = (state.coverUrl?.ifEmpty { null } ?: state.sourceCoverUrl) != null,
+                upload = state.coverUpload,
+                onPick = onPickCover,
+                onRemove = onRemoveCover,
+                onRetry = onRetryCoverUpload,
             )
         }
         items(state.blocks, key = { it.id }, contentType = { it.javaClass.simpleName }) { block ->
@@ -525,6 +554,108 @@ private fun ComposerErrorRow(error: ComposerError, onRetry: () -> Unit, onSignIn
         }
     }
 }
+
+@Composable
+private fun ComposerCoverSection(
+    previewUrl: String?,
+    hasCover: Boolean,
+    upload: ImageUploadState,
+    onPick: () -> Unit,
+    onRemove: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(Res.string.composer_cover_label),
+            variant = TextVariant.Small,
+            color = OmicronTheme.colors.foreground,
+        )
+        if (previewUrl != null) {
+            var failed by remember(previewUrl) { mutableStateOf(false) }
+            if (!failed) {
+                AsyncImage(
+                    model = previewUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    onError = { failed = true },
+                    modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
+                )
+            }
+        } else {
+            Text(
+                text = stringResource(Res.string.composer_cover_empty),
+                variant = TextVariant.Muted,
+                color = OmicronTheme.colors.foreground,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                text = stringResource(Res.string.composer_set_cover),
+                onClick = onPick,
+                variant = ButtonVariant.Secondary,
+                size = ButtonSize.Sm,
+            )
+            if (hasCover) {
+                Button(
+                    text = stringResource(Res.string.composer_remove_cover),
+                    onClick = onRemove,
+                    variant = ButtonVariant.Ghost,
+                    size = ButtonSize.Sm,
+                )
+            }
+        }
+        when (upload) {
+            is ImageUploadState.Idle -> Unit
+            is ImageUploadState.Uploading -> {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Spinner(size = SpinnerSize.Sm)
+                    Text(
+                        text = stringResource(Res.string.composer_uploading),
+                        variant = TextVariant.Small,
+                        color = OmicronTheme.colors.foreground,
+                    )
+                }
+            }
+            is ImageUploadState.Error -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text =
+                            when (upload.error) {
+                                ComposerError.Offline -> stringResource(Res.string.composer_error_offline)
+                                ComposerError.MissingInstance -> stringResource(Res.string.composer_error_missing_instance)
+                                ComposerError.Unauthorized -> stringResource(Res.string.composer_error_unauthorized)
+                                ComposerError.NotFound -> stringResource(Res.string.composer_not_found_description)
+                                ComposerError.Server -> stringResource(Res.string.composer_error_server)
+                                ComposerError.TooLarge -> stringResource(Res.string.composer_error_too_large)
+                                ComposerError.UnsupportedType -> stringResource(Res.string.composer_error_unsupported_type)
+                            },
+                        variant = TextVariant.Small,
+                        color = OmicronTheme.colors.foreground,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (upload.retryable) {
+                        Button(
+                            text = stringResource(Res.string.composer_retry),
+                            onClick = onRetry,
+                            variant = ButtonVariant.Secondary,
+                            size = ButtonSize.Sm,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun List<ComposerBlock>.firstImageUrl(): String? =
+    filterIsInstance<ComposerBlock.Image>().firstOrNull { it.url.isNotBlank() }?.url
 
 @Composable
 private fun ComposerUploadStatus(upload: ImageUploadState, onRetry: () -> Unit) {

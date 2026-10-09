@@ -264,6 +264,53 @@ class ComposerViewModelTest {
         assertEquals("A photo", viewModel.uiState.value.blocks.filterIsInstance<ComposerBlock.Image>().single().alt)
     }
 
+    @Test
+    fun pickedCoverUploadsAndSendsUrlOnSave() = runTest {
+        val authoring = RecordingAuthoringApi()
+        val viewModel = composerViewModel(authoringApi = authoring)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.pickCoverResult(byteArrayOf(1, 2, 3), "image/jpeg")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(1, authoring.uploadCalls)
+        assertEquals("https://omicron.blog/api/uploads/photo-1.png", viewModel.uiState.value.coverUrl)
+        assertIs<ImageUploadState.Idle>(viewModel.uiState.value.coverUpload)
+
+        viewModel.updateBlockText(viewModel.uiState.value.blocks.single().id, "Body")
+        viewModel.saveDraft()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("https://omicron.blog/api/uploads/photo-1.png", authoring.lastCreate?.coverUrl)
+    }
+
+    @Test
+    fun untouchedCoverIsOmittedAndRemovalClears() = runTest {
+        val authoring = RecordingAuthoringApi()
+        val viewModel = composerViewModel(authoringApi = authoring, postId = "post-1")
+        testScheduler.advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.coverUrl)
+        viewModel.updateBlockText(viewModel.uiState.value.blocks.first().id, "Edited")
+        viewModel.saveDraft()
+        testScheduler.advanceUntilIdle()
+        assertNull(authoring.lastUpdate?.coverUrl)
+
+        viewModel.removeCover()
+        testScheduler.advanceUntilIdle()
+        viewModel.saveDraft()
+        testScheduler.advanceUntilIdle()
+        assertEquals("", authoring.lastUpdate?.coverUrl)
+    }
+
+    @Test
+    fun loadedDraftExposesSourceCover() = runTest {
+        val viewModel = composerViewModel(postId = "post-1")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("https://omicron.blog/uploads/cover.jpg", viewModel.uiState.value.sourceCoverUrl)
+    }
+
     private fun TestScope.composerViewModel(
         authoringApi: AuthoringApi = RecordingAuthoringApi(),
         postsApi: PostsApi = DraftPostsApi(),
@@ -344,6 +391,7 @@ class ComposerViewModelTest {
                 language = "en",
                 summary = null,
                 status = "draft",
+                coverUrl = "/uploads/cover.jpg",
                 createdAt = "2026-01-01T00:00:00Z",
                 author = PostAuthorDto("user-1", "alice", "Alice"),
                 tags = listOf(TagDto("technology", "Technology")),
