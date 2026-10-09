@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.io.IOException
+import org.omicron.mobile.core.time.isSchedulable
 import org.omicron.mobile.data.repository.AuthoringRepository
 import org.omicron.mobile.data.repository.MissingInstanceException
 import org.omicron.mobile.data.repository.PostsRepository
@@ -25,8 +26,8 @@ import org.omicron.mobile.domain.model.UpdatePostInput
 import org.omicron.mobile.domain.model.hasContent
 import org.omicron.mobile.domain.model.parseComposerHtml
 import org.omicron.mobile.domain.model.toHtml
-import kotlin.time.Clock
 import kotlin.time.Instant
+import kotlin.time.Clock
 
 class ComposerViewModel(
     private val authoringRepository: AuthoringRepository,

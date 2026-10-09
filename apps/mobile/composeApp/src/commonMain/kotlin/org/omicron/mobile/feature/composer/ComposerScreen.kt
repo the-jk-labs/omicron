@@ -1,13 +1,10 @@
 package org.omicron.mobile.feature.composer
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,8 +16,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -30,14 +25,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import kotlinx.datetime.TimeZone
-import kotlin.time.Clock
-import kotlin.time.Instant
 import org.jetbrains.compose.resources.stringResource
 import org.omicron.mobile.core.designsystem.OmicronTheme
+import org.omicron.mobile.core.designsystem.ScheduleDialog
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonVariant
@@ -65,7 +58,6 @@ import org.omicron.mobile.resources.composer_block_ordered
 import org.omicron.mobile.resources.composer_block_paragraph
 import org.omicron.mobile.resources.composer_block_quote
 import org.omicron.mobile.resources.composer_block_hint
-import org.omicron.mobile.resources.composer_cancel
 import org.omicron.mobile.resources.composer_code_hint
 import org.omicron.mobile.resources.composer_cover_empty
 import org.omicron.mobile.resources.composer_cover_label
@@ -89,35 +81,23 @@ import org.omicron.mobile.resources.composer_preserved
 import org.omicron.mobile.resources.composer_publish
 import org.omicron.mobile.resources.composer_publish_now
 import org.omicron.mobile.resources.composer_published_message
+import org.omicron.mobile.resources.composer_published_badge
 import org.omicron.mobile.resources.composer_quote_hint
 import org.omicron.mobile.resources.composer_remove_block
 import org.omicron.mobile.resources.composer_remove_cover
 import org.omicron.mobile.resources.composer_remove_item
 import org.omicron.mobile.resources.composer_reschedule
-import org.omicron.mobile.resources.composer_reschedule_confirm
-import org.omicron.mobile.resources.composer_reschedule_title
 import org.omicron.mobile.resources.composer_retry
 import org.omicron.mobile.resources.composer_save_draft
+import org.omicron.mobile.resources.composer_save_changes
 import org.omicron.mobile.resources.composer_saved
 import org.omicron.mobile.resources.composer_saving
 import org.omicron.mobile.resources.composer_schedule
 import org.omicron.mobile.resources.composer_set_cover
-import org.omicron.mobile.resources.composer_schedule_confirm
-import org.omicron.mobile.resources.composer_schedule_date
-import org.omicron.mobile.resources.composer_schedule_date_hint
-import org.omicron.mobile.resources.composer_schedule_description
-import org.omicron.mobile.resources.composer_schedule_error_invalid
-import org.omicron.mobile.resources.composer_schedule_error_past
-import org.omicron.mobile.resources.composer_schedule_pick_prompt
-import org.omicron.mobile.resources.composer_schedule_preset_hour
-import org.omicron.mobile.resources.composer_schedule_preset_monday
-import org.omicron.mobile.resources.composer_schedule_preset_tomorrow
-import org.omicron.mobile.resources.composer_schedule_time
-import org.omicron.mobile.resources.composer_schedule_time_hint
-import org.omicron.mobile.resources.composer_schedule_title
 import org.omicron.mobile.resources.composer_scheduled_badge
 import org.omicron.mobile.resources.composer_scheduled_message
-import org.omicron.mobile.resources.composer_unschedule
+import org.omicron.mobile.core.time.formatScheduledFor
+import org.omicron.mobile.resources.schedule_error_past
 import org.omicron.mobile.resources.composer_sign_in
 import org.omicron.mobile.resources.composer_summary
 import org.omicron.mobile.resources.composer_summary_hint
@@ -475,10 +455,10 @@ private fun ComposerActions(
             Text(
                 text =
                     stringResource(
-                        if (state.sourceStatus == OwnPostStatus.Scheduled) {
-                            Res.string.composer_scheduled_badge
-                        } else {
-                            Res.string.composer_draft_badge
+                        when (state.sourceStatus) {
+                            OwnPostStatus.Scheduled -> Res.string.composer_scheduled_badge
+                            OwnPostStatus.Published -> Res.string.composer_published_badge
+                            else -> Res.string.composer_draft_badge
                         },
                     ),
                 variant = TextVariant.Small,
@@ -487,185 +467,36 @@ private fun ComposerActions(
         }
         Box(modifier = Modifier.weight(1f))
         Button(
-            text = stringResource(Res.string.composer_save_draft),
+            text =
+                stringResource(
+                    if (state.sourceStatus == OwnPostStatus.Published) Res.string.composer_save_changes else Res.string.composer_save_draft,
+                ),
             onClick = onSaveDraft,
             variant = ButtonVariant.Secondary,
             size = ButtonSize.Sm,
             loading = state.save == ComposerSave.Saving,
         )
-        Button(
-            text =
-                stringResource(
-                    if (state.scheduledFor != null) Res.string.composer_reschedule else Res.string.composer_schedule,
-                ),
-            onClick = onOpenSchedule,
-            variant = ButtonVariant.Outline,
-            size = ButtonSize.Sm,
-        )
-        Button(
-            text =
-                stringResource(
-                    if (state.scheduledFor != null) Res.string.composer_publish_now else Res.string.composer_publish,
-                ),
-            onClick = onPublish,
-            size = ButtonSize.Sm,
-            loading = state.publish == ComposerPublish.Publishing,
-        )
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ScheduleDialog(
-    current: String?,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit,
-    onUnschedule: () -> Unit,
-) {
-    val zone = remember { TimeZone.currentSystemDefault() }
-    val presets = remember { schedulePresets(Clock.System, zone) }
-    val presetLabels =
-        listOf(
-            Res.string.composer_schedule_preset_hour,
-            Res.string.composer_schedule_preset_tomorrow,
-            Res.string.composer_schedule_preset_monday,
-        )
-    val seeded =
-        remember(current) {
-            current?.let { runCatching { Instant.parse(it) }.getOrNull()?.toScheduleInput(zone) }
-                ?: presets[1].toScheduleInput(zone)
-        }
-    var date by remember(current) { mutableStateOf(seeded.first) }
-    var time by remember(current) { mutableStateOf(seeded.second) }
-    var error by remember(current) { mutableStateOf<ScheduleDialogError?>(null) }
-    val preview = parseScheduleInput(date.trim(), time.trim(), zone)?.let { formatScheduledFor(it.toString(), zone) }
-    Box(
-        modifier =
-            Modifier.fillMaxSize().background(OmicronTheme.colors.dark40)
-                .clickable(role = Role.Button, onClick = onDismiss),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            modifier =
-                Modifier.padding(24.dp).fillMaxWidth()
-                    .background(OmicronTheme.colors.background, RoundedCornerShape(OmicronTheme.radii.card))
-                    .clickable(role = Role.Button, onClick = {})
-                    .padding(20.dp)
-                    .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
+        if (state.sourceStatus != OwnPostStatus.Published) {
+            Button(
                 text =
                     stringResource(
-                        if (current != null) Res.string.composer_reschedule_title else Res.string.composer_schedule_title,
+                        if (state.scheduledFor != null) Res.string.composer_reschedule else Res.string.composer_schedule,
                     ),
-                variant = TextVariant.H3,
-                color = OmicronTheme.colors.foreground,
+                onClick = onOpenSchedule,
+                variant = ButtonVariant.Outline,
+                size = ButtonSize.Sm,
             )
-            Text(
-                text = stringResource(Res.string.composer_schedule_description),
-                variant = TextVariant.Muted,
-                color = OmicronTheme.colors.foreground,
+            Button(
+                text =
+                    stringResource(
+                        if (state.scheduledFor != null) Res.string.composer_publish_now else Res.string.composer_publish,
+                    ),
+                onClick = onPublish,
+                size = ButtonSize.Sm,
+                loading = state.publish == ComposerPublish.Publishing,
             )
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                presets.forEachIndexed { index, preset ->
-                    Button(
-                        text = stringResource(presetLabels[index]),
-                        onClick = {
-                            val next = preset.toScheduleInput(zone)
-                            date = next.first
-                            time = next.second
-                            error = null
-                        },
-                        variant = ButtonVariant.Outline,
-                        size = ButtonSize.Sm,
-                    )
-                }
-            }
-            Input(
-                value = date,
-                onValueChange = { date = it },
-                placeholder = stringResource(Res.string.composer_schedule_date_hint),
-                label = stringResource(Res.string.composer_schedule_date),
-            )
-            Input(
-                value = time,
-                onValueChange = { time = it },
-                placeholder = stringResource(Res.string.composer_schedule_time_hint),
-                label = stringResource(Res.string.composer_schedule_time),
-            )
-            Text(
-                text = preview ?: stringResource(Res.string.composer_schedule_pick_prompt),
-                variant = TextVariant.Muted,
-                color = OmicronTheme.colors.foreground,
-            )
-            if (error != null) {
-                Text(
-                    text =
-                        stringResource(
-                            if (error == ScheduleDialogError.Invalid) {
-                                Res.string.composer_schedule_error_invalid
-                            } else {
-                                Res.string.composer_schedule_error_past
-                            },
-                        ),
-                    variant = TextVariant.Small,
-                    color = OmicronTheme.colors.destructive,
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (current != null) {
-                    Button(
-                        text = stringResource(Res.string.composer_unschedule),
-                        onClick = onUnschedule,
-                        variant = ButtonVariant.Ghost,
-                        size = ButtonSize.Sm,
-                    )
-                }
-                Box(modifier = Modifier.weight(1f))
-                Button(
-                    text = stringResource(Res.string.composer_cancel),
-                    onClick = onDismiss,
-                    variant = ButtonVariant.Ghost,
-                    size = ButtonSize.Sm,
-                )
-                Button(
-                    text =
-                        stringResource(
-                            if (current != null) {
-                                Res.string.composer_reschedule_confirm
-                            } else {
-                                Res.string.composer_schedule_confirm
-                            },
-                        ),
-                    onClick = {
-                        val instant = parseScheduleInput(date.trim(), time.trim(), zone)
-                        if (instant == null) {
-                            error = ScheduleDialogError.Invalid
-                        } else if (!instant.isSchedulable(Clock.System)) {
-                            error = ScheduleDialogError.Past
-                        } else {
-                            onConfirm(instant.toString())
-                        }
-                    },
-                    size = ButtonSize.Sm,
-                )
-            }
         }
     }
-}
-
-private enum class ScheduleDialogError {
-    Invalid,
-    Past,
 }
 
 @Composable
@@ -712,7 +543,7 @@ private fun ComposerStatus(
                         when (publish.issue) {
                             PublishIssue.MissingTitle -> Res.string.composer_validation_title
                             PublishIssue.EmptyBody -> Res.string.composer_validation_body
-                            PublishIssue.PastSchedule -> Res.string.composer_schedule_error_past
+                            PublishIssue.PastSchedule -> Res.string.schedule_error_past
                         },
                     ),
                 variant = TextVariant.Small,

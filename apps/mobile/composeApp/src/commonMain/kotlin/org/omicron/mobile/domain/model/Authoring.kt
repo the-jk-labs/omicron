@@ -16,6 +16,7 @@ data class OwnPost(
     val summary: String?,
     val coverUrl: String?,
     val createdAt: String,
+    val updatedAt: String? = null,
 )
 
 data class OwnCounts(

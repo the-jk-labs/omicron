@@ -1,4 +1,4 @@
-package org.omicron.mobile.feature.composer
+package org.omicron.mobile.core.time
 
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.DayOfWeek
@@ -6,7 +6,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.number
 import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
@@ -42,24 +41,7 @@ fun Instant.toScheduleInput(zone: TimeZone): Pair<String, String> {
 fun formatScheduledFor(iso: String, zone: TimeZone): String? {
     val instant = runCatching { Instant.parse(iso) }.getOrNull() ?: return null
     val local = instant.toLocalDateTime(zone)
-    return "${local.day} ${MONTHS[local.month.number - 1]} ${local.year}, " +
-        "${local.hour.padded()}:${local.minute.padded()} · ${zone.id}"
+    return "${local.date} ${local.hour.padded()}:${local.minute.padded()} (${zone.id})"
 }
 
 private fun Int.padded(): String = toString().padStart(2, '0')
-
-private val MONTHS =
-    listOf(
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-    )

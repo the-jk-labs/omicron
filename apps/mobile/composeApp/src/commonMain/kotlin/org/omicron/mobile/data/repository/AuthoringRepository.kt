@@ -6,6 +6,7 @@ import org.omicron.mobile.data.api.AuthoringApi
 import org.omicron.mobile.data.api.BarePostDto
 import org.omicron.mobile.data.api.CoverCreditDto
 import org.omicron.mobile.data.api.CreatePostRequest
+import org.omicron.mobile.data.api.PostDto
 import org.omicron.mobile.data.api.UpdatePostRequest
 import org.omicron.mobile.domain.model.CoverCredit
 import org.omicron.mobile.domain.model.CreatePostInput
@@ -76,10 +77,10 @@ class AuthoringRepository(
         return TimelinePage(page.items.map { it.toDomain(origin) }, page.nextCursor)
     }
 
-    suspend fun ownPosts(status: OwnPostStatus, cursor: String?): TimelinePage {
+    suspend fun ownPosts(status: OwnPostStatus, cursor: String?): OwnPostsPage {
         val origin = savedInstance()?.origin ?: throw MissingInstanceException()
         val page = authorized(origin) { token -> api.ownPosts(origin, status.toWire(), cursor, token) }
-        return TimelinePage(page.items.map { it.toDomain(origin) }, page.nextCursor)
+        return OwnPostsPage(page.items.map { it.toOwnDomain(origin) }, page.nextCursor)
     }
 
     suspend fun ownCounts(): OwnCounts {
@@ -116,6 +117,25 @@ private fun OwnPostStatus.toWire(): String =
         OwnPostStatus.Scheduled -> "scheduled"
         OwnPostStatus.Published -> "published"
     }
+
+data class OwnPostsPage(
+    val items: List<OwnPost>,
+    val nextCursor: String?,
+)
+
+private fun PostDto.toOwnDomain(origin: String) =
+    OwnPost(
+        id = id,
+        title = title,
+        slug = slug,
+        status = status.toStatus(),
+        publishAt = publishAt,
+        language = language,
+        summary = summary?.trim()?.ifEmpty { null },
+        coverUrl = coverUrl?.let { resolveMediaUrl(origin, it) },
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+    )
 
 internal fun String?.toStatus(): OwnPostStatus =
     when (this) {

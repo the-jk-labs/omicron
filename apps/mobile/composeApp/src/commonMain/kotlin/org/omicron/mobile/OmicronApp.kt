@@ -27,6 +27,8 @@ import org.omicron.mobile.feature.discovery.SearchRoute
 import org.omicron.mobile.feature.discovery.SearchViewModel
 import org.omicron.mobile.feature.discovery.TagRoute
 import org.omicron.mobile.feature.discovery.TagViewModel
+import org.omicron.mobile.feature.manage.ManageRoute
+import org.omicron.mobile.feature.manage.ManageViewModel
 import org.omicron.mobile.feature.reader.PostDetailRoute
 import org.omicron.mobile.feature.reader.PostDetailViewModel
 import org.omicron.mobile.feature.reader.PostSocialViewModel
@@ -90,6 +92,22 @@ fun OmicronApp(
                     onBack = { navController.popBackStack() },
                     onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
                     onPublished = { postId -> navController.navigate(PostDestination(postId)) },
+                )
+            }
+            composable<ManageDestination> {
+                val viewModel =
+                    remember(authoringRepository, authRepository) {
+                        ManageViewModel(authoringRepository, sessionExpired = authRepository.sessionExpired)
+                    }
+                DisposableEffect(viewModel) {
+                    onDispose(viewModel::close)
+                }
+                ManageRoute(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
+                    onEdit = { postId -> navController.navigate(ComposeDestination(postId)) },
+                    onView = { postId -> navController.navigate(PostDestination(postId)) },
                 )
             }
             composable<SearchDestination> {
@@ -199,6 +217,7 @@ fun OmicronApp(
                     onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
                     onOpenPost = { postId -> navController.navigate(PostDestination(postId)) },
                     onOpenProfile = { username -> navController.navigate(ProfileDestination(username)) },
+                    onOpenManage = { navController.navigate(ManageDestination) { launchSingleTop = true } },
                 )
             }
             composable<AuthDestination> {
@@ -245,6 +264,9 @@ private data class PostDestination(
 private data class ComposeDestination(
     val postId: String? = null,
 )
+
+@Serializable
+private data object ManageDestination
 
 @Serializable
 private data class ProfileDestination(

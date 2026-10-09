@@ -112,6 +112,35 @@ class AuthoringRepositoryTest {
     }
 
     @Test
+    fun ownPostsMapsManagementFields() = runTest {
+        val api = RecordingAuthoringApi()
+        api.mineItems =
+            listOf(
+                PostDto(
+                    id = "scheduled-1",
+                    title = "Queued",
+                    status = "scheduled",
+                    publishAt = "2026-12-01T09:00:00Z",
+                    summary = " A short summary ",
+                    coverUrl = "/uploads/cover.jpg",
+                    createdAt = "2026-01-01T00:00:00Z",
+                    updatedAt = "2026-02-01T00:00:00Z",
+                    author = PostAuthorDto("user-1", "alice", "Alice"),
+                ),
+            )
+        val repository = AuthoringRepository(api, savedInstance = { instance() }, accessToken = { "signed-token" })
+
+        val post = repository.ownPosts(OwnPostStatus.Scheduled, null).items.single()
+
+        assertEquals("scheduled-1", post.id)
+        assertEquals(OwnPostStatus.Scheduled, post.status)
+        assertEquals("2026-12-01T09:00:00Z", post.publishAt)
+        assertEquals("A short summary", post.summary)
+        assertEquals("https://omicron.blog/uploads/cover.jpg", post.coverUrl)
+        assertEquals("2026-02-01T00:00:00Z", post.updatedAt)
+    }
+
+    @Test
     fun draftsResolveMediaUrls() = runTest {
         val api = RecordingAuthoringApi()
         val repository = AuthoringRepository(api, savedInstance = { instance() }, accessToken = { "signed-token" })
@@ -204,6 +233,7 @@ class AuthoringRepositoryTest {
         var lastUpdate: UpdatePostRequest? = null
         var lastUploadBytes = byteArrayOf()
         var lastUploadType: String? = null
+        var mineItems: List<PostDto> = emptyList()
         val mineRequests = mutableListOf<Pair<String, String?>>()
 
         override suspend fun createPost(origin: String, request: CreatePostRequest, accessToken: String): BarePostDto {
@@ -247,7 +277,7 @@ class AuthoringRepositoryTest {
 
         override suspend fun ownPosts(origin: String, status: String, cursor: String?, accessToken: String): TimelinePageDto {
             mineRequests += status to cursor
-            return TimelinePageDto(emptyList(), nextCursor)
+            return TimelinePageDto(mineItems, nextCursor)
         }
 
         override suspend fun ownCounts(origin: String, accessToken: String): OwnCountsDto =
