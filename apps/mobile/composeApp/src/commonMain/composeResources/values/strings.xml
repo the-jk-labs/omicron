@@ -273,4 +273,25 @@
     <string name="composer_cover_empty">No cover image</string>
     <string name="composer_set_cover">Set cover</string>
     <string name="composer_remove_cover">Remove</string>
+    <string name="composer_schedule">Schedule…</string>
+    <string name="composer_reschedule">Reschedule…</string>
+    <string name="composer_publish_now">Publish now</string>
+    <string name="composer_schedule_title">Schedule post</string>
+    <string name="composer_reschedule_title">Reschedule post</string>
+    <string name="composer_schedule_description">The post stays private until then, and publishes on its own.</string>
+    <string name="composer_schedule_preset_hour">In an hour</string>
+    <string name="composer_schedule_preset_tomorrow">Tomorrow, 09:00</string>
+    <string name="composer_schedule_preset_monday">Next Monday, 09:00</string>
+    <string name="composer_schedule_date">Date</string>
+    <string name="composer_schedule_date_hint">YYYY-MM-DD</string>
+    <string name="composer_schedule_time">Time</string>
+    <string name="composer_schedule_time_hint">HH:MM</string>
+    <string name="composer_schedule_pick_prompt">Pick a date and a time.</string>
+    <string name="composer_schedule_error_invalid">Enter a valid date and time.</string>
+    <string name="composer_schedule_error_past">Pick a time at least a minute from now.</string>
+    <string name="composer_schedule_confirm">Schedule</string>
+    <string name="composer_reschedule_confirm">Reschedule</string>
+    <string name="composer_unschedule">Unschedule, keep as draft</string>
+    <string name="composer_cancel">Cancel</string>
+    <string name="composer_scheduled_message">Scheduled for %1$s</string>
 </resources>
