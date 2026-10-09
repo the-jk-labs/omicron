@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import org.omicron.mobile.domain.model.AppearancePreference
 import zed.rainxch.rikkaui.foundation.RikkaColors
 import zed.rainxch.rikkaui.foundation.RikkaElevation
 import zed.rainxch.rikkaui.foundation.RikkaShapes
@@ -207,10 +208,17 @@ object OmicronTheme {
 @Composable
 fun OmicronTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    appearance: AppearancePreference? = null,
     content: @Composable () -> Unit,
 ) {
-    val colors = if (darkTheme) OmicronDarkColors else OmicronLightColors
-    val code = if (darkTheme) OmicronDarkCode else OmicronLightCode
+    val useDarkTheme =
+        when (appearance) {
+            AppearancePreference.Light -> false
+            AppearancePreference.Dark -> true
+            AppearancePreference.System, null -> darkTheme
+        }
+    val colors = if (useDarkTheme) OmicronDarkColors else OmicronLightColors
+    val code = if (useDarkTheme) OmicronDarkCode else OmicronLightCode
     RikkaTheme(
         colors = colors.toRikkaColors(),
         typography = rikkaTypography(fontFamily = FontFamily.SansSerif),

@@ -96,6 +96,7 @@ import org.omicron.mobile.resources.timeline_scope_for_you
 import org.omicron.mobile.resources.timeline_scope_global
 import org.omicron.mobile.resources.timeline_scope_local
 import org.omicron.mobile.resources.timeline_session_expired
+import org.omicron.mobile.resources.timeline_settings
 import org.omicron.mobile.resources.timeline_sign_in
 import org.omicron.mobile.resources.timeline_untitled
 import org.omicron.mobile.resources.timeline_search
@@ -115,6 +116,7 @@ fun TimelineRoute(
     onOpenSearch: () -> Unit = {},
     onOpenDiscover: () -> Unit = {},
     onOpenComposer: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
     TimelineScreen(
@@ -130,6 +132,7 @@ fun TimelineRoute(
         onOpenSearch = onOpenSearch,
         onOpenDiscover = onOpenDiscover,
         onOpenComposer = onOpenComposer,
+        onOpenSettings = onOpenSettings,
     )
 }
 
@@ -147,6 +150,7 @@ private fun TimelineScreen(
     onOpenSearch: () -> Unit,
     onOpenDiscover: () -> Unit,
     onOpenComposer: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxSize().background(OmicronTheme.colors.background).safeDrawingPadding(),
@@ -161,6 +165,7 @@ private fun TimelineScreen(
             onOpenSearch = onOpenSearch,
             onOpenDiscover = onOpenDiscover,
             onOpenComposer = onOpenComposer,
+            onOpenSettings = onOpenSettings,
         )
         if (state.sessionExpired) {
             SessionExpiredNotice(
@@ -202,6 +207,7 @@ private fun TimelineHeader(
     onOpenSearch: () -> Unit,
     onOpenDiscover: () -> Unit,
     onOpenComposer: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
     Column(
         modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth(),
@@ -249,8 +255,8 @@ private fun TimelineHeader(
                 }
                 IconButton(
                     icon = RikkaIcons.Settings,
-                    contentDescription = stringResource(Res.string.timeline_change_instance),
-                    onClick = onChangeInstance,
+                    contentDescription = stringResource(Res.string.timeline_settings),
+                    onClick = onOpenSettings,
                     size = IconButtonSize.Default,
                 )
                 IconButton(
