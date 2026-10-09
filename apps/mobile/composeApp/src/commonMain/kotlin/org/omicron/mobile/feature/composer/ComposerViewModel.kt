@@ -332,6 +332,7 @@ class ComposerViewModel(
         autosaveJob?.cancel()
         val state = mutableUiState.value
         if (state.loadPhase != ComposerLoadPhase.Content) return
+        if (state.sourceStatus == OwnPostStatus.Published) return
         if (!state.composableContent()) return
         autosaveJob =
             scope.launch {
