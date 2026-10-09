@@ -134,6 +134,7 @@ private fun PostDto.toOwnDomain(origin: String) =
         summary = summary?.trim()?.ifEmpty { null },
         coverUrl = coverUrl?.let { resolveMediaUrl(origin, it) },
         createdAt = createdAt,
+        updatedAt = updatedAt,
     )
 
 internal fun String?.toStatus(): OwnPostStatus =

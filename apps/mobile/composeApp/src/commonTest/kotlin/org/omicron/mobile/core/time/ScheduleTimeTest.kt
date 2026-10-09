@@ -1,4 +1,4 @@
-package org.omicron.mobile.feature.composer
+package org.omicron.mobile.core.time
 
 import kotlinx.datetime.TimeZone
 import kotlin.test.Test
@@ -55,7 +55,7 @@ class ScheduleTimeTest {
 
     @Test
     fun formatShowsLocalTimeAndZone() {
-        assertEquals("10 Oct 2026, 09:00 · UTC", formatScheduledFor("2026-10-10T09:00:00Z", zone))
+        assertEquals("2026-10-10 09:00 (UTC)", formatScheduledFor("2026-10-10T09:00:00Z", zone))
         assertNull(formatScheduledFor("not-a-date", zone))
     }
 }

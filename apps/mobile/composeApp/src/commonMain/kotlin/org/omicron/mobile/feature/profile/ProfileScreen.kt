@@ -53,6 +53,7 @@ import org.omicron.mobile.resources.Res
 import org.omicron.mobile.resources.app_name
 import org.omicron.mobile.resources.omicron_logo
 import org.omicron.mobile.resources.profile_about
+import org.omicron.mobile.resources.manage_open
 import org.omicron.mobile.resources.profile_articles
 import org.omicron.mobile.resources.profile_back
 import org.omicron.mobile.resources.profile_block
@@ -95,6 +96,7 @@ fun ProfileRoute(
     onSignIn: () -> Unit,
     onOpenPost: (String) -> Unit,
     onOpenProfile: (String) -> Unit,
+    onOpenManage: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
     ProfileScreen(
@@ -106,6 +108,7 @@ fun ProfileRoute(
         onSignIn = onSignIn,
         onOpenPost = onOpenPost,
         onOpenProfile = onOpenProfile,
+        onOpenManage = onOpenManage,
         onToggleFollow = viewModel::toggleFollow,
         onToggleMute = viewModel::toggleMute,
         onToggleBlock = viewModel::toggleBlock,
@@ -122,6 +125,7 @@ private fun ProfileScreen(
     onSignIn: () -> Unit,
     onOpenPost: (String) -> Unit,
     onOpenProfile: (String) -> Unit,
+    onOpenManage: () -> Unit,
     onToggleFollow: () -> Unit,
     onToggleMute: () -> Unit,
     onToggleBlock: () -> Unit,
@@ -182,6 +186,7 @@ private fun ProfileScreen(
                     onSignIn = onSignIn,
                     onOpenPost = onOpenPost,
                     onOpenProfile = onOpenProfile,
+                    onOpenManage = onOpenManage,
                     onToggleFollow = onToggleFollow,
                     onToggleMute = onToggleMute,
                     onToggleBlock = onToggleBlock,
@@ -201,6 +206,7 @@ private fun ProfileContent(
     onSignIn: () -> Unit,
     onOpenPost: (String) -> Unit,
     onOpenProfile: (String) -> Unit,
+    onOpenManage: () -> Unit,
     onToggleFollow: () -> Unit,
     onToggleMute: () -> Unit,
     onToggleBlock: () -> Unit,
@@ -220,6 +226,7 @@ private fun ProfileContent(
                 state = state,
                 profile = profile,
                 onSelectTab = onSelectTab,
+                onOpenManage = onOpenManage,
                 onSignIn = onSignIn,
                 onToggleFollow = onToggleFollow,
                 onToggleMute = onToggleMute,
@@ -291,6 +298,7 @@ private fun ProfileHeader(
     state: ProfileUiState,
     profile: Profile,
     onSelectTab: (ProfileTab) -> Unit,
+    onOpenManage: () -> Unit,
     onSignIn: () -> Unit,
     onToggleFollow: () -> Unit,
     onToggleMute: () -> Unit,
@@ -338,6 +346,14 @@ private fun ProfileHeader(
                 Text(text = stringResource(Res.string.profile_followers, profile.followerCount), variant = TextVariant.Small)
                 Text(text = stringResource(Res.string.profile_following_count, profile.followingCount), variant = TextVariant.Small)
             }
+        }
+        if (state.isSelf) {
+            Button(
+                text = stringResource(Res.string.manage_open),
+                onClick = onOpenManage,
+                variant = ButtonVariant.Outline,
+                size = ButtonSize.Lg,
+            )
         }
         if (!state.isSelf) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {

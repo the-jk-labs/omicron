@@ -410,6 +410,22 @@ class ComposerViewModelTest {
     }
 
     @Test
+    fun saveChangesOnPublishedPostKeepsPublishedStatus() = runTest {
+        val authoring = RecordingAuthoringApi()
+        val viewModel = composerViewModel(authoringApi = authoring, postsApi = PublishedPostsApi(), postId = "post-1")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(OwnPostStatus.Published, viewModel.uiState.value.sourceStatus)
+        viewModel.updateBlockText(viewModel.uiState.value.blocks.first().id, "Updated body")
+        viewModel.saveDraft()
+        testScheduler.advanceUntilIdle()
+
+        assertNull(authoring.lastUpdate?.status)
+        assertEquals(OwnPostStatus.Published, viewModel.uiState.value.sourceStatus)
+        assertIs<ComposerSave.Saved>(viewModel.uiState.value.save)
+    }
+
+    @Test
     fun unscheduleClearsScheduleAndKeepsDraft() = runTest {
         val authoring = RecordingAuthoringApi()
         val viewModel = composerViewModel(authoringApi = authoring, postsApi = ScheduledPostsApi(), postId = "post-1")
@@ -556,5 +572,10 @@ class ComposerViewModelTest {
                 author = PostAuthorDto("user-1", "alice", "Alice"),
                 tags = listOf(TagDto("technology", "Technology")),
             )
+    }
+
+    private class PublishedPostsApi : PostsApi by DraftPostsApi() {
+        override suspend fun post(origin: String, id: String, accessToken: String?): PostDto =
+            DraftPostsApi().post(origin, id, accessToken).copy(status = "published", coverUrl = null)
     }
 }

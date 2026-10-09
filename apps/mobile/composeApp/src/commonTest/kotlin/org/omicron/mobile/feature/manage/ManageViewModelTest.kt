@@ -3,6 +3,7 @@ package org.omicron.mobile.feature.manage
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.io.IOException
 import org.omicron.mobile.data.api.AuthoringApi
 import org.omicron.mobile.data.api.BarePostDto
@@ -56,7 +57,8 @@ class ManageViewModelTest {
 
     @Test
     fun loadMoreAppendsWithCursor() = runTest {
-        val viewModel = manageViewModel()
+        val api = ManageAuthoringApi()
+        val viewModel = manageViewModel(api)
         testScheduler.advanceUntilIdle()
 
         viewModel.selectTab(OwnPostStatus.Published)
@@ -67,6 +69,7 @@ class ManageViewModelTest {
         val lane = viewModel.uiState.value.lanes.getValue(OwnPostStatus.Published)
         assertEquals(listOf("pub-1", "pub-2"), lane.items.map { it.id })
         assertNull(lane.cursor)
+        assertEquals("cursor-1", api.cursorRequests.last())
     }
 
     @Test
@@ -119,8 +122,8 @@ class ManageViewModelTest {
         val viewModel = manageViewModel(api)
         testScheduler.advanceUntilIdle()
 
-        viewModel.requestAction(ManagePendingAction.Delete("draft-1"))
-        assertEquals(ManagePendingAction.Delete("draft-1"), viewModel.uiState.value.pendingAction)
+        viewModel.requestAction(ManagePendingAction.Delete("draft-1", OwnPostStatus.Draft))
+        assertEquals(ManagePendingAction.Delete("draft-1", OwnPostStatus.Draft), viewModel.uiState.value.pendingAction)
         assertEquals(0, api.deleteCalls)
 
         viewModel.confirmPendingAction()
@@ -162,6 +165,25 @@ class ManageViewModelTest {
         assertIs<ManagePhase.Content>(viewModel.uiState.value.phase)
     }
 
+    @Test
+    fun sessionExpiryUpdatesTheScreenState() = runTest {
+        val api = ManageAuthoringApi()
+        val expired = MutableStateFlow(false)
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        val viewModel =
+            ManageViewModel(
+                AuthoringRepository(api, savedInstance = { instance() }, accessToken = { "signed-token" }),
+                TestScope(dispatcher),
+                expired,
+            )
+        testScheduler.advanceUntilIdle()
+
+        expired.value = true
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.sessionExpired)
+    }
+
     private fun TestScope.manageViewModel(api: AuthoringApi = ManageAuthoringApi()): ManageViewModel {
         val dispatcher = StandardTestDispatcher(testScheduler)
         return ManageViewModel(
@@ -185,6 +207,7 @@ class ManageViewModelTest {
         var failure: Throwable? = null,
     ) : AuthoringApi {
         val ownCalls = mutableListOf<String>()
+        val cursorRequests = mutableListOf<String?>()
         var lastUpdate: UpdatePostRequest? = null
         var lastUpdateId: String? = null
         var deleteCalls = 0
@@ -193,6 +216,7 @@ class ManageViewModelTest {
         private fun page(status: String, cursor: String?): TimelinePageDto {
             failure?.let { throw it }
             ownCalls += status
+            cursorRequests += cursor
             return when {
                 status == "draft" ->
                     TimelinePageDto(

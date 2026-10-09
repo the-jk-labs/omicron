@@ -22,6 +22,7 @@ import org.omicron.mobile.domain.model.UpdatePostInput
 class ManageViewModel(
     private val authoringRepository: AuthoringRepository,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val sessionExpired: StateFlow<Boolean>? = null,
 ) {
     private val mutableUiState = MutableStateFlow(ManageUiState())
     val uiState: StateFlow<ManageUiState> = mutableUiState.asStateFlow()
@@ -29,6 +30,10 @@ class ManageViewModel(
     private var loadJob: Job? = null
 
     init {
+        mutableUiState.update { it.copy(sessionExpired = sessionExpired?.value ?: false) }
+        sessionExpired?.let { expired ->
+            scope.launch { expired.collect { value -> mutableUiState.update { it.copy(sessionExpired = value) } } }
+        }
         refresh()
     }
 
@@ -42,7 +47,7 @@ class ManageViewModel(
         val state = mutableUiState.value
         val lane = state.lanes.getValue(state.tab)
         val cursor = lane.cursor ?: return
-        if (!lane.loaded || lane.loading || state.actionBusy) return
+        if (!lane.loaded || lane.loading || state.loadingMore || state.actionBusy) return
         scope.launch {
             mutableUiState.update { it.copy(loadingMore = true, loadMoreError = null) }
             runCatching { authoringRepository.ownPosts(state.tab, cursor) }
@@ -61,18 +66,19 @@ class ManageViewModel(
 
     fun refresh() {
         loadJob?.cancel()
+        val requestedTab = mutableUiState.value.tab
         loadJob =
             scope.launch {
                 mutableUiState.update { it.copy(phase = ManagePhase.Loading, error = null) }
                 runCatching {
                     val counts = authoringRepository.ownCounts()
-                    val page = authoringRepository.ownPosts(mutableUiState.value.tab, null)
+                    val page = authoringRepository.ownPosts(requestedTab, null)
                     counts to page
                 }.onSuccess { (counts, page) ->
                     mutableUiState.update {
                         it.copy(
                             counts = counts,
-                            lanes = it.lanes + (it.tab to ManageLane(items = page.items, cursor = page.nextCursor, loaded = true)),
+                            lanes = it.lanes + (requestedTab to ManageLane(items = page.items, cursor = page.nextCursor, loaded = true)),
                             phase = ManagePhase.Content,
                         )
                     }
@@ -80,6 +86,11 @@ class ManageViewModel(
                     mutableUiState.update { it.copy(phase = ManagePhase.Error(error.toManageError())) }
                 }
             }
+    }
+
+    fun retryLoadMore() {
+        mutableUiState.update { it.copy(loadMoreError = null) }
+        loadMore()
     }
 
     fun publishNow(id: String) {
@@ -131,8 +142,7 @@ class ManageViewModel(
     }
 
     private fun mutate(id: String, input: UpdatePostInput) {
-        val state = mutableUiState.value
-        if (state.actionBusy) return
+        if (mutableUiState.value.actionBusy) return
         scope.launch {
             mutableUiState.update { it.copy(actionBusyId = id, error = null) }
             runCatching { authoringRepository.updatePost(id, input) }
@@ -144,8 +154,7 @@ class ManageViewModel(
     }
 
     private fun remove(id: String) {
-        val state = mutableUiState.value
-        if (state.actionBusy) return
+        if (mutableUiState.value.actionBusy) return
         scope.launch {
             mutableUiState.update { it.copy(actionBusyId = id, error = null) }
             runCatching { authoringRepository.deletePost(id) }
@@ -221,6 +230,7 @@ data class ManageUiState(
     val actionBusyId: String? = null,
     val pendingAction: ManagePendingAction? = null,
     val rescheduling: OwnPost? = null,
+    val sessionExpired: Boolean = false,
 ) {
     val actionBusy: Boolean get() = actionBusyId != null
 }
@@ -243,7 +253,7 @@ sealed interface ManagePhase {
 sealed interface ManagePendingAction {
     val postId: String
 
-    data class Delete(override val postId: String) : ManagePendingAction
+    data class Delete(override val postId: String, val status: OwnPostStatus) : ManagePendingAction
 
     data class Unpublish(override val postId: String) : ManagePendingAction
 }
