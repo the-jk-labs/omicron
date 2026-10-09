@@ -38,6 +38,8 @@ class ComposerViewModel(
     private var nextBlockNumber = 0
     private var autosaveJob: Job? = null
     private var saving = false
+    private var uploading = false
+    private var lastUpload: Pair<ByteArray, String>? = null
 
     init {
         if (postId == null) {
@@ -134,6 +136,62 @@ class ComposerViewModel(
             state.copy(blocks = state.blocks.filterNot { it.id == id }, dirty = true)
         }
         scheduleAutosave()
+    }
+
+    fun updateImageAlt(id: String, alt: String) {
+        mutableUiState.update { state ->
+            state.copy(
+                blocks =
+                    state.blocks.map { block ->
+                        if (block is ComposerBlock.Image && block.id == id) block.copy(alt = alt.ifEmpty { null }) else block
+                    },
+                dirty = true,
+            )
+        }
+        scheduleAutosave()
+    }
+
+    fun pickImageResult(bytes: ByteArray, mime: String?) {
+        val type = mime?.substringBefore(";")?.trim()?.lowercase()
+        if (type == null || type !in SUPPORTED_IMAGE_TYPES) {
+            mutableUiState.update { it.copy(imageUpload = ImageUploadState.Error(ComposerError.UnsupportedType, retryable = false)) }
+            return
+        }
+        if (bytes.size > MAX_IMAGE_BYTES) {
+            mutableUiState.update { it.copy(imageUpload = ImageUploadState.Error(ComposerError.TooLarge, retryable = false)) }
+            return
+        }
+        lastUpload = bytes to type
+        uploadPickedImage()
+    }
+
+    fun retryImageUpload() {
+        uploadPickedImage()
+    }
+
+    private fun uploadPickedImage() {
+        val pending = lastUpload ?: return
+        if (uploading) return
+        uploading = true
+        mutableUiState.update { it.copy(imageUpload = ImageUploadState.Uploading) }
+        scope.launch {
+            runCatching { authoringRepository.uploadImage(pending.first, pending.second) }
+                .onSuccess { image ->
+                    uploading = false
+                    lastUpload = null
+                    mutableUiState.update { state ->
+                        state.copy(
+                            blocks = state.blocks + ComposerBlock.Image(id = nextFreshId(), url = image.url),
+                            imageUpload = ImageUploadState.Idle,
+                            dirty = true,
+                        )
+                    }
+                    scheduleAutosave()
+                }.onFailure { error ->
+                    uploading = false
+                    mutableUiState.update { it.copy(imageUpload = ImageUploadState.Error(error.toComposerError(), retryable = true)) }
+                }
+        }
     }
 
     fun saveDraft() {
@@ -284,6 +342,7 @@ data class ComposerUiState(
     val language: String = "",
     val postId: String? = null,
     val sourceStatus: OwnPostStatus? = null,
+    val imageUpload: ImageUploadState = ImageUploadState.Idle,
     val loadPhase: ComposerLoadPhase = ComposerLoadPhase.Loading,
     val save: ComposerSave = ComposerSave.Idle,
     val publish: ComposerPublish = ComposerPublish.Idle,
@@ -333,6 +392,16 @@ enum class ComposerError {
     Unauthorized,
     MissingInstance,
     NotFound,
+    TooLarge,
+    UnsupportedType,
+}
+
+sealed interface ImageUploadState {
+    data object Idle : ImageUploadState
+
+    data object Uploading : ImageUploadState
+
+    data class Error(val error: ComposerError, val retryable: Boolean) : ImageUploadState
 }
 
 enum class ComposerBlockType {
@@ -356,6 +425,10 @@ private fun String.toTagList(): List<String> =
         .take(MAX_COMPOSER_TAGS)
 
 private const val MAX_COMPOSER_TAGS = 5
+
+private const val MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+private val SUPPORTED_IMAGE_TYPES = setOf("image/png", "image/jpeg", "image/webp", "image/gif")
 
 private fun ComposerBlockType.newBlock(id: String): ComposerBlock =
     when (this) {

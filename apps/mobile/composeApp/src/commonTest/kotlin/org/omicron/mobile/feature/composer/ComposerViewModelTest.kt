@@ -178,6 +178,92 @@ class ComposerViewModelTest {
         assertEquals(listOf("kotlin", "android", "one", "two", "three"), authoring.lastCreate?.tags)
     }
 
+    @Test
+    fun pickedImageUploadsAndInsertsABlock() = runTest {
+        val authoring = RecordingAuthoringApi()
+        val viewModel = composerViewModel(authoringApi = authoring)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.pickImageResult(byteArrayOf(1, 2, 3), "image/png")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(1, authoring.uploadCalls)
+        assertEquals("image/png", authoring.lastUploadType)
+        val images = viewModel.uiState.value.blocks.filterIsInstance<ComposerBlock.Image>()
+        assertEquals(1, images.size)
+        assertEquals("https://omicron.blog/api/uploads/photo-1.png", images.single().url)
+        assertIs<ImageUploadState.Idle>(viewModel.uiState.value.imageUpload)
+    }
+
+    @Test
+    fun unsupportedImageTypeIsRejectedWithoutNetwork() = runTest {
+        val authoring = RecordingAuthoringApi()
+        val viewModel = composerViewModel(authoringApi = authoring)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.pickImageResult(byteArrayOf(1, 2, 3), "image/svg+xml")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(0, authoring.uploadCalls)
+        assertEquals(
+            ImageUploadState.Error(ComposerError.UnsupportedType, retryable = false),
+            viewModel.uiState.value.imageUpload,
+        )
+    }
+
+    @Test
+    fun oversizeImageIsRejectedWithoutNetwork() = runTest {
+        val authoring = RecordingAuthoringApi()
+        val viewModel = composerViewModel(authoringApi = authoring)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.pickImageResult(ByteArray(5 * 1024 * 1024 + 1), "image/png")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(0, authoring.uploadCalls)
+        assertEquals(
+            ImageUploadState.Error(ComposerError.TooLarge, retryable = false),
+            viewModel.uiState.value.imageUpload,
+        )
+    }
+
+    @Test
+    fun failedUploadMapsOfflineAndRetries() = runTest {
+        val authoring = RecordingAuthoringApi(uploadFailure = IOException("unresolved"))
+        val viewModel = composerViewModel(authoringApi = authoring)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.pickImageResult(byteArrayOf(1, 2, 3), "image/png")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(
+            ImageUploadState.Error(ComposerError.Offline, retryable = true),
+            viewModel.uiState.value.imageUpload,
+        )
+
+        authoring.uploadFailure = null
+        viewModel.retryImageUpload()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(2, authoring.uploadCalls)
+        assertEquals(1, viewModel.uiState.value.blocks.filterIsInstance<ComposerBlock.Image>().size)
+    }
+
+    @Test
+    fun imageAltTextUpdates() = runTest {
+        val viewModel = composerViewModel()
+        testScheduler.advanceUntilIdle()
+
+        viewModel.pickImageResult(byteArrayOf(1, 2, 3), "image/png")
+        testScheduler.advanceUntilIdle()
+
+        val id = viewModel.uiState.value.blocks.filterIsInstance<ComposerBlock.Image>().single().id
+        viewModel.updateImageAlt(id, "A photo")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("A photo", viewModel.uiState.value.blocks.filterIsInstance<ComposerBlock.Image>().single().alt)
+    }
+
     private fun TestScope.composerViewModel(
         authoringApi: AuthoringApi = RecordingAuthoringApi(),
         postsApi: PostsApi = DraftPostsApi(),
@@ -203,11 +289,15 @@ class ComposerViewModelTest {
             emailVerificationRequired = true,
         )
 
-    private class RecordingAuthoringApi : AuthoringApi {
+    private class RecordingAuthoringApi(
+        var uploadFailure: Throwable? = null,
+    ) : AuthoringApi {
         var createCalls = 0
         var updateCalls = 0
+        var uploadCalls = 0
         var lastCreate: CreatePostRequest? = null
         var lastUpdate: UpdatePostRequest? = null
+        var lastUploadType: String? = null
 
         override suspend fun createPost(origin: String, request: CreatePostRequest, accessToken: String): BarePostDto {
             createCalls += 1
@@ -231,8 +321,12 @@ class ComposerViewModelTest {
 
         override suspend fun ownCounts(origin: String, accessToken: String): OwnCountsDto = OwnCountsDto()
 
-        override suspend fun uploadImage(origin: String, bytes: ByteArray, contentType: String, accessToken: String): UploadResponseDto =
-            UploadResponseDto(url = "/api/uploads/photo-1.png")
+        override suspend fun uploadImage(origin: String, bytes: ByteArray, contentType: String, accessToken: String): UploadResponseDto {
+            uploadCalls += 1
+            lastUploadType = contentType
+            uploadFailure?.let { throw it }
+            return UploadResponseDto(url = "/api/uploads/photo-1.png")
+        }
     }
 
     private class DraftPostsApi : PostsApi {
