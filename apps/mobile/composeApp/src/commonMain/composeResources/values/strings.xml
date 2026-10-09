@@ -238,7 +238,6 @@
     <string name="composer_add_item">Add item</string>
     <string name="composer_remove_item">Remove item</string>
     <string name="composer_preserved">Preserved formatting from the original post.</string>
-    <string name="composer_image">Image: %1$s</string>
     <string name="composer_summary">Summary (optional)</string>
     <string name="composer_summary_hint">One sentence for previews and search.</string>
     <string name="composer_tags">Tags (optional)</string>
@@ -265,4 +264,9 @@
     <string name="composer_validation_body">Write something before publishing.</string>
     <string name="composer_draft_badge">Draft</string>
     <string name="composer_scheduled_badge">Scheduled</string>
+    <string name="composer_add_image">Add image</string>
+    <string name="composer_image_alt_hint">Alt text (optional)</string>
+    <string name="composer_uploading">Uploading image</string>
+    <string name="composer_error_too_large">Images must be 5 MB or smaller.</string>
+    <string name="composer_error_unsupported_type">Unsupported image type. Use PNG, JPEG, WebP, or GIF.</string>
 </resources>

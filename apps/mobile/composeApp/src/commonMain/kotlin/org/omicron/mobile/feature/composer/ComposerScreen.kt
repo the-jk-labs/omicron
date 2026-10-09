@@ -18,9 +18,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import org.jetbrains.compose.resources.stringResource
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
@@ -34,10 +38,12 @@ import org.omicron.mobile.core.designsystem.rikkaui.spinner.Spinner
 import org.omicron.mobile.core.designsystem.rikkaui.spinner.SpinnerSize
 import org.omicron.mobile.core.designsystem.rikkaui.text.Text
 import org.omicron.mobile.core.designsystem.rikkaui.text.TextVariant
+import org.omicron.mobile.core.picker.rememberImagePickerLauncher
 import org.omicron.mobile.domain.model.ComposerBlock
 import org.omicron.mobile.domain.model.OwnPostStatus
 import org.omicron.mobile.resources.Res
 import org.omicron.mobile.resources.composer_add_block
+import org.omicron.mobile.resources.composer_add_image
 import org.omicron.mobile.resources.composer_add_item
 import org.omicron.mobile.resources.composer_back
 import org.omicron.mobile.resources.composer_block_bullet
@@ -53,9 +59,11 @@ import org.omicron.mobile.resources.composer_draft_badge
 import org.omicron.mobile.resources.composer_error_missing_instance
 import org.omicron.mobile.resources.composer_error_offline
 import org.omicron.mobile.resources.composer_error_server
+import org.omicron.mobile.resources.composer_error_too_large
 import org.omicron.mobile.resources.composer_error_unauthorized
+import org.omicron.mobile.resources.composer_error_unsupported_type
 import org.omicron.mobile.resources.composer_heading_hint
-import org.omicron.mobile.resources.composer_image
+import org.omicron.mobile.resources.composer_image_alt_hint
 import org.omicron.mobile.resources.composer_language
 import org.omicron.mobile.resources.composer_language_hint
 import org.omicron.mobile.resources.composer_list_item_hint
@@ -82,6 +90,7 @@ import org.omicron.mobile.resources.composer_tags_hint
 import org.omicron.mobile.resources.composer_title_edit
 import org.omicron.mobile.resources.composer_title_hint
 import org.omicron.mobile.resources.composer_title_new
+import org.omicron.mobile.resources.composer_uploading
 import org.omicron.mobile.resources.composer_validation_body
 import org.omicron.mobile.resources.composer_validation_title
 import org.omicron.mobile.resources.composer_view_post
@@ -94,6 +103,7 @@ fun ComposerRoute(
     onPublished: (String) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsState()
+    val launchPicker = rememberImagePickerLauncher { bytes, mime -> viewModel.pickImageResult(bytes, mime) }
     ComposerScreen(
         state = state,
         onBack = onBack,
@@ -109,6 +119,9 @@ fun ComposerRoute(
         onRemoveListItem = viewModel::removeListItem,
         onAddBlock = viewModel::addBlock,
         onRemoveBlock = viewModel::removeBlock,
+        onPickImage = launchPicker,
+        onImageAltChange = viewModel::updateImageAlt,
+        onRetryImageUpload = viewModel::retryImageUpload,
         onSaveDraft = viewModel::saveDraft,
         onPublish = viewModel::publish,
         onRetryLoad = viewModel::retryLoad,
@@ -132,6 +145,9 @@ private fun ComposerScreen(
     onRemoveListItem: (String, Int) -> Unit,
     onAddBlock: (ComposerBlockType) -> Unit,
     onRemoveBlock: (String) -> Unit,
+    onPickImage: () -> Unit,
+    onImageAltChange: (String, String) -> Unit,
+    onRetryImageUpload: () -> Unit,
     onSaveDraft: () -> Unit,
     onPublish: () -> Unit,
     onRetryLoad: () -> Unit,
@@ -179,6 +195,9 @@ private fun ComposerScreen(
                     onRemoveListItem = onRemoveListItem,
                     onAddBlock = onAddBlock,
                     onRemoveBlock = onRemoveBlock,
+                    onPickImage = onPickImage,
+                    onImageAltChange = onImageAltChange,
+                    onRetryImageUpload = onRetryImageUpload,
                     onSaveDraft = onSaveDraft,
                     onPublish = onPublish,
                     onRetrySave = onRetrySave,
@@ -223,6 +242,8 @@ private fun ComposerLoadError(error: ComposerError, onRetry: () -> Unit, onSignI
                         ComposerError.Unauthorized -> stringResource(Res.string.composer_error_unauthorized)
                         ComposerError.NotFound -> stringResource(Res.string.composer_not_found_description)
                         ComposerError.Server -> stringResource(Res.string.composer_error_server)
+                        ComposerError.TooLarge -> stringResource(Res.string.composer_error_too_large)
+                        ComposerError.UnsupportedType -> stringResource(Res.string.composer_error_unsupported_type)
                     },
                 variant = TextVariant.Muted,
                 color = OmicronTheme.colors.foreground,
@@ -251,6 +272,9 @@ private fun ComposerEditor(
     onRemoveListItem: (String, Int) -> Unit,
     onAddBlock: (ComposerBlockType) -> Unit,
     onRemoveBlock: (String) -> Unit,
+    onPickImage: () -> Unit,
+    onImageAltChange: (String, String) -> Unit,
+    onRetryImageUpload: () -> Unit,
     onSaveDraft: () -> Unit,
     onPublish: () -> Unit,
     onRetrySave: () -> Unit,
@@ -290,6 +314,13 @@ private fun ComposerEditor(
                 onAddListItem = onAddListItem,
                 onRemoveListItem = onRemoveListItem,
                 onRemoveBlock = onRemoveBlock,
+                onImageAltChange = onImageAltChange,
+            )
+        }
+        item(key = "upload") {
+            ComposerUploadStatus(
+                upload = state.imageUpload,
+                onRetry = onRetryImageUpload,
             )
         }
         item(key = "add") {
@@ -311,6 +342,12 @@ private fun ComposerEditor(
                             size = ButtonSize.Sm,
                         )
                     }
+                    Button(
+                        text = stringResource(Res.string.composer_add_image),
+                        onClick = onPickImage,
+                        variant = ButtonVariant.Secondary,
+                        size = ButtonSize.Sm,
+                    )
                 }
             }
         }
@@ -464,6 +501,8 @@ private fun ComposerErrorRow(error: ComposerError, onRetry: () -> Unit, onSignIn
                     ComposerError.Unauthorized -> stringResource(Res.string.composer_error_unauthorized)
                     ComposerError.NotFound -> stringResource(Res.string.composer_not_found_description)
                     ComposerError.Server -> stringResource(Res.string.composer_error_server)
+                    ComposerError.TooLarge -> stringResource(Res.string.composer_error_too_large)
+                    ComposerError.UnsupportedType -> stringResource(Res.string.composer_error_unsupported_type)
                 },
             variant = TextVariant.Small,
             color = OmicronTheme.colors.foreground,
@@ -488,6 +527,57 @@ private fun ComposerErrorRow(error: ComposerError, onRetry: () -> Unit, onSignIn
 }
 
 @Composable
+private fun ComposerUploadStatus(upload: ImageUploadState, onRetry: () -> Unit) {
+    when (upload) {
+        is ImageUploadState.Idle -> Unit
+        is ImageUploadState.Uploading -> {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Spinner(size = SpinnerSize.Sm)
+                Text(
+                    text = stringResource(Res.string.composer_uploading),
+                    variant = TextVariant.Small,
+                    color = OmicronTheme.colors.foreground,
+                )
+            }
+        }
+        is ImageUploadState.Error -> {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text =
+                        when (upload.error) {
+                            ComposerError.Offline -> stringResource(Res.string.composer_error_offline)
+                            ComposerError.MissingInstance -> stringResource(Res.string.composer_error_missing_instance)
+                            ComposerError.Unauthorized -> stringResource(Res.string.composer_error_unauthorized)
+                            ComposerError.NotFound -> stringResource(Res.string.composer_not_found_description)
+                            ComposerError.Server -> stringResource(Res.string.composer_error_server)
+                            ComposerError.TooLarge -> stringResource(Res.string.composer_error_too_large)
+                            ComposerError.UnsupportedType -> stringResource(Res.string.composer_error_unsupported_type)
+                        },
+                    variant = TextVariant.Small,
+                    color = OmicronTheme.colors.foreground,
+                    modifier = Modifier.weight(1f),
+                )
+                if (upload.retryable) {
+                    Button(
+                        text = stringResource(Res.string.composer_retry),
+                        onClick = onRetry,
+                        variant = ButtonVariant.Secondary,
+                        size = ButtonSize.Sm,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ComposerBlockEditor(
     block: ComposerBlock,
     onBlockTextChange: (String, String) -> Unit,
@@ -495,6 +585,7 @@ private fun ComposerBlockEditor(
     onAddListItem: (String) -> Unit,
     onRemoveListItem: (String, Int) -> Unit,
     onRemoveBlock: (String) -> Unit,
+    onImageAltChange: (String, String) -> Unit,
 ) {
     when (block) {
         is ComposerBlock.Paragraph ->
@@ -542,22 +633,34 @@ private fun ComposerBlockEditor(
                 onRemoveBlock = { onRemoveBlock(block.id) },
             )
         is ComposerBlock.Image ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(Res.string.composer_image, block.url),
-                    variant = TextVariant.Muted,
-                    color = OmicronTheme.colors.foreground,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(
-                    icon = RikkaIcons.X,
-                    contentDescription = stringResource(Res.string.composer_remove_block),
-                    onClick = { onRemoveBlock(block.id) },
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                var failed by remember(block.id, block.url) { mutableStateOf(false) }
+                if (!failed) {
+                    AsyncImage(
+                        model = block.url,
+                        contentDescription = block.alt,
+                        onError = { failed = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Input(
+                        value = block.alt.orEmpty(),
+                        onValueChange = { onImageAltChange(block.id, it) },
+                        placeholder = stringResource(Res.string.composer_image_alt_hint),
+                        label = stringResource(Res.string.composer_image_alt_hint),
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(
+                        icon = RikkaIcons.X,
+                        contentDescription = stringResource(Res.string.composer_remove_block),
+                        onClick = { onRemoveBlock(block.id) },
+                    )
+                }
             }
         is ComposerBlock.Divider ->
             Row(
