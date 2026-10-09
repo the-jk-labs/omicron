@@ -93,9 +93,11 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 
 ## R6: Settings And Release Readiness
 
-**Status:** Planned
+**Status:** In progress
 
 **Outcome:** The app is accessible, maintainable, observable through local quality gates, and ready for release review.
+
+**In progress:** Settings route is available from the timeline header and includes current-instance/change-instance controls, app About information, sign-out, and persistent System/Light/Dark appearance. Appearance is stored locally per Android installation and System follows the device preference (ADR-0012). Offline reading/cache eviction, licensed fonts, and release validation remain outstanding.
 
 **Exit criteria:**
 

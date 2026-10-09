@@ -29,12 +29,14 @@ This repository contains the Android-first Kotlin Multiplatform client. Android 
 - Connect to an HTTPS Omicron instance, defaulting to `https://omicron.blog`.
 - Retrieve and retain public instance metadata from `GET /api/instance`.
 - Present loading, invalid-address, unreachable, and retry states for instance connection.
-- Sign in, register, restore sessions, and sign out with per-origin credential storage.
+- Sign in, register, and restore sessions with per-origin credential storage.
 - Browse Global/Local timelines and the signed-in For you feed; read posts natively.
 - Like, recommend, save, comment, follow, mute, and block with optimistic rollback.
 - Search articles, tags, and people; browse tag pages, trending posts, topics, and suggested people.
+- Compose and schedule posts, then manage drafts, scheduled posts, and published posts from the owner profile.
+- Change the connected instance, persist a System/Light/Dark appearance choice, view app information, and sign out in Settings.
 
-Authoring, settings, offline cache, and release hardening are planned releases. See [roadmap.md](roadmap.md).
+Offline cache policy and release hardening remain outstanding. See [roadmap.md](roadmap.md).
 
 ## Repository Rules
 
