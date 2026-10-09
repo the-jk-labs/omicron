@@ -3,7 +3,7 @@ package org.omicron.mobile.feature.composer
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.assertExists
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -113,7 +113,7 @@ class R5ComposerJourneyTest {
         }
 
         composeTestRule.waitForText("Hello")
-        composeTestRule.onNodeWithText("Edit post").assertExists()
+        composeTestRule.onNodeWithText("Edit post").assertIsDisplayed()
         viewModel.close()
     }
 }
@@ -148,8 +148,8 @@ private class JourneyAuthoringApi(
     var lastCreate: CreatePostRequest? = null
 
     override suspend fun createPost(origin: String, request: CreatePostRequest, accessToken: String): BarePostDto {
-        failure?.let { throw it }
         createCalls += 1
+        failure?.let { throw it }
         lastCreate = request
         return BarePostDto(id = "post-1", title = request.title, status = request.status, createdAt = "2026-01-01T00:00:00Z")
     }
