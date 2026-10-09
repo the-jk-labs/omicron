@@ -417,9 +417,16 @@ class ComposerViewModelTest {
 
         assertEquals(OwnPostStatus.Published, viewModel.uiState.value.sourceStatus)
         viewModel.updateBlockText(viewModel.uiState.value.blocks.first().id, "Updated body")
+        testScheduler.advanceTimeBy(2000)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(0, authoring.updateCalls)
+        assertTrue(viewModel.uiState.value.dirty)
+
         viewModel.saveDraft()
         testScheduler.advanceUntilIdle()
 
+        assertEquals(1, authoring.updateCalls)
         assertNull(authoring.lastUpdate?.status)
         assertEquals(OwnPostStatus.Published, viewModel.uiState.value.sourceStatus)
         assertIs<ComposerSave.Saved>(viewModel.uiState.value.save)
