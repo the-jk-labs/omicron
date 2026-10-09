@@ -83,7 +83,7 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 
 **Outcome:** Authors can create, recover, publish, and manage posts without relying on opaque web-editor data.
 
-**Completed:** Authoring direction set by ADR-0011 (HTML-first, no `contentJson`, server drafts as recovery, no local draft store).
+**Completed:** Authoring direction set by ADR-0011 (HTML-first, no `contentJson`, server drafts as recovery, no local draft store). Authoring data layer (`AuthoringApi`, `KtorAuthoringApi`, `AuthoringRepository` with required Bearer transport, omitted-when-untouched fields, raw-byte image uploads, opaque draft cursors preserved unchanged) with unit coverage for API, repository, and auth behavior.
 
 **Exit criteria:**
 

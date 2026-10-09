@@ -10,11 +10,13 @@ import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade
 import org.omicron.mobile.core.storage.EncryptedSessionCookieStore
 import org.omicron.mobile.core.storage.SharedPreferencesInstanceStore
+import org.omicron.mobile.data.api.KtorAuthoringApi
 import org.omicron.mobile.data.api.KtorAuthApi
 import org.omicron.mobile.data.api.KtorDiscoveryApi
 import org.omicron.mobile.data.api.KtorInstanceApi
 import org.omicron.mobile.data.api.KtorPostsApi
 import org.omicron.mobile.data.api.KtorSocialApi
+import org.omicron.mobile.data.repository.AuthoringRepository
 import org.omicron.mobile.data.repository.AuthRepository
 import org.omicron.mobile.data.repository.DiscoveryRepository
 import org.omicron.mobile.data.repository.InstanceRepository
@@ -38,6 +40,7 @@ class MainActivity : ComponentActivity() {
                 appContainer.postsRepository,
                 appContainer.socialRepository,
                 appContainer.discoveryRepository,
+                appContainer.authoringRepository,
             )
         }
     }
@@ -79,6 +82,14 @@ private class AppContainer(context: android.content.Context) {
     val discoveryRepository =
         DiscoveryRepository(
             api = KtorDiscoveryApi(httpClient),
+            savedInstance = instanceRepository::savedInstance,
+            accessToken = authRepository::accessToken,
+            onUnauthorized = { authRepository.invalidateSession() },
+        )
+
+    val authoringRepository =
+        AuthoringRepository(
+            api = KtorAuthoringApi(httpClient),
             savedInstance = instanceRepository::savedInstance,
             accessToken = authRepository::accessToken,
             onUnauthorized = { authRepository.invalidateSession() },
