@@ -25,6 +25,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import kotlinx.datetime.TimeZone
@@ -811,6 +813,7 @@ private fun ComposerBlockEditor(
                 placeholder = stringResource(Res.string.composer_code_hint),
                 onChange = { onBlockTextChange(block.id, it) },
                 onRemove = { onRemoveBlock(block.id) },
+                style = TextStyle(fontFamily = FontFamily.Monospace),
             )
         is ComposerBlock.BulletList ->
             ComposerListEditor(
@@ -905,7 +908,13 @@ private fun ComposerBlockEditor(
 }
 
 @Composable
-private fun ComposerTextRow(value: String, placeholder: String, onChange: (String) -> Unit, onRemove: () -> Unit) {
+private fun ComposerTextRow(
+    value: String,
+    placeholder: String,
+    onChange: (String) -> Unit,
+    onRemove: () -> Unit,
+    style: TextStyle = TextStyle(fontFamily = OmicronTheme.contentFontFamily),
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -918,6 +927,7 @@ private fun ComposerTextRow(value: String, placeholder: String, onChange: (Strin
             label = placeholder,
             singleLine = false,
             modifier = Modifier.weight(1f),
+            style = style,
         )
         IconButton(
             icon = RikkaIcons.X,
@@ -949,6 +959,7 @@ private fun ComposerListEditor(
                     label = stringResource(Res.string.composer_list_item_hint),
                     singleLine = false,
                     modifier = Modifier.weight(1f),
+                    style = TextStyle(fontFamily = OmicronTheme.contentFontFamily),
                 )
                 IconButton(
                     icon = RikkaIcons.X,

@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import org.jetbrains.compose.resources.painterResource
@@ -316,7 +317,13 @@ private fun ProfileHeader(
                 profile.user.host?.let { Text(text = it, variant = TextVariant.Small, color = OmicronTheme.colors.mutedForeground) }
             }
         }
-        if (profile.user.bio.isNotBlank()) Text(text = profile.user.bio, variant = TextVariant.P)
+        if (profile.user.bio.isNotBlank()) {
+            Text(
+                text = profile.user.bio,
+                variant = TextVariant.P,
+                style = TextStyle(fontFamily = OmicronTheme.contentFontFamily),
+            )
+        }
         if (profile.user.tags.isNotEmpty()) {
             Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 profile.user.tags.forEach { tag ->
@@ -581,7 +588,13 @@ private fun ProfileMember(
 @Composable
 private fun ProfileAbout(profile: Profile) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (profile.user.bio.isNotBlank()) Text(text = profile.user.bio, variant = TextVariant.P)
+        if (profile.user.bio.isNotBlank()) {
+            Text(
+                text = profile.user.bio,
+                variant = TextVariant.P,
+                style = TextStyle(fontFamily = OmicronTheme.contentFontFamily),
+            )
+        }
         if (profile.user.links.isNotEmpty()) {
             profile.user.links.forEach { link -> Text(text = "${link.label}: ${link.url}", variant = TextVariant.Small) }
         }

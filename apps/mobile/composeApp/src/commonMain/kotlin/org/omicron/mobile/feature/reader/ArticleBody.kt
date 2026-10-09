@@ -191,10 +191,11 @@ private fun RichText(
             TextVariant.Lead, TextVariant.Muted -> RikkaTheme.colors.onMuted
             else -> RikkaTheme.colors.onBackground
         }
+    val contentStyle = baseStyle.merge(TextStyle(fontFamily = OmicronTheme.contentFontFamily))
     BasicText(
         text = text,
         modifier = if (heading) modifier.semantics { heading() } else modifier,
-        style = baseStyle.merge(style).merge(TextStyle(color = color)),
+        style = contentStyle.merge(style).merge(TextStyle(color = color)),
     )
 }
 
