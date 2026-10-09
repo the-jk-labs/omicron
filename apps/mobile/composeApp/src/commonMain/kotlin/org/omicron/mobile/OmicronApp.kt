@@ -17,6 +17,8 @@ import org.omicron.mobile.data.repository.PostsRepository
 import org.omicron.mobile.data.repository.SocialRepository
 import org.omicron.mobile.feature.auth.AuthRoute
 import org.omicron.mobile.feature.auth.AuthViewModel
+import org.omicron.mobile.feature.composer.ComposerRoute
+import org.omicron.mobile.feature.composer.ComposerViewModel
 import org.omicron.mobile.feature.connect.ConnectRoute
 import org.omicron.mobile.feature.connect.ConnectViewModel
 import org.omicron.mobile.feature.discovery.DiscoverRoute
@@ -71,6 +73,23 @@ fun OmicronApp(
                     onOpenProfile = { username -> navController.navigate(ProfileDestination(username)) },
                     onOpenSearch = { navController.navigate(SearchDestination) },
                     onOpenDiscover = { navController.navigate(DiscoverDestination) },
+                    onOpenComposer = { navController.navigate(ComposeDestination()) },
+                )
+            }
+            composable<ComposeDestination> { backStackEntry ->
+                val destination = backStackEntry.toRoute<ComposeDestination>()
+                val viewModel =
+                    remember(authoringRepository, postsRepository, destination.postId) {
+                        ComposerViewModel(authoringRepository, postsRepository, destination.postId)
+                    }
+                DisposableEffect(viewModel) {
+                    onDispose(viewModel::close)
+                }
+                ComposerRoute(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
+                    onPublished = { postId -> navController.navigate(PostDestination(postId)) },
                 )
             }
             composable<SearchDestination> {
@@ -220,6 +239,11 @@ private data class TagDestination(
 @Serializable
 private data class PostDestination(
     val postId: String,
+)
+
+@Serializable
+private data class ComposeDestination(
+    val postId: String? = null,
 )
 
 @Serializable
