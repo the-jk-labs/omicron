@@ -133,6 +133,30 @@ class R5ComposerJourneyTest {
     }
 
     @Test
+    fun scheduleFlowShowsScheduledState() {
+        val authoring = JourneyAuthoringApi()
+        val viewModel = composerViewModel(authoring)
+
+        composeTestRule.setContent {
+            OmicronTheme {
+                ComposerRoute(viewModel = viewModel, onBack = {}, onSignIn = {}, onPublished = {})
+            }
+        }
+
+        composeTestRule.onNodeWithText("Title").performTextInput("Hello")
+        composeTestRule.onNodeWithText("Write…").performTextInput("Body text")
+        composeTestRule.onNodeWithText("Schedule…").performClick()
+        composeTestRule.waitForText("Tomorrow, 09:00")
+        composeTestRule.onNodeWithText("Tomorrow, 09:00").performClick()
+        composeTestRule.onNodeWithText("Schedule").performClick()
+        composeTestRule.waitForText("Scheduled for")
+
+        val scheduledAt = authoring.lastCreate?.publishAt ?: authoring.lastUpdate?.publishAt
+        assertTrue(scheduledAt != null)
+        viewModel.close()
+    }
+
+    @Test
     fun unsupportedImageTypeShowsError() {
         val viewModel = composerViewModel(JourneyAuthoringApi())
 
@@ -196,6 +220,7 @@ private class JourneyAuthoringApi(
 ) : AuthoringApi {
     var createCalls = 0
     var lastCreate: CreatePostRequest? = null
+    var lastUpdate: UpdatePostRequest? = null
 
     override suspend fun createPost(origin: String, request: CreatePostRequest, accessToken: String): BarePostDto {
         createCalls += 1
@@ -206,6 +231,7 @@ private class JourneyAuthoringApi(
 
     override suspend fun updatePost(origin: String, id: String, request: UpdatePostRequest, accessToken: String): BarePostDto {
         failure?.let { throw it }
+        lastUpdate = request
         return BarePostDto(id = id, title = request.title, status = "draft", createdAt = "2026-01-01T00:00:00Z")
     }
 
