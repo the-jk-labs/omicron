@@ -1,5 +1,8 @@
 package org.omicron.mobile.domain.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class PostAuthor(
     val id: String,
     val username: String,
@@ -8,6 +11,7 @@ data class PostAuthor(
     val remote: Boolean,
 )
 
+@Serializable
 data class PostTag(
     val slug: String,
     val name: String,

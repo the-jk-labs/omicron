@@ -360,4 +360,21 @@
     <string name="settings_sign_out">Sign out</string>
     <string name="settings_signing_out">Signing out</string>
     <string name="settings_sign_out_warning">Signed out on this device, but the instance could not confirm the sign-out.</string>
+    <string name="settings_offline_reading_title">Offline reading</string>
+    <string name="settings_offline_reading_description">Read articles opened on this device while you are offline.</string>
+    <string name="settings_offline_reading_open">View saved articles</string>
+    <string name="offline_title">Offline reading</string>
+    <string name="offline_back">Back</string>
+    <string name="offline_description">Public article details you open online are saved per instance for 30 days. The device stores up to 50 articles and 64 MB total, evicting least-recently read copies first. Images use a separate 32 MB cache and may be missing if not downloaded or evicted; Android can clear it at any time.</string>
+    <string name="offline_loading">Loading saved articles</string>
+    <string name="offline_empty">No saved articles for this instance yet. Open a public article while online and it will be available here.</string>
+    <string name="offline_untitled">Untitled article</string>
+    <string name="offline_saved_at">Saved %1$s</string>
+    <string name="offline_read">Read</string>
+    <string name="offline_remove">Remove</string>
+    <string name="offline_clear_all">Clear saved articles for this instance</string>
+    <string name="offline_error_missing_instance">Choose an instance to view saved articles.</string>
+    <string name="offline_error_storage">Saved articles could not be read. Try again.</string>
+    <string name="offline_retry">Try again</string>
+    <string name="detail_offline_copy">Showing a saved offline copy. It may be out of date; comments and interactions are unavailable.</string>
 </resources>

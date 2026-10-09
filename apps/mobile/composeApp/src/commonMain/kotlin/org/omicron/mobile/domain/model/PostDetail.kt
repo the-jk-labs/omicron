@@ -1,5 +1,9 @@
 package org.omicron.mobile.domain.model
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
+
+@Serializable
 data class CoverCredit(
     val name: String,
     val nameUrl: String,
@@ -9,6 +13,7 @@ data class CoverCredit(
     val licenseUrl: String?,
 )
 
+@Serializable
 data class PostDetail(
     val id: String,
     val title: String?,
@@ -28,4 +33,6 @@ data class PostDetail(
     val remote: Boolean,
     val liked: Boolean = false,
     val recommended: Boolean = false,
+    @Transient val isOfflineCopy: Boolean = false,
+    @Transient val cachedAtMillis: Long? = null,
 )

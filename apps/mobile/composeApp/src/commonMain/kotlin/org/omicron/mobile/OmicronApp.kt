@@ -32,6 +32,8 @@ import org.omicron.mobile.feature.discovery.TagRoute
 import org.omicron.mobile.feature.discovery.TagViewModel
 import org.omicron.mobile.feature.manage.ManageRoute
 import org.omicron.mobile.feature.manage.ManageViewModel
+import org.omicron.mobile.feature.offline.OfflineReadingRoute
+import org.omicron.mobile.feature.offline.OfflineReadingViewModel
 import org.omicron.mobile.feature.reader.PostDetailRoute
 import org.omicron.mobile.feature.reader.PostDetailViewModel
 import org.omicron.mobile.feature.reader.PostSocialViewModel
@@ -131,6 +133,18 @@ fun OmicronApp(
                     onBack = { navController.popBackStack() },
                     onChangeInstance = { navController.popBackStack(ConnectDestination, false) },
                     onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
+                    onOpenOfflineReading = { navController.navigate(OfflineReadingDestination) },
+                )
+            }
+            composable<OfflineReadingDestination> {
+                val viewModel = remember(postsRepository) { OfflineReadingViewModel(postsRepository) }
+                DisposableEffect(viewModel) {
+                    onDispose(viewModel::close)
+                }
+                OfflineReadingRoute(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onOpenPost = { postId -> navController.navigate(PostDestination(postId)) },
                 )
             }
             composable<SearchDestination> {
@@ -293,6 +307,9 @@ private data object ManageDestination
 
 @Serializable
 private data object SettingsDestination
+
+@Serializable
+private data object OfflineReadingDestination
 
 @Serializable
 private data class ProfileDestination(

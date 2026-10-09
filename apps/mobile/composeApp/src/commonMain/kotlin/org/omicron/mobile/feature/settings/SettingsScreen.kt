@@ -54,6 +54,9 @@ import org.omicron.mobile.resources.settings_instance_description
 import org.omicron.mobile.resources.settings_instance_missing
 import org.omicron.mobile.resources.settings_instance_title
 import org.omicron.mobile.resources.settings_loading
+import org.omicron.mobile.resources.settings_offline_reading_description
+import org.omicron.mobile.resources.settings_offline_reading_open
+import org.omicron.mobile.resources.settings_offline_reading_title
 import org.omicron.mobile.resources.settings_retry
 import org.omicron.mobile.resources.settings_sign_in
 import org.omicron.mobile.resources.settings_sign_out
@@ -68,6 +71,7 @@ fun SettingsRoute(
     onBack: () -> Unit,
     onChangeInstance: () -> Unit,
     onSignIn: () -> Unit,
+    onOpenOfflineReading: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsState()
     SettingsScreen(
@@ -75,6 +79,7 @@ fun SettingsRoute(
         onBack = onBack,
         onChangeInstance = onChangeInstance,
         onSignIn = onSignIn,
+        onOpenOfflineReading = onOpenOfflineReading,
         onSetAppearance = viewModel::setAppearance,
         onRetryAppearanceSave = viewModel::retryAppearanceSave,
         onSignOut = viewModel::signOut,
@@ -87,6 +92,7 @@ private fun SettingsScreen(
     onBack: () -> Unit,
     onChangeInstance: () -> Unit,
     onSignIn: () -> Unit,
+    onOpenOfflineReading: () -> Unit,
     onSetAppearance: (AppearancePreference) -> Unit,
     onRetryAppearanceSave: () -> Unit,
     onSignOut: () -> Unit,
@@ -162,6 +168,16 @@ private fun SettingsScreen(
                             variant = ButtonVariant.Outline,
                         )
                     }
+                }
+                SettingsSection(
+                    title = stringResource(Res.string.settings_offline_reading_title),
+                    description = stringResource(Res.string.settings_offline_reading_description),
+                ) {
+                    Button(
+                        text = stringResource(Res.string.settings_offline_reading_open),
+                        onClick = onOpenOfflineReading,
+                        variant = ButtonVariant.Outline,
+                    )
                 }
                 SettingsSection(title = stringResource(Res.string.settings_about_title)) {
                     Text(
