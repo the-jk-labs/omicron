@@ -117,7 +117,7 @@ private fun OwnPostStatus.toWire(): String =
         OwnPostStatus.Published -> "published"
     }
 
-private fun String?.toStatus(): OwnPostStatus =
+internal fun String?.toStatus(): OwnPostStatus =
     when (this) {
         "draft" -> OwnPostStatus.Draft
         "scheduled" -> OwnPostStatus.Scheduled
