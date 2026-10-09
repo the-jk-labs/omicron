@@ -116,6 +116,23 @@ class R5ComposerJourneyTest {
     }
 
     @Test
+    fun coverUploadShowsPreviewAndRemove() {
+        val viewModel = composerViewModel(JourneyAuthoringApi())
+
+        composeTestRule.setContent {
+            OmicronTheme {
+                ComposerRoute(viewModel = viewModel, onBack = {}, onSignIn = {}, onPublished = {})
+            }
+        }
+
+        viewModel.pickCoverResult(byteArrayOf(1, 2, 3), "image/png")
+        composeTestRule.waitForText("Remove")
+        composeTestRule.onNodeWithText("Remove").performClick()
+        composeTestRule.waitForText("No cover image")
+        viewModel.close()
+    }
+
+    @Test
     fun unsupportedImageTypeShowsError() {
         val viewModel = composerViewModel(JourneyAuthoringApi())
 
