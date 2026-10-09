@@ -79,9 +79,11 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 
 ## R5: Authoring And Management
 
-**Status:** Planned
+**Status:** In progress
 
 **Outcome:** Authors can create, recover, publish, and manage posts without relying on opaque web-editor data.
+
+**Completed:** Authoring direction set by ADR-0011 (HTML-first, no `contentJson`, server drafts as recovery, no local draft store). Authoring data layer (`AuthoringApi`, `KtorAuthoringApi`, `AuthoringRepository` with required Bearer transport, omitted-when-untouched fields, raw-byte image uploads, opaque draft cursors preserved unchanged) with unit coverage for API, repository, and auth behavior.
 
 **Exit criteria:**
 
@@ -117,7 +119,7 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 | Profiles | `/api/users/:username`, `/posts`, `/recommendations`, `/followers`, `/following`; remote equivalents under `/api/remote/users/:handle` when federation is enabled |
 | Search and tags | `/api/search`, `/api/tags`, `/api/tags/:slug`, `/api/tags/:slug/posts` |
 | Discovery | `/api/posts/trending`, `/api/posts/:id/related`, `/api/users/suggested` |
-| Publishing | `POST` and `PATCH /api/posts`; HTML content is required; raw image upload is `POST /api/uploads` |
+| Publishing | `POST`, `PATCH`, and `DELETE /api/posts`; `GET /api/posts/drafts`, `GET /api/posts/mine`, `GET /api/posts/mine/counts`; HTML content is required; raw image upload is `POST /api/uploads` |
 
 All regular pages use opaque cursor/keyset pagination and return `{items,nextCursor}`. Never calculate, decode, or replace a cursor. Feed cursors are opaque merged-stream state.
 

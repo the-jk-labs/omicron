@@ -9,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import kotlinx.serialization.Serializable
 import org.omicron.mobile.core.designsystem.OmicronTheme
+import org.omicron.mobile.data.repository.AuthoringRepository
 import org.omicron.mobile.data.repository.AuthRepository
 import org.omicron.mobile.data.repository.DiscoveryRepository
 import org.omicron.mobile.data.repository.InstanceRepository
@@ -39,6 +40,7 @@ fun OmicronApp(
     postsRepository: PostsRepository,
     socialRepository: SocialRepository,
     discoveryRepository: DiscoveryRepository,
+    authoringRepository: AuthoringRepository,
 ) {
     OmicronTheme {
         val navController = rememberNavController()
