@@ -49,6 +49,7 @@ import org.omicron.mobile.resources.detail_error_missing_instance
 import org.omicron.mobile.resources.detail_error_offline
 import org.omicron.mobile.resources.detail_error_server
 import org.omicron.mobile.resources.detail_loading
+import org.omicron.mobile.resources.detail_offline_copy
 import org.omicron.mobile.resources.detail_not_found_description
 import org.omicron.mobile.resources.detail_not_found_title
 import org.omicron.mobile.resources.detail_read_next
@@ -102,8 +103,8 @@ fun PostDetailRoute(
     val origin by viewModel.origin.collectAsState()
     val socialState = socialViewModel?.uiState?.collectAsState()?.value
     if (socialViewModel != null) {
-        LaunchedEffect(state.post?.id) {
-            state.post?.let(socialViewModel::bind)
+        LaunchedEffect(state.post?.id, state.post?.isOfflineCopy) {
+            state.post?.takeUnless { it.isOfflineCopy }?.let(socialViewModel::bind)
         }
     }
     PostDetailScreen(
@@ -210,7 +211,7 @@ private fun PostDetailScreen(
             is PostDetailPhase.Content -> {
                 val post = state.post ?: return@Column
                 PostDetailContent(
-                    post = social?.post ?: post,
+                    post = if (post.isOfflineCopy) post else social?.post ?: post,
                     related = state.related,
                     origin = origin,
                     social = social,
@@ -303,6 +304,16 @@ private fun PostDetailContent(
                 )
             }
         }
+        if (post.isOfflineCopy) {
+            item(key = "offline-copy", contentType = "offline-copy") {
+                Text(
+                    text = stringResource(Res.string.detail_offline_copy),
+                    variant = TextVariant.Small,
+                    color = OmicronTheme.colors.foregroundAlt,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+        }
         item(key = "header", contentType = "header") {
             Column(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -349,7 +360,7 @@ private fun PostDetailContent(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             )
         }
-        if (social != null) {
+        if (social != null && !post.isOfflineCopy) {
             item(key = "social-actions", contentType = "social-actions") {
                 PostSocialActions(
                     state = social,

@@ -41,6 +41,7 @@ class SettingsJourneyTest {
                 appearanceStore = store,
             )
         var requestedInstanceChange = false
+        var requestedOfflineReading = false
         composeTestRule.setContent {
             val state by viewModel.uiState.collectAsState()
             OmicronTheme(appearance = state.appearance) {
@@ -49,6 +50,7 @@ class SettingsJourneyTest {
                     onBack = {},
                     onChangeInstance = { requestedInstanceChange = true },
                     onSignIn = {},
+                    onOpenOfflineReading = { requestedOfflineReading = true },
                 )
             }
         }
@@ -58,9 +60,11 @@ class SettingsJourneyTest {
         composeTestRule.waitUntil(timeoutMillis = 5_000) { store.preference == AppearancePreference.Dark }
         composeTestRule.onNodeWithText("About Omicron").assertIsDisplayed()
         composeTestRule.onNodeWithText("Change instance").performClick()
+        composeTestRule.onNodeWithText("View saved articles").performClick()
 
         assertEquals(AppearancePreference.Dark, store.preference)
         assertTrue(requestedInstanceChange)
+        assertTrue(requestedOfflineReading)
         viewModel.close()
     }
 

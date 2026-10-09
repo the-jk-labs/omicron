@@ -1,16 +1,20 @@
 package org.omicron.mobile
 
 import android.os.Bundle
+import java.io.File
+import okio.Path.Companion.toOkioPath
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
+import coil3.disk.DiskCache
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade
 import org.omicron.mobile.core.storage.EncryptedSessionCookieStore
 import org.omicron.mobile.core.storage.SharedPreferencesAppearancePreferenceStore
 import org.omicron.mobile.core.storage.SharedPreferencesInstanceStore
+import org.omicron.mobile.data.cache.FileOfflinePostCache
 import org.omicron.mobile.data.api.KtorAuthoringApi
 import org.omicron.mobile.data.api.KtorAuthApi
 import org.omicron.mobile.data.api.KtorDiscoveryApi
@@ -31,7 +35,15 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         SingletonImageLoader.setSafe { context ->
-            ImageLoader.Builder(context).components { add(KtorNetworkFetcherFactory()) }.crossfade(true).build()
+            ImageLoader.Builder(context)
+                .components { add(KtorNetworkFetcherFactory()) }
+                .diskCache {
+                    DiskCache.Builder()
+                        .directory(context.cacheDir.resolve("image_cache").toOkioPath())
+                        .maxSizeBytes(OFFLINE_IMAGE_CACHE_MAX_BYTES)
+                        .build()
+                }.crossfade(true)
+                .build()
         }
         appContainer = AppContainer(applicationContext)
         setContent {
@@ -58,6 +70,7 @@ private class AppContainer(context: android.content.Context) {
     private val httpClient = createHttpClient(sessionCookieStore)
 
     val appearancePreferenceStore = SharedPreferencesAppearancePreferenceStore(context)
+    val offlinePostCache = FileOfflinePostCache(File(context.filesDir, "offline_posts"))
 
     val instanceRepository =
         InstanceRepository(
@@ -73,6 +86,7 @@ private class AppContainer(context: android.content.Context) {
             savedInstance = instanceRepository::savedInstance,
             accessToken = authRepository::accessToken,
             onUnauthorized = { authRepository.invalidateSession() },
+            offlinePostCache = offlinePostCache,
         )
 
     val socialRepository =
@@ -103,3 +117,5 @@ private class AppContainer(context: android.content.Context) {
         httpClient.close()
     }
 }
+
+private const val OFFLINE_IMAGE_CACHE_MAX_BYTES = 32L * 1024 * 1024
