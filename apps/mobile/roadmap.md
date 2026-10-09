@@ -83,7 +83,7 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 
 **Outcome:** Authors can create, recover, publish, and manage posts without relying on opaque web-editor data.
 
-**Completed:** Authoring direction set by ADR-0011 (HTML-first, no `contentJson`, server drafts as recovery, no local draft store). Authoring data layer (`AuthoringApi`, `KtorAuthoringApi`, `AuthoringRepository` with required Bearer transport, omitted-when-untouched fields, raw-byte image uploads, opaque draft cursors preserved unchanged) with unit coverage for API, repository, and auth behavior.
+**Completed:** Authoring direction set by ADR-0011 (HTML-first, no `contentJson`, server drafts as recovery, no local draft store). Authoring data layer (`AuthoringApi`, `KtorAuthoringApi`, `AuthoringRepository` with required Bearer transport, omitted-when-untouched fields, raw-byte image uploads, opaque draft cursors preserved unchanged) with unit coverage for API, repository, and auth behavior. Composer block model (`ComposerBlock` with paragraph, heading, quote, code, lists, image, divider, and opaque `RawHtml` passthrough) converting losslessly to accepted sanitized HTML, with rich inline constructs preserved opaquely. `feature.composer` screens: title, blocks, summary, tags, and language editing with 2s autosave draft recovery, explicit save, publish with title/body validation, loading, error, offline, retry, and sign-in recovery states; timeline write entry for signed-in readers; unit coverage for HTML round-trip and ViewModel behavior; 4 connected Compose journeys for save, validation, offline retry, and draft loading.
 
 **Exit criteria:**
 

@@ -60,6 +60,8 @@ data class PostDto(
     val remote: Boolean = false,
     val language: String? = null,
     val summary: String? = null,
+    val status: String? = null,
+    val publishAt: String? = null,
     val bannerUrl: String? = null,
     val coverUrl: String? = null,
     val coverCredit: CoverCreditDto? = null,

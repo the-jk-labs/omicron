@@ -65,6 +65,7 @@ import org.omicron.mobile.resources.Res
 import org.omicron.mobile.resources.app_name
 import org.omicron.mobile.resources.omicron_logo
 import org.omicron.mobile.resources.timeline_change_instance
+import org.omicron.mobile.resources.timeline_compose
 import org.omicron.mobile.resources.timeline_date_format
 import org.omicron.mobile.resources.timeline_empty_description
 import org.omicron.mobile.resources.timeline_empty_for_you_description
@@ -113,6 +114,7 @@ fun TimelineRoute(
     onOpenProfile: (String) -> Unit = {},
     onOpenSearch: () -> Unit = {},
     onOpenDiscover: () -> Unit = {},
+    onOpenComposer: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
     TimelineScreen(
@@ -127,6 +129,7 @@ fun TimelineRoute(
         onOpenProfile = onOpenProfile,
         onOpenSearch = onOpenSearch,
         onOpenDiscover = onOpenDiscover,
+        onOpenComposer = onOpenComposer,
     )
 }
 
@@ -143,6 +146,7 @@ private fun TimelineScreen(
     onOpenProfile: (String) -> Unit,
     onOpenSearch: () -> Unit,
     onOpenDiscover: () -> Unit,
+    onOpenComposer: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxSize().background(OmicronTheme.colors.background).safeDrawingPadding(),
@@ -156,6 +160,7 @@ private fun TimelineScreen(
             onOpenProfile = { state.username?.let(onOpenProfile) },
             onOpenSearch = onOpenSearch,
             onOpenDiscover = onOpenDiscover,
+            onOpenComposer = onOpenComposer,
         )
         if (state.sessionExpired) {
             SessionExpiredNotice(
@@ -196,6 +201,7 @@ private fun TimelineHeader(
     onOpenProfile: () -> Unit,
     onOpenSearch: () -> Unit,
     onOpenDiscover: () -> Unit,
+    onOpenComposer: () -> Unit,
 ) {
     Column(
         modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth(),
@@ -233,6 +239,14 @@ private fun TimelineHeader(
                     onClick = onOpenDiscover,
                     size = IconButtonSize.Default,
                 )
+                if (signedIn) {
+                    IconButton(
+                        icon = RikkaIcons.Plus,
+                        contentDescription = stringResource(Res.string.timeline_compose),
+                        onClick = onOpenComposer,
+                        size = IconButtonSize.Default,
+                    )
+                }
                 IconButton(
                     icon = RikkaIcons.Settings,
                     contentDescription = stringResource(Res.string.timeline_change_instance),
