@@ -4,6 +4,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -94,6 +95,38 @@ class R5ComposerJourneyTest {
         composeTestRule.onNodeWithText("Try again").performClick()
 
         assertTrue(authoring.createCalls >= 1)
+        viewModel.close()
+    }
+
+    @Test
+    fun uploadedImageAppearsWithAltEditing() {
+        val viewModel = composerViewModel(JourneyAuthoringApi())
+
+        composeTestRule.setContent {
+            OmicronTheme {
+                ComposerRoute(viewModel = viewModel, onBack = {}, onSignIn = {}, onPublished = {})
+            }
+        }
+
+        viewModel.pickImageResult(byteArrayOf(1, 2, 3), "image/png")
+        composeTestRule.waitForText("Alt text")
+        composeTestRule.onNodeWithContentDescription("Alt text (optional)").performTextInput("A photo")
+        composeTestRule.waitForText("A photo")
+        viewModel.close()
+    }
+
+    @Test
+    fun unsupportedImageTypeShowsError() {
+        val viewModel = composerViewModel(JourneyAuthoringApi())
+
+        composeTestRule.setContent {
+            OmicronTheme {
+                ComposerRoute(viewModel = viewModel, onBack = {}, onSignIn = {}, onPublished = {})
+            }
+        }
+
+        viewModel.pickImageResult(byteArrayOf(1, 2, 3), "image/svg+xml")
+        composeTestRule.waitForText("Unsupported image type")
         viewModel.close()
     }
 
