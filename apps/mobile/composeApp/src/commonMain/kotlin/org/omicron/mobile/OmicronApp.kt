@@ -2,6 +2,8 @@ package org.omicron.mobile
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -9,6 +11,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import kotlinx.serialization.Serializable
 import org.omicron.mobile.core.designsystem.OmicronTheme
+import org.omicron.mobile.core.storage.AppearancePreferenceStore
 import org.omicron.mobile.data.repository.AuthoringRepository
 import org.omicron.mobile.data.repository.AuthRepository
 import org.omicron.mobile.data.repository.DiscoveryRepository
@@ -36,6 +39,8 @@ import org.omicron.mobile.feature.reader.TimelineRoute
 import org.omicron.mobile.feature.reader.TimelineViewModel
 import org.omicron.mobile.feature.profile.ProfileRoute
 import org.omicron.mobile.feature.profile.ProfileViewModel
+import org.omicron.mobile.feature.settings.SettingsRoute
+import org.omicron.mobile.feature.settings.SettingsViewModel
 
 @Composable
 fun OmicronApp(
@@ -45,8 +50,17 @@ fun OmicronApp(
     socialRepository: SocialRepository,
     discoveryRepository: DiscoveryRepository,
     authoringRepository: AuthoringRepository,
+    appearancePreferenceStore: AppearancePreferenceStore,
 ) {
-    OmicronTheme {
+    val settingsViewModel =
+        remember(instanceRepository, authRepository, appearancePreferenceStore) {
+            SettingsViewModel(instanceRepository::savedInstance, authRepository, appearancePreferenceStore)
+        }
+    DisposableEffect(settingsViewModel) {
+        onDispose(settingsViewModel::close)
+    }
+    val settingsState by settingsViewModel.uiState.collectAsState()
+    OmicronTheme(appearance = settingsState.appearance) {
         val navController = rememberNavController()
         NavHost(navController = navController, startDestination = ConnectDestination) {
             composable<ConnectDestination> {
@@ -76,6 +90,7 @@ fun OmicronApp(
                     onOpenSearch = { navController.navigate(SearchDestination) },
                     onOpenDiscover = { navController.navigate(DiscoverDestination) },
                     onOpenComposer = { navController.navigate(ComposeDestination()) },
+                    onOpenSettings = { navController.navigate(SettingsDestination) { launchSingleTop = true } },
                 )
             }
             composable<ComposeDestination> { backStackEntry ->
@@ -108,6 +123,14 @@ fun OmicronApp(
                     onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
                     onEdit = { postId -> navController.navigate(ComposeDestination(postId)) },
                     onView = { postId -> navController.navigate(PostDestination(postId)) },
+                )
+            }
+            composable<SettingsDestination> {
+                SettingsRoute(
+                    viewModel = settingsViewModel,
+                    onBack = { navController.popBackStack() },
+                    onChangeInstance = { navController.popBackStack(ConnectDestination, false) },
+                    onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
                 )
             }
             composable<SearchDestination> {
@@ -267,6 +290,9 @@ private data class ComposeDestination(
 
 @Serializable
 private data object ManageDestination
+
+@Serializable
+private data object SettingsDestination
 
 @Serializable
 private data class ProfileDestination(

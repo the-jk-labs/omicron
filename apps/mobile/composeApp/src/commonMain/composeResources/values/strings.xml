@@ -87,6 +87,7 @@
     <string name="timeline_compose">Write</string>
     <string name="timeline_discover">Discover</string>
     <string name="timeline_change_instance">Change instance</string>
+    <string name="timeline_settings">Settings</string>
     <string name="timeline_open_profile">Open profile</string>
     <string name="timeline_session_expired">Your session expired. Sign in again to use your personalized feed and social actions.</string>
     <string name="timeline_untitled">Untitled post</string>
@@ -336,4 +337,27 @@
     <string name="manage_confirm_delete_description">Delete this post? This cannot be undone.</string>
     <string name="manage_confirm_unpublish">Unpublish post</string>
     <string name="manage_confirm_unpublish_description">This takes the post off the site and tells other instances to remove their copy. It becomes a draft you can publish again.</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_back">Back</string>
+    <string name="settings_loading">Loading settings</string>
+    <string name="settings_instance_title">Instance</string>
+    <string name="settings_instance_description">Connected to %1$s · %2$s</string>
+    <string name="settings_instance_missing">No instance selected.</string>
+    <string name="settings_change_instance">Change instance</string>
+    <string name="settings_appearance_title">Appearance</string>
+    <string name="settings_appearance_description">Choose a theme or follow your phone setting.</string>
+    <string name="settings_appearance_system">System</string>
+    <string name="settings_appearance_light">Light</string>
+    <string name="settings_appearance_dark">Dark</string>
+    <string name="settings_appearance_save_error">Could not save your appearance preference.</string>
+    <string name="settings_retry">Try again</string>
+    <string name="settings_about_title">About Omicron</string>
+    <string name="settings_about_description">A native Android client for the federated Omicron blogging platform.</string>
+    <string name="settings_about_license">Free software licensed under AGPL-3.0-or-later.</string>
+    <string name="settings_account_title">Account</string>
+    <string name="settings_account_description">%1$s · @%2$s</string>
+    <string name="settings_sign_in">Sign in</string>
+    <string name="settings_sign_out">Sign out</string>
+    <string name="settings_signing_out">Signing out</string>
+    <string name="settings_sign_out_warning">Signed out on this device, but the instance could not confirm the sign-out.</string>
 </resources>

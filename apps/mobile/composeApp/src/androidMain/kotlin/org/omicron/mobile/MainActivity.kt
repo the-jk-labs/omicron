@@ -9,6 +9,7 @@ import coil3.SingletonImageLoader
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade
 import org.omicron.mobile.core.storage.EncryptedSessionCookieStore
+import org.omicron.mobile.core.storage.SharedPreferencesAppearancePreferenceStore
 import org.omicron.mobile.core.storage.SharedPreferencesInstanceStore
 import org.omicron.mobile.data.api.KtorAuthoringApi
 import org.omicron.mobile.data.api.KtorAuthApi
@@ -41,6 +42,7 @@ class MainActivity : ComponentActivity() {
                 appContainer.socialRepository,
                 appContainer.discoveryRepository,
                 appContainer.authoringRepository,
+                appContainer.appearancePreferenceStore,
             )
         }
     }
@@ -54,6 +56,8 @@ class MainActivity : ComponentActivity() {
 private class AppContainer(context: android.content.Context) {
     private val sessionCookieStore = EncryptedSessionCookieStore(context)
     private val httpClient = createHttpClient(sessionCookieStore)
+
+    val appearancePreferenceStore = SharedPreferencesAppearancePreferenceStore(context)
 
     val instanceRepository =
         InstanceRepository(
