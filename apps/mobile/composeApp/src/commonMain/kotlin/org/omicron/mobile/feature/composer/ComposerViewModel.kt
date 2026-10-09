@@ -25,11 +25,14 @@ import org.omicron.mobile.domain.model.UpdatePostInput
 import org.omicron.mobile.domain.model.hasContent
 import org.omicron.mobile.domain.model.parseComposerHtml
 import org.omicron.mobile.domain.model.toHtml
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 class ComposerViewModel(
     private val authoringRepository: AuthoringRepository,
     private val postsRepository: PostsRepository,
     private val postId: String? = null,
+    private val clock: Clock = Clock.System,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private val mutableUiState = MutableStateFlow(ComposerUiState(postId = postId))
@@ -59,6 +62,7 @@ class ComposerViewModel(
                                 language = detail.language.orEmpty(),
                                 sourceStatus = detail.status,
                                 sourceCoverUrl = detail.coverUrl,
+                                scheduledFor = detail.publishAt,
                                 loadPhase = ComposerLoadPhase.Content,
                             )
                         }
@@ -229,7 +233,8 @@ class ComposerViewModel(
     }
 
     fun saveDraft() {
-        persist(requested = true, status = null)
+        val scheduled = mutableUiState.value.scheduledFor != null
+        persist(requested = true, status = if (scheduled) OwnPostStatus.Draft else null)
     }
 
     fun publish() {
@@ -243,6 +248,38 @@ class ComposerViewModel(
             return
         }
         persist(requested = true, status = OwnPostStatus.Published)
+    }
+
+    fun openSchedule() {
+        mutableUiState.update { it.copy(scheduleOpen = true) }
+    }
+
+    fun dismissSchedule() {
+        mutableUiState.update { it.copy(scheduleOpen = false) }
+    }
+
+    fun schedulePost(at: String) {
+        mutableUiState.update { it.copy(scheduleOpen = false) }
+        val state = mutableUiState.value
+        if (state.title.trim().isEmpty()) {
+            mutableUiState.update { it.copy(publish = ComposerPublish.Validation(PublishIssue.MissingTitle)) }
+            return
+        }
+        if (state.blocks.toHtml().isBlank()) {
+            mutableUiState.update { it.copy(publish = ComposerPublish.Validation(PublishIssue.EmptyBody)) }
+            return
+        }
+        val instant = runCatching { Instant.parse(at) }.getOrNull()
+        if (instant == null || !instant.isSchedulable(clock)) {
+            mutableUiState.update { it.copy(publish = ComposerPublish.Validation(PublishIssue.PastSchedule)) }
+            return
+        }
+        persist(requested = true, status = OwnPostStatus.Scheduled, publishAt = at)
+    }
+
+    fun unschedule() {
+        mutableUiState.update { it.copy(scheduleOpen = false) }
+        persist(requested = true, status = OwnPostStatus.Draft)
     }
 
     fun retryLoad() {
@@ -261,6 +298,7 @@ class ComposerViewModel(
                             language = detail.language.orEmpty(),
                             sourceStatus = detail.status,
                             sourceCoverUrl = detail.coverUrl,
+                            scheduledFor = detail.publishAt,
                             loadPhase = ComposerLoadPhase.Content,
                         )
                     }
@@ -272,7 +310,7 @@ class ComposerViewModel(
 
     fun retrySave() {
         mutableUiState.update { it.copy(save = ComposerSave.Idle) }
-        persist(requested = true, status = null)
+        saveDraft()
     }
 
     fun dismissPublishValidation() {
@@ -301,7 +339,7 @@ class ComposerViewModel(
             }
     }
 
-    private fun persist(requested: Boolean, status: OwnPostStatus?) {
+    private fun persist(requested: Boolean, status: OwnPostStatus?, publishAt: String? = null) {
         if (saving) return
         val state = mutableUiState.value
         if (state.loadPhase != ComposerLoadPhase.Content) return
@@ -311,7 +349,8 @@ class ComposerViewModel(
         }
         autosaveJob?.cancel()
         saving = true
-        if (status == null) {
+        val reportsSave = status == null || status == OwnPostStatus.Draft
+        if (reportsSave) {
             mutableUiState.update { it.copy(save = ComposerSave.Saving) }
         } else {
             mutableUiState.update { it.copy(publish = ComposerPublish.Publishing) }
@@ -327,6 +366,7 @@ class ComposerViewModel(
                             title = snapshot.title.trim().ifEmpty { null },
                             contentHtml = snapshot.blocks.toHtml(),
                             status = status ?: OwnPostStatus.Draft,
+                            publishAt = publishAt,
                             language = snapshot.language.trim().ifEmpty { null },
                             summary = snapshot.summary.trim().ifEmpty { null },
                             coverUrl = snapshot.coverUrl,
@@ -340,6 +380,7 @@ class ComposerViewModel(
                             title = snapshot.title.trim().ifEmpty { null },
                             contentHtml = snapshot.blocks.toHtml(),
                             status = status,
+                            publishAt = publishAt,
                             language = snapshot.language.trim().ifEmpty { null },
                             summary = snapshot.summary.trim().ifEmpty { null },
                             coverUrl = snapshot.coverUrl,
@@ -349,15 +390,41 @@ class ComposerViewModel(
                 }
             }.onSuccess { post ->
                 saving = false
-                if (status == null) {
-                    mutableUiState.update { it.copy(postId = post.id, save = ComposerSave.Saved, dirty = false) }
+                if (reportsSave) {
+                    mutableUiState.update {
+                        it.copy(
+                            postId = post.id,
+                            sourceStatus = if (status == OwnPostStatus.Draft) OwnPostStatus.Draft else it.sourceStatus,
+                            scheduledFor = if (status == OwnPostStatus.Draft) null else it.scheduledFor,
+                            save = ComposerSave.Saved,
+                            dirty = false,
+                        )
+                    }
+                } else if (status == OwnPostStatus.Scheduled) {
+                    mutableUiState.update {
+                        it.copy(
+                            postId = post.id,
+                            sourceStatus = OwnPostStatus.Scheduled,
+                            scheduledFor = publishAt,
+                            publish = ComposerPublish.Scheduled,
+                            dirty = false,
+                        )
+                    }
                 } else {
-                    mutableUiState.update { it.copy(postId = post.id, publish = ComposerPublish.Published, dirty = false) }
+                    mutableUiState.update {
+                        it.copy(
+                            postId = post.id,
+                            sourceStatus = OwnPostStatus.Published,
+                            scheduledFor = null,
+                            publish = ComposerPublish.Published,
+                            dirty = false,
+                        )
+                    }
                 }
             }.onFailure { error ->
                 saving = false
                 val mapped = error.toComposerError()
-                if (status == null) {
+                if (reportsSave) {
                     mutableUiState.update { it.copy(save = ComposerSave.Error(mapped)) }
                 } else {
                     mutableUiState.update { it.copy(publish = ComposerPublish.Error(mapped)) }
@@ -381,6 +448,8 @@ data class ComposerUiState(
     val sourceStatus: OwnPostStatus? = null,
     val sourceCoverUrl: String? = null,
     val coverUrl: String? = null,
+    val scheduleOpen: Boolean = false,
+    val scheduledFor: String? = null,
     val imageUpload: ImageUploadState = ImageUploadState.Idle,
     val coverUpload: ImageUploadState = ImageUploadState.Idle,
     val loadPhase: ComposerLoadPhase = ComposerLoadPhase.Loading,
@@ -416,6 +485,8 @@ sealed interface ComposerPublish {
 
     data object Published : ComposerPublish
 
+    data object Scheduled : ComposerPublish
+
     data class Error(val error: ComposerError) : ComposerPublish
 
     data class Validation(val issue: PublishIssue) : ComposerPublish
@@ -424,6 +495,7 @@ sealed interface ComposerPublish {
 enum class PublishIssue {
     MissingTitle,
     EmptyBody,
+    PastSchedule,
 }
 
 enum class ComposerError {

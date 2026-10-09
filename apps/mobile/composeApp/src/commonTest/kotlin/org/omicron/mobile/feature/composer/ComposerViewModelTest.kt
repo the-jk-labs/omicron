@@ -26,6 +26,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 class ComposerViewModelTest {
     @Test
@@ -311,16 +313,149 @@ class ComposerViewModelTest {
         assertEquals("https://omicron.blog/uploads/cover.jpg", viewModel.uiState.value.sourceCoverUrl)
     }
 
+    @Test
+    fun scheduleSendsStatusAndPublishAt() = runTest {
+        val authoring = RecordingAuthoringApi()
+        val viewModel = composerViewModel(authoringApi = authoring, clock = fixedClock())
+        testScheduler.advanceUntilIdle()
+
+        viewModel.updateTitle("Hello")
+        viewModel.updateBlockText(viewModel.uiState.value.blocks.single().id, "Body")
+        viewModel.schedulePost("2026-10-10T09:00:00Z")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("scheduled", authoring.lastCreate?.status)
+        assertEquals("2026-10-10T09:00:00Z", authoring.lastCreate?.publishAt)
+        assertIs<ComposerPublish.Scheduled>(viewModel.uiState.value.publish)
+        assertEquals("2026-10-10T09:00:00Z", viewModel.uiState.value.scheduledFor)
+        assertEquals(OwnPostStatus.Scheduled, viewModel.uiState.value.sourceStatus)
+    }
+
+    @Test
+    fun scheduleRequiresTitleAndBody() = runTest {
+        val authoring = RecordingAuthoringApi()
+        val viewModel = composerViewModel(authoringApi = authoring, clock = fixedClock())
+        testScheduler.advanceUntilIdle()
+
+        viewModel.updateBlockText(viewModel.uiState.value.blocks.single().id, "Body")
+        testScheduler.advanceTimeBy(2000)
+        testScheduler.advanceUntilIdle()
+        val creates = authoring.createCalls
+
+        viewModel.schedulePost("2026-10-10T09:00:00Z")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(ComposerPublish.Validation(PublishIssue.MissingTitle), viewModel.uiState.value.publish)
+        assertEquals(creates, authoring.createCalls)
+    }
+
+    @Test
+    fun scheduleRejectsPastAndNearInstants() = runTest {
+        val authoring = RecordingAuthoringApi()
+        val viewModel = composerViewModel(authoringApi = authoring, clock = fixedClock())
+        testScheduler.advanceUntilIdle()
+
+        viewModel.updateTitle("Hello")
+        viewModel.updateBlockText(viewModel.uiState.value.blocks.single().id, "Body")
+        testScheduler.advanceTimeBy(2000)
+        testScheduler.advanceUntilIdle()
+        val creates = authoring.createCalls
+
+        viewModel.schedulePost("2026-10-09T12:00:30Z")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(ComposerPublish.Validation(PublishIssue.PastSchedule), viewModel.uiState.value.publish)
+        assertEquals(creates, authoring.createCalls)
+    }
+
+    @Test
+    fun loadedScheduledPostExposesPublishAt() = runTest {
+        val viewModel = composerViewModel(postsApi = ScheduledPostsApi(), postId = "post-1")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("2026-12-01T09:00:00Z", viewModel.uiState.value.scheduledFor)
+        assertEquals(OwnPostStatus.Scheduled, viewModel.uiState.value.sourceStatus)
+    }
+
+    @Test
+    fun autosaveOmitsStatusAndPublishAtOnScheduledPost() = runTest {
+        val authoring = RecordingAuthoringApi()
+        val viewModel = composerViewModel(authoringApi = authoring, postsApi = ScheduledPostsApi(), postId = "post-1")
+        testScheduler.advanceUntilIdle()
+
+        viewModel.updateBlockText(viewModel.uiState.value.blocks.first().id, "Edited")
+        testScheduler.advanceTimeBy(2000)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(1, authoring.updateCalls)
+        assertNull(authoring.lastUpdate?.status)
+        assertNull(authoring.lastUpdate?.publishAt)
+        assertEquals("2026-12-01T09:00:00Z", viewModel.uiState.value.scheduledFor)
+    }
+
+    @Test
+    fun saveDraftOnScheduledPostUnschedules() = runTest {
+        val authoring = RecordingAuthoringApi()
+        val viewModel = composerViewModel(authoringApi = authoring, postsApi = ScheduledPostsApi(), postId = "post-1")
+        testScheduler.advanceUntilIdle()
+
+        viewModel.saveDraft()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("draft", authoring.lastUpdate?.status)
+        assertNull(authoring.lastUpdate?.publishAt)
+        assertNull(viewModel.uiState.value.scheduledFor)
+        assertEquals(OwnPostStatus.Draft, viewModel.uiState.value.sourceStatus)
+        assertIs<ComposerSave.Saved>(viewModel.uiState.value.save)
+    }
+
+    @Test
+    fun unscheduleClearsScheduleAndKeepsDraft() = runTest {
+        val authoring = RecordingAuthoringApi()
+        val viewModel = composerViewModel(authoringApi = authoring, postsApi = ScheduledPostsApi(), postId = "post-1")
+        testScheduler.advanceUntilIdle()
+
+        viewModel.unschedule()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("draft", authoring.lastUpdate?.status)
+        assertNull(authoring.lastUpdate?.publishAt)
+        assertNull(viewModel.uiState.value.scheduledFor)
+        assertIs<ComposerSave.Saved>(viewModel.uiState.value.save)
+    }
+
+    @Test
+    fun publishNowClearsSchedule() = runTest {
+        val authoring = RecordingAuthoringApi()
+        val viewModel = composerViewModel(authoringApi = authoring, postsApi = ScheduledPostsApi(), postId = "post-1")
+        testScheduler.advanceUntilIdle()
+
+        viewModel.publish()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("published", authoring.lastUpdate?.status)
+        assertNull(authoring.lastUpdate?.publishAt)
+        assertNull(viewModel.uiState.value.scheduledFor)
+        assertIs<ComposerPublish.Published>(viewModel.uiState.value.publish)
+    }
+
+    private fun fixedClock(): Clock =
+        object : Clock {
+            override fun now(): Instant = Instant.parse("2026-10-09T12:00:00Z")
+        }
+
     private fun TestScope.composerViewModel(
         authoringApi: AuthoringApi = RecordingAuthoringApi(),
         postsApi: PostsApi = DraftPostsApi(),
         postId: String? = null,
+        clock: Clock = Clock.System,
     ): ComposerViewModel {
         val dispatcher = StandardTestDispatcher(testScheduler)
         return ComposerViewModel(
             AuthoringRepository(authoringApi, savedInstance = { instance() }, accessToken = { "signed-token" }),
             PostsRepository(postsApi, savedInstance = { instance() }, accessToken = { "signed-token" }),
             postId,
+            clock,
             TestScope(dispatcher),
         )
     }
@@ -404,5 +539,22 @@ class ComposerViewModelTest {
         private val failure: Throwable,
     ) : PostsApi by DraftPostsApi() {
         override suspend fun post(origin: String, id: String, accessToken: String?): PostDto = throw failure
+    }
+
+    private class ScheduledPostsApi : PostsApi by DraftPostsApi() {
+        override suspend fun post(origin: String, id: String, accessToken: String?): PostDto =
+            PostDto(
+                id = id,
+                title = "Hello",
+                contentHtml = "<p>Hello</p>",
+                language = "en",
+                summary = null,
+                status = "scheduled",
+                publishAt = "2026-12-01T09:00:00Z",
+                coverUrl = null,
+                createdAt = "2026-01-01T00:00:00Z",
+                author = PostAuthorDto("user-1", "alice", "Alice"),
+                tags = listOf(TagDto("technology", "Technology")),
+            )
     }
 }
