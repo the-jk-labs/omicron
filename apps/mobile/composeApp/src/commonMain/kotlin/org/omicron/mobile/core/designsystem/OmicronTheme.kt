@@ -8,9 +8,16 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.Font
 import org.omicron.mobile.domain.model.AppearancePreference
+import org.omicron.mobile.resources.Res
+import org.omicron.mobile.resources.inter_variable
+import org.omicron.mobile.resources.source_sans3_italic_variable
+import org.omicron.mobile.resources.source_sans3_variable
 import zed.rainxch.rikkaui.foundation.RikkaColors
 import zed.rainxch.rikkaui.foundation.RikkaElevation
 import zed.rainxch.rikkaui.foundation.RikkaShapes
@@ -76,6 +83,11 @@ data class OmicronShadows(
     val keyboard: OmicronShadow,
     val button: OmicronShadow,
     val card: OmicronShadow,
+)
+
+data class OmicronFontFamilies(
+    val ui: FontFamily,
+    val content: FontFamily,
 )
 
 object OmicronFontStacks {
@@ -183,6 +195,10 @@ private val LocalOmicronShadows = staticCompositionLocalOf<OmicronShadows> {
     error("OmicronTheme has not been provided")
 }
 
+private val LocalOmicronFonts = staticCompositionLocalOf<OmicronFontFamilies> {
+    error("OmicronTheme has not been provided")
+}
+
 object OmicronTheme {
     val colors: OmicronColorTokens
         @Composable
@@ -203,6 +219,16 @@ object OmicronTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalOmicronShadows.current
+
+    val uiFontFamily: FontFamily
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalOmicronFonts.current.ui
+
+    val contentFontFamily: FontFamily
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalOmicronFonts.current.content
 }
 
 @Composable
@@ -219,9 +245,43 @@ fun OmicronTheme(
         }
     val colors = if (useDarkTheme) OmicronDarkColors else OmicronLightColors
     val code = if (useDarkTheme) OmicronDarkCode else OmicronLightCode
+    val fonts =
+        OmicronFontFamilies(
+            ui =
+                FontFamily(
+                    Font(Res.font.inter_variable, FontWeight.W100),
+                    Font(Res.font.inter_variable, FontWeight.W200),
+                    Font(Res.font.inter_variable, FontWeight.W300),
+                    Font(Res.font.inter_variable, FontWeight.W400),
+                    Font(Res.font.inter_variable, FontWeight.W500),
+                    Font(Res.font.inter_variable, FontWeight.W600),
+                    Font(Res.font.inter_variable, FontWeight.W700),
+                    Font(Res.font.inter_variable, FontWeight.W800),
+                    Font(Res.font.inter_variable, FontWeight.W900),
+                ),
+            content =
+                FontFamily(
+                    Font(Res.font.source_sans3_variable, FontWeight.W200),
+                    Font(Res.font.source_sans3_variable, FontWeight.W300),
+                    Font(Res.font.source_sans3_variable, FontWeight.W400),
+                    Font(Res.font.source_sans3_variable, FontWeight.W500),
+                    Font(Res.font.source_sans3_variable, FontWeight.W600),
+                    Font(Res.font.source_sans3_variable, FontWeight.W700),
+                    Font(Res.font.source_sans3_variable, FontWeight.W800),
+                    Font(Res.font.source_sans3_variable, FontWeight.W900),
+                    Font(Res.font.source_sans3_italic_variable, FontWeight.W200, FontStyle.Italic),
+                    Font(Res.font.source_sans3_italic_variable, FontWeight.W300, FontStyle.Italic),
+                    Font(Res.font.source_sans3_italic_variable, FontWeight.W400, FontStyle.Italic),
+                    Font(Res.font.source_sans3_italic_variable, FontWeight.W500, FontStyle.Italic),
+                    Font(Res.font.source_sans3_italic_variable, FontWeight.W600, FontStyle.Italic),
+                    Font(Res.font.source_sans3_italic_variable, FontWeight.W700, FontStyle.Italic),
+                    Font(Res.font.source_sans3_italic_variable, FontWeight.W800, FontStyle.Italic),
+                    Font(Res.font.source_sans3_italic_variable, FontWeight.W900, FontStyle.Italic),
+                ),
+        )
     RikkaTheme(
         colors = colors.toRikkaColors(),
-        typography = rikkaTypography(fontFamily = FontFamily.SansSerif),
+        typography = rikkaTypography(fontFamily = fonts.ui),
         shapes = RikkaShapes(
             sm = RoundedCornerShape(OmicronRadiiTokens.button),
             md = RoundedCornerShape(OmicronRadiiTokens.input),
@@ -241,6 +301,7 @@ fun OmicronTheme(
             LocalOmicronCode provides code,
             LocalOmicronRadii provides OmicronRadiiTokens,
             LocalOmicronShadows provides OmicronShadowTokens,
+            LocalOmicronFonts provides fonts,
             content = content,
         )
     }

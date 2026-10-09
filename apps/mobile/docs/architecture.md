@@ -28,7 +28,8 @@ Keep the package layout stable inside the single `composeApp` module. Split Grad
 - Model loading, content, empty, error, offline, retry, and mutation-in-progress states explicitly.
 - Use type-safe Compose Navigation when more than one route is present. Navigation arguments are identifiers, not serialized models or mutable state.
 - Use stable keys and content types for every lazy-list item.
-- Use `OmicronTheme`, RikkaUI, and Lucide RikkaIcons. Do not introduce Material3 or ad-hoc visual tokens.
+- Use `OmicronTheme`, RikkaUI, and Lucide RikkaIcons. Inter is the interface typeface; Source Sans 3 is for native article/profile content and composer body blocks. Both are bundled under OFL 1.1. Do not introduce Material3 or ad-hoc visual tokens.
+- Keep typography assets in `commonMain/composeResources/font`; include their license notices in the app resources and retain variable weight and Source Sans 3 italic support.
 - All visible strings live in common Compose resources. Design for light and dark modes, 48dp touch targets, edge-to-edge drawing, and font scaling.
 
 ## Networking
