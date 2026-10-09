@@ -97,7 +97,7 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 
 **Outcome:** The app is accessible, maintainable, observable through local quality gates, and ready for release review.
 
-**In progress:** Settings route is available from the timeline header and includes current-instance/change-instance controls, app About information, sign-out, and persistent System/Light/Dark appearance. Appearance is stored locally per Android installation and System follows the device preference (ADR-0012). Offline reading/cache eviction, licensed fonts, and release validation remain outstanding.
+**In progress:** Settings route is available from the timeline header and includes current-instance/change-instance controls, app About information, sign-out, and persistent System/Light/Dark appearance. Appearance is stored locally per Android installation and System follows the device preference (ADR-0012). Offline reading caches public article details by instance origin, with a Settings library and remove/clear controls: 50 entries/64 MiB total, 30-day freshness, least-recently-used eviction, and a separate 32 MiB Coil image cache. Drafts, schedules, feeds, comments, and viewer-specific social state are never cached (ADR-0013). Licensed fonts and release validation remain outstanding.
 
 **Exit criteria:**
 
@@ -138,4 +138,5 @@ All regular pages use opaque cursor/keyset pagination and return `{items,nextCur
 - There is no documented portable rich-text authoring payload. The server requires HTML; `contentJson` is opaque web-editor data.
 - Followers, following, and search have no cursor pagination. Search results are capped server-side.
 - There is no delta-sync or offline-sync endpoint.
+- R6 offline reading uses only the documented bounded cache of public post details; it does not provide offline feeds, comments, drafts, or synchronization.
 - Remote profile routes return 404 when federation is disabled.

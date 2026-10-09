@@ -47,6 +47,7 @@ Keep the package layout stable inside the single `composeApp` module. Split Grad
 - Sign-out clears the in-memory JWT and that origin's stored cookies even when remote revocation fails; the UI warns when the server could not confirm sign-out.
 - Authenticated API calls use a short-lived JWT in the `Authorization: Bearer` header. Keep it in memory, refresh it through `GET /api/auth/token` before expiry, and never send it to another origin.
 - Cache ownership, freshness, eviction, and offline behavior must be documented with the release that introduces a cache.
+- R6 stores only public published article details offline, scoped by instance origin. The bounded cache keeps up to 50 entries or 64 MiB for 30 days with least-recently-used eviction; comments, feeds, drafts, scheduled posts, and viewer-specific social state are excluded (ADR-0013).
 - The System/Light/Dark appearance preference is local to the Android app installation, not an instance or account setting; System follows Android's current appearance.
 - Android-only presentation preferences use app-private storage through a common storage contract; they are never sent to the instance.
 - Never persist passwords, opaque editor documents, or server data without a confirmed product requirement and retention strategy.
