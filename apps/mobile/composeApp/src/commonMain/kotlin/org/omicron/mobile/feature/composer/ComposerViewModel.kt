@@ -39,7 +39,7 @@ class ComposerViewModel(
     private var autosaveJob: Job? = null
     private var saving = false
     private var uploading = false
-    private var lastUpload: Pair<ByteArray, String>? = null
+    private var lastUpload: Triple<ByteArray, String, UploadTarget>? = null
 
     init {
         if (postId == null) {
@@ -58,6 +58,7 @@ class ComposerViewModel(
                                 tags = detail.tags.joinToString(" ") { tag -> tag.slug },
                                 language = detail.language.orEmpty(),
                                 sourceStatus = detail.status,
+                                sourceCoverUrl = detail.coverUrl,
                                 loadPhase = ComposerLoadPhase.Content,
                             )
                         }
@@ -152,44 +153,77 @@ class ComposerViewModel(
     }
 
     fun pickImageResult(bytes: ByteArray, mime: String?) {
-        val type = mime?.substringBefore(";")?.trim()?.lowercase()
-        if (type == null || type !in SUPPORTED_IMAGE_TYPES) {
-            mutableUiState.update { it.copy(imageUpload = ImageUploadState.Error(ComposerError.UnsupportedType, retryable = false)) }
-            return
-        }
-        if (bytes.size > MAX_IMAGE_BYTES) {
-            mutableUiState.update { it.copy(imageUpload = ImageUploadState.Error(ComposerError.TooLarge, retryable = false)) }
-            return
-        }
-        lastUpload = bytes to type
-        uploadPickedImage()
+        startValidatedUpload(bytes, mime, UploadTarget.Body)
+    }
+
+    fun pickCoverResult(bytes: ByteArray, mime: String?) {
+        startValidatedUpload(bytes, mime, UploadTarget.Cover)
     }
 
     fun retryImageUpload() {
-        uploadPickedImage()
+        resumeUpload(UploadTarget.Body)
     }
 
-    private fun uploadPickedImage() {
+    fun retryCoverUpload() {
+        resumeUpload(UploadTarget.Cover)
+    }
+
+    fun removeCover() {
+        mutableUiState.update { it.copy(coverUrl = "", coverUpload = ImageUploadState.Idle, dirty = true) }
+        scheduleAutosave()
+    }
+
+    private fun startValidatedUpload(bytes: ByteArray, mime: String?, target: UploadTarget) {
+        val type = mime?.substringBefore(";")?.trim()?.lowercase()
+        if (type == null || type !in SUPPORTED_IMAGE_TYPES) {
+            mutableUiState.update { target.state(it, ImageUploadState.Error(ComposerError.UnsupportedType, retryable = false)) }
+            return
+        }
+        if (bytes.size > MAX_IMAGE_BYTES) {
+            mutableUiState.update { target.state(it, ImageUploadState.Error(ComposerError.TooLarge, retryable = false)) }
+            return
+        }
+        lastUpload = Triple(bytes, type, target)
+        runUpload()
+    }
+
+    private fun resumeUpload(target: UploadTarget) {
+        val pending = lastUpload
+        if (pending == null || pending.third != target) return
+        runUpload()
+    }
+
+    private fun runUpload() {
         val pending = lastUpload ?: return
         if (uploading) return
+        val target = pending.third
         uploading = true
-        mutableUiState.update { it.copy(imageUpload = ImageUploadState.Uploading) }
+        mutableUiState.update { target.state(it, ImageUploadState.Uploading) }
         scope.launch {
             runCatching { authoringRepository.uploadImage(pending.first, pending.second) }
                 .onSuccess { image ->
                     uploading = false
                     lastUpload = null
                     mutableUiState.update { state ->
+                        val withBlock =
+                            if (target == UploadTarget.Body) {
+                                state.blocks + ComposerBlock.Image(id = nextFreshId(), url = image.url)
+                            } else {
+                                state.blocks
+                            }
                         state.copy(
-                            blocks = state.blocks + ComposerBlock.Image(id = nextFreshId(), url = image.url),
-                            imageUpload = ImageUploadState.Idle,
+                            blocks = withBlock,
+                            coverUrl = if (target == UploadTarget.Cover) image.url else state.coverUrl,
+                            imageUpload = if (target == UploadTarget.Body) ImageUploadState.Idle else state.imageUpload,
+                            coverUpload = if (target == UploadTarget.Cover) ImageUploadState.Idle else state.coverUpload,
                             dirty = true,
                         )
                     }
                     scheduleAutosave()
                 }.onFailure { error ->
                     uploading = false
-                    mutableUiState.update { it.copy(imageUpload = ImageUploadState.Error(error.toComposerError(), retryable = true)) }
+                    val failed = ImageUploadState.Error(error.toComposerError(), retryable = true)
+                    mutableUiState.update { target.state(it, failed) }
                 }
         }
     }
@@ -226,6 +260,7 @@ class ComposerViewModel(
                             tags = detail.tags.joinToString(" ") { tag -> tag.slug },
                             language = detail.language.orEmpty(),
                             sourceStatus = detail.status,
+                            sourceCoverUrl = detail.coverUrl,
                             loadPhase = ComposerLoadPhase.Content,
                         )
                     }
@@ -294,6 +329,7 @@ class ComposerViewModel(
                             status = status ?: OwnPostStatus.Draft,
                             language = snapshot.language.trim().ifEmpty { null },
                             summary = snapshot.summary.trim().ifEmpty { null },
+                            coverUrl = snapshot.coverUrl,
                             tags = tags,
                         ),
                     )
@@ -306,6 +342,7 @@ class ComposerViewModel(
                             status = status,
                             language = snapshot.language.trim().ifEmpty { null },
                             summary = snapshot.summary.trim().ifEmpty { null },
+                            coverUrl = snapshot.coverUrl,
                             tags = tags,
                         ),
                     )
@@ -342,7 +379,10 @@ data class ComposerUiState(
     val language: String = "",
     val postId: String? = null,
     val sourceStatus: OwnPostStatus? = null,
+    val sourceCoverUrl: String? = null,
+    val coverUrl: String? = null,
     val imageUpload: ImageUploadState = ImageUploadState.Idle,
+    val coverUpload: ImageUploadState = ImageUploadState.Idle,
     val loadPhase: ComposerLoadPhase = ComposerLoadPhase.Loading,
     val save: ComposerSave = ComposerSave.Idle,
     val publish: ComposerPublish = ComposerPublish.Idle,
@@ -412,6 +452,17 @@ enum class ComposerBlockType {
     BulletList,
     OrderedList,
     Divider,
+}
+
+private enum class UploadTarget {
+    Body,
+    Cover;
+
+    fun state(uiState: ComposerUiState, value: ImageUploadState): ComposerUiState =
+        when (this) {
+            Body -> uiState.copy(imageUpload = value)
+            Cover -> uiState.copy(coverUpload = value)
+        }
 }
 
 private fun ComposerUiState.composableContent(): Boolean =
