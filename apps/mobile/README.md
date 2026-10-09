@@ -36,8 +36,9 @@ This repository contains the Android-first Kotlin Multiplatform client. Android 
 - Compose and schedule posts, then manage drafts, scheduled posts, and published posts from the owner profile.
 - Change the connected instance, persist a System/Light/Dark appearance choice, view app information, and sign out in Settings.
 - Reopen previously loaded public articles offline from Settings and remove cached copies by instance.
+- Use bundled Inter interface typography and Source Sans 3 article/composer typography.
 
-Licensed font assets and release hardening remain outstanding. See [roadmap.md](roadmap.md).
+Release hardening remains outstanding. See [roadmap.md](roadmap.md).
 
 ## Repository Rules
 
