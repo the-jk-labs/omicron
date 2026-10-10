@@ -8,9 +8,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -18,6 +20,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -61,10 +64,8 @@ class MobileAppChromeJourneyTest {
                 MobileTopBar(
                     appName = "Omicron",
                     user = AuthenticatedUser("user-1", "ada@example.com", "ada", "Ada"),
-                    darkTheme = true,
                     unreadCount = 2,
                     onSearch = {},
-                    onToggleTheme = {},
                     onNotifications = {},
                     onAccountAction = { action = it },
                 )
@@ -85,10 +86,8 @@ class MobileAppChromeJourneyTest {
                 MobileTopBar(
                     appName = "Omicron",
                     user = null,
-                    darkTheme = false,
                     unreadCount = 0,
                     onSearch = {},
-                    onToggleTheme = {},
                     onNotifications = {},
                     onAccountAction = { action = it },
                 )
@@ -110,10 +109,8 @@ class MobileAppChromeJourneyTest {
                         MobileTopBar(
                             appName = "A very long custom instance name",
                             user = AuthenticatedUser("user-1", "ada@example.com", "ada", "Ada"),
-                            darkTheme = true,
                             unreadCount = 12,
                             onSearch = {},
-                            onToggleTheme = {},
                             onNotifications = {},
                             onAccountAction = {},
                         )
@@ -123,8 +120,10 @@ class MobileAppChromeJourneyTest {
             }
         }
 
+        composeTestRule.onNodeWithContentDescription("Search").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         composeTestRule.onNodeWithContentDescription("Notifications").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Account menu").assertIsDisplayed()
+        assertTrue(composeTestRule.onAllNodesWithContentDescription("Toggle theme").fetchSemanticsNodes().isEmpty())
         composeTestRule.onNodeWithText("Profile").assertIsDisplayed()
     }
 
@@ -147,11 +146,9 @@ class MobileAppChromeJourneyTest {
                 MobileTopBar(
                     appName = "Omicron",
                     user = AuthenticatedUser("user-1", "ada@example.com", "ada", "Ada"),
-                    darkTheme = true,
                     unreadCount = 2,
                     notifications = listOf(notification),
                     onSearch = {},
-                    onToggleTheme = {},
                     onNotifications = { openedAll = true },
                     onAccountAction = {},
                 )

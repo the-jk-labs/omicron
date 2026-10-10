@@ -96,7 +96,6 @@
     <string name="navigation_profile">Profile</string>
     <string name="navigation_notifications">Notifications</string>
     <string name="navigation_account_menu">Account menu</string>
-    <string name="navigation_toggle_theme">Toggle theme</string>
     <string name="navigation_primary">Primary navigation</string>
     <string name="navigation_sign_in">Sign in</string>
     <string name="navigation_get_started">Get started</string>

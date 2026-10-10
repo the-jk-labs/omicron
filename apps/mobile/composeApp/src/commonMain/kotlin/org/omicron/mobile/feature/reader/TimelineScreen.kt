@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -183,36 +184,39 @@ private fun TimelineScopeBar(
     signedIn: Boolean,
     onSelectScope: (TimelineScope) -> Unit,
 ) {
-    Row(
+    BoxWithConstraints(
         modifier =
             Modifier
                 .widthIn(max = 480.dp)
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 8.dp)
-                .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+                .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 8.dp),
     ) {
-        if (signedIn) {
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()).widthIn(min = maxWidth),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (signedIn) {
+                TimelineScopeTab(
+                    label = stringResource(Res.string.timeline_scope_for_you),
+                    icon = RikkaIcons.Sparkles,
+                    selected = scope == TimelineScope.ForYou,
+                    onClick = { onSelectScope(TimelineScope.ForYou) },
+                )
+            }
             TimelineScopeTab(
-                label = stringResource(Res.string.timeline_scope_for_you),
-                icon = RikkaIcons.Sparkles,
-                selected = scope == TimelineScope.ForYou,
-                onClick = { onSelectScope(TimelineScope.ForYou) },
+                label = stringResource(Res.string.timeline_scope_local),
+                icon = RikkaIcons.Users,
+                selected = scope == TimelineScope.Local,
+                onClick = { onSelectScope(TimelineScope.Local) },
+            )
+            TimelineScopeTab(
+                label = stringResource(Res.string.timeline_scope_global),
+                icon = RikkaIcons.Globe,
+                selected = scope == TimelineScope.Global,
+                onClick = { onSelectScope(TimelineScope.Global) },
             )
         }
-        TimelineScopeTab(
-            label = stringResource(Res.string.timeline_scope_local),
-            icon = RikkaIcons.Users,
-            selected = scope == TimelineScope.Local,
-            onClick = { onSelectScope(TimelineScope.Local) },
-        )
-        TimelineScopeTab(
-            label = stringResource(Res.string.timeline_scope_global),
-            icon = RikkaIcons.Globe,
-            selected = scope == TimelineScope.Global,
-            onClick = { onSelectScope(TimelineScope.Global) },
-        )
     }
 }
 

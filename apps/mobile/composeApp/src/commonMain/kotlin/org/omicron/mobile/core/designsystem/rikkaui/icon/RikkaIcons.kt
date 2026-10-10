@@ -325,19 +325,24 @@ public object RikkaIcons {
 
     public val Users: ImageVector by lazy {
         lucideIcon("Users") {
-            strokePath { circle(9f, 8f, 4f) }
             strokePath {
-                moveTo(2f, 21f)
-                arcTo(7f, 7f, 0f, isMoreThanHalf = true, isPositiveArc = true, 16f, 21f)
+                moveTo(16f, 21f)
+                lineTo(16f, 19f)
+                arcTo(4f, 4f, 0f, isMoreThanHalf = false, isPositiveArc = false, 12f, 15f)
+                lineTo(6f, 15f)
+                arcTo(4f, 4f, 0f, isMoreThanHalf = false, isPositiveArc = false, 2f, 19f)
+                lineTo(2f, 21f)
             }
             strokePath {
-                moveTo(16f, 4f)
-                arcTo(4f, 4f, 0f, isMoreThanHalf = true, isPositiveArc = true, 16f, 12f)
+                moveTo(16f, 3.128f)
+                arcTo(4f, 4f, 0f, isMoreThanHalf = false, isPositiveArc = true, 16f, 10.872f)
             }
             strokePath {
-                moveTo(18f, 14f)
-                arcTo(6f, 6f, 0f, isMoreThanHalf = true, isPositiveArc = true, 22f, 21f)
+                moveTo(22f, 21f)
+                lineTo(22f, 19f)
+                arcTo(4f, 4f, 0f, isMoreThanHalf = false, isPositiveArc = false, 19f, 15.13f)
             }
+            strokePath { circle(9f, 7f, 4f) }
         }
     }
 

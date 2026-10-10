@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -76,7 +75,6 @@ import org.omicron.mobile.resources.navigation_settings
 import org.omicron.mobile.resources.navigation_sign_in
 import org.omicron.mobile.resources.navigation_sign_out
 import org.omicron.mobile.resources.navigation_stats
-import org.omicron.mobile.resources.navigation_toggle_theme
 import org.omicron.mobile.resources.navigation_see_all
 import org.omicron.mobile.resources.navigation_write
 import org.omicron.mobile.resources.navigation_your_posts
@@ -110,10 +108,8 @@ enum class AccountAction {
 fun MobileTopBar(
     appName: String,
     user: AuthenticatedUser?,
-    darkTheme: Boolean,
     unreadCount: Int,
     onSearch: () -> Unit,
-    onToggleTheme: () -> Unit,
     onNotifications: () -> Unit,
     notifications: List<MobileNotification> = emptyList(),
     notificationsLoading: Boolean = false,
@@ -122,7 +118,7 @@ fun MobileTopBar(
     onAccountAction: (AccountAction) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(
@@ -142,7 +138,7 @@ fun MobileTopBar(
                 style = TextStyle(fontSize = 20.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.widthIn(max = 170.dp),
+                modifier = Modifier.weight(1f),
             )
         }
         Row(
@@ -153,12 +149,7 @@ fun MobileTopBar(
                 icon = RikkaIcons.Search,
                 contentDescription = stringResource(Res.string.navigation_search),
                 onClick = onSearch,
-                size = IconButtonSize.Default,
-            )
-            IconButton(
-                icon = if (darkTheme) RikkaIcons.Sun else RikkaIcons.Moon,
-                contentDescription = stringResource(Res.string.navigation_toggle_theme),
-                onClick = onToggleTheme,
+                modifier = Modifier.size(48.dp),
                 size = IconButtonSize.Default,
             )
             if (user != null) {
@@ -176,11 +167,13 @@ fun MobileTopBar(
                     icon = RikkaIcons.Settings,
                     contentDescription = stringResource(Res.string.navigation_settings),
                     onClick = { onAccountAction(AccountAction.Settings) },
+                    modifier = Modifier.size(48.dp),
                     size = IconButtonSize.Default,
                 )
                 Button(
                     text = stringResource(Res.string.navigation_sign_in),
                     onClick = { onAccountAction(AccountAction.SignIn) },
+                    modifier = Modifier.heightIn(min = 48.dp),
                     variant = ButtonVariant.Ghost,
                     size = ButtonSize.Sm,
                 )
@@ -269,6 +262,7 @@ private fun NotificationMenu(
                     expanded = true
                     onRefresh()
                 },
+                modifier = Modifier.size(48.dp),
                 size = IconButtonSize.Default,
             )
             if (unreadCount > 0) {

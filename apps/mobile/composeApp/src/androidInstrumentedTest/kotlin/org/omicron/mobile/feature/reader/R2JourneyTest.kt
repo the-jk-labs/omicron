@@ -12,6 +12,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -60,6 +61,10 @@ class R2JourneyTest {
         composeTestRule.onNodeWithText("Global", substring = true).assertIsSelected()
         composeTestRule.onNodeWithText("Local", substring = true).assertIsNotSelected()
         assertTrue(composeTestRule.onAllNodesWithText("For you", substring = true).fetchSemanticsNodes().isEmpty())
+
+        val viewport = composeTestRule.onRoot().fetchSemanticsNode().boundsInRoot
+        val globalTab = composeTestRule.onNodeWithText("Global", substring = true).fetchSemanticsNode().boundsInRoot
+        assertTrue(viewport.right - globalTab.right < viewport.width * 0.12f)
     }
 
     @Test
@@ -127,6 +132,9 @@ class R2JourneyTest {
             "For you label wrapped: ${label.size.height}px",
             label.size.height < composeTestRule.density.run { 30.dp.toPx() },
         )
+        val viewport = composeTestRule.onRoot().fetchSemanticsNode().boundsInRoot
+        val globalTab = composeTestRule.onNodeWithText("Global").fetchSemanticsNode().boundsInRoot
+        assertTrue(viewport.right - globalTab.right < viewport.width * 0.12f)
     }
 
     @Test
