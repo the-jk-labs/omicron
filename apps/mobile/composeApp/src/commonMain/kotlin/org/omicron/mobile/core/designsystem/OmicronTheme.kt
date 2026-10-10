@@ -4,6 +4,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
@@ -235,14 +236,13 @@ object OmicronTheme {
 fun OmicronTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     appearance: AppearancePreference? = null,
+    onDarkThemeChanged: ((Boolean) -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    val useDarkTheme =
-        when (appearance) {
-            AppearancePreference.Light -> false
-            AppearancePreference.Dark -> true
-            AppearancePreference.System, null -> darkTheme
-        }
+    val useDarkTheme = resolveDarkTheme(darkTheme, appearance)
+    LaunchedEffect(useDarkTheme) {
+        onDarkThemeChanged?.invoke(useDarkTheme)
+    }
     val colors = if (useDarkTheme) OmicronDarkColors else OmicronLightColors
     val code = if (useDarkTheme) OmicronDarkCode else OmicronLightCode
     val fonts =
@@ -306,6 +306,13 @@ fun OmicronTheme(
         )
     }
 }
+
+internal fun resolveDarkTheme(systemDarkTheme: Boolean, appearance: AppearancePreference?): Boolean =
+    when (appearance) {
+        AppearancePreference.Light -> false
+        AppearancePreference.Dark -> true
+        AppearancePreference.System, null -> systemDarkTheme
+    }
 
 internal fun OmicronColorTokens.toRikkaColors() = RikkaColors(
     background = background,
