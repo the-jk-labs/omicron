@@ -131,6 +131,180 @@ public object RikkaIcons {
         }
     }
 
+    public val Home: ImageVector by lazy {
+        lucideIcon("House") {
+            strokePath {
+                moveTo(3f, 10f)
+                lineTo(12f, 3f)
+                lineTo(21f, 10f)
+            }
+            strokePath {
+                moveTo(5f, 9f)
+                lineTo(5f, 20f)
+                lineTo(19f, 20f)
+                lineTo(19f, 9f)
+            }
+            strokePath {
+                moveTo(9f, 20f)
+                lineTo(9f, 13f)
+                lineTo(15f, 13f)
+                lineTo(15f, 20f)
+            }
+        }
+    }
+
+    public val Library: ImageVector by lazy {
+        lucideIcon("Library") {
+            strokePath {
+                moveTo(4f, 19f)
+                lineTo(4f, 5f)
+                lineTo(8f, 3f)
+                lineTo(8f, 21f)
+            }
+            strokePath {
+                moveTo(8f, 5f)
+                lineTo(20f, 5f)
+                lineTo(20f, 19f)
+                lineTo(8f, 19f)
+            }
+            strokePath {
+                moveTo(12f, 9f)
+                lineTo(16f, 9f)
+            }
+            strokePath {
+                moveTo(12f, 13f)
+                lineTo(16f, 13f)
+            }
+        }
+    }
+
+    public val Chart: ImageVector by lazy {
+        lucideIcon("ChartNoAxesColumnIncreasing") {
+            strokePath {
+                moveTo(3f, 3f)
+                lineTo(3f, 21f)
+                lineTo(21f, 21f)
+            }
+            strokePath {
+                moveTo(7f, 16f)
+                lineTo(7f, 12f)
+            }
+            strokePath {
+                moveTo(12f, 16f)
+                lineTo(12f, 8f)
+            }
+            strokePath {
+                moveTo(17f, 16f)
+                lineTo(17f, 4f)
+            }
+        }
+    }
+
+    public val Bell: ImageVector by lazy {
+        lucideIcon("Bell") {
+            strokePath {
+                moveTo(18f, 8f)
+                arcTo(6f, 6f, 0f, isMoreThanHalf = false, isPositiveArc = false, 6f, 8f)
+                curveTo(6f, 15f, 3f, 15f, 3f, 18f)
+                lineTo(21f, 18f)
+                curveTo(21f, 15f, 18f, 15f, 18f, 8f)
+            }
+            strokePath {
+                moveTo(10f, 21f)
+                lineTo(14f, 21f)
+            }
+        }
+    }
+
+    public val Sparkles: ImageVector by lazy {
+        lucideIcon("Sparkles") {
+            strokePath {
+                moveTo(12f, 3f)
+                lineTo(13.5f, 8.5f)
+                lineTo(19f, 10f)
+                lineTo(13.5f, 11.5f)
+                lineTo(12f, 17f)
+                lineTo(10.5f, 11.5f)
+                lineTo(5f, 10f)
+                lineTo(10.5f, 8.5f)
+                close()
+            }
+            strokePath {
+                moveTo(19f, 14f)
+                lineTo(20f, 17f)
+                lineTo(23f, 18f)
+                lineTo(20f, 19f)
+                lineTo(19f, 22f)
+                lineTo(18f, 19f)
+                lineTo(15f, 18f)
+                lineTo(18f, 17f)
+                close()
+            }
+            strokePath {
+                moveTo(5f, 2f)
+                lineTo(5.75f, 4.25f)
+                lineTo(8f, 5f)
+                lineTo(5.75f, 5.75f)
+                lineTo(5f, 8f)
+                lineTo(4.25f, 5.75f)
+                lineTo(2f, 5f)
+                lineTo(4.25f, 4.25f)
+                close()
+            }
+        }
+    }
+
+    public val LogOut: ImageVector by lazy {
+        lucideIcon("LogOut") {
+            strokePath {
+                moveTo(9f, 21f)
+                lineTo(5f, 21f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 3f, 19f)
+                lineTo(3f, 5f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 5f, 3f)
+                lineTo(9f, 3f)
+            }
+            strokePath {
+                moveTo(16f, 17f)
+                lineTo(21f, 12f)
+                lineTo(16f, 7f)
+            }
+            strokePath {
+                moveTo(21f, 12f)
+                lineTo(9f, 12f)
+            }
+        }
+    }
+
+    public val FileText: ImageVector by lazy {
+        lucideIcon("FileText") {
+            strokePath {
+                moveTo(14f, 2f)
+                lineTo(14f, 8f)
+                lineTo(20f, 8f)
+            }
+            strokePath {
+                moveTo(20f, 8f)
+                lineTo(20f, 20f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 18f, 22f)
+                lineTo(6f, 22f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 4f, 20f)
+                lineTo(4f, 4f)
+                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 6f, 2f)
+                lineTo(14f, 2f)
+                lineTo(20f, 8f)
+            }
+            strokePath {
+                moveTo(8f, 13f)
+                lineTo(16f, 13f)
+            }
+            strokePath {
+                moveTo(8f, 17f)
+                lineTo(16f, 17f)
+            }
+        }
+    }
+
     public val Globe: ImageVector by lazy {
         lucideIcon("Globe") {
             strokePath { circle(12f, 12f, 10f) }
@@ -494,6 +668,27 @@ public object RikkaIcons {
                 lineTo(2f, 22f)
                 lineTo(3.5f, 16.5f)
                 close()
+            }
+        }
+    }
+
+    public val PenLine: ImageVector by lazy {
+        lucideIcon("PenLine") {
+            strokePath {
+                moveTo(12f, 20f)
+                lineTo(22f, 20f)
+            }
+            strokePath {
+                moveTo(18f, 2f)
+                arcTo(2.12f, 2.12f, 0f, isMoreThanHalf = false, isPositiveArc = true, 21f, 5f)
+                lineTo(8f, 18f)
+                lineTo(3f, 21f)
+                lineTo(6f, 16f)
+                lineTo(18f, 2f)
+            }
+            strokePath {
+                moveTo(15f, 5f)
+                lineTo(19f, 9f)
             }
         }
     }

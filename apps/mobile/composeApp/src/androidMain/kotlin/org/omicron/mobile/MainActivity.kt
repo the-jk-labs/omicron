@@ -20,12 +20,14 @@ import org.omicron.mobile.data.api.KtorAuthoringApi
 import org.omicron.mobile.data.api.KtorAuthApi
 import org.omicron.mobile.data.api.KtorDiscoveryApi
 import org.omicron.mobile.data.api.KtorInstanceApi
+import org.omicron.mobile.data.api.KtorMobileWebApi
 import org.omicron.mobile.data.api.KtorPostsApi
 import org.omicron.mobile.data.api.KtorSocialApi
 import org.omicron.mobile.data.repository.AuthoringRepository
 import org.omicron.mobile.data.repository.AuthRepository
 import org.omicron.mobile.data.repository.DiscoveryRepository
 import org.omicron.mobile.data.repository.InstanceRepository
+import org.omicron.mobile.data.repository.MobileWebRepository
 import org.omicron.mobile.data.repository.PostsRepository
 import org.omicron.mobile.data.repository.SocialRepository
 
@@ -55,6 +57,7 @@ class MainActivity : ComponentActivity() {
                 appContainer.socialRepository,
                 appContainer.discoveryRepository,
                 appContainer.authoringRepository,
+                appContainer.mobileWebRepository,
                 appContainer.appearancePreferenceStore,
                 onDarkThemeChanged = { isDark ->
                     WindowCompat.getInsetsController(window, window.decorView).apply {
@@ -115,6 +118,14 @@ private class AppContainer(context: android.content.Context) {
     val authoringRepository =
         AuthoringRepository(
             api = KtorAuthoringApi(httpClient),
+            savedInstance = instanceRepository::savedInstance,
+            accessToken = authRepository::accessToken,
+            onUnauthorized = { authRepository.invalidateSession() },
+        )
+
+    val mobileWebRepository =
+        MobileWebRepository(
+            api = KtorMobileWebApi(httpClient),
             savedInstance = instanceRepository::savedInstance,
             accessToken = authRepository::accessToken,
             onUnauthorized = { authRepository.invalidateSession() },

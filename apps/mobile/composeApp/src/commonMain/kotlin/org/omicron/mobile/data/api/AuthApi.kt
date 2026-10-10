@@ -36,6 +36,7 @@ data class AuthUserDto(
     val email: String,
     val username: String,
     @SerialName("name") val displayName: String,
+    @SerialName("image") val avatarUrl: String? = null,
 )
 
 @Serializable

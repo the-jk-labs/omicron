@@ -1,6 +1,5 @@
 package org.omicron.mobile.feature.reader
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,6 +7,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -40,7 +42,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.omicron.mobile.core.article.PostPreview
 import org.omicron.mobile.core.article.postPreview
@@ -50,8 +51,6 @@ import org.omicron.mobile.core.designsystem.rikkaui.button.Button
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonAnimation
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonVariant
-import org.omicron.mobile.core.designsystem.rikkaui.button.IconButton
-import org.omicron.mobile.core.designsystem.rikkaui.button.IconButtonSize
 import org.omicron.mobile.core.designsystem.rikkaui.icon.Icon
 import org.omicron.mobile.core.designsystem.rikkaui.icon.IconSize
 import org.omicron.mobile.core.designsystem.rikkaui.icon.RikkaIcons
@@ -62,11 +61,7 @@ import org.omicron.mobile.core.designsystem.rikkaui.text.TextVariant
 import org.omicron.mobile.data.api.TimelineScope
 import org.omicron.mobile.domain.model.Post
 import org.omicron.mobile.resources.Res
-import org.omicron.mobile.resources.app_name
-import org.omicron.mobile.resources.omicron_logo
 import org.omicron.mobile.resources.timeline_change_instance
-import org.omicron.mobile.resources.timeline_compose
-import org.omicron.mobile.resources.timeline_date_format
 import org.omicron.mobile.resources.timeline_empty_description
 import org.omicron.mobile.resources.timeline_empty_for_you_description
 import org.omicron.mobile.resources.timeline_empty_for_you_title
@@ -77,31 +72,21 @@ import org.omicron.mobile.resources.timeline_error_server
 import org.omicron.mobile.resources.timeline_load_more
 import org.omicron.mobile.resources.timeline_loading
 import org.omicron.mobile.resources.timeline_loading_more
-import org.omicron.mobile.resources.timeline_month_apr
-import org.omicron.mobile.resources.timeline_month_aug
-import org.omicron.mobile.resources.timeline_month_dec
-import org.omicron.mobile.resources.timeline_month_feb
-import org.omicron.mobile.resources.timeline_month_jan
-import org.omicron.mobile.resources.timeline_month_jul
-import org.omicron.mobile.resources.timeline_month_jun
-import org.omicron.mobile.resources.timeline_month_mar
-import org.omicron.mobile.resources.timeline_month_may
-import org.omicron.mobile.resources.timeline_month_nov
-import org.omicron.mobile.resources.timeline_month_oct
-import org.omicron.mobile.resources.timeline_month_sep
 import org.omicron.mobile.resources.timeline_reading_time
+import org.omicron.mobile.resources.timeline_action_error
+import org.omicron.mobile.resources.timeline_comment_action
+import org.omicron.mobile.resources.timeline_like_action
+import org.omicron.mobile.resources.timeline_recommend_action
 import org.omicron.mobile.resources.timeline_refresh
 import org.omicron.mobile.resources.timeline_retry
+import org.omicron.mobile.resources.timeline_save_action
+import org.omicron.mobile.resources.timeline_saved_action
 import org.omicron.mobile.resources.timeline_scope_for_you
 import org.omicron.mobile.resources.timeline_scope_global
 import org.omicron.mobile.resources.timeline_scope_local
 import org.omicron.mobile.resources.timeline_session_expired
-import org.omicron.mobile.resources.timeline_settings
-import org.omicron.mobile.resources.timeline_sign_in
 import org.omicron.mobile.resources.timeline_untitled
-import org.omicron.mobile.resources.timeline_search
-import org.omicron.mobile.resources.timeline_discover
-import org.omicron.mobile.resources.timeline_open_profile
+import org.omicron.mobile.core.time.displayDate
 import zed.rainxch.rikkaui.foundation.RikkaTheme
 
 private const val POST_CONTENT_TYPE = "post"
@@ -113,26 +98,25 @@ fun TimelineRoute(
     onChangeInstance: () -> Unit,
     onOpenPost: (String) -> Unit,
     onOpenProfile: (String) -> Unit = {},
-    onOpenSearch: () -> Unit = {},
-    onOpenDiscover: () -> Unit = {},
-    onOpenComposer: () -> Unit = {},
-    onOpenSettings: () -> Unit = {},
+    onOpenTag: (String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
     TimelineScreen(
         state = state,
-        onSelectScope = viewModel::selectScope,
+        onSelectScope = { scope ->
+            if (scope == state.scope) viewModel.refresh() else viewModel.selectScope(scope)
+        },
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
         onLoadMore = viewModel::loadMore,
+        onToggleLike = viewModel::toggleLike,
+        onToggleRecommendation = viewModel::toggleRecommendation,
+        onToggleReadLater = viewModel::toggleReadLater,
         onSignIn = onSignIn,
         onChangeInstance = onChangeInstance,
         onOpenPost = onOpenPost,
         onOpenProfile = onOpenProfile,
-        onOpenSearch = onOpenSearch,
-        onOpenDiscover = onOpenDiscover,
-        onOpenComposer = onOpenComposer,
-        onOpenSettings = onOpenSettings,
+        onOpenTag = onOpenTag,
     )
 }
 
@@ -143,29 +127,22 @@ private fun TimelineScreen(
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
+    onToggleLike: (String) -> Unit,
+    onToggleRecommendation: (String) -> Unit,
+    onToggleReadLater: (String) -> Unit,
     onSignIn: () -> Unit,
     onChangeInstance: () -> Unit,
     onOpenPost: (String) -> Unit,
     onOpenProfile: (String) -> Unit,
-    onOpenSearch: () -> Unit,
-    onOpenDiscover: () -> Unit,
-    onOpenComposer: () -> Unit,
-    onOpenSettings: () -> Unit,
+    onOpenTag: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxSize().background(OmicronTheme.colors.background).safeDrawingPadding(),
     ) {
-        TimelineHeader(
+        TimelineScopeBar(
             scope = state.scope,
             signedIn = state.signedIn,
             onSelectScope = onSelectScope,
-            onSignIn = onSignIn,
-            onChangeInstance = onChangeInstance,
-            onOpenProfile = { state.username?.let(onOpenProfile) },
-            onOpenSearch = onOpenSearch,
-            onOpenDiscover = onOpenDiscover,
-            onOpenComposer = onOpenComposer,
-            onOpenSettings = onOpenSettings,
         )
         if (state.sessionExpired) {
             SessionExpiredNotice(
@@ -186,10 +163,14 @@ private fun TimelineScreen(
                 is TimelinePhase.Content ->
                     TimelineList(
                         state = state,
-                        onRefresh = onRefresh,
                         onLoadMore = onLoadMore,
                         onOpenPost = onOpenPost,
                         onOpenProfile = onOpenProfile,
+                        onOpenTag = onOpenTag,
+                        onSignIn = onSignIn,
+                        onToggleLike = onToggleLike,
+                        onToggleRecommendation = onToggleRecommendation,
+                        onToggleReadLater = onToggleReadLater,
                     )
             }
         }
@@ -197,106 +178,41 @@ private fun TimelineScreen(
 }
 
 @Composable
-private fun TimelineHeader(
+private fun TimelineScopeBar(
     scope: TimelineScope,
     signedIn: Boolean,
     onSelectScope: (TimelineScope) -> Unit,
-    onSignIn: () -> Unit,
-    onChangeInstance: () -> Unit,
-    onOpenProfile: () -> Unit,
-    onOpenSearch: () -> Unit,
-    onOpenDiscover: () -> Unit,
-    onOpenComposer: () -> Unit,
-    onOpenSettings: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth(),
+    Row(
+        modifier =
+            Modifier
+                .widthIn(max = 480.dp)
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 8.dp)
+                .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Image(
-                    painter = painterResource(Res.drawable.omicron_logo),
-                    contentDescription = null,
-                    modifier = Modifier.size(30.dp),
-                )
-                Text(
-                    text = stringResource(Res.string.app_name),
-                    variant = TextVariant.H2,
-                    color = OmicronTheme.colors.foreground,
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                IconButton(
-                    icon = RikkaIcons.Search,
-                    contentDescription = stringResource(Res.string.timeline_search),
-                    onClick = onOpenSearch,
-                    size = IconButtonSize.Default,
-                )
-                IconButton(
-                    icon = RikkaIcons.Users,
-                    contentDescription = stringResource(Res.string.timeline_discover),
-                    onClick = onOpenDiscover,
-                    size = IconButtonSize.Default,
-                )
-                if (signedIn) {
-                    IconButton(
-                        icon = RikkaIcons.Plus,
-                        contentDescription = stringResource(Res.string.timeline_compose),
-                        onClick = onOpenComposer,
-                        size = IconButtonSize.Default,
-                    )
-                }
-                IconButton(
-                    icon = RikkaIcons.Settings,
-                    contentDescription = stringResource(Res.string.timeline_settings),
-                    onClick = onOpenSettings,
-                    size = IconButtonSize.Default,
-                )
-                IconButton(
-                    icon = RikkaIcons.User,
-                    contentDescription = stringResource(if (signedIn) Res.string.timeline_open_profile else Res.string.timeline_sign_in),
-                    onClick = if (signedIn) onOpenProfile else onSignIn,
-                    size = IconButtonSize.Default,
-                )
-            }
-        }
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 30.dp, bottom = 8.dp)
-                    .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (signedIn) {
-                TimelineScopeTab(
-                    label = stringResource(Res.string.timeline_scope_for_you),
-                    icon = RikkaIcons.Star,
-                    selected = scope == TimelineScope.ForYou,
-                    onClick = { onSelectScope(TimelineScope.ForYou) },
-                )
-            }
+        if (signedIn) {
             TimelineScopeTab(
-                label = stringResource(Res.string.timeline_scope_local),
-                icon = RikkaIcons.Users,
-                selected = scope == TimelineScope.Local,
-                onClick = { onSelectScope(TimelineScope.Local) },
-            )
-            TimelineScopeTab(
-                label = stringResource(Res.string.timeline_scope_global),
-                icon = RikkaIcons.Globe,
-                selected = scope == TimelineScope.Global,
-                onClick = { onSelectScope(TimelineScope.Global) },
+                label = stringResource(Res.string.timeline_scope_for_you),
+                icon = RikkaIcons.Sparkles,
+                selected = scope == TimelineScope.ForYou,
+                onClick = { onSelectScope(TimelineScope.ForYou) },
             )
         }
+        TimelineScopeTab(
+            label = stringResource(Res.string.timeline_scope_local),
+            icon = RikkaIcons.Users,
+            selected = scope == TimelineScope.Local,
+            onClick = { onSelectScope(TimelineScope.Local) },
+        )
+        TimelineScopeTab(
+            label = stringResource(Res.string.timeline_scope_global),
+            icon = RikkaIcons.Globe,
+            selected = scope == TimelineScope.Global,
+            onClick = { onSelectScope(TimelineScope.Global) },
+        )
     }
 }
 
@@ -429,27 +345,18 @@ private fun TimelineError(
 @Composable
 private fun TimelineList(
     state: TimelineUiState,
-    onRefresh: () -> Unit,
     onLoadMore: () -> Unit,
     onOpenPost: (String) -> Unit,
     onOpenProfile: (String) -> Unit,
+    onOpenTag: (String) -> Unit,
+    onSignIn: () -> Unit,
+    onToggleLike: (String) -> Unit,
+    onToggleRecommendation: (String) -> Unit,
+    onToggleReadLater: (String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth().fillMaxHeight(),
     ) {
-        item(key = "refresh", contentType = "refresh") {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                Button(
-                    text = stringResource(Res.string.timeline_refresh),
-                    onClick = onRefresh,
-                    variant = ButtonVariant.Ghost,
-                    size = ButtonSize.Sm,
-                )
-            }
-        }
         items(
             items = state.posts,
             key = { post -> post.id },
@@ -459,6 +366,12 @@ private fun TimelineList(
                 post = post,
                 onOpen = { onOpenPost(post.id) },
                 onOpenProfile = { onOpenProfile(post.author.username) },
+                onOpenTag = onOpenTag,
+                state = state,
+                onSignIn = onSignIn,
+                onToggleLike = { onToggleLike(post.id) },
+                onToggleRecommendation = { onToggleRecommendation(post.id) },
+                onToggleReadLater = { onToggleReadLater(post.id) },
             )
         }
         if (state.nextCursor != null) {
@@ -499,42 +412,62 @@ private fun TimelineList(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PostCard(
     post: Post,
+    state: TimelineUiState,
     onOpen: () -> Unit,
     onOpenProfile: () -> Unit,
+    onOpenTag: (String) -> Unit,
+    onSignIn: () -> Unit,
+    onToggleLike: () -> Unit,
+    onToggleRecommendation: () -> Unit,
+    onToggleReadLater: () -> Unit,
 ) {
     val preview = remember(post.summary, post.contentHtml) { postPreview(post.summary, post.contentHtml) }
     Column(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable(role = Role.Button, onClick = onOpen)
                 .padding(horizontal = 16.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onOpenProfile),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(modifier = Modifier.clickable(role = Role.Button, onClick = onOpenProfile)) {
-                AuthorAvatar(post = post)
-            }
+            AuthorAvatar(post = post)
             Text(
                 text = post.author.displayName,
                 variant = TextVariant.P,
-                modifier = Modifier.clickable(role = Role.Button, onClick = onOpenProfile),
+                modifier = Modifier.weight(1f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 color = OmicronTheme.colors.foreground,
                 style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium),
             )
+            if (post.author.remote) {
+                val host = post.author.username.substringAfterLast('@')
+                Row(
+                    modifier =
+                        Modifier
+                            .clip(RikkaTheme.shapes.full)
+                            .background(RikkaTheme.colors.muted)
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(imageVector = RikkaIcons.Globe, contentDescription = null, tint = OmicronTheme.colors.mutedForeground, size = IconSize.Xs)
+                    Text(text = host, variant = TextVariant.Small, color = OmicronTheme.colors.mutedForeground, maxLines = 1)
+                }
+            }
         }
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpen),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
@@ -543,7 +476,7 @@ private fun PostCard(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     color = OmicronTheme.colors.foreground,
-                    style = TextStyle(fontSize = 24.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold),
+                    style = TextStyle(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold),
                 )
                 if (preview.excerpt.isNotBlank()) {
                     Text(
@@ -552,32 +485,55 @@ private fun PostCard(
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                         color = OmicronTheme.colors.mutedForeground,
-                        style = TextStyle(fontSize = 20.sp, lineHeight = 27.sp),
+                        style = TextStyle(fontSize = 18.sp, lineHeight = 25.sp),
                     )
                 }
             }
             if (post.bannerUrl != null) BannerThumbnail(post.bannerUrl)
         }
         if (post.tags.isNotEmpty()) {
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
+            FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 post.tags.forEach { tag ->
-                    Text(
-                        text = "#${tag.name}",
-                        variant = TextVariant.Small,
-                        color = OmicronTheme.colors.foregroundAlt,
-                        modifier =
-                            Modifier
-                                .clip(RikkaTheme.shapes.full)
-                                .background(RikkaTheme.colors.muted)
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                    )
+                    Box(
+                        modifier = Modifier.heightIn(min = 48.dp).clickable(role = Role.Button) { onOpenTag(tag.slug) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "#${tag.name}",
+                            variant = TextVariant.Small,
+                            color = OmicronTheme.colors.foregroundAlt,
+                            style = TextStyle(fontSize = 12.sp, lineHeight = 16.sp),
+                            modifier =
+                                Modifier
+                                    .clip(RikkaTheme.shapes.full)
+                                    .background(RikkaTheme.colors.muted)
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                        )
+                    }
                 }
             }
         }
-        PostMetadata(post = post, preview = preview)
+        PostMetadata(
+            post = post,
+            preview = preview,
+            signedIn = state.signedIn,
+            liked = post.liked,
+            recommended = post.recommended,
+            saved = post.id in state.savedPostIds,
+            busy =
+                post.id in state.likeBusyPostIds ||
+                    post.id in state.recommendationBusyPostIds ||
+                    post.id in state.saveBusyPostIds,
+            actionError = post.id in state.actionErrorPostIds,
+            onSignIn = onSignIn,
+            onOpenPost = onOpen,
+            onToggleLike = onToggleLike,
+            onToggleRecommendation = onToggleRecommendation,
+            onToggleReadLater = onToggleReadLater,
+        )
     }
 }
 
@@ -587,7 +543,7 @@ private fun AuthorAvatar(post: Post) {
     Box(
         modifier =
             Modifier
-                .size(30.dp)
+                .size(24.dp)
                 .clip(shape)
                 .background(RikkaTheme.colors.muted)
                 .border(1.dp, OmicronTheme.colors.borderCard, shape),
@@ -603,7 +559,7 @@ private fun AuthorAvatar(post: Post) {
                 model = avatarUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().clip(shape),
+                modifier = Modifier.size(24.dp).clip(shape),
             )
         }
     }
@@ -625,16 +581,28 @@ private fun BannerThumbnail(url: String) {
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PostMetadata(
     post: Post,
     preview: PostPreview,
+    signedIn: Boolean,
+    liked: Boolean,
+    recommended: Boolean,
+    saved: Boolean,
+    busy: Boolean,
+    actionError: Boolean,
+    onSignIn: () -> Unit,
+    onOpenPost: () -> Unit,
+    onToggleLike: () -> Unit,
+    onToggleRecommendation: () -> Unit,
+    onToggleReadLater: () -> Unit,
 ) {
     val metadataColor = OmicronTheme.colors.mutedForeground
-    Row(
+    FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(
             text = formattedDate(post.createdAt),
@@ -647,16 +615,74 @@ private fun PostMetadata(
             label = stringResource(Res.string.timeline_reading_time, preview.readingMinutes),
             tint = metadataColor,
         )
-        MetadataItem(icon = RikkaIcons.Heart, label = post.likeCount.toString(), tint = metadataColor)
-        MetadataItem(icon = RikkaIcons.MessageCircle, label = post.commentCount.toString(), tint = metadataColor)
-        Spacer(modifier = Modifier.weight(1f))
-        MetadataItem(icon = RikkaIcons.Repeat, label = post.recommendCount.toString(), tint = metadataColor)
-        Icon(
-            imageVector = RikkaIcons.Bookmark,
-            contentDescription = null,
-            tint = metadataColor,
-            size = IconSize.Default,
+        TimelineActionButton(
+            imageVector = RikkaIcons.Heart,
+            label = stringResource(Res.string.timeline_like_action),
+            count = post.likeCount,
+            selected = liked,
+            enabled = !busy,
+            onClick = if (signedIn) onToggleLike else onSignIn,
         )
+        TimelineActionButton(
+            imageVector = RikkaIcons.MessageCircle,
+            label = stringResource(Res.string.timeline_comment_action),
+            count = post.commentCount,
+            selected = null,
+            enabled = true,
+            onClick = onOpenPost,
+        )
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+    ) {
+        TimelineActionButton(
+            imageVector = RikkaIcons.Repeat,
+            label = stringResource(Res.string.timeline_recommend_action),
+            count = post.recommendCount,
+            selected = recommended,
+            enabled = !busy,
+            onClick = if (signedIn) onToggleRecommendation else onSignIn,
+        )
+        TimelineActionButton(
+            imageVector = RikkaIcons.Bookmark,
+            label = stringResource(if (saved) Res.string.timeline_saved_action else Res.string.timeline_save_action),
+            selected = saved,
+            enabled = !busy,
+            onClick = if (signedIn) onToggleReadLater else onSignIn,
+        )
+    }
+    if (actionError) {
+        Text(
+            text = stringResource(Res.string.timeline_action_error),
+            variant = TextVariant.Small,
+            color = OmicronTheme.colors.destructive,
+        )
+    }
+}
+
+@Composable
+private fun TimelineActionButton(
+    imageVector: ImageVector,
+    label: String,
+    count: Int? = null,
+    selected: Boolean?,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val tint = if (selected == true) OmicronTheme.colors.foreground else OmicronTheme.colors.mutedForeground
+    Button(
+        onClick = onClick,
+        modifier = Modifier.heightIn(min = 44.dp),
+        variant = ButtonVariant.Ghost,
+        size = ButtonSize.Sm,
+        enabled = enabled,
+        selected = selected,
+        role = Role.Button,
+        label = label,
+    ) {
+        Icon(imageVector = imageVector, contentDescription = null, tint = tint, size = IconSize.Sm)
+        count?.let { Text(text = it.toString(), variant = TextVariant.Small, color = tint, maxLines = 1) }
     }
 }
 
@@ -681,27 +707,4 @@ private fun MetadataItem(
 }
 
 @Composable
-private fun formattedDate(createdAt: String): String {
-    val dateParts = createdAt.take(10).split('-')
-    val year = dateParts.getOrNull(0)?.toIntOrNull() ?: return createdAt.take(10)
-    val month = dateParts.getOrNull(1)?.toIntOrNull() ?: return createdAt.take(10)
-    val day = dateParts.getOrNull(2)?.toIntOrNull() ?: return createdAt.take(10)
-    val monthResource = TIMELINE_MONTHS.getOrNull(month - 1) ?: return createdAt.take(10)
-    return stringResource(Res.string.timeline_date_format, stringResource(monthResource), day, year)
-}
-
-private val TIMELINE_MONTHS =
-    listOf(
-        Res.string.timeline_month_jan,
-        Res.string.timeline_month_feb,
-        Res.string.timeline_month_mar,
-        Res.string.timeline_month_apr,
-        Res.string.timeline_month_may,
-        Res.string.timeline_month_jun,
-        Res.string.timeline_month_jul,
-        Res.string.timeline_month_aug,
-        Res.string.timeline_month_sep,
-        Res.string.timeline_month_oct,
-        Res.string.timeline_month_nov,
-        Res.string.timeline_month_dec,
-    )
+private fun formattedDate(createdAt: String) = displayDate(createdAt)

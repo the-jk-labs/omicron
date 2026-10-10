@@ -9,7 +9,7 @@
 
 ## Product State
 
-The Android-first Kotlin Multiplatform foundation, instance connection, guest reading, and signed-in social reading are complete. The app can normalize an HTTPS origin, retrieve `GET /api/instance`, retain public configuration, and recover the selected instance. Readers can browse Global/Local timelines and the authenticated For you feed, read posts natively with web-parity tables, syntax highlighting, and math, interact with posts and comments, and browse local or supported remote profiles. Android is the active target; `commonMain` remains the location for product code shared by future targets.
+The Android-first Kotlin Multiplatform foundation, instance connection, guest reading, signed-in social reading, and R7 mobile web-parity surfaces are complete. The app can normalize an HTTPS origin, retrieve `GET /api/instance`, retain public configuration, and recover the selected instance. Readers can browse Global/Local timelines and the authenticated For you feed, read posts natively with web-parity tables, syntax highlighting, and math, interact with posts and comments, browse local or supported remote profiles, and use the web-aligned Home/Lists/Write/Stats/Profile navigation with native lists, analytics, and notifications. Android is the active target; `commonMain` remains the location for product code shared by future targets.
 
 ## R0: Foundation And Design System
 
@@ -107,6 +107,25 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 - Release build, R8, startup, baseline profile, accessibility, font-scale, light/dark, and device visual checks pass.
 - README, architecture docs, ADRs, and API gaps reflect the shipped behavior.
 
+## R7: Native Mobile Web Parity
+
+**Status:** Done
+
+**Outcome:** The Android client presents Omicron's responsive web navigation and reading surfaces as a polished native mobile experience, with the same visual hierarchy and real destinations.
+
+**Completed:** Added the shared mobile top bar (search, theme, unread notification badge/preview, account menu) and five-item signed-in bottom navigation (Home, Lists, Write, Stats, Profile); guests retain public Home/Search and device Settings without the signed-in bottom bar. Home matches the 360px web reference in tabs, author/origin row, title/summary/media layout, wrapping tags, metadata, and functional like/recommend/read-later actions; it was visually checked on ALT-LX1 Android 14 at 360dp. Native Lists supports Read later, public/private list creation, and paginated list details; Stats renders the confirmed aggregate dashboard; Notifications polls the unread badge, preserves opaque cursors, and handles mark-read recovery. Search, Discover, Settings, offline reading, and post management remain accessible through the shell. Compose journeys cover the top-level back stack, tab controls/account menu, Lists, dashboard, and notifications; a 320dp/1.3-font-scale chrome journey passes. RikkaUI and `OmicronTheme` remain the only UI foundation and token source; no Material3, mobile-specific API, or WebView was added.
+
+**Exit criteria:**
+
+- Signed-in navigation matches the web mobile information architecture and all displayed destinations work; guests do not see signed-in-only destinations.
+- Home feed hierarchy and spacing match the web mobile reference at a 360dp viewport, with content remaining usable at narrow widths and larger font scales.
+- Lists, Stats, and Notifications use only confirmed shared API contracts, with loading, empty, error, offline, retry, and pagination behavior where applicable.
+- Top-level navigation preserves expected back-stack behavior and selected-state accessibility semantics.
+- Connected Compose journeys cover tab navigation, account-menu navigation, list browsing, dashboard rendering, and notification read recovery.
+- Shared visual tokens remain in `OmicronTheme`; no Material3 or WebView is introduced.
+
+**Sequence note:** R6 remains in progress until its signed-in Composer/Manage TalkBack check is completed; completing R7 does not waive that release gate.
+
 ## Confirmed API Inventory
 
 | Product need | Confirmed API |
@@ -122,6 +141,9 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 | Search and tags | `/api/search`, `/api/tags`, `/api/tags/:slug`, `/api/tags/:slug/posts` |
 | Discovery | `/api/posts/trending`, `/api/posts/:id/related`, `/api/users/suggested` |
 | Publishing | `POST`, `PATCH`, and `DELETE /api/posts`; `GET /api/posts/drafts`, `GET /api/posts/mine`, `GET /api/posts/mine/counts`; HTML content is required; raw image upload is `POST /api/uploads` |
+| Reading lists | `GET /api/lists`, `/read-later`, `/:id`, `/:id/items?cursor=...`; `POST`, `PATCH`, and `DELETE /api/lists`; list-item add/remove routes under `/api/lists/:id/items` |
+| Writer dashboard | `GET /api/dashboard?days=...` (default 30, clamped to 1–365), with aggregate totals, daily views, and per-post stats |
+| Notifications | `GET /api/notifications?cursor=...`, `GET /api/notifications/unread-count`, `POST /api/notifications/read`, and `POST /api/notifications/:id/read` |
 
 All regular pages use opaque cursor/keyset pagination and return `{items,nextCursor}`. Never calculate, decode, or replace a cursor. Feed cursors are opaque merged-stream state.
 

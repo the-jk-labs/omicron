@@ -10,4 +10,5 @@ data class AuthenticatedUser(
     val email: String,
     val username: String,
     val displayName: String,
+    val avatarUrl: String? = null,
 )
