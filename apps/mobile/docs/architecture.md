@@ -32,6 +32,7 @@ Keep the package layout stable inside the single `composeApp` module. Split Grad
 - Keep typography assets in `commonMain/composeResources/font`; include their license notices in the app resources and retain variable weight and Source Sans 3 italic support.
 - All visible strings live in common Compose resources. Design for light and dark modes, 48dp touch targets, edge-to-edge drawing, and font scaling. Status and navigation bar icon contrast follows the resolved app theme, not the device mode.
 - Tabs, appearance choices, and social toggles expose their selected state through Compose semantics.
+- The signed-in mobile shell follows the responsive web information architecture: Home, Lists, Write, Stats, and Profile bottom destinations, with search, theme, notifications, and account actions in the top bar (ADR-0016).
 
 ## Networking
 
@@ -41,6 +42,7 @@ Keep the package layout stable inside the single `composeApp` module. Split Grad
 - DTOs mirror confirmed wire contracts and tolerate additive fields only where safe. Repositories map DTOs before exposing data to features.
 - Treat cursors as opaque values. Preserve `nextCursor` unchanged and never derive offsets.
 - Resolve root-relative media against the selected instance origin.
+- Lists, dashboard, and notifications use their confirmed shared `/api` contracts through `data.api` and `data.repository`; cursor values stay opaque and authenticated requests use the selected-origin Bearer token.
 
 ## Storage And Authentication
 

@@ -1,6 +1,7 @@
 package org.omicron.mobile.feature.reader
 
 import kotlinx.io.IOException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -10,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.omicron.mobile.data.repository.SocialRepository
 import org.omicron.mobile.data.api.TimelineScope
 import org.omicron.mobile.data.repository.MissingInstanceException
 import org.omicron.mobile.data.repository.PostsRepository
@@ -23,6 +25,7 @@ class TimelineViewModel(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val session: StateFlow<AuthenticatedSession?>? = null,
     private val sessionExpired: StateFlow<Boolean>? = null,
+    private val socialRepository: SocialRepository? = null,
 ) {
     private val mutableUiState = MutableStateFlow(TimelineUiState())
     val uiState: StateFlow<TimelineUiState> = mutableUiState.asStateFlow()
@@ -100,6 +103,122 @@ class TimelineViewModel(
         }
     }
 
+    fun toggleLike(postId: String) {
+        val repository = socialRepository ?: return
+        val current = mutableUiState.value
+        val post = current.posts.firstOrNull { it.id == postId } ?: return
+        if (!current.signedIn || postId in current.likeBusyPostIds) return
+        val desired = !post.liked
+        mutableUiState.update {
+            it.copy(
+                posts = it.posts.updatePost(postId) { item ->
+                    item.copy(liked = desired, likeCount = (item.likeCount + if (desired) 1 else -1).coerceAtLeast(0))
+                },
+                likeBusyPostIds = it.likeBusyPostIds + postId,
+                actionErrorPostIds = it.actionErrorPostIds - postId,
+            )
+        }
+        scope.launch {
+            try {
+                val result = repository.setPostLike(postId, desired)
+                mutableUiState.update {
+                    it.copy(
+                        posts = it.posts.updatePost(postId) { item -> item.copy(liked = result.active, likeCount = result.count) },
+                        likeBusyPostIds = it.likeBusyPostIds - postId,
+                    )
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (_: Throwable) {
+                mutableUiState.update {
+                    it.copy(
+                        posts = it.posts.updatePost(postId) { post },
+                        likeBusyPostIds = it.likeBusyPostIds - postId,
+                        actionErrorPostIds = it.actionErrorPostIds + postId,
+                    )
+                }
+            }
+        }
+    }
+
+    fun toggleRecommendation(postId: String) {
+        val repository = socialRepository ?: return
+        val current = mutableUiState.value
+        val post = current.posts.firstOrNull { it.id == postId } ?: return
+        if (!current.signedIn || postId in current.recommendationBusyPostIds) return
+        val desired = !post.recommended
+        mutableUiState.update {
+            it.copy(
+                posts = it.posts.updatePost(postId) { item ->
+                    item.copy(
+                        recommended = desired,
+                        recommendCount = (item.recommendCount + if (desired) 1 else -1).coerceAtLeast(0),
+                    )
+                },
+                recommendationBusyPostIds = it.recommendationBusyPostIds + postId,
+                actionErrorPostIds = it.actionErrorPostIds - postId,
+            )
+        }
+        scope.launch {
+            try {
+                val result = repository.setPostRecommendation(postId, desired)
+                mutableUiState.update {
+                    it.copy(
+                        posts = it.posts.updatePost(postId) { item ->
+                            item.copy(recommended = result.active, recommendCount = result.count)
+                        },
+                        recommendationBusyPostIds = it.recommendationBusyPostIds - postId,
+                    )
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (_: Throwable) {
+                mutableUiState.update {
+                    it.copy(
+                        posts = it.posts.updatePost(postId) { post },
+                        recommendationBusyPostIds = it.recommendationBusyPostIds - postId,
+                        actionErrorPostIds = it.actionErrorPostIds + postId,
+                    )
+                }
+            }
+        }
+    }
+
+    fun toggleReadLater(postId: String) {
+        val repository = socialRepository ?: return
+        val current = mutableUiState.value
+        if (!current.signedIn || postId in current.saveBusyPostIds || current.posts.none { it.id == postId }) return
+        val savedBefore = postId in current.savedPostIds
+        var persistedSavedBefore = savedBefore
+        mutableUiState.update {
+            it.copy(saveBusyPostIds = it.saveBusyPostIds + postId, actionErrorPostIds = it.actionErrorPostIds - postId)
+        }
+        scope.launch {
+            try {
+                val readLater = repository.readLaterState(postId)
+                persistedSavedBefore = readLater.saved
+                val desired = !readLater.saved
+                mutableUiState.update {
+                    it.copy(
+                        savedPostIds = if (desired) it.savedPostIds + postId else it.savedPostIds - postId,
+                    )
+                }
+                repository.setReadLater(postId, readLater.listId, desired)
+                mutableUiState.update { it.copy(saveBusyPostIds = it.saveBusyPostIds - postId) }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (_: Throwable) {
+                mutableUiState.update {
+                    it.copy(
+                        savedPostIds = if (persistedSavedBefore) it.savedPostIds + postId else it.savedPostIds - postId,
+                        saveBusyPostIds = it.saveBusyPostIds - postId,
+                        actionErrorPostIds = it.actionErrorPostIds + postId,
+                    )
+                }
+            }
+        }
+    }
+
     fun close() {
         scope.cancel()
     }
@@ -158,6 +277,11 @@ data class TimelineUiState(
     val phase: TimelinePhase = TimelinePhase.Loading,
     val isLoadingMore: Boolean = false,
     val loadMoreError: TimelineError? = null,
+    val savedPostIds: Set<String> = emptySet(),
+    val likeBusyPostIds: Set<String> = emptySet(),
+    val recommendationBusyPostIds: Set<String> = emptySet(),
+    val saveBusyPostIds: Set<String> = emptySet(),
+    val actionErrorPostIds: Set<String> = emptySet(),
 )
 
 sealed interface TimelinePhase {
@@ -184,3 +308,8 @@ private fun Throwable.toTimelineError(): TimelineError =
         this is IOException -> TimelineError.Offline
         else -> TimelineError.Server
     }
+
+private inline fun List<Post>.updatePost(
+    id: String,
+    transform: (Post) -> Post,
+): List<Post> = map { post -> if (post.id == id) transform(post) else post }

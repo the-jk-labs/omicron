@@ -9,7 +9,7 @@
 
 ## Product State
 
-The Android-first Kotlin Multiplatform foundation, instance connection, guest reading, and signed-in social reading are complete. The app can normalize an HTTPS origin, retrieve `GET /api/instance`, retain public configuration, and recover the selected instance. Readers can browse Global/Local timelines and the authenticated For you feed, read posts natively with web-parity tables, syntax highlighting, and math, interact with posts and comments, and browse local or supported remote profiles. Android is the active target; `commonMain` remains the location for product code shared by future targets.
+The Android-first Kotlin Multiplatform foundation, instance connection, guest reading, signed-in social reading, and R7 mobile web-parity surfaces are complete. The app can normalize an HTTPS origin, retrieve `GET /api/instance`, retain public configuration, and recover the selected instance. Readers can browse Global/Local timelines and the authenticated For you feed, read posts natively with web-parity tables, syntax highlighting, and math, interact with posts and comments, browse local or supported remote profiles, and use the web-aligned Home/Lists/Write/Stats/Profile navigation with native lists, analytics, and notifications. Android is the active target; `commonMain` remains the location for product code shared by future targets.
 
 ## R0: Foundation And Design System
 
@@ -109,11 +109,11 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 
 ## R7: Native Mobile Web Parity
 
-**Status:** In progress
+**Status:** Done
 
 **Outcome:** The Android client presents Omicron's responsive web navigation and reading surfaces as a polished native mobile experience, with the same visual hierarchy and real destinations.
 
-**In progress:** Use the signed-in mobile web experience as the source of truth for the compact top bar, account menu, and five-item bottom navigation (Home, Lists, Write, Stats, Profile). Match the supplied 360px Home reference in feed tabs, author/origin row, title/summary/media layout, tags, metadata, and actions. Add native Lists, Stats, and Notifications destinations on the existing confirmed API; preserve the app's native Compose rendering, RikkaUI primitives, accessibility, light/dark theme, and per-screen recovery states. Search, Discover, Settings, and post management remain reachable through the account/header navigation.
+**Completed:** Added the shared mobile top bar (search, theme, unread notification badge/preview, account menu) and five-item signed-in bottom navigation (Home, Lists, Write, Stats, Profile), with guests limited to public Home navigation. Home matches the 360px web reference in tabs, author/origin row, title/summary/media layout, wrapping tags, metadata, and functional like/recommend/read-later actions; it was visually checked on ALT-LX1 Android 14 at 360dp. Native Lists supports Read later, public/private list creation, and paginated list details; Stats renders the confirmed aggregate dashboard; Notifications polls the unread badge, preserves opaque cursors, and handles mark-read recovery. Search, Discover, Settings, offline reading, and post management remain accessible through the shell. Compose journeys cover the top-level back stack, tab controls/account menu, Lists, dashboard, and notifications; a 320dp/1.3-font-scale chrome journey passes. RikkaUI and `OmicronTheme` remain the only UI foundation and token source; no Material3, mobile-specific API, or WebView was added.
 
 **Exit criteria:**
 
@@ -124,7 +124,7 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 - Connected Compose journeys cover tab navigation, account-menu navigation, list browsing, dashboard rendering, and notification read recovery.
 - Shared visual tokens remain in `OmicronTheme`; no Material3 or WebView is introduced.
 
-**Sequence note:** R6 remains in progress until its signed-in Composer/Manage TalkBack check is completed; R7 UI work does not waive that release gate.
+**Sequence note:** R6 remains in progress until its signed-in Composer/Manage TalkBack check is completed; completing R7 does not waive that release gate.
 
 ## Confirmed API Inventory
 

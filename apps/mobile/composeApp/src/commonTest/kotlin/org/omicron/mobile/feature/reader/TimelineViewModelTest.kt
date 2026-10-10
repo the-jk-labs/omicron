@@ -7,10 +7,12 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.omicron.mobile.data.api.PostDto
 import org.omicron.mobile.data.api.PostsApi
+import org.omicron.mobile.data.api.FakeSocialApi
 import org.omicron.mobile.data.api.TimelinePageDto
 import org.omicron.mobile.data.api.TimelineScope
 import org.omicron.mobile.data.repository.MissingInstanceException
 import org.omicron.mobile.data.repository.PostsRepository
+import org.omicron.mobile.data.repository.SocialRepository
 import org.omicron.mobile.domain.model.AuthenticatedSession
 import org.omicron.mobile.domain.model.AuthenticatedUser
 import org.omicron.mobile.domain.model.InstanceConfiguration
@@ -234,6 +236,64 @@ class TimelineViewModelTest {
         testScheduler.advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.sessionExpired)
+    }
+
+    @Test
+    fun feedLikeOptimismRollsBackAndCanBeRetried() = runTest {
+        val socialApi = FakeSocialApi().apply { postLikeFailure = IOException("offline") }
+        val social = SocialRepository(socialApi, savedInstance = { instance() }, accessToken = { "signed-token" })
+        val viewModel =
+            TimelineViewModel(
+                PostsRepository(
+                    SequencedPostsApi(pages = listOf(page(listOf(post("post-1")), null))),
+                    savedInstance = { instance() },
+                    accessToken = { "signed-token" },
+                ),
+                TestScope(StandardTestDispatcher(testScheduler)),
+                session = MutableStateFlow(signedSession()),
+                socialRepository = social,
+            )
+        testScheduler.advanceUntilIdle()
+
+        viewModel.toggleLike("post-1")
+        assertTrue(viewModel.uiState.value.posts.single().liked)
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.posts.single().liked)
+        assertTrue("post-1" in viewModel.uiState.value.actionErrorPostIds)
+
+        socialApi.postLikeFailure = null
+        viewModel.toggleLike("post-1")
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.posts.single().liked)
+        assertEquals(3, viewModel.uiState.value.posts.single().likeCount)
+        viewModel.close()
+    }
+
+    @Test
+    fun feedRecommendationAndReadLaterUseOptimisticState() = runTest {
+        val socialApi = FakeSocialApi()
+        val social = SocialRepository(socialApi, savedInstance = { instance() }, accessToken = { "signed-token" })
+        val viewModel =
+            TimelineViewModel(
+                PostsRepository(
+                    SequencedPostsApi(pages = listOf(page(listOf(post("post-1")), null))),
+                    savedInstance = { instance() },
+                    accessToken = { "signed-token" },
+                ),
+                TestScope(StandardTestDispatcher(testScheduler)),
+                session = MutableStateFlow(signedSession()),
+                socialRepository = social,
+            )
+        testScheduler.advanceUntilIdle()
+
+        viewModel.toggleRecommendation("post-1")
+        viewModel.toggleReadLater("post-1")
+        assertTrue(viewModel.uiState.value.posts.single().recommended)
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.posts.single().recommended)
+        assertTrue("post-1" in viewModel.uiState.value.savedPostIds)
+        assertTrue(socialApi.saved)
+        viewModel.close()
     }
 }
 

@@ -49,6 +49,7 @@ class AuthRepository(
                     email = session.user.email,
                     username = session.user.username,
                     displayName = session.user.displayName,
+                    avatarUrl = session.user.avatarUrl?.let { resolveMediaUrl(origin, it) },
             ),
             accessToken = token.token,
         )
@@ -139,7 +140,13 @@ class AuthRepository(
         AuthenticationResult.Authenticated(
             rememberSession(
                 origin = origin,
-                user = AuthenticatedUser(user.id, user.email, user.username, user.displayName),
+                user = AuthenticatedUser(
+                    user.id,
+                    user.email,
+                    user.username,
+                    user.displayName,
+                    user.avatarUrl?.let { resolveMediaUrl(origin, it) },
+                ),
                 accessToken = api.getToken(origin).token,
             ),
         )
