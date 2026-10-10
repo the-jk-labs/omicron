@@ -172,6 +172,12 @@ fun MobileTopBar(
                 )
                 AccountMenu(user = user, onAction = onAccountAction)
             } else {
+                IconButton(
+                    icon = RikkaIcons.Settings,
+                    contentDescription = stringResource(Res.string.navigation_settings),
+                    onClick = { onAccountAction(AccountAction.Settings) },
+                    size = IconButtonSize.Default,
+                )
                 Button(
                     text = stringResource(Res.string.navigation_sign_in),
                     onClick = { onAccountAction(AccountAction.SignIn) },

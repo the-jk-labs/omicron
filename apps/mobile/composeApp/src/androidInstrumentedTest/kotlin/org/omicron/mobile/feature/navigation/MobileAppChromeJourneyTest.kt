@@ -78,6 +78,29 @@ class MobileAppChromeJourneyTest {
     }
 
     @Test
+    fun guestCanOpenDeviceSettingsFromTheTopBar() {
+        var action: AccountAction? = null
+        composeTestRule.setContent {
+            OmicronTheme {
+                MobileTopBar(
+                    appName = "Omicron",
+                    user = null,
+                    darkTheme = false,
+                    unreadCount = 0,
+                    onSearch = {},
+                    onToggleTheme = {},
+                    onNotifications = {},
+                    onAccountAction = { action = it },
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription("Settings").performClick()
+
+        assertEquals(AccountAction.Settings, action)
+    }
+
+    @Test
     fun mobileChromeFitsNarrowWidthAndLargerFontScale() {
         composeTestRule.setContent {
             val density = LocalDensity.current
