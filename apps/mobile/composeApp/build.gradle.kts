@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.baselineprofile)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.compose.multiplatform)
     alias(libs.plugins.kotlin.multiplatform)
@@ -47,6 +48,8 @@ kotlin {
 
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.core.ktx)
+            implementation(libs.androidx.profileinstaller)
             implementation(libs.ktor.client.okhttp)
         }
 
@@ -85,7 +88,13 @@ android {
     }
 }
 
+afterEvaluate {
+    android.buildTypes.getByName("benchmarkRelease").applicationIdSuffix = ".baselineprofile"
+    android.buildTypes.getByName("nonMinifiedRelease").applicationIdSuffix = ".baselineprofile"
+}
+
 dependencies {
+    baselineProfile(project(":baselineprofile"))
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
 
