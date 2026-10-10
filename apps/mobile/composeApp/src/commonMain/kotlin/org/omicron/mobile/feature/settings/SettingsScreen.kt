@@ -15,12 +15,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
 import org.omicron.mobile.core.designsystem.OmicronTheme
@@ -236,7 +238,7 @@ private fun AppearanceChoices(
             AppearancePreference.Dark to Res.string.settings_appearance_dark,
         )
     Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         options.forEach { (preference, label) ->
@@ -244,6 +246,8 @@ private fun AppearanceChoices(
                 text = stringResource(label),
                 onClick = { onSelect(preference) },
                 enabled = enabled,
+                selected = preference == selected,
+                role = Role.RadioButton,
                 variant = if (preference == selected) ButtonVariant.Secondary else ButtonVariant.Outline,
             )
         }

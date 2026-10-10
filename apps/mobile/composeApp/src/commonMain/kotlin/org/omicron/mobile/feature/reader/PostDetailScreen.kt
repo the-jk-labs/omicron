@@ -544,6 +544,7 @@ private fun PostSocialActions(
                 enabled = !state.likeBusy,
                 loading = state.likeBusy,
                 size = ButtonSize.Lg,
+                selected = post.liked,
                 variant = if (post.liked) ButtonVariant.Secondary else ButtonVariant.Ghost,
                 leadingIcon = { Icon(imageVector = RikkaIcons.Heart, contentDescription = null) },
             )
@@ -553,6 +554,7 @@ private fun PostSocialActions(
                 enabled = !state.recommendationBusy,
                 loading = state.recommendationBusy,
                 size = ButtonSize.Lg,
+                selected = post.recommended,
                 variant = if (post.recommended) ButtonVariant.Secondary else ButtonVariant.Ghost,
                 leadingIcon = { Icon(imageVector = RikkaIcons.Repeat, contentDescription = null) },
             )
@@ -564,6 +566,7 @@ private fun PostSocialActions(
                         (!state.readLaterLoading && !state.readLaterBusy && state.readLaterListId != null),
                 loading = state.signedIn && (state.readLaterLoading || state.readLaterBusy),
                 size = ButtonSize.Lg,
+                selected = state.saved,
                 variant = if (state.saved) ButtonVariant.Secondary else ButtonVariant.Ghost,
                 leadingIcon = { Icon(imageVector = RikkaIcons.Bookmark, contentDescription = null) },
             )

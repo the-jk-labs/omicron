@@ -2,6 +2,8 @@ package org.omicron.mobile.feature.reader
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -55,6 +57,8 @@ class R2JourneyTest {
 
         composeTestRule.onNodeWithText("Local", substring = true).assertIsDisplayed()
         composeTestRule.onNodeWithText("Global", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Global", substring = true).assertIsSelected()
+        composeTestRule.onNodeWithText("Local", substring = true).assertIsNotSelected()
         assertTrue(composeTestRule.onAllNodesWithText("For you", substring = true).fetchSemanticsNodes().isEmpty())
     }
 
@@ -190,7 +194,7 @@ class R2JourneyTest {
         }
         composeTestRule.waitForText("Title post-1")
 
-        composeTestRule.onNodeWithContentDescription("Local").performClick()
+        composeTestRule.onNodeWithText("Local").performClick()
         composeTestRule.waitForText("Title local-1")
 
         check(api.scopes == listOf(TimelineScope.Global, TimelineScope.Local))
