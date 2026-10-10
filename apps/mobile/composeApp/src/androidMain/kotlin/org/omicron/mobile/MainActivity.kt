@@ -6,6 +6,7 @@ import okio.Path.Companion.toOkioPath
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.view.WindowCompat
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
@@ -55,6 +56,12 @@ class MainActivity : ComponentActivity() {
                 appContainer.discoveryRepository,
                 appContainer.authoringRepository,
                 appContainer.appearancePreferenceStore,
+                onDarkThemeChanged = { isDark ->
+                    WindowCompat.getInsetsController(window, window.decorView).apply {
+                        isAppearanceLightStatusBars = !isDark
+                        isAppearanceLightNavigationBars = !isDark
+                    }
+                },
             )
         }
     }

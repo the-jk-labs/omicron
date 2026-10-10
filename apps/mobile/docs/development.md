@@ -28,6 +28,23 @@ Run connected Compose UI tests on a device when a critical journey changes:
 
 The app package is `org.omicron.mobile`.
 
+## Release And Performance Validation
+
+Build and lint the optimized release variant:
+
+```sh
+./gradlew :composeApp:assembleRelease :composeApp:lintRelease
+```
+
+Collect a release baseline profile and run the cold-start benchmark on a connected Android device:
+
+```sh
+./gradlew :composeApp:generateReleaseBaselineProfile
+./gradlew :baselineprofile:connectedBenchmarkReleaseAndroidTest
+```
+
+These instrumentation tasks use the isolated `org.omicron.mobile.baselineprofile` application ID for their target variants and may remove that temporary package when they finish. They must not remove or clear `org.omicron.mobile`; verify the production package remains installed after a connected run. The cold-start benchmark installs the generated profile and precompiles the isolated target before measuring it, preserving that compiled state during the benchmark. If the device cannot clear the shader cache through ProfileInstaller, the benchmark logs the limitation and continues; interpret results as cold process/kernel-cache startup with the device shader cache potentially warm.
+
 ## Delivery Workflow
 
 1. Select the roadmap release and exit criterion the change advances.

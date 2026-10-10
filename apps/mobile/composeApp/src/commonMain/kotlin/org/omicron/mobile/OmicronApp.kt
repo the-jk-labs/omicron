@@ -53,6 +53,7 @@ fun OmicronApp(
     discoveryRepository: DiscoveryRepository,
     authoringRepository: AuthoringRepository,
     appearancePreferenceStore: AppearancePreferenceStore,
+    onDarkThemeChanged: ((Boolean) -> Unit)? = null,
 ) {
     val settingsViewModel =
         remember(instanceRepository, authRepository, appearancePreferenceStore) {
@@ -62,7 +63,10 @@ fun OmicronApp(
         onDispose(settingsViewModel::close)
     }
     val settingsState by settingsViewModel.uiState.collectAsState()
-    OmicronTheme(appearance = settingsState.appearance) {
+    OmicronTheme(
+        appearance = settingsState.appearance,
+        onDarkThemeChanged = onDarkThemeChanged,
+    ) {
         val navController = rememberNavController()
         NavHost(navController = navController, startDestination = ConnectDestination) {
             composable<ConnectDestination> {

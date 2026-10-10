@@ -1,4 +1,14 @@
 pluginManagement {
+    buildscript {
+        repositories {
+            google()
+            mavenCentral()
+        }
+        dependencies {
+            classpath("com.android.tools:r8:9.5.23")
+        }
+    }
+
     repositories {
         google()
         mavenCentral()
@@ -17,3 +27,4 @@ dependencyResolutionManagement {
 rootProject.name = "omicron-mobile"
 
 include(":composeApp")
+include(":baselineprofile")

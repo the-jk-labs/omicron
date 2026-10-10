@@ -30,7 +30,7 @@ Keep the package layout stable inside the single `composeApp` module. Split Grad
 - Use stable keys and content types for every lazy-list item.
 - Use `OmicronTheme`, RikkaUI, and Lucide RikkaIcons. Inter is the interface typeface; Source Sans 3 is for native article/profile content and composer body blocks. Both are bundled under OFL 1.1. Do not introduce Material3 or ad-hoc visual tokens.
 - Keep typography assets in `commonMain/composeResources/font`; include their license notices in the app resources and retain variable weight and Source Sans 3 italic support.
-- All visible strings live in common Compose resources. Design for light and dark modes, 48dp touch targets, edge-to-edge drawing, and font scaling.
+- All visible strings live in common Compose resources. Design for light and dark modes, 48dp touch targets, edge-to-edge drawing, and font scaling. Status and navigation bar icon contrast follows the resolved app theme, not the device mode.
 
 ## Networking
 
@@ -58,6 +58,7 @@ Keep the package layout stable inside the single `composeApp` module. Split Grad
 - Repository and API behavior use fixtures and Ktor `MockEngine` tests.
 - ViewModels test state transitions with fake repositories and controlled coroutines.
 - Critical journeys add Compose UI tests when the corresponding routes exist.
+- Release startup profiles and cold-start benchmarks live in `:baselineprofile`; generated profiles are merged into `:composeApp` releases and installed with ProfileInstaller (ADR-0015).
 - Every implementation change runs the relevant Gradle build, lint, and test tasks locally; CI runs the baseline Android quality gate for pull requests.
 
 ## Decisions
