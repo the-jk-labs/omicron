@@ -318,7 +318,8 @@ private fun TimelineScopeTab(
             variant = ButtonVariant.Ghost,
             size = ButtonSize.Sm,
             animation = ButtonAnimation.None,
-            label = label,
+            selected = selected,
+            role = Role.Tab,
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

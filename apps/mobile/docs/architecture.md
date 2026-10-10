@@ -31,6 +31,7 @@ Keep the package layout stable inside the single `composeApp` module. Split Grad
 - Use `OmicronTheme`, RikkaUI, and Lucide RikkaIcons. Inter is the interface typeface; Source Sans 3 is for native article/profile content and composer body blocks. Both are bundled under OFL 1.1. Do not introduce Material3 or ad-hoc visual tokens.
 - Keep typography assets in `commonMain/composeResources/font`; include their license notices in the app resources and retain variable weight and Source Sans 3 italic support.
 - All visible strings live in common Compose resources. Design for light and dark modes, 48dp touch targets, edge-to-edge drawing, and font scaling. Status and navigation bar icon contrast follows the resolved app theme, not the device mode.
+- Tabs, appearance choices, and social toggles expose their selected state through Compose semantics.
 
 ## Networking
 

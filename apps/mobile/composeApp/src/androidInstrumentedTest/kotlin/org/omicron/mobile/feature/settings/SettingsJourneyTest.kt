@@ -2,6 +2,8 @@ package org.omicron.mobile.feature.settings
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.runtime.collectAsState
@@ -56,8 +58,11 @@ class SettingsJourneyTest {
         }
 
         composeTestRule.waitForText("Connected to Omicron")
+        composeTestRule.onNodeWithText("System").assertIsSelected()
         composeTestRule.onNodeWithText("Dark").performClick()
         composeTestRule.waitUntil(timeoutMillis = 5_000) { store.preference == AppearancePreference.Dark }
+        composeTestRule.onNodeWithText("Dark").assertIsSelected()
+        composeTestRule.onNodeWithText("System").assertIsNotSelected()
         composeTestRule.onNodeWithText("About Omicron").assertIsDisplayed()
         composeTestRule.onNodeWithText("Change instance").performClick()
         composeTestRule.onNodeWithText("View saved articles").performClick()

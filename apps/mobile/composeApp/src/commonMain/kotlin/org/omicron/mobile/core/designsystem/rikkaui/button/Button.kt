@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -31,6 +32,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextDecoration
@@ -277,6 +279,8 @@ public object ButtonDefaults {
  * @param enabled Whether the button responds to input.
  * @param loading Shows a spinner alongside content when true.
  * @param label Accessibility content description.
+ * @param selected Whether the button is selected, or null for a regular button.
+ * @param role Accessibility role. Defaults to [Role.Button].
  * @param colors Override resolved colors. Defaults to [ButtonDefaults.colors] for the [variant].
  * @param interactionSource Optional hoisted [MutableInteractionSource] for observing or
  *   emitting interactions. Pass your own to share hover/press state with sibling components,
@@ -293,6 +297,8 @@ public fun Button(
     enabled: Boolean = true,
     loading: Boolean = false,
     label: String = "",
+    selected: Boolean? = null,
+    role: Role = Role.Button,
     colors: ButtonColorValues = ButtonDefaults.colors(variant),
     interactionSource: MutableInteractionSource? = null,
     content: @Composable () -> Unit,
@@ -419,29 +425,48 @@ public fun Button(
             Modifier
         }
 
+    val accessibilityModifier =
+        if (selected == null) {
+            Modifier.semantics(mergeDescendants = true) {
+                this.role = role
+                if (label.isNotEmpty()) contentDescription = label
+                if (!isEffectivelyEnabled) disabled()
+            }
+        } else {
+            Modifier
+        }
+
+    val interactionModifier =
+        if (selected == null) {
+            Modifier.clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = isEffectivelyEnabled,
+                role = role,
+                onClick = onClick,
+            )
+        } else {
+            Modifier.selectable(
+                selected = selected,
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = isEffectivelyEnabled,
+                role = role,
+                onClick = onClick,
+            )
+        }
+
     Row(
         modifier =
             modifier
                 .minTouchTarget()
                 .then(animationModifier)
-                .semantics(mergeDescendants = true) {
-                    role = Role.Button
-                    if (label.isNotEmpty()) {
-                        contentDescription = label
-                    }
-                    if (!isEffectivelyEnabled) {
-                        disabled()
-                    }
-                }.then(borderModifier)
+                .then(accessibilityModifier)
+                .then(borderModifier)
                 .then(backgroundModifier)
                 .clip(currentShape)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    enabled = isEffectivelyEnabled,
-                    role = Role.Button,
-                    onClick = onClick,
-                ).defaultMinSize(
+                .then(interactionModifier)
+                .defaultMinSize(
                     minHeight = sizeValues.minHeight,
                     minWidth = sizeValues.minWidth,
                 ).padding(
@@ -491,6 +516,8 @@ public fun Button(
  * @param animation Press feedback.
  * @param enabled Whether the button responds to input.
  * @param loading Shows a spinner alongside content when true.
+ * @param selected Whether the button is selected, or null for a regular button.
+ * @param role Accessibility role. Defaults to [Role.Button].
  * @param colors Override resolved colors.
  * @param interactionSource Optional hoisted interaction source.
  * @param leadingIcon Optional composable before the label (hidden during loading).
@@ -510,6 +537,8 @@ public fun Button(
     interactionSource: MutableInteractionSource? = null,
     leadingIcon: (@Composable () -> Unit)? = null,
     trailingIcon: (@Composable () -> Unit)? = null,
+    selected: Boolean? = null,
+    role: Role = Role.Button,
 ) {
     Button(
         onClick = onClick,
@@ -520,6 +549,8 @@ public fun Button(
         enabled = enabled,
         loading = loading,
         label = text,
+        selected = selected,
+        role = role,
         colors = colors,
         interactionSource = interactionSource,
     ) {
