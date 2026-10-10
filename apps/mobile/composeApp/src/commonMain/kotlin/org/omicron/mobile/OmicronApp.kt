@@ -12,9 +12,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
@@ -27,7 +25,6 @@ import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.serializer
 import org.jetbrains.compose.resources.stringResource
-import org.omicron.mobile.domain.model.AppearancePreference
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.rikkaui.text.Text
 import org.omicron.mobile.core.designsystem.rikkaui.text.TextVariant
@@ -117,13 +114,9 @@ fun OmicronApp(
             }
         }
     }
-    var darkTheme by remember { mutableStateOf(false) }
     OmicronTheme(
         appearance = settingsState.appearance,
-        onDarkThemeChanged = { isDark ->
-            darkTheme = isDark
-            onDarkThemeChanged?.invoke(isDark)
-        },
+        onDarkThemeChanged = onDarkThemeChanged,
     ) {
         val navController = rememberNavController()
         val backStackEntry by navController.currentBackStackEntryAsState()
@@ -159,12 +152,8 @@ fun OmicronApp(
                 MobileTopBar(
                     appName = settingsState.instance?.name.orEmpty(),
                     user = session?.user,
-                    darkTheme = darkTheme,
                     unreadCount = notificationsState.unreadCount,
                     onSearch = { navController.navigate(SearchDestination) { launchSingleTop = true } },
-                    onToggleTheme = {
-                        settingsViewModel.setAppearance(if (darkTheme) AppearancePreference.Light else AppearancePreference.Dark)
-                    },
                     onNotifications = { navController.navigate(NotificationsDestination) { launchSingleTop = true } },
                     notifications = notificationsState.items,
                     notificationsLoading = notificationsState.isLoading,
