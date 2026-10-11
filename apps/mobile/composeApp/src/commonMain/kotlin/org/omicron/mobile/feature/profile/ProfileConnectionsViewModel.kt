@@ -209,7 +209,20 @@ class ProfileConnectionsViewModel(
             try {
                 val actors = repository.profileRelations(state.username, following = tab == ProfileConnectionsTab.Following)
                 ensureActive()
-                mutableUiState.update { it.withMembers(tab, ProfileMemberList(items = actors, loaded = true)) }
+                val current = mutableUiState.value
+                val confirmedFollowing = if (tab == ProfileConnectionsTab.Following && current.isOwnProfile && isCurrentViewer(current.currentUserId)) {
+                    actors.filter { current.canFollow(it) && current.memberFollows[it.username]?.followState == null }
+                } else emptyList()
+                confirmedFollowing.forEach { relationshipJobs.remove(it.username)?.cancel() }
+                mutableUiState.update {
+                    val follows = confirmedFollowing.associate { actor ->
+                        actor.username to (it.memberFollows[actor.username] ?: ProfileMemberFollow()).copy(followState = ProfileFollowState.Following, loading = false, loadError = null)
+                    }
+                    it.withMembers(tab, ProfileMemberList(items = actors, loaded = true)).copy(memberFollows = it.memberFollows + follows)
+                }
+                actors.forEach { actor ->
+                    if (mutableUiState.value.memberFollows[actor.username] == null) loadMemberFollow(actor.username)
+                }
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Throwable) {

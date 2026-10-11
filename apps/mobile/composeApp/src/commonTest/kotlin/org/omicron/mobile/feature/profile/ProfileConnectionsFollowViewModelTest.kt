@@ -1,6 +1,7 @@
 package org.omicron.mobile.feature.profile
 
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -23,17 +24,151 @@ import kotlin.test.assertTrue
 
 class ProfileConnectionsFollowViewModelTest {
     @Test
-    fun relationshipsLoadLazilyUseTheCorrectProfileRoutesAndAreSharedAcrossTabs() = runTest {
+    fun ownFollowingMembershipConfirmsLocalAndRemoteRelationshipsWithoutProfileChecks() = runTest {
+        val members = (1..24).map { actor("reader-$it") } + actor("writer@remote.example", remote = true)
+        val api = api().apply {
+            localProfileValue = localProfileValue.copy(user = localProfileValue.user.copy(id = "viewer"), counts = localProfileValue.counts.copy(following = 25))
+            relationActors = RelationActorsDto(members + actor("ada", id = "viewer"))
+            localProfileHandler = { username ->
+                if (username != "writer") throw IOException("unnecessary profile read")
+                localProfileValue
+            }
+        }
+        val viewModel = viewModel(api, tab = ProfileConnectionsTab.Following)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(listOf("writer" to false), api.profileRequests)
+        assertEquals(25, viewModel.uiState.value.memberFollows.size)
+        assertEquals(25, viewModel.uiState.value.profile?.followingCount)
+        assertNull(viewModel.uiState.value.memberFollows["ada"])
+        members.forEach { member ->
+            val follow = viewModel.uiState.value.memberFollows[member.username]!!
+            assertEquals(ProfileFollowState.Following, follow.followState)
+            assertFalse(follow.loading)
+            assertNull(follow.loadError)
+        }
+
+        viewModel.selectTab(ProfileConnectionsTab.Followers)
+        testScheduler.advanceUntilIdle()
+        members.reversed().forEach { viewModel.loadMemberFollow(it.username) }
+        testScheduler.advanceUntilIdle()
+        assertEquals(listOf("writer" to false), api.profileRequests)
+    }
+
+    @Test
+    fun ownFollowingMembershipCancelsPendingChecksStartedFromFollowers() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        var cancelled = 0
+        val api = api().apply {
+            localProfileValue = localProfileValue.copy(user = localProfileValue.user.copy(id = "viewer"), counts = localProfileValue.counts.copy(following = 8))
+            relationActors = RelationActorsDto((1..8).map { actor("reader-$it") })
+            localProfileHandler = { username ->
+                if (username != "writer") {
+                    try {
+                        gate.await()
+                    } finally {
+                        cancelled += 1
+                    }
+                }
+                localProfileValue
+            }
+        }
+        val viewModel = viewModel(api)
+        testScheduler.runCurrent()
+        assertEquals(8, viewModel.uiState.value.memberFollows.values.count { it.loading })
+        assertEquals(4, api.profileRequests.count { it.first != "writer" })
+
+        viewModel.selectTab(ProfileConnectionsTab.Following)
+        testScheduler.runCurrent()
+        assertEquals(4, cancelled)
+        assertEquals(8, viewModel.uiState.value.profile?.followingCount)
+        assertTrue(viewModel.uiState.value.memberFollows.values.all { it.followState == ProfileFollowState.Following && !it.loading && it.loadError == null })
+
+        gate.complete(Unit)
+        testScheduler.advanceUntilIdle()
+        assertEquals(4, api.profileRequests.count { it.first != "writer" })
+        assertTrue(viewModel.uiState.value.memberFollows.values.all { it.followState == ProfileFollowState.Following })
+    }
+
+    @Test
+    fun ownFollowingMembershipIsRevalidatedForAnotherViewer() = runTest {
+        val api = api().apply { localProfileValue = localProfileValue.copy(user = localProfileValue.user.copy(id = "viewer")) }
+        val sessions = MutableStateFlow<AuthenticatedSession?>(session())
+        val viewModel = viewModel(api, tab = ProfileConnectionsTab.Following, sessions = sessions)
+        testScheduler.advanceUntilIdle()
+        assertEquals(ProfileFollowState.Following, viewModel.uiState.value.memberFollows["reader"]?.followState)
+        assertEquals(listOf("writer" to false), api.profileRequests)
+
+        sessions.value = AuthenticatedSession(AuthenticatedUser("next-viewer", "bea@example.com", "bea", "Bea"), "next-token")
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.isOwnProfile)
+        assertEquals(ProfileFollowState.None, viewModel.uiState.value.memberFollows["reader"]?.followState)
+        assertEquals(listOf("writer" to false, "writer" to false, "reader" to false), api.profileRequests)
+    }
+
+    @Test
+    fun membershipSeededRowsUseTheServerResponseForPrivateRefollows() = runTest {
+        val api = api().apply {
+            localProfileValue = localProfileValue.copy(user = localProfileValue.user.copy(id = "viewer", isPrivate = true), counts = localProfileValue.counts.copy(following = 1))
+        }
+        val viewModel = viewModel(api, tab = ProfileConnectionsTab.Following)
+        testScheduler.advanceUntilIdle()
+        viewModel.selectTab(ProfileConnectionsTab.Followers)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.requestFollowChange("reader")
+        assertEquals("reader", viewModel.uiState.value.pendingUnfollow)
+        assertTrue(api.followRequests.isEmpty())
+        viewModel.confirmUnfollow()
+        testScheduler.advanceUntilIdle()
+        assertEquals(ProfileFollowState.None, viewModel.uiState.value.memberFollows["reader"]?.followState)
+        assertEquals(0, viewModel.uiState.value.profile?.followingCount)
+
+        viewModel.requestFollowChange("reader")
+        testScheduler.advanceUntilIdle()
+        assertEquals(ProfileFollowState.Requested, viewModel.uiState.value.memberFollows["reader"]?.followState)
+        assertEquals(0, viewModel.uiState.value.profile?.followingCount)
+        assertTrue(viewModel.uiState.value.following.items.isEmpty())
+        assertEquals(listOf(Triple("reader", false, false), Triple("reader", false, true)), api.followRequests)
+        assertEquals(listOf("writer" to false), api.profileRequests)
+    }
+
+    @Test
+    fun offscreenRelationshipsFinishWhileTheListRemainsOpenAndStayReadyWhenScrolling() = runTest {
+        ProfileConnectionsTab.entries.forEach { tab ->
+            val members = (1..24).map { actor("reader-$it") }
+            val api = api().apply {
+                relationActors = RelationActorsDto(members)
+                localProfileHandler = { username ->
+                    if (username != "writer") delay(100)
+                    localProfileValue.copy(followState = "following", isFollowing = true)
+                }
+            }
+            val viewModel = viewModel(api, tab = tab)
+            testScheduler.advanceUntilIdle()
+
+            assertEquals(24, viewModel.uiState.value.selectedMembers.items.size)
+            assertEquals(24, viewModel.uiState.value.memberFollows.size)
+            members.forEach { member ->
+                val follow = viewModel.uiState.value.memberFollows[member.username]!!
+                assertEquals(ProfileFollowState.Following, follow.followState)
+                assertFalse(follow.loading)
+            }
+
+            members.reversed().forEach { viewModel.loadMemberFollow(it.username) }
+            testScheduler.advanceUntilIdle()
+            assertEquals(25, api.profileRequests.size)
+            viewModel.close()
+        }
+    }
+
+    @Test
+    fun relationshipsLoadOnListArrivalUseTheCorrectProfileRoutesAndAreSharedAcrossTabs() = runTest {
         val api = api().apply {
             remoteProfileValue = remoteProfileValue.copy(isFollowing = true)
             relationActors = RelationActorsDto(listOf(actor("reader"), actor("writer@remote.example", remote = true)))
         }
         val viewModel = viewModel(api)
-        testScheduler.advanceUntilIdle()
-        assertEquals(listOf("writer" to false), api.profileRequests)
-
-        viewModel.loadMemberFollow("reader")
-        viewModel.loadMemberFollow("writer@remote.example")
         testScheduler.advanceUntilIdle()
         assertEquals(ProfileFollowState.None, viewModel.uiState.value.memberFollows["reader"]?.followState)
         assertEquals(ProfileFollowState.Following, viewModel.uiState.value.memberFollows["writer@remote.example"]?.followState)
@@ -180,20 +315,28 @@ class ProfileConnectionsFollowViewModelTest {
 
     @Test
     fun failedRelationshipChecksCanRetryWithoutGuessingOrSendingAMutation() = runTest {
-        val api = api()
+        val api = api().apply {
+            localProfileHandler = { username ->
+                if (username == "reader") throw IOException("offline")
+                localProfileValue
+            }
+        }
         val viewModel = viewModel(api)
-        testScheduler.advanceUntilIdle()
-        api.profileFailure = IOException("offline")
-        viewModel.requestFollowChange("reader")
         testScheduler.advanceUntilIdle()
         assertNull(viewModel.uiState.value.memberFollows["reader"]?.followState)
         assertEquals(ProfileLoadError.Offline, viewModel.uiState.value.memberFollows["reader"]?.loadError)
         assertTrue(api.followRequests.isEmpty())
 
-        api.profileFailure = null
+        api.localProfileHandler = null
+        viewModel.selectTab(ProfileConnectionsTab.Following)
+        testScheduler.advanceUntilIdle()
+        assertEquals(ProfileLoadError.Offline, viewModel.uiState.value.memberFollows["reader"]?.loadError)
+        assertEquals(2, api.profileRequests.size)
+
         viewModel.requestFollowChange("reader")
         testScheduler.advanceUntilIdle()
         assertEquals(ProfileFollowState.None, viewModel.uiState.value.memberFollows["reader"]?.followState)
+        assertEquals(3, api.profileRequests.size)
         assertTrue(api.followRequests.isEmpty())
     }
 
@@ -249,18 +392,20 @@ class ProfileConnectionsFollowViewModelTest {
         viewModel.requestFollowChange("reader")
         assertEquals("reader", viewModel.uiState.value.pendingUnfollow)
 
+        api.localProfileValue = api.localProfileValue.copy(followState = "none", isFollowing = false)
         sessions.value = AuthenticatedSession(AuthenticatedUser("next-viewer", "bea@example.com", "bea", "Bea"), "next-token")
         viewModel.confirmUnfollow()
         testScheduler.advanceUntilIdle()
 
         assertTrue(api.followRequests.isEmpty())
         assertNull(viewModel.uiState.value.pendingUnfollow)
-        assertTrue(viewModel.uiState.value.memberFollows.isEmpty())
+        assertEquals(ProfileFollowState.None, viewModel.uiState.value.memberFollows["reader"]?.followState)
+        assertEquals(2, api.profileRequests.count { it.first == "reader" })
         assertEquals("next-viewer", viewModel.uiState.value.currentUserId)
     }
 
     @Test
-    fun relationshipChecksHaveAtMostFourConcurrentRequests() = runTest {
+    fun backgroundRelationshipChecksHaveAtMostFourConcurrentRequests() = runTest {
         val gate = CompletableDeferred<Unit>()
         var active = 0
         var maximum = 0
@@ -277,14 +422,76 @@ class ProfileConnectionsFollowViewModelTest {
             }
         }
         val viewModel = viewModel(api)
-        testScheduler.advanceUntilIdle()
-        (1..6).forEach { viewModel.loadMemberFollow("reader-$it") }
         testScheduler.runCurrent()
+        assertTrue(viewModel.uiState.value.selectedMembers.loaded)
         assertEquals(4, active)
         gate.complete(Unit)
         testScheduler.advanceUntilIdle()
         assertEquals(4, maximum)
         assertEquals(6, viewModel.uiState.value.memberFollows.values.count { it.followState != null })
+    }
+
+    @Test
+    fun sessionLossCancelsActiveAndQueuedBackgroundChecks() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        var cancelled = 0
+        val api = api().apply {
+            relationActors = RelationActorsDto((1..8).map { actor("reader-$it") })
+            localProfileHandler = { username ->
+                if (username != "writer") {
+                    try {
+                        gate.await()
+                    } finally {
+                        cancelled += 1
+                    }
+                }
+                localProfileValue
+            }
+        }
+        val sessions = MutableStateFlow<AuthenticatedSession?>(session())
+        val viewModel = viewModel(api, sessions = sessions)
+        testScheduler.runCurrent()
+        assertEquals(8, viewModel.uiState.value.memberFollows.values.count { it.loading })
+        assertEquals(4, api.profileRequests.count { it.first != "writer" })
+
+        sessions.value = null
+        testScheduler.runCurrent()
+        assertEquals(4, cancelled)
+        gate.complete(Unit)
+        testScheduler.advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.signedIn)
+        assertTrue(viewModel.uiState.value.memberFollows.isEmpty())
+        assertEquals(4, api.profileRequests.count { it.first != "writer" })
+    }
+
+    @Test
+    fun closingTheDestinationCancelsActiveAndQueuedBackgroundChecks() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        var finished = 0
+        val api = api().apply {
+            relationActors = RelationActorsDto((1..8).map { actor("reader-$it") })
+            localProfileHandler = { username ->
+                if (username != "writer") {
+                    try {
+                        gate.await()
+                    } finally {
+                        finished += 1
+                    }
+                }
+                localProfileValue
+            }
+        }
+        val viewModel = viewModel(api)
+        testScheduler.runCurrent()
+        assertEquals(4, api.profileRequests.count { it.first != "writer" })
+
+        viewModel.close()
+        testScheduler.runCurrent()
+        assertEquals(4, finished)
+        gate.complete(Unit)
+        testScheduler.advanceUntilIdle()
+        assertEquals(4, api.profileRequests.count { it.first != "writer" })
+        assertTrue(viewModel.uiState.value.memberFollows.values.all { it.followState == null })
     }
 
     private fun api() = FakeSocialApi().apply {

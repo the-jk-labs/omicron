@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -105,7 +104,6 @@ fun ProfileConnectionsRoute(
         onRetry = viewModel::retry,
         onSignIn = onSignIn,
         onOpenProfile = onOpenProfile,
-        onLoadMemberFollow = viewModel::loadMemberFollow,
         onFollowChange = viewModel::requestFollowChange,
         onCancelUnfollow = viewModel::cancelUnfollow,
         onConfirmUnfollow = viewModel::confirmUnfollow,
@@ -120,7 +118,6 @@ internal fun ProfileConnectionsScreen(
     onRetry: () -> Unit,
     onSignIn: () -> Unit,
     onOpenProfile: (String) -> Unit,
-    onLoadMemberFollow: (String) -> Unit = {},
     onFollowChange: (String) -> Unit = {},
     onCancelUnfollow: () -> Unit = {},
     onConfirmUnfollow: () -> Unit = {},
@@ -180,7 +177,7 @@ internal fun ProfileConnectionsScreen(
                             onAction = {},
                         )
                     } else {
-                        ConnectionsMembers(state, onRetry, onOpenProfile, onSignIn, onLoadMemberFollow, onFollowChange, Modifier.weight(1f))
+                        ConnectionsMembers(state, onRetry, onOpenProfile, onSignIn, onFollowChange, Modifier.weight(1f))
                     }
                 }
             }
@@ -202,7 +199,6 @@ private fun ConnectionsMembers(
     onRetry: () -> Unit,
     onOpenProfile: (String) -> Unit,
     onSignIn: () -> Unit,
-    onLoadMemberFollow: (String) -> Unit,
     onFollowChange: (String) -> Unit,
     modifier: Modifier,
 ) {
@@ -228,7 +224,6 @@ private fun ConnectionsMembers(
                         actor = actor,
                         state = state,
                         onOpen = { onOpenProfile(actor.username) },
-                        onLoadFollow = { onLoadMemberFollow(actor.username) },
                         onFollowChange = { if (state.signedIn) onFollowChange(actor.username) else onSignIn() },
                     )
                 }
@@ -242,14 +237,10 @@ private fun ConnectionMember(
     actor: RelationActor,
     state: ProfileConnectionsUiState,
     onOpen: () -> Unit,
-    onLoadFollow: () -> Unit,
     onFollowChange: () -> Unit,
 ) {
     val follow = state.memberFollows[actor.username]
     val showAction = !state.signedIn || state.canFollow(actor)
-    LaunchedEffect(actor.username, state.currentUserId) {
-        if (state.canFollow(actor)) onLoadFollow()
-    }
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Row(
