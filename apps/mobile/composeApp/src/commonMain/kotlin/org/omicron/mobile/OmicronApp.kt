@@ -434,7 +434,11 @@ fun OmicronApp(
                 }
             }
             if (session != null && !standalone) {
-                MobileBottomBar(selected = selectedTab) { tab ->
+                MobileBottomBar(
+                    selected = selectedTab,
+                    profileAvatarUrl = session?.user?.avatarUrl,
+                    profileDisplayName = session?.user?.displayName.orEmpty(),
+                ) { tab ->
                     when (tab) {
                         PrimaryTab.Home -> navController.navigateTopLevel(TimelineDestination, TimelineDestination)
                         PrimaryTab.Lists -> navController.navigateTopLevel(ListsDestination, TimelineDestination)

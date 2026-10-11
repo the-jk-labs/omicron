@@ -57,6 +57,23 @@ class MobileAppChromeJourneyTest {
     }
 
     @Test
+    fun profileTabShowsUserAvatar() {
+        composeTestRule.setContent {
+            OmicronTheme {
+                MobileBottomBar(
+                    selected = PrimaryTab.Home,
+                    profileAvatarUrl = null,
+                    profileDisplayName = "Ada",
+                    onSelect = {},
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("A").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Profile").assertIsDisplayed()
+    }
+
+    @Test
     fun accountMenuOpensAndRoutesToPostManagement() {
         var action: AccountAction? = null
         composeTestRule.setContent {

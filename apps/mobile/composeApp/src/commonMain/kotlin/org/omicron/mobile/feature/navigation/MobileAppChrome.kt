@@ -3,7 +3,6 @@ package org.omicron.mobile.feature.navigation
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,9 +31,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -185,6 +181,8 @@ fun MobileTopBar(
 @Composable
 fun MobileBottomBar(
     selected: PrimaryTab?,
+    profileAvatarUrl: String? = null,
+    profileDisplayName: String = "",
     onSelect: (PrimaryTab) -> Unit,
 ) {
     val borderColor = OmicronTheme.colors.borderCard
@@ -227,7 +225,11 @@ fun MobileBottomBar(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
-                    Icon(imageVector = item.first, contentDescription = null, tint = tint, size = IconSize.Lg)
+                    if (tab == PrimaryTab.Profile && profileDisplayName.isNotBlank()) {
+                        ProfileTabAvatar(url = profileAvatarUrl, name = profileDisplayName, active = active)
+                    } else {
+                        Icon(imageVector = item.first, contentDescription = null, tint = tint, size = IconSize.Lg)
+                    }
                     Text(
                         text = stringResource(item.second),
                         variant = TextVariant.Small,
@@ -416,18 +418,13 @@ private fun AccountMenu(
     val density = LocalDensity.current
     val accountMenuLabel = stringResource(Res.string.navigation_account_menu)
     Box {
-        Box(
-            modifier =
-                Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .semantics {
-                        contentDescription = accountMenuLabel
-                    }.clickable(role = Role.Button) { expanded = true },
-            contentAlignment = Alignment.Center,
-        ) {
-            AccountAvatar(user)
-        }
+        IconButton(
+            icon = RikkaIcons.Settings,
+            contentDescription = accountMenuLabel,
+            onClick = { expanded = true },
+            modifier = Modifier.size(48.dp),
+            size = IconButtonSize.Default,
+        )
         if (expanded) {
             Popup(
                 alignment = Alignment.TopEnd,
@@ -486,26 +483,34 @@ private fun AccountMenu(
 }
 
 @Composable
-private fun AccountAvatar(user: AuthenticatedUser) {
+private fun ProfileTabAvatar(
+    url: String?,
+    name: String,
+    active: Boolean,
+) {
     Box(
         modifier =
             Modifier
-                .size(36.dp)
+                .size(24.dp)
                 .clip(CircleShape)
                 .background(OmicronTheme.colors.muted)
-                .border(1.dp, OmicronTheme.colors.borderCard, CircleShape),
+                .border(
+                    1.dp,
+                    if (active) OmicronTheme.colors.foreground else OmicronTheme.colors.borderCard,
+                    CircleShape,
+                ),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = user.displayName.trim().firstOrNull()?.uppercase() ?: "?",
+            text = name.trim().firstOrNull()?.uppercase() ?: "?",
             variant = TextVariant.Small,
             color = OmicronTheme.colors.mutedForeground,
         )
-        user.avatarUrl?.let { url ->
+        url?.let { avatar ->
             AsyncImage(
-                model = url,
+                model = avatar,
                 contentDescription = null,
-                modifier = Modifier.size(36.dp).clip(CircleShape),
+                modifier = Modifier.size(24.dp).clip(CircleShape),
             )
         }
     }
