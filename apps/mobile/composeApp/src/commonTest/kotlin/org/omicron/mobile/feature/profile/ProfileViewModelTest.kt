@@ -6,7 +6,6 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.IOException
 import org.omicron.mobile.data.api.FakeSocialApi
-import org.omicron.mobile.data.api.RelationActorDto
 import org.omicron.mobile.data.api.localProfile as localProfileFixture
 import org.omicron.mobile.data.repository.SocialRepository
 import org.omicron.mobile.domain.model.AuthenticatedSession
@@ -31,6 +30,7 @@ class ProfileViewModelTest {
         assertEquals("profile-cursor", state.articles.cursor)
         assertEquals(listOf("post-1"), state.articles.posts.map { it.id })
         assertEquals(listOf("post-1"), state.recommendations.posts.map { it.id })
+        assertTrue(api.relationRequests.isEmpty())
 
         viewModel.loadMore()
         testScheduler.advanceUntilIdle()
@@ -108,28 +108,6 @@ class ProfileViewModelTest {
 
         assertTrue(api.blocked)
         assertFalse(viewModel.uiState.value.profile!!.isFollowing)
-    }
-
-    @Test
-    fun followerListLoadsOnlyWhenOpenedAndUsesTheUnpaginatedResponse() = runTest {
-        val api = FakeSocialApi().apply {
-            relationActors =
-                org.omicron.mobile.data.api.RelationActorsDto(
-                    items = listOf(RelationActorDto("follower-1", "reader", "Reader")),
-                )
-        }
-        val viewModel = profileViewModel(api, MutableStateFlow<AuthenticatedSession?>(session()))
-        testScheduler.advanceUntilIdle()
-        assertTrue(viewModel.uiState.value.members.isEmpty())
-
-        viewModel.selectTab(ProfileTab.Followers)
-        testScheduler.advanceUntilIdle()
-
-        assertEquals(listOf("reader"), viewModel.uiState.value.members.map { it.username })
-        viewModel.selectTab(ProfileTab.About)
-        viewModel.selectTab(ProfileTab.Followers)
-        testScheduler.advanceUntilIdle()
-        assertEquals(1, viewModel.uiState.value.members.size)
     }
 
     @Test

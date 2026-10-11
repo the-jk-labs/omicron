@@ -6,6 +6,8 @@ class FakeSocialApi : SocialApi {
     var localProfileValue = localProfile()
     var remoteProfileValue = remoteProfile()
     var relationActors = RelationActorsDto()
+    var relationHandler: (suspend (Boolean) -> RelationActorsDto)? = null
+    val relationRequests = mutableListOf<Pair<String, Boolean>>()
     var postLikeFailure: Throwable? = null
     var recommendationFailure: Throwable? = null
     var commentsFailure: Throwable? = null
@@ -141,8 +143,9 @@ class FakeSocialApi : SocialApi {
         following: Boolean,
         accessToken: String?,
     ): RelationActorsDto {
+        relationRequests += username to following
         relationFailure?.let { throw it }
-        return relationActors
+        return relationHandler?.invoke(following) ?: relationActors
     }
 
     override suspend fun setFollow(

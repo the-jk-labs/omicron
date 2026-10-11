@@ -16,6 +16,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
@@ -75,6 +78,9 @@ import org.omicron.mobile.feature.reader.TimelineRoute
 import org.omicron.mobile.feature.reader.TimelineViewModel
 import org.omicron.mobile.feature.profile.ProfileRoute
 import org.omicron.mobile.feature.profile.ProfileViewModel
+import org.omicron.mobile.feature.profile.ProfileConnectionsRoute
+import org.omicron.mobile.feature.profile.ProfileConnectionsTab
+import org.omicron.mobile.feature.profile.ProfileConnectionsViewModel
 import org.omicron.mobile.feature.settings.SettingsRoute
 import org.omicron.mobile.feature.settings.SettingsViewModel
 import org.omicron.mobile.resources.Res
@@ -134,6 +140,8 @@ fun OmicronApp(
                 backStackEntry.routeMatches<DashboardDestination>() -> PrimaryTab.Stats
                 backStackEntry.routeMatches<ProfileDestination>() &&
                     backStackEntry?.toRoute<ProfileDestination>()?.username == session?.user?.username -> PrimaryTab.Profile
+                backStackEntry.routeMatches<ProfileConnectionsDestination>() &&
+                    backStackEntry?.toRoute<ProfileConnectionsDestination>()?.username == session?.user?.username -> PrimaryTab.Profile
                 else -> null
             }
         val requiresSession =
@@ -413,8 +421,10 @@ fun OmicronApp(
                             onBack = { navController.popBackStack() },
                             onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
                             onOpenPost = { postId -> navController.navigate(PostDestination(postId)) },
-                            onOpenProfile = { username -> navController.navigate(ProfileDestination(username)) },
                             onOpenManage = { navController.navigate(ManageDestination) { launchSingleTop = true } },
+                            onOpenConnections = { tab ->
+                                navController.navigate(ProfileConnectionsDestination(destination.username, following = tab == ProfileConnectionsTab.Following))
+                            },
                             onAccountAction = { action ->
                                 when (action) {
                                     AccountAction.YourPosts -> navController.navigateTopLevel(ManageDestination, TimelineDestination)
@@ -429,6 +439,27 @@ fun OmicronApp(
                                     AccountAction.SignIn, AccountAction.Register -> navController.navigate(AuthDestination) { launchSingleTop = true }
                                 }
                             },
+                        )
+                    }
+                    composable<ProfileConnectionsDestination> { backStackEntry ->
+                        val destination = backStackEntry.toRoute<ProfileConnectionsDestination>()
+                        var following by rememberSaveable { mutableStateOf(destination.following) }
+                        val viewModel = remember(socialRepository, destination.username, authRepository) {
+                            ProfileConnectionsViewModel(
+                                repository = socialRepository,
+                                username = destination.username,
+                                initialTab = if (following) ProfileConnectionsTab.Following else ProfileConnectionsTab.Followers,
+                                session = authRepository.session,
+                                sessionExpired = authRepository.sessionExpired,
+                            )
+                        }
+                        DisposableEffect(viewModel) { onDispose(viewModel::close) }
+                        ProfileConnectionsRoute(
+                            viewModel = viewModel,
+                            onBack = { navController.popBackStack() },
+                            onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
+                            onOpenProfile = { username -> navController.navigate(ProfileDestination(username)) },
+                            onTabSelected = { following = it == ProfileConnectionsTab.Following },
                         )
                     }
                     composable<AuthDestination> {
@@ -525,6 +556,12 @@ private data object OfflineReadingDestination
 @Serializable
 private data class ProfileDestination(
     val username: String,
+)
+
+@Serializable
+private data class ProfileConnectionsDestination(
+    val username: String,
+    val following: Boolean,
 )
 
 @Serializable

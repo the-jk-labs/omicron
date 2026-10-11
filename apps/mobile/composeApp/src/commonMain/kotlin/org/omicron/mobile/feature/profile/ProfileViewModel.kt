@@ -19,7 +19,6 @@ import org.omicron.mobile.domain.model.AuthenticatedSession
 import org.omicron.mobile.domain.model.Post
 import org.omicron.mobile.domain.model.Profile
 import org.omicron.mobile.domain.model.ProfileFollowState
-import org.omicron.mobile.domain.model.RelationActor
 
 class ProfileViewModel(
     private val repository: SocialRepository,
@@ -37,8 +36,6 @@ class ProfileViewModel(
         ),
     )
     val uiState: StateFlow<ProfileUiState> = mutableUiState.asStateFlow()
-    private val loadedRelations = mutableSetOf<ProfileTab>()
-    private var relationLoadId = 0L
 
     init {
         session?.let { sessions ->
@@ -63,8 +60,6 @@ class ProfileViewModel(
     fun retry() {
         when {
             mutableUiState.value.phase !is ProfilePhase.Content -> load()
-            mutableUiState.value.selectedTab == ProfileTab.Followers || mutableUiState.value.selectedTab == ProfileTab.Following ->
-                loadRelations(mutableUiState.value.selectedTab, force = true)
             mutableUiState.value.selectedTab == ProfileTab.Recommendations -> loadPosts(recommendations = true, cursor = null, replace = true)
             else -> loadPosts(recommendations = false, cursor = null, replace = true)
         }
@@ -72,12 +67,7 @@ class ProfileViewModel(
 
     fun selectTab(tab: ProfileTab) {
         if (tab == mutableUiState.value.selectedTab) return
-        relationLoadId += 1
-        mutableUiState.update { it.copy(selectedTab = tab, membersError = null, loadMoreError = null) }
-        if (tab == ProfileTab.Followers || tab == ProfileTab.Following) {
-            if (mutableUiState.value.profile?.locked == true || remote) return
-            loadRelations(tab)
-        }
+        mutableUiState.update { it.copy(selectedTab = tab, loadMoreError = null) }
     }
 
     fun loadMore() {
@@ -199,29 +189,6 @@ class ProfileViewModel(
         }
     }
 
-    private fun loadRelations(
-        tab: ProfileTab,
-        force: Boolean = false,
-    ) {
-        if (!force && tab in loadedRelations) return
-        val requestId = ++relationLoadId
-        scope.launch {
-            mutableUiState.update { it.copy(membersLoading = true, membersError = null, members = emptyList()) }
-            try {
-                val actors = repository.profileRelations(handle, following = tab == ProfileTab.Following)
-                if (requestId != relationLoadId || mutableUiState.value.selectedTab != tab) return@launch
-                loadedRelations += tab
-                mutableUiState.update { it.copy(members = actors, membersLoading = false) }
-            } catch (exception: CancellationException) {
-                throw exception
-            } catch (_: Throwable) {
-                if (requestId == relationLoadId && mutableUiState.value.selectedTab == tab) {
-                    mutableUiState.update { it.copy(membersLoading = false, membersError = ProfileContentError.Load) }
-                }
-            }
-        }
-    }
-
     private fun setRelation(
         before: Profile,
         relation: ProfileRelation,
@@ -271,9 +238,6 @@ data class ProfileUiState(
     val selectedTab: ProfileTab = ProfileTab.Articles,
     val articles: ProfilePostList = ProfilePostList(),
     val recommendations: ProfilePostList = ProfilePostList(),
-    val members: List<RelationActor> = emptyList(),
-    val membersLoading: Boolean = false,
-    val membersError: ProfileContentError? = null,
     val loadMoreError: ProfileContentError? = null,
     val signedIn: Boolean = false,
     val currentUserId: String? = null,
@@ -305,8 +269,6 @@ sealed interface ProfilePhase {
 enum class ProfileTab {
     Articles,
     Recommendations,
-    Followers,
-    Following,
     About,
 }
 
@@ -352,7 +314,7 @@ private fun ProfilePostList.withPage(page: TimelinePage, replace: Boolean): Prof
         error = null,
     )
 
-private fun Throwable.toProfilePhase(): ProfilePhase =
+internal fun Throwable.toProfilePhase(): ProfilePhase =
     when {
         this is ClientRequestException && response.status == HttpStatusCode.NotFound -> ProfilePhase.NotFound
         this is IOException -> ProfilePhase.Error(ProfileLoadError.Offline)

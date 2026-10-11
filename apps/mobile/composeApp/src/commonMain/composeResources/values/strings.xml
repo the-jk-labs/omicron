@@ -157,6 +157,10 @@
     <string name="profile_more_actions">More actions</string>
     <string name="profile_followers_label">Followers</string>
     <string name="profile_following_label">Following</string>
+    <string name="profile_connections_back">Back to profile</string>
+    <string name="profile_connections_loading">Loading people</string>
+    <string name="profile_connections_error">Could not load these people. Try again.</string>
+    <string name="profile_connections_private">Follow this writer to see their followers and following.</string>
     <string name="profile_view_original">View original profile</string>
     <string name="profile_link_error">Could not open this link. Try again.</string>
     <string name="profile_likes">%1$d likes</string>

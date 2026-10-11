@@ -34,6 +34,7 @@ Keep the package layout stable inside the single `composeApp` module. Split Grad
 - Tabs, appearance choices, and social toggles expose their selected state through Compose semantics.
 - The signed-in mobile shell follows the responsive web information architecture: Home, Lists, Write, Stats, and Profile bottom destinations, with search and notifications in the Home top bar and account actions in the Profile page menu. Appearance remains available in Settings (ADR-0017).
 - Profiles use full-width mobile identity text, a separate relationship menu, accessible underline tabs, and platform-opened About links with failure feedback (ADR-0018). Profile presentation stays within the existing domain fields and shared API contracts.
+- Followers and Following are profile-header counts that open a dedicated connections destination for unlocked local profiles. Its own ViewModel loads and retains each unpaginated member list independently and revalidates access when session identity changes (ADR-0020).
 - The HTML-first composer prioritizes title and body, groups optional fields under Post details, and keeps publishing actions and a Lucide block insertion toolbar outside the scrolling document. Inserted editable blocks receive focus; IME insets keep the toolbar reachable while typing (ADR-0019).
 
 ## Networking

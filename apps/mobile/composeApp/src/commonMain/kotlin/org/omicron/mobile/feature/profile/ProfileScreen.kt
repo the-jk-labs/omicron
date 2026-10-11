@@ -74,7 +74,6 @@ import org.omicron.mobile.core.time.displayDate
 import org.omicron.mobile.domain.model.Post
 import org.omicron.mobile.domain.model.Profile
 import org.omicron.mobile.domain.model.ProfileFollowState
-import org.omicron.mobile.domain.model.RelationActor
 import org.omicron.mobile.feature.navigation.AccountAction
 import org.omicron.mobile.resources.Res
 import org.omicron.mobile.resources.navigation_account_menu
@@ -105,8 +104,6 @@ import org.omicron.mobile.resources.profile_following
 import org.omicron.mobile.resources.profile_load_more
 import org.omicron.mobile.resources.profile_loading_more
 import org.omicron.mobile.resources.profile_mute
-import org.omicron.mobile.resources.profile_no_followers
-import org.omicron.mobile.resources.profile_no_following
 import org.omicron.mobile.resources.profile_not_found
 import org.omicron.mobile.resources.profile_private_description
 import org.omicron.mobile.resources.profile_private_title
@@ -132,7 +129,7 @@ fun ProfileRoute(
     onBack: () -> Unit,
     onSignIn: () -> Unit,
     onOpenPost: (String) -> Unit,
-    onOpenProfile: (String) -> Unit,
+    onOpenConnections: (ProfileConnectionsTab) -> Unit,
     onOpenManage: () -> Unit = {},
     onAccountAction: (AccountAction) -> Unit = {},
 ) {
@@ -145,7 +142,7 @@ fun ProfileRoute(
         onLoadMore = viewModel::loadMore,
         onSignIn = onSignIn,
         onOpenPost = onOpenPost,
-        onOpenProfile = onOpenProfile,
+        onOpenConnections = onOpenConnections,
         onOpenManage = onOpenManage,
         onAccountAction = onAccountAction,
         onToggleFollow = viewModel::toggleFollow,
@@ -163,7 +160,7 @@ internal fun ProfileScreen(
     onLoadMore: () -> Unit,
     onSignIn: () -> Unit,
     onOpenPost: (String) -> Unit,
-    onOpenProfile: (String) -> Unit,
+    onOpenConnections: (ProfileConnectionsTab) -> Unit,
     onOpenManage: () -> Unit,
     onAccountAction: (AccountAction) -> Unit,
     onToggleFollow: () -> Unit,
@@ -215,7 +212,7 @@ internal fun ProfileScreen(
                     onLoadMore = onLoadMore,
                     onSignIn = onSignIn,
                     onOpenPost = onOpenPost,
-                    onOpenProfile = onOpenProfile,
+                    onOpenConnections = onOpenConnections,
                     onOpenManage = onOpenManage,
                     onAccountAction = onAccountAction,
                     onToggleFollow = onToggleFollow,
@@ -238,7 +235,7 @@ private fun ProfileContent(
     onLoadMore: () -> Unit,
     onSignIn: () -> Unit,
     onOpenPost: (String) -> Unit,
-    onOpenProfile: (String) -> Unit,
+    onOpenConnections: (ProfileConnectionsTab) -> Unit,
     onOpenManage: () -> Unit,
     onAccountAction: (AccountAction) -> Unit,
     onToggleFollow: () -> Unit,
@@ -251,8 +248,6 @@ private fun ProfileContent(
     val recommendationEmpty = stringResource(Res.string.profile_empty_recommendations)
     val contentError = stringResource(Res.string.profile_content_error)
     val retryLabel = stringResource(Res.string.profile_retry)
-    val noFollowers = stringResource(Res.string.profile_no_followers)
-    val noFollowing = stringResource(Res.string.profile_no_following)
     LazyColumn(
         modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth(),
         contentPadding = PaddingValues(bottom = 24.dp),
@@ -269,7 +264,7 @@ private fun ProfileContent(
             ProfileHeader(
                 state = state,
                 profile = profile,
-                onSelectTab = onSelectTab,
+                onOpenConnections = onOpenConnections,
                 onOpenManage = onOpenManage,
                 onSignIn = onSignIn,
                 onToggleFollow = onToggleFollow,
@@ -336,15 +331,6 @@ private fun ProfileContent(
                     onOpenPost = onOpenPost,
                 )
             }
-            ProfileTab.Followers, ProfileTab.Following ->
-                profileMembers(
-                    state = state,
-                    onRetry = onRetry,
-                    onOpenProfile = onOpenProfile,
-                    errorText = contentError,
-                    retryLabel = retryLabel,
-                    emptyText = if (state.selectedTab == ProfileTab.Followers) noFollowers else noFollowing,
-                )
             ProfileTab.About -> item(key = "profile-about", contentType = "profile-about") { ProfileAbout(profile, onOpenLink) }
         }
     }
@@ -413,7 +399,7 @@ fun ProfileMenuBar(
 private fun ProfileHeader(
     state: ProfileUiState,
     profile: Profile,
-    onSelectTab: (ProfileTab) -> Unit,
+    onOpenConnections: (ProfileConnectionsTab) -> Unit,
     onOpenManage: () -> Unit,
     onSignIn: () -> Unit,
     onToggleFollow: () -> Unit,
@@ -479,12 +465,12 @@ private fun ProfileHeader(
             ProfileCount(
                 count = profile.followerCount,
                 label = stringResource(Res.string.profile_followers_label),
-                onClick = if (!profile.remote && !profile.locked) ({ onSelectTab(ProfileTab.Followers) }) else null,
+                onClick = if (!profile.remote && !profile.locked) ({ onOpenConnections(ProfileConnectionsTab.Followers) }) else null,
             )
             ProfileCount(
                 count = profile.followingCount,
                 label = stringResource(Res.string.profile_following_label),
-                onClick = if (!profile.remote && !profile.locked) ({ onSelectTab(ProfileTab.Following) }) else null,
+                onClick = if (!profile.remote && !profile.locked) ({ onOpenConnections(ProfileConnectionsTab.Following) }) else null,
             )
         }
         state.relationError?.let { error ->
@@ -589,10 +575,6 @@ private fun ProfileTabs(
             add(ProfileTab.Articles)
             if (!profile.locked) add(ProfileTab.Recommendations)
             add(ProfileTab.About)
-            if (!profile.remote && !profile.locked) {
-                add(ProfileTab.Followers)
-                add(ProfileTab.Following)
-            }
         }
     Column {
         TabList(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp)) {
@@ -601,8 +583,6 @@ private fun ProfileTabs(
                     when (tab) {
                         ProfileTab.Articles -> Res.string.profile_articles
                         ProfileTab.Recommendations -> Res.string.profile_recommendations
-                        ProfileTab.Followers -> Res.string.profile_followers_label
-                        ProfileTab.Following -> Res.string.profile_following_label
                         ProfileTab.About -> Res.string.profile_about
                     }
                 Tab(
@@ -749,60 +729,6 @@ private fun ProfilePostMeta(icon: ImageVector, text: String, description: String
     }
 }
 
-private fun LazyListScope.profileMembers(
-    state: ProfileUiState,
-    onRetry: () -> Unit,
-    onOpenProfile: (String) -> Unit,
-    errorText: String,
-    retryLabel: String,
-    emptyText: String,
-) {
-    when {
-        state.membersLoading ->
-            item(key = "members-loading", contentType = "loading") {
-                Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                    Spinner(size = SpinnerSize.Default, label = stringResource(Res.string.profile_loading_more))
-                }
-            }
-        state.membersError != null ->
-            item(key = "members-error", contentType = "error") {
-                ProfileMessage(
-                    title = errorText,
-                    description = null,
-                    actionLabel = retryLabel,
-                    onAction = onRetry,
-                )
-            }
-        state.members.isEmpty() -> {
-            item(key = "members-empty", contentType = "empty") { ProfileMessage(emptyText, null, onAction = {}) }
-        }
-        else ->
-            items(items = state.members, key = { actor -> actor.id }, contentType = { "profile-member" }) { actor ->
-                ProfileMember(actor = actor, onOpen = { onOpenProfile(actor.username) })
-            }
-    }
-}
-
-@Composable
-private fun ProfileMember(
-    actor: RelationActor,
-    onOpen: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpen).padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ProfileAvatar(name = actor.displayName, url = actor.avatarUrl, size = 42)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = actor.displayName, variant = TextVariant.P, maxLines = 1, overflow = TextOverflow.Ellipsis, style = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium))
-            Text(text = "@${actor.username}", variant = TextVariant.Small, color = OmicronTheme.colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Icon(imageVector = RikkaIcons.ChevronRight, contentDescription = null, tint = OmicronTheme.colors.mutedForeground, size = IconSize.Sm)
-    }
-    Separator(modifier = Modifier.padding(horizontal = 16.dp))
-}
-
 @Composable
 private fun ProfileAbout(profile: Profile, onOpenLink: (String) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -864,7 +790,7 @@ private fun ProfileDetailRow(icon: ImageVector, label: String, value: String?) {
 }
 
 @Composable
-private fun ProfileAvatar(
+internal fun ProfileAvatar(
     name: String,
     url: String?,
     size: Int,
@@ -876,7 +802,7 @@ private fun ProfileAvatar(
 }
 
 @Composable
-private fun ProfileMessage(
+internal fun ProfileMessage(
     title: String,
     description: String?,
     actionLabel: String? = null,
