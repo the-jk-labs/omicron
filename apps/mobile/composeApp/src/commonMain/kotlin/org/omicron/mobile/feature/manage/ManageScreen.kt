@@ -293,6 +293,8 @@ private fun ManageTabs(state: ManageUiState, onSelectTab: (OwnPostStatus) -> Uni
                 text = stringResource(Res.string.manage_tab_count, stringResource(label), count),
                 onClick = { onSelectTab(tab) },
                 size = ButtonSize.Sm,
+                selected = tab == state.tab,
+                role = Role.Tab,
                 variant = if (tab == state.tab) ButtonVariant.Secondary else ButtonVariant.Ghost,
             )
         }

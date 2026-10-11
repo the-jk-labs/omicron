@@ -2,6 +2,8 @@ package org.omicron.mobile.feature.manage
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -43,7 +45,11 @@ class ManageJourneyTest {
 
         composeTestRule.waitForText("Draft A")
         composeTestRule.onNodeWithText("Drafts (1)").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Drafts (1)").assertIsSelected()
+        composeTestRule.onNodeWithText("Scheduled (1)").assertIsNotSelected()
         composeTestRule.onNodeWithText("Scheduled (1)").performClick()
+        composeTestRule.onNodeWithText("Scheduled (1)").assertIsSelected()
+        composeTestRule.onNodeWithText("Drafts (1)").assertIsNotSelected()
         composeTestRule.waitForText("Queued post")
         composeTestRule.onNodeWithText("Publishes", substring = true).assertIsDisplayed()
         viewModel.close()
