@@ -28,11 +28,11 @@ Keep the package layout stable inside the single `composeApp` module. Split Grad
 - Model loading, content, empty, error, offline, retry, and mutation-in-progress states explicitly.
 - Use type-safe Compose Navigation when more than one route is present. Navigation arguments are identifiers, not serialized models or mutable state.
 - Use stable keys and content types for every lazy-list item.
-- Use `OmicronTheme`, RikkaUI, and Lucide RikkaIcons. Inter is the interface typeface; Source Sans 3 is for native article/profile content and composer body blocks. Both are bundled under OFL 1.1. Do not introduce Material3 or ad-hoc visual tokens.
+- Use `OmicronTheme`, RikkaUI, and Lucide RikkaIcons. Mobile vector paths mirror the frontend's pinned `@lucide/svelte` 1.52.0 icon sources and must be synchronized when the frontend package or icon registry changes. Inter is the interface typeface; Source Sans 3 is for native article/profile content and composer body blocks. Both are bundled under OFL 1.1. Do not introduce Material3 or ad-hoc visual tokens.
 - Keep typography assets in `commonMain/composeResources/font`; include their license notices in the app resources and retain variable weight and Source Sans 3 italic support.
 - All visible strings live in common Compose resources. Design for light and dark modes, 48dp touch targets, edge-to-edge drawing, and font scaling. Status and navigation bar icon contrast follows the resolved app theme, not the device mode.
 - Tabs, appearance choices, and social toggles expose their selected state through Compose semantics.
-- The signed-in mobile shell follows the responsive web information architecture: Home, Lists, Write, Stats, and Profile bottom destinations, with search, notifications, and account actions in the top bar. Appearance remains available in Settings (ADR-0017).
+- The signed-in mobile shell follows the responsive web information architecture: Home, Lists, Write, Stats, and Profile bottom destinations, with search and notifications in the Home top bar and account actions in the Profile page menu. Appearance remains available in Settings (ADR-0017).
 
 ## Networking
 

@@ -166,7 +166,7 @@ private fun ListPostRow(
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 ListPostCount(RikkaIcons.Heart, post.likeCount)
                 ListPostCount(RikkaIcons.MessageCircle, post.commentCount)
-                ListPostCount(RikkaIcons.Repeat, post.recommendCount)
+                ListPostCount(RikkaIcons.Recommend, post.recommendCount)
             }
         }
         post.bannerUrl?.let { url ->

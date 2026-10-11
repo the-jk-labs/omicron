@@ -88,7 +88,7 @@ private fun TagScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(
-                icon = RikkaIcons.ArrowLeft,
+                icon = RikkaIcons.ChevronLeft,
                 contentDescription = stringResource(Res.string.tag_back),
                 onClick = onBack,
                 size = IconButtonSize.Default,

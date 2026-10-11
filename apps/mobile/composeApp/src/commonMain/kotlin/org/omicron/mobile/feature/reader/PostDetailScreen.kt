@@ -195,7 +195,7 @@ private fun PostDetailScreen(
                 size = ButtonSize.Icon,
                 label = stringResource(Res.string.detail_back),
             ) {
-                Icon(imageVector = RikkaIcons.ArrowLeft, contentDescription = null)
+                Icon(imageVector = RikkaIcons.ChevronLeft, contentDescription = null)
             }
         }
         when (val phase = state.phase) {
@@ -634,7 +634,7 @@ private fun PostEngagementBar(
                 onClick = onOpenResponses,
             )
             PostMetaAction(
-                imageVector = RikkaIcons.Repeat,
+                imageVector = RikkaIcons.Recommend,
                 label = stringResource(Res.string.social_recommend),
                 count = post.recommendCount,
                 selected = post.recommended,

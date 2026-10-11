@@ -151,7 +151,7 @@ private fun ManageScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(
-                    icon = RikkaIcons.ArrowLeft,
+                    icon = RikkaIcons.ChevronLeft,
                     contentDescription = stringResource(Res.string.manage_back),
                     onClick = onBack,
                     size = IconButtonSize.Default,

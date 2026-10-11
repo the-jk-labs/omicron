@@ -182,7 +182,7 @@ fun MobileBottomBar(
             PrimaryTab.Home to (RikkaIcons.Home to Res.string.navigation_home),
             PrimaryTab.Lists to (RikkaIcons.Library to Res.string.navigation_lists),
             PrimaryTab.Write to (RikkaIcons.PenLine to Res.string.navigation_write),
-            PrimaryTab.Stats to (RikkaIcons.Chart to Res.string.navigation_stats),
+            PrimaryTab.Stats to (RikkaIcons.ChartColumn to Res.string.navigation_stats),
             PrimaryTab.Profile to (RikkaIcons.User to Res.string.navigation_profile),
         )
     Row(
