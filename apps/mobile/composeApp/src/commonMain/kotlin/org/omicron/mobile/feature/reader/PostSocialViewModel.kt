@@ -1,5 +1,7 @@
 package org.omicron.mobile.feature.reader
 
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -10,8 +12,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.io.IOException
 import kotlin.random.Random
 import org.omicron.mobile.data.repository.SocialRepository
+import org.omicron.mobile.data.repository.UnauthorizedException
 import org.omicron.mobile.domain.model.AuthenticatedSession
 import org.omicron.mobile.domain.model.Comment
 import org.omicron.mobile.domain.model.PostAuthor
@@ -75,9 +79,9 @@ class PostSocialViewModel(
                 }
             } catch (exception: CancellationException) {
                 throw exception
-            } catch (_: Throwable) {
+            } catch (exception: Throwable) {
                 mutableUiState.update {
-                    it.copy(post = it.post?.copy(liked = post.liked, likeCount = post.likeCount), likeBusy = false, likeError = SocialActionError.Request)
+                    it.copy(post = it.post?.copy(liked = post.liked, likeCount = post.likeCount), likeBusy = false, likeError = exception.toSocialError())
                 }
             }
         }
@@ -100,12 +104,12 @@ class PostSocialViewModel(
                 }
             } catch (exception: CancellationException) {
                 throw exception
-            } catch (_: Throwable) {
+            } catch (exception: Throwable) {
                 mutableUiState.update {
                     it.copy(
                         post = it.post?.copy(recommended = post.recommended, recommendCount = post.recommendCount),
                         recommendationBusy = false,
-                        recommendationError = SocialActionError.Request,
+                        recommendationError = exception.toSocialError(),
                     )
                 }
             }
@@ -125,29 +129,35 @@ class PostSocialViewModel(
                 mutableUiState.update { it.copy(readLaterBusy = false) }
             } catch (exception: CancellationException) {
                 throw exception
-            } catch (_: Throwable) {
-                mutableUiState.update { it.copy(saved = !desired, readLaterBusy = false, readLaterError = SocialActionError.Request) }
+            } catch (exception: Throwable) {
+                mutableUiState.update { it.copy(saved = !desired, readLaterBusy = false, readLaterError = exception.toSocialError()) }
             }
         }
     }
 
     fun retryReadLater() {
-        if (mutableUiState.value.signedIn && !mutableUiState.value.readLaterLoading) loadReadLater()
+        val state = mutableUiState.value
+        if (!state.signedIn || state.readLaterLoading || state.readLaterBusy) return
+        if (state.readLaterListId == null) loadReadLater() else toggleReadLater()
     }
 
     fun updateDraft(value: String) {
+        if (mutableUiState.value.commentBusy) return
         mutableUiState.update { it.copy(draft = value, commentError = null) }
     }
 
     fun replyTo(commentId: String?) {
-        mutableUiState.update { it.copy(replyingTo = commentId, draft = "", commentError = null) }
+        val state = mutableUiState.value
+        if (state.commentBusy || !state.signedIn) return
+        if (commentId != null && state.comments.findComment(commentId) == null) return
+        mutableUiState.update { it.copy(replyingTo = commentId, commentError = null) }
     }
 
     fun submitComment() {
         val state = mutableUiState.value
         val content = state.draft.trim()
         val user = state.currentUser ?: return
-        if (content.isEmpty() || state.commentBusy) return
+        if (content.isEmpty() || state.commentBusy || state.commentsLoading) return
         val parentId = state.replyingTo
         val pending =
             Comment(
@@ -164,26 +174,33 @@ class PostSocialViewModel(
             it.copy(
                 post = it.post?.let { post -> post.copy(commentCount = post.commentCount + 1) },
                 comments = it.comments.addComment(pending),
-                draft = "",
-                replyingTo = null,
                 commentBusy = true,
+                pendingCommentId = pending.id,
                 commentError = null,
             )
         }
         scope.launch {
             try {
                 val created = repository.createComment(postId, content, parentId)
-                mutableUiState.update { it.copy(comments = it.comments.replaceComment(pending.id, created), commentBusy = false) }
+                mutableUiState.update {
+                    it.copy(
+                        comments = it.comments.replaceComment(pending.id, created),
+                        draft = "",
+                        replyingTo = null,
+                        commentBusy = false,
+                        pendingCommentId = null,
+                    )
+                }
             } catch (exception: CancellationException) {
                 throw exception
-            } catch (_: Throwable) {
+            } catch (exception: Throwable) {
                 mutableUiState.update {
                     it.copy(
                         post = it.post?.let { post -> post.copy(commentCount = (post.commentCount - 1).coerceAtLeast(0)) },
                         comments = it.comments.removeComment(pending.id),
-                        draft = content,
                         commentBusy = false,
-                        commentError = SocialActionError.Comment,
+                        pendingCommentId = null,
+                        commentError = exception.toSocialError(),
                     )
                 }
             }
@@ -192,7 +209,7 @@ class PostSocialViewModel(
 
     fun toggleCommentLike(commentId: String) {
         val state = mutableUiState.value
-        if (!state.signedIn || commentId in state.commentBusyIds) return
+        if (!state.signedIn || commentId in state.commentBusyIds || commentId == state.pendingCommentId) return
         val comment = state.comments.findComment(commentId) ?: return
         val desired = !comment.liked
         mutableUiState.update {
@@ -201,7 +218,7 @@ class PostSocialViewModel(
                     current.copy(liked = desired, likeCount = (current.likeCount + if (desired) 1 else -1).coerceAtLeast(0))
                 },
                 commentBusyIds = it.commentBusyIds + commentId,
-                commentError = null,
+                commentLikeErrors = it.commentLikeErrors - commentId,
             )
         }
         scope.launch {
@@ -215,7 +232,7 @@ class PostSocialViewModel(
                 }
             } catch (exception: CancellationException) {
                 throw exception
-            } catch (_: Throwable) {
+            } catch (exception: Throwable) {
                 mutableUiState.update {
                     it.copy(
                         comments =
@@ -223,7 +240,7 @@ class PostSocialViewModel(
                                 current.copy(liked = comment.liked, likeCount = comment.likeCount)
                             },
                         commentBusyIds = it.commentBusyIds - commentId,
-                        commentError = SocialActionError.Request,
+                        commentLikeErrors = it.commentLikeErrors + (commentId to exception.toSocialError()),
                     )
                 }
             }
@@ -231,16 +248,19 @@ class PostSocialViewModel(
     }
 
     fun beginEdit(comment: Comment) {
-        if (mutableUiState.value.currentUser?.id != comment.author.id) return
-        mutableUiState.update { it.copy(editingCommentId = comment.id, editDraft = comment.content, commentError = null) }
+        val state = mutableUiState.value
+        if (state.currentUser?.id != comment.author.id || state.editBusy || comment.id == state.pendingCommentId) return
+        mutableUiState.update { it.copy(editingCommentId = comment.id, editDraft = comment.content, editError = null) }
     }
 
     fun updateEditDraft(value: String) {
-        mutableUiState.update { it.copy(editDraft = value, commentError = null) }
+        if (mutableUiState.value.editBusy) return
+        mutableUiState.update { it.copy(editDraft = value, editError = null) }
     }
 
     fun cancelEdit() {
-        mutableUiState.update { it.copy(editingCommentId = null, editDraft = "") }
+        if (mutableUiState.value.editBusy) return
+        mutableUiState.update { it.copy(editingCommentId = null, editDraft = "", editError = null) }
     }
 
     fun saveEdit() {
@@ -248,7 +268,8 @@ class PostSocialViewModel(
         val commentId = state.editingCommentId ?: return
         val content = state.editDraft.trim()
         val before = state.comments.findComment(commentId) ?: return
-        if (content.isEmpty() || content == before.content || state.editBusy) {
+        if (state.editBusy) return
+        if (content.isEmpty() || content == before.content) {
             cancelEdit()
             return
         }
@@ -256,7 +277,7 @@ class PostSocialViewModel(
             it.copy(
                 comments = it.comments.updateComment(commentId) { comment -> comment.copy(content = content) },
                 editBusy = true,
-                commentError = null,
+                editError = null,
             )
         }
         scope.launch {
@@ -272,12 +293,12 @@ class PostSocialViewModel(
                 }
             } catch (exception: CancellationException) {
                 throw exception
-            } catch (_: Throwable) {
+            } catch (exception: Throwable) {
                 mutableUiState.update {
                     it.copy(
-                        comments = it.comments.updateComment(commentId) { before },
+                        comments = it.comments.updateComment(commentId) { comment -> comment.copy(content = before.content) },
                         editBusy = false,
-                        commentError = SocialActionError.Comment,
+                        editError = exception.toSocialError(),
                     )
                 }
             }
@@ -285,9 +306,10 @@ class PostSocialViewModel(
     }
 
     fun requestDelete(commentId: String) {
-        val comment = mutableUiState.value.comments.findComment(commentId) ?: return
-        if (mutableUiState.value.currentUser?.id != comment.author.id) return
-        mutableUiState.update { it.copy(deleteConfirmationId = commentId, commentError = null) }
+        val state = mutableUiState.value
+        val comment = state.comments.findComment(commentId) ?: return
+        if (state.currentUser?.id != comment.author.id || commentId == state.pendingCommentId || state.editBusy || state.commentBusy) return
+        mutableUiState.update { it.copy(deleteConfirmationId = commentId, deleteErrors = it.deleteErrors - commentId) }
     }
 
     fun cancelDelete() {
@@ -308,7 +330,7 @@ class PostSocialViewModel(
                 comments = it.comments.removeComment(commentId),
                 deleteConfirmationId = null,
                 deleteBusyIds = it.deleteBusyIds + commentId,
-                commentError = null,
+                deleteErrors = it.deleteErrors - commentId,
             )
         }
         scope.launch {
@@ -317,13 +339,13 @@ class PostSocialViewModel(
                 mutableUiState.update { it.copy(deleteBusyIds = it.deleteBusyIds - commentId) }
             } catch (exception: CancellationException) {
                 throw exception
-            } catch (_: Throwable) {
+            } catch (exception: Throwable) {
                 mutableUiState.update {
                     it.copy(
                         post = it.post?.let { post -> post.copy(commentCount = post.commentCount + countDelta) },
                         comments = it.comments.restoreComment(comment, rootIndex),
                         deleteBusyIds = it.deleteBusyIds - commentId,
-                        commentError = SocialActionError.Delete,
+                        deleteErrors = it.deleteErrors + (commentId to exception.toSocialError()),
                     )
                 }
             }
@@ -332,11 +354,12 @@ class PostSocialViewModel(
 
     fun loadMoreComments() {
         val cursor = mutableUiState.value.nextCommentCursor ?: return
-        if (mutableUiState.value.commentsLoadingMore) return
+        if (mutableUiState.value.commentsLoadingMore || mutableUiState.value.commentsLoading || mutableUiState.value.commentBusy) return
         loadComments(cursor)
     }
 
     fun retryComments() {
+        if (mutableUiState.value.commentsLoading || mutableUiState.value.commentsLoadingMore || mutableUiState.value.commentBusy) return
         loadComments()
     }
 
@@ -357,7 +380,7 @@ class PostSocialViewModel(
                 val page = repository.postComments(postId, cursor)
                 mutableUiState.update {
                     it.copy(
-                        comments = if (cursor == null) page.items else it.comments + page.items,
+                        comments = if (cursor == null) page.items else (it.comments + page.items).distinctBy(Comment::id),
                         nextCommentCursor = page.nextCursor,
                         commentsLoading = false,
                         commentsLoadingMore = false,
@@ -388,8 +411,8 @@ class PostSocialViewModel(
                 }
             } catch (exception: CancellationException) {
                 throw exception
-            } catch (_: Throwable) {
-                mutableUiState.update { it.copy(readLaterLoading = false, readLaterError = SocialActionError.Request) }
+            } catch (exception: Throwable) {
+                mutableUiState.update { it.copy(readLaterLoading = false, readLaterError = exception.toSocialError()) }
             }
         }
     }
@@ -405,13 +428,17 @@ data class PostSocialUiState(
     val draft: String = "",
     val replyingTo: String? = null,
     val commentBusy: Boolean = false,
+    val pendingCommentId: String? = null,
     val commentBusyIds: Set<String> = emptySet(),
+    val commentLikeErrors: Map<String, SocialActionError> = emptyMap(),
     val commentError: SocialActionError? = null,
     val editingCommentId: String? = null,
     val editDraft: String = "",
     val editBusy: Boolean = false,
+    val editError: SocialActionError? = null,
     val deleteConfirmationId: String? = null,
     val deleteBusyIds: Set<String> = emptySet(),
+    val deleteErrors: Map<String, SocialActionError> = emptyMap(),
     val signedIn: Boolean = false,
     val currentUser: org.omicron.mobile.domain.model.AuthenticatedUser? = null,
     val sessionExpired: Boolean = false,
@@ -432,8 +459,16 @@ enum class SocialContentError {
 
 enum class SocialActionError {
     Request,
-    Comment,
-    Delete,
+    Offline,
+    Unauthorized,
+    Forbidden,
+}
+
+private fun Throwable.toSocialError(): SocialActionError = when {
+    this is IOException -> SocialActionError.Offline
+    this is UnauthorizedException -> SocialActionError.Unauthorized
+    this is ClientRequestException && response.status == HttpStatusCode.Forbidden -> SocialActionError.Forbidden
+    else -> SocialActionError.Request
 }
 
 private fun List<Comment>.addComment(comment: Comment): List<Comment> =

@@ -132,7 +132,7 @@ class TimelineViewModel(
             } catch (_: Throwable) {
                 mutableUiState.update {
                     it.copy(
-                        posts = it.posts.updatePost(postId) { post },
+                        posts = it.posts.updatePost(postId) { item -> item.copy(liked = post.liked, likeCount = post.likeCount) },
                         likeBusyPostIds = it.likeBusyPostIds - postId,
                         actionErrorPostIds = it.actionErrorPostIds + postId,
                     )
@@ -175,7 +175,7 @@ class TimelineViewModel(
             } catch (_: Throwable) {
                 mutableUiState.update {
                     it.copy(
-                        posts = it.posts.updatePost(postId) { post },
+                        posts = it.posts.updatePost(postId) { item -> item.copy(recommended = post.recommended, recommendCount = post.recommendCount) },
                         recommendationBusyPostIds = it.recommendationBusyPostIds - postId,
                         actionErrorPostIds = it.actionErrorPostIds + postId,
                     )

@@ -1,6 +1,7 @@
 package org.omicron.mobile.feature.reader
 
 import kotlinx.io.IOException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -295,6 +296,55 @@ class TimelineViewModelTest {
         assertTrue(socialApi.saved)
         viewModel.close()
     }
+
+    @Test
+    fun failedLikeDoesNotUndoASuccessfulConcurrentRecommendation() = runTest {
+        val release = CompletableDeferred<Unit>()
+        val socialApi = FakeSocialApi().apply {
+            postLikeHandler = {
+                release.await()
+                throw IOException("offline")
+            }
+        }
+        val viewModel = mutationViewModel(socialApi)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.toggleLike("post-1")
+        viewModel.toggleRecommendation("post-1")
+        testScheduler.advanceUntilIdle()
+        release.complete(Unit)
+        testScheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.posts.single().liked)
+        assertTrue(viewModel.uiState.value.posts.single().recommended)
+        assertEquals(4, viewModel.uiState.value.posts.single().recommendCount)
+    }
+
+    @Test
+    fun failedRecommendationDoesNotUndoASuccessfulConcurrentLike() = runTest {
+        val socialApi = FakeSocialApi().apply { recommendationFailure = IOException("offline") }
+        val viewModel = mutationViewModel(socialApi)
+        testScheduler.advanceUntilIdle()
+
+        viewModel.toggleLike("post-1")
+        viewModel.toggleRecommendation("post-1")
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.posts.single().liked)
+        assertEquals(3, viewModel.uiState.value.posts.single().likeCount)
+        assertFalse(viewModel.uiState.value.posts.single().recommended)
+    }
+
+    private fun TestScope.mutationViewModel(api: FakeSocialApi) = TimelineViewModel(
+        PostsRepository(
+            SequencedPostsApi(pages = listOf(page(listOf(post("post-1")), null))),
+            savedInstance = { instance() },
+            accessToken = { "signed-token" },
+        ),
+        TestScope(StandardTestDispatcher(testScheduler)),
+        session = MutableStateFlow(signedSession()),
+        socialRepository = SocialRepository(api, savedInstance = { instance() }, accessToken = { "signed-token" }),
+    )
 }
 
 private fun TestScope.timelineViewModel(

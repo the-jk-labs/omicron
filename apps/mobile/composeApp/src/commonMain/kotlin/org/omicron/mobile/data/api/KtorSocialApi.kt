@@ -13,6 +13,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.encodeURLPathPart
+import io.ktor.http.hostWithPort
 import kotlinx.serialization.Serializable
 
 class KtorSocialApi(
@@ -178,6 +179,9 @@ class KtorSocialApi(
     }
 
     private fun io.ktor.client.request.HttpRequestBuilder.authorized(accessToken: String?) {
+        val requestUrl = url.build()
+        val authority = requestUrl.hostWithPort.removeSuffix(":${requestUrl.protocol.defaultPort}")
+        header(HttpHeaders.Origin, "${requestUrl.protocol.name}://$authority")
         if (accessToken != null) header(HttpHeaders.Authorization, "Bearer $accessToken")
     }
 

@@ -5,18 +5,87 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.HttpRequestData
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import io.ktor.http.content.TextContent
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class KtorSocialApiTest {
+    @Test
+    fun postLikesPassThePublicGatewayOriginCheckInBothDirections() = runTest {
+        val api = KtorSocialApi(gatewayClient { request ->
+            """{"likeCount":8,"liked":${request.method == HttpMethod.Post}}"""
+        })
+
+        assertEquals(LikeStateDto(8, true), api.postLike("https://omicron.blog", "post-1", true, "signed-token"))
+        assertEquals(LikeStateDto(8, false), api.postLike("https://omicron.blog", "post-1", false, "signed-token"))
+    }
+
+    @Test
+    fun recommendationsPassThePublicGatewayOriginCheckInBothDirections() = runTest {
+        val api = KtorSocialApi(gatewayClient { request ->
+            """{"recommendCount":3,"recommended":${request.method == HttpMethod.Post}}"""
+        })
+
+        assertEquals(RecommendationStateDto(3, true), api.postRecommendation("https://omicron.blog/", "post-1", true, "signed-token"))
+        assertEquals(RecommendationStateDto(3, false), api.postRecommendation("https://omicron.blog/", "post-1", false, "signed-token"))
+    }
+
+    @Test
+    fun commentLikesPassThePublicGatewayOriginCheckInBothDirections() = runTest {
+        val api = KtorSocialApi(gatewayClient { request ->
+            """{"likeCount":2,"liked":${request.method == HttpMethod.Post}}"""
+        })
+
+        assertEquals(LikeStateDto(2, true), api.commentLike("https://omicron.blog", "post-1", "comment-1", true, "signed-token"))
+        assertEquals(LikeStateDto(2, false), api.commentLike("https://omicron.blog", "post-1", "comment-1", false, "signed-token"))
+    }
+
+    @Test
+    fun socialOriginPreservesNonDefaultPortsAndOmitsDefaultPorts() = runTest {
+        val origins = mutableListOf<String?>()
+        val api = KtorSocialApi(client { request ->
+            origins += request.headers[HttpHeaders.Origin]
+            """{"likeCount":1,"liked":true}"""
+        })
+
+        api.postLike("https://instance.example:8443", "post-1", true, "signed-token")
+        api.postLike("https://instance.example:443", "post-1", true, "signed-token")
+
+        assertEquals(listOf<String?>("https://instance.example:8443", "https://instance.example"), origins)
+    }
+
+    @Test
+    fun commentCreationAndEditingSendPlainTextJsonAndTheReplyIdentifier() = runTest {
+        val bodies = mutableListOf<String>()
+        val api = KtorSocialApi(client { request ->
+            assertEquals("https://omicron.blog", request.headers[HttpHeaders.Origin])
+            assertEquals("Bearer signed-token", request.headers[HttpHeaders.Authorization])
+            assertEquals(ContentType.Application.Json, request.body.contentType?.withoutParameters())
+            bodies += (request.body as TextContent).text
+            if (request.method == HttpMethod.Post) {
+                """{"comment":{"id":"comment-1","content":"A reply","createdAt":"2026-01-01T00:00:00Z","parentId":"parent-1","author":{"id":"user-1","username":"ada","displayName":"Ada"}}}"""
+            } else {
+                """{"comment":{"id":"comment-1","content":"Updated reply"}}"""
+            }
+        })
+
+        assertEquals("parent-1", api.createComment("https://omicron.blog", "post-1", "Plain text\n<not html>", "parent-1", "signed-token").comment.parentId)
+        assertEquals("Updated reply", api.editComment("https://omicron.blog", "post-1", "comment-1", "Updated reply", "signed-token").comment.content)
+        assertEquals("Plain text\n<not html>", Json.parseToJsonElement(bodies[0]).jsonObject.getValue("content").jsonPrimitive.content)
+        assertEquals("parent-1", Json.parseToJsonElement(bodies[0]).jsonObject.getValue("parentId").jsonPrimitive.content)
+    }
+
     @Test
     fun postLikeSendsBearerAndDecodesAuthoritativeState() = runTest {
         var method: HttpMethod? = null
@@ -136,6 +205,22 @@ class KtorSocialApiTest {
                 content = handler(request),
                 status = HttpStatusCode.OK,
                 headers = headersOf(HttpHeaders.ContentType, "application/json"),
+            )
+        }) {
+            expectSuccess = true
+            install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        }
+
+    private fun gatewayClient(handler: (HttpRequestData) -> String) =
+        HttpClient(MockEngine { request ->
+            val origin = "${request.url.protocol.name}://${request.url.host}"
+            val rejected = request.method == HttpMethod.Post &&
+                request.body.contentType != ContentType.Application.Json &&
+                request.headers[HttpHeaders.Origin] != origin
+            respond(
+                content = if (rejected) "Cross-site POST form submissions are forbidden" else handler(request),
+                status = if (rejected) HttpStatusCode.Forbidden else HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, if (rejected) "text/plain" else "application/json"),
             )
         }) {
             expectSuccess = true
