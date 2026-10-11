@@ -21,12 +21,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
+import org.omicron.mobile.core.designsystem.CenteredLoadingState
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonVariant
 import org.omicron.mobile.core.designsystem.rikkaui.input.Input
-import org.omicron.mobile.core.designsystem.rikkaui.spinner.Spinner
-import org.omicron.mobile.core.designsystem.rikkaui.spinner.SpinnerSize
 import org.omicron.mobile.core.designsystem.rikkaui.text.Text
 import org.omicron.mobile.core.designsystem.rikkaui.text.TextVariant
 import org.omicron.mobile.resources.Res
@@ -124,7 +123,7 @@ private fun AuthScreen(
             verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             when (val phase = state.phase) {
-                AuthPhase.Restoring -> Spinner(size = SpinnerSize.Lg, label = stringResource(Res.string.auth_restoring))
+                AuthPhase.Restoring -> CenteredLoadingState(message = stringResource(Res.string.auth_restoring))
                 is AuthPhase.Credentials ->
                     CredentialsForm(
                         phase = phase,

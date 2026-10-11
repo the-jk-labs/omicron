@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -34,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.stringResource
+import org.omicron.mobile.core.designsystem.CenteredLoadingState
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.SessionExpiredNotice
 import org.omicron.mobile.core.designsystem.rikkaui.alertdialog.AlertDialog
@@ -47,8 +47,6 @@ import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonVariant
 import org.omicron.mobile.core.designsystem.rikkaui.button.IconButton
 import org.omicron.mobile.core.designsystem.rikkaui.icon.RikkaIcons
 import org.omicron.mobile.core.designsystem.rikkaui.separator.Separator
-import org.omicron.mobile.core.designsystem.rikkaui.spinner.Spinner
-import org.omicron.mobile.core.designsystem.rikkaui.spinner.SpinnerSize
 import org.omicron.mobile.core.designsystem.rikkaui.tabs.Tab
 import org.omicron.mobile.core.designsystem.rikkaui.tabs.TabList
 import org.omicron.mobile.core.designsystem.rikkaui.text.Text
@@ -151,7 +149,7 @@ internal fun ProfileConnectionsScreen(
                 SessionExpiredNotice(message = stringResource(Res.string.timeline_session_expired), onSignIn = onSignIn)
             }
             when (val phase = state.phase) {
-                ProfilePhase.Loading -> ConnectionsLoading()
+                ProfilePhase.Loading -> ConnectionsLoading(Modifier.weight(1f))
                 ProfilePhase.NotFound -> ProfileMessage(stringResource(Res.string.profile_not_found), null, onAction = {})
                 is ProfilePhase.Error -> ConnectionsError(phase.reason, onRetry)
                 ProfilePhase.Content -> {
@@ -206,7 +204,7 @@ private fun ConnectionsMembers(
     val followersScroll = rememberLazyListState()
     val followingScroll = rememberLazyListState()
     when {
-        members.loading -> ConnectionsLoading()
+        members.loading -> ConnectionsLoading(modifier)
         members.error != null -> ConnectionsError(members.error, onRetry)
         members.items.isEmpty() -> ProfileMessage(
             title = stringResource(if (state.selectedTab == ProfileConnectionsTab.Followers) Res.string.profile_no_followers else Res.string.profile_no_following),
@@ -307,10 +305,8 @@ private fun UnfollowConfirmation(username: String, requested: Boolean, onCancel:
 }
 
 @Composable
-private fun ConnectionsLoading() {
-    Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
-        Spinner(size = SpinnerSize.Default, label = stringResource(Res.string.profile_connections_loading))
-    }
+private fun ConnectionsLoading(modifier: Modifier = Modifier) {
+    CenteredLoadingState(message = stringResource(Res.string.profile_connections_loading), modifier = modifier)
 }
 
 @Composable

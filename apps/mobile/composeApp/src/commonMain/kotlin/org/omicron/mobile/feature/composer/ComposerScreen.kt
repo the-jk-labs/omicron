@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import kotlinx.datetime.TimeZone
 import org.jetbrains.compose.resources.stringResource
+import org.omicron.mobile.core.designsystem.CenteredLoadingState
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.ScheduleDialog
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
@@ -288,16 +289,7 @@ internal fun ComposerScreen(
 
 @Composable
 private fun ComposerLoading() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Spinner(size = SpinnerSize.Default)
-            Text(
-                text = stringResource(Res.string.composer_loading),
-                variant = TextVariant.Muted,
-                color = OmicronTheme.colors.foreground,
-            )
-        }
-    }
+    CenteredLoadingState(message = stringResource(Res.string.composer_loading), size = SpinnerSize.Default)
 }
 
 @Composable

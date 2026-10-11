@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
+import org.omicron.mobile.core.designsystem.CenteredLoadingState
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
@@ -127,9 +128,7 @@ private fun TagScreen(
 
 @Composable
 private fun TagLoading() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Spinner(size = SpinnerSize.Lg, label = stringResource(Res.string.tag_loading))
-    }
+    CenteredLoadingState(message = stringResource(Res.string.tag_loading))
 }
 
 @Composable

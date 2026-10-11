@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import org.jetbrains.compose.resources.stringResource
 import org.omicron.mobile.core.article.postPreview
+import org.omicron.mobile.core.designsystem.CenteredLoadingState
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
@@ -76,10 +77,7 @@ private fun ListDetailScreen(
     onLoadMore: () -> Unit,
 ) {
     when (state.phase) {
-        ListDetailPhase.Loading ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Spinner(size = SpinnerSize.Lg, label = stringResource(Res.string.list_detail_loading))
-            }
+        ListDetailPhase.Loading -> CenteredLoadingState(message = stringResource(Res.string.list_detail_loading))
         ListDetailPhase.Error -> ListDetailError(state.error ?: MobileFeatureError.Server, onRetry)
         ListDetailPhase.Empty ->
             Column(modifier = Modifier.fillMaxSize().padding(top = 18.dp)) {

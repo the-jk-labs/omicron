@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.TimeZone
 import org.jetbrains.compose.resources.stringResource
+import org.omicron.mobile.core.designsystem.CenteredLoadingState
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.ScheduleDialog
 import org.omicron.mobile.core.designsystem.SessionExpiredNotice
@@ -168,10 +169,10 @@ private fun ManageScreen(
                 )
             }
             when (val phase = state.phase) {
-                ManagePhase.Loading ->
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Spinner(size = SpinnerSize.Lg, label = stringResource(Res.string.manage_loading))
-                    }
+                ManagePhase.Loading -> CenteredLoadingState(
+                    message = stringResource(Res.string.manage_loading),
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                )
                 is ManagePhase.Error ->
                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                         ManageLoadError(phase.error, onRefresh, onSignIn)
@@ -183,10 +184,10 @@ private fun ManageScreen(
                     }
                     ManageTabs(state, onSelectTab)
                     when {
-                        lane.loading && !lane.loaded ->
-                            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                Spinner(size = SpinnerSize.Default, label = stringResource(Res.string.manage_loading))
-                            }
+                        lane.loading && !lane.loaded -> CenteredLoadingState(
+                            message = stringResource(Res.string.manage_loading),
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                        )
                         !lane.loaded ->
                             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                                 ManageLoadError(state.error ?: ManageError.Server, onRefresh, onSignIn)

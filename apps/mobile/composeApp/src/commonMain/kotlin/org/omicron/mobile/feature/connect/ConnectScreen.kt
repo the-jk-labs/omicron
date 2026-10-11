@@ -23,11 +23,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import org.omicron.mobile.core.designsystem.CenteredLoadingState
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
 import org.omicron.mobile.core.designsystem.rikkaui.input.Input
-import org.omicron.mobile.core.designsystem.rikkaui.spinner.Spinner
-import org.omicron.mobile.core.designsystem.rikkaui.spinner.SpinnerSize
 import org.omicron.mobile.core.designsystem.rikkaui.text.Text
 import org.omicron.mobile.core.designsystem.rikkaui.text.TextVariant
 import org.omicron.mobile.domain.model.InstanceConfiguration
@@ -76,7 +75,7 @@ private fun ConnectScreen(
         contentAlignment = Alignment.Center,
     ) {
         if (state.isRestoring) {
-            Spinner(size = SpinnerSize.Lg, label = stringResource(Res.string.connect_loading))
+            CenteredLoadingState(message = stringResource(Res.string.connect_loading))
         } else {
             Column(
                 modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp).padding(24.dp),

@@ -1,18 +1,25 @@
 package org.omicron.mobile.feature.auth
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.serialization.json.buildJsonObject
+import kotlin.math.abs
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -142,6 +149,39 @@ class R1JourneyTest {
     }
 
     @Test
+    fun sessionRestoringShowsCenteredProgressAndVisibleDescription() {
+        val pendingSession = CompletableDeferred<AuthSessionDto?>()
+        val viewModel =
+            AuthViewModel(
+                savedInstance = ::instance,
+                repository = AuthRepository(
+                    FakeAuthApi(sessionResponse = { pendingSession.await() }),
+                    FakeSessionCookieStore(),
+                ),
+            )
+
+        try {
+            composeTestRule.setContent {
+                OmicronTheme {
+                    AuthRoute(viewModel = viewModel, onChangeInstance = {})
+                }
+            }
+            composeTestRule.waitUntil(timeoutMillis = 5_000) { viewModel.uiState.value.phase == AuthPhase.Restoring }
+
+            val rootBounds = composeTestRule.onRoot().fetchSemanticsNode().boundsInRoot
+            val spinnerBounds = composeTestRule.onNodeWithContentDescription("Restoring session").fetchSemanticsNode().boundsInRoot
+            val tolerance = composeTestRule.density.run { 4.dp.toPx() }
+            assertTrue(
+                "The session progress indicator should be horizontally centered.",
+                abs(spinnerBounds.center.x - rootBounds.center.x) <= tolerance,
+            )
+            composeTestRule.onNodeWithText("Restoring session").assertIsDisplayed()
+        } finally {
+            viewModel.close()
+        }
+    }
+
+    @Test
     fun signOutReturnsToCredentials() {
         val api = FakeAuthApi(session())
         val viewModel = AuthViewModel(savedInstance = ::instance, repository = AuthRepository(api, FakeSessionCookieStore()))
@@ -241,11 +281,12 @@ private class FakeInstanceApi(
 private class FakeAuthApi(
     private var session: AuthSessionDto? = null,
     private val signOutFails: Boolean = false,
+    private val sessionResponse: suspend () -> AuthSessionDto? = { session },
 ) : AuthApi {
     var signOutCount = 0
     var usernameSignIn: String? = null
 
-    override suspend fun getSession(origin: String): AuthSessionDto? = session
+    override suspend fun getSession(origin: String): AuthSessionDto? = sessionResponse()
 
     override suspend fun getToken(origin: String): AuthTokenDto = AuthTokenDto("signed-token")
 

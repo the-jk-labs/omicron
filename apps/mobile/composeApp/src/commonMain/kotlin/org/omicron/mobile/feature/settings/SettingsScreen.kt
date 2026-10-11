@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
+import org.omicron.mobile.core.designsystem.CenteredLoadingState
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.SessionExpiredNotice
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
@@ -33,8 +34,6 @@ import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonVariant
 import org.omicron.mobile.core.designsystem.rikkaui.button.IconButton
 import org.omicron.mobile.core.designsystem.rikkaui.button.IconButtonSize
 import org.omicron.mobile.core.designsystem.rikkaui.icon.RikkaIcons
-import org.omicron.mobile.core.designsystem.rikkaui.spinner.Spinner
-import org.omicron.mobile.core.designsystem.rikkaui.spinner.SpinnerSize
 import org.omicron.mobile.core.designsystem.rikkaui.text.Text
 import org.omicron.mobile.core.designsystem.rikkaui.text.TextVariant
 import org.omicron.mobile.domain.model.AppearancePreference
@@ -122,9 +121,10 @@ private fun SettingsScreen(
             SessionExpiredNotice(message = stringResource(Res.string.timeline_session_expired), onSignIn = onSignIn)
         }
         if (state.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Spinner(size = SpinnerSize.Default, label = stringResource(Res.string.settings_loading))
-            }
+            CenteredLoadingState(
+                message = stringResource(Res.string.settings_loading),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+            )
         } else {
             Column(
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp),
