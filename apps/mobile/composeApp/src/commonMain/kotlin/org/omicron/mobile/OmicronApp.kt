@@ -3,8 +3,11 @@ package org.omicron.mobile
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
@@ -78,6 +81,7 @@ import org.omicron.mobile.resources.Res
 import org.omicron.mobile.resources.settings_sign_out_warning
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 fun OmicronApp(
     instanceRepository: InstanceRepository,
     authRepository: AuthRepository,
@@ -443,7 +447,7 @@ fun OmicronApp(
                     }
                 }
             }
-            if (session != null && !standalone) {
+            if (session != null && !standalone && !(backStackEntry.routeMatches<ComposeDestination>() && WindowInsets.isImeVisible)) {
                 MobileBottomBar(
                     selected = selectedTab,
                     profileAvatarUrl = session?.user?.avatarUrl,

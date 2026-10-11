@@ -230,6 +230,38 @@ public object RikkaIcons {
         lucideSvgIcon("PenLine", "M13 21h8", "M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z")
     }
 
+    public val Pilcrow: ImageVector by lazy {
+        lucideSvgIcon("Pilcrow", "M13 4v16", "M17 4v16", "M19 4H9.5a4.5 4.5 0 0 0 0 9H13")
+    }
+
+    public val Heading: ImageVector by lazy {
+        lucideSvgIcon("Heading", "M6 12h12", "M6 20V4", "M18 20V4")
+    }
+
+    public val Quote: ImageVector by lazy {
+        lucideSvgIcon("Quote", "M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z", "M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z")
+    }
+
+    public val CodeXml: ImageVector by lazy {
+        lucideSvgIcon("CodeXml", "m18 16 4-4-4-4", "m6 8-4 4 4 4", "m14.5 4-5 16")
+    }
+
+    public val List: ImageVector by lazy {
+        lucideSvgIcon("List", "M3 5h.01", "M3 12h.01", "M3 19h.01", "M8 5h13", "M8 12h13", "M8 19h13")
+    }
+
+    public val ListOrdered: ImageVector by lazy {
+        lucideSvgIcon("ListOrdered", "M11 5h10", "M11 12h10", "M11 19h10", "M4 4h1v5", "M4 9h2", "M6.5 20H3.4c0-1 2.6-1.925 2.6-3.5a1.5 1.5 0 0 0-2.6-1.02")
+    }
+
+    public val Image: ImageVector by lazy {
+        lucideSvgIcon("Image", "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M11 9a2 2 0 1 1-4 0a2 2 0 1 1 4 0", "m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21")
+    }
+
+    public val FileText: ImageVector by lazy {
+        lucideSvgIcon("FileText", "M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z", "M14 2v5a1 1 0 0 0 1 1h5", "M10 9H8", "M16 13H8", "M16 17H8")
+    }
+
     // ── File transfer ───────────────────────────────────────
 
     public val Download: ImageVector by lazy {

@@ -258,6 +258,16 @@
     <string name="composer_code_hint">Code</string>
     <string name="composer_list_item_hint">List item</string>
     <string name="composer_add_block">Add block</string>
+    <string name="composer_details">Post details</string>
+    <string name="composer_details_hint">Cover, summary, tags, and language</string>
+    <string name="composer_details_expanded">Expanded</string>
+    <string name="composer_details_collapsed">Collapsed</string>
+    <string name="composer_publishing_options">Publishing options</string>
+    <string name="composer_block_options">%1$s block options</string>
+    <string name="composer_empty_body">Start with a paragraph or add a block below.</string>
+    <string name="composer_image_preview_failed">Image preview unavailable</string>
+    <string name="composer_image_block">Image</string>
+    <string name="composer_preserved_block">Preserved content</string>
     <string name="composer_block_paragraph">Paragraph</string>
     <string name="composer_block_heading">Heading</string>
     <string name="composer_block_quote">Quote</string>
@@ -279,6 +289,7 @@
     <string name="composer_publish">Publish</string>
     <string name="composer_saving">Saving</string>
     <string name="composer_saved">Saved</string>
+    <string name="composer_unsaved">Unsaved changes</string>
     <string name="composer_retry">Try again</string>
     <string name="composer_sign_in">Sign in</string>
     <string name="composer_view_post">View post</string>
