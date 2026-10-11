@@ -114,13 +114,13 @@
         <Dialog.Description class="mt-3 text-sm text-foreground-alt">
           For your security, enter your password before adding a new way to sign in.
         </Dialog.Description>
-        <form id="passkey-confirm" onsubmit={confirmAndAdd} class="mt-4 flex flex-col gap-1.5">
+        <form id="passkey-reauth" onsubmit={confirmAndAdd} class="mt-4 flex flex-col gap-1.5">
           <UsernameHint username={user?.username ?? ""} />
-          <Label.Root for="passkey-confirm-password" class="text-sm leading-none font-medium text-foreground">
+          <Label.Root for="passkey-reauth-password" class="text-sm leading-none font-medium text-foreground">
             Password
           </Label.Root>
           <input
-            id="passkey-confirm-password"
+            id="passkey-reauth-password"
             type="password"
             bind:value={password}
             autocomplete="current-password"
@@ -151,7 +151,7 @@
           {#if step === "confirm"}
             <Button
               type="submit"
-              form="passkey-confirm"
+              form="passkey-reauth"
               variant="solid"
               class="h-10 px-5"
               disabled={adding || !password}
