@@ -3,7 +3,6 @@ package org.omicron.mobile.feature.navigation
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,12 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,7 +60,6 @@ import org.omicron.mobile.feature.common.notificationIcon
 import org.omicron.mobile.feature.common.notificationSubject
 import org.omicron.mobile.resources.Res
 import org.omicron.mobile.resources.app_name
-import org.omicron.mobile.resources.navigation_account_menu
 import org.omicron.mobile.resources.navigation_home
 import org.omicron.mobile.resources.navigation_lists
 import org.omicron.mobile.resources.navigation_notifications
@@ -73,11 +67,9 @@ import org.omicron.mobile.resources.navigation_profile
 import org.omicron.mobile.resources.navigation_search
 import org.omicron.mobile.resources.navigation_settings
 import org.omicron.mobile.resources.navigation_sign_in
-import org.omicron.mobile.resources.navigation_sign_out
 import org.omicron.mobile.resources.navigation_stats
 import org.omicron.mobile.resources.navigation_see_all
 import org.omicron.mobile.resources.navigation_write
-import org.omicron.mobile.resources.navigation_your_posts
 import org.omicron.mobile.resources.omicron_logo
 import org.omicron.mobile.resources.notifications_empty
 import org.omicron.mobile.resources.notifications_loading
@@ -93,10 +85,6 @@ enum class PrimaryTab {
 }
 
 enum class AccountAction {
-    Profile,
-    Lists,
-    Write,
-    Stats,
     YourPosts,
     Settings,
     SignIn,
@@ -161,7 +149,6 @@ fun MobileTopBar(
                     onRefresh = onRefreshNotifications,
                     onOpenNotification = onOpenNotification,
                 )
-                AccountMenu(user = user, onAction = onAccountAction)
             } else {
                 IconButton(
                     icon = RikkaIcons.Settings,
@@ -185,6 +172,8 @@ fun MobileTopBar(
 @Composable
 fun MobileBottomBar(
     selected: PrimaryTab?,
+    profileAvatarUrl: String? = null,
+    profileDisplayName: String = "",
     onSelect: (PrimaryTab) -> Unit,
 ) {
     val borderColor = OmicronTheme.colors.borderCard
@@ -227,7 +216,11 @@ fun MobileBottomBar(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
-                    Icon(imageVector = item.first, contentDescription = null, tint = tint, size = IconSize.Lg)
+                    if (tab == PrimaryTab.Profile && profileDisplayName.isNotBlank()) {
+                        ProfileTabAvatar(url = profileAvatarUrl, name = profileDisplayName, active = active)
+                    } else {
+                        Icon(imageVector = item.first, contentDescription = null, tint = tint, size = IconSize.Lg)
+                    }
                     Text(
                         text = stringResource(item.second),
                         variant = TextVariant.Small,
@@ -408,130 +401,35 @@ private fun NotificationPreviewRow(
 }
 
 @Composable
-private fun AccountMenu(
-    user: AuthenticatedUser,
-    onAction: (AccountAction) -> Unit,
+private fun ProfileTabAvatar(
+    url: String?,
+    name: String,
+    active: Boolean,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val density = LocalDensity.current
-    val accountMenuLabel = stringResource(Res.string.navigation_account_menu)
-    Box {
-        Box(
-            modifier =
-                Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .semantics {
-                        contentDescription = accountMenuLabel
-                    }.clickable(role = Role.Button) { expanded = true },
-            contentAlignment = Alignment.Center,
-        ) {
-            AccountAvatar(user)
-        }
-        if (expanded) {
-            Popup(
-                alignment = Alignment.TopEnd,
-                offset = with(density) { IntOffset(0, 48.dp.roundToPx()) },
-                onDismissRequest = { expanded = false },
-                properties = PopupProperties(focusable = true),
-            ) {
-                Column(
-                    modifier =
-                        Modifier
-                            .width(236.dp)
-                            .clip(RoundedCornerShape(OmicronTheme.radii.cardSmall))
-                            .background(OmicronTheme.colors.background)
-                            .border(1.dp, OmicronTheme.colors.borderCard, RoundedCornerShape(OmicronTheme.radii.cardSmall))
-                            .padding(8.dp),
-                ) {
-                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
-                        Text(text = user.displayName, variant = TextVariant.P, color = OmicronTheme.colors.foreground, maxLines = 1)
-                        Text(text = "@${user.username}", variant = TextVariant.Small, color = OmicronTheme.colors.mutedForeground, maxLines = 1)
-                    }
-                    MenuDivider()
-                    AccountMenuItem(RikkaIcons.User, stringResource(Res.string.navigation_profile)) {
-                        expanded = false
-                        onAction(AccountAction.Profile)
-                    }
-                    AccountMenuItem(RikkaIcons.PenLine, stringResource(Res.string.navigation_write)) {
-                        expanded = false
-                        onAction(AccountAction.Write)
-                    }
-                    AccountMenuItem(RikkaIcons.FileText, stringResource(Res.string.navigation_your_posts)) {
-                        expanded = false
-                        onAction(AccountAction.YourPosts)
-                    }
-                    AccountMenuItem(RikkaIcons.Library, stringResource(Res.string.navigation_lists)) {
-                        expanded = false
-                        onAction(AccountAction.Lists)
-                    }
-                    AccountMenuItem(RikkaIcons.Chart, stringResource(Res.string.navigation_stats)) {
-                        expanded = false
-                        onAction(AccountAction.Stats)
-                    }
-                    MenuDivider()
-                    AccountMenuItem(RikkaIcons.Settings, stringResource(Res.string.navigation_settings)) {
-                        expanded = false
-                        onAction(AccountAction.Settings)
-                    }
-                    MenuDivider()
-                    AccountMenuItem(RikkaIcons.LogOut, stringResource(Res.string.navigation_sign_out)) {
-                        expanded = false
-                        onAction(AccountAction.SignOut)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AccountAvatar(user: AuthenticatedUser) {
     Box(
         modifier =
             Modifier
-                .size(36.dp)
+                .size(24.dp)
                 .clip(CircleShape)
                 .background(OmicronTheme.colors.muted)
-                .border(1.dp, OmicronTheme.colors.borderCard, CircleShape),
+                .border(
+                    1.dp,
+                    if (active) OmicronTheme.colors.foreground else OmicronTheme.colors.borderCard,
+                    CircleShape,
+                ),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = user.displayName.trim().firstOrNull()?.uppercase() ?: "?",
+            text = name.trim().firstOrNull()?.uppercase() ?: "?",
             variant = TextVariant.Small,
             color = OmicronTheme.colors.mutedForeground,
         )
-        user.avatarUrl?.let { url ->
+        url?.let { avatar ->
             AsyncImage(
-                model = url,
+                model = avatar,
                 contentDescription = null,
-                modifier = Modifier.size(36.dp).clip(CircleShape),
+                modifier = Modifier.size(24.dp).clip(CircleShape),
             )
-        }
-    }
-}
-
-@Composable
-private fun AccountMenuItem(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-        variant = ButtonVariant.Ghost,
-        size = ButtonSize.Sm,
-        animation = ButtonAnimation.None,
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(imageVector = icon, contentDescription = null, tint = OmicronTheme.colors.foregroundAlt, size = IconSize.Default)
-            Text(text = label, variant = TextVariant.P, color = OmicronTheme.colors.foreground)
-            Spacer(modifier = Modifier.weight(1f))
         }
     }
 }

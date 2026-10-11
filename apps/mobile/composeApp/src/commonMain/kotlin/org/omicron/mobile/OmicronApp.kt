@@ -167,10 +167,6 @@ fun OmicronApp(
                     },
                     onAccountAction = { action ->
                         when (action) {
-                            AccountAction.Profile -> session?.user?.username?.let { navController.navigateTopLevel(ProfileDestination(it), TimelineDestination) }
-                            AccountAction.Lists -> navController.navigateTopLevel(ListsDestination, TimelineDestination)
-                            AccountAction.Write -> navController.navigateTopLevel(ComposeDestination(), TimelineDestination)
-                            AccountAction.Stats -> navController.navigateTopLevel(DashboardDestination, TimelineDestination)
                             AccountAction.YourPosts -> navController.navigateTopLevel(ManageDestination, TimelineDestination)
                             AccountAction.Settings -> navController.navigate(SettingsDestination) { launchSingleTop = true }
                             AccountAction.SignIn, AccountAction.Register -> navController.navigate(AuthDestination) { launchSingleTop = true }
@@ -415,6 +411,20 @@ fun OmicronApp(
                             onOpenPost = { postId -> navController.navigate(PostDestination(postId)) },
                             onOpenProfile = { username -> navController.navigate(ProfileDestination(username)) },
                             onOpenManage = { navController.navigate(ManageDestination) { launchSingleTop = true } },
+                            onAccountAction = { action ->
+                                when (action) {
+                                    AccountAction.YourPosts -> navController.navigateTopLevel(ManageDestination, TimelineDestination)
+                                    AccountAction.Settings -> navController.navigate(SettingsDestination) { launchSingleTop = true }
+                                    AccountAction.SignOut -> {
+                                        settingsViewModel.signOut()
+                                        navController.navigate(TimelineDestination) {
+                                            popUpTo<TimelineDestination> { inclusive = false }
+                                            launchSingleTop = true
+                                        }
+                                    }
+                                    AccountAction.SignIn, AccountAction.Register -> navController.navigate(AuthDestination) { launchSingleTop = true }
+                                }
+                            },
                         )
                     }
                     composable<AuthDestination> {
@@ -434,7 +444,11 @@ fun OmicronApp(
                 }
             }
             if (session != null && !standalone) {
-                MobileBottomBar(selected = selectedTab) { tab ->
+                MobileBottomBar(
+                    selected = selectedTab,
+                    profileAvatarUrl = session?.user?.avatarUrl,
+                    profileDisplayName = session?.user?.displayName.orEmpty(),
+                ) { tab ->
                     when (tab) {
                         PrimaryTab.Home -> navController.navigateTopLevel(TimelineDestination, TimelineDestination)
                         PrimaryTab.Lists -> navController.navigateTopLevel(ListsDestination, TimelineDestination)
