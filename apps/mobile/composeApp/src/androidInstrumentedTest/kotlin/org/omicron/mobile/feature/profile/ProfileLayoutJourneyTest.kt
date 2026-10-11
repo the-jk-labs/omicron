@@ -39,7 +39,6 @@ import org.omicron.mobile.domain.model.Profile
 import org.omicron.mobile.domain.model.ProfileFollowState
 import org.omicron.mobile.domain.model.ProfileLink
 import org.omicron.mobile.domain.model.ProfileUser
-import org.omicron.mobile.domain.model.RelationActor
 
 @RunWith(AndroidJUnit4::class)
 class ProfileLayoutJourneyTest {
@@ -50,7 +49,7 @@ class ProfileLayoutJourneyTest {
     private val events = mutableListOf<String>()
 
     @Test
-    fun ownerCanManagePostsBrowseRecommendationsAndOpenMembers() {
+    fun ownerCanManagePostsBrowseRecommendationsAndOpenConnectionsFromCounts() {
         state.value = content().copy(currentUserId = "ada")
         show()
 
@@ -59,10 +58,12 @@ class ProfileLayoutJourneyTest {
         tab("Recommendations").performScrollTo().performClick().assertIsSelected()
         rule.onNodeWithText("Recommended reading").performScrollTo().performClick()
         count("Followers").performScrollTo().performClick()
-        tab("Followers").assertIsSelected()
-        rule.onNodeWithText("Grace Hopper").performScrollTo().performClick()
+        count("Following").performScrollTo().performClick()
+        tab("Recommendations").assertIsSelected()
+        tab("Followers").assertDoesNotExist()
+        tab("Following").assertDoesNotExist()
 
-        assertEquals(listOf("manage", "post:article", "post:recommended", "profile:grace"), events)
+        assertEquals(listOf("manage", "post:article", "post:recommended", "connections:Followers", "connections:Following"), events)
     }
 
     @Test
@@ -186,7 +187,7 @@ class ProfileLayoutJourneyTest {
                             onLoadMore = { events += "load-more" },
                             onSignIn = { events += "sign-in" },
                             onOpenPost = { events += "post:$it" },
-                            onOpenProfile = { events += "profile:$it" },
+                            onOpenConnections = { events += "connections:$it" },
                             onOpenManage = { events += "manage" },
                             onAccountAction = { events += "account:$it" },
                             onToggleFollow = {
@@ -247,7 +248,6 @@ class ProfileLayoutJourneyTest {
             signedIn = true,
             articles = ProfilePostList(posts = listOf(post("article", "A thoughtful article"))),
             recommendations = ProfilePostList(posts = listOf(post("recommended", "Recommended reading"))),
-            members = listOf(RelationActor("grace", "grace", "Grace Hopper", null, false)),
         )
     }
 }

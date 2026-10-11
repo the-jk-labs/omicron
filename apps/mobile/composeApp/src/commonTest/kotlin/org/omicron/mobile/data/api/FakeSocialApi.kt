@@ -5,7 +5,14 @@ class FakeSocialApi : SocialApi {
     var commentPage = CommentPageDto()
     var localProfileValue = localProfile()
     var remoteProfileValue = remoteProfile()
+    var localProfileHandler: (suspend (String) -> LocalProfileDto)? = null
+    var remoteProfileHandler: (suspend (String) -> RemoteProfileDto)? = null
+    var followHandler: (suspend (String, Boolean, Boolean) -> FollowStateDto)? = null
+    val profileRequests = mutableListOf<Pair<String, Boolean>>()
+    val followRequests = mutableListOf<Triple<String, Boolean, Boolean>>()
     var relationActors = RelationActorsDto()
+    var relationHandler: (suspend (Boolean) -> RelationActorsDto)? = null
+    val relationRequests = mutableListOf<Pair<String, Boolean>>()
     var postLikeFailure: Throwable? = null
     var recommendationFailure: Throwable? = null
     var commentsFailure: Throwable? = null
@@ -104,13 +111,15 @@ class FakeSocialApi : SocialApi {
     }
 
     override suspend fun localProfile(origin: String, username: String, accessToken: String?): LocalProfileDto {
+        profileRequests += username to false
         profileFailure?.let { throw it }
-        return localProfileValue
+        return localProfileHandler?.invoke(username) ?: localProfileValue
     }
 
     override suspend fun remoteProfile(origin: String, handle: String, accessToken: String?): RemoteProfileDto {
+        profileRequests += handle to true
         profileFailure?.let { throw it }
-        return remoteProfileValue
+        return remoteProfileHandler?.invoke(handle) ?: remoteProfileValue
     }
 
     override suspend fun localProfilePosts(
@@ -141,8 +150,9 @@ class FakeSocialApi : SocialApi {
         following: Boolean,
         accessToken: String?,
     ): RelationActorsDto {
+        relationRequests += username to following
         relationFailure?.let { throw it }
-        return relationActors
+        return relationHandler?.invoke(following) ?: relationActors
     }
 
     override suspend fun setFollow(
@@ -152,7 +162,9 @@ class FakeSocialApi : SocialApi {
         following: Boolean,
         accessToken: String,
     ): FollowStateDto {
+        followRequests += Triple(handle, remote, following)
         followFailure?.let { throw it }
+        followHandler?.let { return it(handle, remote, following) }
         followState =
             if (following) {
                 if (!remote && localProfileValue.user.isPrivate) "requested" else "following"
