@@ -111,6 +111,8 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 
 **Status:** Done
 
+**Home-card refinement:** Done. Feed cards use 12dp outer padding and a 4dp internal rhythm, a dated author byline, two-line 18sp titles and 14sp excerpts, proportional thumbnails capped at 88dp, and a full-width text fallback when media fails. Reading time and individual social actions share a space-distributed footer that wraps as needed for larger text or counts. Tag navigation and 48dp touch targets are preserved. The local and global feeds were visually checked on ALT-LX1 Android 14 at 360dp; five focused card tests cover bannerless/banner layouts, failed/replaced media, navigation and action callbacks, guest/busy states, and 320dp width at 1.5 font scale. Those tests and the 11 reader journeys passed together.
+
 **Outcome:** The Android client presents Omicron's responsive web navigation and reading surfaces as a polished native mobile experience, with the same visual hierarchy and real destinations.
 
 **Icon source:** Mobile `RikkaIcons` path data mirrors the frontend's pinned `@lucide/svelte` 1.52.0 icons; keep these vectors synchronized with frontend registry updates.

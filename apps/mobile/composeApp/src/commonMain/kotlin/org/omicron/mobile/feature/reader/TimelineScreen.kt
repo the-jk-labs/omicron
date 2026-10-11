@@ -29,7 +29,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,6 +42,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -416,9 +419,8 @@ private fun TimelineList(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PostCard(
+internal fun PostCard(
     post: Post,
     state: TimelineUiState,
     onOpen: () -> Unit,
@@ -430,12 +432,13 @@ private fun PostCard(
     onToggleReadLater: () -> Unit,
 ) {
     val preview = remember(post.summary, post.contentHtml) { postPreview(post.summary, post.contentHtml) }
+    var coverFailed by remember(post.bannerUrl) { mutableStateOf(false) }
     Column(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onOpenProfile),
@@ -443,57 +446,73 @@ private fun PostCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             AuthorAvatar(displayName = post.author.displayName, avatarUrl = post.author.avatarUrl, size = 24.dp)
-            Text(
-                text = post.author.displayName,
-                variant = TextVariant.P,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = OmicronTheme.colors.foreground,
-                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium),
-            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = post.author.displayName,
+                    variant = TextVariant.P,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = OmicronTheme.colors.foreground,
+                    style = TextStyle(fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium),
+                )
+                Text(
+                    text = formattedDate(post.createdAt),
+                    variant = TextVariant.Small,
+                    color = OmicronTheme.colors.mutedForeground,
+                    maxLines = 1,
+                    style = TextStyle(fontSize = 12.sp, lineHeight = 16.sp),
+                )
+            }
             if (post.author.remote) {
                 val host = post.author.username.substringAfterLast('@')
                 Row(
                     modifier =
                         Modifier
+                            .widthIn(max = 128.dp)
                             .clip(RikkaTheme.shapes.full)
-                            .background(RikkaTheme.colors.muted)
+                            .background(OmicronTheme.colors.muted)
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(imageVector = RikkaIcons.Globe, contentDescription = null, tint = OmicronTheme.colors.mutedForeground, size = IconSize.Xs)
-                    Text(text = host, variant = TextVariant.Small, color = OmicronTheme.colors.mutedForeground, maxLines = 1)
+                    Text(text = host, variant = TextVariant.Small, color = OmicronTheme.colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
-        Row(
-            modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpen),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.Top,
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = post.title?.ifBlank { null } ?: stringResource(Res.string.timeline_untitled),
-                    variant = TextVariant.H3,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                    color = OmicronTheme.colors.foreground,
-                    style = TextStyle(fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold),
-                )
-                if (preview.excerpt.isNotBlank()) {
+            val thumbnailSize = minOf(88.dp, maxWidth * 0.26f)
+            Row(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onOpen),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = preview.excerpt,
-                        variant = TextVariant.P,
-                        maxLines = 3,
+                        text = post.title?.ifBlank { null } ?: stringResource(Res.string.timeline_untitled),
+                        variant = TextVariant.H3,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        color = OmicronTheme.colors.mutedForeground,
-                        style = TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
+                        color = OmicronTheme.colors.foreground,
+                        style = TextStyle(fontSize = 18.sp, lineHeight = 24.sp, fontWeight = FontWeight.Bold),
                     )
+                    if (preview.excerpt.isNotBlank()) {
+                        Text(
+                            text = preview.excerpt,
+                            variant = TextVariant.P,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            color = OmicronTheme.colors.mutedForeground,
+                            style = TextStyle(fontSize = 14.sp, lineHeight = 20.sp),
+                        )
+                    }
+                }
+                if (!post.bannerUrl.isNullOrBlank() && !coverFailed) {
+                    BannerThumbnail(post.bannerUrl, thumbnailSize, onError = { coverFailed = true })
                 }
             }
-            if (post.bannerUrl != null) BannerThumbnail(post.bannerUrl)
         }
         if (post.tags.isNotEmpty()) {
             TagPills(tags = post.tags, onOpenTag = onOpenTag)
@@ -520,16 +539,16 @@ private fun PostCard(
 }
 
 @Composable
-private fun BannerThumbnail(url: String) {
+private fun BannerThumbnail(url: String, size: Dp, onError: () -> Unit) {
     val shape = RikkaTheme.shapes.lg
     AsyncImage(
         model = url,
         contentDescription = null,
         contentScale = ContentScale.Crop,
+        onError = { onError() },
         modifier =
             Modifier
-                .padding(top = 4.dp)
-                .size(width = 112.dp, height = 80.dp)
+                .size(size)
                 .clip(shape)
                 .border(1.dp, OmicronTheme.colors.borderCard, shape),
     )
@@ -555,16 +574,10 @@ private fun PostMetadata(
     val metadataColor = OmicronTheme.colors.mutedForeground
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
         itemVerticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = formattedDate(post.createdAt),
-            variant = TextVariant.Small,
-            color = metadataColor,
-            maxLines = 1,
-        )
         MetaLabel(
             icon = RikkaIcons.Clock,
             label = stringResource(Res.string.timeline_reading_time, preview.readingMinutes),
@@ -586,26 +599,21 @@ private fun PostMetadata(
             enabled = true,
             onClick = onOpenPost,
         )
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            PostMetaAction(
-                imageVector = RikkaIcons.Recommend,
-                label = stringResource(Res.string.timeline_recommend_action),
-                count = post.recommendCount,
-                selected = recommended,
-                enabled = !busy,
-                onClick = if (signedIn) onToggleRecommendation else onSignIn,
-            )
-            PostMetaAction(
-                imageVector = RikkaIcons.Bookmark,
-                label = stringResource(if (saved) Res.string.timeline_saved_action else Res.string.timeline_save_action),
-                selected = saved,
-                enabled = !busy,
-                onClick = if (signedIn) onToggleReadLater else onSignIn,
-            )
-        }
+        PostMetaAction(
+            imageVector = RikkaIcons.Recommend,
+            label = stringResource(Res.string.timeline_recommend_action),
+            count = post.recommendCount,
+            selected = recommended,
+            enabled = !busy,
+            onClick = if (signedIn) onToggleRecommendation else onSignIn,
+        )
+        PostMetaAction(
+            imageVector = RikkaIcons.Bookmark,
+            label = stringResource(if (saved) Res.string.timeline_saved_action else Res.string.timeline_save_action),
+            selected = saved,
+            enabled = !busy,
+            onClick = if (signedIn) onToggleReadLater else onSignIn,
+        )
     }
     if (actionError) {
         Text(
