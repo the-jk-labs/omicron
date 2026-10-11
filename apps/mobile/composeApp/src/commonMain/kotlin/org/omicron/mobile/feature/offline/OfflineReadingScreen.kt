@@ -87,7 +87,7 @@ private fun OfflineReadingScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(
-                icon = RikkaIcons.ArrowLeft,
+                icon = RikkaIcons.ChevronLeft,
                 contentDescription = stringResource(Res.string.offline_back),
                 onClick = onBack,
                 size = IconButtonSize.Default,

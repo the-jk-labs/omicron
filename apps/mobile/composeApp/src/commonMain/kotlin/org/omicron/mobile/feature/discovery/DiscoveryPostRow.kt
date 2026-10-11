@@ -68,7 +68,7 @@ internal fun DiscoveryPostRow(
         ) {
             DiscoveryCount(icon = RikkaIcons.Heart, count = post.likeCount.toString())
             DiscoveryCount(icon = RikkaIcons.MessageCircle, count = post.commentCount.toString())
-            DiscoveryCount(icon = RikkaIcons.Repeat, count = post.recommendCount.toString())
+            DiscoveryCount(icon = RikkaIcons.Recommend, count = post.recommendCount.toString())
         }
     }
 }

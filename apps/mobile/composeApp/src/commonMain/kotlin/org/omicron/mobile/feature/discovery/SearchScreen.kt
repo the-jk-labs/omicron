@@ -119,7 +119,7 @@ private fun SearchScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(
-                icon = RikkaIcons.ArrowLeft,
+                icon = RikkaIcons.ChevronLeft,
                 contentDescription = stringResource(Res.string.search_back),
                 onClick = onBack,
                 size = IconButtonSize.Default,

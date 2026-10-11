@@ -44,6 +44,6 @@ internal fun notificationIcon(type: String): ImageVector =
         "follow", "follow_accepted", "follow_request" -> RikkaIcons.Users
         "like", "comment_like" -> RikkaIcons.Heart
         "comment", "reply" -> RikkaIcons.MessageCircle
-        "recommend" -> RikkaIcons.Repeat
+        "recommend" -> RikkaIcons.Recommend
         else -> RikkaIcons.Clock
     }

@@ -98,7 +98,7 @@ private fun DiscoverScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(
-                icon = RikkaIcons.ArrowLeft,
+                icon = RikkaIcons.ChevronLeft,
                 contentDescription = stringResource(Res.string.discover_back),
                 onClick = onBack,
                 size = IconButtonSize.Default,

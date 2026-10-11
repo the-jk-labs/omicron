@@ -353,7 +353,7 @@ fun ProfileMenuBar(
                                 .padding(8.dp),
                     ) {
                         if (isSelf) {
-                            ProfileMenuItem(RikkaIcons.FileText, stringResource(Res.string.navigation_your_posts)) {
+                            ProfileMenuItem(RikkaIcons.FileStack, stringResource(Res.string.navigation_your_posts)) {
                                 expanded = false
                                 onAction(AccountAction.YourPosts)
                             }

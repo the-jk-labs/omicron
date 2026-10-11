@@ -591,7 +591,7 @@ private fun PostMetadata(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             PostMetaAction(
-                imageVector = RikkaIcons.Repeat,
+                imageVector = RikkaIcons.Recommend,
                 label = stringResource(Res.string.timeline_recommend_action),
                 count = post.recommendCount,
                 selected = recommended,

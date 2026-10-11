@@ -5,8 +5,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.PathBuilder
-import androidx.compose.ui.graphics.vector.path
+import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.unit.dp
 
 // ─── Icon Library ───────────────────────────────────────────
@@ -14,946 +13,234 @@ import androidx.compose.ui.unit.dp
 public object RikkaIcons {
     // ── Shared builder helpers ──────────────────────────────
 
-    private inline fun lucideIcon(
-        name: String,
-        crossinline block: ImageVector.Builder.() -> Unit,
-    ): ImageVector =
-        ImageVector
-            .Builder(
-                name = name,
-                defaultWidth = 24.dp,
-                defaultHeight = 24.dp,
-                viewportWidth = 24f,
-                viewportHeight = 24f,
-            ).apply(block)
-            .build()
+    private fun lucideSvgIcon(name: String, vararg paths: String): ImageVector =
+        ImageVector.Builder(
+            name = name,
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).apply {
+            paths.forEach { data ->
+                addPath(
+                    pathData = PathParser().parsePathString(data).toNodes(),
+                    fill = SolidColor(Color.Transparent),
+                    fillAlpha = 0f,
+                    stroke = SolidColor(Color.Black),
+                    strokeLineWidth = 2f,
+                    strokeLineCap = StrokeCap.Round,
+                    strokeLineJoin = StrokeJoin.Round,
+                )
+            }
+        }.build()
 
     // ── Chevrons ────────────────────────────────────────────
 
     public val ChevronRight: ImageVector by lazy {
-        lucideIcon("ChevronRight") {
-            strokePath {
-                moveTo(9f, 18f)
-                lineTo(15f, 12f)
-                lineTo(9f, 6f)
-            }
-        }
+        lucideSvgIcon("ChevronRight", "m9 18 6-6-6-6")
     }
 
     public val ChevronDown: ImageVector by lazy {
-        lucideIcon("ChevronDown") {
-            strokePath {
-                moveTo(6f, 9f)
-                lineTo(12f, 15f)
-                lineTo(18f, 9f)
-            }
-        }
+        lucideSvgIcon("ChevronDown", "m6 9 6 6 6-6")
     }
 
     public val ChevronLeft: ImageVector by lazy {
-        lucideIcon("ChevronLeft") {
-            strokePath {
-                moveTo(15f, 18f)
-                lineTo(9f, 12f)
-                lineTo(15f, 6f)
-            }
-        }
+        lucideSvgIcon("ChevronLeft", "m15 18-6-6 6-6")
     }
 
     public val ChevronUp: ImageVector by lazy {
-        lucideIcon("ChevronUp") {
-            strokePath {
-                moveTo(18f, 15f)
-                lineTo(12f, 9f)
-                lineTo(6f, 15f)
-            }
-        }
+        lucideSvgIcon("ChevronUp", "m18 15-6-6-6 6")
     }
 
     // ── Actions ─────────────────────────────────────────────
 
     public val Check: ImageVector by lazy {
-        lucideIcon("Check") {
-            strokePath {
-                moveTo(20f, 6f)
-                lineTo(9f, 17f)
-                lineTo(4f, 12f)
-            }
-        }
+        lucideSvgIcon("Check", "M20 6 9 17l-5-5")
     }
 
     public val X: ImageVector by lazy {
-        lucideIcon("X") {
-            strokePath {
-                moveTo(18f, 6f)
-                lineTo(6f, 18f)
-            }
-            strokePath {
-                moveTo(6f, 6f)
-                lineTo(18f, 18f)
-            }
-        }
+        lucideSvgIcon("X", "M18 6 6 18", "m6 6 12 12")
     }
 
     public val Plus: ImageVector by lazy {
-        lucideIcon("Plus") {
-            strokePath {
-                moveTo(12f, 5f)
-                lineTo(12f, 19f)
-            }
-            strokePath {
-                moveTo(5f, 12f)
-                lineTo(19f, 12f)
-            }
-        }
+        lucideSvgIcon("Plus", "M5 12h14", "M12 5v14")
     }
 
     public val Minus: ImageVector by lazy {
-        lucideIcon("Minus") {
-            strokePath {
-                moveTo(5f, 12f)
-                lineTo(19f, 12f)
-            }
-        }
+        lucideSvgIcon("Minus", "M5 12h14")
     }
 
     // ── Search ──────────────────────────────────────────────
 
     public val Search: ImageVector by lazy {
-        lucideIcon("Search") {
-            strokePath {
-                circle(11f, 11f, 8f)
-            }
-            strokePath {
-                moveTo(21f, 21f)
-                lineTo(16.65f, 16.65f)
-            }
-        }
+        lucideSvgIcon("Search", "m21 21-4.34-4.34", "M19 11a8 8 0 1 1-16 0a8 8 0 1 1 16 0")
     }
 
     public val Home: ImageVector by lazy {
-        lucideIcon("House") {
-            strokePath {
-                moveTo(3f, 10f)
-                lineTo(12f, 3f)
-                lineTo(21f, 10f)
-            }
-            strokePath {
-                moveTo(5f, 9f)
-                lineTo(5f, 20f)
-                lineTo(19f, 20f)
-                lineTo(19f, 9f)
-            }
-            strokePath {
-                moveTo(9f, 20f)
-                lineTo(9f, 13f)
-                lineTo(15f, 13f)
-                lineTo(15f, 20f)
-            }
-        }
+        lucideSvgIcon("House", "M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8", "M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z")
     }
 
     public val Library: ImageVector by lazy {
-        lucideIcon("Library") {
-            strokePath {
-                moveTo(4f, 19f)
-                lineTo(4f, 5f)
-                lineTo(8f, 3f)
-                lineTo(8f, 21f)
-            }
-            strokePath {
-                moveTo(8f, 5f)
-                lineTo(20f, 5f)
-                lineTo(20f, 19f)
-                lineTo(8f, 19f)
-            }
-            strokePath {
-                moveTo(12f, 9f)
-                lineTo(16f, 9f)
-            }
-            strokePath {
-                moveTo(12f, 13f)
-                lineTo(16f, 13f)
-            }
-        }
+        lucideSvgIcon("Library", "m16 6 4 14", "M12 6v14", "M8 8v12", "M4 4v16")
     }
 
-    public val Chart: ImageVector by lazy {
-        lucideIcon("ChartNoAxesColumnIncreasing") {
-            strokePath {
-                moveTo(3f, 3f)
-                lineTo(3f, 21f)
-                lineTo(21f, 21f)
-            }
-            strokePath {
-                moveTo(7f, 16f)
-                lineTo(7f, 12f)
-            }
-            strokePath {
-                moveTo(12f, 16f)
-                lineTo(12f, 8f)
-            }
-            strokePath {
-                moveTo(17f, 16f)
-                lineTo(17f, 4f)
-            }
-        }
+    public val ChartColumn: ImageVector by lazy {
+        lucideSvgIcon("ChartColumn", "M3 3v16a2 2 0 0 0 2 2h16", "M18 17V9", "M13 17V5", "M8 17v-3")
     }
 
     public val Bell: ImageVector by lazy {
-        lucideIcon("Bell") {
-            strokePath {
-                moveTo(18f, 8f)
-                arcTo(6f, 6f, 0f, isMoreThanHalf = false, isPositiveArc = false, 6f, 8f)
-                curveTo(6f, 15f, 3f, 15f, 3f, 18f)
-                lineTo(21f, 18f)
-                curveTo(21f, 15f, 18f, 15f, 18f, 8f)
-            }
-            strokePath {
-                moveTo(10f, 21f)
-                lineTo(14f, 21f)
-            }
-        }
+        lucideSvgIcon("Bell", "M10.268 21a2 2 0 0 0 3.464 0", "M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326")
     }
 
     public val Sparkles: ImageVector by lazy {
-        lucideIcon("Sparkles") {
-            strokePath {
-                moveTo(12f, 3f)
-                lineTo(13.5f, 8.5f)
-                lineTo(19f, 10f)
-                lineTo(13.5f, 11.5f)
-                lineTo(12f, 17f)
-                lineTo(10.5f, 11.5f)
-                lineTo(5f, 10f)
-                lineTo(10.5f, 8.5f)
-                close()
-            }
-            strokePath {
-                moveTo(19f, 14f)
-                lineTo(20f, 17f)
-                lineTo(23f, 18f)
-                lineTo(20f, 19f)
-                lineTo(19f, 22f)
-                lineTo(18f, 19f)
-                lineTo(15f, 18f)
-                lineTo(18f, 17f)
-                close()
-            }
-            strokePath {
-                moveTo(5f, 2f)
-                lineTo(5.75f, 4.25f)
-                lineTo(8f, 5f)
-                lineTo(5.75f, 5.75f)
-                lineTo(5f, 8f)
-                lineTo(4.25f, 5.75f)
-                lineTo(2f, 5f)
-                lineTo(4.25f, 4.25f)
-                close()
-            }
-        }
+        lucideSvgIcon("Sparkles", "M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z", "M20 2v4", "M22 4h-4", "M6 20a2 2 0 1 1-4 0a2 2 0 1 1 4 0")
     }
 
     public val LogOut: ImageVector by lazy {
-        lucideIcon("LogOut") {
-            strokePath {
-                moveTo(9f, 21f)
-                lineTo(5f, 21f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 3f, 19f)
-                lineTo(3f, 5f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 5f, 3f)
-                lineTo(9f, 3f)
-            }
-            strokePath {
-                moveTo(16f, 17f)
-                lineTo(21f, 12f)
-                lineTo(16f, 7f)
-            }
-            strokePath {
-                moveTo(21f, 12f)
-                lineTo(9f, 12f)
-            }
-        }
+        lucideSvgIcon("LogOut", "m16 17 5-5-5-5", "M21 12H9", "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4")
     }
 
-    public val FileText: ImageVector by lazy {
-        lucideIcon("FileText") {
-            strokePath {
-                moveTo(14f, 2f)
-                lineTo(14f, 8f)
-                lineTo(20f, 8f)
-            }
-            strokePath {
-                moveTo(20f, 8f)
-                lineTo(20f, 20f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 18f, 22f)
-                lineTo(6f, 22f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 4f, 20f)
-                lineTo(4f, 4f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 6f, 2f)
-                lineTo(14f, 2f)
-                lineTo(20f, 8f)
-            }
-            strokePath {
-                moveTo(8f, 13f)
-                lineTo(16f, 13f)
-            }
-            strokePath {
-                moveTo(8f, 17f)
-                lineTo(16f, 17f)
-            }
-        }
+    public val FileStack: ImageVector by lazy {
+        lucideSvgIcon("FileStack", "M11 21a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1", "M16 16a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1", "M21 6a2 2 0 0 0-.586-1.414l-2-2A2 2 0 0 0 17 2h-3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1z")
     }
 
     public val Globe: ImageVector by lazy {
-        lucideIcon("Globe") {
-            strokePath { circle(12f, 12f, 10f) }
-            strokePath {
-                moveTo(2f, 12f)
-                lineTo(22f, 12f)
-            }
-            strokePath {
-                moveTo(12f, 2f)
-                curveTo(7f, 7f, 7f, 17f, 12f, 22f)
-            }
-            strokePath {
-                moveTo(12f, 2f)
-                curveTo(17f, 7f, 17f, 17f, 12f, 22f)
-            }
-        }
+        lucideSvgIcon("Globe", "M22 12a10 10 0 1 1-20 0a10 10 0 1 1 20 0", "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20", "M2 12h20")
     }
 
     public val Calendar: ImageVector by lazy {
-        lucideIcon("Calendar") {
-            strokePath { roundedRect(3f, 3f, 18f, 18f, 2f) }
-            strokePath {
-                moveTo(8f, 2f)
-                lineTo(8f, 5f)
-            }
-            strokePath {
-                moveTo(16f, 2f)
-                lineTo(16f, 5f)
-            }
-            strokePath {
-                moveTo(3f, 9f)
-                lineTo(21f, 9f)
-            }
-        }
+        lucideSvgIcon("Calendar", "M8 2v3", "M16 2v3", "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z", "M3 9h18")
     }
 
     public val Languages: ImageVector by lazy {
-        lucideIcon("Languages") {
-            strokePath {
-                moveTo(5f, 8f)
-                lineTo(11f, 14f)
-            }
-            strokePath {
-                moveTo(4f, 14f)
-                lineTo(10f, 8f)
-                lineTo(12f, 5f)
-            }
-            strokePath {
-                moveTo(2f, 5f)
-                lineTo(14f, 5f)
-            }
-            strokePath {
-                moveTo(7f, 2f)
-                lineTo(8f, 2f)
-            }
-            strokePath {
-                moveTo(22f, 22f)
-                lineTo(17f, 12f)
-                lineTo(12f, 22f)
-            }
-            strokePath {
-                moveTo(14f, 18f)
-                lineTo(20f, 18f)
-            }
-        }
+        lucideSvgIcon("Languages", "m5 8 6 6", "m4 14 6-6 2-3", "M2 5h12", "M7 2h1", "m22 22-5-10-5 10", "M14 18h6")
     }
 
     public val Users: ImageVector by lazy {
-        lucideIcon("Users") {
-            strokePath {
-                moveTo(16f, 21f)
-                lineTo(16f, 19f)
-                arcTo(4f, 4f, 0f, isMoreThanHalf = false, isPositiveArc = false, 12f, 15f)
-                lineTo(6f, 15f)
-                arcTo(4f, 4f, 0f, isMoreThanHalf = false, isPositiveArc = false, 2f, 19f)
-                lineTo(2f, 21f)
-            }
-            strokePath {
-                moveTo(16f, 3.128f)
-                arcTo(4f, 4f, 0f, isMoreThanHalf = false, isPositiveArc = true, 16f, 10.872f)
-            }
-            strokePath {
-                moveTo(22f, 21f)
-                lineTo(22f, 19f)
-                arcTo(4f, 4f, 0f, isMoreThanHalf = false, isPositiveArc = false, 19f, 15.13f)
-            }
-            strokePath { circle(9f, 7f, 4f) }
-        }
+        lucideSvgIcon("Users", "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2", "M16 3.128a4 4 0 0 1 0 7.744", "M22 21v-2a4 4 0 0 0-3-3.87", "M13 7a4 4 0 1 1-8 0a4 4 0 1 1 8 0")
     }
 
     // ── Arrows ──────────────────────────────────────────────
 
     public val ArrowLeft: ImageVector by lazy {
-        lucideIcon("ArrowLeft") {
-            strokePath {
-                moveTo(19f, 12f)
-                lineTo(5f, 12f)
-            }
-            strokePath {
-                moveTo(12f, 19f)
-                lineTo(5f, 12f)
-                lineTo(12f, 5f)
-            }
-        }
+        lucideSvgIcon("ArrowLeft", "m12 19-7-7 7-7", "M19 12H5")
     }
 
     public val ArrowRight: ImageVector by lazy {
-        lucideIcon("ArrowRight") {
-            strokePath {
-                moveTo(5f, 12f)
-                lineTo(19f, 12f)
-            }
-            strokePath {
-                moveTo(12f, 5f)
-                lineTo(19f, 12f)
-                lineTo(12f, 19f)
-            }
-        }
+        lucideSvgIcon("ArrowRight", "M5 12h14", "m12 5 7 7-7 7")
     }
 
     public val ArrowUp: ImageVector by lazy {
-        lucideIcon("ArrowUp") {
-            strokePath {
-                moveTo(12f, 19f)
-                lineTo(12f, 5f)
-            }
-            strokePath {
-                moveTo(5f, 12f)
-                lineTo(12f, 5f)
-                lineTo(19f, 12f)
-            }
-        }
+        lucideSvgIcon("ArrowUp", "m5 12 7-7 7 7", "M12 19V5")
     }
 
     public val ArrowDown: ImageVector by lazy {
-        lucideIcon("ArrowDown") {
-            strokePath {
-                moveTo(12f, 5f)
-                lineTo(12f, 19f)
-            }
-            strokePath {
-                moveTo(19f, 12f)
-                lineTo(12f, 19f)
-                lineTo(5f, 12f)
-            }
-        }
+        lucideSvgIcon("ArrowDown", "M12 5v14", "m19 12-7 7-7-7")
     }
 
     // ── Menu / More ─────────────────────────────────────────
 
     public val Menu: ImageVector by lazy {
-        lucideIcon("Menu") {
-            strokePath {
-                moveTo(3f, 4f)
-                lineTo(21f, 4f)
-            }
-            strokePath {
-                moveTo(3f, 12f)
-                lineTo(21f, 12f)
-            }
-            strokePath {
-                moveTo(3f, 20f)
-                lineTo(21f, 20f)
-            }
-        }
+        lucideSvgIcon("Menu", "M4 5h16", "M4 12h16", "M4 19h16")
     }
 
     public val MoreHorizontal: ImageVector by lazy {
-        lucideIcon("MoreHorizontal") {
-            fillPath {
-                circle(5f, 12f, 1f)
-                circle(12f, 12f, 1f)
-                circle(19f, 12f, 1f)
-            }
-        }
+        lucideSvgIcon("Ellipsis", "M13 12a1 1 0 1 1-2 0a1 1 0 1 1 2 0", "M20 12a1 1 0 1 1-2 0a1 1 0 1 1 2 0", "M6 12a1 1 0 1 1-2 0a1 1 0 1 1 2 0")
     }
 
     public val MoreVertical: ImageVector by lazy {
-        lucideIcon("MoreVertical") {
-            fillPath {
-                circle(12f, 5f, 1f)
-                circle(12f, 12f, 1f)
-                circle(12f, 19f, 1f)
-            }
-        }
+        lucideSvgIcon("EllipsisVertical", "M13 12a1 1 0 1 1-2 0a1 1 0 1 1 2 0", "M13 5a1 1 0 1 1-2 0a1 1 0 1 1 2 0", "M13 19a1 1 0 1 1-2 0a1 1 0 1 1 2 0")
     }
 
     // ── Communication ───────────────────────────────────────
 
     public val Mail: ImageVector by lazy {
-        lucideIcon("Mail") {
-            strokePath {
-                roundedRect(2f, 4f, 20f, 16f, 2f)
-            }
-            strokePath {
-                moveTo(22f, 7f)
-                lineTo(12f, 13f)
-                lineTo(2f, 7f)
-            }
-        }
+        lucideSvgIcon("Mail", "m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7", "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z")
     }
 
     public val Send: ImageVector by lazy {
-        lucideIcon("Send") {
-            strokePath {
-                moveTo(22f, 2f)
-                lineTo(11f, 13f)
-            }
-            strokePath {
-                moveTo(22f, 2f)
-                lineTo(15f, 22f)
-                lineTo(11f, 13f)
-                lineTo(2f, 9f)
-                lineTo(22f, 2f)
-                close()
-            }
-        }
+        lucideSvgIcon("Send", "M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z", "m21.854 2.147-10.94 10.939")
     }
 
     // ── People ──────────────────────────────────────────────
 
     public val User: ImageVector by lazy {
-        lucideIcon("User") {
-            strokePath {
-                circle(12f, 8f, 5f)
-            }
-            strokePath {
-                moveTo(20f, 21f)
-                arcTo(8f, 8f, 0f, isMoreThanHalf = true, isPositiveArc = false, 4f, 21f)
-            }
-        }
+        lucideSvgIcon("User", "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2", "M16 7a4 4 0 1 1-8 0a4 4 0 1 1 8 0")
     }
 
     // ── Feedback / Social ───────────────────────────────────
 
     public val Heart: ImageVector by lazy {
-        lucideIcon("Heart") {
-            strokePath {
-                moveTo(19f, 14f)
-                curveTo(20.49f, 12.54f, 22f, 10.79f, 22f, 8.5f)
-                arcTo(5.5f, 5.5f, 0f, isMoreThanHalf = false, isPositiveArc = false, 16.5f, 3f)
-                curveTo(14.74f, 3f, 13.5f, 3.5f, 12f, 5f)
-                curveTo(10.5f, 3.5f, 9.26f, 3f, 7.5f, 3f)
-                arcTo(5.5f, 5.5f, 0f, isMoreThanHalf = false, isPositiveArc = false, 2f, 8.5f)
-                curveTo(2f, 10.8f, 3.5f, 12.55f, 5f, 14f)
-                lineTo(12f, 21f)
-                close()
-            }
-        }
+        lucideSvgIcon("Heart", "M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5")
     }
 
     public val Clock: ImageVector by lazy {
-        lucideIcon("Clock") {
-            strokePath { circle(12f, 12f, 10f) }
-            strokePath {
-                moveTo(12f, 6f)
-                lineTo(12f, 12f)
-                lineTo(16f, 14f)
-            }
-        }
+        lucideSvgIcon("Clock", "M22 12a10 10 0 1 1-20 0a10 10 0 1 1 20 0", "M12 6v6l4 2")
     }
 
     public val MessageCircle: ImageVector by lazy {
-        lucideIcon("MessageCircle") {
-            strokePath {
-                moveTo(21f, 11.5f)
-                arcTo(9f, 9f, 0f, isMoreThanHalf = true, isPositiveArc = true, 12f, 3f)
-                arcTo(9f, 9f, 0f, isMoreThanHalf = true, isPositiveArc = true, 3f, 12f)
-                curveTo(3f, 14.4f, 3.94f, 16.58f, 5.47f, 18.19f)
-                lineTo(4f, 21f)
-                lineTo(7.81f, 19.53f)
-                curveTo(9.03f, 20.14f, 10.45f, 20.5f, 12f, 20.5f)
-            }
-        }
+        lucideSvgIcon("MessageCircle", "M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719")
     }
 
-    public val Repeat: ImageVector by lazy {
-        lucideIcon("Repeat") {
-            strokePath {
-                moveTo(17f, 2f)
-                lineTo(21f, 6f)
-                lineTo(17f, 10f)
-            }
-            strokePath {
-                moveTo(3f, 11f)
-                lineTo(3f, 9f)
-                arcTo(3f, 3f, 0f, isMoreThanHalf = false, isPositiveArc = true, 6f, 6f)
-                lineTo(21f, 6f)
-            }
-            strokePath {
-                moveTo(7f, 22f)
-                lineTo(3f, 18f)
-                lineTo(7f, 14f)
-            }
-            strokePath {
-                moveTo(21f, 13f)
-                lineTo(21f, 15f)
-                arcTo(3f, 3f, 0f, isMoreThanHalf = false, isPositiveArc = true, 18f, 18f)
-                lineTo(3f, 18f)
-            }
-        }
+    public val Recommend: ImageVector by lazy {
+        lucideSvgIcon("Repeat2", "m2 9 3-3 3 3", "M13 18H7a2 2 0 0 1-2-2V6", "m22 15-3 3-3-3", "M11 6h6a2 2 0 0 1 2 2v10")
     }
 
     public val Bookmark: ImageVector by lazy {
-        lucideIcon("Bookmark") {
-            strokePath {
-                moveTo(6f, 4f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 8f, 2f)
-                lineTo(16f, 2f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 18f, 4f)
-                lineTo(18f, 22f)
-                lineTo(12f, 18f)
-                lineTo(6f, 22f)
-                close()
-            }
-        }
+        lucideSvgIcon("Bookmark", "M17 3a2 2 0 0 1 2 2v15a1 1 0 0 1-1.496.868l-4.512-2.578a2 2 0 0 0-1.984 0l-4.512 2.578A1 1 0 0 1 5 20V5a2 2 0 0 1 2-2z")
     }
 
     public val Star: ImageVector by lazy {
-        lucideIcon("Star") {
-            strokePath {
-                moveTo(12f, 2f)
-                lineTo(15.09f, 8.26f)
-                lineTo(22f, 9.27f)
-                lineTo(17f, 14.14f)
-                lineTo(18.18f, 21.02f)
-                lineTo(12f, 17.77f)
-                lineTo(5.82f, 21.02f)
-                lineTo(7f, 14.14f)
-                lineTo(2f, 9.27f)
-                lineTo(8.91f, 8.26f)
-                close()
-            }
-        }
+        lucideSvgIcon("Star", "M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z")
     }
 
     // ── Visibility ──────────────────────────────────────────
 
     public val Eye: ImageVector by lazy {
-        lucideIcon("Eye") {
-            strokePath {
-                moveTo(2f, 12f)
-                curveTo(2f, 12f, 5f, 5f, 12f, 5f)
-                curveTo(19f, 5f, 22f, 12f, 22f, 12f)
-                curveTo(22f, 12f, 19f, 19f, 12f, 19f)
-                curveTo(5f, 19f, 2f, 12f, 2f, 12f)
-                close()
-            }
-            strokePath {
-                circle(12f, 12f, 3f)
-            }
-        }
+        lucideSvgIcon("Eye", "M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0", "M15 12a3 3 0 1 1-6 0a3 3 0 1 1 6 0")
     }
 
     // ── Editing ─────────────────────────────────────────────
 
     public val Copy: ImageVector by lazy {
-        lucideIcon("Copy") {
-            strokePath {
-                roundedRect(9f, 9f, 11f, 11f, 2f)
-            }
-            strokePath {
-                moveTo(5f, 15f)
-                lineTo(4f, 15f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 2f, 13f)
-                lineTo(2f, 4f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 4f, 2f)
-                lineTo(13f, 2f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 15f, 4f)
-                lineTo(15f, 5f)
-            }
-        }
+        lucideSvgIcon("Copy", "M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2z", "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2")
     }
 
     public val Trash: ImageVector by lazy {
-        lucideIcon("Trash") {
-            strokePath {
-                moveTo(3f, 6f)
-                lineTo(5f, 6f)
-                lineTo(21f, 6f)
-            }
-            strokePath {
-                moveTo(19f, 6f)
-                lineTo(19f, 20f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 17f, 22f)
-                lineTo(7f, 22f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 5f, 20f)
-                lineTo(5f, 6f)
-            }
-            strokePath {
-                moveTo(8f, 6f)
-                lineTo(8f, 4f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 10f, 2f)
-                lineTo(14f, 2f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 16f, 4f)
-                lineTo(16f, 6f)
-            }
-        }
+        lucideSvgIcon("Trash", "M10 11v6", "M14 11v6", "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", "M3 6h18", "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2")
     }
 
     public val Edit: ImageVector by lazy {
-        lucideIcon("Edit") {
-            strokePath {
-                moveTo(17f, 3f)
-                arcTo(
-                    2.85f,
-                    2.83f,
-                    0f,
-                    isMoreThanHalf = true,
-                    isPositiveArc = true,
-                    21f,
-                    7f,
-                )
-                lineTo(7.5f, 20.5f)
-                lineTo(2f, 22f)
-                lineTo(3.5f, 16.5f)
-                close()
-            }
-        }
+        lucideSvgIcon("Pencil", "M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z", "m15 5 4 4")
     }
 
     public val PenLine: ImageVector by lazy {
-        lucideIcon("PenLine") {
-            strokePath {
-                moveTo(12f, 20f)
-                lineTo(22f, 20f)
-            }
-            strokePath {
-                moveTo(18f, 2f)
-                arcTo(2.12f, 2.12f, 0f, isMoreThanHalf = false, isPositiveArc = true, 21f, 5f)
-                lineTo(8f, 18f)
-                lineTo(3f, 21f)
-                lineTo(6f, 16f)
-                lineTo(18f, 2f)
-            }
-            strokePath {
-                moveTo(15f, 5f)
-                lineTo(19f, 9f)
-            }
-        }
+        lucideSvgIcon("PenLine", "M13 21h8", "M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z")
     }
 
     // ── File transfer ───────────────────────────────────────
 
     public val Download: ImageVector by lazy {
-        lucideIcon("Download") {
-            strokePath {
-                moveTo(21f, 15f)
-                lineTo(21f, 19f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 19f, 21f)
-                lineTo(5f, 21f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 3f, 19f)
-                lineTo(3f, 15f)
-            }
-            strokePath {
-                moveTo(7f, 10f)
-                lineTo(12f, 15f)
-                lineTo(17f, 10f)
-            }
-            strokePath {
-                moveTo(12f, 15f)
-                lineTo(12f, 3f)
-            }
-        }
+        lucideSvgIcon("Download", "M12 15V3", "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "m7 10 5 5 5-5")
     }
 
     public val Upload: ImageVector by lazy {
-        lucideIcon("Upload") {
-            strokePath {
-                moveTo(21f, 15f)
-                lineTo(21f, 19f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 19f, 21f)
-                lineTo(5f, 21f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 3f, 19f)
-                lineTo(3f, 15f)
-            }
-            strokePath {
-                moveTo(17f, 8f)
-                lineTo(12f, 3f)
-                lineTo(7f, 8f)
-            }
-            strokePath {
-                moveTo(12f, 3f)
-                lineTo(12f, 15f)
-            }
-        }
+        lucideSvgIcon("Upload", "M12 3v12", "m17 8-5-5-5 5", "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4")
     }
 
     // ── Theme ───────────────────────────────────────────────
 
     public val Sun: ImageVector by lazy {
-        lucideIcon("Sun") {
-            strokePath { circle(12f, 12f, 5f) }
-            strokePath {
-                moveTo(12f, 1f)
-                lineTo(12f, 3f)
-            }
-            strokePath {
-                moveTo(12f, 21f)
-                lineTo(12f, 23f)
-            }
-            strokePath {
-                moveTo(4.22f, 4.22f)
-                lineTo(5.64f, 5.64f)
-            }
-            strokePath {
-                moveTo(18.36f, 18.36f)
-                lineTo(19.78f, 19.78f)
-            }
-            strokePath {
-                moveTo(1f, 12f)
-                lineTo(3f, 12f)
-            }
-            strokePath {
-                moveTo(21f, 12f)
-                lineTo(23f, 12f)
-            }
-            strokePath {
-                moveTo(4.22f, 19.78f)
-                lineTo(5.64f, 18.36f)
-            }
-            strokePath {
-                moveTo(18.36f, 5.64f)
-                lineTo(19.78f, 4.22f)
-            }
-        }
+        lucideSvgIcon("Sun", "M16 12a4 4 0 1 1-8 0a4 4 0 1 1 8 0", "M12 2v2", "M12 20v2", "m4.93 4.93 1.41 1.41", "m17.66 17.66 1.41 1.41", "M2 12h2", "M20 12h2", "m6.34 17.66-1.41 1.41", "m19.07 4.93-1.41-1.41")
     }
 
     public val Moon: ImageVector by lazy {
-        lucideIcon("Moon") {
-            strokePath {
-                moveTo(12f, 3f)
-                arcTo(6f, 6f, 0f, isMoreThanHalf = false, isPositiveArc = false, 21f, 12f)
-                arcTo(9f, 9f, 0f, isMoreThanHalf = true, isPositiveArc = true, 12f, 3f)
-                close()
-            }
-        }
+        lucideSvgIcon("Moon", "M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401")
     }
 
     // ── Settings ────────────────────────────────────────────
 
     public val Settings: ImageVector by lazy {
-        lucideIcon("Settings") {
-            strokePath { circle(12f, 12f, 3f) }
-            strokePath {
-                moveTo(12.22f, 2f)
-                lineTo(11.78f, 2f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = false, 9.78f, 4f)
-                lineTo(9.78f, 4.18f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 8.78f, 5.91f)
-                lineTo(8.35f, 6.16f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 6.35f, 6.16f)
-                lineTo(6.2f, 6.08f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = false, 3.47f, 6.81f)
-                lineTo(3.25f, 7.19f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = false, 3.98f, 9.92f)
-                lineTo(4.13f, 10.02f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 5.13f, 11.74f)
-                lineTo(5.13f, 12.25f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 4.13f, 13.99f)
-                lineTo(3.98f, 14.08f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = false, 3.25f, 16.81f)
-                lineTo(3.47f, 17.19f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = false, 6.2f, 17.92f)
-                lineTo(6.35f, 17.84f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 8.35f, 17.84f)
-                lineTo(8.78f, 18.09f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 9.78f, 19.82f)
-                lineTo(9.78f, 20f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = false, 11.78f, 22f)
-                lineTo(12.22f, 22f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = false, 14.22f, 20f)
-                lineTo(14.22f, 19.82f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 15.22f, 18.09f)
-                lineTo(15.65f, 17.84f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 17.65f, 17.84f)
-                lineTo(17.8f, 17.92f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = false, 20.53f, 17.19f)
-                lineTo(20.75f, 16.81f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = false, 20.02f, 14.08f)
-                lineTo(19.87f, 13.99f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 18.87f, 12.25f)
-                lineTo(18.87f, 11.74f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 19.87f, 10.02f)
-                lineTo(20.02f, 9.92f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = false, 20.75f, 7.19f)
-                lineTo(20.53f, 6.81f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = false, 17.8f, 6.08f)
-                lineTo(17.65f, 6.16f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 15.65f, 6.16f)
-                lineTo(15.22f, 5.91f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = true, 14.22f, 4.18f)
-                lineTo(14.22f, 4f)
-                arcTo(2f, 2f, 0f, isMoreThanHalf = false, isPositiveArc = false, 12.22f, 2f)
-                close()
-            }
-        }
+        lucideSvgIcon("Settings", "M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915", "M15 12a3 3 0 1 1-6 0a3 3 0 1 1 6 0")
     }
-}
-
-// ── Private extension helpers ───────────────────────────────
-
-private inline fun ImageVector.Builder.strokePath(crossinline block: PathBuilder.() -> Unit) {
-    path(
-        stroke = SolidColor(Color.Black),
-        strokeLineWidth = 2f,
-        strokeLineCap = StrokeCap.Round,
-        strokeLineJoin = StrokeJoin.Round,
-        pathBuilder = block,
-    )
-}
-
-private inline fun ImageVector.Builder.fillPath(crossinline block: PathBuilder.() -> Unit) {
-    path(
-        fill = SolidColor(Color.Black),
-        pathBuilder = block,
-    )
-}
-
-// Draws a circle using two 180-degree arcs
-private fun PathBuilder.circle(
-    cx: Float,
-    cy: Float,
-    r: Float,
-) {
-    moveTo(cx + r, cy)
-    arcTo(r, r, 0f, isMoreThanHalf = true, isPositiveArc = true, cx - r, cy)
-    arcTo(r, r, 0f, isMoreThanHalf = true, isPositiveArc = true, cx + r, cy)
-    close()
-}
-
-// Draws a rounded rectangle from arc segments
-private fun PathBuilder.roundedRect(
-    x: Float,
-    y: Float,
-    w: Float,
-    h: Float,
-    r: Float,
-) {
-    val right = x + w
-    val bottom = y + h
-    moveTo(x + r, y)
-    lineTo(right - r, y)
-    arcTo(r, r, 0f, isMoreThanHalf = false, isPositiveArc = true, right, y + r)
-    lineTo(right, bottom - r)
-    arcTo(r, r, 0f, isMoreThanHalf = false, isPositiveArc = true, right - r, bottom)
-    lineTo(x + r, bottom)
-    arcTo(r, r, 0f, isMoreThanHalf = false, isPositiveArc = true, x, bottom - r)
-    lineTo(x, y + r)
-    arcTo(r, r, 0f, isMoreThanHalf = false, isPositiveArc = true, x + r, y)
-    close()
 }

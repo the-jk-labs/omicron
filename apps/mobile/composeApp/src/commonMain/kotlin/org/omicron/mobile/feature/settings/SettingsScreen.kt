@@ -107,7 +107,7 @@ private fun SettingsScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(
-                icon = RikkaIcons.ArrowLeft,
+                icon = RikkaIcons.ChevronLeft,
                 contentDescription = stringResource(Res.string.settings_back),
                 onClick = onBack,
                 size = IconButtonSize.Default,

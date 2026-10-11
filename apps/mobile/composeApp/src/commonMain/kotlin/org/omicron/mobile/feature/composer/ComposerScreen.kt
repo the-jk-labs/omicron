@@ -195,7 +195,7 @@ private fun ComposerScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(
-                    icon = RikkaIcons.ArrowLeft,
+                    icon = RikkaIcons.ChevronLeft,
                     contentDescription = stringResource(Res.string.composer_back),
                     onClick = onBack,
                     size = IconButtonSize.Default,
