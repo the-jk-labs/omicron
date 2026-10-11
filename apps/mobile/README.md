@@ -33,7 +33,7 @@ This repository contains the Android-first Kotlin Multiplatform client. Android 
 - Use the web-aligned signed-in mobile navigation for Home, Lists, Write, Stats, and Profile; open search, notifications, and account actions from the top bar, with appearance choices in Settings.
 - Browse Global/Local timelines and the signed-in For you feed; read posts natively with responsive cards and working feed actions.
 - Like, recommend, save, comment, follow, mute, and block with optimistic rollback.
-- Open Followers and Following from local profile counts in a dedicated people screen with switchable lists.
+- Open Followers and Following from local profile counts in a dedicated people screen with switchable lists, direct follow controls, and confirmation before unfollowing or cancelling a follow request.
 - Create and browse reading lists, view writer analytics, and read notifications using the confirmed shared API.
 - Search articles, tags, and people; browse tag pages, trending posts, topics, and suggested people.
 - Compose and schedule posts, then manage drafts, scheduled posts, and published posts from the owner profile.

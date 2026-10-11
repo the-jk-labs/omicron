@@ -161,6 +161,17 @@
     <string name="profile_connections_loading">Loading people</string>
     <string name="profile_connections_error">Could not load these people. Try again.</string>
     <string name="profile_connections_private">Follow this writer to see their followers and following.</string>
+    <string name="profile_connections_checking">Checking</string>
+    <string name="profile_connections_follow_action">%1$s @%2$s</string>
+    <string name="profile_connections_follow_status_error">Could not check follow status. Try again.</string>
+    <string name="profile_connections_follow_offline">You appear to be offline. Try again.</string>
+    <string name="profile_connections_unfollow">Unfollow</string>
+    <string name="profile_connections_unfollow_title">Unfollow @%1$s?</string>
+    <string name="profile_connections_unfollow_description">You will no longer follow this account.</string>
+    <string name="profile_connections_cancel_request">Cancel request</string>
+    <string name="profile_connections_cancel_request_title">Cancel follow request to @%1$s?</string>
+    <string name="profile_connections_cancel_request_description">This account will no longer receive your pending follow request.</string>
+    <string name="profile_connections_cancel">Cancel</string>
     <string name="profile_view_original">View original profile</string>
     <string name="profile_link_error">Could not open this link. Try again.</string>
     <string name="profile_likes">%1$d likes</string>

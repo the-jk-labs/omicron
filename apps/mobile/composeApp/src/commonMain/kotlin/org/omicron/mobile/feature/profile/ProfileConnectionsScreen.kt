@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -36,6 +37,14 @@ import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.stringResource
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.SessionExpiredNotice
+import org.omicron.mobile.core.designsystem.rikkaui.alertdialog.AlertDialog
+import org.omicron.mobile.core.designsystem.rikkaui.alertdialog.AlertDialogAction
+import org.omicron.mobile.core.designsystem.rikkaui.alertdialog.AlertDialogCancel
+import org.omicron.mobile.core.designsystem.rikkaui.alertdialog.AlertDialogFooter
+import org.omicron.mobile.core.designsystem.rikkaui.alertdialog.AlertDialogHeader
+import org.omicron.mobile.core.designsystem.rikkaui.button.Button
+import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
+import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonVariant
 import org.omicron.mobile.core.designsystem.rikkaui.button.IconButton
 import org.omicron.mobile.core.designsystem.rikkaui.icon.RikkaIcons
 import org.omicron.mobile.core.designsystem.rikkaui.separator.Separator
@@ -46,14 +55,30 @@ import org.omicron.mobile.core.designsystem.rikkaui.tabs.TabList
 import org.omicron.mobile.core.designsystem.rikkaui.text.Text
 import org.omicron.mobile.core.designsystem.rikkaui.text.TextVariant
 import org.omicron.mobile.domain.model.RelationActor
+import org.omicron.mobile.domain.model.ProfileFollowState
 import org.omicron.mobile.resources.Res
 import org.omicron.mobile.resources.profile_connections_back
 import org.omicron.mobile.resources.profile_connections_error
 import org.omicron.mobile.resources.profile_connections_loading
 import org.omicron.mobile.resources.profile_connections_private
+import org.omicron.mobile.resources.profile_connections_cancel
+import org.omicron.mobile.resources.profile_connections_cancel_request
+import org.omicron.mobile.resources.profile_connections_cancel_request_description
+import org.omicron.mobile.resources.profile_connections_cancel_request_title
+import org.omicron.mobile.resources.profile_connections_checking
+import org.omicron.mobile.resources.profile_connections_follow_action
+import org.omicron.mobile.resources.profile_connections_follow_offline
+import org.omicron.mobile.resources.profile_connections_follow_status_error
+import org.omicron.mobile.resources.profile_connections_unfollow
+import org.omicron.mobile.resources.profile_connections_unfollow_description
+import org.omicron.mobile.resources.profile_connections_unfollow_title
 import org.omicron.mobile.resources.profile_error_offline
 import org.omicron.mobile.resources.profile_followers
 import org.omicron.mobile.resources.profile_following_count
+import org.omicron.mobile.resources.profile_follow
+import org.omicron.mobile.resources.profile_following
+import org.omicron.mobile.resources.profile_requested
+import org.omicron.mobile.resources.profile_relation_error_follow
 import org.omicron.mobile.resources.profile_no_followers
 import org.omicron.mobile.resources.profile_no_following
 import org.omicron.mobile.resources.profile_not_found
@@ -80,6 +105,10 @@ fun ProfileConnectionsRoute(
         onRetry = viewModel::retry,
         onSignIn = onSignIn,
         onOpenProfile = onOpenProfile,
+        onLoadMemberFollow = viewModel::loadMemberFollow,
+        onFollowChange = viewModel::requestFollowChange,
+        onCancelUnfollow = viewModel::cancelUnfollow,
+        onConfirmUnfollow = viewModel::confirmUnfollow,
     )
 }
 
@@ -91,6 +120,10 @@ internal fun ProfileConnectionsScreen(
     onRetry: () -> Unit,
     onSignIn: () -> Unit,
     onOpenProfile: (String) -> Unit,
+    onLoadMemberFollow: (String) -> Unit = {},
+    onFollowChange: (String) -> Unit = {},
+    onCancelUnfollow: () -> Unit = {},
+    onConfirmUnfollow: () -> Unit = {},
 ) {
     Column(
         modifier = Modifier.fillMaxSize().background(OmicronTheme.colors.background).safeDrawingPadding(),
@@ -147,11 +180,19 @@ internal fun ProfileConnectionsScreen(
                             onAction = {},
                         )
                     } else {
-                        ConnectionsMembers(state, onRetry, onOpenProfile, Modifier.weight(1f))
+                        ConnectionsMembers(state, onRetry, onOpenProfile, onSignIn, onLoadMemberFollow, onFollowChange, Modifier.weight(1f))
                     }
                 }
             }
         }
+    }
+    state.pendingUnfollow?.let { username ->
+        UnfollowConfirmation(
+            username = username,
+            requested = state.memberFollows[username]?.followState == ProfileFollowState.Requested,
+            onCancel = onCancelUnfollow,
+            onConfirm = onConfirmUnfollow,
+        )
     }
 }
 
@@ -160,6 +201,9 @@ private fun ConnectionsMembers(
     state: ProfileConnectionsUiState,
     onRetry: () -> Unit,
     onOpenProfile: (String) -> Unit,
+    onSignIn: () -> Unit,
+    onLoadMemberFollow: (String) -> Unit,
+    onFollowChange: (String) -> Unit,
     modifier: Modifier,
 ) {
     val members = state.selectedMembers
@@ -180,7 +224,13 @@ private fun ConnectionsMembers(
                 contentPadding = PaddingValues(vertical = 8.dp),
             ) {
                 items(members.items, key = RelationActor::id, contentType = { "profile-member" }) { actor ->
-                    ConnectionMember(actor, onOpen = { onOpenProfile(actor.username) })
+                    ConnectionMember(
+                        actor = actor,
+                        state = state,
+                        onOpen = { onOpenProfile(actor.username) },
+                        onLoadFollow = { onLoadMemberFollow(actor.username) },
+                        onFollowChange = { if (state.signedIn) onFollowChange(actor.username) else onSignIn() },
+                    )
                 }
             }
         }
@@ -188,16 +238,79 @@ private fun ConnectionsMembers(
 }
 
 @Composable
-private fun ConnectionMember(actor: RelationActor, onOpen: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp).clickable(role = Role.Button, onClick = onOpen).padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ProfileAvatar(name = actor.displayName, url = actor.avatarUrl, size = 48)
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(text = "@${actor.username}", variant = TextVariant.P, maxLines = 1, overflow = TextOverflow.Ellipsis, style = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold))
-            Text(text = actor.displayName, variant = TextVariant.Small, color = OmicronTheme.colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun ConnectionMember(
+    actor: RelationActor,
+    state: ProfileConnectionsUiState,
+    onOpen: () -> Unit,
+    onLoadFollow: () -> Unit,
+    onFollowChange: () -> Unit,
+) {
+    val follow = state.memberFollows[actor.username]
+    val showAction = !state.signedIn || state.canFollow(actor)
+    LaunchedEffect(actor.username, state.currentUserId) {
+        if (state.canFollow(actor)) onLoadFollow()
+    }
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onOpen),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ProfileAvatar(name = actor.displayName, url = actor.avatarUrl, size = 48)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(text = "@${actor.username}", variant = TextVariant.P, maxLines = 1, overflow = TextOverflow.Ellipsis, style = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold))
+                    Text(text = actor.displayName, variant = TextVariant.Small, color = OmicronTheme.colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            if (showAction) MemberFollowButton(actor.username, state.signedIn, follow, onFollowChange)
+        }
+        if (follow?.loadError != null || follow?.mutationError != null) {
+            val error = when {
+                follow.loadError == ProfileLoadError.Offline || follow.mutationError == ProfileLoadError.Offline -> Res.string.profile_connections_follow_offline
+                follow.loadError != null -> Res.string.profile_connections_follow_status_error
+                else -> Res.string.profile_relation_error_follow
+            }
+            Text(text = stringResource(error), variant = TextVariant.Small, color = OmicronTheme.colors.destructive)
+        }
+    }
+}
+
+@Composable
+private fun MemberFollowButton(username: String, signedIn: Boolean, follow: ProfileMemberFollow?, onClick: () -> Unit) {
+    val checking = signedIn && (follow == null || follow.loading)
+    val label = stringResource(
+        when {
+            !signedIn -> Res.string.profile_follow
+            checking -> Res.string.profile_connections_checking
+            follow?.loadError != null -> Res.string.profile_retry
+            follow?.followState == ProfileFollowState.Following -> Res.string.profile_following
+            follow?.followState == ProfileFollowState.Requested -> Res.string.profile_requested
+            else -> Res.string.profile_follow
+        },
+    )
+    Button(
+        onClick = onClick,
+        label = stringResource(Res.string.profile_connections_follow_action, label, username),
+        modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 88.dp),
+        size = ButtonSize.Sm,
+        variant = if (follow?.followState == ProfileFollowState.Following || follow?.followState == ProfileFollowState.Requested) ButtonVariant.Outline else ButtonVariant.Default,
+        enabled = !checking && follow?.busy != true,
+        loading = checking || follow?.busy == true,
+    ) { Text(text = label, variant = TextVariant.Small) }
+}
+
+@Composable
+private fun UnfollowConfirmation(username: String, requested: Boolean, onCancel: () -> Unit, onConfirm: () -> Unit) {
+    val title = stringResource(if (requested) Res.string.profile_connections_cancel_request_title else Res.string.profile_connections_unfollow_title, username)
+    AlertDialog(open = true, onDismiss = onCancel, label = title) {
+        AlertDialogHeader(
+            title = title,
+            description = stringResource(if (requested) Res.string.profile_connections_cancel_request_description else Res.string.profile_connections_unfollow_description),
+        )
+        AlertDialogFooter {
+            AlertDialogCancel(text = stringResource(Res.string.profile_connections_cancel), onClick = onCancel)
+            AlertDialogAction(text = stringResource(if (requested) Res.string.profile_connections_cancel_request else Res.string.profile_connections_unfollow), onClick = onConfirm)
         }
     }
 }
