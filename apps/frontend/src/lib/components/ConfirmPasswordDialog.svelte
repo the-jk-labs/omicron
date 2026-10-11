@@ -59,11 +59,11 @@
         <Dialog.Description class="mt-3 text-sm text-foreground-alt">{description}</Dialog.Description>
 
         <div class="mt-4 flex flex-col gap-1.5">
-          <Label.Root for="confirm-password" class="text-sm leading-none font-medium text-foreground"
+          <Label.Root for="reauth-password" class="text-sm leading-none font-medium text-foreground"
             >Password</Label.Root
           >
           <input
-            id="confirm-password"
+            id="reauth-password"
             type="password"
             name="password"
             bind:value={password}
