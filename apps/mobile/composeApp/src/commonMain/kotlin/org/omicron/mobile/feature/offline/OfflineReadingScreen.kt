@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.datetime.TimeZone
 import org.jetbrains.compose.resources.stringResource
+import org.omicron.mobile.core.designsystem.CenteredLoadingState
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
@@ -30,8 +31,6 @@ import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonVariant
 import org.omicron.mobile.core.designsystem.rikkaui.button.IconButton
 import org.omicron.mobile.core.designsystem.rikkaui.button.IconButtonSize
 import org.omicron.mobile.core.designsystem.rikkaui.icon.RikkaIcons
-import org.omicron.mobile.core.designsystem.rikkaui.spinner.Spinner
-import org.omicron.mobile.core.designsystem.rikkaui.spinner.SpinnerSize
 import org.omicron.mobile.core.designsystem.rikkaui.text.Text
 import org.omicron.mobile.core.designsystem.rikkaui.text.TextVariant
 import org.omicron.mobile.core.time.formatScheduledFor
@@ -102,9 +101,7 @@ private fun OfflineReadingScreen(
         )
         when (val phase = state.phase) {
             OfflineReadingPhase.Loading ->
-                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Spinner(size = SpinnerSize.Default, label = stringResource(Res.string.offline_loading))
-                }
+                CenteredLoadingState(message = stringResource(Res.string.offline_loading), modifier = Modifier.weight(1f).fillMaxWidth())
             is OfflineReadingPhase.Error ->
                 OfflineReadingError(phase.error, onRetry, Modifier.weight(1f).fillMaxWidth())
             OfflineReadingPhase.Content -> {

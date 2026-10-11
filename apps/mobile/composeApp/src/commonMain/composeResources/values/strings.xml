@@ -451,6 +451,7 @@
     <string name="dashboard_views">Views</string>
     <string name="dashboard_likes">Likes</string>
     <string name="dashboard_comments">Comments</string>
+    <string name="dashboard_loading">Loading your dashboard</string>
     <string name="dashboard_engagement">Engagement</string>
     <string name="dashboard_followers">Followers</string>
     <string name="dashboard_per_reader_day">Per reader, per day</string>

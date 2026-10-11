@@ -27,6 +27,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
+import org.omicron.mobile.core.designsystem.CenteredLoadingState
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
@@ -214,9 +215,7 @@ private fun SearchPrompt(onOpenDiscover: () -> Unit) {
 
 @Composable
 private fun SearchLoading() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Spinner(size = SpinnerSize.Lg, label = stringResource(Res.string.search_loading))
-    }
+    CenteredLoadingState(message = stringResource(Res.string.search_loading))
 }
 
 @Composable

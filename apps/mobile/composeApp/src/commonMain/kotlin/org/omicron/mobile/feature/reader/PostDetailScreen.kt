@@ -41,6 +41,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.omicron.mobile.core.article.languageLabel
 import org.omicron.mobile.core.article.parseArticle
 import org.omicron.mobile.core.article.postPreview
+import org.omicron.mobile.core.designsystem.CenteredLoadingState
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonVariant
@@ -200,9 +201,7 @@ private fun PostDetailScreen(
         }
         when (val phase = state.phase) {
             is PostDetailPhase.Loading ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Spinner(size = SpinnerSize.Lg, label = stringResource(Res.string.detail_loading))
-                }
+                CenteredLoadingState(message = stringResource(Res.string.detail_loading), modifier = Modifier.weight(1f).fillMaxWidth())
             is PostDetailPhase.NotFound ->
                 PostDetailMessage(
                     title = stringResource(Res.string.detail_not_found_title),

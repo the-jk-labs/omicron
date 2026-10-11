@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import org.jetbrains.compose.resources.stringResource
+import org.omicron.mobile.core.designsystem.CenteredLoadingState
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.time.displayDate
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
@@ -90,9 +91,7 @@ private fun NotificationsScreen(
         NotificationsPhase.NotLoaded,
         NotificationsPhase.Loading,
         ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Spinner(size = SpinnerSize.Lg, label = stringResource(Res.string.notifications_loading))
-            }
+            CenteredLoadingState(message = stringResource(Res.string.notifications_loading))
         NotificationsPhase.Error -> NotificationError(state.error ?: MobileFeatureError.Server, onRetry)
         NotificationsPhase.Empty ->
             Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {

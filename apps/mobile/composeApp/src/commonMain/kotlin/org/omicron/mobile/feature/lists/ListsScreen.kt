@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import org.jetbrains.compose.resources.stringResource
+import org.omicron.mobile.core.designsystem.CenteredLoadingState
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
@@ -39,8 +40,6 @@ import org.omicron.mobile.core.designsystem.rikkaui.icon.Icon
 import org.omicron.mobile.core.designsystem.rikkaui.icon.IconSize
 import org.omicron.mobile.core.designsystem.rikkaui.icon.RikkaIcons
 import org.omicron.mobile.core.designsystem.rikkaui.input.Input
-import org.omicron.mobile.core.designsystem.rikkaui.spinner.Spinner
-import org.omicron.mobile.core.designsystem.rikkaui.spinner.SpinnerSize
 import org.omicron.mobile.core.designsystem.rikkaui.text.Text
 import org.omicron.mobile.core.designsystem.rikkaui.text.TextVariant
 import org.omicron.mobile.domain.model.ReadingList
@@ -115,10 +114,10 @@ private fun ListsScreen(
             }
         }
         when (state.phase) {
-            ListsPhase.Loading ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Spinner(size = SpinnerSize.Lg, label = stringResource(Res.string.lists_loading))
-                }
+            ListsPhase.Loading -> CenteredLoadingState(
+                message = stringResource(Res.string.lists_loading),
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+            )
             ListsPhase.Error ->
                 ListsError(error = state.error ?: MobileFeatureError.Server, onRetry = onRetry)
             ListsPhase.Empty ->

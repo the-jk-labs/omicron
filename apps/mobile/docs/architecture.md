@@ -26,6 +26,7 @@ Keep the package layout stable inside the single `composeApp` module. Split Grad
 
 - Screens expose immutable `StateFlow` state and accept events. Side effects run in the ViewModel or repository, not in composables.
 - Model loading, content, empty, error, offline, retry, and mutation-in-progress states explicitly.
+- Full-screen loading states use a centered spinner with visible, content-specific status text.
 - Use type-safe Compose Navigation when more than one route is present. Navigation arguments are identifiers, not serialized models or mutable state.
 - Use stable keys and content types for every lazy-list item.
 - Use `OmicronTheme`, RikkaUI, and Lucide RikkaIcons. Mobile vector paths mirror the frontend's pinned `@lucide/svelte` 1.52.0 icon sources and must be synchronized when the frontend package or icon registry changes. Inter is the interface typeface; Source Sans 3 is for native article/profile content and composer body blocks. Both are bundled under OFL 1.1. Do not introduce Material3 or ad-hoc visual tokens.

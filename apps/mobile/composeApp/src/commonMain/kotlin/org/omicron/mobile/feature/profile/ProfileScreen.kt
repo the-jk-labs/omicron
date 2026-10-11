@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import org.jetbrains.compose.resources.stringResource
+import org.omicron.mobile.core.designsystem.CenteredLoadingState
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.SessionExpiredNotice
 import org.omicron.mobile.core.designsystem.rikkaui.avatar.Avatar
@@ -185,9 +186,7 @@ internal fun ProfileScreen(
         }
         when (val phase = state.phase) {
             ProfilePhase.Loading ->
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Spinner(size = SpinnerSize.Lg, label = stringResource(Res.string.profile_loading))
-                }
+                CenteredLoadingState(message = stringResource(Res.string.profile_loading), modifier = Modifier.weight(1f).fillMaxWidth())
             ProfilePhase.NotFound -> ProfileMessage(stringResource(Res.string.profile_not_found), null, onAction = onBack)
             is ProfilePhase.Error -> {
                 val message =

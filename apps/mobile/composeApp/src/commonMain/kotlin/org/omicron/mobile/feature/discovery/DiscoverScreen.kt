@@ -23,6 +23,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
+import org.omicron.mobile.core.designsystem.CenteredLoadingState
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
@@ -138,9 +139,7 @@ private fun DiscoverScreen(
 
 @Composable
 private fun DiscoverLoading() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Spinner(size = SpinnerSize.Lg, label = stringResource(Res.string.discover_loading))
-    }
+    CenteredLoadingState(message = stringResource(Res.string.discover_loading))
 }
 
 @Composable

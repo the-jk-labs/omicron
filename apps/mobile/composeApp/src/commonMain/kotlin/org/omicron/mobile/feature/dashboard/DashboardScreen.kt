@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
+import org.omicron.mobile.core.designsystem.CenteredLoadingState
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
@@ -35,8 +36,6 @@ import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonVariant
 import org.omicron.mobile.core.designsystem.rikkaui.icon.Icon
 import org.omicron.mobile.core.designsystem.rikkaui.icon.IconSize
 import org.omicron.mobile.core.designsystem.rikkaui.icon.RikkaIcons
-import org.omicron.mobile.core.designsystem.rikkaui.spinner.Spinner
-import org.omicron.mobile.core.designsystem.rikkaui.spinner.SpinnerSize
 import org.omicron.mobile.core.designsystem.rikkaui.text.Text
 import org.omicron.mobile.core.designsystem.rikkaui.text.TextVariant
 import org.omicron.mobile.domain.model.PostStat
@@ -52,6 +51,7 @@ import org.omicron.mobile.resources.dashboard_error_server
 import org.omicron.mobile.resources.dashboard_followers
 import org.omicron.mobile.resources.dashboard_likes
 import org.omicron.mobile.resources.dashboard_likes_comments
+import org.omicron.mobile.resources.dashboard_loading
 import org.omicron.mobile.resources.dashboard_no_view_data
 import org.omicron.mobile.resources.dashboard_per_reader_day
 import org.omicron.mobile.resources.dashboard_posts
@@ -80,10 +80,7 @@ private fun DashboardScreen(
     onOpenPost: (String) -> Unit,
 ) {
     when (state.phase) {
-        DashboardPhase.Loading ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Spinner(size = SpinnerSize.Lg, label = stringResource(Res.string.dashboard_title))
-            }
+        DashboardPhase.Loading -> CenteredLoadingState(message = stringResource(Res.string.dashboard_loading))
         DashboardPhase.Error -> DashboardError(state.error ?: MobileFeatureError.Server, onRetry)
         DashboardPhase.Empty ->
             Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
