@@ -1,6 +1,7 @@
 package org.omicron.mobile.feature.reader
 
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -34,7 +35,43 @@ class PostSocialViewModelTest {
 
         assertFalse(viewModel.uiState.value.post!!.liked)
         assertEquals(4, viewModel.uiState.value.post!!.likeCount)
-        assertEquals(SocialActionError.Request, viewModel.uiState.value.likeError)
+        assertEquals(SocialActionError.Offline, viewModel.uiState.value.likeError)
+    }
+
+    @Test
+    fun repeatedLikeTapsSendOneMutationAndUseTheAuthoritativeCount() = runTest {
+        val api = FakeSocialApi()
+        val viewModel = socialViewModel(api, MutableStateFlow<AuthenticatedSession?>(session()))
+        viewModel.bind(post())
+        testScheduler.advanceUntilIdle()
+        viewModel.toggleLike()
+        viewModel.toggleLike()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(listOf("signed-token"), api.postLikeTokens)
+        assertEquals(3, viewModel.uiState.value.post?.likeCount)
+        assertTrue(viewModel.uiState.value.post!!.liked)
+        assertFalse(viewModel.uiState.value.likeBusy)
+    }
+
+    @Test
+    fun failedRecommendationRollsBackThenSuccessfulRetryClearsItsError() = runTest {
+        val api = FakeSocialApi().apply { recommendationFailure = IOException("offline") }
+        val viewModel = socialViewModel(api, MutableStateFlow<AuthenticatedSession?>(session()))
+        viewModel.bind(post())
+        testScheduler.advanceUntilIdle()
+        viewModel.toggleRecommendation()
+        testScheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.post!!.recommended)
+        assertEquals(2, viewModel.uiState.value.post?.recommendCount)
+        assertEquals(SocialActionError.Offline, viewModel.uiState.value.recommendationError)
+        api.recommendationFailure = null
+        viewModel.toggleRecommendation()
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.post!!.recommended)
+        assertEquals(4, viewModel.uiState.value.post?.recommendCount)
+        assertNull(viewModel.uiState.value.recommendationError)
     }
 
     @Test
@@ -76,7 +113,158 @@ class PostSocialViewModelTest {
         assertEquals(1, viewModel.uiState.value.post?.commentCount)
         assertEquals("Keep this response", viewModel.uiState.value.draft)
         assertEquals(emptyList(), viewModel.uiState.value.comments)
-        assertEquals(SocialActionError.Comment, viewModel.uiState.value.commentError)
+        assertEquals(SocialActionError.Offline, viewModel.uiState.value.commentError)
+    }
+
+    @Test
+    fun failedReplyRetainsItsTargetForRetry() = runTest {
+        val api = FakeSocialApi().apply {
+            commentPage = org.omicron.mobile.data.api.CommentPageDto(items = listOf(org.omicron.mobile.data.api.comment()))
+            commentFailure = IOException("offline")
+        }
+        val viewModel = socialViewModel(api, MutableStateFlow<AuthenticatedSession?>(session()))
+        viewModel.bind(post())
+        testScheduler.advanceUntilIdle()
+
+        viewModel.replyTo("comment-1")
+        viewModel.updateDraft("Keep this reply")
+        viewModel.submitComment()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("comment-1", viewModel.uiState.value.replyingTo)
+        assertEquals("Keep this reply", viewModel.uiState.value.draft)
+        api.commentFailure = null
+        viewModel.submitComment()
+        testScheduler.advanceUntilIdle()
+        assertEquals("Keep this reply", viewModel.uiState.value.comments.single().replies.single().content)
+        assertEquals("comment-1", viewModel.uiState.value.comments.single().replies.single().parentId)
+    }
+
+    @Test
+    fun changingReplyTargetKeepsTheDraft() = runTest {
+        val api = FakeSocialApi().apply {
+            commentPage = org.omicron.mobile.data.api.CommentPageDto(items = listOf(org.omicron.mobile.data.api.comment()))
+        }
+        val viewModel = socialViewModel(api, MutableStateFlow<AuthenticatedSession?>(session()))
+        viewModel.bind(post())
+        testScheduler.advanceUntilIdle()
+
+        viewModel.updateDraft("An unfinished response")
+        viewModel.replyTo("comment-1")
+        assertEquals("An unfinished response", viewModel.uiState.value.draft)
+        viewModel.replyTo(null)
+        assertEquals("An unfinished response", viewModel.uiState.value.draft)
+    }
+
+    @Test
+    fun pendingCommentCannotBeLikedRepliedToEditedOrDeleted() = runTest {
+        val viewModel = socialViewModel(FakeSocialApi(), MutableStateFlow<AuthenticatedSession?>(session()))
+        viewModel.bind(post())
+        testScheduler.advanceUntilIdle()
+        viewModel.updateDraft("Sending")
+        viewModel.submitComment()
+        val pending = viewModel.uiState.value.comments.single()
+
+        viewModel.toggleCommentLike(pending.id)
+        viewModel.replyTo(pending.id)
+        viewModel.beginEdit(pending)
+        viewModel.requestDelete(pending.id)
+
+        assertTrue(viewModel.uiState.value.commentBusyIds.isEmpty())
+        assertNull(viewModel.uiState.value.replyingTo)
+        assertNull(viewModel.uiState.value.editingCommentId)
+        assertNull(viewModel.uiState.value.deleteConfirmationId)
+        testScheduler.advanceUntilIdle()
+    }
+
+    @Test
+    fun initialCommentLoadCannotOverwriteANewResponse() = runTest {
+        val viewModel = socialViewModel(FakeSocialApi(), MutableStateFlow<AuthenticatedSession?>(session()))
+        viewModel.bind(post())
+        viewModel.updateDraft("Wait for responses to load")
+
+        viewModel.submitComment()
+
+        assertFalse(viewModel.uiState.value.commentBusy)
+        assertEquals("Wait for responses to load", viewModel.uiState.value.draft)
+        assertEquals(1, viewModel.uiState.value.post?.commentCount)
+        testScheduler.advanceUntilIdle()
+        viewModel.submitComment()
+        testScheduler.advanceUntilIdle()
+        assertEquals("Wait for responses to load", viewModel.uiState.value.comments.single().content)
+    }
+
+    @Test
+    fun commentPaginationDoesNotDuplicateAlreadyLoadedThreads() = runTest {
+        val api = FakeSocialApi().apply {
+            commentPage = org.omicron.mobile.data.api.CommentPageDto(
+                items = listOf(org.omicron.mobile.data.api.comment()),
+                nextCursor = "opaque-cursor",
+            )
+        }
+        val viewModel = socialViewModel(api, MutableStateFlow<AuthenticatedSession?>(session()))
+        viewModel.bind(post())
+        testScheduler.advanceUntilIdle()
+        api.commentPage = org.omicron.mobile.data.api.CommentPageDto(
+            items = listOf(org.omicron.mobile.data.api.comment(), org.omicron.mobile.data.api.comment("comment-2")),
+        )
+
+        viewModel.loadMoreComments()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(listOf("comment-1", "comment-2"), viewModel.uiState.value.comments.map { it.id })
+        assertEquals(listOf(null, "opaque-cursor"), api.requestedCursors)
+    }
+
+    @Test
+    fun failedEditDoesNotUndoAConcurrentCommentLike() = runTest {
+        val release = CompletableDeferred<Unit>()
+        val api = FakeSocialApi().apply {
+            commentPage = org.omicron.mobile.data.api.CommentPageDto(
+                items = listOf(org.omicron.mobile.data.api.comment().copy(author = org.omicron.mobile.data.api.PostAuthorDto("user-1", "ada", "Ada"))),
+            )
+            editCommentHandler = { _, _ ->
+                release.await()
+                throw IOException("offline")
+            }
+        }
+        val viewModel = socialViewModel(api, MutableStateFlow<AuthenticatedSession?>(session()))
+        viewModel.bind(post())
+        testScheduler.advanceUntilIdle()
+
+        viewModel.beginEdit(viewModel.uiState.value.comments.single())
+        viewModel.updateEditDraft("Edited response")
+        viewModel.saveEdit()
+        viewModel.toggleCommentLike("comment-1")
+        testScheduler.advanceUntilIdle()
+        release.complete(Unit)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("A thoughtful response", viewModel.uiState.value.comments.single().content)
+        assertTrue(viewModel.uiState.value.comments.single().liked)
+        assertEquals(2, viewModel.uiState.value.comments.single().likeCount)
+        assertEquals("Edited response", viewModel.uiState.value.editDraft)
+    }
+
+    @Test
+    fun repeatedSaveWhileEditingDoesNotCloseThePendingEditor() = runTest {
+        val api = FakeSocialApi().apply {
+            commentPage = org.omicron.mobile.data.api.CommentPageDto(
+                items = listOf(org.omicron.mobile.data.api.comment().copy(author = org.omicron.mobile.data.api.PostAuthorDto("user-1", "ada", "Ada"))),
+            )
+        }
+        val viewModel = socialViewModel(api, MutableStateFlow<AuthenticatedSession?>(session()))
+        viewModel.bind(post())
+        testScheduler.advanceUntilIdle()
+
+        viewModel.beginEdit(viewModel.uiState.value.comments.single())
+        viewModel.updateEditDraft("Edited response")
+        viewModel.saveEdit()
+        viewModel.saveEdit()
+
+        assertEquals("comment-1", viewModel.uiState.value.editingCommentId)
+        assertEquals("Edited response", viewModel.uiState.value.editDraft)
+        testScheduler.advanceUntilIdle()
     }
 
     @Test
@@ -94,7 +282,8 @@ class PostSocialViewModelTest {
         testScheduler.advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.comments.single().liked)
-        assertEquals(SocialActionError.Request, viewModel.uiState.value.commentError)
+        assertEquals(SocialActionError.Offline, viewModel.uiState.value.commentLikeErrors["comment-1"])
+        assertNull(viewModel.uiState.value.commentError)
     }
 
     @Test
@@ -124,7 +313,25 @@ class PostSocialViewModelTest {
         testScheduler.advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.saved)
-        assertEquals(SocialActionError.Request, viewModel.uiState.value.readLaterError)
+        assertEquals(SocialActionError.Offline, viewModel.uiState.value.readLaterError)
+    }
+
+    @Test
+    fun readLaterRetryRepeatsTheFailedMutation() = runTest {
+        val api = FakeSocialApi().apply { readLaterMutationFailure = IOException("offline") }
+        val viewModel = socialViewModel(api, MutableStateFlow<AuthenticatedSession?>(session()))
+        viewModel.bind(post())
+        testScheduler.advanceUntilIdle()
+        viewModel.toggleReadLater()
+        testScheduler.advanceUntilIdle()
+        api.readLaterMutationFailure = null
+
+        viewModel.retryReadLater()
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(api.saved)
+        assertTrue(viewModel.uiState.value.saved)
+        assertNull(viewModel.uiState.value.readLaterError)
     }
 
     @Test
@@ -151,7 +358,8 @@ class PostSocialViewModelTest {
 
         assertEquals(listOf("comment-1"), viewModel.uiState.value.comments.map { it.id })
         assertEquals(1, viewModel.uiState.value.post?.commentCount)
-        assertEquals(SocialActionError.Delete, viewModel.uiState.value.commentError)
+        assertEquals(SocialActionError.Offline, viewModel.uiState.value.deleteErrors["comment-1"])
+        assertNull(viewModel.uiState.value.commentError)
     }
 
     @Test

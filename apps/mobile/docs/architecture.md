@@ -45,6 +45,7 @@ Keep the package layout stable inside the single `composeApp` module. Split Grad
 - The normal Omicron API is rooted at `/api`; Better Auth owns `/api/auth/*`.
 - Accept only HTTPS instance origins. Do not follow cross-origin redirects for instance bootstrap or authenticated calls.
 - DTOs mirror confirmed wire contracts and tolerate additive fields only where safe. Repositories map DTOs before exposing data to features.
+- Social requests declare the destination's normalized `Origin` so bodyless mutations pass the public SvelteKit gateway. Optimistic recovery updates only mutation-owned fields; drafts, reply targets, and per-action errors stay in destination memory (ADR-0023).
 - Treat cursors as opaque values. Preserve `nextCursor` unchanged and never derive offsets.
 - Resolve root-relative media against the selected instance origin.
 - Lists, dashboard, and notifications use their confirmed shared `/api` contracts through `data.api` and `data.repository`; cursor values stay opaque and authenticated requests use the selected-origin Bearer token.

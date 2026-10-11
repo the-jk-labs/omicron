@@ -9,13 +9,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -28,8 +29,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.StringResource
 import org.omicron.mobile.core.article.languageLabel
 import org.omicron.mobile.core.article.parseArticle
 import org.omicron.mobile.core.article.postPreview
@@ -46,11 +53,11 @@ import org.omicron.mobile.core.designsystem.rikkaui.button.Button
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonVariant
 import org.omicron.mobile.core.designsystem.rikkaui.icon.Icon
-import org.omicron.mobile.core.designsystem.rikkaui.icon.IconSize
 import org.omicron.mobile.core.designsystem.rikkaui.icon.RikkaIcons
 import org.omicron.mobile.core.designsystem.SessionExpiredNotice
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.rikkaui.input.Input
+import org.omicron.mobile.core.designsystem.rikkaui.input.InputAnimation
 import org.omicron.mobile.core.designsystem.rikkaui.spinner.Spinner
 import org.omicron.mobile.core.designsystem.rikkaui.spinner.SpinnerSize
 import org.omicron.mobile.core.designsystem.rikkaui.text.Text
@@ -61,6 +68,7 @@ import org.omicron.mobile.domain.model.Post
 import org.omicron.mobile.domain.model.PostDetail
 import org.omicron.mobile.domain.model.Comment
 import org.omicron.mobile.resources.Res
+import org.omicron.mobile.resources.auth_sign_in
 import org.omicron.mobile.resources.detail_back
 import org.omicron.mobile.resources.detail_cover_credit
 import org.omicron.mobile.resources.detail_error_missing_instance
@@ -73,10 +81,16 @@ import org.omicron.mobile.resources.detail_not_found_title
 import org.omicron.mobile.resources.detail_read_next
 import org.omicron.mobile.resources.detail_retry
 import org.omicron.mobile.resources.profile_retry
-import org.omicron.mobile.resources.social_action_error
+import org.omicron.mobile.resources.social_error_offline
+import org.omicron.mobile.resources.social_error_unauthorized
+import org.omicron.mobile.resources.social_error_forbidden
+import org.omicron.mobile.resources.social_like_error
+import org.omicron.mobile.resources.social_recommend_error
+import org.omicron.mobile.resources.social_save_error
 import org.omicron.mobile.resources.social_comment_cancel_reply
 import org.omicron.mobile.resources.social_comment_cancel
 import org.omicron.mobile.resources.social_comment_edit
+import org.omicron.mobile.resources.social_comment_edit_placeholder
 import org.omicron.mobile.resources.social_comment_edit_error
 import org.omicron.mobile.resources.social_comment_delete
 import org.omicron.mobile.resources.social_comment_delete_confirm
@@ -84,6 +98,11 @@ import org.omicron.mobile.resources.social_comment_delete_error
 import org.omicron.mobile.resources.social_comment_empty
 import org.omicron.mobile.resources.social_comment_error
 import org.omicron.mobile.resources.social_comment_like
+import org.omicron.mobile.resources.social_comment_like_count
+import org.omicron.mobile.resources.social_comment_like_count_one
+import org.omicron.mobile.resources.social_comment_like_error
+import org.omicron.mobile.resources.social_comment_sending
+import org.omicron.mobile.resources.social_comment_replying_to
 import org.omicron.mobile.resources.social_comment_load_more
 import org.omicron.mobile.resources.social_comment_loading
 import org.omicron.mobile.resources.social_comment_placeholder
@@ -322,7 +341,13 @@ private fun PostDetailContent(
         (if (social?.sessionExpired == true) 1 else 0) +
             (if (post.isOfflineCopy) 1 else 0) +
             (if (post.tags.isNotEmpty()) 1 else 0) +
-            HEADER_BODY_ENGAGEMENT_ITEMS
+            RESPONSE_SECTION_PRECEDING_ITEMS
+    val onReply: (String?) -> Unit = { id ->
+        onReplyTo(id)
+        if (id != null && social?.commentBusy == false) {
+            scope.launch { listState.animateScrollToItem(responsesIndex + 1) }
+        }
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         state = listState,
@@ -420,18 +445,10 @@ private fun PostDetailContent(
             }
             social.commentError?.let {
                 item(key = "comment-action-error", contentType = "error") {
-                    Text(
-                        text =
-                            stringResource(
-                                when {
-                                    it == SocialActionError.Comment && social.editingCommentId != null -> Res.string.social_comment_edit_error
-                                    it == SocialActionError.Comment -> Res.string.social_comment_post_error
-                                    it == SocialActionError.Delete -> Res.string.social_comment_delete_error
-                                    else -> Res.string.social_action_error
-                                },
-                            ),
-                        variant = TextVariant.Small,
-                        color = RikkaTheme.colors.destructive,
+                    SocialActionFeedback(
+                        error = it,
+                        fallback = Res.string.social_comment_post_error,
+                        onRetry = if (it == SocialActionError.Unauthorized) onSignIn else onSubmitComment,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 }
@@ -470,7 +487,7 @@ private fun PostDetailContent(
                             onSignIn = onSignIn,
                             onOpenProfile = onOpenProfile,
                             onLike = onLikeComment,
-                            onReply = onReplyTo,
+                            onReply = onReply,
                             onBeginEdit = onBeginEdit,
                             onUpdateEdit = onUpdateEdit,
                             onCancelEdit = onCancelEdit,
@@ -487,7 +504,7 @@ private fun PostDetailContent(
                                 onSignIn = onSignIn,
                                 onOpenProfile = onOpenProfile,
                                 onLike = onLikeComment,
-                                onReply = onReplyTo,
+                                onReply = onReply,
                                 onBeginEdit = onBeginEdit,
                                 onUpdateEdit = onUpdateEdit,
                                 onCancelEdit = onCancelEdit,
@@ -507,7 +524,7 @@ private fun PostDetailContent(
                             } else {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     if (social.commentsError != null) Text(text = stringResource(Res.string.social_comment_error), variant = TextVariant.Small)
-                                    Button(text = stringResource(Res.string.social_comment_load_more), onClick = onLoadMoreComments, size = ButtonSize.Lg)
+                                    Button(text = stringResource(Res.string.social_comment_load_more), onClick = onLoadMoreComments, enabled = !social.commentBusy, size = ButtonSize.Lg)
                                 }
                             }
                         }
@@ -600,6 +617,7 @@ private fun PostDetailMeta(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PostEngagementBar(
     state: PostSocialUiState,
@@ -616,31 +634,36 @@ private fun PostEngagementBar(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(top = 28.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            PostMetaAction(
-                imageVector = RikkaIcons.Heart,
-                label = stringResource(Res.string.social_like),
-                count = post.likeCount,
-                selected = post.liked,
-                enabled = !state.likeBusy,
-                onClick = if (state.signedIn) onToggleLike else onSignIn,
-            )
-            PostMetaAction(
-                imageVector = RikkaIcons.MessageCircle,
-                label = stringResource(Res.string.timeline_comment_action),
-                count = post.commentCount,
-                selected = null,
-                enabled = true,
-                onClick = onOpenResponses,
-            )
-            PostMetaAction(
-                imageVector = RikkaIcons.Recommend,
-                label = stringResource(Res.string.social_recommend),
-                count = post.recommendCount,
-                selected = post.recommended,
-                enabled = !state.recommendationBusy,
-                onClick = if (state.signedIn) onToggleRecommendation else onSignIn,
-            )
-            Spacer(modifier = Modifier.weight(1f))
+            FlowRow(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
+                PostMetaAction(
+                    imageVector = RikkaIcons.Heart,
+                    label = stringResource(Res.string.social_like),
+                    count = post.likeCount,
+                    selected = post.liked,
+                    enabled = !state.likeBusy,
+                    onClick = if (state.signedIn) onToggleLike else onSignIn,
+                )
+                PostMetaAction(
+                    imageVector = RikkaIcons.MessageCircle,
+                    label = stringResource(Res.string.timeline_comment_action),
+                    count = post.commentCount,
+                    selected = null,
+                    enabled = true,
+                    onClick = onOpenResponses,
+                )
+                PostMetaAction(
+                    imageVector = RikkaIcons.Recommend,
+                    label = stringResource(Res.string.social_recommend),
+                    count = post.recommendCount,
+                    selected = post.recommended,
+                    enabled = !state.recommendationBusy,
+                    onClick = if (state.signedIn) onToggleRecommendation else onSignIn,
+                )
+            }
             PostMetaAction(
                 imageVector = RikkaIcons.Bookmark,
                 label = stringResource(if (state.saved) Res.string.social_saved else Res.string.social_save),
@@ -651,22 +674,50 @@ private fun PostEngagementBar(
                 onClick = if (state.signedIn) onToggleReadLater else onSignIn,
             )
         }
-        if (state.likeError != null || state.recommendationError != null || state.readLaterError != null) {
-            Row(modifier = Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(Res.string.social_action_error),
-                    variant = TextVariant.Small,
-                    color = RikkaTheme.colors.destructive,
-                )
-                if (state.readLaterError != null && state.signedIn) {
-                    Button(
-                        text = stringResource(Res.string.profile_retry),
-                        onClick = onRetryReadLater,
-                        size = ButtonSize.Sm,
-                        variant = ButtonVariant.Ghost,
-                    )
-                }
-            }
+        state.likeError?.let { error ->
+            SocialActionFeedback(error, Res.string.social_like_error, if (error == SocialActionError.Unauthorized || !state.signedIn) onSignIn else onToggleLike, Modifier.padding(horizontal = 16.dp))
+        }
+        state.recommendationError?.let { error ->
+            SocialActionFeedback(error, Res.string.social_recommend_error, if (error == SocialActionError.Unauthorized || !state.signedIn) onSignIn else onToggleRecommendation, Modifier.padding(horizontal = 16.dp))
+        }
+        state.readLaterError?.let { error ->
+            SocialActionFeedback(error, Res.string.social_save_error, if (error == SocialActionError.Unauthorized || !state.signedIn) onSignIn else onRetryReadLater, Modifier.padding(horizontal = 16.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SocialActionFeedback(
+    error: SocialActionError,
+    fallback: StringResource,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FlowRow(
+        modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(
+                when (error) {
+                    SocialActionError.Offline -> Res.string.social_error_offline
+                    SocialActionError.Unauthorized -> Res.string.social_error_unauthorized
+                    SocialActionError.Forbidden -> Res.string.social_error_forbidden
+                    SocialActionError.Request -> fallback
+                },
+            ),
+            variant = TextVariant.Small,
+            color = OmicronTheme.colors.destructive,
+        )
+        if (error != SocialActionError.Forbidden) {
+            Button(
+                text = stringResource(if (error == SocialActionError.Unauthorized) Res.string.auth_sign_in else Res.string.profile_retry),
+                onClick = onRetry,
+                size = ButtonSize.Sm,
+                variant = ButtonVariant.Ghost,
+            )
         }
     }
 }
@@ -684,7 +735,7 @@ private fun SectionDivider() {
     }
 }
 
-private const val HEADER_BODY_ENGAGEMENT_ITEMS = 3
+private const val RESPONSE_SECTION_PRECEDING_ITEMS = 4
 
 @Composable
 private fun CommentComposer(
@@ -694,6 +745,10 @@ private fun CommentComposer(
     onReplyTo: (String?) -> Unit,
     onSubmit: () -> Unit,
 ) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(state.replyingTo) {
+        if (state.replyingTo != null && state.signedIn) focusRequester.requestFocus()
+    }
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -707,11 +762,18 @@ private fun CommentComposer(
             )
         } else {
             if (state.replyingTo != null) {
+                val target = state.comments.firstNotNullOfOrNull { comment ->
+                    if (comment.id == state.replyingTo) comment else comment.replies.firstOrNull { it.id == state.replyingTo }
+                }
+                if (target != null) {
+                    Text(text = stringResource(Res.string.social_comment_replying_to, target.author.displayName), variant = TextVariant.Small)
+                }
                 Button(
                     text = stringResource(Res.string.social_comment_cancel_reply),
                     onClick = { onReplyTo(null) },
                     size = ButtonSize.Sm,
                     variant = ButtonVariant.Ghost,
+                    enabled = !state.commentBusy,
                 )
             }
             Input(
@@ -720,6 +782,8 @@ private fun CommentComposer(
                 placeholder = stringResource(if (state.replyingTo == null) Res.string.social_comment_placeholder else Res.string.social_comment_reply_placeholder),
                 label = stringResource(if (state.replyingTo == null) Res.string.social_comment_placeholder else Res.string.social_comment_reply_placeholder),
                 enabled = !state.commentBusy,
+                modifier = Modifier.heightIn(min = 80.dp).focusRequester(focusRequester),
+                animation = InputAnimation.Color,
                 singleLine = false,
                 maxLength = 2000,
             )
@@ -727,7 +791,7 @@ private fun CommentComposer(
                 Button(
                     text = stringResource(Res.string.social_comment_post),
                     onClick = onSubmit,
-                    enabled = state.draft.isNotBlank() && !state.commentBusy,
+                    enabled = state.draft.isNotBlank() && !state.commentBusy && !state.commentsLoading,
                     loading = state.commentBusy,
                     size = ButtonSize.Lg,
                 )
@@ -753,65 +817,140 @@ private fun CommentItem(
     onCancelDelete: () -> Unit,
     onConfirmDelete: () -> Unit,
 ) {
-    Column(
+    val pending = comment.id == state.pendingCommentId
+    Row(
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = comment.author.displayName,
-            variant = TextVariant.Small,
-            color = OmicronTheme.colors.foregroundAlt,
-            modifier = Modifier.clickable(role = Role.Button) { onOpenProfile(comment.author.username) },
-        )
-        if (state.editingCommentId == comment.id) {
-            Input(
-                value = state.editDraft,
-                onValueChange = onUpdateEdit,
-                placeholder = stringResource(Res.string.social_comment_placeholder),
-                label = stringResource(Res.string.social_comment_placeholder),
-                enabled = !state.editBusy,
-                singleLine = false,
-                maxLength = 2000,
+        Box(
+            modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).clickable(role = Role.Button) { onOpenProfile(comment.author.username) },
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            AuthorAvatar(comment.author.displayName, comment.author.avatarUrl, if (comment.parentId == null) 36.dp else 28.dp)
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = comment.author.displayName,
+                variant = TextVariant.Small,
+                color = OmicronTheme.colors.foreground,
+                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium),
+                modifier = Modifier.clickable(role = Role.Button) { onOpenProfile(comment.author.username) },
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(text = stringResource(Res.string.social_comment_save), onClick = onSaveEdit, enabled = !state.editBusy, loading = state.editBusy, size = ButtonSize.Sm)
-                Button(text = stringResource(Res.string.social_comment_cancel), onClick = onCancelEdit, enabled = !state.editBusy, size = ButtonSize.Sm, variant = ButtonVariant.Outline)
-            }
-        } else if (state.deleteConfirmationId == comment.id) {
-            Text(text = stringResource(Res.string.social_comment_delete_confirm), variant = TextVariant.Small)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    text = stringResource(Res.string.social_comment_delete),
-                    onClick = onConfirmDelete,
-                    size = ButtonSize.Sm,
-                    variant = ButtonVariant.Destructive,
-                )
-                Button(
-                    text = stringResource(Res.string.social_comment_cancel),
-                    onClick = onCancelDelete,
-                    size = ButtonSize.Sm,
-                    variant = ButtonVariant.Outline,
-                )
-            }
-        } else {
-            Text(text = comment.content, variant = TextVariant.P)
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Button(
-                    text = "${stringResource(if (comment.liked) Res.string.social_comment_unlike else Res.string.social_comment_like)} · ${comment.likeCount}",
-                    onClick = if (state.signedIn) ({ onLike(comment.id) }) else onSignIn,
-                    enabled = comment.id !in state.commentBusyIds,
-                    size = ButtonSize.Sm,
-                    variant = if (comment.liked) ButtonVariant.Secondary else ButtonVariant.Ghost,
-                    leadingIcon = { Icon(imageVector = RikkaIcons.Heart, contentDescription = null) },
-                )
-                Button(text = stringResource(Res.string.social_comment_reply), onClick = if (state.signedIn) ({ onReply(comment.id) }) else onSignIn, size = ButtonSize.Sm, variant = ButtonVariant.Ghost)
-                if (state.currentUser?.id == comment.author.id) {
-                    Button(text = stringResource(Res.string.social_comment_edit), onClick = { onBeginEdit(comment) }, size = ButtonSize.Sm, variant = ButtonVariant.Ghost)
-                    Button(text = stringResource(Res.string.social_comment_delete), onClick = { onRequestDelete(comment.id) }, size = ButtonSize.Sm, variant = ButtonVariant.Ghost)
+            Text(
+                text = if (pending) stringResource(Res.string.social_comment_sending) else displayDate(comment.createdAt),
+                variant = TextVariant.Small,
+                color = OmicronTheme.colors.mutedForeground,
+                style = TextStyle(fontSize = 12.sp),
+            )
+            if (state.editingCommentId == comment.id) {
+                CommentEditor(state, onUpdateEdit, onSaveEdit, onCancelEdit, onSignIn)
+            } else if (state.deleteConfirmationId == comment.id) {
+                CommentDeleteConfirmation(onConfirmDelete, onCancelDelete)
+            } else {
+                Text(text = comment.content, variant = TextVariant.P, style = TextStyle(fontSize = 14.sp, lineHeight = 20.sp))
+                if (!pending) {
+                    CommentActions(comment, state, onSignIn, onLike, onReply, onBeginEdit, onRequestDelete)
                 }
+            }
+            state.commentLikeErrors[comment.id]?.let { error ->
+                SocialActionFeedback(error, Res.string.social_comment_like_error, if (error == SocialActionError.Unauthorized) onSignIn else ({ onLike(comment.id) }))
+            }
+            state.deleteErrors[comment.id]?.let { error ->
+                SocialActionFeedback(error, Res.string.social_comment_delete_error, if (error == SocialActionError.Unauthorized) onSignIn else ({ onRequestDelete(comment.id) }))
             }
         }
     }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CommentEditor(
+    state: PostSocialUiState,
+    onUpdate: (String) -> Unit,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
+    onSignIn: () -> Unit,
+) {
+    Input(
+        value = state.editDraft,
+        onValueChange = onUpdate,
+        placeholder = stringResource(Res.string.social_comment_edit_placeholder),
+        label = stringResource(Res.string.social_comment_edit_placeholder),
+        enabled = !state.editBusy,
+        animation = InputAnimation.Color,
+        singleLine = false,
+        maxLength = 2000,
+    )
+    state.editError?.let { error ->
+        SocialActionFeedback(error, Res.string.social_comment_edit_error, if (error == SocialActionError.Unauthorized) onSignIn else onSave)
+    }
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        CommentActionButton(Res.string.social_comment_save, onSave, enabled = !state.editBusy && state.editDraft.isNotBlank(), loading = state.editBusy, variant = ButtonVariant.Default)
+        CommentActionButton(Res.string.social_comment_cancel, onCancel, enabled = !state.editBusy, variant = ButtonVariant.Outline)
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CommentDeleteConfirmation(onConfirm: () -> Unit, onCancel: () -> Unit) {
+    Text(text = stringResource(Res.string.social_comment_delete_confirm), variant = TextVariant.Small)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        CommentActionButton(Res.string.social_comment_delete, onConfirm, variant = ButtonVariant.Destructive)
+        CommentActionButton(Res.string.social_comment_cancel, onCancel, variant = ButtonVariant.Outline)
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CommentActions(
+    comment: Comment,
+    state: PostSocialUiState,
+    onSignIn: () -> Unit,
+    onLike: (String) -> Unit,
+    onReply: (String?) -> Unit,
+    onEdit: (Comment) -> Unit,
+    onDelete: (String) -> Unit,
+) {
+    val action = stringResource(if (comment.liked) Res.string.social_comment_unlike else Res.string.social_comment_like)
+    val label = if (comment.likeCount == 1) {
+        stringResource(Res.string.social_comment_like_count_one, action)
+    } else {
+        stringResource(Res.string.social_comment_like_count, action, comment.likeCount)
+    }
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+        PostMetaAction(
+            imageVector = RikkaIcons.Heart,
+            label = label,
+            count = comment.likeCount.takeIf { it > 0 },
+            selected = comment.liked,
+            enabled = comment.id !in state.commentBusyIds,
+            onClick = if (state.signedIn) ({ onLike(comment.id) }) else onSignIn,
+        )
+        CommentActionButton(Res.string.social_comment_reply, if (state.signedIn) ({ onReply(comment.id) }) else onSignIn, enabled = !state.commentBusy)
+        if (state.currentUser?.id == comment.author.id) {
+            CommentActionButton(Res.string.social_comment_edit, { onEdit(comment) }, enabled = !state.editBusy)
+            CommentActionButton(Res.string.social_comment_delete, { onDelete(comment.id) }, enabled = !state.editBusy && !state.commentBusy)
+        }
+    }
+}
+
+@Composable
+private fun CommentActionButton(
+    text: StringResource,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    loading: Boolean = false,
+    variant: ButtonVariant = ButtonVariant.Ghost,
+) {
+    Button(
+        text = stringResource(text),
+        onClick = onClick,
+        modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp),
+        enabled = enabled,
+        loading = loading,
+        size = ButtonSize.Sm,
+        variant = variant,
+    )
 }
 
 @Composable

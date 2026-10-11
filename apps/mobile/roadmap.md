@@ -63,6 +63,8 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 - Local and supported remote profiles expose their confirmed post, recommendation, follower, and following surfaces.
 - Session loss, forbidden actions, and offline mutations have explicit recovery states.
 
+**Social interaction reliability:** Done. Social requests declare the normalized destination origin so bodyless likes, recommendations, and comment likes pass the public SvelteKit gateway (ADR-0023). Concurrent failures roll back only the affected fields. Response drafts and reply targets survive failed submissions and target changes; pending comments cannot be liked, replied to, edited, or deleted. Initial loading cannot overwrite a new response, pagination keeps unique thread keys, and Read later retries repeat failed saves. Errors stay beside the affected action with offline, forbidden, expired-session, and request feedback. Comments use avatar/date metadata, compact selected-state like controls, wrapping 48dp actions, and a focused reply composer. Debug build/lint, all unit tests, and Android test APK assembly pass; lint still emits Kotlin-metadata compatibility diagnostics. Eight new social journeys and the 16 existing reader/card journeys pass on ALT-LX1 Android 14. Dark/light and 320dp/1.5-font-scale fixtures were visually reviewed. The public gateway's 403 was reproduced with an unauthenticated nonexistent-post probe and became the expected backend 401 with the correct origin. Signed-in device mutation journeys use fake Ktor responses.
+
 ## R4: Discovery
 
 **Status:** Done

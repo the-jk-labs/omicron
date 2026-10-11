@@ -14,10 +14,12 @@ class FakeSocialApi : SocialApi {
     var relationHandler: (suspend (Boolean) -> RelationActorsDto)? = null
     val relationRequests = mutableListOf<Pair<String, Boolean>>()
     var postLikeFailure: Throwable? = null
+    var postLikeHandler: (suspend (Boolean) -> LikeStateDto)? = null
     var recommendationFailure: Throwable? = null
     var commentsFailure: Throwable? = null
     var commentFailure: Throwable? = null
     var commentLikeFailure: Throwable? = null
+    var editCommentHandler: (suspend (String, String) -> EditedCommentDto)? = null
     var deleteCommentFailure: Throwable? = null
     var readLaterMutationFailure: Throwable? = null
     var profileFailure: Throwable? = null
@@ -37,6 +39,7 @@ class FakeSocialApi : SocialApi {
     var profilePostCursors = mutableListOf<Pair<Boolean, String?>>()
 
     override suspend fun postLike(origin: String, postId: String, liked: Boolean, accessToken: String): LikeStateDto {
+        postLikeHandler?.let { return it(liked) }
         postLikeFailure?.let { throw it }
         postLikeTokens += accessToken
         likeCount += if (liked) 1 else -1
@@ -89,7 +92,7 @@ class FakeSocialApi : SocialApi {
         commentId: String,
         content: String,
         accessToken: String,
-    ): EditedCommentDto = EditedCommentDto(EditedCommentContentDto(commentId, content))
+    ): EditedCommentDto = editCommentHandler?.invoke(commentId, content) ?: EditedCommentDto(EditedCommentContentDto(commentId, content))
 
     override suspend fun deleteComment(origin: String, postId: String, commentId: String, accessToken: String) {
         deleteCommentFailure?.let { throw it }
