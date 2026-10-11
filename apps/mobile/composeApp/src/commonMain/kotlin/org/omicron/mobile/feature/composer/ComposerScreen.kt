@@ -474,7 +474,7 @@ private fun ComposerActions(
             state.coverUpload == ImageUploadState.Uploading
     FlowRow(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Button(
