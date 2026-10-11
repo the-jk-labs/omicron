@@ -1,6 +1,5 @@
 package org.omicron.mobile.feature.profile
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,15 +31,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.SessionExpiredNotice
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonVariant
-import org.omicron.mobile.core.designsystem.rikkaui.button.IconButton
-import org.omicron.mobile.core.designsystem.rikkaui.icon.RikkaIcons
 import org.omicron.mobile.core.designsystem.rikkaui.spinner.Spinner
 import org.omicron.mobile.core.designsystem.rikkaui.spinner.SpinnerSize
 import org.omicron.mobile.core.designsystem.rikkaui.text.Text
@@ -51,12 +47,10 @@ import org.omicron.mobile.domain.model.Profile
 import org.omicron.mobile.domain.model.ProfileFollowState
 import org.omicron.mobile.domain.model.RelationActor
 import org.omicron.mobile.resources.Res
-import org.omicron.mobile.resources.app_name
 import org.omicron.mobile.resources.omicron_logo
 import org.omicron.mobile.resources.profile_about
 import org.omicron.mobile.resources.manage_open
 import org.omicron.mobile.resources.profile_articles
-import org.omicron.mobile.resources.profile_back
 import org.omicron.mobile.resources.profile_block
 import org.omicron.mobile.resources.profile_content_error
 import org.omicron.mobile.resources.profile_empty_articles
@@ -134,23 +128,6 @@ private fun ProfileScreen(
     Column(
         modifier = Modifier.fillMaxSize().background(OmicronTheme.colors.background).safeDrawingPadding(),
     ) {
-        Row(
-            modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                icon = RikkaIcons.ArrowLeft,
-                contentDescription = stringResource(Res.string.profile_back),
-                onClick = onBack,
-                size = org.omicron.mobile.core.designsystem.rikkaui.button.IconButtonSize.Default,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Image(painter = painterResource(Res.drawable.omicron_logo), contentDescription = null, modifier = Modifier.size(24.dp))
-                Text(text = stringResource(Res.string.app_name), variant = TextVariant.Small)
-            }
-            Box(modifier = Modifier.size(40.dp))
-        }
         if (state.sessionExpired) {
             SessionExpiredNotice(
                 message = stringResource(Res.string.timeline_session_expired),

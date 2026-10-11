@@ -148,7 +148,7 @@ fun OmicronApp(
         Column(
             modifier = Modifier.fillMaxSize().background(OmicronTheme.colors.background).safeDrawingPadding(),
         ) {
-            if (!standalone) {
+            if (backStackEntry.routeMatches<TimelineDestination>()) {
                 MobileTopBar(
                     appName = settingsState.instance?.name.orEmpty(),
                     user = session?.user,
