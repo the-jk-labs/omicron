@@ -7,15 +7,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -124,6 +127,7 @@ class ProfileConnectionsFollowJourneyTest {
         waitForText("Not following anyone yet.")
         rule.onNodeWithText("0 following").assertIsSelected()
         assertEquals(2, mutations.get())
+        assertEquals(0, checks.get())
     }
 
     @Test
@@ -206,6 +210,72 @@ class ProfileConnectionsFollowJourneyTest {
         assertEquals(0, mutations.get())
     }
 
+    @Test
+    fun followersResolveOffscreenActionsBeforeRapidScrolling() {
+        assertScrollingKeepsResolvedActions(ProfileConnectionsTab.Followers)
+    }
+
+    @Test
+    fun followingResolvesOffscreenActionsBeforeRapidScrolling() {
+        assertScrollingKeepsResolvedActions(ProfileConnectionsTab.Following)
+    }
+
+    @Test
+    fun ownFollowingRemoteRowsUseMembershipAndConfirmedFederatedUnfollow() {
+        followState.set("following")
+        show(tab = ProfileConnectionsTab.Following, remote = true)
+        waitForAction("Following @grace@writers.example")
+        assertEquals(0, checks.get())
+        rule.onNodeWithContentDescription("Following @grace@writers.example").performClick()
+        rule.onNodeWithText("Unfollow @grace@writers.example?").assertIsDisplayed()
+        assertEquals(0, mutations.get())
+        rule.onNodeWithText("Unfollow").performClick()
+        waitForText("Not following anyone yet.")
+        assertEquals(0, checks.get())
+        assertEquals(listOf("/api/remote/users/grace@writers.example/follow"), mutationPaths)
+    }
+
+    @Test
+    fun scrollingDoesNotRestartAFailedBackgroundCheckBeforeExplicitRetry() {
+        followState.set("following")
+        failCheck.set(true)
+        show(memberCount = 24)
+        waitForAction("Try again @grace")
+        assertEquals(24, checks.get())
+
+        rule.onNode(hasScrollToIndexAction()).performScrollToIndex(23)
+        rule.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
+        rule.onNodeWithContentDescription("Try again @grace").assertIsDisplayed()
+        assertEquals(24, checks.get())
+
+        rule.onNodeWithContentDescription("Try again @grace").performClick()
+        waitForAction("Following @grace")
+        assertEquals(25, checks.get())
+        assertEquals(0, mutations.get())
+    }
+
+    private fun assertScrollingKeepsResolvedActions(tab: ProfileConnectionsTab) {
+        followState.set("following")
+        show(tab = tab, memberCount = 24, dark = tab == ProfileConnectionsTab.Followers)
+        waitForAction("Following @grace")
+        rule.waitUntil(5_000) { viewModel?.uiState?.value?.memberFollows?.size == 24 }
+        val expectedChecks = if (tab == ProfileConnectionsTab.Following) 0 else 24
+        assertEquals(expectedChecks, checks.get())
+
+        listOf(23, 0, 12, 23, 0).forEach { index ->
+            rule.onNode(hasScrollToIndexAction()).performScrollToIndex(index)
+            val username = if (index == 0) "grace" else "grace-${index + 1}"
+            rule.onNodeWithContentDescription("Following @$username").assertIsDisplayed()
+            rule.onAllNodesWithText("Checking").assertCountEquals(0)
+            assertEquals(expectedChecks, checks.get())
+        }
+
+        rule.onNodeWithText(if (tab == ProfileConnectionsTab.Followers) "24 following" else "24 followers").performClick()
+        waitForAction("Following @grace")
+        assertEquals(expectedChecks, checks.get())
+        assertEquals(0, mutations.get())
+    }
+
     private fun waitForAction(description: String) {
         rule.waitUntil(5_000) { rule.onAllNodesWithContentDescription(description).fetchSemanticsNodes().isNotEmpty() }
         rule.waitUntil(5_000) { viewModel?.uiState?.value?.memberFollows?.values?.none { it.busy || it.loading } != false }
@@ -223,6 +293,7 @@ class ProfileConnectionsFollowJourneyTest {
         privateAccount: Boolean = false,
         remote: Boolean = false,
         includeSelf: Boolean = false,
+        memberCount: Int = 1,
         dark: Boolean = true,
         width: Int = 360,
         fontScale: Float = 1f,
@@ -231,6 +302,7 @@ class ProfileConnectionsFollowJourneyTest {
         val json = Json { ignoreUnknownKeys = true }
         val username = if (remote) "grace@writers.example" else "grace"
         val actor = RelationActorDto("grace", username, "Grace Hopper", remote = remote)
+        val actors = listOf(actor) + (2..memberCount).map { RelationActorDto("grace-$it", "grace-$it", "Grace $it") }
         val engine = MockEngine { request ->
             val path = request.url.encodedPath
             val response = when {
@@ -244,15 +316,15 @@ class ProfileConnectionsFollowJourneyTest {
                     if (remote) "{\"ok\":true}" else "{\"ok\":true,\"state\":\"$next\"}"
                 }
                 path == "/api/users/ada/followers" || path == "/api/users/ada/following" -> {
-                    val members = if (path.endsWith("/following") && followState.get() != "following") emptyList() else listOf(actor)
+                    val members = if (path.endsWith("/following") && followState.get() != "following") emptyList() else actors
                     json.encodeToString(RelationActorsDto(if (includeSelf) listOf(RelationActorDto("viewer", "ada", "Ada")) + members else members))
                 }
-                path == "/api/users/ada" -> json.encodeToString(LocalProfileDto(LocalProfileUserDto("viewer", "ada", "Ada"), FollowCountsDto(1, if (followState.get() == "following") 1 else 0)))
-                path == "/api/users/grace" || path.startsWith("/api/remote/users/") -> {
+                path == "/api/users/ada" -> json.encodeToString(LocalProfileDto(LocalProfileUserDto("viewer", "ada", "Ada"), FollowCountsDto(memberCount, if (followState.get() == "following") memberCount else 0)))
+                path == "/api/users/grace" || path.startsWith("/api/users/grace-") || path.startsWith("/api/remote/users/") -> {
                     checks.incrementAndGet()
                     if (failCheck.getAndSet(false)) throw IOException("offline")
                     if (remote) json.encodeToString(RemoteProfileDto(RemoteProfileUserDto("grace", username, "Grace Hopper", host = "writers.example", apId = "https://writers.example/@grace"), FollowCountsDto(), isFollowing = followState.get() == "following"))
-                    else json.encodeToString(LocalProfileDto(LocalProfileUserDto("grace", "grace", "Grace Hopper", isPrivate = privateAccount), FollowCountsDto(), followState = followState.get(), isFollowing = followState.get() == "following"))
+                    else json.encodeToString(LocalProfileDto(LocalProfileUserDto(path.substringAfterLast('/'), path.substringAfterLast('/'), "Grace Hopper", isPrivate = privateAccount), FollowCountsDto(), followState = followState.get(), isFollowing = followState.get() == "following"))
                 }
                 else -> error("Unexpected API request: $path")
             }

@@ -10,6 +10,8 @@ The dedicated followers/following screen needs direct follow controls. Its membe
 
 Resolve the signed-in viewer's relationship through existing local or remote profile reads when a row becomes visible, with at most four concurrent checks. Hold the resulting Follow/Following/Requested state in memory per actor handle and session identity, shared across both list tabs. Failed checks expose retry instead of guessing the relationship. Guests receive a Follow action leading to sign-in, and the viewer's own row has no action.
 
+ADR-0022 supersedes visibility-triggered checks with direct relationship reuse from the viewer's own Following list and background resolution for other unchecked members of each loaded tab. The relationship, mutation, confirmation, and session boundaries in this record remain applicable.
+
 Serialize connections state transitions on the Compose main dispatcher while API calls remain suspending. Keep request jobs scoped to the destination and cancel them when session identity changes or the destination closes.
 
 Use existing follow mutation routes. Follow starts immediately with optimistic state, using private-account metadata to show Requested and the server response as authoritative. Following and Requested open a RikkaUI alert dialog; only its explicit Unfollow or Cancel request action sends the removal request. Cancel or system back closes the confirmation without changing the relationship. Busy actions prevent duplicate requests, and failures roll back state with visible retry feedback.

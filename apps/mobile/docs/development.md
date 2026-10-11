@@ -20,11 +20,20 @@ Install a debug build on a connected device when applicable:
 ./gradlew :composeApp:installDebug
 ```
 
-Run connected Compose UI tests on a device when a critical journey changes:
+Run connected Compose UI tests on a disposable device or emulator when a critical journey changes:
 
 ```sh
 ./gradlew :composeApp:connectedDebugAndroidTest
 ```
+
+The connected Gradle task uninstalls `org.omicron.mobile` and its test package after execution, removing local app data. Do not run it on a phone with an installation that must be preserved. On those phones, install the app and test APK without uninstalling either package, then invoke the Android instrumentation runner directly. An isolated UI-test application ID is tracked as an R6 follow-up.
+
+```sh
+./gradlew :composeApp:installDebug :composeApp:installDebugAndroidTest
+adb shell am instrument -w org.omicron.mobile.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+Add `-e class org.omicron.mobile.feature.profile.ProfileConnectionsFollowJourneyTest` before the runner component to run a focused class. Direct instrumentation keeps both packages installed and preserves app data.
 
 The app package is `org.omicron.mobile`.
 
