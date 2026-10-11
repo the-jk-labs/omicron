@@ -169,6 +169,12 @@ class ComposerLayoutJourneyTest {
         assertTrue(
             body.fetchSemanticsNode().boundsInRoot.width >= rule.density.run { 288.dp.toPx() },
         )
+        val publishingOptions = rule.onNodeWithContentDescription("Publishing options").fetchSemanticsNode().boundsInRoot
+        assertTrue(
+            "Publishing actions should align to the right edge: $publishingOptions",
+            publishingOptions.right >= rule.density.run { 288.dp.toPx() },
+        )
+        capture("composer-actions-right.png")
         rule.onNodeWithContentDescription("Publishing options").performClick()
         rule.onNodeWithText("Schedule…").performClick()
         assertEquals(listOf("schedule"), events)
