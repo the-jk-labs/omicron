@@ -389,6 +389,7 @@ fun OmicronApp(
                             onChangeInstance = { navController.popBackStack(ConnectDestination, false) },
                             onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
                             onOpenProfile = { username -> navController.navigate(ProfileDestination(username)) },
+                            onOpenTag = { slug -> navController.navigate(TagDestination(slug)) },
                         )
                     }
                     composable<ProfileDestination> { backStackEntry ->

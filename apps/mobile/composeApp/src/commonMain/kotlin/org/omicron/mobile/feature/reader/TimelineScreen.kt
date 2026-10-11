@@ -21,30 +21,22 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.disabled
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -450,7 +442,7 @@ private fun PostCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AuthorAvatar(post = post)
+            AuthorAvatar(displayName = post.author.displayName, avatarUrl = post.author.avatarUrl, size = 24.dp)
             Text(
                 text = post.author.displayName,
                 variant = TextVariant.P,
@@ -504,29 +496,7 @@ private fun PostCard(
             if (post.bannerUrl != null) BannerThumbnail(post.bannerUrl)
         }
         if (post.tags.isNotEmpty()) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                post.tags.forEach { tag ->
-                    Box(
-                        modifier = Modifier.heightIn(min = 48.dp).clickable(role = Role.Button) { onOpenTag(tag.slug) },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = "#${tag.name}",
-                            variant = TextVariant.Small,
-                            color = OmicronTheme.colors.foregroundAlt,
-                            style = TextStyle(fontSize = 12.sp, lineHeight = 16.sp),
-                            modifier =
-                                Modifier
-                                    .clip(RikkaTheme.shapes.full)
-                                    .background(RikkaTheme.colors.muted)
-                                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                        )
-                    }
-                }
-            }
+            TagPills(tags = post.tags, onOpenTag = onOpenTag)
         }
         PostMetadata(
             post = post,
@@ -546,34 +516,6 @@ private fun PostCard(
             onToggleRecommendation = onToggleRecommendation,
             onToggleReadLater = onToggleReadLater,
         )
-    }
-}
-
-@Composable
-private fun AuthorAvatar(post: Post) {
-    val shape = RikkaTheme.shapes.full
-    Box(
-        modifier =
-            Modifier
-                .size(24.dp)
-                .clip(shape)
-                .background(RikkaTheme.colors.muted)
-                .border(1.dp, OmicronTheme.colors.borderCard, shape),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = post.author.displayName.trim().firstOrNull()?.uppercase() ?: "?",
-            variant = TextVariant.Small,
-            color = OmicronTheme.colors.mutedForeground,
-        )
-        post.author.avatarUrl?.let { avatarUrl ->
-            AsyncImage(
-                model = avatarUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(24.dp).clip(shape),
-            )
-        }
     }
 }
 
@@ -623,12 +565,12 @@ private fun PostMetadata(
             color = metadataColor,
             maxLines = 1,
         )
-        MetadataItem(
+        MetaLabel(
             icon = RikkaIcons.Clock,
             label = stringResource(Res.string.timeline_reading_time, preview.readingMinutes),
             tint = metadataColor,
         )
-        TimelineMetaAction(
+        PostMetaAction(
             imageVector = RikkaIcons.Heart,
             label = stringResource(Res.string.timeline_like_action),
             count = post.likeCount,
@@ -636,7 +578,7 @@ private fun PostMetadata(
             enabled = !busy,
             onClick = if (signedIn) onToggleLike else onSignIn,
         )
-        TimelineMetaAction(
+        PostMetaAction(
             imageVector = RikkaIcons.MessageCircle,
             label = stringResource(Res.string.timeline_comment_action),
             count = post.commentCount,
@@ -648,7 +590,7 @@ private fun PostMetadata(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TimelineMetaAction(
+            PostMetaAction(
                 imageVector = RikkaIcons.Repeat,
                 label = stringResource(Res.string.timeline_recommend_action),
                 count = post.recommendCount,
@@ -656,7 +598,7 @@ private fun PostMetadata(
                 enabled = !busy,
                 onClick = if (signedIn) onToggleRecommendation else onSignIn,
             )
-            TimelineMetaAction(
+            PostMetaAction(
                 imageVector = RikkaIcons.Bookmark,
                 label = stringResource(if (saved) Res.string.timeline_saved_action else Res.string.timeline_save_action),
                 selected = saved,
@@ -670,64 +612,6 @@ private fun PostMetadata(
             text = stringResource(Res.string.timeline_action_error),
             variant = TextVariant.Small,
             color = OmicronTheme.colors.destructive,
-        )
-    }
-}
-
-@Composable
-private fun TimelineMetaAction(
-    imageVector: ImageVector,
-    label: String,
-    count: Int? = null,
-    selected: Boolean?,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val tint = if (selected == true) OmicronTheme.colors.foreground else OmicronTheme.colors.mutedForeground
-    val actionModifier =
-        if (selected == null) {
-            Modifier.semantics(mergeDescendants = true) {
-                role = Role.Button
-                contentDescription = label
-                if (!enabled) disabled()
-            }.clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-        } else {
-            Modifier.semantics(mergeDescendants = true) {
-                contentDescription = label
-            }.selectable(selected = selected, enabled = enabled, role = Role.Button, onClick = onClick)
-        }
-    Row(
-        modifier =
-            Modifier
-                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                .clip(RikkaTheme.shapes.full)
-                .alpha(if (enabled) 1f else 0.38f)
-                .then(actionModifier)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(imageVector = imageVector, contentDescription = null, tint = tint, size = IconSize.Xs)
-        count?.let { Text(text = it.toString(), variant = TextVariant.Small, color = tint, maxLines = 1) }
-    }
-}
-
-@Composable
-private fun MetadataItem(
-    icon: ImageVector,
-    label: String,
-    tint: Color,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(imageVector = icon, contentDescription = null, tint = tint, size = IconSize.Xs)
-        Text(
-            text = label,
-            variant = TextVariant.Small,
-            color = tint,
-            maxLines = 1,
         )
     }
 }

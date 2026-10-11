@@ -250,6 +250,7 @@ class R2JourneyTest {
             }
         }
         composeTestRule.waitForText("Title post-1")
+        composeTestRule.onNodeWithText("Jan 1, 2026").assertIsDisplayed()
         composeTestRule.waitForText("Section")
         composeTestRule.waitForText("Hello")
         composeTestRule.waitForText("Ada")

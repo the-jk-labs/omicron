@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.heading
@@ -222,12 +223,18 @@ fun CoverImage(
 ) {
     var failed by remember(url) { mutableStateOf(false) }
     if (failed) return
+    val shape = RikkaTheme.shapes.lg
     AsyncImage(
         model = url,
         contentDescription = null,
         contentScale = ContentScale.Crop,
         onError = { failed = true },
-        modifier = modifier.fillMaxWidth().aspectRatio(16f / 9f),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(shape)
+                .border(1.dp, RikkaTheme.colors.border, shape),
     )
 }
 

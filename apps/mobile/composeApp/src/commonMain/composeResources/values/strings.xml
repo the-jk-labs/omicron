@@ -109,7 +109,6 @@
     <string name="navigation_change_instance">Change instance</string>
     <string name="timeline_session_expired">Your session expired. Sign in again to use your personalized feed and social actions.</string>
     <string name="timeline_untitled">Untitled post</string>
-    <string name="timeline_post_meta">%1$d likes · %2$d comments · %3$d recommends</string>
     <string name="timeline_like_action">Like</string>
     <string name="timeline_recommend_action">Recommend</string>
     <string name="timeline_save_action">Save for later</string>
@@ -159,9 +158,7 @@
     <string name="profile_relation_error_mute">Could not update mute. Try again.</string>
     <string name="profile_relation_error_block">Could not update block. Try again.</string>
     <string name="social_like">Like</string>
-    <string name="social_unlike">Unlike</string>
     <string name="social_recommend">Recommend</string>
-    <string name="social_unrecommend">Undo recommend</string>
     <string name="social_save">Save for later</string>
     <string name="social_saved">Saved for later</string>
     <string name="social_sign_in_action">Sign in to interact</string>
