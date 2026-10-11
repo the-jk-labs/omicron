@@ -74,8 +74,7 @@ class MobileAppChromeJourneyTest {
     }
 
     @Test
-    fun accountMenuOpensAndRoutesToPostManagement() {
-        var action: AccountAction? = null
+    fun signedInTopBarHasNoAccountMenu() {
         composeTestRule.setContent {
             OmicronTheme {
                 MobileTopBar(
@@ -84,15 +83,14 @@ class MobileAppChromeJourneyTest {
                     unreadCount = 2,
                     onSearch = {},
                     onNotifications = {},
-                    onAccountAction = { action = it },
+                    onAccountAction = {},
                 )
             }
         }
 
-        composeTestRule.onNodeWithContentDescription("Account menu").performClick()
-        composeTestRule.onNodeWithText("Your posts").assertIsDisplayed().performClick()
-
-        assertEquals(AccountAction.YourPosts, action)
+        composeTestRule.onNodeWithContentDescription("Search").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Notifications").assertIsDisplayed()
+        assertTrue(composeTestRule.onAllNodesWithContentDescription("Account menu").fetchSemanticsNodes().isEmpty())
     }
 
     @Test
@@ -139,7 +137,7 @@ class MobileAppChromeJourneyTest {
 
         composeTestRule.onNodeWithContentDescription("Search").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
         composeTestRule.onNodeWithContentDescription("Notifications").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Account menu").assertIsDisplayed()
+        assertTrue(composeTestRule.onAllNodesWithContentDescription("Account menu").fetchSemanticsNodes().isEmpty())
         assertTrue(composeTestRule.onAllNodesWithContentDescription("Toggle theme").fetchSemanticsNodes().isEmpty())
         composeTestRule.onNodeWithText("Profile").assertIsDisplayed()
     }

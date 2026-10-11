@@ -8,35 +8,53 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import coil3.compose.AsyncImage
 import org.jetbrains.compose.resources.stringResource
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.SessionExpiredNotice
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
+import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonAnimation
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonVariant
+import org.omicron.mobile.core.designsystem.rikkaui.button.IconButton
+import org.omicron.mobile.core.designsystem.rikkaui.button.IconButtonSize
+import org.omicron.mobile.core.designsystem.rikkaui.icon.Icon
+import org.omicron.mobile.core.designsystem.rikkaui.icon.IconSize
+import org.omicron.mobile.core.designsystem.rikkaui.icon.RikkaIcons
 import org.omicron.mobile.core.designsystem.rikkaui.spinner.Spinner
 import org.omicron.mobile.core.designsystem.rikkaui.spinner.SpinnerSize
 import org.omicron.mobile.core.designsystem.rikkaui.text.Text
@@ -46,7 +64,12 @@ import org.omicron.mobile.domain.model.Post
 import org.omicron.mobile.domain.model.Profile
 import org.omicron.mobile.domain.model.ProfileFollowState
 import org.omicron.mobile.domain.model.RelationActor
+import org.omicron.mobile.feature.navigation.AccountAction
 import org.omicron.mobile.resources.Res
+import org.omicron.mobile.resources.navigation_account_menu
+import org.omicron.mobile.resources.navigation_settings
+import org.omicron.mobile.resources.navigation_sign_out
+import org.omicron.mobile.resources.navigation_your_posts
 import org.omicron.mobile.resources.omicron_logo
 import org.omicron.mobile.resources.profile_about
 import org.omicron.mobile.resources.manage_open
@@ -92,6 +115,7 @@ fun ProfileRoute(
     onOpenPost: (String) -> Unit,
     onOpenProfile: (String) -> Unit,
     onOpenManage: () -> Unit = {},
+    onAccountAction: (AccountAction) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
     ProfileScreen(
@@ -104,6 +128,7 @@ fun ProfileRoute(
         onOpenPost = onOpenPost,
         onOpenProfile = onOpenProfile,
         onOpenManage = onOpenManage,
+        onAccountAction = onAccountAction,
         onToggleFollow = viewModel::toggleFollow,
         onToggleMute = viewModel::toggleMute,
         onToggleBlock = viewModel::toggleBlock,
@@ -121,6 +146,7 @@ private fun ProfileScreen(
     onOpenPost: (String) -> Unit,
     onOpenProfile: (String) -> Unit,
     onOpenManage: () -> Unit,
+    onAccountAction: (AccountAction) -> Unit,
     onToggleFollow: () -> Unit,
     onToggleMute: () -> Unit,
     onToggleBlock: () -> Unit,
@@ -165,6 +191,7 @@ private fun ProfileScreen(
                     onOpenPost = onOpenPost,
                     onOpenProfile = onOpenProfile,
                     onOpenManage = onOpenManage,
+                    onAccountAction = onAccountAction,
                     onToggleFollow = onToggleFollow,
                     onToggleMute = onToggleMute,
                     onToggleBlock = onToggleBlock,
@@ -185,6 +212,7 @@ private fun ProfileContent(
     onOpenPost: (String) -> Unit,
     onOpenProfile: (String) -> Unit,
     onOpenManage: () -> Unit,
+    onAccountAction: (AccountAction) -> Unit,
     onToggleFollow: () -> Unit,
     onToggleMute: () -> Unit,
     onToggleBlock: () -> Unit,
@@ -199,6 +227,14 @@ private fun ProfileContent(
         modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        item(key = "profile-menu", contentType = "profile-menu") {
+            ProfileMenuBar(
+                username = profile.user.username,
+                isSelf = state.isSelf,
+                signedIn = state.signedIn,
+                onAction = onAccountAction,
+            )
+        }
         item(key = "profile-header", contentType = "profile-header") {
             ProfileHeader(
                 state = state,
@@ -269,6 +305,113 @@ private fun ProfileContent(
             ProfileTab.About -> item(key = "profile-about", contentType = "profile-about") { ProfileAbout(profile) }
         }
     }
+}
+
+@Composable
+fun ProfileMenuBar(
+    username: String,
+    isSelf: Boolean,
+    signedIn: Boolean,
+    onAction: (AccountAction) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val density = LocalDensity.current
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = username,
+            variant = TextVariant.H4,
+            color = OmicronTheme.colors.foreground,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Box {
+            IconButton(
+                icon = RikkaIcons.Menu,
+                contentDescription = stringResource(Res.string.navigation_account_menu),
+                onClick = { expanded = true },
+                modifier = Modifier.size(48.dp),
+                size = IconButtonSize.Default,
+            )
+            if (expanded) {
+                Popup(
+                    alignment = Alignment.TopEnd,
+                    offset = with(density) { IntOffset(0, 48.dp.roundToPx()) },
+                    onDismissRequest = { expanded = false },
+                    properties = PopupProperties(focusable = true),
+                ) {
+                    Column(
+                        modifier =
+                            Modifier
+                                .width(236.dp)
+                                .clip(RoundedCornerShape(OmicronTheme.radii.cardSmall))
+                                .background(OmicronTheme.colors.background)
+                                .border(1.dp, OmicronTheme.colors.borderCard, RoundedCornerShape(OmicronTheme.radii.cardSmall))
+                                .padding(8.dp),
+                    ) {
+                        if (isSelf) {
+                            ProfileMenuItem(RikkaIcons.FileText, stringResource(Res.string.navigation_your_posts)) {
+                                expanded = false
+                                onAction(AccountAction.YourPosts)
+                            }
+                            ProfileMenuDivider()
+                        }
+                        ProfileMenuItem(RikkaIcons.Settings, stringResource(Res.string.navigation_settings)) {
+                            expanded = false
+                            onAction(AccountAction.Settings)
+                        }
+                        if (signedIn) {
+                            ProfileMenuDivider()
+                            ProfileMenuItem(RikkaIcons.LogOut, stringResource(Res.string.navigation_sign_out)) {
+                                expanded = false
+                                onAction(AccountAction.SignOut)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileMenuItem(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+        variant = ButtonVariant.Ghost,
+        size = ButtonSize.Sm,
+        animation = ButtonAnimation.None,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = OmicronTheme.colors.foregroundAlt, size = IconSize.Default)
+            Text(text = label, variant = TextVariant.P, color = OmicronTheme.colors.foreground)
+            Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun ProfileMenuDivider() {
+    Spacer(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp)
+                .height(1.dp)
+                .background(OmicronTheme.colors.borderCard),
+    )
 }
 
 @Composable

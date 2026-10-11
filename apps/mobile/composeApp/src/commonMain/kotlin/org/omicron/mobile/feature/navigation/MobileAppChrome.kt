@@ -28,7 +28,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -61,7 +60,6 @@ import org.omicron.mobile.feature.common.notificationIcon
 import org.omicron.mobile.feature.common.notificationSubject
 import org.omicron.mobile.resources.Res
 import org.omicron.mobile.resources.app_name
-import org.omicron.mobile.resources.navigation_account_menu
 import org.omicron.mobile.resources.navigation_home
 import org.omicron.mobile.resources.navigation_lists
 import org.omicron.mobile.resources.navigation_notifications
@@ -69,11 +67,9 @@ import org.omicron.mobile.resources.navigation_profile
 import org.omicron.mobile.resources.navigation_search
 import org.omicron.mobile.resources.navigation_settings
 import org.omicron.mobile.resources.navigation_sign_in
-import org.omicron.mobile.resources.navigation_sign_out
 import org.omicron.mobile.resources.navigation_stats
 import org.omicron.mobile.resources.navigation_see_all
 import org.omicron.mobile.resources.navigation_write
-import org.omicron.mobile.resources.navigation_your_posts
 import org.omicron.mobile.resources.omicron_logo
 import org.omicron.mobile.resources.notifications_empty
 import org.omicron.mobile.resources.notifications_loading
@@ -89,10 +85,6 @@ enum class PrimaryTab {
 }
 
 enum class AccountAction {
-    Profile,
-    Lists,
-    Write,
-    Stats,
     YourPosts,
     Settings,
     SignIn,
@@ -157,7 +149,6 @@ fun MobileTopBar(
                     onRefresh = onRefreshNotifications,
                     onOpenNotification = onOpenNotification,
                 )
-                AccountMenu(user = user, onAction = onAccountAction)
             } else {
                 IconButton(
                     icon = RikkaIcons.Settings,
@@ -410,79 +401,6 @@ private fun NotificationPreviewRow(
 }
 
 @Composable
-private fun AccountMenu(
-    user: AuthenticatedUser,
-    onAction: (AccountAction) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val density = LocalDensity.current
-    val accountMenuLabel = stringResource(Res.string.navigation_account_menu)
-    Box {
-        IconButton(
-            icon = RikkaIcons.Settings,
-            contentDescription = accountMenuLabel,
-            onClick = { expanded = true },
-            modifier = Modifier.size(48.dp),
-            size = IconButtonSize.Default,
-        )
-        if (expanded) {
-            Popup(
-                alignment = Alignment.TopEnd,
-                offset = with(density) { IntOffset(0, 48.dp.roundToPx()) },
-                onDismissRequest = { expanded = false },
-                properties = PopupProperties(focusable = true),
-            ) {
-                Column(
-                    modifier =
-                        Modifier
-                            .width(236.dp)
-                            .clip(RoundedCornerShape(OmicronTheme.radii.cardSmall))
-                            .background(OmicronTheme.colors.background)
-                            .border(1.dp, OmicronTheme.colors.borderCard, RoundedCornerShape(OmicronTheme.radii.cardSmall))
-                            .padding(8.dp),
-                ) {
-                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
-                        Text(text = user.displayName, variant = TextVariant.P, color = OmicronTheme.colors.foreground, maxLines = 1)
-                        Text(text = "@${user.username}", variant = TextVariant.Small, color = OmicronTheme.colors.mutedForeground, maxLines = 1)
-                    }
-                    MenuDivider()
-                    AccountMenuItem(RikkaIcons.User, stringResource(Res.string.navigation_profile)) {
-                        expanded = false
-                        onAction(AccountAction.Profile)
-                    }
-                    AccountMenuItem(RikkaIcons.PenLine, stringResource(Res.string.navigation_write)) {
-                        expanded = false
-                        onAction(AccountAction.Write)
-                    }
-                    AccountMenuItem(RikkaIcons.FileText, stringResource(Res.string.navigation_your_posts)) {
-                        expanded = false
-                        onAction(AccountAction.YourPosts)
-                    }
-                    AccountMenuItem(RikkaIcons.Library, stringResource(Res.string.navigation_lists)) {
-                        expanded = false
-                        onAction(AccountAction.Lists)
-                    }
-                    AccountMenuItem(RikkaIcons.Chart, stringResource(Res.string.navigation_stats)) {
-                        expanded = false
-                        onAction(AccountAction.Stats)
-                    }
-                    MenuDivider()
-                    AccountMenuItem(RikkaIcons.Settings, stringResource(Res.string.navigation_settings)) {
-                        expanded = false
-                        onAction(AccountAction.Settings)
-                    }
-                    MenuDivider()
-                    AccountMenuItem(RikkaIcons.LogOut, stringResource(Res.string.navigation_sign_out)) {
-                        expanded = false
-                        onAction(AccountAction.SignOut)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun ProfileTabAvatar(
     url: String?,
     name: String,
@@ -512,31 +430,6 @@ private fun ProfileTabAvatar(
                 contentDescription = null,
                 modifier = Modifier.size(24.dp).clip(CircleShape),
             )
-        }
-    }
-}
-
-@Composable
-private fun AccountMenuItem(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-        variant = ButtonVariant.Ghost,
-        size = ButtonSize.Sm,
-        animation = ButtonAnimation.None,
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(imageVector = icon, contentDescription = null, tint = OmicronTheme.colors.foregroundAlt, size = IconSize.Default)
-            Text(text = label, variant = TextVariant.P, color = OmicronTheme.colors.foreground)
-            Spacer(modifier = Modifier.weight(1f))
         }
     }
 }
