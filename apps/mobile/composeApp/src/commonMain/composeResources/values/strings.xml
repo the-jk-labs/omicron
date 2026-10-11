@@ -152,6 +152,16 @@
     <string name="profile_no_followers">No followers yet.</string>
     <string name="profile_no_following">Not following anyone yet.</string>
     <string name="profile_about">About</string>
+    <string name="profile_address">Username</string>
+    <string name="profile_links">Links</string>
+    <string name="profile_more_actions">More actions</string>
+    <string name="profile_followers_label">Followers</string>
+    <string name="profile_following_label">Following</string>
+    <string name="profile_view_original">View original profile</string>
+    <string name="profile_link_error">Could not open this link. Try again.</string>
+    <string name="profile_likes">%1$d likes</string>
+    <string name="profile_responses">%1$d responses</string>
+    <string name="profile_recommendation_count">%1$d recommendations</string>
     <string name="profile_joined">Joined %1$s</string>
     <string name="profile_relation_error_follow">Could not update follow. Try again.</string>
     <string name="profile_relation_error_mute">Could not update mute. Try again.</string>
