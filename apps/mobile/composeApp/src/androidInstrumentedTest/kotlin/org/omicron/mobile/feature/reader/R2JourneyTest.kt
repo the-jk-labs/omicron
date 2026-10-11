@@ -9,6 +9,7 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -135,6 +136,35 @@ class R2JourneyTest {
         val viewport = composeTestRule.onRoot().fetchSemanticsNode().boundsInRoot
         val globalTab = composeTestRule.onNodeWithText("Global").fetchSemanticsNode().boundsInRoot
         assertTrue(viewport.right - globalTab.right < viewport.width * 0.12f)
+    }
+
+    @Test
+    fun timelineMetaActionsExposeSelection() {
+        val session =
+            MutableStateFlow(
+                AuthenticatedSession(
+                    AuthenticatedUser("user-1", "ada@example.com", "ada", "Ada"),
+                    "signed-token",
+                ),
+            )
+        val viewModel =
+            TimelineViewModel(
+                PostsRepository(JourneyPostsApi(), savedInstance = { instance() }),
+                session = session,
+            )
+
+        composeTestRule.setContent {
+            OmicronTheme {
+                TimelineRoute(viewModel = viewModel, onSignIn = {}, onChangeInstance = {}, onOpenPost = {})
+            }
+        }
+        composeTestRule.waitForText("For you")
+        composeTestRule.onNodeWithText("Global").performClick()
+        composeTestRule.waitForText("Title post-1")
+
+        composeTestRule.onAllNodesWithContentDescription("Like", substring = true)[0].assertIsNotSelected()
+        composeTestRule.onAllNodesWithContentDescription("Recommend", substring = true)[0].assertIsNotSelected()
+        viewModel.close()
     }
 
     @Test

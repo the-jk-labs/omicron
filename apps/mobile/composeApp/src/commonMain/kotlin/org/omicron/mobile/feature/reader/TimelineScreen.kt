@@ -21,22 +21,30 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -434,8 +442,8 @@ private fun PostCard(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+                .padding(horizontal = 16.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onOpenProfile),
@@ -450,7 +458,7 @@ private fun PostCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 color = OmicronTheme.colors.foreground,
-                style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium),
+                style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium),
             )
             if (post.author.remote) {
                 val host = post.author.username.substringAfterLast('@')
@@ -473,14 +481,14 @@ private fun PostCard(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = post.title?.ifBlank { null } ?: stringResource(Res.string.timeline_untitled),
                     variant = TextVariant.H3,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                     color = OmicronTheme.colors.foreground,
-                    style = TextStyle(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold),
+                    style = TextStyle(fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold),
                 )
                 if (preview.excerpt.isNotBlank()) {
                     Text(
@@ -489,7 +497,7 @@ private fun PostCard(
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                         color = OmicronTheme.colors.mutedForeground,
-                        style = TextStyle(fontSize = 18.sp, lineHeight = 25.sp),
+                        style = TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
                     )
                 }
             }
@@ -514,7 +522,7 @@ private fun PostCard(
                                 Modifier
                                     .clip(RikkaTheme.shapes.full)
                                     .background(RikkaTheme.colors.muted)
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
                         )
                     }
                 }
@@ -605,8 +613,9 @@ private fun PostMetadata(
     val metadataColor = OmicronTheme.colors.mutedForeground
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = formattedDate(post.createdAt),
@@ -619,7 +628,7 @@ private fun PostMetadata(
             label = stringResource(Res.string.timeline_reading_time, preview.readingMinutes),
             tint = metadataColor,
         )
-        TimelineActionButton(
+        TimelineMetaAction(
             imageVector = RikkaIcons.Heart,
             label = stringResource(Res.string.timeline_like_action),
             count = post.likeCount,
@@ -627,7 +636,7 @@ private fun PostMetadata(
             enabled = !busy,
             onClick = if (signedIn) onToggleLike else onSignIn,
         )
-        TimelineActionButton(
+        TimelineMetaAction(
             imageVector = RikkaIcons.MessageCircle,
             label = stringResource(Res.string.timeline_comment_action),
             count = post.commentCount,
@@ -635,26 +644,26 @@ private fun PostMetadata(
             enabled = true,
             onClick = onOpenPost,
         )
-    }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
-    ) {
-        TimelineActionButton(
-            imageVector = RikkaIcons.Repeat,
-            label = stringResource(Res.string.timeline_recommend_action),
-            count = post.recommendCount,
-            selected = recommended,
-            enabled = !busy,
-            onClick = if (signedIn) onToggleRecommendation else onSignIn,
-        )
-        TimelineActionButton(
-            imageVector = RikkaIcons.Bookmark,
-            label = stringResource(if (saved) Res.string.timeline_saved_action else Res.string.timeline_save_action),
-            selected = saved,
-            enabled = !busy,
-            onClick = if (signedIn) onToggleReadLater else onSignIn,
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TimelineMetaAction(
+                imageVector = RikkaIcons.Repeat,
+                label = stringResource(Res.string.timeline_recommend_action),
+                count = post.recommendCount,
+                selected = recommended,
+                enabled = !busy,
+                onClick = if (signedIn) onToggleRecommendation else onSignIn,
+            )
+            TimelineMetaAction(
+                imageVector = RikkaIcons.Bookmark,
+                label = stringResource(if (saved) Res.string.timeline_saved_action else Res.string.timeline_save_action),
+                selected = saved,
+                enabled = !busy,
+                onClick = if (signedIn) onToggleReadLater else onSignIn,
+            )
+        }
     }
     if (actionError) {
         Text(
@@ -666,7 +675,7 @@ private fun PostMetadata(
 }
 
 @Composable
-private fun TimelineActionButton(
+private fun TimelineMetaAction(
     imageVector: ImageVector,
     label: String,
     count: Int? = null,
@@ -675,17 +684,30 @@ private fun TimelineActionButton(
     onClick: () -> Unit,
 ) {
     val tint = if (selected == true) OmicronTheme.colors.foreground else OmicronTheme.colors.mutedForeground
-    Button(
-        onClick = onClick,
-        modifier = Modifier.heightIn(min = 44.dp),
-        variant = ButtonVariant.Ghost,
-        size = ButtonSize.Sm,
-        enabled = enabled,
-        selected = selected,
-        role = Role.Button,
-        label = label,
+    val actionModifier =
+        if (selected == null) {
+            Modifier.semantics(mergeDescendants = true) {
+                role = Role.Button
+                contentDescription = label
+                if (!enabled) disabled()
+            }.clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+        } else {
+            Modifier.semantics(mergeDescendants = true) {
+                contentDescription = label
+            }.selectable(selected = selected, enabled = enabled, role = Role.Button, onClick = onClick)
+        }
+    Row(
+        modifier =
+            Modifier
+                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                .clip(RikkaTheme.shapes.full)
+                .alpha(if (enabled) 1f else 0.38f)
+                .then(actionModifier)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(imageVector = imageVector, contentDescription = null, tint = tint, size = IconSize.Sm)
+        Icon(imageVector = imageVector, contentDescription = null, tint = tint, size = IconSize.Xs)
         count?.let { Text(text = it.toString(), variant = TextVariant.Small, color = tint, maxLines = 1) }
     }
 }
@@ -700,7 +722,7 @@ private fun MetadataItem(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(imageVector = icon, contentDescription = null, tint = tint, size = IconSize.Sm)
+        Icon(imageVector = icon, contentDescription = null, tint = tint, size = IconSize.Xs)
         Text(
             text = label,
             variant = TextVariant.Small,
