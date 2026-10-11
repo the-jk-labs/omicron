@@ -286,7 +286,7 @@ public fun Input(
     val placeholderStyle =
         RikkaTheme.typography.p.merge(
             TextStyle(color = colors.placeholder),
-        )
+        ).merge(style)
 
     val countStyle =
         RikkaTheme.typography.small.merge(

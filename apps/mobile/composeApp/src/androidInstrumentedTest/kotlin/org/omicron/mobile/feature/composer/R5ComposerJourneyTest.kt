@@ -4,10 +4,12 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.io.IOException
@@ -78,6 +80,23 @@ class R5ComposerJourneyTest {
     }
 
     @Test
+    fun insertedListCanBeEditedAndSavedAsHtml() {
+        val authoring = JourneyAuthoringApi()
+        val viewModel = composerViewModel(authoring)
+        composeTestRule.setContent {
+            OmicronTheme {
+                ComposerRoute(viewModel = viewModel, onBack = {}, onSignIn = {}, onPublished = {})
+            }
+        }
+        composeTestRule.onNodeWithContentDescription("Bulleted list").performScrollTo().performClick()
+        composeTestRule.onNodeWithContentDescription("List item").assertIsFocused().performTextInput("A useful point")
+        composeTestRule.onNodeWithText("Save draft").performClick()
+        composeTestRule.waitForText("Saved")
+        assertTrue((authoring.lastUpdate?.contentHtml ?: authoring.lastCreate?.contentHtml).orEmpty().contains("<ul><li>A useful point</li></ul>"))
+        viewModel.close()
+    }
+
+    @Test
     fun offlineSaveShowsErrorAndRetry() {
         val authoring = JourneyAuthoringApi(failure = IOException("unresolved"))
         val viewModel = composerViewModel(authoring)
@@ -125,9 +144,10 @@ class R5ComposerJourneyTest {
             }
         }
 
+        composeTestRule.onNodeWithContentDescription("Post details").performClick()
         viewModel.pickCoverResult(byteArrayOf(1, 2, 3), "image/png")
         composeTestRule.waitForText("Remove")
-        composeTestRule.onNodeWithText("Remove").performClick()
+        composeTestRule.onNodeWithText("Remove").performScrollTo().performClick()
         composeTestRule.waitForText("No cover image")
         viewModel.close()
     }
@@ -145,6 +165,7 @@ class R5ComposerJourneyTest {
 
         composeTestRule.onNodeWithText("Title").performTextInput("Hello")
         composeTestRule.onNodeWithText("Write…").performTextInput("Body text")
+        composeTestRule.onNodeWithContentDescription("Publishing options").performClick()
         composeTestRule.onNodeWithText("Schedule…").performClick()
         composeTestRule.waitForText("Tomorrow, 09:00")
         composeTestRule.onNodeWithText("Tomorrow, 09:00").performClick()
