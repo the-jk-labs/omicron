@@ -33,6 +33,7 @@ Keep the package layout stable inside the single `composeApp` module. Split Grad
 - All visible strings live in common Compose resources. Design for light and dark modes, 48dp touch targets, edge-to-edge drawing, and font scaling. Status and navigation bar icon contrast follows the resolved app theme, not the device mode.
 - Tabs, appearance choices, and social toggles expose their selected state through Compose semantics.
 - The signed-in mobile shell follows the responsive web information architecture: Home, Lists, Write, Stats, and Profile bottom destinations, with search and notifications in the Home top bar and account actions in the Profile page menu. Appearance remains available in Settings (ADR-0017).
+- Profiles use full-width mobile identity text, a separate relationship menu, accessible underline tabs, and platform-opened About links with failure feedback (ADR-0018). Profile presentation stays within the existing domain fields and shared API contracts.
 
 ## Networking
 

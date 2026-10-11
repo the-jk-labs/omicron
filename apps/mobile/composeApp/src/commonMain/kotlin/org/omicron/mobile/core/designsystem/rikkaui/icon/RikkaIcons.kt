@@ -120,6 +120,18 @@ public object RikkaIcons {
         lucideSvgIcon("Users", "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2", "M16 3.128a4 4 0 0 1 0 7.744", "M22 21v-2a4 4 0 0 0-3-3.87", "M13 7a4 4 0 1 1-8 0a4 4 0 1 1 8 0")
     }
 
+    public val VolumeX: ImageVector by lazy {
+        lucideSvgIcon("VolumeX", "M11 4.702a.7.7 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.7.7 0 0 0 11 19.298z", "m16.5 14.5 5-5", "m16.5 9.5 5 5")
+    }
+
+    public val Ban: ImageVector by lazy {
+        lucideSvgIcon("Ban", "M22 12a10 10 0 1 1-20 0a10 10 0 1 1 20 0", "M4.929 4.929 19.07 19.071")
+    }
+
+    public val Lock: ImageVector by lazy {
+        lucideSvgIcon("Lock", "M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z", "M7 11V7a5 5 0 0 1 10 0v4")
+    }
+
     // ── Arrows ──────────────────────────────────────────────
 
     public val ArrowLeft: ImageVector by lazy {
