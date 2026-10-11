@@ -323,6 +323,55 @@ public object RikkaIcons {
         }
     }
 
+    public val Calendar: ImageVector by lazy {
+        lucideIcon("Calendar") {
+            strokePath { roundedRect(3f, 3f, 18f, 18f, 2f) }
+            strokePath {
+                moveTo(8f, 2f)
+                lineTo(8f, 5f)
+            }
+            strokePath {
+                moveTo(16f, 2f)
+                lineTo(16f, 5f)
+            }
+            strokePath {
+                moveTo(3f, 9f)
+                lineTo(21f, 9f)
+            }
+        }
+    }
+
+    public val Languages: ImageVector by lazy {
+        lucideIcon("Languages") {
+            strokePath {
+                moveTo(5f, 8f)
+                lineTo(11f, 14f)
+            }
+            strokePath {
+                moveTo(4f, 14f)
+                lineTo(10f, 8f)
+                lineTo(12f, 5f)
+            }
+            strokePath {
+                moveTo(2f, 5f)
+                lineTo(14f, 5f)
+            }
+            strokePath {
+                moveTo(7f, 2f)
+                lineTo(8f, 2f)
+            }
+            strokePath {
+                moveTo(22f, 22f)
+                lineTo(17f, 12f)
+                lineTo(12f, 22f)
+            }
+            strokePath {
+                moveTo(14f, 18f)
+                lineTo(20f, 18f)
+            }
+        }
+    }
+
     public val Users: ImageVector by lazy {
         lucideIcon("Users") {
             strokePath {
