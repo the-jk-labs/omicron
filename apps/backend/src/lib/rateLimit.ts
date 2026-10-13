@@ -12,6 +12,7 @@
 
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
+import type { ServerRequest } from "srvx";
 import { config } from "@/config.ts";
 import { hit } from "@/lib/rateLimitCore.ts";
 import type { AppEnv } from "@/routes/types.ts";
@@ -36,10 +37,8 @@ export function clientIp(c: Context): string {
   }
   const real = c.req.header("x-real-ip");
   if (real) return real.trim();
-  // The socket peer, which the server adapter passes as `env.remoteAddr`
-  // (Deno.serve's ServeHandlerInfo) — what `hono/deno`'s getConnInfo reads.
-  const env = c.env as { remoteAddr?: { hostname?: string } } | undefined;
-  return env?.remoteAddr?.hostname ?? "unknown";
+  // The socket peer, which srvx exposes as `request.ip` on every runtime.
+  return (c.req.raw as ServerRequest).ip ?? "unknown";
 }
 
 export type RateLimitOptions = {
