@@ -5,8 +5,7 @@
   },
   "nodeModulesDir": "manual",
   "compilerOptions": {
-    "strict": true,
-    "lib": ["deno.window", "dom"]
+    "strict": true
   },
   "lock": false
 }
