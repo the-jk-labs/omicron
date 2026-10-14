@@ -115,7 +115,7 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 - Release build, R8, startup, baseline profile, accessibility, font-scale, light/dark, and device visual checks pass.
 - README, architecture docs, ADRs, and API gaps reflect the shipped behavior.
 
-**Device-test isolation:** Planned. Give connected Compose UI tests an isolated application ID so Gradle's test cleanup cannot uninstall the production app or remove its session, preferences, and offline library. Until isolation is implemented, run the connected Gradle task only on disposable devices/emulators; shared phones require direct instrumentation without package removal.
+**Device-test isolation:** Planned. Give connected Compose UI tests an isolated application ID so Gradle's test cleanup cannot uninstall the production app or remove its session, preferences, and offline library. Device validation uses the USB-connected physical phone only; emulators are not permitted. Until isolation is implemented, use direct instrumentation without package removal or app-data clearing, never the connected Compose Gradle task.
 
 ## R7: Native Mobile Web Parity
 
