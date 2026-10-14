@@ -16,6 +16,7 @@ import org.omicron.mobile.core.storage.SessionCookieStore
 import org.omicron.mobile.core.storage.StoredSessionCookie
 import org.omicron.mobile.data.api.KtorAuthApi
 import org.omicron.mobile.data.repository.AuthRepository
+import org.omicron.mobile.data.repository.SessionRefreshState
 import org.omicron.mobile.domain.model.InstanceConfiguration
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -26,14 +27,15 @@ import kotlin.test.assertTrue
 
 class StartupViewModelTest {
     @Test
-    fun restoresASavedSessionBeforeHomeBecomesReady() = runTest {
+    fun opensHomeBeforeNetworkSessionRestorationCompletes() = runTest {
         Fixture(this).use { fixture ->
             val gate = CompletableDeferred<Unit>()
             fixture.sessionGate = gate
             val viewModel = fixture.viewModel(this)
             testScheduler.runCurrent()
 
-            assertIs<StartupPhase.Restoring>(viewModel.uiState.value)
+            assertIs<StartupPhase.Ready>(viewModel.uiState.value)
+            assertEquals(SessionRefreshState.Restoring, fixture.auth.refreshState.value)
             assertNull(fixture.auth.currentSession())
             gate.complete(Unit)
             testScheduler.advanceUntilIdle()
@@ -106,7 +108,8 @@ class StartupViewModelTest {
             val viewModel = fixture.viewModel(this)
             testScheduler.advanceUntilIdle()
 
-            assertTrue(assertIs<StartupPhase.Error>(viewModel.uiState.value).hasSavedInstance)
+            assertTrue(assertIs<StartupPhase.Ready>(viewModel.uiState.value).hasSavedInstance)
+            assertEquals(SessionRefreshState.Unavailable, fixture.auth.refreshState.value)
             assertEquals(listOf(savedCookie), fixture.cookies.read(origin))
             fixture.offline = false
             viewModel.restore()
@@ -119,13 +122,11 @@ class StartupViewModelTest {
     }
 
     @Test
-    fun explicitGuestReadingRetainsCookiesAfterAFailure() = runTest {
+    fun failedRefreshKeepsHomeReadyAndRetainsCookies() = runTest {
         Fixture(this).use { fixture ->
             fixture.offline = true
             val viewModel = fixture.viewModel(this)
             testScheduler.advanceUntilIdle()
-
-            viewModel.continueAsGuest()
 
             assertTrue(assertIs<StartupPhase.Ready>(viewModel.uiState.value).hasSavedInstance)
             assertEquals(listOf(savedCookie), fixture.cookies.read(origin))
@@ -188,7 +189,7 @@ class StartupViewModelTest {
             viewModel.close()
             testScheduler.advanceUntilIdle()
 
-            assertIs<StartupPhase.Restoring>(viewModel.uiState.value)
+            assertIs<StartupPhase.Ready>(viewModel.uiState.value)
             assertEquals(listOf(savedCookie), fixture.cookies.read(origin))
         }
     }

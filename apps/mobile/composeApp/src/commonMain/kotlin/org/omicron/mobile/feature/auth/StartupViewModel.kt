@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.omicron.mobile.data.repository.AuthRepository
 import org.omicron.mobile.domain.model.InstanceConfiguration
+import org.omicron.mobile.domain.model.HomeSnapshot
 
 class StartupViewModel(
     private val savedInstance: suspend () -> InstanceConfiguration?,
@@ -21,6 +22,7 @@ class StartupViewModel(
     private val mutableUiState = MutableStateFlow<StartupPhase>(StartupPhase.Restoring)
     val uiState: StateFlow<StartupPhase> = mutableUiState.asStateFlow()
     private var restoreJob: Job? = null
+    private var openHomeAfterPreparation = false
 
     init {
         restore()
@@ -28,18 +30,22 @@ class StartupViewModel(
 
     fun restore() {
         if (restoreJob?.isActive == true) return
-        mutableUiState.value = StartupPhase.Restoring
+        if (mutableUiState.value !is StartupPhase.Ready) mutableUiState.value = StartupPhase.Restoring
         restoreJob = scope.launch {
             var hasSavedInstance = false
             try {
                 val instance = savedInstance()
                 hasSavedInstance = instance != null
+                val snapshot = if (instance != null && mutableUiState.value !is StartupPhase.Ready) repository.prepareStartup(instance.origin) else null
+                if (mutableUiState.value !is StartupPhase.Ready) {
+                    mutableUiState.value = StartupPhase.Ready(hasSavedInstance, snapshot, instance?.origin, openHomeAfterPreparation)
+                    openHomeAfterPreparation = false
+                }
                 if (instance != null) repository.restoreSavedSession(instance.origin)
-                mutableUiState.value = StartupPhase.Ready(hasSavedInstance)
             } catch (exception: CancellationException) {
                 throw exception
             } catch (_: Throwable) {
-                mutableUiState.value = StartupPhase.Error(hasSavedInstance)
+                if (mutableUiState.value !is StartupPhase.Ready) mutableUiState.value = StartupPhase.Error(hasSavedInstance)
             }
         }
     }
@@ -55,6 +61,13 @@ class StartupViewModel(
         }
     }
 
+    fun openSelectedInstance() {
+        restoreJob?.cancel()
+        openHomeAfterPreparation = true
+        mutableUiState.value = StartupPhase.Restoring
+        restore()
+    }
+
     fun close() {
         scope.cancel()
     }
@@ -65,6 +78,9 @@ sealed interface StartupPhase {
 
     data class Ready(
         val hasSavedInstance: Boolean,
+        val snapshot: HomeSnapshot? = null,
+        val origin: String? = null,
+        val openHome: Boolean = false,
     ) : StartupPhase
 
     data class Error(

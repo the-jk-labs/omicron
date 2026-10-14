@@ -1,6 +1,6 @@
 # ADR-0024: Startup Session Restoration
 
-**Status:** Accepted
+**Status:** Superseded by ADR-0025
 
 ## Context
 

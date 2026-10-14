@@ -14,11 +14,14 @@ import org.omicron.mobile.data.api.TimelineScope
 import org.omicron.mobile.data.repository.MissingInstanceException
 import org.omicron.mobile.data.repository.PostsRepository
 import org.omicron.mobile.data.repository.SocialRepository
+import org.omicron.mobile.data.repository.SessionRefreshState
+import org.omicron.mobile.data.repository.ReadingAccessDeniedException
 import org.omicron.mobile.domain.model.AuthenticatedSession
 import org.omicron.mobile.domain.model.AuthenticatedUser
 import org.omicron.mobile.domain.model.InstanceConfiguration
 import org.omicron.mobile.domain.model.Post
 import org.omicron.mobile.domain.model.PostAuthor
+import org.omicron.mobile.domain.model.HomeSnapshot
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -333,6 +336,121 @@ class TimelineViewModelTest {
         assertTrue(viewModel.uiState.value.posts.single().liked)
         assertEquals(3, viewModel.uiState.value.posts.single().likeCount)
         assertFalse(viewModel.uiState.value.posts.single().recommended)
+    }
+
+    @Test
+    fun cachedCardsAreImmediateReadOnlyAndHaveNoCursorUntilAuthenticationAndRefreshFinish() = runTest {
+        val gate = CompletableDeferred<String>()
+        val api = SequencedPostsApi(feedPages = listOf(page(listOf(post("fresh")), "opaque-fresh")))
+        val sessions = MutableStateFlow<AuthenticatedSession?>(null)
+        val refresh = MutableStateFlow(SessionRefreshState.Restoring)
+        val viewModel = TimelineViewModel(
+            PostsRepository(api, { instance() }, accessToken = { gate.await() }),
+            TestScope(StandardTestDispatcher(testScheduler)),
+            session = sessions,
+            account = MutableStateFlow(signedSession().user),
+            sessionRefresh = refresh,
+            initialHome = HomeSnapshot(instance().origin, signedSession().user, 0, "ForYou", listOf(post("cached")), 0),
+        )
+
+        assertEquals("cached", viewModel.uiState.value.posts.single().id)
+        assertIs<TimelinePhase.Content>(viewModel.uiState.value.phase)
+        assertTrue(viewModel.uiState.value.isCachedContent)
+        assertFalse(viewModel.uiState.value.canInteract)
+        assertNull(viewModel.uiState.value.nextCursor)
+        testScheduler.runCurrent()
+        assertTrue(api.feedCursors.isEmpty())
+        sessions.value = signedSession()
+        refresh.value = SessionRefreshState.Ready
+        gate.complete("signed-token")
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("fresh", viewModel.uiState.value.posts.single().id)
+        assertEquals("opaque-fresh", viewModel.uiState.value.nextCursor)
+        assertFalse(viewModel.uiState.value.isCachedContent)
+        assertTrue(viewModel.uiState.value.canInteract)
+        viewModel.close()
+    }
+
+    @Test
+    fun offlineRefreshRetainsCachedCardsAndRetryReplacesThem() = runTest {
+        var offline = true
+        val api = SequencedPostsApi(feedPages = listOf(page(listOf(post("fresh")), null)))
+        val viewModel = TimelineViewModel(
+            PostsRepository(api, { instance() }, accessToken = { if (offline) throw IOException("offline") else "signed-token" }),
+            TestScope(StandardTestDispatcher(testScheduler)),
+            session = MutableStateFlow(signedSession()),
+            initialHome = HomeSnapshot(instance().origin, signedSession().user, 0, "ForYou", listOf(post("cached")), 0),
+        )
+        testScheduler.advanceUntilIdle()
+
+        assertIs<TimelinePhase.Content>(viewModel.uiState.value.phase)
+        assertEquals("cached", viewModel.uiState.value.posts.single().id)
+        assertEquals(TimelineError.Offline, viewModel.uiState.value.refreshError)
+        assertFalse(viewModel.uiState.value.canInteract)
+        offline = false
+        viewModel.retry()
+        assertEquals("cached", viewModel.uiState.value.posts.single().id)
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("fresh", viewModel.uiState.value.posts.single().id)
+        assertNull(viewModel.uiState.value.refreshError)
+        viewModel.close()
+    }
+
+    @Test
+    fun mismatchedAccountSnapshotsAreNeverDisplayedAndScopeChangesCannotShowTheOldPage() = runTest {
+        val gate = CompletableDeferred<String>()
+        val viewModel = TimelineViewModel(
+            PostsRepository(SequencedPostsApi(), { instance() }, accessToken = { gate.await() }),
+            TestScope(StandardTestDispatcher(testScheduler)),
+            session = MutableStateFlow(signedSession()),
+            initialHome = HomeSnapshot(instance().origin, signedSession().user.copy(id = "another-account"), 0, "ForYou", listOf(post("private-cached")), 0),
+        )
+
+        assertTrue(viewModel.uiState.value.posts.isEmpty())
+        viewModel.selectScope(TimelineScope.Local)
+        assertTrue(viewModel.uiState.value.posts.isEmpty())
+        assertEquals(TimelineScope.Local, viewModel.uiState.value.scope)
+        viewModel.close()
+    }
+
+    @Test
+    fun signingOutDiscardsAccountCardsEvenWhenTheOldRequestIsPending() = runTest {
+        val gate = CompletableDeferred<String>()
+        val sessions = MutableStateFlow<AuthenticatedSession?>(signedSession())
+        val viewModel = TimelineViewModel(
+            PostsRepository(SequencedPostsApi(), { instance() }, accessToken = { gate.await() }),
+            TestScope(StandardTestDispatcher(testScheduler)),
+            session = sessions,
+            initialHome = HomeSnapshot(instance().origin, signedSession().user, 0, "ForYou", listOf(post("private-cached")), 0),
+        )
+        testScheduler.runCurrent()
+        sessions.value = null
+        testScheduler.runCurrent()
+
+        assertTrue(viewModel.uiState.value.posts.isEmpty())
+        assertFalse(viewModel.uiState.value.signedIn)
+        assertEquals(TimelineScope.Global, viewModel.uiState.value.scope)
+        gate.complete("token")
+        testScheduler.advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.posts.isEmpty())
+        viewModel.close()
+    }
+
+    @Test
+    fun forbiddenFeedAccessRemovesPreviouslyCachedCards() = runTest {
+        val viewModel = TimelineViewModel(
+            PostsRepository(FailingPostsApi(ReadingAccessDeniedException()), { instance() }, { "signed-token" }),
+            TestScope(StandardTestDispatcher(testScheduler)),
+            session = MutableStateFlow(signedSession()),
+            initialHome = HomeSnapshot(instance().origin, signedSession().user, 0, "ForYou", listOf(post("cached")), 0),
+        )
+        testScheduler.advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.posts.isEmpty())
+        assertEquals(TimelinePhase.Error(TimelineError.Forbidden), viewModel.uiState.value.phase)
+        viewModel.close()
     }
 
     private fun TestScope.mutationViewModel(api: FakeSocialApi) = TimelineViewModel(

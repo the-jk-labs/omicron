@@ -24,12 +24,15 @@ class MissingInstanceException : IllegalStateException("No instance selected")
 
 class UnauthorizedException : IllegalStateException("Signed in session is no longer valid")
 
+class ReadingAccessDeniedException : IllegalStateException("Reading access is denied")
+
 class PostsRepository(
     private val api: PostsApi,
     private val savedInstance: suspend () -> InstanceConfiguration?,
     private val accessToken: (suspend (origin: String) -> String?)? = null,
     private val onUnauthorized: (suspend () -> Unit)? = null,
     private val offlinePostCache: OfflinePostCache? = null,
+    private val homeSnapshots: HomeSnapshotRepository? = null,
 ) {
     suspend fun origin(): String? = savedInstance()?.origin
     suspend fun timeline(
@@ -38,7 +41,12 @@ class PostsRepository(
     ): TimelinePage {
         require(scope != TimelineScope.ForYou) { "For you loads through feed()" }
         val origin = savedInstance()?.origin ?: throw MissingInstanceException()
-        val page = authorizedCall(origin) { token -> api.timeline(origin, scope, cursor, token) }
+        val page = authorizedCall(origin) { token ->
+            val lease = homeSnapshots?.lease(origin)
+            api.timeline(origin, scope, cursor, token).also { page ->
+                if (cursor == null) homeSnapshots?.savePage(lease, scope, page.items.map { it.toDomain(origin) })
+            }
+        }
         return TimelinePage(
             items = page.items.map { it.toDomain(origin) },
             nextCursor = page.nextCursor,
@@ -47,7 +55,12 @@ class PostsRepository(
 
     suspend fun feed(cursor: String?): TimelinePage {
         val origin = savedInstance()?.origin ?: throw MissingInstanceException()
-        val page = authorizedCall(origin) { token -> api.feed(origin, cursor, token ?: throw UnauthorizedException()) }
+        val page = authorizedCall(origin) { token ->
+            val lease = homeSnapshots?.lease(origin)
+            api.feed(origin, cursor, token ?: throw UnauthorizedException()).also { page ->
+                if (cursor == null) homeSnapshots?.savePage(lease, TimelineScope.ForYou, page.items.map { it.toDomain(origin) })
+            }
+        }
         return TimelinePage(
             items = page.items.map { it.toDomain(origin) },
             nextCursor = page.nextCursor,
@@ -61,7 +74,8 @@ class PostsRepository(
                 authorizedCall(origin) { token -> api.post(origin, id, token) }.toDetail(origin)
             } catch (exception: CancellationException) {
                 throw exception
-            } catch (exception: IOException) {
+            } catch (exception: Throwable) {
+                if (exception !is IOException && exception !is SessionRefreshUnavailableException) throw exception
                 val cached =
                     try {
                         offlinePostCache?.read(origin, id)
@@ -125,6 +139,10 @@ class PostsRepository(
         try {
             block(accessToken?.invoke(origin))
         } catch (exception: ClientRequestException) {
+            if (exception.response.status == HttpStatusCode.Forbidden) {
+                homeSnapshots?.discardPage(origin)
+                throw ReadingAccessDeniedException()
+            }
             if (exception.response.status != HttpStatusCode.Unauthorized) throw exception
             onUnauthorized?.invoke()
             throw UnauthorizedException()

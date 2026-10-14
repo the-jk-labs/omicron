@@ -1,12 +1,14 @@
 package org.omicron.mobile.feature.auth
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -16,7 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
-import org.omicron.mobile.core.designsystem.CenteredLoadingState
+import org.jetbrains.compose.resources.painterResource
 import org.omicron.mobile.core.designsystem.OmicronTheme
 import org.omicron.mobile.core.designsystem.rikkaui.button.Button
 import org.omicron.mobile.core.designsystem.rikkaui.button.ButtonSize
@@ -25,7 +27,8 @@ import org.omicron.mobile.core.designsystem.rikkaui.text.Text
 import org.omicron.mobile.core.designsystem.rikkaui.text.TextVariant
 import org.omicron.mobile.resources.Res
 import org.omicron.mobile.resources.auth_error_unavailable
-import org.omicron.mobile.resources.auth_restoring
+import org.omicron.mobile.resources.omicron_logo
+import org.omicron.mobile.resources.connect_logo_description
 import org.omicron.mobile.resources.auth_try_again
 import org.omicron.mobile.resources.connect_change_instance
 import org.omicron.mobile.resources.startup_continue_as_guest
@@ -43,7 +46,11 @@ fun StartupScreen(
         contentAlignment = Alignment.Center,
     ) {
         when (phase) {
-            StartupPhase.Restoring -> CenteredLoadingState(message = stringResource(Res.string.auth_restoring))
+            StartupPhase.Restoring -> Image(
+                painter = painterResource(Res.drawable.omicron_logo),
+                contentDescription = stringResource(Res.string.connect_logo_description),
+                modifier = Modifier.size(80.dp),
+            )
             is StartupPhase.Error -> Column(
                 modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth().verticalScroll(rememberScrollState()).padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),

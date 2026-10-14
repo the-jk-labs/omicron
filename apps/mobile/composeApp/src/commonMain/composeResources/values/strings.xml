@@ -24,6 +24,12 @@
     <string name="auth_register_title">Create your account</string>
     <string name="auth_restoring">Restoring session</string>
     <string name="startup_continue_as_guest">Continue as guest</string>
+    <string name="home_session_refreshing">Updating session</string>
+    <string name="home_session_refresh_error">Could not refresh your session. Try again.</string>
+    <string name="home_saved_posts">Showing saved posts</string>
+    <string name="home_feed_refreshing">Updating posts</string>
+    <string name="home_no_saved_posts">No saved posts yet. Retry when you’re connected.</string>
+    <string name="home_feed_access_denied">You don’t have access to this feed.</string>
     <string name="startup_error_unavailable">Could not load your saved instance. Try again or choose an instance.</string>
     <string name="auth_session_not_found_description">No saved session was found for %1$s.</string>
     <string name="auth_session_not_found_title">No saved session</string>

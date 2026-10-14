@@ -1,6 +1,8 @@
 package org.omicron.mobile.data.repository
 
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.io.IOException
 import kotlinx.serialization.json.buildJsonObject
 import org.omicron.mobile.data.api.AuthApi
@@ -11,9 +13,13 @@ import org.omicron.mobile.data.api.AuthTokenDto
 import org.omicron.mobile.data.api.AuthUserDto
 import org.omicron.mobile.core.storage.SessionCookieStore
 import org.omicron.mobile.core.storage.StoredSessionCookie
+import org.omicron.mobile.core.storage.FakeHomeSnapshotStore
+import org.omicron.mobile.domain.model.AuthenticatedUser
+import org.omicron.mobile.domain.model.HomeSnapshot
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -153,9 +159,10 @@ class AuthRepositoryTest {
 
         now = 15 * 60 * 1_000L
 
-        assertNull(repository.accessToken("https://omicron.blog"))
+        assertFailsWith<SessionRefreshUnavailableException> { repository.accessToken("https://omicron.blog") }
         assertNull(repository.currentSession())
-        assertTrue(repository.sessionExpired.value)
+        assertEquals("ada", repository.displayUser.value?.username)
+        assertFalse(repository.sessionExpired.value)
     }
 
     @Test
@@ -201,6 +208,77 @@ class AuthRepositoryTest {
 
         assertNull(repository.session.value)
     }
+
+    @Test
+    fun cachedIdentityIsPresentationOnlyAndRequestsWaitForAuthentication() = runTest {
+        val origin = "https://omicron.blog"
+        val cookies = FakeSessionCookieStore().apply { write(origin, listOf(StoredSessionCookie("session", "saved", null))) }
+        val store = FakeHomeSnapshotStore(HomeSnapshot(origin, AuthenticatedUser("user-1", "ada@example.com", "ada", "Cached Ada"), 0))
+        val gate = CompletableDeferred<AuthSessionDto?>()
+        val api = FakeAuthApi(session()).apply { sessionResponse = { gate.await() } }
+        val repository = AuthRepository(api, cookies, now = { 0 }, homeSnapshots = HomeSnapshotRepository(store, now = { 0 }))
+
+        repository.prepareStartup(origin)
+        assertEquals("Cached Ada", repository.displayUser.value?.displayName)
+        assertNull(repository.currentSession())
+        val token = async { repository.accessToken(origin) }
+        val restoration = async { repository.restoreSavedSession(origin) }
+        testScheduler.runCurrent()
+        assertFalse(token.isCompleted)
+        assertEquals(0, api.tokenRequests)
+        gate.complete(session())
+        testScheduler.advanceUntilIdle()
+
+        assertEquals("signed-token", token.await())
+        assertEquals("Ada", restoration.await()?.user?.displayName)
+        assertEquals("Ada", store.snapshot?.user?.displayName)
+    }
+
+    @Test
+    fun transientRestorationFailureKeepsCachedIdentityWithoutAuthorizingRequests() = runTest {
+        val origin = "https://omicron.blog"
+        val cookies = FakeSessionCookieStore().apply { write(origin, listOf(StoredSessionCookie("session", "saved", null))) }
+        val store = FakeHomeSnapshotStore(HomeSnapshot(origin, AuthenticatedUser("user-1", "ada@example.com", "ada", "Ada"), 0))
+        val api = FakeAuthApi(session()).apply { sessionResponse = { throw IOException("offline") } }
+        val repository = AuthRepository(api, cookies, now = { 0 }, homeSnapshots = HomeSnapshotRepository(store, now = { 0 }))
+        repository.prepareStartup(origin)
+
+        assertFailsWith<IOException> { repository.restoreSavedSession(origin) }
+
+        assertEquals("ada", repository.displayUser.value?.username)
+        assertNull(repository.currentSession())
+        assertFalse(repository.sessionExpired.value)
+        assertEquals(SessionRefreshState.Unavailable, repository.refreshState.value)
+        assertFailsWith<SessionRefreshUnavailableException> { repository.accessToken(origin) }
+        assertEquals("ada", store.snapshot?.user?.username)
+        assertTrue(cookies.read(origin).isNotEmpty())
+    }
+
+    @Test
+    fun signOutInvalidatesACachedAccountAndPreventsPendingRestorationFromResurrectingIt() = runTest {
+        val origin = "https://omicron.blog"
+        val cookies = FakeSessionCookieStore().apply { write(origin, listOf(StoredSessionCookie("session", "saved", null))) }
+        val store = FakeHomeSnapshotStore(HomeSnapshot(origin, AuthenticatedUser("user-1", "ada@example.com", "ada", "Ada"), 0))
+        val gate = CompletableDeferred<AuthSessionDto?>()
+        val api = FakeAuthApi(session()).apply { sessionResponse = { gate.await() } }
+        val repository = AuthRepository(api, cookies, now = { 0 }, homeSnapshots = HomeSnapshotRepository(store, now = { 0 }))
+        repository.prepareStartup(origin)
+        val restoration = async { repository.restoreSavedSession(origin) }
+        testScheduler.runCurrent()
+
+        val signOut = async { repository.signOut(origin) }
+        testScheduler.runCurrent()
+        assertNull(repository.displayUser.value)
+        assertNull(store.snapshot)
+        gate.complete(session())
+        testScheduler.advanceUntilIdle()
+        signOut.await()
+
+        assertTrue(restoration.isCancelled)
+        assertNull(repository.currentSession())
+        assertNull(store.snapshot)
+        assertTrue(cookies.read(origin).isEmpty())
+    }
 }
 
 private class FakeSessionCookieStore : SessionCookieStore {
@@ -223,8 +301,12 @@ private class FakeAuthApi(
 ) : AuthApi {
     var accessToken = "signed-token"
     var tokenRequests = 0
+    var sessionResponse: (suspend () -> AuthSessionDto?)? = null
 
-    override suspend fun getSession(origin: String): AuthSessionDto? = session
+    override suspend fun getSession(origin: String): AuthSessionDto? {
+        val response = sessionResponse
+        return if (response == null) session else response()
+    }
 
     override suspend fun getToken(origin: String): AuthTokenDto {
         tokenRequests += 1
