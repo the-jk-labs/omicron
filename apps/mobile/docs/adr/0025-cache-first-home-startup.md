@@ -14,6 +14,8 @@ Keep one latest Home snapshot, partitioned by its exact instance origin and acco
 
 Render cached cards with stable keys while refreshing. Background failures show inline retry feedback without hiding saved posts or pretending the cached account is authorized. Successful initial loads replace the snapshot; pagination is available only after a fresh response supplies its unchanged opaque cursor. Cached social state is read-only until refreshed; no offline mutation queue is introduced.
 
+Home owns one compact, muted refresh status below its scope tabs for both session recovery and feed updates. Do not also show the shell's session progress row on Home. Initial feed loading uses only the centered post loader; session and feed failures share the inline status location with the appropriate retry action.
+
 Confirmed forbidden reading responses discard saved cards instead of treating them as offline content. Account metadata remains presentation only while its session is valid. The independent public article library remains available when background session refresh is unavailable, but HTTP authorization failures do not fall back to cached article content.
 
 The existing public article library and its retention policy remain separate. This decision supersedes ADR-0024's network-blocking startup gate and ADR-0013's feed exclusion only for this bounded encrypted Home snapshot.

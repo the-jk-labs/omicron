@@ -93,8 +93,9 @@ import org.omicron.mobile.resources.timeline_scope_for_you
 import org.omicron.mobile.resources.timeline_scope_global
 import org.omicron.mobile.resources.timeline_scope_local
 import org.omicron.mobile.resources.timeline_session_expired
-import org.omicron.mobile.resources.home_saved_posts
 import org.omicron.mobile.resources.home_feed_refreshing
+import org.omicron.mobile.resources.home_session_refresh_error
+import org.omicron.mobile.resources.auth_try_again
 import org.omicron.mobile.resources.home_no_saved_posts
 import org.omicron.mobile.resources.home_feed_access_denied
 import org.omicron.mobile.resources.timeline_untitled
@@ -128,6 +129,8 @@ fun TimelineRoute(
     } else state.copy(canRefresh = refreshState == SessionRefreshState.Ready)
     TimelineScreen(
         state = visibleState,
+        sessionRefresh = refreshState,
+        onSessionRetry = onSessionRetry,
         onSelectScope = { scope ->
             if (scope == state.scope) viewModel.refresh() else viewModel.selectScope(scope)
         },
@@ -148,6 +151,8 @@ fun TimelineRoute(
 @Composable
 private fun TimelineScreen(
     state: TimelineUiState,
+    sessionRefresh: SessionRefreshState,
+    onSessionRetry: () -> Unit,
     onSelectScope: (TimelineScope) -> Unit,
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
@@ -175,30 +180,7 @@ private fun TimelineScreen(
                 onSignIn = onSignIn,
             )
         }
-        if (state.isCachedContent || (state.refreshError != null && state.phase !is TimelinePhase.Error) || (state.isRefreshing && state.phase is TimelinePhase.Content)) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (state.isRefreshing) Spinner(size = SpinnerSize.Sm, label = stringResource(Res.string.home_feed_refreshing))
-                Text(
-                    text = when (state.refreshError) {
-                        TimelineError.Offline -> stringResource(Res.string.timeline_error_offline)
-                        TimelineError.Server -> stringResource(Res.string.timeline_error_server)
-                        TimelineError.MissingInstance -> stringResource(Res.string.timeline_error_missing_instance)
-                        TimelineError.Forbidden -> stringResource(Res.string.home_feed_access_denied)
-                        null -> stringResource(if (state.isCachedContent) Res.string.home_saved_posts else Res.string.home_feed_refreshing)
-                    },
-                    variant = TextVariant.Small,
-                    modifier = Modifier.weight(1f),
-                )
-                if (!state.isRefreshing && state.canRefresh) Button(
-                    text = stringResource(Res.string.timeline_retry), onClick = onRetry,
-                    modifier = Modifier.heightIn(min = 48.dp), variant = ButtonVariant.Ghost, size = ButtonSize.Sm,
-                )
-            }
-        }
+        HomeRefreshNotice(state = state, sessionRefresh = sessionRefresh, onSessionRetry = onSessionRetry, onFeedRetry = onRetry)
         Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
             when (val phase = state.phase) {
                 is TimelinePhase.Loading -> TimelineLoading()
@@ -226,6 +208,41 @@ private fun TimelineScreen(
                     )
             }
         }
+    }
+}
+
+@Composable
+private fun HomeRefreshNotice(
+    state: TimelineUiState,
+    sessionRefresh: SessionRefreshState,
+    onSessionRetry: () -> Unit,
+    onFeedRetry: () -> Unit,
+) {
+    val sessionUnavailable = sessionRefresh == SessionRefreshState.Unavailable
+    val refreshing = !sessionUnavailable && (state.isRefreshing || sessionRefresh == SessionRefreshState.Restoring)
+    val hasFeed = state.phase is TimelinePhase.Content || state.phase is TimelinePhase.Empty
+    if (!sessionUnavailable && (!hasFeed || (!refreshing && state.refreshError == null))) return
+    val message = stringResource(
+        if (sessionUnavailable) Res.string.home_session_refresh_error else when (state.refreshError) {
+            TimelineError.Offline -> Res.string.timeline_error_offline
+            TimelineError.Server -> Res.string.timeline_error_server
+            TimelineError.MissingInstance -> Res.string.timeline_error_missing_instance
+            TimelineError.Forbidden -> Res.string.home_feed_access_denied
+            null -> Res.string.home_feed_refreshing
+        },
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (refreshing) Spinner(size = SpinnerSize.Sm, color = OmicronTheme.colors.mutedForeground, label = message)
+        Text(text = message, variant = TextVariant.Small, color = OmicronTheme.colors.mutedForeground, modifier = Modifier.weight(1f))
+        if (sessionUnavailable || (!refreshing && state.canRefresh)) Button(
+            text = stringResource(if (sessionUnavailable) Res.string.auth_try_again else Res.string.timeline_retry),
+            onClick = if (sessionUnavailable) onSessionRetry else onFeedRetry,
+            modifier = Modifier.heightIn(min = 48.dp), variant = ButtonVariant.Ghost, size = ButtonSize.Sm,
+        )
     }
 }
 

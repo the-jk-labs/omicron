@@ -4,6 +4,9 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -135,7 +138,9 @@ class StartupSessionJourneyTest {
         val sessionGate = CompletableDeferred<Unit>()
         showApp(sessionGate = sessionGate)
 
-        waitForText("Updating session")
+        waitForText("Loading posts")
+        assertProgressCount(1)
+        rule.onNodeWithText("Updating session").assertDoesNotExist()
         rule.onNodeWithText("For you").assertIsDisplayed()
         rule.onNodeWithText("Restoring session").assertDoesNotExist()
         rule.onNodeWithText("Sign in").assertDoesNotExist()
@@ -152,6 +157,8 @@ class StartupSessionJourneyTest {
 
         waitForText("Could not refresh your session. Try again.")
         rule.onNodeWithText("Saved article").assertIsDisplayed()
+        rule.onAllNodesWithText("Could not refresh your session. Try again.").assertCountEquals(1)
+        assertProgressCount(0)
         rule.onNodeWithText("Profile").assertIsDisplayed()
         rule.onNodeWithText("Sign in").assertDoesNotExist()
         offline.set(false)
@@ -167,6 +174,10 @@ class StartupSessionJourneyTest {
         val auth = showApp(sessionGate = sessionGate, feedGate = feedGate, initialHome = cachedHome(), feedBody = freshPage)
 
         waitForText("Saved article")
+        assertProgressCount(1)
+        rule.onNodeWithText("Updating posts").assertIsDisplayed()
+        rule.onNodeWithText("Updating session").assertDoesNotExist()
+        rule.onNodeWithText("Showing saved posts").assertDoesNotExist()
         rule.onNodeWithText("Profile").assertIsDisplayed()
         rule.onNodeWithText("Restoring session").assertDoesNotExist()
         rule.onNodeWithContentDescription("Like").assertIsNotEnabled()
@@ -175,11 +186,34 @@ class StartupSessionJourneyTest {
         sessionGate.complete(Unit)
         rule.waitUntil(10_000) { auth.currentSession() != null && feedRequests.get() > 0 }
         rule.onNodeWithText("Saved article").assertIsDisplayed()
+        assertProgressCount(1)
+        rule.onNodeWithText("Updating posts").assertIsDisplayed()
         rule.onNodeWithContentDescription("Like").assertIsNotEnabled()
         feedGate.complete(Unit)
         waitForText("Fresh article")
         rule.onNodeWithText("Saved article").assertDoesNotExist()
         rule.onNodeWithContentDescription("Like").assertIsEnabled()
+        assertProgressCount(0)
+        rule.onNodeWithText("Updating posts").assertDoesNotExist()
+    }
+
+    @Test
+    fun aSavedEmptyFeedUsesOneStatusUntilRefreshCompletes() {
+        val sessionGate = CompletableDeferred<Unit>()
+        val feedGate = CompletableDeferred<Unit>()
+        val auth = showApp(sessionGate = sessionGate, feedGate = feedGate, initialHome = cachedHome().copy(posts = emptyList()))
+
+        waitForText("Your feed is empty")
+        assertProgressCount(1)
+        rule.onNodeWithText("Updating posts").assertIsDisplayed()
+        rule.onNodeWithText("Updating session").assertDoesNotExist()
+        sessionGate.complete(Unit)
+        rule.waitUntil(10_000) { auth.currentSession() != null && feedRequests.get() > 0 }
+        assertProgressCount(1)
+        feedGate.complete(Unit)
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Updating posts").fetchSemanticsNodes().isEmpty() }
+        assertProgressCount(0)
+        rule.onNodeWithText("Your feed is empty").assertIsDisplayed()
     }
 
     @Test
@@ -197,12 +231,18 @@ class StartupSessionJourneyTest {
 
     @Test
     fun aFailedFeedRefreshDoesNotReplaceSavedCardsWithAFullScreenError() {
-        showApp(initialHome = cachedHome(), feedOffline = AtomicBoolean(true))
+        val offline = AtomicBoolean(true)
+        showApp(initialHome = cachedHome(), feedOffline = offline, feedBody = freshPage)
 
         waitForText("Saved article")
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Could not load posts. Check your connection and try again.").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Saved article").assertIsDisplayed()
         rule.onNodeWithContentDescription("Like").assertIsNotEnabled()
+        assertProgressCount(0)
+        offline.set(false)
+        rule.onNodeWithContentDescription("Try again").performClick()
+        waitForText("Fresh article")
+        assertProgressCount(0)
     }
 
     @Test
@@ -211,6 +251,8 @@ class StartupSessionJourneyTest {
         showApp(sessionGate = gate, initialHome = cachedHome(), appearance = AppearancePreference.Light)
 
         waitForText("Saved article")
+        assertProgressCount(1)
+        rule.onNodeWithText("Updating session").assertDoesNotExist()
         rule.onNodeWithText("Profile").assertIsDisplayed()
         rule.onNodeWithContentDescription("Like").assertIsNotEnabled()
         gate.complete(Unit)
@@ -234,6 +276,10 @@ class StartupSessionJourneyTest {
         waitForText("Global")
         rule.onAllNodesWithText("Sign in")[0].assertIsDisplayed()
         assertNull(auth.currentSession())
+    }
+
+    private fun assertProgressCount(count: Int) {
+        rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).assertCountEquals(count)
     }
 
     private fun waitForText(text: String) {

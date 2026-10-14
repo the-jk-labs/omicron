@@ -226,7 +226,7 @@ fun OmicronApp(
                     },
                 )
             }
-            if (!standalone && sessionRefresh != SessionRefreshState.Ready) {
+            if (!standalone && !backStackEntry.routeMatches<TimelineDestination>() && sessionRefresh != SessionRefreshState.Ready) {
                 SessionRefreshNotice(state = sessionRefresh, onRetry = startupViewModel::restore)
             }
             if (settingsState.signOutWarning && !standalone) {
