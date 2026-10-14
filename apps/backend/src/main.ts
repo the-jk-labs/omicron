@@ -1,3 +1,4 @@
+import { serve } from "srvx";
 import { buildApp } from "@/app.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { config } from "@/config.ts";
@@ -60,16 +61,16 @@ async function main() {
   // database-backed pattern as the sweepers above — see services/deletedUsers.ts.
   startDeletedUserSweeper();
 
-  // `onListen` overrides Deno's own "Listening on http://0.0.0.0:8000/" banner,
-  // which otherwise prints alongside ours and announces the same thing twice —
-  // once with a localhost URL that is meaningless inside a container.
-  Deno.serve(
-    {
-      port: config.PORT,
-      onListen: () => console.log(`✔ Omicron backend v${APP_VERSION} listening on :${config.PORT}`),
-    },
-    app.fetch,
-  );
+  // srvx picks the runtime's native server (Deno.serve, Bun.serve, node:http).
+  // Its graceful shutdown only closes the listener, leaving the sweepers and
+  // worker alive, so the process would ignore SIGINT/SIGTERM.
+  await serve({
+    port: config.PORT,
+    fetch: app.fetch,
+    silent: true,
+    gracefulShutdown: false,
+  }).ready();
+  console.log(`✔ Omicron backend v${APP_VERSION} listening on :${config.PORT}`);
 
   // Re-assert the persisted AI-scraper-shield state onto Caddy once it's up
   // (Caddy starts after us and boots protection-off). Non-blocking, fail-open.

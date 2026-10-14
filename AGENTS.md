@@ -38,8 +38,10 @@ Core goals:
 ## Tech Stack
 
 ### Backend (`apps/backend`)
+
 - Deno runtime (it runs `pnpm dev` underneath and the production container);
-  everything you run during development goes through **pnpm**
+  everything you run during development goes through **pnpm**. The code
+  itself stays runtime-agnostic (rule 4)
 - Hono (HTTP)
 - Fedify (ActivityPub)
 - PostgreSQL + Drizzle ORM (postgres.js driver)
@@ -49,6 +51,7 @@ Core goals:
   (`src/config.ts`), and set variables always win
 
 ### Frontend (`apps/frontend`)
+
 - SvelteKit with Svelte 5 (runes)
 - bits-ui (strictly use this for everything possible)
 - Tailwind CSS v4
@@ -56,6 +59,7 @@ Core goals:
 - Lucide (`@lucide/svelte`, wrapped by `src/lib/components/Icon.svelte`)
 
 ### Deployment
+
 - `docker-compose.yml`: Postgres, Redis, backend, frontend, Caddy (TLS),
   Anubis (bot protection) and a restic `backup` service
 
@@ -75,7 +79,7 @@ NEVER mix responsibilities. Backend `src/`:
 - `queue/` → background jobs
 - `lib/` → small shared helpers with no business rules
 
-No direct DB calls in routes. Routes may import repository *types* (e.g. for
+No direct DB calls in routes. Routes may import repository _types_ (e.g. for
 serializers), never query functions or the client.
 
 ### 2. Repository Pattern (MANDATORY)
@@ -84,8 +88,9 @@ All database access goes through repository functions in
 `src/db/repositories/`.
 
 ❌ Do NOT:
+
 ```ts
-db.select().from(posts)
+db.select().from(posts);
 ```
 
 ✅ DO: call a repository function instead.
@@ -113,6 +118,26 @@ Why the username must never change:
 - **Reuse.** A freed username could be claimed by someone else, who would then
   receive the old account's mentions and look like its owner.
 
+### 4. Runtime-agnostic code (NEVER depend on one runtime)
+
+The backend must run unchanged on Node, Deno and Bun. Deno runs it today, but
+that choice must stay swappable.
+
+❌ Do NOT:
+
+- Use runtime globals: `Deno.*`, `Bun.*` (`Deno.serve`, `Deno.env`,
+  `Bun.file`, …).
+- Use runtime-specific import specifiers: `jsr:`, `npm:`, `bun:`, URL imports.
+
+✅ DO:
+
+- Import built-ins through the `node:` protocol (`node:fs/promises`,
+  `node:crypto`, `node:process`, …), which Node, Deno and Bun all support.
+- Prefer web-standard APIs (`fetch`, `Request`/`Response`, `URL`,
+  `crypto.subtle`) where they fit.
+- Serve HTTP through `srvx` (`src/main.ts`), which picks each runtime's native
+  server; read the client socket IP from `request.ip`.
+
 ---
 
 ## Tooling and verification
@@ -120,7 +145,7 @@ Why the username must never change:
 - **pnpm only** (`pnpm <bin>`, never `npm`/`npx`).
 - Before finishing, in every app you touched: run `pnpm fmt`, then
   `pnpm check`. `check` runs greenly:
-  - backend: `deno check`, oxfmt, oxlint, Vitest unit tests
+  - backend: `tsc --noEmit` (TypeScript 7), oxfmt, oxlint, Vitest unit tests
   - frontend: oxfmt, svelte-check, oxlint, Vitest
 - Backend tests are two Vitest projects: `pnpm test` runs both,
   `pnpm test:unit` / `pnpm test:integration` run one. `pnpm check` runs only the
@@ -221,7 +246,7 @@ the docs; do not invent new design tokens.
 ## Code style
 
 - Keep comments short (one line, two at most) and only for the non-obvious
-  *why*. Don't restate the code.
+  _why_. Don't restate the code.
 - Match the surrounding code's naming and idiom.
 
 ---

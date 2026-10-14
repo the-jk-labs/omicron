@@ -35,6 +35,20 @@ describe("clientIp", () => {
     expect(await res.text()).toBe("8.8.8.8");
   });
 
+  test("falls back to the socket peer srvx sets as request.ip", async () => {
+    const req = Object.assign(new Request("http://localhost/"), { ip: "192.0.2.7" });
+    const res = await ipApp().fetch(req);
+    expect(await res.text()).toBe("192.0.2.7");
+  });
+
+  test("prefers x-forwarded-for over the socket peer", async () => {
+    const req = Object.assign(new Request("http://localhost/", { headers: { "x-forwarded-for": "203.0.113.9" } }), {
+      ip: "172.18.0.5",
+    });
+    const res = await ipApp().fetch(req);
+    expect(await res.text()).toBe("203.0.113.9");
+  });
+
   test("is 'unknown' when no header or connection info is available", async () => {
     const res = await ipApp().request("/");
     expect(await res.text()).toBe("unknown");

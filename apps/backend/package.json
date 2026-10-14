@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "deno run --watch -A src/main.ts",
     "start": "deno run -A src/main.ts",
-    "db:generate": "deno run -A npm:drizzle-kit generate",
-    "db:studio": "deno run -A npm:drizzle-kit studio",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio",
     "check": "greenly",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
@@ -40,18 +40,19 @@
     "markdown-it": "15.0.2",
     "postgres": "3.4.9",
     "sanitize-html": "2.18.0",
-    "zod": "4.6.5"
+    "srvx": "1.0.5",
+    "zod": "4.6.7"
   },
   "devDependencies": {
-    "@types/deno": "2.7.0",
-    "@types/node": "24.19.1",
+    "@types/node": "24.19.2",
     "@types/sanitize-html": "2.16.2",
     "@vitest/coverage-v8": "5.0.3",
     "drizzle-kit": "0.31.11",
     "greenly": "1.2.0",
-    "oxfmt": "0.72.0",
-    "oxlint": "1.87.0",
+    "oxfmt": "0.73.0",
+    "oxlint": "1.88.0",
     "oxlint-tsgolint": "7.0.2003",
+    "typescript": "7.0.2",
     "vitest": "5.0.3"
   }
 }
