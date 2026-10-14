@@ -23,6 +23,8 @@
     <string name="auth_register_description">Join %1$s to read, write, and follow writers.</string>
     <string name="auth_register_title">Create your account</string>
     <string name="auth_restoring">Restoring session</string>
+    <string name="startup_continue_as_guest">Continue as guest</string>
+    <string name="startup_error_unavailable">Could not load your saved instance. Try again or choose an instance.</string>
     <string name="auth_session_not_found_description">No saved session was found for %1$s.</string>
     <string name="auth_session_not_found_title">No saved session</string>
     <string name="auth_sign_in">Sign in</string>

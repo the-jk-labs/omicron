@@ -30,6 +30,7 @@ This repository contains the Android-first Kotlin Multiplatform client. Android 
 - Retrieve and retain public instance metadata from `GET /api/instance`.
 - Present loading, invalid-address, unreachable, and retry states for instance connection.
 - Sign in, register, and restore sessions with per-origin credential storage.
+- Automatically restore a saved session before opening Home on restart, with retry or guest reading when restoration is unavailable.
 - Use the web-aligned signed-in mobile navigation for Home, Lists, Write, Stats, and Profile; open search, notifications, and account actions from the top bar, with appearance choices in Settings.
 - Browse Global/Local timelines and the signed-in For you feed; read posts natively with responsive cards and working feed actions.
 - Like, recommend, save, comment, follow, mute, and block with optimistic rollback.

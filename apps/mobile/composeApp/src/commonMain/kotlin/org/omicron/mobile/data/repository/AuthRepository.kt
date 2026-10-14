@@ -25,6 +25,16 @@ class AuthRepository(
     private val mutableSessionExpired = MutableStateFlow(false)
     val sessionExpired: StateFlow<Boolean> = mutableSessionExpired.asStateFlow()
 
+    suspend fun restoreSavedSession(origin: String): AuthenticatedSession? {
+        if (activeOrigin == origin && activeSession != null) return activeSession
+        val hasSavedCookie = sessionCookieStore.read(origin).any { it.expiresAt == null || it.expiresAt > now() }
+        if (!hasSavedCookie) {
+            clearSession()
+            return null
+        }
+        return restore(origin)
+    }
+
     suspend fun restore(origin: String): AuthenticatedSession? {
         val session =
             api.getSession(origin) ?: run {

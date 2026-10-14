@@ -32,6 +32,8 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 
 **Completed:** HTTPS origin normalization, public instance metadata retrieval, persisted instance configuration, loading, invalid-address, unreachable, retry, and connected states; type-safe navigation and dependency wiring; Android Keystore-encrypted per-origin Better Auth cookie persistence; session restoration and lazy pre-expiry JWT renewal; email and username sign-in; registration; verification-required state; sign-out with local credential removal when remote revocation fails; account switching; and Compose UI tests for first connection, invalid origin, offline retry, sign-in, session restoration, and sign-out.
 
+**Startup session restoration:** Done. The selected origin's saved session restores before navigation or feed loading. Returning readers open Home without connection or session confirmation screens; first-time readers retain instance setup. Guests without unexpired saved cookies skip network authentication checks. Transient restoration failures retain cookies and offer retry, instance selection, or explicit guest reading; confirmed invalid sessions fall back to guest Home (ADR-0024). Debug/release build and lint, all 301 unit tests, and Android test APK assembly pass; lint still emits Kotlin-metadata compatibility diagnostics. Eighteen focused Android 16 emulator journeys pass, including eight startup checks for saved-cookie restoration, delayed restoration, guests, first connection, offline retry, explicit guest reading, invalid sessions, and revoked sessions. Device authentication uses fake Ktor responses; a live signed-in phone restart remains unverified.
+
 ## R2: Guest Reader
 
 **Status:** Done

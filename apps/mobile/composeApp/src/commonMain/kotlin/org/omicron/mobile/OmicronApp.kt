@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavHostController
 import androidx.navigation.toRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -44,6 +45,9 @@ import org.omicron.mobile.data.repository.PostsRepository
 import org.omicron.mobile.data.repository.SocialRepository
 import org.omicron.mobile.feature.auth.AuthRoute
 import org.omicron.mobile.feature.auth.AuthViewModel
+import org.omicron.mobile.feature.auth.StartupPhase
+import org.omicron.mobile.feature.auth.StartupScreen
+import org.omicron.mobile.feature.auth.StartupViewModel
 import org.omicron.mobile.feature.composer.ComposerRoute
 import org.omicron.mobile.feature.composer.ComposerViewModel
 import org.omicron.mobile.feature.connect.ConnectRoute
@@ -99,6 +103,13 @@ fun OmicronApp(
     appearancePreferenceStore: AppearancePreferenceStore,
     onDarkThemeChanged: ((Boolean) -> Unit)? = null,
 ) {
+    val startupViewModel = remember(instanceRepository, authRepository) {
+        StartupViewModel(instanceRepository::savedInstance, authRepository)
+    }
+    DisposableEffect(startupViewModel) {
+        onDispose(startupViewModel::close)
+    }
+    val startupPhase by startupViewModel.uiState.collectAsState()
     val settingsViewModel =
         remember(instanceRepository, authRepository, appearancePreferenceStore) {
             SettingsViewModel(instanceRepository::savedInstance, authRepository, appearancePreferenceStore)
@@ -128,6 +139,16 @@ fun OmicronApp(
         appearance = settingsState.appearance,
         onDarkThemeChanged = onDarkThemeChanged,
     ) {
+        val ready = startupPhase as? StartupPhase.Ready
+        if (ready == null) {
+            StartupScreen(
+                phase = startupPhase,
+                onRetry = startupViewModel::restore,
+                onContinueAsGuest = startupViewModel::continueAsGuest,
+                onChooseInstance = startupViewModel::chooseInstance,
+            )
+            return@OmicronTheme
+        }
         val navController = rememberNavController()
         val backStackEntry by navController.currentBackStackEntryAsState()
         val standalone =
@@ -204,7 +225,7 @@ fun OmicronApp(
             Box(modifier = Modifier.weight(1f).fillMaxSize()) {
                 NavHost(
                     navController = navController,
-                    startDestination = ConnectDestination,
+                    startDestination = if (ready.hasSavedInstance) TimelineDestination else ConnectDestination,
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     composable<ConnectDestination> {
@@ -233,7 +254,7 @@ fun OmicronApp(
                         TimelineRoute(
                             viewModel = viewModel,
                             onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
-                            onChangeInstance = { navController.popBackStack(ConnectDestination, false) },
+                            onChangeInstance = { navController.navigateToInstanceSelection() },
                             onOpenPost = { postId -> navController.navigate(PostDestination(postId)) },
                             onOpenProfile = { username -> navController.navigate(ProfileDestination(username)) },
                             onOpenTag = { slug -> navController.navigate(TagDestination(slug)) },
@@ -298,7 +319,7 @@ fun OmicronApp(
                         SettingsRoute(
                             viewModel = settingsViewModel,
                             onBack = { navController.popBackStack() },
-                            onChangeInstance = { navController.popBackStack(ConnectDestination, false) },
+                            onChangeInstance = { navController.navigateToInstanceSelection() },
                             onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
                             onOpenOfflineReading = { navController.navigate(OfflineReadingDestination) },
                         )
@@ -394,7 +415,7 @@ fun OmicronApp(
                             socialViewModel = socialViewModel,
                             onBack = { navController.popBackStack() },
                             onOpenPost = { postId -> navController.navigate(PostDestination(postId)) },
-                            onChangeInstance = { navController.popBackStack(ConnectDestination, false) },
+                            onChangeInstance = { navController.navigateToInstanceSelection() },
                             onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
                             onOpenProfile = { username -> navController.navigate(ProfileDestination(username)) },
                             onOpenTag = { slug -> navController.navigate(TagDestination(slug)) },
@@ -472,7 +493,7 @@ fun OmicronApp(
                         }
                         AuthRoute(
                             viewModel = viewModel,
-                            onChangeInstance = { navController.popBackStack() },
+                            onChangeInstance = { navController.navigateToInstanceSelection() },
                             onContinue = { navController.popBackStack() },
                         )
                     }
@@ -494,6 +515,13 @@ fun OmicronApp(
                 }
             }
         }
+    }
+}
+
+private fun NavHostController.navigateToInstanceSelection() {
+    navigate(ConnectDestination) {
+        popUpTo(graph.id) { inclusive = true }
+        launchSingleTop = true
     }
 }
 
