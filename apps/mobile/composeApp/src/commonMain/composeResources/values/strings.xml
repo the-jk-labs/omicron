@@ -26,7 +26,6 @@
     <string name="startup_continue_as_guest">Continue as guest</string>
     <string name="home_session_refreshing">Updating session</string>
     <string name="home_session_refresh_error">Could not refresh your session. Try again.</string>
-    <string name="home_saved_posts">Showing saved posts</string>
     <string name="home_feed_refreshing">Updating posts</string>
     <string name="home_no_saved_posts">No saved posts yet. Retry when you’re connected.</string>
     <string name="home_feed_access_denied">You don’t have access to this feed.</string>
