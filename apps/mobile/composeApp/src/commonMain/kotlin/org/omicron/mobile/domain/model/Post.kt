@@ -17,6 +17,7 @@ data class PostTag(
     val name: String,
 )
 
+@Serializable
 data class Post(
     val id: String,
     val title: String?,
@@ -32,4 +33,5 @@ data class Post(
     val contentHtml: String = "",
     val liked: Boolean = false,
     val recommended: Boolean = false,
+    val previewReadingMinutes: Int? = null,
 )

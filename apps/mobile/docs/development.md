@@ -4,7 +4,9 @@
 
 - JDK 17
 - Android SDK Platform 36
-- A connected Android device or emulator for device validation when a change affects runtime behavior
+- A physical Android phone connected through USB, with USB debugging enabled and this computer authorized, for device validation when a change affects runtime behavior
+
+Use the USB-connected phone only. Do not install, create, or run Android emulators or download emulator system images. Confirm the phone appears in `adb devices -l` before installing or testing.
 
 ## Local Quality Gate
 
@@ -20,13 +22,7 @@ Install a debug build on a connected device when applicable:
 ./gradlew :composeApp:installDebug
 ```
 
-Run connected Compose UI tests on a disposable device or emulator when a critical journey changes:
-
-```sh
-./gradlew :composeApp:connectedDebugAndroidTest
-```
-
-The connected Gradle task uninstalls `org.omicron.mobile` and its test package after execution, removing local app data. Do not run it on a phone with an installation that must be preserved. On those phones, install the app and test APK without uninstalling either package, then invoke the Android instrumentation runner directly. An isolated UI-test application ID is tracked as an R6 follow-up.
+Run Compose UI tests directly on the USB-connected phone when a critical journey changes. Do not run `:composeApp:connectedDebugAndroidTest`: that task uninstalls `org.omicron.mobile` and its test package after execution, removing local app data. Never uninstall the phone's app or clear its data to make a test run or installation succeed. Install the app and test APK in place, then invoke the Android instrumentation runner directly. An isolated UI-test application ID is tracked as an R6 follow-up.
 
 ```sh
 ./gradlew :composeApp:installDebug :composeApp:installDebugAndroidTest

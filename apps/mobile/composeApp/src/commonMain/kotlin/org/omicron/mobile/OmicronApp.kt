@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavHostController
 import androidx.navigation.toRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -42,8 +43,13 @@ import org.omicron.mobile.data.repository.InstanceRepository
 import org.omicron.mobile.data.repository.MobileWebRepository
 import org.omicron.mobile.data.repository.PostsRepository
 import org.omicron.mobile.data.repository.SocialRepository
+import org.omicron.mobile.data.repository.SessionRefreshState
 import org.omicron.mobile.feature.auth.AuthRoute
 import org.omicron.mobile.feature.auth.AuthViewModel
+import org.omicron.mobile.feature.auth.StartupPhase
+import org.omicron.mobile.feature.auth.StartupScreen
+import org.omicron.mobile.feature.auth.StartupViewModel
+import org.omicron.mobile.feature.auth.SessionRefreshNotice
 import org.omicron.mobile.feature.composer.ComposerRoute
 import org.omicron.mobile.feature.composer.ComposerViewModel
 import org.omicron.mobile.feature.connect.ConnectRoute
@@ -99,6 +105,13 @@ fun OmicronApp(
     appearancePreferenceStore: AppearancePreferenceStore,
     onDarkThemeChanged: ((Boolean) -> Unit)? = null,
 ) {
+    val startupViewModel = remember(instanceRepository, authRepository) {
+        StartupViewModel(instanceRepository::savedInstance, authRepository)
+    }
+    DisposableEffect(startupViewModel) {
+        onDispose(startupViewModel::close)
+    }
+    val startupPhase by startupViewModel.uiState.collectAsState()
     val settingsViewModel =
         remember(instanceRepository, authRepository, appearancePreferenceStore) {
             SettingsViewModel(instanceRepository::savedInstance, authRepository, appearancePreferenceStore)
@@ -108,6 +121,8 @@ fun OmicronApp(
     }
     val settingsState by settingsViewModel.uiState.collectAsState()
     val session by authRepository.session.collectAsState()
+    val displayUser by authRepository.displayUser.collectAsState()
+    val sessionRefresh by authRepository.refreshState.collectAsState()
     val notificationsViewModel = remember(mobileWebRepository) { NotificationsViewModel(mobileWebRepository) }
     DisposableEffect(notificationsViewModel) {
         onDispose(notificationsViewModel::close)
@@ -128,7 +143,24 @@ fun OmicronApp(
         appearance = settingsState.appearance,
         onDarkThemeChanged = onDarkThemeChanged,
     ) {
+        val ready = startupPhase as? StartupPhase.Ready
+        if (ready == null) {
+            StartupScreen(
+                phase = startupPhase,
+                onRetry = startupViewModel::restore,
+                onContinueAsGuest = startupViewModel::continueAsGuest,
+                onChooseInstance = startupViewModel::chooseInstance,
+            )
+            return@OmicronTheme
+        }
+        LaunchedEffect(ready.origin) { settingsViewModel.refreshInstance() }
         val navController = rememberNavController()
+        LaunchedEffect(ready.openHome) {
+            if (ready.openHome) navController.navigate(TimelineDestination) {
+                popUpTo<ConnectDestination> { inclusive = true }
+                launchSingleTop = true
+            }
+        }
         val backStackEntry by navController.currentBackStackEntryAsState()
         val standalone =
             backStackEntry == null || backStackEntry.routeMatches<ConnectDestination>() || backStackEntry.routeMatches<AuthDestination>()
@@ -139,9 +171,9 @@ fun OmicronApp(
                 backStackEntry.routeMatches<ComposeDestination>() -> PrimaryTab.Write
                 backStackEntry.routeMatches<DashboardDestination>() -> PrimaryTab.Stats
                 backStackEntry.routeMatches<ProfileDestination>() &&
-                    backStackEntry?.toRoute<ProfileDestination>()?.username == session?.user?.username -> PrimaryTab.Profile
+                    backStackEntry?.toRoute<ProfileDestination>()?.username == displayUser?.username -> PrimaryTab.Profile
                 backStackEntry.routeMatches<ProfileConnectionsDestination>() &&
-                    backStackEntry?.toRoute<ProfileConnectionsDestination>()?.username == session?.user?.username -> PrimaryTab.Profile
+                    backStackEntry?.toRoute<ProfileConnectionsDestination>()?.username == displayUser?.username -> PrimaryTab.Profile
                 else -> null
             }
         val requiresSession =
@@ -149,8 +181,8 @@ fun OmicronApp(
                 backStackEntry.routeMatches<ListDestination>() ||
                 backStackEntry.routeMatches<DashboardDestination>() ||
                 backStackEntry.routeMatches<NotificationsDestination>()
-        LaunchedEffect(session?.user?.id, requiresSession) {
-            if (session == null && requiresSession) {
+        LaunchedEffect(displayUser?.id, sessionRefresh, requiresSession) {
+            if (displayUser == null && sessionRefresh == SessionRefreshState.Ready && requiresSession) {
                 navController.navigate(TimelineDestination) {
                     popUpTo<TimelineDestination> { inclusive = false }
                     launchSingleTop = true
@@ -163,7 +195,8 @@ fun OmicronApp(
             if (backStackEntry.routeMatches<TimelineDestination>()) {
                 MobileTopBar(
                     appName = settingsState.instance?.name.orEmpty(),
-                    user = session?.user,
+                    user = displayUser,
+                    sessionChecking = sessionRefresh != SessionRefreshState.Ready,
                     unreadCount = notificationsState.unreadCount,
                     onSearch = { navController.navigate(SearchDestination) { launchSingleTop = true } },
                     onNotifications = { navController.navigate(NotificationsDestination) { launchSingleTop = true } },
@@ -193,6 +226,9 @@ fun OmicronApp(
                     },
                 )
             }
+            if (!standalone && sessionRefresh != SessionRefreshState.Ready) {
+                SessionRefreshNotice(state = sessionRefresh, onRetry = startupViewModel::restore)
+            }
             if (settingsState.signOutWarning && !standalone) {
                 Text(
                     text = stringResource(Res.string.settings_sign_out_warning),
@@ -204,7 +240,7 @@ fun OmicronApp(
             Box(modifier = Modifier.weight(1f).fillMaxSize()) {
                 NavHost(
                     navController = navController,
-                    startDestination = ConnectDestination,
+                    startDestination = if (ready.hasSavedInstance) TimelineDestination else ConnectDestination,
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     composable<ConnectDestination> {
@@ -214,7 +250,7 @@ fun OmicronApp(
                         }
                         ConnectRoute(
                             viewModel = viewModel,
-                            onContinue = { navController.navigate(TimelineDestination) { launchSingleTop = true } },
+                            onContinue = startupViewModel::openSelectedInstance,
                         )
                     }
                     composable<TimelineDestination> {
@@ -225,6 +261,9 @@ fun OmicronApp(
                                     session = authRepository.session,
                                     sessionExpired = authRepository.sessionExpired,
                                     socialRepository = socialRepository,
+                                    account = authRepository.displayUser,
+                                    sessionRefresh = authRepository.refreshState,
+                                    initialHome = authRepository.homeSnapshot.value?.takeIf { it.origin == ready.origin },
                                 )
                             }
                         DisposableEffect(viewModel) {
@@ -232,8 +271,11 @@ fun OmicronApp(
                         }
                         TimelineRoute(
                             viewModel = viewModel,
+                            account = authRepository.displayUser,
+                            sessionRefresh = authRepository.refreshState,
+                            onSessionRetry = startupViewModel::restore,
                             onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
-                            onChangeInstance = { navController.popBackStack(ConnectDestination, false) },
+                            onChangeInstance = { navController.navigateToInstanceSelection() },
                             onOpenPost = { postId -> navController.navigate(PostDestination(postId)) },
                             onOpenProfile = { username -> navController.navigate(ProfileDestination(username)) },
                             onOpenTag = { slug -> navController.navigate(TagDestination(slug)) },
@@ -298,7 +340,7 @@ fun OmicronApp(
                         SettingsRoute(
                             viewModel = settingsViewModel,
                             onBack = { navController.popBackStack() },
-                            onChangeInstance = { navController.popBackStack(ConnectDestination, false) },
+                            onChangeInstance = { navController.navigateToInstanceSelection() },
                             onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
                             onOpenOfflineReading = { navController.navigate(OfflineReadingDestination) },
                         )
@@ -394,7 +436,7 @@ fun OmicronApp(
                             socialViewModel = socialViewModel,
                             onBack = { navController.popBackStack() },
                             onOpenPost = { postId -> navController.navigate(PostDestination(postId)) },
-                            onChangeInstance = { navController.popBackStack(ConnectDestination, false) },
+                            onChangeInstance = { navController.navigateToInstanceSelection() },
                             onSignIn = { navController.navigate(AuthDestination) { launchSingleTop = true } },
                             onOpenProfile = { username -> navController.navigate(ProfileDestination(username)) },
                             onOpenTag = { slug -> navController.navigate(TagDestination(slug)) },
@@ -472,28 +514,35 @@ fun OmicronApp(
                         }
                         AuthRoute(
                             viewModel = viewModel,
-                            onChangeInstance = { navController.popBackStack() },
+                            onChangeInstance = { navController.navigateToInstanceSelection() },
                             onContinue = { navController.popBackStack() },
                         )
                     }
                 }
             }
-            if (session != null && !standalone && !(backStackEntry.routeMatches<ComposeDestination>() && WindowInsets.isImeVisible)) {
+            if (displayUser != null && !standalone && !(backStackEntry.routeMatches<ComposeDestination>() && WindowInsets.isImeVisible)) {
                 MobileBottomBar(
                     selected = selectedTab,
-                    profileAvatarUrl = session?.user?.avatarUrl,
-                    profileDisplayName = session?.user?.displayName.orEmpty(),
+                    profileAvatarUrl = displayUser?.avatarUrl,
+                    profileDisplayName = displayUser?.displayName.orEmpty(),
                 ) { tab ->
                     when (tab) {
                         PrimaryTab.Home -> navController.navigateTopLevel(TimelineDestination, TimelineDestination)
                         PrimaryTab.Lists -> navController.navigateTopLevel(ListsDestination, TimelineDestination)
                         PrimaryTab.Write -> navController.navigateTopLevel(ComposeDestination(), TimelineDestination)
                         PrimaryTab.Stats -> navController.navigateTopLevel(DashboardDestination, TimelineDestination)
-                        PrimaryTab.Profile -> session?.user?.username?.let { navController.navigateTopLevel(ProfileDestination(it), TimelineDestination) }
+                        PrimaryTab.Profile -> displayUser?.username?.let { navController.navigateTopLevel(ProfileDestination(it), TimelineDestination) }
                     }
                 }
             }
         }
+    }
+}
+
+private fun NavHostController.navigateToInstanceSelection() {
+    navigate(ConnectDestination) {
+        popUpTo(graph.id) { inclusive = true }
+        launchSingleTop = true
     }
 }
 

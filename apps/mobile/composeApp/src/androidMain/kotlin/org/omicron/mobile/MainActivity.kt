@@ -13,6 +13,7 @@ import coil3.disk.DiskCache
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade
 import org.omicron.mobile.core.storage.EncryptedSessionCookieStore
+import org.omicron.mobile.core.storage.EncryptedHomeSnapshotStore
 import org.omicron.mobile.core.storage.SharedPreferencesAppearancePreferenceStore
 import org.omicron.mobile.core.storage.SharedPreferencesInstanceStore
 import org.omicron.mobile.data.cache.FileOfflinePostCache
@@ -25,6 +26,7 @@ import org.omicron.mobile.data.api.KtorPostsApi
 import org.omicron.mobile.data.api.KtorSocialApi
 import org.omicron.mobile.data.repository.AuthoringRepository
 import org.omicron.mobile.data.repository.AuthRepository
+import org.omicron.mobile.data.repository.HomeSnapshotRepository
 import org.omicron.mobile.data.repository.DiscoveryRepository
 import org.omicron.mobile.data.repository.InstanceRepository
 import org.omicron.mobile.data.repository.MobileWebRepository
@@ -81,6 +83,7 @@ private class AppContainer(context: android.content.Context) {
 
     val appearancePreferenceStore = SharedPreferencesAppearancePreferenceStore(context)
     val offlinePostCache = FileOfflinePostCache(File(context.filesDir, "offline_posts"))
+    private val homeSnapshots = HomeSnapshotRepository(EncryptedHomeSnapshotStore(context))
 
     val instanceRepository =
         InstanceRepository(
@@ -88,7 +91,7 @@ private class AppContainer(context: android.content.Context) {
             store = SharedPreferencesInstanceStore(context),
         )
 
-    val authRepository = AuthRepository(api = KtorAuthApi(httpClient), sessionCookieStore = sessionCookieStore)
+    val authRepository = AuthRepository(api = KtorAuthApi(httpClient), sessionCookieStore = sessionCookieStore, homeSnapshots = homeSnapshots)
 
     val postsRepository =
         PostsRepository(
@@ -97,6 +100,7 @@ private class AppContainer(context: android.content.Context) {
             accessToken = authRepository::accessToken,
             onUnauthorized = { authRepository.invalidateSession() },
             offlinePostCache = offlinePostCache,
+            homeSnapshots = homeSnapshots,
         )
 
     val socialRepository =

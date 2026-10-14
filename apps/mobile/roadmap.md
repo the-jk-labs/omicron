@@ -32,6 +32,8 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 
 **Completed:** HTTPS origin normalization, public instance metadata retrieval, persisted instance configuration, loading, invalid-address, unreachable, retry, and connected states; type-safe navigation and dependency wiring; Android Keystore-encrypted per-origin Better Auth cookie persistence; session restoration and lazy pre-expiry JWT renewal; email and username sign-in; registration; verification-required state; sign-out with local credential removal when remote revocation fails; account switching; and Compose UI tests for first connection, invalid origin, offline retry, sign-in, session restoration, and sign-out.
 
+**Startup session restoration:** Done. The selected origin's Better Auth session recovers safely across restarts, and returning readers do not repeat connection or session confirmation screens. Guests without unexpired saved cookies skip network authentication checks; transient failures retain credentials, and confirmed invalid sessions recover to guest reading. R6's cache-first startup supersedes the original network-blocking gate in ADR-0024 (ADR-0025).
+
 ## R2: Guest Reader
 
 **Status:** Done
@@ -105,6 +107,8 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 
 **Loading-state refinement:** Done. Initial loading screens center their progress indicator and display a localized status describing the content being loaded, including session restoration and instance setup. The shared component keeps the visible message and progress accessibility label aligned.
 
+**Instant Home startup:** Done. Local instance/account metadata and saved Home cards open before network authentication. Session recovery and feed refresh run in the background without replacing visible cards with a loading screen; failures use inline retry feedback. The latest instance/account snapshot is Keystore-encrypted in Android's no-backup directory, limited to 30 card previews and 1 MiB. Previews expire after 24 hours and account metadata after 30 days; article HTML, JWTs, passwords, opaque editor documents, and cursors are not stored. Account/origin changes, sign-out, and confirmed authorization loss discard old cards; generation and presentation-owner checks reject stale responses. Cached social controls are read-only until authenticated content refreshes. Normal app routes receive Bearer JWTs, not Better Auth session cookies; cookies remain restricted to the selected origin's auth endpoints. First loads without a snapshot still need network data, and the separate public article library remains available when session refresh is unavailable (ADR-0025). Debug/release build and lint, R8, all 323 unit tests, and Android test APK assembly pass; existing Kotlin-metadata lint diagnostics remain. Twenty-seven direct-instrumentation checks pass on USB-connected ALT-LX1 Android 14, including delayed authentication and feed refresh, offline retry, cached cards in both themes, invalid/forbidden sessions, encrypted storage, cookie scoping, and navigation. Installation and fixture tests preserve the existing encrypted session file unchanged. One live warm-up and two subsequent signed-in cold starts pass with a persisted encrypted Home snapshot and no full-screen session restoration or feed loading. Precise cache-first startup benchmarking and signed-in TalkBack review remain part of the R6 release gate.
+
 **Exit criteria:**
 
 - Instance management, appearance, about, and sign-out are complete.
@@ -113,7 +117,7 @@ The Android-first Kotlin Multiplatform foundation, instance connection, guest re
 - Release build, R8, startup, baseline profile, accessibility, font-scale, light/dark, and device visual checks pass.
 - README, architecture docs, ADRs, and API gaps reflect the shipped behavior.
 
-**Device-test isolation:** Planned. Give connected Compose UI tests an isolated application ID so Gradle's test cleanup cannot uninstall the production app or remove its session, preferences, and offline library. Until isolation is implemented, run the connected Gradle task only on disposable devices/emulators; shared phones require direct instrumentation without package removal.
+**Device-test isolation:** Planned. Give connected Compose UI tests an isolated application ID so Gradle's test cleanup cannot uninstall the production app or remove its session, preferences, and offline library. Device validation uses the USB-connected physical phone only; emulators are not permitted. Until isolation is implemented, use direct instrumentation without package removal or app-data clearing, never the connected Compose Gradle task.
 
 ## R7: Native Mobile Web Parity
 
@@ -185,5 +189,5 @@ All regular pages use opaque cursor/keyset pagination and return `{items,nextCur
 - Followers, following, and search have no cursor pagination. Search results are capped server-side.
 - Follower/following member summaries omit the viewer's follow state and private-account status; no bulk relationship-state endpoint is confirmed. The viewer's own Following list establishes approved follows directly. Other unresolved connection relationships use background profile reads with at most four concurrent checks (ADR-0022).
 - There is no delta-sync or offline-sync endpoint.
-- R6 offline reading uses only the documented bounded cache of public post details; it does not provide offline feeds, comments, drafts, or synchronization.
+- R6's article library caches public post details. A separate encrypted Home snapshot provides bounded, read-only card previews for startup; neither cache provides offline comments, drafts, mutations, or synchronization.
 - Remote profile routes return 404 when federation is disabled.

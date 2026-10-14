@@ -24,7 +24,7 @@ class SettingsViewModel(
 ) {
     private val mutableUiState = MutableStateFlow(
         SettingsUiState(
-            user = authRepository.session.value?.user,
+            user = authRepository.displayUser.value,
             sessionExpired = authRepository.sessionExpired.value,
         ),
     )
@@ -39,11 +39,11 @@ class SettingsViewModel(
             }
         }
         scope.launch {
-            authRepository.session.collect { session ->
+            authRepository.displayUser.collect { user ->
                 mutableUiState.update {
                     it.copy(
-                        user = session?.user,
-                        signOutWarning = if (session != null) false else it.signOutWarning,
+                        user = user,
+                        signOutWarning = if (user != null) false else it.signOutWarning,
                     )
                 }
             }
@@ -52,6 +52,13 @@ class SettingsViewModel(
             authRepository.sessionExpired.collect { expired ->
                 mutableUiState.update { it.copy(sessionExpired = expired) }
             }
+        }
+    }
+
+    fun refreshInstance() {
+        scope.launch {
+            val instance = runCatching { savedInstance() }.getOrNull()
+            mutableUiState.update { it.copy(instance = instance) }
         }
     }
 

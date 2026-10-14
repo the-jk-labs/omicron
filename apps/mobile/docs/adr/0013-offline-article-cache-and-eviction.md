@@ -9,8 +9,9 @@ R6 requires reading previously opened articles without a network connection and 
 ## Decision
 
 - Cache only successfully fetched `Published` post details. Never cache drafts, scheduled posts, feed pages, comments, or viewer-specific liked/recommended state.
+- ADR-0025 adds a separate bounded encrypted Home-card snapshot; it does not expand this public article library.
 - Key article records by instance origin and post ID. Keep them in app-private Android files.
-- Try the server on every post-detail open. If a transport `IOException` occurs, use an unexpired local copy; HTTP errors such as 401 and 404 remain authoritative and do not fall back to cached content.
+- Try the server on every post-detail open. If a transport `IOException` or unavailable background session refresh prevents access, use an unexpired local copy; HTTP errors such as 401 and 404 remain authoritative and do not fall back to cached content.
 - Expire article records 30 days after their last successful network fetch. On reads, update access time for least-recently-used eviction.
 - Bound the article cache to 50 records and 64 MiB total, evicting least recently used records until both limits hold. Skip a single record larger than the total limit.
 - Keep downloaded images in Coil's independent app cache with a 32 MiB LRU limit. The operating system may clear image files at any time; article text remains independently cached.

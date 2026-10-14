@@ -104,6 +104,7 @@ fun MobileTopBar(
     onRefreshNotifications: () -> Unit = {},
     onOpenNotification: (MobileNotification) -> Unit = {},
     onAccountAction: (AccountAction) -> Unit,
+    sessionChecking: Boolean = false,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 4.dp),
@@ -157,7 +158,7 @@ fun MobileTopBar(
                     modifier = Modifier.size(48.dp),
                     size = IconButtonSize.Default,
                 )
-                Button(
+                if (!sessionChecking) Button(
                     text = stringResource(Res.string.navigation_sign_in),
                     onClick = { onAccountAction(AccountAction.SignIn) },
                     modifier = Modifier.heightIn(min = 48.dp),

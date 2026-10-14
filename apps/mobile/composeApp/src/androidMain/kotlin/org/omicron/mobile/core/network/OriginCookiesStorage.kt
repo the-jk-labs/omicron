@@ -36,7 +36,8 @@ class OriginCookiesStorage(
         val now = System.currentTimeMillis()
         val cookies = store.read(origin).filter { it.expiresAt == null || it.expiresAt > now }
         store.write(origin, cookies)
-        return cookies.map {
+        val authRequest = requestUrl.encodedPath.startsWith("/api/auth/")
+        return cookies.filter { authRequest || !it.name.removePrefix("__Secure-").removePrefix("__Host-").startsWith("omicron.") }.map {
             Cookie(
                 name = it.name,
                 value = it.value,

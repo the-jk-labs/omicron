@@ -4,7 +4,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
-import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -27,6 +26,8 @@ import org.omicron.mobile.domain.model.OwnPostStatus
 import org.omicron.mobile.domain.model.PostAuthor
 import org.omicron.mobile.domain.model.PostDetail
 import org.omicron.mobile.domain.model.PostTag
+import org.omicron.mobile.domain.model.AuthenticatedUser
+import org.omicron.mobile.core.storage.FakeHomeSnapshotStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -145,7 +146,7 @@ class PostsRepositoryTest {
     }
 
     @Test
-    fun surfacesOtherClientFailuresUnchanged() = runTest {
+    fun surfacesForbiddenWithoutExpiringTheSession() = runTest {
         var invalidated = false
         val repository =
             PostsRepository(
@@ -155,7 +156,7 @@ class PostsRepositoryTest {
                 onUnauthorized = { invalidated = true },
             )
 
-        assertFailsWith<ClientRequestException> { repository.timeline(TimelineScope.Global, null) }
+        assertFailsWith<ReadingAccessDeniedException> { repository.timeline(TimelineScope.Global, null) }
         assertEquals(false, invalidated)
     }
 
@@ -250,6 +251,87 @@ class PostsRepositoryTest {
 
         assertEquals(listOf("post-2"), related.map { it.id })
         assertEquals("https://omicron.blog/api/uploads/cover.jpg", related.single().bannerUrl)
+    }
+
+    @Test
+    fun persistsOnlyInitialHomePagesAndNeverReplacesThemWithPagination() = runTest {
+        val store = FakeHomeSnapshotStore()
+        val snapshots = HomeSnapshotRepository(store, now = { 0 })
+        snapshots.preload(instance().origin, false)
+        val api = FakePostsApi(listOf(
+            TimelinePageDto(listOf(postDto()), "opaque-next"),
+            TimelinePageDto(listOf(postDto().copy(id = "later")), null),
+        ))
+        val repository = PostsRepository(api, { instance() }, homeSnapshots = snapshots)
+
+        repository.timeline(TimelineScope.Local, null)
+        repository.timeline(TimelineScope.Local, "opaque-next")
+
+        assertEquals("Local", store.snapshot!!.scope)
+        assertEquals("post-1", store.snapshot!!.posts.single().id)
+        assertEquals("https://omicron.blog/api/uploads/cover.jpg", store.snapshot!!.posts.single().bannerUrl)
+        assertEquals("", store.snapshot!!.posts.single().contentHtml)
+    }
+
+    @Test
+    fun persistsAuthenticatedFeedPreviewsUnderTheConfirmedAccount() = runTest {
+        val store = FakeHomeSnapshotStore()
+        val snapshots = HomeSnapshotRepository(store, now = { 0 })
+        snapshots.preload(instance().origin, false)
+        val user = AuthenticatedUser("viewer", "viewer@example.com", "viewer", "Viewer")
+        snapshots.rememberAccount(instance().origin, user)
+        val repository = PostsRepository(
+            FakePostsApi(listOf(TimelinePageDto(listOf(postDto()), "merged-cursor"))),
+            { instance() }, accessToken = { "signed-token" }, homeSnapshots = snapshots,
+        )
+
+        repository.feed(null)
+
+        assertEquals(user, store.snapshot!!.user)
+        assertEquals("ForYou", store.snapshot!!.scope)
+        assertEquals("post-1", store.snapshot!!.posts.single().id)
+    }
+
+    @Test
+    fun unavailableSessionRefreshDoesNotBlockTheExistingPublicOfflineArticleCopy() = runTest {
+        val cache = MemoryOfflinePostCache()
+        val api = FakePostsApi().apply { postResult = postDto().copy(status = "published") }
+        var sessionUnavailable = false
+        val repository = PostsRepository(
+            api, { instance() },
+            accessToken = { if (sessionUnavailable) throw SessionRefreshUnavailableException() else "signed-token" },
+            offlinePostCache = cache,
+        )
+        repository.postDetail("post-1")
+        sessionUnavailable = true
+
+        val detail = repository.postDetail("post-1")
+
+        assertTrue(detail.isOfflineCopy)
+        assertEquals("post-1", detail.id)
+    }
+
+    @Test
+    fun forbiddenResponsesDiscardCachedCardsWithoutSigningOutTheAccount() = runTest {
+        val store = FakeHomeSnapshotStore()
+        val snapshots = HomeSnapshotRepository(store, now = { 0 })
+        val origin = instance().origin
+        val user = AuthenticatedUser("viewer", "viewer@example.com", "viewer", "Viewer")
+        snapshots.preload(origin, false)
+        snapshots.rememberAccount(origin, user)
+        snapshots.savePage(snapshots.lease(origin), TimelineScope.ForYou, listOf(postDto().toDomain(origin)))
+        val client = rejectingClient(HttpStatusCode.Forbidden)
+        try {
+            val repository = PostsRepository(KtorPostsApi(client), { instance() }, { "signed-token" }, homeSnapshots = snapshots)
+
+            assertFailsWith<ReadingAccessDeniedException> { repository.feed(null) }
+
+            assertEquals(user, store.snapshot!!.user)
+            assertTrue(store.snapshot!!.posts.isEmpty())
+            assertNull(store.snapshot!!.postsUpdatedAtMillis)
+        } finally {
+            client.close()
+        }
     }
 
     private fun instance() =

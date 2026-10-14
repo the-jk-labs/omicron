@@ -32,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.flow.StateFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,7 +65,9 @@ import org.omicron.mobile.core.designsystem.rikkaui.spinner.SpinnerSize
 import org.omicron.mobile.core.designsystem.rikkaui.text.Text
 import org.omicron.mobile.core.designsystem.rikkaui.text.TextVariant
 import org.omicron.mobile.data.api.TimelineScope
+import org.omicron.mobile.data.repository.SessionRefreshState
 import org.omicron.mobile.domain.model.Post
+import org.omicron.mobile.domain.model.AuthenticatedUser
 import org.omicron.mobile.resources.Res
 import org.omicron.mobile.resources.timeline_change_instance
 import org.omicron.mobile.resources.timeline_empty_description
@@ -90,6 +93,10 @@ import org.omicron.mobile.resources.timeline_scope_for_you
 import org.omicron.mobile.resources.timeline_scope_global
 import org.omicron.mobile.resources.timeline_scope_local
 import org.omicron.mobile.resources.timeline_session_expired
+import org.omicron.mobile.resources.home_saved_posts
+import org.omicron.mobile.resources.home_feed_refreshing
+import org.omicron.mobile.resources.home_no_saved_posts
+import org.omicron.mobile.resources.home_feed_access_denied
 import org.omicron.mobile.resources.timeline_untitled
 import org.omicron.mobile.core.time.displayDate
 import zed.rainxch.rikkaui.foundation.RikkaTheme
@@ -104,15 +111,28 @@ fun TimelineRoute(
     onOpenPost: (String) -> Unit,
     onOpenProfile: (String) -> Unit = {},
     onOpenTag: (String) -> Unit = {},
+    account: StateFlow<AuthenticatedUser?>? = null,
+    sessionRefresh: StateFlow<SessionRefreshState>? = null,
+    onSessionRetry: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
+    val presentedUser = account?.collectAsState()?.value
+    val refreshState = sessionRefresh?.collectAsState()?.value ?: SessionRefreshState.Ready
+    val visibleState = if (account != null && state.accountId != presentedUser?.id) {
+        state.copy(posts = emptyList(), nextCursor = null, phase = TimelinePhase.Loading, isCachedContent = false, canInteract = false)
+    } else if (refreshState == SessionRefreshState.Unavailable) {
+        state.copy(
+            refreshError = null, canRefresh = false,
+            phase = if (state.phase is TimelinePhase.Error) TimelinePhase.WaitingForSession else state.phase,
+        )
+    } else state.copy(canRefresh = refreshState == SessionRefreshState.Ready)
     TimelineScreen(
-        state = state,
+        state = visibleState,
         onSelectScope = { scope ->
             if (scope == state.scope) viewModel.refresh() else viewModel.selectScope(scope)
         },
-        onRefresh = viewModel::refresh,
-        onRetry = viewModel::retry,
+        onRefresh = { if (refreshState == SessionRefreshState.Unavailable) onSessionRetry() else viewModel.refresh() },
+        onRetry = { if (refreshState == SessionRefreshState.Unavailable) onSessionRetry() else viewModel.retry() },
         onLoadMore = viewModel::loadMore,
         onToggleLike = viewModel::toggleLike,
         onToggleRecommendation = viewModel::toggleRecommendation,
@@ -155,10 +175,37 @@ private fun TimelineScreen(
                 onSignIn = onSignIn,
             )
         }
+        if (state.isCachedContent || (state.refreshError != null && state.phase !is TimelinePhase.Error) || (state.isRefreshing && state.phase is TimelinePhase.Content)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (state.isRefreshing) Spinner(size = SpinnerSize.Sm, label = stringResource(Res.string.home_feed_refreshing))
+                Text(
+                    text = when (state.refreshError) {
+                        TimelineError.Offline -> stringResource(Res.string.timeline_error_offline)
+                        TimelineError.Server -> stringResource(Res.string.timeline_error_server)
+                        TimelineError.MissingInstance -> stringResource(Res.string.timeline_error_missing_instance)
+                        TimelineError.Forbidden -> stringResource(Res.string.home_feed_access_denied)
+                        null -> stringResource(if (state.isCachedContent) Res.string.home_saved_posts else Res.string.home_feed_refreshing)
+                    },
+                    variant = TextVariant.Small,
+                    modifier = Modifier.weight(1f),
+                )
+                if (!state.isRefreshing && state.canRefresh) Button(
+                    text = stringResource(Res.string.timeline_retry), onClick = onRetry,
+                    modifier = Modifier.heightIn(min = 48.dp), variant = ButtonVariant.Ghost, size = ButtonSize.Sm,
+                )
+            }
+        }
         Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
             when (val phase = state.phase) {
                 is TimelinePhase.Loading -> TimelineLoading()
                 is TimelinePhase.Empty -> TimelineEmpty(scope = state.scope, onRefresh = onRefresh)
+                is TimelinePhase.WaitingForSession -> Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
+                    Text(text = stringResource(Res.string.home_no_saved_posts), variant = TextVariant.Muted)
+                }
                 is TimelinePhase.Error ->
                     TimelineError(
                         error = phase.error,
@@ -325,6 +372,7 @@ private fun TimelineError(
             TimelineError.Offline -> stringResource(Res.string.timeline_error_offline)
             TimelineError.Server -> stringResource(Res.string.timeline_error_server)
             TimelineError.MissingInstance -> stringResource(Res.string.timeline_error_missing_instance)
+            TimelineError.Forbidden -> stringResource(Res.string.home_feed_access_denied)
         }
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
@@ -400,12 +448,14 @@ private fun TimelineList(
                                         TimelineError.Server -> stringResource(Res.string.timeline_error_server)
                                         TimelineError.MissingInstance ->
                                             stringResource(Res.string.timeline_error_missing_instance)
+                                        TimelineError.Forbidden -> stringResource(Res.string.home_feed_access_denied)
                                     }
                                 Text(text = message, variant = TextVariant.Small)
                             }
                             Button(
                                 text = stringResource(Res.string.timeline_load_more),
                                 onClick = onLoadMore,
+                                enabled = !state.isRefreshing,
                                 variant = ButtonVariant.Outline,
                                 size = ButtonSize.Lg,
                                 modifier = Modifier.fillMaxWidth(),
@@ -430,7 +480,9 @@ internal fun PostCard(
     onToggleRecommendation: () -> Unit,
     onToggleReadLater: () -> Unit,
 ) {
-    val preview = remember(post.summary, post.contentHtml) { postPreview(post.summary, post.contentHtml) }
+    val preview = remember(post.summary, post.contentHtml, post.previewReadingMinutes) {
+        postPreview(post.summary, post.contentHtml).let { it.copy(readingMinutes = post.previewReadingMinutes ?: it.readingMinutes) }
+    }
     var coverFailed by remember(post.bannerUrl) { mutableStateOf(false) }
     Column(
         modifier =
@@ -524,7 +576,7 @@ internal fun PostCard(
             recommended = post.recommended,
             saved = post.id in state.savedPostIds,
             busy =
-                post.id in state.likeBusyPostIds ||
+                !state.canInteract || state.isRefreshing || post.id in state.likeBusyPostIds ||
                     post.id in state.recommendationBusyPostIds ||
                     post.id in state.saveBusyPostIds,
             actionError = post.id in state.actionErrorPostIds,

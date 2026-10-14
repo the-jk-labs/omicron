@@ -73,8 +73,6 @@ class ProfileConnectionsNavigationJourneyTest {
     @Test
     fun profileCountsOpenSeparateListsAndMemberBackRestoresTheSelectedTab() {
         showApp()
-        waitForText("Connected to Omicron")
-        rule.onNodeWithContentDescription("Continue").performClick()
         waitForText("Ada Lovelace")
         rule.onNodeWithText("Ada Lovelace").performClick()
         waitForText("Sign in to follow")

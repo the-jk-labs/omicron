@@ -53,11 +53,13 @@ Keep the package layout stable inside the single `composeApp` module. Split Grad
 ## Storage And Authentication
 
 - Instance configuration is public metadata and may be persisted after a successful metadata request.
+- Startup resolves local instance metadata and an encrypted Home snapshot before opening navigation; authentication and feed refresh happen in the background. Cached identity is presentation only, requests wait for pending restoration, and cached social actions stay read-only until fresh authenticated content arrives (ADR-0025). Returning readers open Home directly; first launch opens connection.
 - Session cookies are credentials. The auth release must store them securely, partition them by instance origin, and use them only with Better Auth to restore a session or mint a new token.
 - Sign-out clears the in-memory JWT and that origin's stored cookies even when remote revocation fails; the UI warns when the server could not confirm sign-out.
 - Authenticated API calls use a short-lived JWT in the `Authorization: Bearer` header. Keep it in memory, refresh it through `GET /api/auth/token` before expiry, and never send it to another origin.
 - Cache ownership, freshness, eviction, and offline behavior must be documented with the release that introduces a cache.
-- R6 stores only public published article details offline, scoped by instance origin. The bounded cache keeps up to 50 entries or 64 MiB for 30 days with least-recently-used eviction; comments, feeds, drafts, scheduled posts, and viewer-specific social state are excluded (ADR-0013).
+- R6's public article library keeps published details scoped by instance origin: up to 50 entries or 64 MiB for 30 days with least-recently-used eviction. Comments, drafts, schedules, and viewer-specific state are excluded from that library (ADR-0013).
+- A separate encrypted, no-backup Home snapshot retains one latest instance/account and up to 30 card previews within 1 MiB. Feed previews expire after 24 hours and account metadata after 30 days; article HTML, editor JSON, JWTs, and cursors are excluded. Sign-out and confirmed session loss clear it, account/origin changes discard prior cards, and generation checks reject late writes. Cache-first rendering retains visible content with inline refresh/retry states; an unavailable session refresh can still use the existing public offline article library (ADR-0025).
 - The System/Light/Dark appearance preference is local to the Android app installation, not an instance or account setting; System follows Android's current appearance.
 - Android-only presentation preferences use app-private storage through a common storage contract; they are never sent to the instance.
 - Never persist passwords, opaque editor documents, or server data without a confirmed product requirement and retention strategy.
