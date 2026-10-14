@@ -15,6 +15,7 @@ import io.ktor.http.headersOf
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.omicron.mobile.core.storage.SessionCookieStore
@@ -71,6 +72,22 @@ class OriginCookiesStorageTest {
         client.post("https://omicron.blog/api/auth/sign-in/username")
         client.get("https://omicron.blog/api/auth/get-session")
         client.close()
+    }
+
+    @Test
+    fun appApiRequestsDoNotReceiveBetterAuthCookiesAndOtherOriginsNeverReceiveThem() = runBlocking {
+        val store = FakeSessionCookieStore()
+        store.write("https://omicron.blog", listOf(
+            StoredSessionCookie("omicron.session_token", "session", null),
+            StoredSessionCookie("__Secure-omicron.session_data", "cached-session", null),
+            StoredSessionCookie("__Host-omicron.session_token", "host-session", null),
+        ))
+        val storage = OriginCookiesStorage(store)
+
+        assertEquals(3, storage.get(Url("https://omicron.blog/api/auth/token")).size)
+        assertTrue(storage.get(Url("https://omicron.blog/api/posts")).isEmpty())
+        assertTrue(storage.get(Url("https://other.example/api/auth/token")).isEmpty())
+        assertEquals(3, store.read("https://omicron.blog").size)
     }
 }
 
