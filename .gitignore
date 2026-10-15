@@ -28,3 +28,4 @@ apps/backend/.state/
 .DS_Store
 .vscode
 .claude
+.agents

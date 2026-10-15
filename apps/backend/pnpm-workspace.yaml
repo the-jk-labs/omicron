@@ -3,7 +3,7 @@ minimumReleaseAge: 0
 trustPolicy: "off"
 skills:
   dirs:
-    - .claude/skills
+    - .agents/skills
 allowBuilds:
   esbuild: true
 overrides:
