@@ -54,5 +54,16 @@
     "oxlint-tsgolint": "7.0.2004",
     "typescript": "7.0.2",
     "vitest": "5.0.5"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": ">=12.11.0",
+      "onFail": "error"
+    }
+  },
+  "engines": {
+    "node": ">=24",
+    "pnpm": ">=12.11.0"
   }
 }
