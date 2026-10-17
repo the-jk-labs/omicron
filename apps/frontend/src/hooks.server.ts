@@ -128,7 +128,7 @@ export function preloadFile(
 
 // Security response headers applied to every response (pages, API proxy, and
 // proxied media alike). The Content-Security-Policy itself is configured in
-// svelte.config.js (`kit.csp`) so SvelteKit can nonce its own inline scripts;
+// vite.config.ts (`kit.csp`) so SvelteKit can nonce its own inline scripts;
 // the headers below are the ones it doesn't manage.
 export const handle: Handle = async ({ event, resolve }) => {
   const redirectResponse = (await canonicalRedirect(event)) ?? (await activityPubRedirect(event));
@@ -140,6 +140,23 @@ export const handle: Handle = async ({ event, resolve }) => {
       transformPageChunk: ({ html }) => html.replace(LANG_PLACEHOLDER, pageLang(event.locals)),
       preload: (input) => preloadFile(input, event.route.id),
     }));
+
+  const proto = event.request.headers.get("x-forwarded-proto") ?? event.url.protocol.replace(":", "");
+  let policy = response.headers.get("content-security-policy");
+  if (policy) {
+    // Tiptap injects styles after hydration, even when SSR had no inline CSS.
+    const nonce = /(?:^|;)\s*script-src\s+[^;]*?('nonce-[A-Za-z\d+/_=-]+')/.exec(policy)?.[1];
+    if (nonce) {
+      policy = policy.replace(/((?:^|;)\s*style-src\s+)([^;]*)/, (_match, prefix: string, sources: string) =>
+        sources.includes(nonce) || sources.includes("'unsafe-inline'")
+          ? `${prefix}${sources}`
+          : `${prefix}${sources} ${nonce}`,
+      );
+    }
+    if (proto === "https") policy += "; upgrade-insecure-requests";
+    response.headers.set("content-security-policy", policy);
+  }
+  response.headers.delete("x-sveltekit-page");
 
   // State the encoding in the header, not only in the document.
   //
@@ -179,7 +196,6 @@ export const handle: Handle = async ({ event, resolve }) => {
   // HSTS only when the request actually arrived over HTTPS (Caddy terminates TLS
   // and forwards x-forwarded-proto). Sent over plain HTTP it would be ignored by
   // browsers anyway, but gating keeps localhost dev clean.
-  const proto = event.request.headers.get("x-forwarded-proto") ?? event.url.protocol.replace(":", "");
   if (proto === "https") {
     response.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
   }

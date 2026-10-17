@@ -10,6 +10,7 @@
   import Avatar from "#lib/components/ui/Avatar.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { excerpt, readTime } from "#lib/format.js";
+  import { imageUrl } from "#lib/imageProxy.js";
   import { postPath } from "#lib/links.js";
   import type { Post } from "#lib/types.js";
 
@@ -113,7 +114,7 @@
              near the top: both let the first paint go out without the image, so
              even a cached one flickered in a frame later. -->
         <img
-          src={post.bannerUrl}
+          src={imageUrl(post.bannerUrl)}
           alt=""
           width="144"
           height="96"

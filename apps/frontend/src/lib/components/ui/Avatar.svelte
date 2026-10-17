@@ -2,6 +2,7 @@
 <script lang="ts">
   import { Avatar } from "bits-ui";
   import { untrack } from "svelte";
+  import { imageUrl } from "#lib/imageProxy.js";
 
   // Styled with the Bits UI docs' Avatar classes (bg-muted fallback with initials),
   // except the ring: the docs show it only once a photo loads, which made avatars
@@ -53,7 +54,7 @@
   <div class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-transparent">
     {#if src}
       <Avatar.Image
-        {src}
+        src={imageUrl(src)}
         alt=""
         width={size}
         height={size}

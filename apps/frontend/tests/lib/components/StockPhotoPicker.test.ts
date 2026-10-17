@@ -54,7 +54,7 @@ test("starts with a hint, searches on submit, and credits each creator", async (
   expect(screen.getByRole("button", { name: "Search" })).toBeDisabled();
   await search("  mountains ");
   const img = await screen.findByRole("img", { name: "Photo openverse-mountains" });
-  expect(img).toHaveAttribute("src", "https://img.example/openverse-mountains-t.jpg");
+  expect(img).toHaveAttribute("src", "/api/media/proxy?url=https%3A%2F%2Fimg.example%2Fopenverse-mountains-t.jpg");
   expect(screen.getByRole("link", { name: "Author openverse-mountains" })).toHaveAttribute(
     "rel",
     "noopener noreferrer nofollow",

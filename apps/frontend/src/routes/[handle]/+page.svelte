@@ -20,6 +20,7 @@
   import Time from "#lib/components/Time.svelte";
   import Avatar from "#lib/components/ui/Avatar.svelte";
   import Button from "#lib/components/ui/Button.svelte";
+  import { proxyImageHtml } from "#lib/imageProxy.js";
   import { platformMeta } from "#lib/profileLinks.js";
   import type { Post } from "#lib/types.js";
   import type { PageData } from "./$types";
@@ -361,7 +362,7 @@
         use:fitPre
         class="prose-omicron prose-compact mb-3 w-full min-w-0 rounded-card border border-border bg-background-alt px-5 py-4"
       >
-        {@html customSectionHtml}
+        {@html proxyImageHtml(customSectionHtml)}
       </div>
     {/if}
 

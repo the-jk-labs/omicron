@@ -1,8 +1,4 @@
 <!doctype html>
-<!-- The lang attribute below is a placeholder substituted per request in
-     hooks.server.ts: a post's own language on a post page, "en" elsewhere.
-     Do not repeat the token in a comment — the substitution would land there
-     instead of on the attribute. -->
 <html lang="%omicron.lang%">
   <head>
     <meta charset="utf-8" />
@@ -29,6 +25,6 @@
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover" class="bg-background text-foreground">
-    <div style="display: contents">%sveltekit.body%</div>
+    <div class="contents">%sveltekit.body%</div>
   </body>
 </html>

@@ -3,6 +3,7 @@
   import { PUBLIC_APP_NAME, PUBLIC_SOURCE_URL } from "$app/env/public";
   import { page } from "$app/state";
   import PageTitle from "#lib/components/PageTitle.svelte";
+  import { proxyImageHtml } from "#lib/imageProxy.js";
   import type { InstanceInfo } from "#lib/types.js";
 
   const instance = $derived((page.data as { instance?: InstanceInfo | null }).instance ?? null);
@@ -24,7 +25,7 @@
     <h2 id="instance">This instance</h2>
     {#if instance?.aboutHtml}
       <!-- Rendered and sanitized server-side; see backend lib/markdown.ts. -->
-      {@html instance.aboutHtml}
+      {@html proxyImageHtml(instance.aboutHtml)}
     {:else}
       <p>
         You are reading <strong>{domain}</strong> running <strong>{appName}</strong>. The operator configured this
@@ -41,7 +42,7 @@
     <h2 id="rules">Instance rules</h2>
     {#if instance?.rulesHtml}
       <!-- Rendered and sanitized server-side; see backend lib/markdown.ts. -->
-      {@html instance.rulesHtml}
+      {@html proxyImageHtml(instance.rulesHtml)}
     {:else}
       <p>
         The operator sets the rules for this instance. Until custom rules are published here, the baseline is: be

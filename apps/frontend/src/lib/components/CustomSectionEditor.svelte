@@ -5,6 +5,7 @@
   import { endpoints, ApiError } from "#lib/api/index.js";
   import EmojiTrigger from "#lib/components/EmojiTrigger.svelte";
   import Icon, { type IconName } from "#lib/components/Icon.svelte";
+  import { proxyImageHtml } from "#lib/imageProxy.js";
 
   // Markdown editor for the profile's custom section — a GitHub-README-style
   // block the author lays out however they like.
@@ -209,7 +210,7 @@
       <p class="text-sm text-destructive">{previewError}</p>
     {:else if previewHtml}
       <!-- Rendered and sanitized server-side; see backend lib/markdown.ts. -->
-      <div use:fitPre class="prose-omicron prose-compact min-w-0">{@html previewHtml}</div>
+      <div use:fitPre class="prose-omicron prose-compact min-w-0">{@html proxyImageHtml(previewHtml)}</div>
     {:else}
       <p class="text-sm text-muted-foreground">Nothing to preview yet.</p>
     {/if}

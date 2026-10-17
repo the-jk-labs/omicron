@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Image } from "@tiptap/extension-image";
+import { imageUrl } from "#lib/imageProxy.js";
 
 // The stock Tiptap image node is fixed-width. This extension adds a `width`
 // attribute plus a node view that draws four corner handles, so an author can
@@ -74,7 +75,7 @@ export const ResizableImage = Image.extend({
 
       let current = node;
       function render() {
-        img.src = current.attrs.src ?? "";
+        img.src = imageUrl(current.attrs.src);
         img.alt = current.attrs.alt ?? "";
         if (current.attrs.title) img.title = current.attrs.title;
         else img.removeAttribute("title");

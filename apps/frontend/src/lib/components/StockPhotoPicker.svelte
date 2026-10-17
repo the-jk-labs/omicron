@@ -4,6 +4,7 @@
   import { endpoints, ApiError } from "#lib/api/index.js";
   import Icon from "#lib/components/Icon.svelte";
   import Button from "#lib/components/ui/Button.svelte";
+  import { imageUrl } from "#lib/imageProxy.js";
   import type { PhotoProvider, StockPhoto } from "#lib/types.js";
 
   // Search for a free, properly-licensed banner photo.
@@ -185,7 +186,7 @@
                   class="group aspect-4/3 overflow-hidden rounded-card border border-border focus-visible:ring-2 focus-visible:ring-foreground focus-visible:outline-hidden"
                 >
                   <img
-                    src={photo.thumbUrl}
+                    src={imageUrl(photo.thumbUrl)}
                     alt={photo.alt || "Photo"}
                     loading="lazy"
                     decoding="async"

@@ -9,6 +9,7 @@
   import EmojiTrigger from "#lib/components/EmojiTrigger.svelte";
   import Icon, { type IconName } from "#lib/components/Icon.svelte";
   import { countWords, readTimeFromWords } from "#lib/format.js";
+  import { proxyImageHtml } from "#lib/imageProxy.js";
   import { extensions } from "./extensions";
   import { isAcceptedImage, prepareImage } from "./image";
   import { EDIT_ALT_EVENT, type EditAltDetail } from "./resizable-image";
@@ -33,7 +34,7 @@
     previewHtml?: string;
   } = $props();
   // Read once: after mount the live editor owns the body.
-  const preview = untrack(() => previewHtml);
+  const preview = untrack(() => proxyImageHtml(previewHtml));
   let mounted = $state(false);
 
   let element = $state<HTMLDivElement | null>(null);
@@ -363,6 +364,7 @@
   onMount(() => {
     const initialContent = typeof content === "string" ? (generateJSON(content, extensions) as Content) : content;
     editor = new Editor({
+      injectNonce: document.querySelector<HTMLScriptElement>("script[nonce]")?.nonce,
       element: element!,
       // Placeholder is per-instance (it needs the `placeholder` prop), so it's
       // appended to the shared base extensions here. The first line shows the

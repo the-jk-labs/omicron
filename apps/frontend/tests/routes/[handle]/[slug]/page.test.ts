@@ -279,17 +279,19 @@ test("an explicit cover renders with its credit, and hides if it fails to load",
       licenseUrl: "https://cc.example",
     },
   });
-  const img = document.querySelector<HTMLImageElement>('img[src="https://img.example/c.jpg"]')!;
+  const img = document.querySelector<HTMLImageElement>(
+    'img[src="/api/media/proxy?url=https%3A%2F%2Fimg.example%2Fc.jpg"]',
+  )!;
   expect(img).not.toBe(null);
   expect(screen.getByRole("link", { name: "Jo" })).toHaveAttribute("href", "https://u.example/jo");
   expect(screen.getByRole("link", { name: "CC0" })).toHaveAttribute("href", "https://cc.example");
   await fireEvent.error(img);
-  expect(document.querySelector('img[src="https://img.example/c.jpg"]')).toBe(null);
+  expect(document.querySelector('img[src="/api/media/proxy?url=https%3A%2F%2Fimg.example%2Fc.jpg"]')).toBe(null);
 });
 
 test("a bannerUrl alone doesn't render a hero", () => {
   setup({ bannerUrl: "https://img.example/body.jpg" });
-  expect(document.querySelector('img[src="https://img.example/body.jpg"]')).toBe(null);
+  expect(document.querySelector('img[src="/api/media/proxy?url=https%3A%2F%2Fimg.example%2Fbody.jpg"]')).toBe(null);
 });
 
 test("related posts are listed under Read next", () => {

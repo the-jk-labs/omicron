@@ -6,6 +6,7 @@
   import Button from "#lib/components/ui/Button.svelte";
   import { firstBodyImage } from "#lib/cover.js";
   import { isAcceptedImage, prepareImage } from "#lib/editor/image.js";
+  import { imageUrl } from "#lib/imageProxy.js";
   import type { CoverCredit, StockPhoto } from "#lib/types.js";
 
   // The post's banner: what a reader sees at the top of the article, what a
@@ -87,7 +88,7 @@
       <div class="relative aspect-video max-h-64 w-full overflow-hidden rounded-card border border-border">
         <!-- Decorative here: this is a control, and the banner is labelled by
              the text above it. -->
-        <img src={preview} alt="" class="h-full w-full object-cover" />
+        <img src={imageUrl(preview)} alt="" class="h-full w-full object-cover" />
         {#if fallback}
           <span
             class="absolute bottom-2 left-2 rounded-button bg-dark/80 px-2 py-1 text-xs font-medium text-background"
