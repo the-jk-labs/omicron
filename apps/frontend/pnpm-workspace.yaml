@@ -4,6 +4,9 @@ minimumReleaseAge: 0
 minimumReleaseAgeExcludePrune: true
 trustPolicy: "off"
 trustPolicyExcludePrune: true
+skills:
+  dirs:
+    - .agents/skills
 overrides:
   cookie@<0.7.0: "^0.7.0"
   devalue@<5.9.3: "^5.9.3"
