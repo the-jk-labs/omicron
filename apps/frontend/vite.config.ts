@@ -3,6 +3,7 @@ import { sveltekit } from "@sveltejs/kit/vite";
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
+import { STYLE_ATTRIBUTE_HASHES } from "./src/lib/server/styleCsp.js";
 
 export default defineConfig({
   plugins: [
@@ -19,8 +20,8 @@ export default defineConfig({
           "default-src": ["self"],
           "script-src": ["self"],
           "style-src": ["self"],
-          // Bits UI positioning and dynamic component sizes still need attributes.
-          "style-src-attr": ["unsafe-inline"],
+          // Only reviewed, fixed SSR declarations; dynamic UI uses trusted CSSOM writes.
+          "style-src-attr": ["unsafe-hashes", ...STYLE_ATTRIBUTE_HASHES],
           "img-src": ["self", "data:", "blob:"],
           "font-src": ["self", "data:"],
           "connect-src": ["self"],

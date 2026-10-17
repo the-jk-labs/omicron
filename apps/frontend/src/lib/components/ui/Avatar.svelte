@@ -2,6 +2,7 @@
 <script lang="ts">
   import { Avatar } from "bits-ui";
   import { untrack } from "svelte";
+  import type { AvatarSize } from "#lib/avatarSizes.js";
   import { imageUrl } from "#lib/imageProxy.js";
 
   // Styled with the Bits UI docs' Avatar classes (bg-muted fallback with initials),
@@ -28,7 +29,7 @@
     src = undefined,
     size = 40,
     class: className = "",
-  }: { name: string; src?: string; size?: number; class?: string } = $props();
+  }: { name: string; src?: string; size?: AvatarSize; class?: string } = $props();
 
   const initials = $derived(
     name
