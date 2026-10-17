@@ -11,6 +11,13 @@ import { describe, expect, it } from "vitest";
 import Avatar from "#lib/components/ui/Avatar.svelte";
 
 describe("Avatar", () => {
+  it("does not send a reader's IP address directly to a remote avatar host", () => {
+    const { container } = render(Avatar, { name: "Remote user", src: "https://remote.example/avatar.png" });
+    expect(container.querySelector("img")).toHaveAttribute(
+      "src",
+      "/api/media/proxy?url=https%3A%2F%2Fremote.example%2Favatar.png",
+    );
+  });
   it("renders the image with an empty alt attribute", () => {
     const { container } = render(Avatar, {
       props: { name: "Voctl Voctl", src: "https://example.test/avatar.png", size: 40 },

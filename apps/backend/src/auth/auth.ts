@@ -5,6 +5,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { emailOTP, haveIBeenPwned, jwt, username } from "better-auth/plugins";
+import { authRateLimitStorage } from "@/auth/rateLimit.ts";
 import { config } from "@/config.ts";
 import { db } from "@/db/client.ts";
 import * as passkeysRepo from "@/db/repositories/passkeys.ts";
@@ -112,7 +113,7 @@ export const auth = betterAuth({
     cookiePrefix: "omicron",
   },
   rateLimit: {
-    storage: "memory",
+    customStorage: authRateLimitStorage,
     customRules: {
       // Each request mails a code to an address the requester picks.
       "/email-otp/request-email-change": { window: 60, max: 3 },

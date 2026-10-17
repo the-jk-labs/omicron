@@ -23,6 +23,7 @@ async function run(
     lang?: string | null;
     body?: string;
     contentType?: string;
+    responseHeaders?: Record<string, string>;
   } = {},
 ) {
   const handle = await load();
@@ -33,7 +34,7 @@ async function run(
     async (_event: unknown, o?: { transformPageChunk?: (x: { html: string; done: boolean }) => string }) => {
       const html = opts.body ?? '<html lang="%omicron.lang%"><p data-lang="%omicron.lang%"></p></html>';
       return new Response(o?.transformPageChunk?.({ html, done: true }) ?? html, {
-        headers: { "content-type": opts.contentType ?? "text/html" },
+        headers: { "content-type": opts.contentType ?? "text/html", ...opts.responseHeaders },
       });
     },
   );
@@ -140,6 +141,28 @@ describe("the rendered page", () => {
 });
 
 describe("security headers", () => {
+  test("client-injected editor styles use SvelteKit's nonce, even without SSR inline CSS", async () => {
+    const policy = "script-src 'self' 'nonce-test123'; style-src 'self'; style-src-attr 'unsafe-inline'";
+    const { res } = await run("https://blog.example/", { responseHeaders: { "content-security-policy": policy } });
+    expect(res.headers.get("content-security-policy")).toContain("style-src 'self' 'nonce-test123';");
+    const existing = await run("https://blog.example/", {
+      responseHeaders: { "content-security-policy": "script-src 'nonce-test123'; style-src 'self' 'nonce-test123'" },
+    });
+    expect(existing.res.headers.get("content-security-policy")?.match(/'nonce-test123'/g)).toHaveLength(2);
+  });
+  test("does not disable SvelteKit's development-only style hot reload", async () => {
+    const policy = "script-src 'self' 'nonce-test123'; style-src 'self' 'unsafe-inline'";
+    const { res } = await run("http://blog.example/", { responseHeaders: { "content-security-policy": policy } });
+    expect(res.headers.get("content-security-policy")).toBe(policy);
+  });
+  test("upgrades insecure subresources on HTTPS, but does not break HTTP development", async () => {
+    const responseHeaders = { "content-security-policy": "default-src 'self'", "x-sveltekit-page": "true" };
+    const secure = await run("http://blog.example/", { headers: { "x-forwarded-proto": "https" }, responseHeaders });
+    expect(secure.res.headers.get("content-security-policy")).toBe("default-src 'self'; upgrade-insecure-requests");
+    expect(secure.res.headers.has("x-sveltekit-page")).toBe(false);
+    const local = await run("http://blog.example/", { responseHeaders });
+    expect(local.res.headers.get("content-security-policy")).toBe("default-src 'self'");
+  });
   test("are set on every response", async () => {
     const { res } = await run("https://blog.example/");
     expect(Object.fromEntries([...res.headers].filter(([k]) => k !== "content-type"))).toEqual({

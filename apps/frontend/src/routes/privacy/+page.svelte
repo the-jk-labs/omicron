@@ -3,6 +3,7 @@
   import { PUBLIC_APP_NAME } from "$app/env/public";
   import { page } from "$app/state";
   import PageTitle from "#lib/components/PageTitle.svelte";
+  import { proxyImageHtml } from "#lib/imageProxy.js";
   import type { InstanceInfo } from "#lib/types.js";
 
   const instance = $derived((page.data as { instance?: InstanceInfo | null }).instance ?? null);
@@ -21,7 +22,7 @@
   <div class="prose-omicron mt-8">
     {#if instance?.privacyPolicyHtml}
       <!-- Rendered and sanitized server-side; see backend lib/markdown.ts. -->
-      {@html instance.privacyPolicyHtml}
+      {@html proxyImageHtml(instance.privacyPolicyHtml)}
     {:else}
       <p>
         This is a placeholder privacy notice for <strong>{appName} ({domain})</strong>. If you operate a public instance

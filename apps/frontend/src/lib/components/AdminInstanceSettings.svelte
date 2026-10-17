@@ -7,6 +7,7 @@
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
   import { INSTANCE_BANNER_MAX_DIMENSION, isAcceptedImage, prepareImage } from "#lib/editor/image.js";
+  import { imageUrl } from "#lib/imageProxy.js";
   import type { AdminInstance } from "#lib/types.js";
 
   // `initial` is the server-loaded config; without it the browser loads it.
@@ -244,7 +245,7 @@
             : 'flex items-center justify-center text-muted-foreground'}"
         >
           {#if bannerImageUrl}
-            <img src={bannerImageUrl} alt="" class="h-full w-full object-cover" />
+            <img src={imageUrl(bannerImageUrl)} alt="" class="h-full w-full object-cover" />
           {:else}
             <Icon name="image" size={18} />
           {/if}

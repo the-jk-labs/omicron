@@ -2,10 +2,10 @@
 // DNS answers are scripted (node:dns/promises is the network boundary). The
 // port-25 probe makes a real TCP connection: `connect` is a pass-through that
 // sends port 25 to a local listener, since binding 25 itself needs privileges.
-import { createServer, type NetConnectOpts, type Server } from "node:net";
+import { createServer, type NetConnectOpts, type Server, type Socket } from "node:net";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
-const target = vi.hoisted(() => ({ port: 0, host: "127.0.0.1" }));
+const target = vi.hoisted(() => ({ port: 0, stall: false, socket: undefined as Socket | undefined }));
 
 vi.mock(import("node:dns/promises"), () => ({
   resolveMx: vi.fn<(host: string) => Promise<{ exchange: string; priority: number }[]>>(),
@@ -15,8 +15,11 @@ vi.mock(import("node:net"), async (importOriginal) => {
   const net = await importOriginal();
   return {
     ...net,
-    connect: ((opts: NetConnectOpts & { port?: number }) =>
-      net.connect(opts.port === 25 ? { host: target.host, port: target.port } : opts)) as typeof net.connect,
+    connect: ((opts: NetConnectOpts & { port?: number }) => {
+      // An unconnected socket cannot emit connect/error before the probe deadline.
+      if (target.stall) return (target.socket = new net.Socket());
+      return net.connect(opts.port === 25 ? { host: "127.0.0.1", port: target.port } : opts);
+    }) as typeof net.connect,
   };
 });
 
@@ -44,7 +47,8 @@ afterAll(async () => {
 beforeEach(() => {
   dns = {};
   mx = {};
-  target.host = "127.0.0.1";
+  target.stall = false;
+  target.socket = undefined;
   vi.mocked(resolveTxt).mockImplementation(async (host) => {
     if (!(host in dns)) throw Object.assign(new Error(`queryTxt ENOTFOUND ${host}`), { code: "ENOTFOUND" });
     return dns[host];
@@ -143,14 +147,25 @@ describe("checkOutboundPort25", () => {
   });
 
   test("gives up after six seconds", async () => {
-    // A non-routable address never answers the SYN.
-    target.host = "10.255.255.1";
+    target.stall = true;
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-    const pending = checkOutboundPort25();
-    await vi.advanceTimersByTimeAsync(6_000);
-    const r = await pending;
-    vi.useRealTimers();
-    expect(r.ok).toBe(false);
-    expect(r.detail).toContain("timed out");
+    try {
+      const settled = vi.fn<() => void>();
+      const pending = checkOutboundPort25().then((result) => {
+        settled();
+        return result;
+      });
+      await vi.advanceTimersByTimeAsync(5_999);
+      expect(settled).not.toHaveBeenCalled();
+      expect(target.socket?.destroyed).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      const result = await pending;
+      expect(result.ok).toBe(false);
+      expect(result.detail).toContain("timed out");
+      expect(target.socket?.destroyed).toBe(true);
+    } finally {
+      target.socket?.destroy();
+      vi.useRealTimers();
+    }
   });
 });

@@ -74,6 +74,11 @@ async function signUp(email: string) {
   );
 }
 
+it("authentication uses the shared atomic rate-limit store", async () => {
+  const { auth } = await import("@/auth/auth.ts");
+  expect(auth.options.rateLimit?.customStorage?.consume).toBeTypeOf("function");
+});
+
 describe.each([true, false])("registration (email verification required: %s)", (verificationRequired) => {
   beforeEach(() => {
     vi.resetModules();

@@ -16,6 +16,7 @@
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
   import { countLabel, readTime } from "#lib/format.js";
+  import { imageUrl, proxyImageHtml } from "#lib/imageProxy.js";
   import { languageLabel } from "#lib/languages.js";
   import type { PageData } from "./$types";
 
@@ -372,7 +373,7 @@
     <div class="mb-8 aspect-video max-h-112 w-full overflow-hidden rounded-card border border-border">
       <!-- Decorative: the headline above it already names the post. -->
       <img
-        src={post.coverUrl}
+        src={imageUrl(post.coverUrl)}
         alt=""
         fetchpriority="high"
         onerror={() => (coverFailed = true)}
@@ -420,7 +421,7 @@
 
   <!-- Content is server-rendered HTML produced by the Tiptap editor. -->
   <div class="prose-omicron" bind:this={contentEl}>
-    {@html post.contentHtml}
+    {@html proxyImageHtml(post.contentHtml)}
   </div>
 
   {#if post.tags?.length}

@@ -9,11 +9,8 @@
 # Local/dev needs nothing extra: http://localhost is served over plain HTTP with
 # no certificate dance, so `docker compose up` works out of the box.
 {
-	# Admin API on the internal compose network only (never mapped to a host
-	# port). The backend reaches it at http://caddy:2019 to flip the AI-scraper
-	# shield on/off live — reloading this same config with the frontend upstream
-	# swapped for the Anubis sidecar. See services/anubisProtection.ts.
-	admin :2019
+	# Only the backend shares this socket; other containers cannot reload Caddy.
+	admin unix//run/caddy-admin/admin.sock
 	# Only obtain certificates for hostnames the backend approves, so pointing a
 	# stray domain at this host can't trigger unbounded issuance.
 	on_demand_tls {
@@ -26,6 +23,10 @@
 # /api to the backend). `handle` blocks are mutually exclusive and matched in
 # order, so the federation paths win and all other paths fall through.
 (routes) {
+	@internal path /api/instance/tls-check /api/instance/tls-check/*
+	handle @internal {
+		respond 404
+	}
 	# Security hardening applied to every response: stop browsers from MIME
 	# sniffing and trust the declared Content-Type instead, and switch off the
 	# powerful browser APIs a blogging platform never uses (camera, microphone,
@@ -39,6 +40,9 @@
 	# match apps/frontend/src/hooks.server.ts so direct-to-app dev traffic and
 	# Caddy-served prod traffic carry identical headers.
 	header {
+		-Server
+		-Via
+		-X-SvelteKit-Page
 		>X-Content-Type-Options nosniff
 		>Permissions-Policy "accelerometer=(), ambient-light-sensor=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(), usb=(), xr-spatial-tracking=()"
 	}
@@ -109,6 +113,9 @@
 		file_server
 	}
 
+	handle /.well-known/security.txt {
+		reverse_proxy http://frontend:3000
+	}
 	@federation path /.well-known/* /users/* /inbox /nodeinfo /nodeinfo/*
 	handle @federation {
 		reverse_proxy backend:8000
@@ -166,6 +173,7 @@ http:// {
 		import routes
 	}
 	handle {
+		header -Server
 		redir https://{host}{uri} permanent
 	}
 }
