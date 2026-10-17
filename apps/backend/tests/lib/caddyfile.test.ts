@@ -21,7 +21,8 @@ test("Caddy's admin API is a socket shared only with the backend", () => {
 
 test("the public edge blocks Caddy's TLS approval endpoint", () => {
   expect(CADDYFILE).toContain("@internal path /api/instance/tls-check /api/instance/tls-check/*");
-  expect(CADDYFILE).toContain("respond @internal 404");
+  // A standalone respond sorts after handle, so the catch-all proxy wins first.
+  expect(CADDYFILE).toContain("handle @internal {\n\t\trespond 404\n\t}");
 });
 
 test("security.txt bypasses both Fedify and the bot challenge", () => {

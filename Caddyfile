@@ -24,7 +24,9 @@
 # order, so the federation paths win and all other paths fall through.
 (routes) {
 	@internal path /api/instance/tls-check /api/instance/tls-check/*
-	respond @internal 404
+	handle @internal {
+		respond 404
+	}
 	# Security hardening applied to every response: stop browsers from MIME
 	# sniffing and trust the declared Content-Type instead, and switch off the
 	# powerful browser APIs a blogging platform never uses (camera, microphone,
