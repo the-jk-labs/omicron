@@ -14,10 +14,12 @@ vi.mock(import("node:fs/promises"), async (importOriginal) => {
   return { ...fs, readFile: vi.fn<typeof fs.readFile>(fs.readFile) as typeof fs.readFile };
 });
 vi.mock(import("@/db/repositories/instanceSettings.ts"));
+vi.mock(import("@/lib/unixHttp.ts"));
 
 import { readFile } from "node:fs/promises";
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
 import { routeThroughAnubis } from "@/lib/caddyfile.ts";
+import { postUnix } from "@/lib/unixHttp.ts";
 
 const CADDYFILE = `{$APP_DOMAIN} {
 \treverse_proxy /api/* backend:8000
@@ -39,6 +41,7 @@ async function load(adminUrl: string | typeof UNSET = "http://caddy:2019") {
 }
 
 beforeEach(() => {
+  vi.stubEnv("CADDY_ADMIN_SOCKET", "");
   tmp = mkdtempSync(join(tmpdir(), "omicron-caddy-"));
   writeFileSync(join(tmp, "Caddyfile"), CADDYFILE);
   settings = {};
@@ -70,6 +73,20 @@ test("protection is off by default", async () => {
 });
 
 describe("setAnubisProtectionEnabled", () => {
+  test("the bundled stack uses the shared socket without a network admin port", async () => {
+    vi.stubEnv("CADDY_ADMIN_SOCKET", "/run/caddy-admin/admin.sock");
+    vi.mocked(postUnix).mockResolvedValue(new Response(""));
+    const mod = await load(UNSET);
+    expect(mod.anubisManaged()).toBe(true);
+    await mod.setAnubisProtectionEnabled(true);
+    expect(postUnix).toHaveBeenCalledExactlyOnceWith(
+      "/run/caddy-admin/admin.sock",
+      "/load",
+      routeThroughAnubis(CADDYFILE),
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(settings["security.anubisProtection"]).toBe(true);
+  });
   test("enabling loads the Anubis-routed Caddyfile, then persists", async () => {
     const mod = await load();
     await mod.setAnubisProtectionEnabled(true);

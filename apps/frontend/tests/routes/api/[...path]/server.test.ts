@@ -39,6 +39,15 @@ test("forwards path, query and method to the backend, chasing no redirects", asy
   expect(seen!.init.body).toBeUndefined();
 });
 
+test.for(["instance/tls-check", "instance/tls-check/", "%69nstance/tls-check"])(
+  "does not expose the internal TLS approval endpoint (%s)",
+  async (path) => {
+    const response = await GET(proxyEvent(`https://blog.example/api/${path}?domain=blog.example`));
+    expect(response.status).toBe(404);
+    expect(seen).toBeNull();
+  },
+);
+
 test("request headers pass through, minus hop-by-hop ones; the client IP is set, never trusted", async () => {
   await GET(
     proxyEvent("https://blog.example/api/me", {

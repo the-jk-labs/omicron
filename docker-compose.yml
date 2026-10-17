@@ -119,9 +119,9 @@ services:
       # App-owned writable state (e.g. a web-UI-rotated session secret). Kept
       # separate from the read-only bootstrap `secrets` volume.
       STATE_DIR: /data/state
-      # Caddy's admin API (internal network only) + the Caddyfile it loaded, so
-      # the admin-panel AI-scraper-shield toggle can reload routing at runtime.
-      CADDY_ADMIN_URL: ${CADDY_ADMIN_URL:-http://caddy:2019}
+      # The socket is shared only with Caddy, never with the other containers.
+      CADDY_ADMIN_SOCKET: /run/caddy-admin/admin.sock
+      CADDY_ADMIN_URL: ${CADDY_ADMIN_URL:-}
       CADDYFILE_PATH: /etc/caddy/Caddyfile
     volumes:
       # Persist user-uploaded media (avatars) across restarts/upgrades.
@@ -131,6 +131,7 @@ services:
       # Read-only view of the real Caddyfile: the scraper-shield toggle reads it,
       # swaps one upstream line, and reloads it through Caddy's admin API.
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_admin:/run/caddy-admin:ro
     ports:
       # Loopback only: Caddy reaches the backend over the compose network and is
       # the sole public entrypoint (federation, API, TLS all flow through it). This
@@ -311,6 +312,7 @@ services:
       - ./anubis-theme.css:/srv/anubis-theme.css:ro
       - caddy_data:/data
       - caddy_config:/config
+      - caddy_admin:/run/caddy-admin
 
 volumes:
   pgdata:
@@ -321,3 +323,4 @@ volumes:
   redis_data:
   caddy_data:
   caddy_config:
+  caddy_admin:

@@ -9,7 +9,11 @@ import type { RequestHandler } from "./$types";
 
 const BACKEND = INTERNAL_API_URL ?? "http://localhost:8000";
 
-const proxy: RequestHandler = async ({ request, url, getClientAddress }) => {
+const proxy: RequestHandler = async ({ request, url, params, getClientAddress }) => {
+  // TLS approval is for Caddy's direct backend connection, not the public proxy.
+  if (/^instance\/tls-check(?:\/|$)/.test(params.path ?? "")) {
+    return new Response("Not Found", { status: 404 });
+  }
   // The raw pathname, not the decoded `params.path`: an encoded "/" or "?" inside
   // a segment (a tag, a slug) must not become a real separator.
   const target = `${BACKEND}${url.pathname}${url.search}`;
@@ -66,6 +70,7 @@ const proxy: RequestHandler = async ({ request, url, getClientAddress }) => {
     "expires",
     "vary",
     "content-disposition",
+    "cross-origin-resource-policy",
     // Without this a redirect arrives as a bodyless 3xx with nowhere to go.
     "location",
     // Throttling feedback. Machine callers (the content webhook, scripted API

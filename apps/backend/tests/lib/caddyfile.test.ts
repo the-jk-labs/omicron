@@ -12,6 +12,23 @@ import { routeThroughAnubis } from "@/lib/caddyfile.ts";
 
 const CADDYFILE = readFileSync(new URL("../../../../Caddyfile", import.meta.url), "utf8");
 
+test("Caddy's admin API is a socket shared only with the backend", () => {
+  expect(CADDYFILE).toContain("admin unix//run/caddy-admin/admin.sock");
+  expect(CADDYFILE).not.toMatch(/admin\s+:2019/);
+  const compose = readFileSync(new URL("../../../../docker-compose.yml", import.meta.url), "utf8");
+  expect(compose.match(/- caddy_admin:\/run\/caddy-admin(?::ro)?/g)).toHaveLength(2);
+});
+
+test("the public edge blocks Caddy's TLS approval endpoint", () => {
+  expect(CADDYFILE).toContain("@internal path /api/instance/tls-check /api/instance/tls-check/*");
+  expect(CADDYFILE).toContain("respond @internal 404");
+});
+
+test("security.txt bypasses both Fedify and the bot challenge", () => {
+  expect(CADDYFILE).toContain("handle /.well-known/security.txt {\n\t\treverse_proxy http://frontend:3000");
+  expect(CADDYFILE.indexOf("handle /.well-known/security.txt")).toBeLessThan(CADDYFILE.indexOf("handle @federation"));
+});
+
 test("the shipped Caddyfile is routed through Anubis, upstream and nothing else", () => {
   const routed = routeThroughAnubis(CADDYFILE);
   expect(routed).toContain("reverse_proxy anubis:8080");

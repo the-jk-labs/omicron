@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import process from "node:process";
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
 import { routeThroughAnubis } from "@/lib/caddyfile.ts";
+import { postUnix } from "@/lib/unixHttp.ts";
 
 // AI-scraper shield (Anubis) — an opt-in, admin-toggled proof-of-work wall in
 // front of browser page loads. Off by default (see setup-must-be-toy-easy: a
@@ -12,7 +13,7 @@ import { routeThroughAnubis } from "@/lib/caddyfile.ts";
 // sidecar that always listens, but it only sits in the request path when Caddy
 // routes the frontend branch through it. We flip that route at runtime by
 // re-loading Caddy's config through its admin API (an internal-only endpoint on
-// the compose network, never published to the host). Federation and the API are
+// shared socket, never on a TCP port). Federation and the API are
 // never touched — the Caddyfile sends ActivityPub straight to the backend — so a
 // challenge can't break an inbox delivery or an API client.
 //
@@ -23,17 +24,16 @@ import { routeThroughAnubis } from "@/lib/caddyfile.ts";
 
 const SETTING_KEY = "security.anubisProtection";
 
-// Caddy's admin API, reachable only over the compose network. Unset in a bare
-// `pnpm dev` run with no Caddy in front — then the feature is unavailable
-// and the UI says so instead of erroring.
+// A custom URL remains supported for operators managing a separate Caddy.
 const CADDY_ADMIN_URL = process.env.CADDY_ADMIN_URL?.trim();
+const CADDY_ADMIN_SOCKET = process.env.CADDY_ADMIN_SOCKET?.trim();
 // The Caddyfile the running Caddy loaded, mounted read-only into this container
 // so we transform the operator's real config rather than a drifting duplicate.
 const CADDYFILE_PATH = process.env.CADDYFILE_PATH?.trim() || "/etc/caddy/Caddyfile";
 
 // Whether the live toggle can work in this deployment (Caddy admin reachable).
 export function anubisManaged(): boolean {
-  return CADDY_ADMIN_URL !== undefined && CADDY_ADMIN_URL !== "";
+  return !!(CADDY_ADMIN_URL || CADDY_ADMIN_SOCKET);
 }
 
 export async function anubisProtectionEnabled(): Promise<boolean> {
@@ -53,11 +53,14 @@ async function loadIntoCaddy(caddyfile: string): Promise<void> {
   if (!anubisManaged()) {
     throw new Error("No reverse proxy is under management in this environment.");
   }
-  const res = await fetch(`${CADDY_ADMIN_URL}/load`, {
-    method: "POST",
-    headers: { "content-type": "text/caddyfile" },
-    body: caddyfile,
-  });
+  const res = CADDY_ADMIN_URL
+    ? await fetch(`${CADDY_ADMIN_URL}/load`, {
+        method: "POST",
+        headers: { "content-type": "text/caddyfile" },
+        body: caddyfile,
+        signal: AbortSignal.timeout(10_000),
+      })
+    : await postUnix(CADDY_ADMIN_SOCKET!, "/load", caddyfile);
   if (!res.ok) {
     const detail = (await res.text().catch(() => "")).trim();
     throw new Error(`Caddy rejected the config${detail ? `: ${detail}` : ` (HTTP ${res.status})`}.`);
