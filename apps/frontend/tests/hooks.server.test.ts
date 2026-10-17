@@ -141,6 +141,20 @@ describe("the rendered page", () => {
 });
 
 describe("security headers", () => {
+  test.for([undefined, "false", "1", "TRUE", "true"])(
+    "HSTS preload requires the explicit true opt-in (%s)",
+    async (value) => {
+      vi.stubEnv("HSTS_PRELOAD", value);
+      const { res } = await run("https://blog.example/");
+      expect(res.headers.get("strict-transport-security")).toBe(
+        `max-age=63072000; includeSubDomains${value === "true" ? "; preload" : ""}`,
+      );
+      const local = await run("http://blog.example/");
+      expect(local.res.headers.has("strict-transport-security")).toBe(false);
+      const proxied = await run("http://blog.example/", { headers: { "x-forwarded-proto": "https" } });
+      expect(proxied.res.headers.get("strict-transport-security")).toBe(res.headers.get("strict-transport-security"));
+    },
+  );
   test("client-injected editor styles use SvelteKit's nonce, even without SSR inline CSS", async () => {
     const policy = "script-src 'self' 'nonce-test123'; style-src 'self'; style-src-attr 'unsafe-inline'";
     const { res } = await run("https://blog.example/", { responseHeaders: { "content-security-policy": policy } });

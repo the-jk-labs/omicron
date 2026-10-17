@@ -341,7 +341,9 @@
               <td class="hidden px-5 py-3 sm:table-cell" title="Likes + comments earned per day since publishing">
                 <div class="flex items-center gap-2">
                   <div class="h-1.5 w-full max-w-32 overflow-hidden rounded-full bg-muted">
-                    <div class="h-full rounded-full bg-accent" style="width: {Math.max(2, engFrac(p) * 100)}%"></div>
+                    <svg class="h-full w-full" aria-hidden="true">
+                      <rect width={`${Math.max(2, engFrac(p) * 100)}%`} height="100%" rx="3" class="fill-accent" />
+                    </svg>
                   </div>
                   <span class="w-10 shrink-0 text-right text-xs text-muted-foreground tabular-nums">{engLabel(p)}</span>
                 </div>
