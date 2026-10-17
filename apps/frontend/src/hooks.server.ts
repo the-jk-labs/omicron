@@ -1,3 +1,4 @@
+import process from "node:process";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Handle } from "@sveltejs/kit/hooks";
 import { canonicalOrigin, instanceDomain, isNonCanonicalHost } from "#lib/canonical.js";
@@ -197,7 +198,8 @@ export const handle: Handle = async ({ event, resolve }) => {
   // and forwards x-forwarded-proto). Sent over plain HTTP it would be ignored by
   // browsers anyway, but gating keeps localhost dev clean.
   if (proto === "https") {
-    response.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
+    const preload = process.env.HSTS_PRELOAD === "true" ? "; preload" : "";
+    response.headers.set("Strict-Transport-Security", `max-age=63072000; includeSubDomains${preload}`);
   }
 
   return response;

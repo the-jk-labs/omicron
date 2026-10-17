@@ -146,6 +146,7 @@ services:
       - backend
     environment:
       INTERNAL_API_URL: ${INTERNAL_API_URL:-http://backend:8000}
+      HSTS_PRELOAD: ${HSTS_PRELOAD:-false}
       PUBLIC_APP_NAME: ${PUBLIC_APP_NAME:-Omicron}
       PUBLIC_SOURCE_URL: ${PUBLIC_SOURCE_URL:-https://github.com/the-jk-labs/omicron}
       PUBLIC_STATUS_URL: ${PUBLIC_STATUS_URL:-}
