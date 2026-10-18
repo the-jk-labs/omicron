@@ -32,6 +32,17 @@ test("reflects the live setting and toggles it", async () => {
   expect(calls.at(-1)?.body).toEqual({ anubisProtection: true });
 });
 
+test("aligns the protection icon, description and compact switch in a grid", async () => {
+  setup({ anubisProtection: true, anubisManaged: true });
+  await waitFor(() => expect(toggle()).not.toBeDisabled());
+
+  const card = toggle().parentElement;
+  expect(card).toHaveClass("grid", "items-start");
+  expect(card).toHaveClass("sm:grid-cols-[2.75rem_minmax(0,1fr)_auto]");
+  expect(toggle()).toHaveClass("h-[28px]", "w-[48px]", "mt-0.5");
+  expect(screen.getByText("Enabled · Anubis")).toHaveClass("rounded-full");
+});
+
 test("a failed save puts the switch back and says why", async () => {
   setup(
     { anubisProtection: true, anubisManaged: true },
