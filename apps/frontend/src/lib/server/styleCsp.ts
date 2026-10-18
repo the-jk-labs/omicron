@@ -11,6 +11,8 @@ export const STATIC_STYLE_ATTRIBUTES = [
   "transform: translateY(0px)",
   "width:280px;height:280px",
   "box-shadow:0 0 0 9999px rgba(0,0,0,0.5) inset;border-radius:50%",
+  // SvelteKit's route announcer (runtime/components/root.svelte).
+  "position: absolute; left: 0; top: 0; clip: rect(0 0 0 0); clip-path: inset(50%); overflow: hidden; white-space: nowrap; width: 1px; height: 1px",
   ...AVATAR_SIZES.map((size) => `width:${size}px;height:${size}px;font-size:${Math.round(size * 0.36)}px`),
 ] as const;
 
