@@ -58,29 +58,36 @@
   }
 </script>
 
-<div class="flex items-start justify-between gap-4 rounded-card border border-border bg-background-alt p-4 sm:p-5">
-  <div class="hidden shrink-0 rounded-input border border-border bg-background p-2.5 text-foreground sm:block">
+<div
+  class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 rounded-card border border-border bg-background-alt p-4 sm:grid-cols-[2.75rem_minmax(0,1fr)_auto] sm:gap-x-5 sm:p-5"
+>
+  <div
+    class="hidden size-11 shrink-0 place-items-center rounded-input border border-border bg-background text-foreground sm:grid"
+  >
     <Icon name={enabled ? "admin" : "shieldOff"} size={20} />
   </div>
-  <div class="flex flex-col gap-1">
-    <Label.Root for="anubis-protection" class="text-sm font-medium text-foreground">AI-scraper protection</Label.Root>
-    <span class="text-xs font-medium text-muted-foreground"
-      >{loading
-        ? "Loading…"
-        : saving
-          ? "Applying…"
-          : !managed
-            ? "Unavailable"
-            : enabled
-              ? "Enabled · Anubis"
-              : "Disabled"}</span
-    >
-    <p class="max-w-prose text-sm text-muted-foreground">
+  <div class="min-w-0">
+    <div class="flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1">
+      <Label.Root for="anubis-protection" class="text-sm font-medium text-foreground">AI-scraper protection</Label.Root>
+      <span
+        class="rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground"
+        >{loading
+          ? "Loading…"
+          : saving
+            ? "Applying…"
+            : !managed
+              ? "Unavailable"
+              : enabled
+                ? "Enabled · Anubis"
+                : "Disabled"}</span
+      >
+    </div>
+    <p class="mt-1 max-w-prose text-sm leading-relaxed text-muted-foreground">
       A JavaScript challenge for sign-in, writing, search and account pages. Public reading, feeds and the API stay
       reachable. Enable when you're seeing automated abuse; this is not a site-wide scraping barrier.
     </p>
     {#if !managed}
-      <p class="mt-1 max-w-prose text-sm text-foreground">
+      <p class="mt-2 max-w-prose text-sm leading-relaxed text-foreground">
         Not available in this environment. The bundled reverse proxy isn't under management here, so there's nothing to
         route through the challenge.
       </p>
@@ -92,10 +99,10 @@
     checked={enabled}
     disabled={loading || saving || !managed}
     onCheckedChange={toggle}
-    class="peer inline-flex h-[36px] min-h-[36px] w-[60px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset"
+    class="peer mt-0.5 inline-flex h-[28px] min-h-[28px] w-[48px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset"
   >
     <Switch.Thumb
-      class="pointer-events-none block size-[30px] shrink-0 rounded-full bg-background transition-transform data-[state=checked]:translate-x-[24px] data-[state=unchecked]:translate-x-0 data-[state=unchecked]:shadow-mini"
+      class="pointer-events-none block size-[22px] shrink-0 rounded-full bg-background transition-transform data-[state=checked]:translate-x-[20px] data-[state=unchecked]:translate-x-0 data-[state=unchecked]:shadow-mini"
     />
   </Switch.Root>
 </div>
