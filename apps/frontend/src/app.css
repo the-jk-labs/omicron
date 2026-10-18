@@ -12,7 +12,8 @@
 @import "@fontsource-variable/source-sans-3/wght-italic.css" layer(base);
 
 /* Twemoji as a self-hosted COLR colour font (CC-BY 4.0, from
-   `twemoji-colr-font`; the .woff2 lives in static/fonts). Scoped with
+   `twemoji-colr-font`; bundled from $lib/assets so its URL is hashed and it
+   is cached immutably, unlike a file in static/). Scoped with
    `unicode-range` to emoji codepoints only, so Latin/CJK text still renders
    with Inter/Source Sans 3 and the browser fetches this font lazily — only when
    an emoji actually appears. Listing "Twemoji" first in each font stack
@@ -92,7 +93,7 @@
 @layer base {
   @font-face {
     font-family: "Twemoji";
-    src: url("/fonts/twemoji.woff2") format("woff2");
+    src: url("./lib/assets/fonts/twemoji.woff2") format("woff2");
     font-display: swap;
     unicode-range:
       U+200D, U+203C, U+2049, U+20E3, U+2122, U+2139, U+2194-2199, U+21A9-21AA, U+231A-231B, U+2328, U+23CF,
@@ -440,7 +441,7 @@ html {
    from the filename's extension; the letters are what actually identify the
    language, so the colour is kept to a tint and never carries meaning alone. */
 .prose-omicron .code-icon {
-  @apply inline-flex h-[18px] shrink-0 items-center justify-center rounded-[4px] px-1 font-sans text-[9px] leading-none font-semibold tracking-wide uppercase;
+  @apply inline-flex h-4.5 shrink-0 items-center justify-center rounded-sm px-1 font-sans text-[9px] leading-none font-semibold tracking-wide uppercase;
   min-width: 18px;
   background-color: hsl(var(--file-tone) / 0.14);
   color: hsl(var(--file-tone));
@@ -449,10 +450,10 @@ html {
    than it is tall — so the chip goes square around it. `currentColor` is already
    the tone, which is what tints the mark. */
 .prose-omicron .code-icon:has(> svg) {
-  @apply w-[18px] px-0;
+  @apply w-4.5 px-0;
 }
 .prose-omicron .code-icon > svg {
-  @apply h-[11px] w-[11px];
+  @apply h-2.75 w-2.75;
 }
 .prose-omicron .code-icon[data-tone="blue"] {
   --file-tone: var(--file-blue);
@@ -635,7 +636,7 @@ html {
 
 /* Tiptap editor surface */
 .tiptap {
-  @apply min-h-[320px] outline-hidden;
+  @apply min-h-80 outline-hidden;
 }
 /* Resizable images (see editor/resizable-image.ts). The wrapper spans the
    reading column and centres the frame; the frame hugs the image and carries the

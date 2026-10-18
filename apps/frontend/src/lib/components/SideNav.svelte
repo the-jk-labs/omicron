@@ -2,7 +2,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { Button } from "bits-ui";
-  import welcomeBanner from "#lib/assets/welcome-banner.png";
+  import welcomeBanner from "#lib/assets/welcome-banner.webp";
   import Footer from "#lib/components/Footer.svelte";
   import Icon, { type IconName } from "#lib/components/Icon.svelte";
   import UIButton from "#lib/components/ui/Button.svelte";

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { fakeFetch } from "./fakeFetch";
 
@@ -187,6 +188,15 @@ describe("security headers", () => {
       "cross-origin-opener-policy": "same-origin",
       "strict-transport-security": "max-age=63072000; includeSubDomains",
     });
+  });
+
+  test("Permissions-Policy names only features browsers recognise, and matches the Caddyfile copy", async () => {
+    const { res } = await run("https://blog.example/");
+    const policy = res.headers.get("permissions-policy") ?? "";
+    // Chrome logs "Unrecognized feature" for this one on every page load.
+    expect(policy).not.toContain("ambient-light-sensor");
+    const caddyfile = readFileSync("../../Caddyfile", "utf8");
+    expect(caddyfile).toContain(`>Permissions-Policy "${policy}"`);
   });
 
   test("HSTS only when the request really arrived over HTTPS", async () => {

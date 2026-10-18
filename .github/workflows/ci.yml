@@ -64,24 +64,28 @@ jobs:
 
       - name: Install
         run: pnpm install --frozen-lockfile
-      - name: Run Checks
-        run: pnpm check
 
-      # Runs the committed migrations against the service container above, then
-      # asserts on who can see what. Every case is a leak that shipped.
-      - name: Integration tests (visibility)
-        env:
-          DATABASE_URL: postgres://omicron:omicron@localhost:5432/omicron_test
-          SESSION_SECRET: ci-integration-test-secret-not-a-real-key
-        run: pnpm test:integration
-      - name: Audit dependencies
-        # Surface every advisory in the log for visibility, then fail only on a
-        # high/critical one — so a serious CVE in a dependency blocks the merge,
-        # while an unfixable low can't wedge the pipeline. Runs against the deps
-        # the steps above already resolved.
-        run: |
-          pnpm audit || true
-          pnpm audit --audit-level high
+      # Independent of each other once installed; one failing still fails the job.
+      - parallel:
+          - name: Run Checks
+            run: pnpm check
+
+          # Runs the committed migrations against the service container above, then
+          # asserts on who can see what. Every case is a leak that shipped.
+          - name: Integration tests (visibility)
+            env:
+              DATABASE_URL: postgres://omicron:omicron@localhost:5432/omicron_test
+              SESSION_SECRET: ci-integration-test-secret-not-a-real-key
+            run: pnpm test:integration
+
+          - name: Audit dependencies
+            # Surface every advisory in the log for visibility, then fail only on a
+            # high/critical one — so a serious CVE in a dependency blocks the merge,
+            # while an unfixable low can't wedge the pipeline. Runs against the deps
+            # the install above already resolved.
+            run: |
+              pnpm audit || true
+              pnpm audit --audit-level high
 
   frontend:
     name: Frontend (svelte-check)
@@ -107,29 +111,31 @@ jobs:
           cache: pnpm
           cache-dependency-path: apps/frontend/pnpm-lock.yaml
 
-      - name: Install
-        run: pnpm install --frozen-lockfile
+      - parallel:
+          - name: Install
+            run: pnpm install --frozen-lockfile
 
-      # The typecheck reads the backend's serializers to prove this app's API
-      # types still match them (apps/frontend/src/lib/api/contract.ts), so it
-      # resolves the backend's own npm dependencies — drizzle-orm above all,
-      # which every `db/schema.ts` type flows from. Without this step
-      # svelte-check fails with 45 "Cannot find module 'drizzle-orm'"
-      # errors on backend source, none of which are the frontend's fault.
-      - name: Install backend dependencies (for the cross-app typecheck)
-        working-directory: apps/backend
-        run: pnpm install --frozen-lockfile
+          # The typecheck reads the backend's serializers to prove this app's API
+          # types still match them (apps/frontend/src/lib/api/contract.ts), so it
+          # resolves the backend's own npm dependencies — drizzle-orm above all,
+          # which every `db/schema.ts` type flows from. Without this step
+          # svelte-check fails with 45 "Cannot find module 'drizzle-orm'"
+          # errors on backend source, none of which are the frontend's fault.
+          - name: Install backend dependencies (for the cross-app typecheck)
+            working-directory: apps/backend
+            run: pnpm install --frozen-lockfile
 
-      - name: Run Checks
-        run: pnpm check
+      - parallel:
+          - name: Run Checks
+            run: pnpm check
 
-      - name: Audit dependencies
-        # Same policy as the backend: print all advisories, fail only on
-        # high/critical. `--prod` ignores devDependencies (build-time only, not
-        # shipped in the runtime image).
-        run: |
-          pnpm audit --prod || true
-          pnpm audit --prod --audit-level high
+          - name: Audit dependencies
+            # Same policy as the backend: print all advisories, fail only on
+            # high/critical. `--prod` ignores devDependencies (build-time only, not
+            # shipped in the runtime image).
+            run: |
+              pnpm audit --prod || true
+              pnpm audit --prod --audit-level high
 
   docker-build:
     name: Docker images build
@@ -139,10 +145,11 @@ jobs:
       # The compose stack builds both images from source (no prebuilt images
       # yet), so a broken Dockerfile breaks `install.sh` for everyone. Build both
       # here to catch it before release.
-      - name: Build backend image
-        run: docker build -t omicron-backend ./apps/backend
-      - name: Build frontend image
-        run: docker build -t omicron-frontend ./apps/frontend
+      - parallel:
+          - name: Build backend image
+            run: docker build -t omicron-backend ./apps/backend
+          - name: Build frontend image
+            run: docker build -t omicron-frontend ./apps/frontend
 
   android:
     name: Android (build · lint · test)
@@ -157,16 +164,18 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - name: Install Android SDK Platform 36
-        run: |
-          for candidate in /usr/local/lib/android/sdk/cmdline-tools/*/bin/sdkmanager; do
-            if [ -x "$candidate" ]; then
-              sdkmanager="$candidate"
-            fi
-          done
-          test -n "$sdkmanager"
-          yes | "$sdkmanager" --licenses
-          "$sdkmanager" "platforms;android-36" "build-tools;36.0.0"
-      - uses: gradle/actions/setup-gradle@v6
+      # The SDK download and the Gradle cache restore don't touch each other.
+      - parallel:
+          - name: Install Android SDK Platform 36
+            run: |
+              for candidate in /usr/local/lib/android/sdk/cmdline-tools/*/bin/sdkmanager; do
+                if [ -x "$candidate" ]; then
+                  sdkmanager="$candidate"
+                fi
+              done
+              test -n "$sdkmanager"
+              yes | "$sdkmanager" --licenses
+              "$sdkmanager" "platforms;android-36" "build-tools;36.0.0"
+          - uses: gradle/actions/setup-gradle@v6
       - name: Build, lint, and test
         run: ./gradlew --no-daemon :composeApp:assembleDebug :composeApp:lintDebug :composeApp:testDebugUnitTest

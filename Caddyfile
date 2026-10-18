@@ -44,7 +44,7 @@
 		-Via
 		-X-SvelteKit-Page
 		>X-Content-Type-Options nosniff
-		>Permissions-Policy "accelerometer=(), ambient-light-sensor=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(), usb=(), xr-spatial-tracking=()"
+		>Permissions-Policy "accelerometer=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(), usb=(), xr-spatial-tracking=()"
 	}
 
 	# Anubis reads the client IP from X-Real-IP and refuses the request outright
