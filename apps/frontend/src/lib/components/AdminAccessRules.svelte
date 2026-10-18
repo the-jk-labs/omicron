@@ -1,11 +1,14 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { Label, RadioGroup } from "bits-ui";
+  import { Collapsible, Dialog, DropdownMenu, Separator } from "bits-ui";
   import { onMount } from "svelte";
   import { ApiError, endpoints } from "#lib/api/index.js";
+  import AccessRulePreview from "#lib/components/AccessRulePreview.svelte";
+  import AdminAccessRuleDialog from "#lib/components/AdminAccessRuleDialog.svelte";
+  import Icon from "#lib/components/Icon.svelte";
   import Time from "#lib/components/Time.svelte";
   import Button from "#lib/components/ui/Button.svelte";
-  import type { AccessRule, AccessRuleInput, AccessRuleTest } from "#lib/types.js";
+  import type { AccessRule } from "#lib/types.js";
 
   let { managed }: { managed: boolean } = $props();
   let rules = $state<AccessRule[]>([]);
@@ -14,29 +17,12 @@
   let busy = $state(false);
   let error = $state("");
   let notice = $state("");
-  let network = $state("");
-  let action = $state("block");
-  let duration = $state("24");
-  let reason = $state("");
-  let testIp = $state("");
-  let testPath = $state("/");
-  let testing = $state(false);
-  let result = $state<AccessRuleTest | null>(null);
   let now = $state(Date.now());
-  const durations = [
-    { value: "1", label: "1 hour" },
-    { value: "24", label: "24 hours" },
-    { value: "168", label: "7 days" },
-    { value: "720", label: "30 days" },
-  ];
-  const field =
-    "rounded-input border border-input bg-background shadow-btn px-3.5 py-2.5 text-sm outline-hidden placeholder:text-muted-foreground focus:border-foreground";
-  const radio =
-    "border-border-input bg-background hover:border-dark-40 data-[state=checked]:border-foreground data-[state=checked]:border-6 size-5 shrink-0 cursor-default rounded-full border transition-all duration-100 ease-in-out";
-
-  function failure(e: unknown) {
-    return e instanceof ApiError ? e.message : "Could not update IP rules.";
-  }
+  let safeguardsOpen = $state(false);
+  let previewInput = $state<HTMLInputElement | null>(null);
+  const activeCount = $derived(rules.filter((rule) => rule.enabled && Date.parse(rule.expiresAt) > now).length);
+  const itemClass =
+    "rounded-button data-highlighted:bg-muted ring-0! ring-transparent! flex h-10 select-none items-center py-3 pl-3 pr-1.5 text-sm font-medium focus-visible:outline-none";
 
   async function load() {
     loading = true;
@@ -45,7 +31,7 @@
       rules = (await endpoints().accessRules()).rules;
       loaded = true;
     } catch (e) {
-      error = failure(e);
+      error = e instanceof ApiError ? e.message : "Could not load IP rules.";
     } finally {
       loading = false;
     }
@@ -59,39 +45,8 @@
     return () => clearInterval(timer);
   });
 
-  $effect(() => {
-    network;
-    action;
-    testIp;
-    testPath;
-    result = null;
-  });
-
-  async function add() {
-    busy = true;
-    error = "";
-    notice = "";
-    try {
-      rules = (
-        await endpoints().addAccessRule({
-          network: network.trim(),
-          action: action as AccessRuleInput["action"],
-          reason: reason.trim(),
-          expiresInHours: Number(duration) as AccessRuleInput["expiresInHours"],
-        })
-      ).rules;
-      network = "";
-      reason = "";
-      result = null;
-      notice = "IP rule applied. It expires automatically.";
-    } catch (e) {
-      error = failure(e);
-    } finally {
-      busy = false;
-    }
-  }
-
   async function change(rule: AccessRule, remove = false) {
+    if (busy || !managed) return;
     busy = true;
     error = "";
     notice = "";
@@ -101,188 +56,191 @@
           ? endpoints().removeAccessRule(rule.id)
           : endpoints().setAccessRuleEnabled(rule.id, !rule.enabled))
       ).rules;
-      result = null;
       notice = remove ? "IP rule removed." : "IP rule updated.";
     } catch (e) {
-      error = failure(e);
+      error = e instanceof ApiError ? e.message : "Could not update IP rules.";
     } finally {
       busy = false;
     }
   }
 
-  async function preview(draft = false) {
-    testing = true;
+  function created(next: AccessRule[]) {
+    rules = next;
     error = "";
-    result = null;
-    const snapshot = { ip: testIp.trim(), path: testPath, network: network.trim(), action };
-    try {
-      const response = await endpoints().testAccessRules(
-        snapshot.ip,
-        snapshot.path,
-        draft ? { network: snapshot.network, action: snapshot.action as AccessRuleInput["action"] } : undefined,
-      );
-      if (
-        testIp.trim() === snapshot.ip &&
-        testPath === snapshot.path &&
-        network.trim() === snapshot.network &&
-        action === snapshot.action
-      )
-        result = response;
-    } catch (e) {
-      error = failure(e);
-    } finally {
-      testing = false;
-    }
+    notice = "IP rule applied. It expires automatically.";
   }
 </script>
 
-<section class="flex flex-col gap-5" aria-labelledby="ip-rules-heading">
-  <div>
-    <h3 id="ip-rules-heading" class="text-sm font-semibold text-foreground">IP access rules</h3>
-    <p class="mt-1 max-w-prose text-sm text-muted-foreground">
-      Temporarily allow or block an IP address or range on web pages. Rules apply even when the challenge switch is off.
-      The first active match wins, newest first. Allow bypasses Anubis, not sign-in or rate limits.
-    </p>
-    <p class="mt-2 max-w-prose text-sm text-muted-foreground">
-      API, federation, feeds, sitemaps, and sign-in/admin recovery paths are exempt. A block is not a host firewall ban.
-      Addresses are the peers connecting directly to Caddy; do not use these rules behind another proxy or CDN. Use a
-      single address when possible: a range may affect many readers sharing a network.
-    </p>
-    {#if !managed}<p class="mt-2 text-sm text-muted-foreground">
-        A managed Caddy deployment is required to change IP rules.
-      </p>{/if}
+<section class="flex flex-col gap-4" aria-labelledby="ip-rules-heading">
+  <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+    <div>
+      <div class="flex items-center gap-2">
+        <h3 id="ip-rules-heading" class="text-base font-semibold text-foreground">IP access rules</h3>
+        {#if loaded}<span class="rounded-button bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+            >{activeCount} active</span
+          >{/if}
+      </div>
+      <p class="mt-1 text-sm text-muted-foreground">
+        Temporary allow and block rules, separate from the challenge switch.
+      </p>
+    </div>
+    <div class="flex shrink-0 items-center gap-2">
+      <Dialog.Root>
+        <Dialog.Trigger disabled={!loaded || busy}>
+          {#snippet child({ props })}<Button {...props} variant="outline"
+              ><Icon name="search" size={15} /> Test rules</Button
+            >{/snippet}
+        </Dialog.Trigger>
+        <Dialog.Portal>
+          <Dialog.Overlay
+            class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-dark/40"
+          />
+          <Dialog.Content
+            class="fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-card-lg border border-border bg-background p-5 text-foreground shadow-popover outline-hidden sm:max-w-[490px]"
+            onOpenAutoFocus={(event) => {
+              event.preventDefault();
+              previewInput?.focus();
+            }}
+          >
+            <Dialog.Title class="text-lg font-semibold tracking-tight">Test saved rules</Dialog.Title>
+            <Dialog.Description class="mt-1 pr-6 text-sm text-muted-foreground"
+              >See how an IP address and path match your current rules, without changing anything.</Dialog.Description
+            >
+            <Dialog.Close
+              aria-label="Close rule tester"
+              class="absolute top-5 right-5 rounded-button focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden active:scale-[0.98]"
+              ><Icon name="close" size={18} /></Dialog.Close
+            >
+            <Separator.Root class="-mx-5 my-5 block h-px bg-muted" />
+            <AccessRulePreview bind:inputRef={previewInput} />
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+      <AdminAccessRuleDialog disabled={!managed || !loaded || busy} onCreated={created} />
+    </div>
   </div>
 
+  {#if !managed}<p class="rounded-input bg-muted p-3 text-sm text-muted-foreground">
+      Read-only in this environment. A managed Caddy deployment is required to change IP rules.
+    </p>{/if}
   {#if error}<p role="alert" class="text-sm text-destructive">{error}</p>{/if}
-  {#if notice}<p role="status" class="text-sm text-muted-foreground">{notice}</p>{/if}
-  {#if loading}
-    <p class="text-sm text-muted-foreground">Loading IP rules…</p>
-  {:else if !loaded}
-    <Button variant="outline" onclick={load}>Retry loading IP rules</Button>
-  {:else}
-    {#if rules.length === 0}<p class="text-sm text-muted-foreground">No custom IP rules.</p>{/if}
-    <ul class="flex flex-col divide-y divide-border">
-      {#each rules as rule (rule.id)}
-        {@const expired = Date.parse(rule.expiresAt) <= now}
-        <li class="flex flex-wrap items-center gap-3 py-3">
-          <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium break-all text-foreground">
-              {rule.action === "allow" ? "Allow" : "Block"}
-              {rule.network}
-            </p>
-            <p class="text-xs text-muted-foreground">
-              {expired ? "Expired" : !rule.enabled ? "Disabled" : "Active"} · Expires <Time iso={rule.expiresAt} />
-            </p>
-            {#if rule.reason}<p class="text-sm break-words text-muted-foreground">{rule.reason}</p>{/if}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!managed || busy || testing || expired}
-            aria-label={`${rule.enabled ? "Disable" : "Enable"} ${rule.network}`}
-            onclick={() => change(rule)}>{rule.enabled ? "Disable" : "Enable"}</Button
-          >
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!managed || busy || testing}
-            aria-label={`Remove ${rule.network}`}
-            onclick={() => change(rule, true)}>Remove</Button
-          >
-        </li>
-      {/each}
-    </ul>
+  {#if notice}<p role="status" class="flex items-center gap-2 text-sm text-foreground">
+      <Icon name="check" size={15} />{notice}
+    </p>{/if}
 
-    <form
-      class="flex flex-col gap-3"
-      onsubmit={(e) => {
-        e.preventDefault();
-        void add();
-      }}
-    >
-      <h4 class="text-sm font-medium text-foreground">Add temporary rule</h4>
-      <Label.Root for="access-network" class="text-sm font-medium text-foreground">IP address or CIDR range</Label.Root>
-      <input
-        id="access-network"
-        bind:value={network}
-        required
-        maxlength={64}
-        placeholder="192.0.2.10 or 2001:db8::/64"
-        autocomplete="off"
-        spellcheck="false"
-        class={field}
-        disabled={!managed || busy}
-      />
-      <RadioGroup.Root
-        bind:value={action}
-        disabled={!managed || busy}
-        aria-label="Rule action"
-        class="flex flex-col gap-4 text-sm font-medium"
-      >
-        {#each [{ value: "block", label: "Block web pages (403)" }, { value: "allow", label: "Allow without an Anubis challenge" }] as option (option.value)}
-          <div class="group flex items-center text-foreground transition-all select-none">
-            <RadioGroup.Item id={`access-${option.value}`} value={option.value} class={radio} />
-            <Label.Root for={`access-${option.value}`} class="pl-3">{option.label}</Label.Root>
-          </div>
-        {/each}
-      </RadioGroup.Root>
-      <RadioGroup.Root
-        bind:value={duration}
-        disabled={!managed || busy}
-        aria-label="Rule expiry"
-        class="flex flex-col gap-4 text-sm font-medium"
-      >
-        {#each durations as option (option.value)}
-          <div class="group flex items-center text-foreground transition-all select-none">
-            <RadioGroup.Item id={`access-expiry-${option.value}`} value={option.value} class={radio} />
-            <Label.Root for={`access-expiry-${option.value}`} class="pl-3">{option.label}</Label.Root>
-          </div>
-        {/each}
-      </RadioGroup.Root>
-      <Label.Root for="access-reason" class="text-sm font-medium text-foreground">Reason (optional)</Label.Root>
-      <input id="access-reason" bind:value={reason} maxlength={300} class={field} disabled={!managed || busy} />
-      <div>
-        <Button type="submit" variant="solid" disabled={!managed || busy || testing || !network.trim()}
-          >{busy ? "Applying…" : "Apply rule"}</Button
-        >
-      </div>
-    </form>
-
-    <form
-      class="flex flex-col gap-3"
-      onsubmit={(e) => {
-        e.preventDefault();
-        void preview();
-      }}
-    >
-      <h4 class="text-sm font-medium text-foreground">Test an IP and path</h4>
-      <p class="text-sm text-muted-foreground">
-        Check saved rules, or preview the new rule above before applying it. This does not simulate Anubis's built-in
-        bot policy.
+  <div class="overflow-hidden rounded-card border border-border">
+    {#if loading}
+      <p role="status" class="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+        <Icon name="spinner" size={17} class="animate-spin" />Loading IP rules…
       </p>
-      <Label.Root for="access-test-ip" class="text-sm font-medium text-foreground">Visitor IP address</Label.Root>
-      <input id="access-test-ip" bind:value={testIp} required maxlength={64} placeholder="192.0.2.10" class={field} />
-      <Label.Root for="access-test-path" class="text-sm font-medium text-foreground">URL path</Label.Root>
-      <input
-        id="access-test-path"
-        bind:value={testPath}
-        required
-        maxlength={2048}
-        placeholder="/search"
-        class={field}
-      />
-      <div class="flex flex-wrap gap-2">
-        <Button type="submit" variant="outline" disabled={testing || busy || !testIp.trim()}>Test saved rules</Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={testing || busy || !testIp.trim() || !network.trim()}
-          onclick={() => preview(true)}>Test draft rule</Button
+    {:else if !loaded}
+      <div class="flex justify-center p-8">
+        <Button variant="outline" onclick={load}>Retry loading IP rules</Button>
+      </div>
+    {:else if rules.length === 0}
+      <div class="flex flex-col items-center px-6 py-10 text-center">
+        <div class="mb-3 rounded-card border border-border bg-background-alt p-3 text-muted-foreground">
+          <Icon name="admin" size={24} />
+        </div>
+        <p class="text-sm font-semibold text-foreground">No custom IP rules.</p>
+        <p class="mt-1 max-w-sm text-sm text-muted-foreground">
+          Traffic follows your normal Anubis policy. Add a rule when you need a temporary exception.
+        </p>
+      </div>
+    {:else}
+      <div
+        class="flex items-center justify-between border-b border-border bg-background-alt px-4 py-2.5 text-xs text-muted-foreground"
+      >
+        <span>{rules.length} {rules.length === 1 ? "rule" : "rules"}</span><span
+          >First active match wins · Newest first</span
         >
       </div>
-      {#if result}<p role="status" class="text-sm text-foreground">
-          {result.ruleId === "draft" ? "Draft: " : ""}{result.message}
-        </p>{/if}
-    </form>
-  {/if}
+      <ul class="divide-y divide-border">
+        {#each rules as rule (rule.id)}
+          {@const expired = Date.parse(rule.expiresAt) <= now}
+          <li class="flex items-start gap-3 p-4 sm:items-center">
+            <div class="mt-0.5 shrink-0 rounded-input bg-muted p-2 sm:mt-0">
+              <Icon
+                name={rule.action === "block" ? "block" : "admin"}
+                size={17}
+                class={rule.action === "block" ? "text-destructive" : "text-foreground"}
+              />
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span class="text-xs font-medium text-muted-foreground"
+                  >{rule.action === "allow" ? "Allow" : "Block"}</span
+                >
+                <code class="text-sm font-medium break-all text-foreground">{rule.network}</code>
+                <span class="rounded-button border border-border px-1.5 py-0.5 text-xs text-muted-foreground"
+                  >{expired ? "Expired" : rule.enabled ? "Active" : "Disabled"}</span
+                >
+              </div>
+              {#if rule.reason}<p class="mt-1 text-sm break-words text-muted-foreground">{rule.reason}</p>{/if}
+              <p class="mt-1 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                <Icon name="clock" size={12} />{expired ? "Expired" : "Expires"}
+                <Time iso={rule.expiresAt} />
+              </p>
+            </div>
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger
+                disabled={!managed || busy}
+                aria-label={`Actions for ${rule.network}`}
+                class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-input text-sm font-medium text-foreground shadow-btn select-none hover:bg-muted active:scale-[0.98] disabled:opacity-50"
+                ><Icon name="more" size={18} /></DropdownMenu.Trigger
+              >
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  class="z-50 w-[229px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover outline-hidden focus-visible:outline-hidden"
+                  sideOffset={8}
+                  align="end"
+                >
+                  <DropdownMenu.Item class={itemClass} disabled={expired} onSelect={() => change(rule)}
+                    ><Icon name={rule.enabled ? "shieldOff" : "admin"} size={16} class="mr-2" />{rule.enabled
+                      ? "Disable rule"
+                      : "Enable rule"}</DropdownMenu.Item
+                  >
+                  <DropdownMenu.Separator class="-mx-1 my-1 block h-px bg-muted" />
+                  <DropdownMenu.Item class={`${itemClass} text-destructive`} onSelect={() => change(rule, true)}
+                    ><Icon name="trash" size={16} class="mr-2" />Remove rule</DropdownMenu.Item
+                  >
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </div>
+
+  <div class="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+    <Icon name="alert" size={15} class="mt-0.5 shrink-0" />
+    <p>
+      Direct connections only — do not use behind a CDN or another proxy. API, federation and recovery paths stay
+      exempt.
+    </p>
+  </div>
+  <Collapsible.Root bind:open={safeguardsOpen}>
+    <Collapsible.Trigger>
+      {#snippet child({ props })}<Button {...props} variant="ghost" size="sm"
+          >Scope & safeguards <Icon name="chevronDown" size={14} class={safeguardsOpen ? "rotate-180" : ""} /></Button
+        >{/snippet}
+    </Collapsible.Trigger>
+    <Collapsible.Content class="mt-2 overflow-hidden">
+      <div class="space-y-2 rounded-input bg-muted p-4 text-sm leading-relaxed text-muted-foreground">
+        <p>
+          Rules apply even with the challenge switch off. Allow skips Anubis, not authentication or rate limits. Blocks
+          affect web pages, not the host firewall or SSH.
+        </p>
+        <p>
+          API, federation, feeds, sitemaps, verification files, app assets and sign-in/admin recovery paths keep their
+          normal routing and Anubis policy.
+        </p>
+        <p>
+          Every rule expires automatically, within 30 days. At most 100 unexpired rules can be saved, including disabled
+          rules. Expired rules cannot be re-enabled.
+        </p>
+      </div>
+    </Collapsible.Content>
+  </Collapsible.Root>
 </section>

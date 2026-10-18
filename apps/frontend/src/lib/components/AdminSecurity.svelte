@@ -4,13 +4,14 @@
   import { untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
   import AdminAccessRules from "#lib/components/AdminAccessRules.svelte";
+  import Icon from "#lib/components/Icon.svelte";
   import type { SecuritySettings } from "#lib/types.js";
 
   // `initial` is the server-loaded state; without it the browser loads it.
   let { initial = null }: { initial?: SecuritySettings | null } = $props();
   const seed = untrack(() => initial);
 
-  // Moderator-only security controls. Currently the AI-scraper shield (Anubis):
+  // Admin-only security controls. Currently the AI-scraper shield (Anubis):
   // a proof-of-work challenge shown to browser-like traffic on page loads.
   // Applied live via Caddy — no restart — and never in front of federation or
   // the API. `managed` is false where the reverse proxy can't be driven from
@@ -57,13 +58,26 @@
   }
 </script>
 
-<div class="flex items-start justify-between gap-4">
+<div class="flex items-start justify-between gap-4 rounded-card border border-border bg-background-alt p-4 sm:p-5">
+  <div class="hidden shrink-0 rounded-input border border-border bg-background p-2.5 text-foreground sm:block">
+    <Icon name={enabled ? "admin" : "shieldOff"} size={20} />
+  </div>
   <div class="flex flex-col gap-1">
     <Label.Root for="anubis-protection" class="text-sm font-medium text-foreground">AI-scraper protection</Label.Root>
+    <span class="text-xs font-medium text-muted-foreground"
+      >{loading
+        ? "Loading…"
+        : saving
+          ? "Applying…"
+          : !managed
+            ? "Unavailable"
+            : enabled
+              ? "Enabled · Anubis"
+              : "Disabled"}</span
+    >
     <p class="max-w-prose text-sm text-muted-foreground">
-      Challenge browser-like traffic on sign-in, writing, search and account pages. Public reading, feeds, federation
-      and the API stay reachable. Passing a challenge needs JavaScript. Applies instantly, no restart; leave off unless
-      you're seeing automated abuse. This is not a site-wide scraping barrier.
+      A JavaScript challenge for sign-in, writing, search and account pages. Public reading, feeds and the API stay
+      reachable. Enable when you're seeing automated abuse; this is not a site-wide scraping barrier.
     </p>
     {#if !managed}
       <p class="mt-1 max-w-prose text-sm text-foreground">
