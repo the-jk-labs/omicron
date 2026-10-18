@@ -1,0 +1,32 @@
+diff --git a/picker.js b/picker.js
+index f3d231d3e312966bc6b9739c862f3fde12f031b7..1fda50b527dc70166b5524a180f3b306c29aa2c8 100644
+--- a/picker.js
++++ b/picker.js
+@@ -482,7 +482,12 @@ function patch (expressions, instanceBindings) {
+       } else {
+         // attribute value is not null; set a new attribute
+         const newValue = attributeValuePre + toString(expression) + attributeValuePost;
+-        targetNode.setAttribute(attributeName, newValue);
++        if (attributeName === 'style') {
++          // Omicron: CSSOM writes are allowed by a CSP that blocks style attributes
++          targetNode.style.cssText = newValue;
++        } else {
++          targetNode.setAttribute(attributeName, newValue);
++        }
+       }
+     } else { // text node / child element / children replacement
+       let newNode;
+@@ -1704,9 +1709,10 @@ class PickerElement extends HTMLElement {
+   constructor (props) {
+     super();
+     this.attachShadow({ mode: 'open' });
+-    const style = document.createElement('style');
+-    style.textContent = baseStyles + EXTRA_STYLES;
+-    this.shadowRoot.appendChild(style);
++    // Omicron: an adopted sheet is allowed by a CSP that blocks nonce-less <style>
++    const sheet = new CSSStyleSheet();
++    sheet.replaceSync(baseStyles + EXTRA_STYLES);
++    this.shadowRoot.adoptedStyleSheets = [sheet];
+     this._ctx = {
+       // Set defaults
+       locale: DEFAULT_LOCALE,
