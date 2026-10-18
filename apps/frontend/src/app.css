@@ -12,7 +12,8 @@
 @import "@fontsource-variable/source-sans-3/wght-italic.css" layer(base);
 
 /* Twemoji as a self-hosted COLR colour font (CC-BY 4.0, from
-   `twemoji-colr-font`; the .woff2 lives in static/fonts). Scoped with
+   `twemoji-colr-font`; bundled from $lib/assets so its URL is hashed and it
+   is cached immutably, unlike a file in static/). Scoped with
    `unicode-range` to emoji codepoints only, so Latin/CJK text still renders
    with Inter/Source Sans 3 and the browser fetches this font lazily — only when
    an emoji actually appears. Listing "Twemoji" first in each font stack
@@ -92,7 +93,7 @@
 @layer base {
   @font-face {
     font-family: "Twemoji";
-    src: url("/fonts/twemoji.woff2") format("woff2");
+    src: url("./lib/assets/fonts/twemoji.woff2") format("woff2");
     font-display: swap;
     unicode-range:
       U+200D, U+203C, U+2049, U+20E3, U+2122, U+2139, U+2194-2199, U+21A9-21AA, U+231A-231B, U+2328, U+23CF,
