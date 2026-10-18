@@ -28,6 +28,8 @@
 // several endpoints (`Post.status` is optional because `barePost` omits it).
 
 import type {
+  AccessRule,
+  AccessRuleTest,
   AdminUser,
   AdminUserDetail,
   Comment,
@@ -62,6 +64,7 @@ import type {
   TagSummary,
   webhookTokenView,
 } from "@/routes/serializers.ts";
+import type { AccessRule as BackendAccessRule, testAccessRules } from "@/services/accessRules.ts";
 
 // What `c.json()` does to a serializer's return value on the way out: `Date`
 // becomes an ISO string, everything else keeps its shape. Applied to the
@@ -95,6 +98,8 @@ type Wire<F extends (...args: never[]) => unknown> = Serialized<ReturnType<F>>;
 // frontend declares for it.
 
 type _Tag = Assert<Fits<Serialized<TagSummary>, Tag>>;
+type _AccessRule = Assert<Fits<BackendAccessRule, AccessRule>>;
+type _AccessRuleTest = Assert<Fits<ReturnType<typeof testAccessRules>, AccessRuleTest>>;
 type _ProfileLink = Assert<Fits<Wire<typeof profileLinkView>, ProfileLink>>;
 // Reached through `postWithAuthor` rather than imported from `@/lib/cover.ts`
 // directly: that module imports `@/lib/http.ts`, which imports hono — a jsr

@@ -20,9 +20,11 @@ import { readFile } from "node:fs/promises";
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
 import { routeThroughAnubis } from "@/lib/caddyfile.ts";
 import { postUnix } from "@/lib/unixHttp.ts";
+import { renderAccessRules } from "@/services/accessRules.ts";
 
 const CADDYFILE = `{$APP_DOMAIN} {
 \treverse_proxy /api/* backend:8000
+\t# managed-access-rules
 \treverse_proxy frontend:3000
 }
 `;
@@ -70,6 +72,90 @@ describe("anubisManaged", () => {
 
 test("protection is off by default", async () => {
   expect(await (await load()).anubisProtectionEnabled()).toBe(false);
+});
+
+describe("IP access rules", () => {
+  const input = { network: "192.0.2.129/24", action: "block" as const, reason: " Test ", expiresInHours: 24 };
+
+  test("adds, disables, re-enables and removes a temporary normalized rule", async () => {
+    const mod = await load();
+    const [rule] = await mod.addAccessRule(input);
+    expect(rule).toMatchObject({ network: "192.0.2.0/24", action: "block", reason: "Test", enabled: true });
+    expect(Date.parse(rule.expiresAt) - Date.parse(rule.createdAt)).toBeGreaterThanOrEqual(86400000);
+    expect(fetchMock.mock.calls[0][1].body).toBe(renderAccessRules(CADDYFILE, [rule]));
+    expect(settings["security.accessRules"]).toEqual([rule]);
+    expect((await mod.updateAccessRule(rule.id, false))[0].enabled).toBe(false);
+    expect((await mod.updateAccessRule(rule.id, true))[0].enabled).toBe(true);
+    expect(await mod.updateAccessRule(rule.id, null)).toEqual([]);
+    expect(fetchMock.mock.calls.at(-1)[1].body).toBe(CADDYFILE);
+  });
+
+  test("retains rules when the proof-of-work switch changes", async () => {
+    const mod = await load();
+    const rules = await mod.addAccessRule(input);
+    await mod.setAnubisProtectionEnabled(true);
+    expect(fetchMock.mock.calls.at(-1)[1].body).toBe(renderAccessRules(routeThroughAnubis(CADDYFILE), rules));
+    await mod.setAnubisProtectionEnabled(false);
+    expect(fetchMock.mock.calls.at(-1)[1].body).toBe(renderAccessRules(CADDYFILE, rules));
+  });
+
+  test("rejected configuration leaves the database unchanged", async () => {
+    const mod = await load();
+    fetchMock.mockResolvedValue(new Response("bad config", { status: 400 }));
+    await expect(mod.addAccessRule(input)).rejects.toThrow("bad config");
+    expect(settings).toEqual({});
+  });
+
+  test("database failure restores the previous proxy configuration", async () => {
+    const mod = await load();
+    vi.mocked(settingsRepo.set).mockRejectedValueOnce(new Error("database unavailable"));
+    await expect(mod.addAccessRule(input)).rejects.toThrow("database unavailable");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][1].body).toBe(CADDYFILE);
+    expect(settings).toEqual({});
+  });
+
+  test("simultaneous edits are serialized without dropping either rule", async () => {
+    const mod = await load();
+    await Promise.all([mod.addAccessRule(input), mod.addAccessRule({ ...input, network: "198.51.100.1" })]);
+    expect(await mod.accessRules()).toHaveLength(2);
+  });
+
+  test("a draft is tested first without persisting or applying anything", async () => {
+    const mod = await load();
+    await mod.addAccessRule(input);
+    fetchMock.mockClear();
+    expect(
+      await mod.previewAccessRules("192.0.2.1", "/search", { network: "192.0.2.1", action: "allow" }),
+    ).toMatchObject({ action: "allow", ruleId: "draft" });
+    expect(await mod.accessRules()).toHaveLength(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(await mod.previewAccessRules("192.0.2.1", "/admin")).toMatchObject({ action: "exempt" });
+  });
+
+  test("invalid networks, unknown rules, expired rules and invalid durations are rejected", async () => {
+    const mod = await load();
+    await expect(mod.addAccessRule({ ...input, network: "bad" })).rejects.toThrow(/valid IPv4 or IPv6/);
+    await expect(mod.addAccessRule({ ...input, expiresInHours: -1 })).rejects.toThrow(/expiry/);
+    await expect(mod.updateAccessRule("unknown", false)).rejects.toThrow(/not found/);
+    const [rule] = await mod.addAccessRule(input);
+    rule.expiresAt = new Date(0).toISOString();
+    await expect(mod.updateAccessRule(rule.id, true)).rejects.toThrow(/expired/);
+  });
+
+  test("expired entries are pruned when adding, and the active rule count is bounded", async () => {
+    const mod = await load();
+    const [rule] = await mod.addAccessRule(input);
+    settings["security.accessRules"] = Array.from({ length: 100 }, (_, i) => ({ ...rule, id: String(i) }));
+    await expect(mod.addAccessRule(input)).rejects.toThrow(/100/);
+    settings["security.accessRules"] = [{ ...rule, expiresAt: new Date(0).toISOString() }];
+    expect(await mod.addAccessRule(input)).toHaveLength(1);
+  });
+
+  test("cannot change rules on an unmanaged deployment", async () => {
+    await expect((await load(UNSET)).addAccessRule(input)).rejects.toThrow(/No reverse proxy/);
+    expect(settings).toEqual({});
+  });
 });
 
 describe("setAnubisProtectionEnabled", () => {
@@ -149,6 +235,17 @@ describe("reconcileAnubisInBackground", () => {
     await vi.advanceTimersByTimeAsync(4_000);
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock.mock.calls[2][1]!.body).toBe(routeThroughAnubis(CADDYFILE));
+  });
+
+  test("restores saved IP rules even with proof-of-work off", async () => {
+    const mod = await load();
+    const rules = await mod.addAccessRule({ network: "192.0.2.1", action: "block", reason: "", expiresInHours: 24 });
+    fetchMock.mockClear();
+    vi.useFakeTimers();
+    mod.reconcileAnubisInBackground();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][1].body).toBe(renderAccessRules(CADDYFILE, rules));
   });
 
   test("gives up after 60 attempts with a warning", async () => {

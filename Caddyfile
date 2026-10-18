@@ -130,6 +130,8 @@
 		# in a comment above all, would be rewritten instead and the toggle would
 		# silently do nothing. anubisProtection.ts refuses to apply rather than
 		# guess if it ever finds more than one.
+		# Managed IP rules are inserted here, ahead of the normal app policy.
+		# managed-access-rules
 		reverse_proxy frontend:3000 {
 			# Anubis announces a challenge with 503 (see status_codes in
 			# botPolicy.yaml). A 503 is supposed to say *when* to come back, and

@@ -8,7 +8,11 @@ function setup(
   state: { anubisProtection: boolean; anubisManaged: boolean },
   routes: Parameters<typeof fakeFetch>[0] = {},
 ) {
-  const f = fakeFetch({ "GET /api/admin/security": state, ...routes });
+  const f = fakeFetch({
+    "GET /api/admin/security": state,
+    "GET /api/admin/security/access-rules": { rules: [] },
+    ...routes,
+  });
   vi.stubGlobal("fetch", f.fetch);
   render(AdminSecurity);
   return f;
