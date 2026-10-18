@@ -86,6 +86,65 @@ adminRoutes.put("/security/anubis", jsonBody(securitySchema, "Expected { anubisP
   return c.json(await securitySnapshot());
 });
 
+const accessDraftSchema = z.object({ network: z.string().trim().min(1).max(64), action: z.enum(["allow", "block"]) });
+const accessRuleSchema = accessDraftSchema.extend({
+  reason: z.string().trim().max(300).default(""),
+  expiresInHours: z.union([z.literal(1), z.literal(24), z.literal(168), z.literal(720)]),
+});
+const accessTestSchema = z.object({
+  ip: z.string().trim().min(1).max(64),
+  path: z.string().min(1).max(2048),
+  draft: accessDraftSchema.optional(),
+});
+
+async function securityOperation<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    throw badRequest(error instanceof Error ? error.message : "Could not update IP rules.");
+  }
+}
+
+adminRoutes.get("/security/access-rules", async (c) => {
+  requireAdmin(c);
+  return c.json({ rules: await anubis.accessRules() });
+});
+
+adminRoutes.post(
+  "/security/access-rules",
+  jsonBody(accessRuleSchema, "Enter an IP range, action and valid expiry."),
+  async (c) => {
+    requireAdmin(c);
+    return c.json({ rules: await securityOperation(() => anubis.addAccessRule(c.req.valid("json"))) });
+  },
+);
+
+adminRoutes.patch(
+  "/security/access-rules/:id",
+  jsonBody(z.object({ enabled: z.boolean() }), "Expected { enabled: boolean }."),
+  async (c) => {
+    requireAdmin(c);
+    return c.json({
+      rules: await securityOperation(() => anubis.updateAccessRule(c.req.param("id"), c.req.valid("json").enabled)),
+    });
+  },
+);
+
+adminRoutes.delete("/security/access-rules/:id", async (c) => {
+  requireAdmin(c);
+  return c.json({ rules: await securityOperation(() => anubis.updateAccessRule(c.req.param("id"), null)) });
+});
+
+adminRoutes.post(
+  "/security/access-rules/test",
+  jsonBody(accessTestSchema, "Enter a valid IP and path to test."),
+  async (c) => {
+    requireAdmin(c);
+    const { ip, path, draft } = c.req.valid("json");
+    return c.json(await securityOperation(() => anubis.previewAccessRules(ip, path, draft)));
+  },
+);
+
 // ── Discoverability / SEO ────────────────────────────────────────────────────
 
 // Search-engine indexing toggle + per-engine site-verification tokens. The

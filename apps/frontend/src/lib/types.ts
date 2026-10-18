@@ -334,6 +334,27 @@ export type InstanceSettings = { onInstanceViews: boolean };
 // (Caddy admin reachable) — false in a bare dev run, so the UI explains instead.
 export type SecuritySettings = { anubisProtection: boolean; anubisManaged: boolean };
 
+export type AccessRule = {
+  id: string;
+  network: string;
+  action: "allow" | "block";
+  reason: string;
+  enabled: boolean;
+  createdAt: string;
+  expiresAt: string;
+};
+export type AccessRuleInput = {
+  network: string;
+  action: "allow" | "block";
+  reason: string;
+  expiresInHours: 1 | 24 | 168 | 720;
+};
+export type AccessRuleTest = {
+  action: "allow" | "block" | "default" | "exempt";
+  ruleId: string | null;
+  message: string;
+};
+
 // Discoverability / SEO. `indexingEnabled` drives robots.txt + a site-wide
 // `noindex`; `verification` holds per-engine site-verification tokens (the meta
 // `content` value only), keyed by engine (google/bing/yandex).

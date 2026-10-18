@@ -1,6 +1,9 @@
 import type { Passkey } from "@better-auth/passkey/client";
 import type { Session } from "better-auth";
 import type {
+  AccessRule,
+  AccessRuleInput,
+  AccessRuleTest,
   AdminInstance,
   AdminUser,
   AdminUserDetail,
@@ -118,6 +121,14 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     adminSecurity: () => api.get<SecuritySettings>("/admin/security"),
     setAnubisProtection: (enabled: boolean) =>
       api.put<SecuritySettings>("/admin/security/anubis", { anubisProtection: enabled }),
+    accessRules: () => api.get<{ rules: AccessRule[] }>("/admin/security/access-rules"),
+    addAccessRule: (body: AccessRuleInput) => api.post<{ rules: AccessRule[] }>("/admin/security/access-rules", body),
+    setAccessRuleEnabled: (id: string, enabled: boolean) =>
+      api.patch<{ rules: AccessRule[] }>(`/admin/security/access-rules/${encodeURIComponent(id)}`, { enabled }),
+    removeAccessRule: (id: string) =>
+      api.del<{ rules: AccessRule[] }>(`/admin/security/access-rules/${encodeURIComponent(id)}`),
+    testAccessRules: (ip: string, path: string, draft?: Pick<AccessRuleInput, "network" | "action">) =>
+      api.post<AccessRuleTest>("/admin/security/access-rules/test", { ip, path, ...(draft ? { draft } : {}) }),
 
     // discoverability / SEO: public read (layout, robots.txt, sitemap.xml) + the
     // moderator-only write side.

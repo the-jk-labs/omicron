@@ -3,6 +3,7 @@
   import { Label, Switch } from "bits-ui";
   import { untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
+  import AdminAccessRules from "#lib/components/AdminAccessRules.svelte";
   import type { SecuritySettings } from "#lib/types.js";
 
   // `initial` is the server-loaded state; without it the browser loads it.
@@ -60,10 +61,9 @@
   <div class="flex flex-col gap-1">
     <Label.Root for="anubis-protection" class="text-sm font-medium text-foreground">AI-scraper protection</Label.Root>
     <p class="max-w-prose text-sm text-muted-foreground">
-      Show a lightweight proof-of-work challenge to browser-like traffic on page loads, to slow down AI crawlers that
-      hammer the instance. Real readers pass it in about a second; federation and the API are never challenged. Applies
-      instantly, no restart. Leave off unless you're seeing scraper load: it adds a brief interstitial for everyone,
-      including no-JS readers.
+      Challenge browser-like traffic on sign-in, writing, search and account pages. Public reading, feeds, federation
+      and the API stay reachable. Passing a challenge needs JavaScript. Applies instantly, no restart; leave off unless
+      you're seeing automated abuse. This is not a site-wide scraping barrier.
     </p>
     {#if !managed}
       <p class="mt-1 max-w-prose text-sm text-foreground">
@@ -87,3 +87,7 @@
 </div>
 
 {#if error}<p class="mt-3 text-sm text-destructive">{error}</p>{/if}
+
+<div class="mt-8">
+  <AdminAccessRules managed={managed && !loading} />
+</div>

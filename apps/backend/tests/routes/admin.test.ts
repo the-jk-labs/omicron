@@ -39,6 +39,11 @@ const routes: Route[] = [
   ["PUT", "/settings/analytics", { onInstanceViews: true }, "admin"],
   ["GET", "/security", undefined, "admin"],
   ["PUT", "/security/anubis", { anubisProtection: true }, "admin"],
+  ["GET", "/security/access-rules", undefined, "admin"],
+  ["POST", "/security/access-rules", { network: "192.0.2.1", action: "block", expiresInHours: 24 }, "admin"],
+  ["PATCH", `/security/access-rules/${UUID}`, { enabled: false }, "admin"],
+  ["DELETE", `/security/access-rules/${UUID}`, undefined, "admin"],
+  ["POST", "/security/access-rules/test", { ip: "192.0.2.1", path: "/search" }, "admin"],
   ["GET", "/seo", undefined, "admin"],
   ["PUT", "/seo", { indexingEnabled: false }, "admin"],
   ["GET", "/unsplash", undefined, "admin"],
@@ -177,6 +182,35 @@ describe("admin endpoints", () => {
     const res = await api.json("/api/admin/security/anubis", "PUT", { anubisProtection: true });
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "Caddy rejected the config." });
+  });
+
+  test("IP rule input is bounded and validated before reaching the service", async () => {
+    const body = { network: "192.0.2.1", action: "block", expiresInHours: 24 };
+    for (const patch of [
+      { action: "challenge" },
+      { expiresInHours: 0 },
+      { network: "x".repeat(65) },
+      { reason: "x".repeat(301) },
+    ]) {
+      expect((await api.json("/api/admin/security/access-rules", "POST", { ...body, ...patch })).status).toBe(400);
+    }
+    expect(anubis.addAccessRule).not.toHaveBeenCalled();
+    expect((await api.json("/api/admin/security/access-rules", "POST", body)).status).toBe(200);
+    expect(anubis.addAccessRule).toHaveBeenCalledWith({ ...body, reason: "" });
+  });
+
+  test("IP rule failures are surfaced and draft previews are forwarded without saving", async () => {
+    vi.mocked(anubis.addAccessRule).mockRejectedValue(new Error("Caddy rejected the config."));
+    const res = await api.json("/api/admin/security/access-rules", "POST", {
+      network: "192.0.2.1",
+      action: "block",
+      expiresInHours: 24,
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Caddy rejected the config." });
+    const draft = { network: "192.0.2.0/24", action: "allow" };
+    await api.json("/api/admin/security/access-rules/test", "POST", { ip: "192.0.2.1", path: "/search", draft });
+    expect(anubis.previewAccessRules).toHaveBeenCalledWith("192.0.2.1", "/search", draft);
   });
 
   test("instance update saves identity and the federation toggle", async () => {
