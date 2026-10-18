@@ -166,6 +166,9 @@ overrides:
   cookie@<0.7.0: ^0.7.0
   devalue@<5.9.3: ^5.9.3
 
+patchedDependencies:
+  emoji-picker-element@1.29.1: 018433e27949e5a35118e562cdbd732e09f836ae1b602eb1b570e6de5805380f
+
 importers:
 
   .:
@@ -217,7 +220,7 @@ importers:
         version: 1.8.2
       emoji-picker-element:
         specifier: 1.29.1
-        version: 1.29.1
+        version: 1.29.1(patch_hash=018433e27949e5a35118e562cdbd732e09f836ae1b602eb1b570e6de5805380f)
       highlight.js:
         specifier: 11.12.0
         version: 11.12.0
@@ -3268,7 +3271,7 @@ snapshots:
 
   dom-accessibility-api@0.6.3: {}
 
-  emoji-picker-element@1.29.1: {}
+  emoji-picker-element@1.29.1(patch_hash=018433e27949e5a35118e562cdbd732e09f836ae1b602eb1b570e6de5805380f): {}
 
   enhanced-resolve@5.24.5:
     dependencies:
