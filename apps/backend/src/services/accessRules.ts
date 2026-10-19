@@ -15,6 +15,9 @@ export type AccessRule = {
 export const ACCESS_EXEMPT_PATHS = [
   "/api",
   "/api/*",
+  "/oauth/authorize",
+  "/oauth/token",
+  "/oauth/revoke",
   "/.well-known/*",
   "/users/*",
   "/inbox",

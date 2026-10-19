@@ -704,6 +704,74 @@ export const sessions = pgTable(
   (t) => [uniqueIndex("sessions_token_idx").on(t.token), index("sessions_user_idx").on(t.userId)],
 );
 
+// ── identity OAuth (Mastodon-compatible, read:accounts only) ──────────────
+export const oauthApps = pgTable("oauth_apps", {
+  id: text("id").primaryKey(),
+  secretHash: text("secret_hash").notNull(),
+  name: text("name").notNull(),
+  redirectUris: jsonb("redirect_uris").$type<string[]>().notNull(),
+  website: text("website"),
+  authorizedAt: timestamp("authorized_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const oauthRequests = pgTable(
+  "oauth_requests",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthApps.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    redirectUri: text("redirect_uri").notNull(),
+    state: text("state"),
+    codeChallenge: text("code_challenge"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("oauth_requests_expiry_idx").on(t.expiresAt)],
+);
+
+export const oauthCodes = pgTable(
+  "oauth_codes",
+  {
+    codeHash: text("code_hash").primaryKey(),
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthApps.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    redirectUri: text("redirect_uri").notNull(),
+    codeChallenge: text("code_challenge"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("oauth_codes_expiry_idx").on(t.expiresAt)],
+);
+
+export const oauthTokens = pgTable(
+  "oauth_tokens",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tokenHash: text("token_hash").notNull().unique(),
+    codeHash: text("code_hash").notNull().unique(),
+    redirectUri: text("redirect_uri").notNull(),
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthApps.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [index("oauth_tokens_user_idx").on(t.userId), index("oauth_tokens_expiry_idx").on(t.expiresAt)],
+);
+
 // ── accounts (Better Auth) ───────────────────────────────────────────────
 // One auth method per row. Email+password is providerId "credential" with the
 // bcrypt hash in `password` (migrated from users.password_hash). OAuth columns

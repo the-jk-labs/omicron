@@ -40,7 +40,7 @@ export async function resetDb(): Promise<void> {
   await sql`
     truncate users, posts, tags, post_tags, tag_follows, follows,
              recommendations, reading_lists, reading_list_items,
-             remote_actors, blocked_domains
+              remote_actors, blocked_domains, oauth_apps
     restart identity cascade`;
 }
 

@@ -78,6 +78,16 @@ describe("canonical host", () => {
   });
 });
 
+test.for([
+  "/oauth/authorize?client_id=client&state=opaque",
+  "/login?returnTo=%2Foauth%2Fauthorize%3Fclient_id%3Dclient",
+])("OAuth pages never leak request URLs through referrers or shared caching: %s", async (path) => {
+  const { res } = await run(`https://blog.example${path}`);
+  expect(res.headers.get("referrer-policy")).toBe("no-referrer");
+  expect(res.headers.get("cache-control")).toBe("no-store");
+  expect(res.headers.get("x-frame-options")).toBe("DENY");
+});
+
 describe("ActivityPub content negotiation on /@handle", () => {
   const AP = { accept: "application/activity+json" };
 

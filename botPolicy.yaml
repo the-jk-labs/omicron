@@ -199,6 +199,10 @@ bots:
     path_regex: ^/api/
     action: ALLOW
 
+  - name: oauth
+    path_regex: ^/oauth/(authorize|token|revoke)$
+    action: ALLOW
+
   # WebFinger and host-meta. Caddy routes these to the backend without passing
   # through Anubis; if that ever changes, remote instances must still resolve
   # `@user@this.host`.

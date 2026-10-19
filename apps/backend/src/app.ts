@@ -10,6 +10,7 @@ import { registerJobHandlers } from "@/queue/handlers.ts";
 import { healthRoutes } from "@/routes/health.ts";
 import { apiRoutes } from "@/routes/index.ts";
 import { READ_METHODS, sessionMiddleware } from "@/routes/middleware.ts";
+import { oauthRoutes } from "@/routes/oauth.ts";
 import { repliesRoutes } from "@/routes/replies.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import { wellKnownRoutes } from "@/routes/wellKnown.ts";
@@ -106,6 +107,7 @@ export async function buildApp() {
   const app = new Hono<AppEnv>();
   app.use("*", logger());
   app.onError(handleError);
+  app.route("/", oauthRoutes);
 
   // Mount ActivityPub (WebFinger, actor, inbox/outbox) before app routes.
   // Federation paths are delegated to Fedify's fetch handler; everything else

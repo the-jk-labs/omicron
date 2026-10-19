@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { INTERNAL_API_URL } from "$app/env/private";
-import type { RequestHandler } from "./$types";
+import type { RequestHandler } from "@sveltejs/kit";
 
 // Universal reverse-proxy to the backend. The browser only ever talks to this
 // SvelteKit origin (no CORS); cookies — including the backend's Set-Cookie on
@@ -69,6 +69,8 @@ const proxy: RequestHandler = async ({ request, url, params, getClientAddress })
     "last-modified",
     "expires",
     "vary",
+    "pragma",
+    "www-authenticate",
     "content-disposition",
     "cross-origin-resource-policy",
     // Without this a redirect arrives as a bodyless 3xx with nowhere to go.
