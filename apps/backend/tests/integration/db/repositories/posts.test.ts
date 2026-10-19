@@ -83,6 +83,24 @@ describe("writes", () => {
     expect(again).toMatchObject({ title: "Second", language: null, createdAt: at(1) });
   });
 
+  test("a remote post upsert stores and refreshes the AI-assistance disclosure", async () => {
+    const eve = await mkRemoteActor("eve@remote.example");
+    const data = {
+      remoteActorId: eve.id,
+      apId: "https://remote.example/ai-post",
+      title: "AI-assisted",
+      contentHtml: "<p>1</p>",
+      apType: "Article",
+      aiAssisted: true,
+    };
+    const first = await postsRepo.upsertRemotePost(data);
+    expect(first.aiAssisted).toBe(true);
+
+    const again = await postsRepo.upsertRemotePost({ ...data, aiAssisted: false });
+    expect(again.id).toBe(first.id);
+    expect(again.aiAssisted).toBe(false);
+  });
+
   test("ingest upserts by (author, external id); the key is per author", async () => {
     const [ada, bob] = [await mkUser("ada"), await mkUser("bob")];
     const base = { title: "v1", contentHtml: "<p>1</p>", externalId: "doc" };

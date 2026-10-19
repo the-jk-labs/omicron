@@ -7,7 +7,13 @@
 import type { Image } from "@fedify/fedify/vocab";
 import { Article, Hashtag, LanguageString, PUBLIC_COLLECTION } from "@fedify/fedify/vocab";
 import { describe, expect, it } from "vitest";
-import { articleLanguage, buildArticle, isPubliclyAddressed } from "@/federation/article.ts";
+import {
+  AI_ASSISTED_PROPERTY,
+  articleAiAssisted,
+  articleLanguage,
+  buildArticle,
+  isPubliclyAddressed,
+} from "@/federation/article.ts";
 import { seedFederationOrigin } from "@/services/federationState.ts";
 import { postRow } from "../fixtures.ts";
 import { fakeContext } from "./fakeContext.ts";
@@ -109,6 +115,39 @@ describe("buildArticle", () => {
 
   it("an untitled post has no name", () => {
     expect(build({ title: null }).name).toBe(null);
+  });
+
+  it("adds the Omicron AI-assistance property only when disclosed", async () => {
+    expect(await build({ aiAssisted: true }).toJsonLd()).toMatchObject({ [AI_ASSISTED_PROPERTY]: true });
+    expect(await build().toJsonLd()).not.toHaveProperty(AI_ASSISTED_PROPERTY);
+  });
+});
+
+describe("articleAiAssisted", () => {
+  it("reads the disclosure extension from a parsed remote Article", async () => {
+    const article = await Article.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Article",
+      id: "https://remote.example/posts/1",
+      [AI_ASSISTED_PROPERTY]: true,
+    });
+    await expect(articleAiAssisted(article)).resolves.toBe(true);
+  });
+
+  it("ignores absent or non-true disclosure values", async () => {
+    const plain = await Article.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Article",
+      id: "https://remote.example/posts/1",
+    });
+    const falseValue = await Article.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Article",
+      id: "https://remote.example/posts/2",
+      [AI_ASSISTED_PROPERTY]: "true",
+    });
+    await expect(articleAiAssisted(plain)).resolves.toBe(false);
+    await expect(articleAiAssisted(falseValue)).resolves.toBe(false);
   });
 });
 

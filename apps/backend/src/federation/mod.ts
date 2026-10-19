@@ -39,7 +39,7 @@ import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import type { Post } from "@/db/schema.ts";
 import { buildPerson } from "@/federation/actor.ts";
-import { articleLanguage, buildArticle, isPubliclyAddressed } from "@/federation/article.ts";
+import { articleAiAssisted, articleLanguage, buildArticle, isPubliclyAddressed } from "@/federation/article.ts";
 import { setupNodeInfo } from "@/federation/nodeinfo.ts";
 import {
   buildNote,
@@ -301,6 +301,7 @@ async function ingestArticle(ctx: Context<ContextData>, article: Article): Promi
     // sanitize before it ever touches the database.
     contentHtml: sanitizePostHtml(article.content?.toString()),
     apType: "Article",
+    aiAssisted: await articleAiAssisted(article),
     language: articleLanguage(article),
     createdAt: article.published ? new Date(article.published.epochMilliseconds) : undefined,
   });
@@ -510,6 +511,7 @@ function setupInbox(f: Federation<ContextData>) {
         // Remote HTML is untrusted and rendered with {@html} — sanitize on edit
         // exactly as on create.
         contentHtml: sanitizePostHtml(object.content?.toString()),
+        aiAssisted: await articleAiAssisted(object),
         language: articleLanguage(object),
       });
 

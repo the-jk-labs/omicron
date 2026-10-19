@@ -69,6 +69,7 @@ export async function upsertRemotePost(data: {
   title: string | null;
   contentHtml: string;
   apType: string;
+  aiAssisted?: boolean;
   language?: string | null;
   createdAt?: Date;
 }) {
@@ -80,13 +81,19 @@ export async function upsertRemotePost(data: {
       title: data.title,
       contentHtml: data.contentHtml,
       apType: data.apType,
+      aiAssisted: data.aiAssisted ?? false,
       language: data.language ?? null,
       remote: true,
       ...(data.createdAt ? { createdAt: data.createdAt } : {}),
     })
     .onConflictDoUpdate({
       target: posts.apId,
-      set: { title: data.title, contentHtml: data.contentHtml, language: data.language ?? null },
+      set: {
+        title: data.title,
+        contentHtml: data.contentHtml,
+        aiAssisted: data.aiAssisted ?? false,
+        language: data.language ?? null,
+      },
     })
     .returning();
   return row;

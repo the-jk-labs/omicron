@@ -21,6 +21,7 @@ import {
   Update,
 } from "@fedify/fedify/vocab";
 import { beforeEach, describe, expect, it, test, vi } from "vitest";
+import { AI_ASSISTED_PROPERTY } from "@/federation/article.ts";
 import type * as remote from "@/federation/remote.ts";
 import { postRow, postWithAuthor, remoteActorRow, userRow } from "../fixtures.ts";
 import { fakeContext } from "./fakeContext.ts";
@@ -310,6 +311,23 @@ describe("inbox: Create / Update / Delete", () => {
     expect(tagsRepo.setPostTags).toHaveBeenCalledWith("cached-post", ["deno"]);
   });
 
+  it("stores an inbound Omicron AI-assistance disclosure", async () => {
+    const disclosed = await Article.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Article",
+      id: "https://remote.example/posts/1",
+      attributedTo: BOB,
+      name: "Title",
+      content: "<p>Hi</p>",
+      to: PUBLIC_COLLECTION.href,
+      [AI_ASSISTED_PROPERTY]: true,
+    });
+    await on(Create)(new Create({ actor: new URL(BOB), object: disclosed }));
+    expect(postsRepo.upsertRemotePost).toHaveBeenCalledWith(
+      expect.objectContaining({ apId: "https://remote.example/posts/1", aiAssisted: true }),
+    );
+  });
+
   it.for([
     ["followers-only", { to: new URL(`${BOB}/followers`) }],
     ["attributed to another origin", { attribution: new URL("https://victim.example/users/v") }],
@@ -334,6 +352,24 @@ describe("inbox: Create / Update / Delete", () => {
       "cached-post",
       expect.objectContaining({ title: "New", language: null }),
     );
+  });
+
+  it("refreshes the cached AI-assistance disclosure on Update(Article)", async () => {
+    vi.mocked(postsRepo.findByApId).mockResolvedValue(
+      postRow({ id: "cached-post", remoteActorId: "actor-bob" }) as never,
+    );
+    const disclosed = await Article.fromJsonLd({
+      "@context": "https://www.w3.org/ns/activitystreams",
+      type: "Article",
+      id: "https://remote.example/posts/1",
+      attributedTo: BOB,
+      name: "Title",
+      content: "<p>Hi</p>",
+      to: PUBLIC_COLLECTION.href,
+      [AI_ASSISTED_PROPERTY]: true,
+    });
+    await on(Update)(new Update({ actor: new URL(BOB), object: disclosed }));
+    expect(postsRepo.update).toHaveBeenCalledWith("cached-post", expect.objectContaining({ aiAssisted: true }));
   });
 
   it("Update(Article) by anyone else is ignored", async () => {
