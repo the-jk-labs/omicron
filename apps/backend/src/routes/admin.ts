@@ -588,6 +588,12 @@ adminRoutes.post("/users/:id/verify", async (c) => {
 
 // ── Posts ────────────────────────────────────────────────────────────────
 
+adminRoutes.post("/posts/:id/ai-assisted", async (c) => {
+  requireModerator(c);
+  await moderation.markPostAiAssisted(c.req.param("id"));
+  return c.json({ aiAssisted: true });
+});
+
 // Remove any local post (moderator override of the author-only delete).
 // `?notify=true` mails the author; silence is the default.
 adminRoutes.delete("/posts/:id", async (c) => {

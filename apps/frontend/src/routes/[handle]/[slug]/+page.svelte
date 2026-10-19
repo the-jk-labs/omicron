@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { goto } from "$app/navigation";
+  import { goto, invalidateAll } from "$app/navigation";
   import { Dialog, DropdownMenu, Label, Separator } from "bits-ui";
   import { untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
@@ -120,6 +120,7 @@
   let deleting = $state(false);
   let deleteError = $state("");
   let unpublishing = $state(false);
+  let markingAiAssisted = $state(false);
   let shared = $state(false);
 
   // Authoring controls: edit is author-only; delete is author or moderator.
@@ -127,6 +128,9 @@
   const canEdit = $derived(!!data.user && !post.remote && data.user.id === post.author.id);
   const canManage = $derived(
     !!data.user && !post.remote && (data.user.id === post.author.id || data.user.isAdmin || data.user.isModerator),
+  );
+  const canMarkAiAssisted = $derived(
+    !!data.user && !post.remote && !post.aiAssisted && (data.user.isAdmin || data.user.isModerator),
   );
   // Any signed-in reader can report a post that isn't their own (local or remote).
   const canReport = $derived(!!data.user && data.user.id !== post.author.id);
@@ -207,6 +211,27 @@
     } catch (err) {
       deleteError = err instanceof ApiError ? err.message : "Failed to delete.";
       deleting = false;
+    }
+  }
+
+  async function markAiAssisted() {
+    if (markingAiAssisted) return;
+    const { ok } = await confirm({
+      title: "Mark as AI-assisted",
+      description:
+        "Add the AI-Assisted badge to this post? Readers who hide AI-assisted posts will no longer see it in feeds.",
+      confirmText: "Add badge",
+    });
+    if (!ok) return;
+    markingAiAssisted = true;
+    deleteError = "";
+    try {
+      await endpoints().adminMarkPostAiAssisted(post.id);
+      await invalidateAll();
+    } catch (err) {
+      deleteError = err instanceof ApiError ? err.message : "Failed to add AI-Assisted badge.";
+    } finally {
+      markingAiAssisted = false;
     }
   }
 
@@ -347,6 +372,11 @@
           {#if canReport}
             <DropdownMenu.Item onSelect={() => onReportOpenChange(true)} class={itemClass}>
               <Icon name="flag" size={18} /> Report
+            </DropdownMenu.Item>
+          {/if}
+          {#if canMarkAiAssisted}
+            <DropdownMenu.Item onSelect={markAiAssisted} disabled={markingAiAssisted} class={itemClass}>
+              <Icon name="sparkles" size={18} /> Mark as AI-assisted
             </DropdownMenu.Item>
           {/if}
           {#if canManage}

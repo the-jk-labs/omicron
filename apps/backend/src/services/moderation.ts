@@ -544,6 +544,19 @@ export async function updateUserDetails(actorId: string, targetId: string, input
 
 // ── Posts (moderator) ──────────────────────────────────────────────────────
 
+// Only the disclosure changes; moderators do not gain general authoring access.
+export async function markPostAiAssisted(postId: string): Promise<void> {
+  const row = await postsRepo.findById(postId);
+  if (!row) throw notFound("Post not found.");
+  if (row.post.remote) throw forbidden("Federated posts cannot be edited here.");
+  if (row.post.aiAssisted) return;
+
+  const post = await postsRepo.update(postId, { aiAssisted: true });
+  if (post.status === "published") {
+    queue.add("federate_post", { postId, action: "update" });
+  }
+}
+
 // Removes any local post (a moderator override of the author check). Goes
 // through deletePost so the takedown is federated as a Delete too. Remote/cached
 // posts cannot be deleted. The author is told only on opt-in.

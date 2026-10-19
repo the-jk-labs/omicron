@@ -79,6 +79,7 @@ const routes: Route[] = [
   ["POST", `/users/${UUID}/verification-email`, undefined, "moderator"],
   ["POST", `/users/${UUID}/verify`, undefined, "moderator"],
   ["DELETE", `/posts/${UUID}`, undefined, "moderator"],
+  ["POST", `/posts/${UUID}/ai-assisted`, undefined, "moderator"],
   ["GET", "/reports", undefined, "moderator"],
   ["POST", `/reports/${UUID}/resolve`, {}, "moderator"],
 ];
@@ -166,6 +167,16 @@ describe("role boundary", () => {
 describe("admin endpoints", () => {
   beforeEach(() => {
     api.signIn({ id: "admin", isAdmin: true });
+  });
+
+  test("marking an AI-assisted post delegates only the post id and returns the disclosure", async () => {
+    const res = await api.json(`/api/admin/posts/${UUID}/ai-assisted`, "POST", {
+      title: "Must not change",
+      aiAssisted: false,
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ aiAssisted: true });
+    expect(moderation.markPostAiAssisted).toHaveBeenCalledExactlyOnceWith(UUID);
   });
 
   test("analytics toggle validates and echoes", async () => {

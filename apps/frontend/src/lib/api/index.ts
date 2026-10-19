@@ -232,6 +232,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     purgeDeletedUser: (id: string) => api.del<{ ok: true }>(`/admin/users/deleted/${id}`),
     adminRemovePost: (id: string, notify = false) =>
       api.del<{ ok: true }>(`/admin/posts/${id}${notify ? "?notify=true" : ""}`),
+    adminMarkPostAiAssisted: (id: string) => api.post<{ aiAssisted: true }>(`/admin/posts/${id}/ai-assisted`),
     adminReports: (status?: "open" | "resolved") =>
       api.get<{ reports: Report[]; openCount: number }>(`/admin/reports${status ? `?status=${status}` : ""}`),
     resolveReport: (id: string, resolution?: string) =>
