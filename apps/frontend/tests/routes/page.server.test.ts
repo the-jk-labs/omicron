@@ -25,6 +25,39 @@ test("a guest gets the global timeline", async () => {
   });
 });
 
+test.for([
+  ["local", "here"],
+  ["global", "everyone"],
+  ["for-you", "mine"],
+])("refreshing ?tab=%s preloads that feed instead of the saved default", async ([tab, item]) => {
+  const refreshed = event({
+    routes,
+    user: user(),
+    url: `https://blog.example/?tab=${tab}`,
+    cookies: { "default-feed": tab === "local" ? "global" : "local" },
+  });
+  expect(await load(refreshed.event)).toEqual({
+    page: { items: [item], nextCursor: null },
+    personalized: true,
+    tab,
+  });
+  expect(refreshed.calls).toHaveLength(1);
+});
+
+test("a guest can refresh the Local feed", async () => {
+  expect(await load(event({ routes, url: "https://blog.example/?tab=local" }).event)).toMatchObject({
+    tab: "local",
+    personalized: false,
+    page: { items: ["here"] },
+  });
+});
+
+test.for(["trending", "for-you"])("a guest's unsupported URL tab %s falls back to the saved default", async (tab) => {
+  expect(
+    await load(event({ routes, url: `https://blog.example/?tab=${tab}`, cookies: { "default-feed": "local" } }).event),
+  ).toMatchObject({ tab: "local", page: { items: ["here"] } });
+});
+
 // Chosen in the browser before, the tab used to switch only after hydration.
 test("the saved default feed is the tab the server renders", async () => {
   expect(await load(event({ routes, user: user(), cookies: { "default-feed": "local" } }).event)).toEqual({
