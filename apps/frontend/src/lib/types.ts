@@ -21,6 +21,8 @@ export type User = {
   // Private account (Instagram-style): posts are visible only to approved
   // followers and following requires approval. Public by default.
   isPrivate: boolean;
+  // Present only on the signed-in user's own record.
+  showAiAssistedPosts?: boolean;
   createdAt: string;
   // When the profile last changed. Versions the profile's share card, so an
   // edited profile is a new `og:image` URL for scrapers to fetch.
@@ -82,6 +84,8 @@ export type Post = {
   contentHtml: string;
   contentJson?: unknown;
   remote: boolean;
+  // Author disclosure that AI helped create this post.
+  aiAssisted: boolean;
   status?: OwnPostStatus;
   // When a scheduled post goes out, as an ISO instant. Only ever present on the
   // author's own scheduled posts — every public listing filters them out, and a

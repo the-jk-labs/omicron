@@ -11,6 +11,7 @@ const post: Post = {
   slug: "hello-world",
   contentHtml: "<p>Body</p>",
   remote: false,
+  aiAssisted: false,
   summary: null,
   bannerUrl: null,
   createdAt: "2026-08-20T12:00:00.000Z",

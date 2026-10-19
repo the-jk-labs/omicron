@@ -56,6 +56,7 @@ export async function closeDb(): Promise<void> {
 
 export type UserOpts = {
   isPrivate?: boolean;
+  showAiAssistedPosts?: boolean;
   suspended?: boolean;
   isAdmin?: boolean;
   isModerator?: boolean;
@@ -75,6 +76,7 @@ export async function mkUser(username: string, opts: UserOpts = {}) {
       passwordHash: "not-a-real-hash",
       displayName: username,
       isPrivate: opts.isPrivate ?? false,
+      showAiAssistedPosts: opts.showAiAssistedPosts ?? true,
       isAdmin: opts.isAdmin ?? false,
       isModerator: opts.isModerator ?? false,
       suspendedAt: opts.suspended ? new Date() : null,
@@ -89,6 +91,7 @@ export type PostOpts = {
   status?: "draft" | "scheduled" | "published";
   apType?: string;
   remote?: boolean;
+  aiAssisted?: boolean;
   // Only meaningful with `status: "scheduled"`, where a due time is required by
   // the `posts_publish_at_status_ck` constraint. Defaults to an hour out, so a
   // test that only cares that the post is *pending* need not pick a time.
@@ -112,6 +115,7 @@ export async function mkPost(authorId: string, slug: string, opts: PostOpts = {}
       // non-scheduled post would be rejected rather than ignored.
       publishAt: status === "scheduled" ? (opts.publishAt ?? new Date(Date.now() + 3_600_000)) : null,
       apType: opts.apType ?? "Article",
+      aiAssisted: opts.aiAssisted ?? false,
       remote: opts.remote ?? false,
       ...(opts.createdAt ? { createdAt: opts.createdAt, updatedAt: opts.createdAt } : {}),
     })

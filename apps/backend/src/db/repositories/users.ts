@@ -138,6 +138,13 @@ export async function update(id: string, data: Partial<NewUser>) {
   return row;
 }
 
+// Reader preferences do not change the public profile, so updating one should
+// not version its share card through `updated_at`.
+export async function setShowAiAssistedPosts(id: string, showAiAssistedPosts: boolean) {
+  const [row] = await db.update(users).set({ showAiAssistedPosts }).where(eq(users.id, id)).returning();
+  return row;
+}
+
 // Filter dimensions for the admin user table. Each is tri-state: true shows
 // only matching accounts, false only the rest, undefined leaves it unfiltered.
 export type AdminUserFilter = {

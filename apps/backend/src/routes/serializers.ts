@@ -82,6 +82,7 @@ export function privateUser(u: User, tags: TagSummary[] = [], links: LinkSummary
     ...publicUser(u, tags, links),
     email: u.email,
     emailVerified: u.emailVerified,
+    showAiAssistedPosts: u.showAiAssistedPosts,
   };
 }
 
@@ -194,6 +195,7 @@ export function postWithAuthor(
     contentHtml: row.post.contentHtml,
     contentJson: row.post.contentJson,
     remote: row.post.remote,
+    aiAssisted: row.post.aiAssisted,
     status: row.post.status,
     // When a scheduled post goes out, and null on every other post. Only ever
     // reaches its own author: a scheduled post is filtered out of every public
@@ -390,6 +392,7 @@ export function barePost(p: Omit<Post, "searchVector">) {
     slug: p.slug,
     contentHtml: p.contentHtml,
     status: p.status,
+    aiAssisted: p.aiAssisted,
     // The composer reads this back after scheduling, so its header can show
     // the time that was actually stored rather than the one it sent.
     publishAt: p.publishAt,

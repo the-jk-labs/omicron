@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { isPublished, notSuspended, visibleToViewer } from "@/db/repositories/posts.ts";
+import { aiAssistedVisibleToViewer, isPublished, notSuspended, visibleToViewer } from "@/db/repositories/posts.ts";
 import { posts, postTags, remoteActorTags, tagAliases, tagFollows, tags, users, userTags } from "@/db/schema.ts";
 
 // Tag DB access. Callers pass already-normalized slugs (see lib/tags.ts); the
@@ -116,7 +116,14 @@ export async function postCount(tagId: string, viewerId: string | null): Promise
     .innerJoin(posts, eq(posts.id, postTags.postId))
     .leftJoin(users, eq(posts.authorId, users.id))
     .where(
-      and(eq(postTags.tagId, tagId), eq(posts.apType, "Article"), isPublished, notSuspended, visibleToViewer(viewerId)),
+      and(
+        eq(postTags.tagId, tagId),
+        eq(posts.apType, "Article"),
+        isPublished,
+        notSuspended,
+        visibleToViewer(viewerId),
+        aiAssistedVisibleToViewer(viewerId),
+      ),
     );
   return row?.count ?? 0;
 }

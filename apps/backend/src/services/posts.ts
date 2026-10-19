@@ -157,6 +157,7 @@ export async function createPost(
     contentHtml: string;
     contentJson?: unknown;
     status?: string;
+    aiAssisted?: boolean;
     publishAt?: string | null;
     language?: string | null;
     summary?: string | null;
@@ -190,6 +191,7 @@ export async function createPost(
     contentHtml: html,
     contentJson: input.contentJson ?? null,
     status,
+    aiAssisted: input.aiAssisted ?? false,
     publishAt,
     language: normalizeLanguage(input.language),
     summary: normalizeSummary(input.summary),
@@ -299,12 +301,12 @@ export async function assertVisible(row: postsRepo.PostWithAuthor, viewerId: str
 // shares tags with nothing (or carries none), the newest posts stand in, so the
 // reader is never left at a dead end. Deduplicated by id because the fallback
 // is only topped up when the related set comes back short.
-export async function relatedPosts(postId: string, limit = 3) {
-  const related = await postsRepo.listRelated(postId, limit);
+export async function relatedPosts(postId: string, viewerId: string | null = null, limit = 3) {
+  const related = await postsRepo.listRelated(postId, viewerId, limit);
   if (related.length >= limit) return related;
 
   const seen = new Set(related.map((r) => r.post.id));
-  const filler = await postsRepo.listRecentExcluding(postId, limit + related.length);
+  const filler = await postsRepo.listRecentExcluding(postId, viewerId, limit + related.length);
   for (const row of filler) {
     if (related.length >= limit) break;
     if (seen.has(row.post.id)) continue;
@@ -355,6 +357,7 @@ export async function updatePost(
     contentHtml?: string;
     contentJson?: unknown;
     status?: string;
+    aiAssisted?: boolean;
     publishAt?: string | null;
     language?: string | null;
     summary?: string | null;
@@ -403,6 +406,7 @@ export async function updatePost(
     ...(input.title !== undefined ? { title: title || null } : {}),
     ...(html ? { contentHtml: html, contentJson: input.contentJson ?? null } : {}),
     ...(input.status !== undefined ? { status } : {}),
+    ...(input.aiAssisted !== undefined ? { aiAssisted: input.aiAssisted } : {}),
     ...(publishAt !== undefined ? { publishAt } : {}),
     // Dates the post from when it went live rather than from when its draft was
     // started — see firstPublicationFields.

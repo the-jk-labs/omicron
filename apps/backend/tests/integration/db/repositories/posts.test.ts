@@ -344,9 +344,9 @@ describe("related posts and the sitemap", () => {
     await tagsRepo.setPostTags(reading.id, ["a", "b"]);
     await tagsRepo.setPostTags(two.id, ["a", "b"]);
     for (const p of [one, draft, hidden, remote]) await tagsRepo.setPostTags(p.id, ["a"]);
-    expect((await postsRepo.listRelated(reading.id, 5)).map((r) => r.post.slug)).toEqual(["two", "one"]);
+    expect((await postsRepo.listRelated(reading.id, null, 5)).map((r) => r.post.slug)).toEqual(["two", "one"]);
 
-    const recent = await postsRepo.listRecentExcluding(reading.id, 10);
+    const recent = await postsRepo.listRecentExcluding(reading.id, null, 10);
     expect(recent.map((r) => r.post.slug).toSorted(byText)).toEqual(["one", "two"]);
   });
 

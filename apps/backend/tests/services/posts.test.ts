@@ -132,6 +132,11 @@ describe("createPost", () => {
     expect(queued("indexnow_submit")).toEqual([{ postId: "new" }]);
   });
 
+  test("stores an explicit AI-assistance disclosure", async () => {
+    await createPost("me", { title: "Assisted", contentHtml: "<p>x</p>", aiAssisted: true });
+    expect(postsRepo.create).toHaveBeenCalledWith(expect.objectContaining({ aiAssisted: true }));
+  });
+
   test("a draft may be untitled and is never federated", async () => {
     await createPost("me", { contentHtml: "<p>wip</p>", status: "draft" });
     expect(postsRepo.create).toHaveBeenCalledWith(expect.objectContaining({ title: null, status: "draft" }));
@@ -339,6 +344,12 @@ describe("updatePost", () => {
     expect(queued("indexnow_submit")).toEqual([{ postId: "p1" }]);
   });
 
+  test("updates the AI-assistance disclosure without changing other post fields", async () => {
+    vi.mocked(postsRepo.findById).mockResolvedValue(own());
+    await updatePost("me", "p1", { aiAssisted: true });
+    expect(postsRepo.update).toHaveBeenCalledWith("p1", { aiAssisted: true });
+  });
+
   test("an omitted status leaves the post where it is (autosave safety)", async () => {
     vi.mocked(postsRepo.findById).mockResolvedValue(own({ status: "scheduled", publishAt: new Date(inMinutes(30)) }));
     await updatePost("me", "p1", { contentHtml: "<p>autosave</p>" });
@@ -537,12 +548,12 @@ describe("relatedPosts", () => {
     vi.mocked(postsRepo.listRecentExcluding).mockResolvedValue(
       ["a", "b", "c", "d"].map((id) => postWithAuthor({ id })),
     );
-    expect((await relatedPosts("self", 3)).map((r) => r.post.id)).toEqual(["a", "b", "c"]);
+    expect((await relatedPosts("self", null, 3)).map((r) => r.post.id)).toEqual(["a", "b", "c"]);
   });
 
   test("does not query the filler when related is already full", async () => {
     vi.mocked(postsRepo.listRelated).mockResolvedValue(["a", "b", "c"].map((id) => postWithAuthor({ id })));
-    await relatedPosts("self", 3);
+    await relatedPosts("self", null, 3);
     expect(postsRepo.listRecentExcluding).not.toHaveBeenCalled();
   });
 

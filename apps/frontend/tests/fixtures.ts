@@ -9,6 +9,7 @@ export function post(overrides: Partial<Post> = {}): Post {
     slug: "hello-world",
     contentHtml: "<p>Body</p>",
     remote: false,
+    aiAssisted: false,
     summary: null,
     bannerUrl: null,
     language: null,

@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, desc, eq, getTableColumns, inArray, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { isPublished, notHidden, notSuspended, type PostWithAuthor, visibleToViewer } from "@/db/repositories/posts.ts";
+import {
+  aiAssistedVisibleToViewer,
+  isPublished,
+  notHidden,
+  notSuspended,
+  type PostWithAuthor,
+  visibleToViewer,
+} from "@/db/repositories/posts.ts";
 import {
   type NewReadingList,
   posts,
@@ -139,6 +146,7 @@ export async function itemCountsFor(listIds: string[], viewerId: string | null):
         notSuspended,
         notHidden(viewerId),
         visibleToViewer(viewerId),
+        aiAssistedVisibleToViewer(viewerId),
       ),
     )
     .groupBy(readingListItems.listId);
@@ -241,6 +249,7 @@ export async function listItems(
         notSuspended,
         notHidden(viewerId),
         visibleToViewer(viewerId),
+        aiAssistedVisibleToViewer(viewerId),
         beforeItemCursor(cursor),
       ),
     )

@@ -2,6 +2,7 @@
 import { aliasedTable, and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import {
+  aiAssistedVisibleToViewer,
   isPublished,
   localAuthorColumns,
   notHidden,
@@ -103,6 +104,7 @@ export function listByUser(userId: string, viewerId: string | null, cursor: Curs
         notSuspended,
         notHidden(viewerId),
         visibleToViewer(viewerId),
+        aiAssistedVisibleToViewer(viewerId),
         beforeCursor(cursor),
       ),
     )
@@ -129,6 +131,7 @@ export function listByRemoteActor(
         notSuspended,
         notHidden(viewerId),
         visibleToViewer(viewerId),
+        aiAssistedVisibleToViewer(viewerId),
         beforeCursor(cursor),
       ),
     )
@@ -189,6 +192,7 @@ export function listFeedFor(userId: string, cursor: Cursor | null, limit = DEFAU
         // followed account can recommend a private author's post, and without
         // this that post's body would be served to a non-follower.
         visibleToViewer(userId),
+        aiAssistedVisibleToViewer(userId),
         beforeCursor(cursor),
       ),
     )

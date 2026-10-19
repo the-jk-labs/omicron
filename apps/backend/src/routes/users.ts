@@ -8,7 +8,7 @@ import { renderMarkdown } from "@/lib/markdown.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { jsonBody } from "@/lib/validate.ts";
 import { readUpload, requireUser } from "@/routes/middleware.ts";
-import { profileLinkView, publicUser } from "@/routes/serializers.ts";
+import { privateUser, profileLinkView, publicUser } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import { enrichPosts } from "@/services/engagement.ts";
 import * as followRequestsService from "@/services/followRequests.ts";
@@ -67,6 +67,13 @@ userRoutes.patch("/me/privacy", jsonBody(z.object({ isPrivate: z.boolean() })), 
   const viewer = requireUser(c);
   const user = await usersService.setPrivacy(viewer.id, c.req.valid("json").isPrivate);
   return c.json({ user: publicUser(user) });
+});
+
+// Save whether AI-assisted posts appear in the signed-in user's feeds.
+userRoutes.patch("/me/preferences", jsonBody(z.object({ showAiAssistedPosts: z.boolean() })), async (c) => {
+  const viewer = requireUser(c);
+  const user = await usersService.setShowAiAssistedPosts(viewer.id, c.req.valid("json").showAiAssistedPosts);
+  return c.json({ user: privateUser(user) });
 });
 
 // Pending follow requests to the signed-in (private) user, and approve/reject.

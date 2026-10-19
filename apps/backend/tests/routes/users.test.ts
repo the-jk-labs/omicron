@@ -17,6 +17,7 @@ vi.mock(import("@/services/users.ts"), async (importOriginal) => {
     ...mod,
     updateProfile: vi.fn<typeof mod.updateProfile>(),
     setPrivacy: vi.fn<typeof mod.setPrivacy>(),
+    setShowAiAssistedPosts: vi.fn<typeof mod.setShowAiAssistedPosts>(),
     setAvatar: vi.fn<typeof mod.setAvatar>(),
     removeAvatar: vi.fn<typeof mod.removeAvatar>(),
     suggestedFollows: vi.fn<typeof mod.suggestedFollows>(),
@@ -70,6 +71,7 @@ describe("auth guards", () => {
     ["PATCH", "/api/users/me", {}],
     ["POST", "/api/users/me/custom-section/preview", { customSection: "x" }],
     ["PATCH", "/api/users/me/privacy", { isPrivate: true }],
+    ["PATCH", "/api/users/me/preferences", { showAiAssistedPosts: false }],
   ] as const)("%s %s requires a signed-in user", async ([method, path, body]) => {
     expect((await api.json(path, method, body)).status).toBe(401);
   });
@@ -114,6 +116,15 @@ describe("own profile", () => {
       true,
     );
     expect((await api.json("/api/users/me/privacy", "PATCH", { isPrivate: "yes" })).status).toBe(400);
+  });
+
+  test("AI-assisted-post preference validates and saves a boolean", async () => {
+    api.signIn();
+    vi.mocked(usersService.setShowAiAssistedPosts).mockResolvedValue(userRow({ id: "me", showAiAssistedPosts: false }));
+    const res = await api.json("/api/users/me/preferences", "PATCH", { showAiAssistedPosts: false });
+    expect((await res.json()).user.showAiAssistedPosts).toBe(false);
+    expect(usersService.setShowAiAssistedPosts).toHaveBeenCalledWith("me", false);
+    expect((await api.json("/api/users/me/preferences", "PATCH", { showAiAssistedPosts: "no" })).status).toBe(400);
   });
 
   test("avatar upload passes the bare content type and the raw bytes", async () => {

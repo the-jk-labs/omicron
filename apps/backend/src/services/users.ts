@@ -161,6 +161,10 @@ export async function setPrivacy(userId: string, isPrivate: boolean): Promise<Us
   return user;
 }
 
+export function setShowAiAssistedPosts(userId: string, showAiAssistedPosts: boolean): Promise<User> {
+  return usersRepo.setShowAiAssistedPosts(userId, showAiAssistedPosts);
+}
+
 // "Who to follow" suggestions for the discovery rail. Each suggestion carries
 // the actor summary (so `/@username` links + Follow work) plus a follower count
 // for a little social proof.

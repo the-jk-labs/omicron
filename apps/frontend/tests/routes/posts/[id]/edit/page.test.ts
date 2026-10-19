@@ -50,12 +50,21 @@ test("saving sends every field and follows the post to its new slug", async () =
     title: "New title",
     contentHtml: "<p>Body</p>",
     contentJson: null,
+    aiAssisted: false,
     language: "de",
     summary: "Old summary",
     coverUrl: "/api/uploads/b.webp",
     coverCredit: null,
     tags: ["deno"],
   });
+});
+
+test("editing can update the AI-assistance disclosure", async () => {
+  setup();
+  await fireEvent.click(screen.getByRole("switch", { name: "AI assistance used" }));
+  await save();
+  await waitFor(() => expect(saves()).toHaveLength(1));
+  expect(saves()[0].body).toMatchObject({ aiAssisted: true });
 });
 
 test("an emptied summary is saved as cleared", async () => {

@@ -36,6 +36,7 @@ import {
   removeAvatar,
   setAvatar,
   setPrivacy,
+  setShowAiAssistedPosts,
   suggestedFollows,
   updateProfile,
 } from "@/services/users.ts";
@@ -186,6 +187,11 @@ describe("setPrivacy", () => {
       ["me", "f2"],
     ]);
   });
+});
+
+test("setShowAiAssistedPosts persists the reader preference", async () => {
+  await setShowAiAssistedPosts("me", false);
+  expect(usersRepo.setShowAiAssistedPosts).toHaveBeenCalledWith("me", false);
 });
 
 describe("suggestedFollows", () => {
