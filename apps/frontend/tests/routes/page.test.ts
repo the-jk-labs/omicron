@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { replaceState } from "$app/navigation";
+import { page as appPage } from "$app/state";
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, expect, test, vi } from "vitest";
 import { reading } from "#lib/prefs.svelte.js";
@@ -8,6 +10,7 @@ import { apiError, fakeFetch } from "../fakeFetch";
 import { post } from "../fixtures";
 
 afterEach(() => {
+  appPage.url = new URL("http://localhost/");
   reading.defaultFeed = null;
   reading.feedLangs = [];
   reading.feedLangMode = "show";
@@ -63,6 +66,32 @@ test("another tab loads once, the first time it opens", async () => {
   await screen.findByText("Local post");
   await openTab("Global");
   await openTab("Local");
+  expect(feedCalls()).toEqual(["/api/posts?scope=local"]);
+});
+
+test.for([
+  ["Local", "local"],
+  ["Global", "global"],
+])("switching to %s keeps the selected feed in the URL for refresh", async ([name, value]) => {
+  reading.defaultFeed = "for-you";
+  setup(true, page([]), { "GET /api/posts": page([]) });
+  await openTab(name);
+  expect(selected()).toBe(name);
+  const url = new URL(String(vi.mocked(replaceState).mock.lastCall?.[0]), appPage.url.href);
+  expect(url.searchParams.get("tab")).toBe(value);
+  expect(reading.defaultFeed).toBe("for-you");
+});
+
+test("switching back to a cached feed updates the URL without fetching it again", async () => {
+  appPage.url = new URL("http://localhost/?source=link#feed");
+  setup(true, page([]), { "GET /api/posts": page([]) });
+  await openTab("Local");
+  await screen.findByText("No articles on this instance yet.");
+  await openTab("For you");
+  const url = new URL(String(vi.mocked(replaceState).mock.lastCall?.[0]), appPage.url.href);
+  expect(url.searchParams.get("tab")).toBe("for-you");
+  expect(url.searchParams.get("source")).toBe("link");
+  expect(url.hash).toBe("#feed");
   expect(feedCalls()).toEqual(["/api/posts?scope=local"]);
 });
 

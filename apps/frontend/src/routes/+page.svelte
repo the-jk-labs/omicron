@@ -1,5 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { replaceState } from "$app/navigation";
+  import { page } from "$app/state";
   import { Tabs } from "bits-ui";
   import { untrack } from "svelte";
   import { ApiError, endpoints } from "#lib/api/index.js";
@@ -15,9 +17,8 @@
 
   let { data }: { data: PageData } = $props();
 
-  // Each tab is an independent paginated list. The server pre-loads the default
-  // tab ("For you" when signed in, otherwise "Global"); the others load lazily
-  // the first time they are opened.
+  // Each tab is an independent paginated list. The server preloads the selected
+  // tab; the others load lazily the first time they are opened.
   type Feed = {
     value: string;
     label: string;
@@ -48,7 +49,7 @@
   // read the loaded data once when building them.
   const personalized = untrack(() => data.personalized);
   const preload = untrack(() => data.page);
-  // The server picks the tab from the saved default, so it is right from the first paint.
+  // The server picks the URL's tab or saved default, so it is right from the first paint.
   const tab = untrack(() => data.tab);
 
   function makeFeed(init: Pick<Feed, "value" | "label" | "icon" | "empty" | "fetch"> & { preload?: Page<Post> }): Feed {
@@ -110,7 +111,7 @@
     // written when a fetch settles, and a tracked write here re-runs the effect,
     // which refetches, which writes them again… an endless loop that kept the
     // tab on "Loading…" forever. Tab loads don't need this effect anyway —
-    // `onValueChange={ensureLoaded}` handles them, and the fetch closures read
+    // `selectTab` handles them, and the fetch closures read
     // the filter live at call time.
     void reading.feedLangs;
     void reading.feedLangMode;
@@ -127,6 +128,14 @@
       else if (feed?.loaded) refetch(activeTab);
     });
   });
+
+  function selectTab(value: string) {
+    // Shallow navigation preserves the selected tab on refresh without reloading feeds.
+    const url = new URL(page.url.href);
+    url.searchParams.set("tab", value);
+    replaceState(url, {});
+    ensureLoaded(value);
+  }
 
   // Discards a feed's cached page and reloads it (used when the language filter
   // must be re-applied to an already-loaded feed).
@@ -219,7 +228,7 @@
   <FeedLanguageFilter compact />
 {/if}
 
-<Tabs.Root bind:value={activeTab} onValueChange={ensureLoaded} class="w-full">
+<Tabs.Root bind:value={activeTab} onValueChange={selectTab} class="w-full">
   <Tabs.List class="mb-2 flex items-center gap-6 text-sm font-medium">
     {#each feeds as feed (feed.value)}
       <Tabs.Trigger
