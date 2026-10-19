@@ -74,49 +74,49 @@ afterEach(() => {
   config.APP_DOMAIN = originalDomain;
 });
 
-describe("markPostAiAssisted", () => {
+describe.each([true, false])("setPostAiAssisted(%s)", (aiAssisted) => {
   test("changes only the disclosure and federates an update for a published local post", async () => {
-    const row = postWithAuthor({ id: "p1" });
+    const row = postWithAuthor({ id: "p1", aiAssisted: !aiAssisted });
     vi.mocked(postsRepo.findById).mockResolvedValue(row);
-    vi.mocked(postsRepo.update).mockResolvedValue({ ...row.post, aiAssisted: true, searchVector: null });
+    vi.mocked(postsRepo.update).mockResolvedValue({ ...row.post, aiAssisted, searchVector: null });
 
-    await mod.markPostAiAssisted("p1");
+    await mod.setPostAiAssisted("p1", aiAssisted);
 
-    expect(postsRepo.update).toHaveBeenCalledExactlyOnceWith("p1", { aiAssisted: true });
+    expect(postsRepo.update).toHaveBeenCalledExactlyOnceWith("p1", { aiAssisted });
     expect(queue.add).toHaveBeenCalledExactlyOnceWith("federate_post", { postId: "p1", action: "update" });
   });
 
-  test.each(["draft", "scheduled"] as const)("marks a %s without publishing or federating it", async (status) => {
-    const row = postWithAuthor({ id: "p1", status });
+  test.each(["draft", "scheduled"] as const)("updates a %s without publishing or federating it", async (status) => {
+    const row = postWithAuthor({ id: "p1", status, aiAssisted: !aiAssisted });
     vi.mocked(postsRepo.findById).mockResolvedValue(row);
-    vi.mocked(postsRepo.update).mockResolvedValue({ ...row.post, aiAssisted: true, searchVector: null });
+    vi.mocked(postsRepo.update).mockResolvedValue({ ...row.post, aiAssisted, searchVector: null });
 
-    await mod.markPostAiAssisted("p1");
+    await mod.setPostAiAssisted("p1", aiAssisted);
 
-    expect(postsRepo.update).toHaveBeenCalledExactlyOnceWith("p1", { aiAssisted: true });
+    expect(postsRepo.update).toHaveBeenCalledExactlyOnceWith("p1", { aiAssisted });
     expect(queue.add).not.toHaveBeenCalled();
   });
 
-  test("an existing badge is a no-op", async () => {
-    vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ aiAssisted: true }));
-    await mod.markPostAiAssisted("p1");
+  test("an unchanged disclosure is a no-op", async () => {
+    vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ aiAssisted }));
+    await mod.setPostAiAssisted("p1", aiAssisted);
     expect(postsRepo.update).not.toHaveBeenCalled();
     expect(queue.add).not.toHaveBeenCalled();
   });
 
   test("missing and remote posts are rejected without a write or federation", async () => {
     vi.mocked(postsRepo.findById).mockResolvedValue(null);
-    await expect(mod.markPostAiAssisted("missing")).rejects.toMatchObject({ status: 404 });
+    await expect(mod.setPostAiAssisted("missing", aiAssisted)).rejects.toMatchObject({ status: 404 });
     vi.mocked(postsRepo.findById).mockResolvedValue(remotePostWithAuthor());
-    await expect(mod.markPostAiAssisted("remote")).rejects.toMatchObject({ status: 403 });
+    await expect(mod.setPostAiAssisted("remote", aiAssisted)).rejects.toMatchObject({ status: 403 });
     expect(postsRepo.update).not.toHaveBeenCalled();
     expect(queue.add).not.toHaveBeenCalled();
   });
 
   test("a failed write does not queue federation", async () => {
-    vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor());
+    vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ aiAssisted: !aiAssisted }));
     vi.mocked(postsRepo.update).mockRejectedValue(new Error("Write failed"));
-    await expect(mod.markPostAiAssisted("p1")).rejects.toThrow("Write failed");
+    await expect(mod.setPostAiAssisted("p1", aiAssisted)).rejects.toThrow("Write failed");
     expect(queue.add).not.toHaveBeenCalled();
   });
 });

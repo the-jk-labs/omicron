@@ -215,10 +215,69 @@ test.each([
   });
 });
 
-test.each([{ aiAssisted: true }, { remote: true }])("the moderator action is hidden for %o", async (p) => {
-  setup(p, moderator);
+test.each([false, true])("a remote post has no moderator badge actions (aiAssisted=%s)", async (aiAssisted) => {
+  setup({ remote: true, aiAssisted }, moderator);
   await openMenu();
   expect(menuItems()).not.toContain("Mark as AI-assisted");
+  expect(menuItems()).not.toContain("Remove AI-Assisted badge");
+});
+
+test.each([
+  ["moderator", moderator],
+  ["admin", { ...reader, isAdmin: true }],
+] as const)("a %s can confirm removing an AI-Assisted badge and refresh the post", async (_role, user) => {
+  setup({ aiAssisted: true }, user, {}, { [`DELETE /api/admin/posts/${POST_ID}/ai-assisted`]: { aiAssisted: false } });
+  await openMenu();
+  expect(menuItems()).not.toContain("Edit");
+  expect(menuItems()).not.toContain("Mark as AI-assisted");
+  await fireEvent.click(screen.getByRole("menuitem", { name: "Remove AI-Assisted badge" }));
+  const req = await answerConfirm({ ok: true });
+  expect(req.title).toBe("Remove AI-Assisted badge");
+  expect(req.description).toContain("see it in feeds again");
+  await waitFor(() => expect(invalidateAll).toHaveBeenCalledOnce());
+  expect(api.calls.at(-1)).toMatchObject({
+    method: "DELETE",
+    path: `/api/admin/posts/${POST_ID}/ai-assisted`,
+    body: undefined,
+  });
+});
+
+test.each([reader, author, null])("a non-moderator cannot remove a badge via the post menu (%o)", async (user) => {
+  setup({ aiAssisted: true }, user);
+  await openMenu();
+  expect(menuItems()).not.toContain("Remove AI-Assisted badge");
+});
+
+test("cancelling removal keeps the badge and makes no request", async () => {
+  setup({ aiAssisted: true }, moderator);
+  await openMenu();
+  await fireEvent.click(screen.getByRole("menuitem", { name: "Remove AI-Assisted badge" }));
+  await answerConfirm({ ok: false });
+  expect(api.calls).toHaveLength(0);
+  expect(invalidateAll).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "AI-Assisted post information" })).toBeInTheDocument();
+});
+
+test("a failed removal shows the error, retains the badge, and allows retry", async () => {
+  setup(
+    { aiAssisted: true },
+    moderator,
+    {},
+    {
+      [`DELETE /api/admin/posts/${POST_ID}/ai-assisted`]: apiError(403, "Not allowed"),
+    },
+  );
+  await openMenu();
+  await fireEvent.click(screen.getByRole("menuitem", { name: "Remove AI-Assisted badge" }));
+  await answerConfirm({ ok: true });
+  await screen.findByText("Not allowed");
+  expect(screen.getByRole("button", { name: "AI-Assisted post information" })).toBeInTheDocument();
+  expect(invalidateAll).not.toHaveBeenCalled();
+  await openMenu();
+  expect(screen.getByRole("menuitem", { name: "Remove AI-Assisted badge" })).not.toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
 });
 
 test("cancelling an AI-Assisted badge makes no request", async () => {

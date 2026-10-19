@@ -80,6 +80,7 @@ const routes: Route[] = [
   ["POST", `/users/${UUID}/verify`, undefined, "moderator"],
   ["DELETE", `/posts/${UUID}`, undefined, "moderator"],
   ["POST", `/posts/${UUID}/ai-assisted`, undefined, "moderator"],
+  ["DELETE", `/posts/${UUID}/ai-assisted`, undefined, "moderator"],
   ["GET", "/reports", undefined, "moderator"],
   ["POST", `/reports/${UUID}/resolve`, {}, "moderator"],
 ];
@@ -176,7 +177,17 @@ describe("admin endpoints", () => {
     });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ aiAssisted: true });
-    expect(moderation.markPostAiAssisted).toHaveBeenCalledExactlyOnceWith(UUID);
+    expect(moderation.setPostAiAssisted).toHaveBeenCalledExactlyOnceWith(UUID, true);
+  });
+
+  test("removing an AI-Assisted badge delegates only the disclosure change", async () => {
+    const res = await api.json(`/api/admin/posts/${UUID}/ai-assisted`, "DELETE", {
+      title: "Must not change",
+      aiAssisted: true,
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ aiAssisted: false });
+    expect(moderation.setPostAiAssisted).toHaveBeenCalledExactlyOnceWith(UUID, false);
   });
 
   test("analytics toggle validates and echoes", async () => {

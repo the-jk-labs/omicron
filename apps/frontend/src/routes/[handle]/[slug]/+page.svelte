@@ -120,7 +120,7 @@
   let deleting = $state(false);
   let deleteError = $state("");
   let unpublishing = $state(false);
-  let markingAiAssisted = $state(false);
+  let updatingAiAssisted = $state(false);
   let shared = $state(false);
 
   // Authoring controls: edit is author-only; delete is author or moderator.
@@ -129,9 +129,7 @@
   const canManage = $derived(
     !!data.user && !post.remote && (data.user.id === post.author.id || data.user.isAdmin || data.user.isModerator),
   );
-  const canMarkAiAssisted = $derived(
-    !!data.user && !post.remote && !post.aiAssisted && (data.user.isAdmin || data.user.isModerator),
-  );
+  const canSetAiAssisted = $derived(!!data.user && !post.remote && (data.user.isAdmin || data.user.isModerator));
   // Any signed-in reader can report a post that isn't their own (local or remote).
   const canReport = $derived(!!data.user && data.user.id !== post.author.id);
 
@@ -214,24 +212,30 @@
     }
   }
 
-  async function markAiAssisted() {
-    if (markingAiAssisted) return;
+  async function toggleAiAssisted() {
+    if (updatingAiAssisted) return;
+    const aiAssisted = !post.aiAssisted;
     const { ok } = await confirm({
-      title: "Mark as AI-assisted",
-      description:
-        "Add the AI-Assisted badge to this post? Readers who hide AI-assisted posts will no longer see it in feeds.",
-      confirmText: "Add badge",
+      title: aiAssisted ? "Mark as AI-assisted" : "Remove AI-Assisted badge",
+      description: aiAssisted
+        ? "Add the AI-Assisted badge to this post? Readers who hide AI-assisted posts will no longer see it in feeds."
+        : "Remove the AI-Assisted badge from this post? Readers who hide AI-assisted posts will be able to see it in feeds again.",
+      confirmText: aiAssisted ? "Add badge" : "Remove badge",
     });
     if (!ok) return;
-    markingAiAssisted = true;
+    updatingAiAssisted = true;
     deleteError = "";
     try {
-      await endpoints().adminMarkPostAiAssisted(post.id);
+      if (aiAssisted) {
+        await endpoints().adminMarkPostAiAssisted(post.id);
+      } else {
+        await endpoints().adminRemovePostAiAssisted(post.id);
+      }
       await invalidateAll();
     } catch (err) {
-      deleteError = err instanceof ApiError ? err.message : "Failed to add AI-Assisted badge.";
+      deleteError = err instanceof ApiError ? err.message : "Failed to update AI-Assisted badge.";
     } finally {
-      markingAiAssisted = false;
+      updatingAiAssisted = false;
     }
   }
 
@@ -374,9 +378,10 @@
               <Icon name="flag" size={18} /> Report
             </DropdownMenu.Item>
           {/if}
-          {#if canMarkAiAssisted}
-            <DropdownMenu.Item onSelect={markAiAssisted} disabled={markingAiAssisted} class={itemClass}>
-              <Icon name="sparkles" size={18} /> Mark as AI-assisted
+          {#if canSetAiAssisted}
+            <DropdownMenu.Item onSelect={toggleAiAssisted} disabled={updatingAiAssisted} class={itemClass}>
+              <Icon name="sparkles" size={18} />
+              {post.aiAssisted ? "Remove AI-Assisted badge" : "Mark as AI-assisted"}
             </DropdownMenu.Item>
           {/if}
           {#if canManage}

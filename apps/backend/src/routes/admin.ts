@@ -590,8 +590,14 @@ adminRoutes.post("/users/:id/verify", async (c) => {
 
 adminRoutes.post("/posts/:id/ai-assisted", async (c) => {
   requireModerator(c);
-  await moderation.markPostAiAssisted(c.req.param("id"));
+  await moderation.setPostAiAssisted(c.req.param("id"), true);
   return c.json({ aiAssisted: true });
+});
+
+adminRoutes.delete("/posts/:id/ai-assisted", async (c) => {
+  requireModerator(c);
+  await moderation.setPostAiAssisted(c.req.param("id"), false);
+  return c.json({ aiAssisted: false });
 });
 
 // Remove any local post (moderator override of the author-only delete).
