@@ -2,7 +2,7 @@
 <script lang="ts">
   import { beforeNavigate, goto } from "$app/navigation";
   import type { Content } from "@tiptap/core";
-  import { DropdownMenu } from "bits-ui";
+  import { DropdownMenu, Label, Switch } from "bits-ui";
   import { onDestroy, onMount, untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
   import { Autosave } from "#lib/autosave.svelte.js";
@@ -33,6 +33,7 @@
   let postId = $state<string | null>(draft?.id ?? null);
   let title = $state(draft?.title ?? "");
   let tags = $state<string[]>(draft?.tags?.map((t) => t.name) ?? []);
+  let aiAssisted = $state(draft?.aiAssisted ?? false);
   // A reopened draft keeps whatever it was saved with — including a
   // deliberate blank. Only a genuinely new post takes the remembered default,
   // so revisiting a draft never silently relabels it.
@@ -77,6 +78,7 @@
   // The tag input mutates `tags` directly; mark touched when it diverges from
   // the draft's original tags.
   const initialTags = (draft?.tags?.map((t) => t.name) ?? []).join(",");
+  const initialAiAssisted = draft?.aiAssisted ?? false;
   // Must mirror `language`'s initial value, not the draft's — a new post now
   // starts at the remembered default, and comparing that against null would
   // mark the page dirty the instant it opened, so simply looking at the
@@ -84,7 +86,11 @@
   const initialLanguage = draft ? (draft.language ?? null) : untrack(() => data.composeLang);
   const initialSummary = draft?.summary ?? "";
   $effect(() => {
-    const changed = tags.join(",") !== initialTags || language !== initialLanguage || summary !== initialSummary;
+    const changed =
+      tags.join(",") !== initialTags ||
+      language !== initialLanguage ||
+      summary !== initialSummary ||
+      aiAssisted !== initialAiAssisted;
     if (changed) change();
   });
 
@@ -109,6 +115,7 @@
       title: title.trim(),
       contentHtml: html,
       contentJson: json,
+      aiAssisted,
       language,
       // Null, not "", so the reader falls back to the derived excerpt
       // rather than showing an empty description.
@@ -325,6 +332,23 @@
 />
 
 <SummaryField bind:summary onChange={change} />
+
+<div class="mb-6 flex items-center gap-3">
+  <Switch.Root
+    id="ai-assisted"
+    checked={aiAssisted}
+    onCheckedChange={(checked) => (aiAssisted = checked)}
+    class="peer inline-flex h-[30px] min-h-[30px] w-[50px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset"
+  >
+    <Switch.Thumb
+      class="pointer-events-none block size-6 shrink-0 rounded-full bg-background transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0 data-[state=unchecked]:shadow-mini"
+    />
+  </Switch.Root>
+  <div class="min-w-0">
+    <Label.Root for="ai-assisted" class="text-sm font-medium text-foreground">AI assistance used</Label.Root>
+    <p class="text-xs text-muted-foreground">I used AI to help write this post.</p>
+  </div>
+</div>
 
 <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start">
   <div class="min-w-0 flex-1">

@@ -187,7 +187,7 @@ describe("reading a post", () => {
   test("related posts resolve the post first (so visibility applies)", async () => {
     vi.mocked(postsService.relatedPosts).mockResolvedValue([postWithAuthor({ id: "p2" })]);
     expect(await (await api.request("/api/posts/p1/related")).json()).toEqual({ items: [{ id: "p2" }] });
-    expect(postsService.relatedPosts).toHaveBeenCalledWith("p1");
+    expect(postsService.relatedPosts).toHaveBeenCalledWith("p1", null);
   });
 });
 
@@ -195,10 +195,20 @@ describe("writing", () => {
   test("create returns 201 with the bare post", async () => {
     api.signIn();
     vi.mocked(postsService.createPost).mockResolvedValue(postRow({ id: "new", title: "T" }) as never);
-    const res = await api.json("/api/posts", "POST", { title: "T", contentHtml: "<p>x</p>", tags: ["a"] });
+    const res = await api.json("/api/posts", "POST", {
+      title: "T",
+      contentHtml: "<p>x</p>",
+      tags: ["a"],
+      aiAssisted: true,
+    });
     expect(res.status).toBe(201);
     expect((await res.json()).post).toMatchObject({ id: "new", title: "T", status: "published" });
-    expect(postsService.createPost).toHaveBeenCalledWith("me", { title: "T", contentHtml: "<p>x</p>", tags: ["a"] });
+    expect(postsService.createPost).toHaveBeenCalledWith("me", {
+      title: "T",
+      contentHtml: "<p>x</p>",
+      tags: ["a"],
+      aiAssisted: true,
+    });
   });
 
   test.for([
@@ -207,6 +217,7 @@ describe("writing", () => {
     [{ contentHtml: "x", status: "private" }, "unknown status"],
     [{ contentHtml: "x", tags: "deno" }, "tags not an array"],
     [{ contentHtml: "x", coverCredit: "x" }, "credit not an object"],
+    [{ contentHtml: "x", aiAssisted: "yes" }, "AI assistance flag not a boolean"],
   ])("create rejects %o (%s) with a 400 before the service", async ([body]) => {
     api.signIn();
     const res = await api.json("/api/posts", "POST", body);

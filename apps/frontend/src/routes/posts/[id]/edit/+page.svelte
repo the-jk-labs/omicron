@@ -2,6 +2,7 @@
 <script lang="ts">
   import { beforeNavigate, goto } from "$app/navigation";
   import type { Content } from "@tiptap/core";
+  import { Label, Switch } from "bits-ui";
   import { onMount, untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
   import BannerPicker from "#lib/components/BannerPicker.svelte";
@@ -23,6 +24,7 @@
 
   let title = $state(post.title ?? "");
   let tags = $state<string[]>(post.tags?.map((t) => t.name) ?? []);
+  let aiAssisted = $state(post.aiAssisted ?? false);
   let language = $state<string | null>(post.language ?? null);
   // Seeded from the stored value, and always sent back — omitting the field
   // would leave it untouched, but an author who cleared it here must have the
@@ -47,7 +49,7 @@
   // asks first: in-app navigation through a confirm, closing the tab through the
   // browser. `leaving` lets our own post-save navigation through.
   let leaving = false;
-  const snapshot = () => JSON.stringify({ title, tags, language, summary, coverUrl, coverCredit, html });
+  const snapshot = () => JSON.stringify({ title, tags, language, summary, coverUrl, coverCredit, html, aiAssisted });
   const initial = untrack(snapshot);
   const dirty = $derived(snapshot() !== initial);
 
@@ -94,6 +96,7 @@
         title: title.trim(),
         contentHtml: html,
         contentJson: json,
+        aiAssisted,
         language,
         summary: summary.trim() || null,
         coverUrl,
@@ -132,6 +135,23 @@
 />
 
 <SummaryField bind:summary />
+
+<div class="mb-6 flex items-center gap-3">
+  <Switch.Root
+    id="ai-assisted"
+    checked={aiAssisted}
+    onCheckedChange={(checked) => (aiAssisted = checked)}
+    class="peer inline-flex h-[30px] min-h-[30px] w-[50px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset"
+  >
+    <Switch.Thumb
+      class="pointer-events-none block size-6 shrink-0 rounded-full bg-background transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0 data-[state=unchecked]:shadow-mini"
+    />
+  </Switch.Root>
+  <div class="min-w-0">
+    <Label.Root for="ai-assisted" class="text-sm font-medium text-foreground">AI assistance used</Label.Root>
+    <p class="text-xs text-muted-foreground">I used AI to help write this post.</p>
+  </div>
+</div>
 
 <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start">
   <div class="min-w-0 flex-1">

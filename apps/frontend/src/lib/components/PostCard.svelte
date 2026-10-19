@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { page } from "$app/state";
+  import AiAssistedBadge from "#lib/components/AiAssistedBadge.svelte";
   import Icon from "#lib/components/Icon.svelte";
   import ReactionCount from "#lib/components/ReactionCount.svelte";
   import RecommendButton from "#lib/components/RecommendButton.svelte";
@@ -142,6 +143,7 @@
     <span class="flex items-center gap-1"
       ><Icon name="clock" size={13} /> {minutes} min <span class="sr-only">read</span></span
     >
+    {#if post.aiAssisted}<AiAssistedBadge />{/if}
     <ReactionCount icon="heart" count={post.likeCount} singular="like" size={13} />
     <ReactionCount icon="comment" count={post.commentCount} singular="response" size={13} />
     <span class="ml-auto flex shrink-0 items-center gap-1">

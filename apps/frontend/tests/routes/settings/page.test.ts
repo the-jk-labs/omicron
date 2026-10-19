@@ -49,6 +49,7 @@ function me(o: Partial<User> = {}): User {
     isAdmin: false,
     isModerator: false,
     isPrivate: false,
+    showAiAssistedPosts: true,
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",
     tags: [],
@@ -66,6 +67,8 @@ function setup(user: User = me(), routes: Parameters<typeof fakeFetch>[0] = {}) 
     "POST /api/users/me/avatar": { user },
     "DELETE /api/users/me/avatar": { user: { ...user, avatarUrl: null } },
     "PATCH /api/users/me/privacy": { user },
+    "PATCH /api/users/me/preferences": (req) =>
+      req.json().then((body: { showAiAssistedPosts: boolean }) => Response.json({ user: { ...user, ...body } })),
     // Child managers load their own lists; an empty answer keeps them quiet.
     "*": apiError(404),
     ...routes,
@@ -119,6 +122,17 @@ test("links are saved as canonical URLs and blank rows are skipped", async () =>
   expect((patchBody() as { links: unknown }).links).toEqual([
     { platform: "github", url: "https://github.com/lovelace", label: "" },
   ]);
+});
+
+test("Show AI-Assisted Posts is enabled by default and persists when turned off", async () => {
+  setup();
+  await openTab("Preferences");
+
+  const toggle = screen.getByRole("switch", { name: "Show AI-Assisted Posts" });
+  expect(toggle).toHaveAttribute("data-state", "checked");
+  await fireEvent.click(toggle);
+  await waitFor(() => expect(api.calls.some((c) => c.path === "/api/users/me/preferences")).toBe(true));
+  expect(api.calls.find((c) => c.path === "/api/users/me/preferences")?.body).toEqual({ showAiAssistedPosts: false });
 });
 
 test("an invalid link names the platform and saves nothing", async () => {

@@ -13,6 +13,7 @@ import {
   PUBLIC_COLLECTION,
 } from "@fedify/fedify/vocab";
 import { beforeEach, describe, expect, test, vi } from "vitest";
+import { AI_ASSISTED_PROPERTY } from "@/federation/article.ts";
 import { remoteActorRow, userRow } from "../fixtures.ts";
 import { fakeContext } from "./fakeContext.ts";
 
@@ -182,6 +183,17 @@ describe("fetchOutboxPosts", () => {
     expect(calls[0]).toMatchObject({ remoteActorId: "actor-1", title: "Title", apType: "Article" });
     expect(calls[0].contentHtml).not.toContain("<script");
     expect(calls[0].createdAt).toEqual(new Date("2026-01-01T00:00:00Z"));
+  });
+
+  test("preserves the AI-assistance disclosure when crawling an outbox", async () => {
+    const base = await article("https://remote.example/posts/ai").toJsonLd();
+    const disclosed = await Article.fromJsonLd({
+      ...(base as Record<string, unknown>),
+      [AI_ASSISTED_PROPERTY]: true,
+    });
+    withOutbox([disclosed]);
+    await fetchOutboxPosts("bob@remote.example", "actor-1");
+    expect(postsRepo.upsertRemotePost).toHaveBeenCalledWith(expect.objectContaining({ aiAssisted: true }));
   });
 
   test("skips Notes, followers-only Articles, and Articles from another origin", async () => {

@@ -9,7 +9,7 @@
 // meaning for hover and for assistive tech, or a sighted reader cannot tell a
 // like from a response from a recommendation and a screen reader hears only
 // digits. If any label or tooltip regresses, these tests fail.
-import { render, screen } from "@testing-library/svelte";
+import { fireEvent, render, screen } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
 import PostCard from "#lib/components/PostCard.svelte";
 import type { Post } from "#lib/types.js";
@@ -23,6 +23,7 @@ const post: Post = {
   slug: "unix-programming-timev",
   contentHtml: "<p>Historically, UNIX systems have maintained two different time values for a file.</p>",
   remote: false,
+  aiAssisted: false,
   summary: null,
   bannerUrl: null,
   createdAt: "2026-08-20T12:00:00.000Z",
@@ -59,6 +60,13 @@ describe("PostCard", () => {
     const heading = container.querySelector("h2");
     expect(heading).not.toBeNull();
     expect(heading!.contains(excerpt)).toBe(false);
+  });
+
+  it("shows an accessible AI-Assisted badge with its explanation", async () => {
+    render(PostCard, { props: { post: { ...post, aiAssisted: true } } });
+
+    await fireEvent.click(screen.getByRole("button", { name: "AI-Assisted post information" }));
+    expect(await screen.findByText("This post was written with AI assistance.")).toBeInTheDocument();
   });
 });
 

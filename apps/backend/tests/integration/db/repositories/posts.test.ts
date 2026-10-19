@@ -83,6 +83,24 @@ describe("writes", () => {
     expect(again).toMatchObject({ title: "Second", language: null, createdAt: at(1) });
   });
 
+  test("a remote post upsert stores and refreshes the AI-assistance disclosure", async () => {
+    const eve = await mkRemoteActor("eve@remote.example");
+    const data = {
+      remoteActorId: eve.id,
+      apId: "https://remote.example/ai-post",
+      title: "AI-assisted",
+      contentHtml: "<p>1</p>",
+      apType: "Article",
+      aiAssisted: true,
+    };
+    const first = await postsRepo.upsertRemotePost(data);
+    expect(first.aiAssisted).toBe(true);
+
+    const again = await postsRepo.upsertRemotePost({ ...data, aiAssisted: false });
+    expect(again.id).toBe(first.id);
+    expect(again.aiAssisted).toBe(false);
+  });
+
   test("ingest upserts by (author, external id); the key is per author", async () => {
     const [ada, bob] = [await mkUser("ada"), await mkUser("bob")];
     const base = { title: "v1", contentHtml: "<p>1</p>", externalId: "doc" };
@@ -344,9 +362,9 @@ describe("related posts and the sitemap", () => {
     await tagsRepo.setPostTags(reading.id, ["a", "b"]);
     await tagsRepo.setPostTags(two.id, ["a", "b"]);
     for (const p of [one, draft, hidden, remote]) await tagsRepo.setPostTags(p.id, ["a"]);
-    expect((await postsRepo.listRelated(reading.id, 5)).map((r) => r.post.slug)).toEqual(["two", "one"]);
+    expect((await postsRepo.listRelated(reading.id, null, 5)).map((r) => r.post.slug)).toEqual(["two", "one"]);
 
-    const recent = await postsRepo.listRecentExcluding(reading.id, 10);
+    const recent = await postsRepo.listRecentExcluding(reading.id, null, 10);
     expect(recent.map((r) => r.post.slug).toSorted(byText)).toEqual(["one", "two"]);
   });
 

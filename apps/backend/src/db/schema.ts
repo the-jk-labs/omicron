@@ -64,6 +64,9 @@ export const users = pgTable(
     // approved followers and following requires approval (see follows.approved);
     // federated via the actor's `manuallyApprovesFollowers` flag.
     isPrivate: boolean("is_private").notNull().default(false),
+    // Whether this reader wants AI-assisted posts in their feeds. Disclosure
+    // labels remain public; this preference only changes the owner's listings.
+    showAiAssistedPosts: boolean("show_ai_assisted_posts").notNull().default(true),
     // Better Auth's `emailVerified`. Gates sign-in only when EMAIL_VERIFICATION_REQUIRED is set.
     emailVerified: boolean("email_verified").notNull().default(false),
     // When an admin suspended this account (null = active). A suspended user is
@@ -179,6 +182,9 @@ export const posts = pgTable(
     // Ghost, WriteFreely publish); microblog content is "Note" (Mastodon, etc.).
     // Drives the Global feed, which surfaces blogs only.
     apType: text("ap_type").notNull().default("Article"),
+    // Author disclosure that AI helped create this post. False for existing and
+    // remote posts unless the local author explicitly marks it.
+    aiAssisted: boolean("ai_assisted").notNull().default(false),
     remote: boolean("remote").notNull().default(false),
     // Publication state. `draft` and `scheduled` posts are private to their author
     // (never federated, never surfaced in any public feed or profile) until they

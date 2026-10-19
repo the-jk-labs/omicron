@@ -69,6 +69,7 @@ export async function upsertRemotePost(data: {
   title: string | null;
   contentHtml: string;
   apType: string;
+  aiAssisted?: boolean;
   language?: string | null;
   createdAt?: Date;
 }) {
@@ -80,13 +81,19 @@ export async function upsertRemotePost(data: {
       title: data.title,
       contentHtml: data.contentHtml,
       apType: data.apType,
+      aiAssisted: data.aiAssisted ?? false,
       language: data.language ?? null,
       remote: true,
       ...(data.createdAt ? { createdAt: data.createdAt } : {}),
     })
     .onConflictDoUpdate({
       target: posts.apId,
-      set: { title: data.title, contentHtml: data.contentHtml, language: data.language ?? null },
+      set: {
+        title: data.title,
+        contentHtml: data.contentHtml,
+        aiAssisted: data.aiAssisted ?? false,
+        language: data.language ?? null,
+      },
     })
     .returning();
   return row;
@@ -320,7 +327,7 @@ export function listSitemapEntries(page = 1) {
 // explainable to the author who chose those tags, and it degrades to "recent
 // posts by anyone" rather than to nothing when a post shares no tags — an empty
 // section would leave the dead end exactly as it was.
-export function listRelated(postId: string, limit = 3) {
+export function listRelated(postId: string, viewerId: string | null, limit = 3) {
   const shared = db
     .select({
       id: posts.id,
@@ -334,6 +341,7 @@ export function listRelated(postId: string, limit = 3) {
         inArray(postTags.tagId, db.select({ id: postTags.tagId }).from(postTags).where(eq(postTags.postId, postId))),
         sql`${posts.id} <> ${postId}`,
         eq(posts.status, "published"),
+        aiAssistedVisibleToViewer(viewerId),
         // Local posts only. A federated copy is served here as `noindex` (it
         // reproduces an article published elsewhere), so linking to one adds
         // nothing to crawl depth and sends a reader to a page we have asked
@@ -360,12 +368,13 @@ export function listRelated(postId: string, limit = 3) {
 // Fallback for a post whose tags nobody else uses (or which has none): the
 // newest published posts, minus the one being read. Keeps the section from
 // disappearing exactly on the posts that most need a way onward.
-export function listRecentExcluding(postId: string, limit = 4) {
+export function listRecentExcluding(postId: string, viewerId: string | null, limit = 4) {
   return selectPosts()
     .where(
       and(
         sql`${posts.id} <> ${postId}`,
         eq(posts.status, "published"),
+        aiAssistedVisibleToViewer(viewerId),
         eq(posts.remote, false),
         sql`${users.isPrivate} = false`,
         sql`${users.suspendedAt} is null`,
@@ -473,6 +482,16 @@ export function visibleToViewer(viewerId: string | null) {
   )`;
 }
 
+// Applies the reader's AI-assisted-post preference in SQL, before ordering and
+// pagination. Guests see all posts; a missing user row defaults to showing them.
+export function aiAssistedVisibleToViewer(viewerId: string | null) {
+  if (!viewerId) return undefined;
+  return or(
+    eq(posts.aiAssisted, false),
+    sql`coalesce((select ${users.showAiAssistedPosts} from users where ${users.id} = ${viewerId}), true)`,
+  );
+}
+
 // Excludes authors the viewer has muted or blocked, and authors who have blocked
 // the viewer (blocks are bidirectional locally). Returns undefined for guests —
 // `and()` drops undefined operands, so feeds are unfiltered when logged out.
@@ -531,6 +550,7 @@ export function listGlobal(
         notSuspended,
         notHidden(viewerId),
         visibleToViewer(viewerId),
+        aiAssistedVisibleToViewer(viewerId),
         languageFilter(langFilter),
         beforeCursor(cursor),
       ),
@@ -560,6 +580,7 @@ export function searchPosts(
     notSuspended,
     notHidden(viewerId),
     visibleToViewer(viewerId),
+    aiAssistedVisibleToViewer(viewerId),
     sql`${posts.searchVector} @@ ${tsquery}`,
   ];
   if (opts?.tag) {
@@ -630,6 +651,7 @@ export function listTrending(viewerId: string | null, limit = 5, sinceDays = 30)
         notSuspended,
         notHidden(viewerId),
         visibleToViewer(viewerId),
+        aiAssistedVisibleToViewer(viewerId),
         gt(posts.createdAt, since),
       ),
     )
@@ -652,6 +674,7 @@ export function listLocal(
         notSuspended,
         notHidden(viewerId),
         visibleToViewer(viewerId),
+        aiAssistedVisibleToViewer(viewerId),
         languageFilter(langFilter),
         beforeCursor(cursor),
       ),
@@ -674,6 +697,7 @@ export function listByAuthor(
         notSuspended,
         notHidden(viewerId),
         visibleToViewer(viewerId),
+        aiAssistedVisibleToViewer(viewerId),
         beforeCursor(cursor),
       ),
     )
@@ -832,6 +856,7 @@ export function listByRemoteActor(
         eq(posts.apType, "Article"),
         notHidden(viewerId),
         visibleToViewer(viewerId),
+        aiAssistedVisibleToViewer(viewerId),
         beforeCursor(cursor),
       ),
     )
@@ -853,6 +878,7 @@ export function listByTag(slug: string, viewerId: string | null, cursor: Cursor 
         notSuspended,
         notHidden(viewerId),
         visibleToViewer(viewerId),
+        aiAssistedVisibleToViewer(viewerId),
         beforeCursor(cursor),
       ),
     )
@@ -899,6 +925,7 @@ export function listFeed(userId: string, cursor: Cursor | null, limit = DEFAULT_
         notSuspended,
         notHidden(userId),
         visibleToViewer(userId),
+        aiAssistedVisibleToViewer(userId),
         beforeCursor(cursor),
       ),
     )

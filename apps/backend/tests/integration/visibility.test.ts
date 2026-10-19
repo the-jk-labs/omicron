@@ -261,6 +261,69 @@ describe("reading lists: a public list is filtered like any other listing", () =
   });
 });
 
+describe("AI-assisted posts follow each reader's feed preference", () => {
+  let reader: User;
+  let author: User;
+  let ordinary: Post;
+  let assisted: Post;
+  let tag: Awaited<ReturnType<typeof mkTag>>;
+  let list: Awaited<ReturnType<typeof mkList>>;
+
+  beforeAll(async () => {
+    await resetDb();
+
+    reader = await mkUser("ai-reader", { showAiAssistedPosts: false });
+    author = await mkUser("ai-author");
+    ordinary = await mkPost(author.id, "writing-disclosure");
+    assisted = await mkPost(author.id, "assisted-disclosure", { aiAssisted: true });
+    tag = await mkTag("disclosure");
+    await tagPost(ordinary.id, tag.id);
+    await tagPost(assisted.id, tag.id);
+    await follow(reader.id, author.id, true);
+    await recommend(author.id, ordinary.id);
+    await recommend(author.id, assisted.id);
+    list = await mkList(reader.id, "AI posts", "public");
+    await addToList(list.id, ordinary.id);
+    await addToList(list.id, assisted.id);
+  });
+
+  test("the preference filters both timeline streams before pagination", async () => {
+    for (const rows of [
+      await postsRepo.listGlobal(reader.id, null),
+      await postsRepo.listLocal(reader.id, null),
+      await postsRepo.listFeed(reader.id, null),
+      await recsRepo.listFeedFor(reader.id, null),
+    ] as Rows[]) {
+      expect(includesPost(rows, ordinary.id)).toBe(true);
+      expect(includesPost(rows, assisted.id)).toBe(false);
+    }
+  });
+
+  test("profile, tag, search, trending and saved-list feeds honor the preference", async () => {
+    const listings = [
+      await postsRepo.listByAuthor(ordinary.authorId!, reader.id, null),
+      await postsRepo.listByTag(tag.slug, reader.id, null),
+      await postsRepo.searchPosts(reader.id, "disclosure"),
+      await postsRepo.listTrending(reader.id),
+      await recsRepo.listByUser(author.id, reader.id, null),
+      await listsRepo.listItems(list.id, reader.id, null),
+    ] as Rows[];
+
+    for (const rows of listings) {
+      expect(includesPost(rows, ordinary.id)).toBe(true);
+      expect(includesPost(rows, assisted.id)).toBe(false);
+    }
+    expect(await tagsRepo.postCount(tag.id, reader.id)).toBe(1);
+  });
+
+  test("readers with the default preference and guests still see the disclosure post", async () => {
+    const other = await mkUser("ai-default-reader");
+    expect(other.showAiAssistedPosts).toBe(true);
+    expect(includesPost(await postsRepo.listGlobal(other.id, null), assisted.id)).toBe(true);
+    expect(includesPost(await postsRepo.listGlobal(null, null), assisted.id)).toBe(true);
+  });
+});
+
 describe("the sitemap publishes nothing a crawler cannot read", () => {
   let ids: Set<string>;
   let live: Post;

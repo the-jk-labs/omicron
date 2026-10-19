@@ -108,6 +108,16 @@ test("publishing a new post creates it, remembers its language and opens it", as
   expect(setLang).toHaveBeenCalled();
 });
 
+test("publishing can disclose AI assistance", async () => {
+  setup();
+  await typeTitle("Assisted post");
+  await typeBody("Body text");
+  await fireEvent.click(screen.getByRole("switch", { name: "AI assistance used" }));
+  await click("Publish");
+  await waitFor(() => expect(goto).toHaveBeenCalledWith("/posts/new-1"));
+  expect(writes().at(-1)?.body).toMatchObject({ aiAssisted: true });
+});
+
 test("saving an empty new post is refused", async () => {
   setup();
   await click("Save draft");

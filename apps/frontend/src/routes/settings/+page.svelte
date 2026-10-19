@@ -273,6 +273,24 @@
     }
   }
 
+  let showAiAssistedPosts = $state(untrack(() => data.user.showAiAssistedPosts ?? true));
+  let aiPreferenceBusy = $state(false);
+  let aiPreferenceError = $state("");
+  async function toggleAiAssistedPosts(next: boolean) {
+    aiPreferenceBusy = true;
+    aiPreferenceError = "";
+    showAiAssistedPosts = next;
+    try {
+      await endpoints().setShowAiAssistedPosts(next);
+      await refreshAll();
+    } catch (err) {
+      showAiAssistedPosts = !next;
+      aiPreferenceError = err instanceof ApiError ? err.message : "Failed to save this preference.";
+    } finally {
+      aiPreferenceBusy = false;
+    }
+  }
+
   // Resend email verification for an unverified account.
   let resending = $state(false);
   let resendDone = $state(false);
@@ -579,6 +597,30 @@
         </div>
 
         <FeedLanguageFilter />
+
+        <div class="mt-5 flex items-center justify-between gap-4 border-t border-border pt-5">
+          <div class="min-w-0">
+            <Label.Root for="show-ai-assisted-posts" class="text-sm font-medium text-foreground">
+              Show AI-Assisted Posts
+            </Label.Root>
+            <p id="ai-assisted-preference-description" class="mt-0.5 text-xs text-muted-foreground">
+              Include AI-assisted posts in your feeds.
+            </p>
+            {#if aiPreferenceError}<p role="alert" class="mt-1 text-xs text-destructive">{aiPreferenceError}</p>{/if}
+          </div>
+          <Switch.Root
+            id="show-ai-assisted-posts"
+            aria-describedby="ai-assisted-preference-description"
+            checked={showAiAssistedPosts}
+            onCheckedChange={toggleAiAssistedPosts}
+            disabled={aiPreferenceBusy}
+            class="peer inline-flex h-[36px] min-h-[36px] w-[60px] shrink-0 cursor-pointer items-center rounded-full px-[3px] transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-foreground data-[state=unchecked]:bg-dark-10 data-[state=unchecked]:shadow-mini-inset"
+          >
+            <Switch.Thumb
+              class="pointer-events-none block size-[30px] shrink-0 rounded-full bg-background transition-transform data-[state=checked]:translate-x-6 data-[state=unchecked]:translate-x-0 data-[state=unchecked]:shadow-mini"
+            />
+          </Switch.Root>
+        </div>
       </section>
 
       <!-- Followed tags -->

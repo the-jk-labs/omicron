@@ -303,6 +303,13 @@ const rows: Row[] = [
   ["follow", (e) => e.follow("ada"), "POST", "/api/users/ada/follow"],
   ["unfollow", (e) => e.unfollow("ada"), "DELETE", "/api/users/ada/follow"],
   ["setPrivacy", (e) => e.setPrivacy(true), "PATCH", "/api/users/me/privacy", { isPrivate: true }],
+  [
+    "setShowAiAssistedPosts",
+    (e) => e.setShowAiAssistedPosts(false),
+    "PATCH",
+    "/api/users/me/preferences",
+    { showAiAssistedPosts: false },
+  ],
   ["followRequests", (e) => e.followRequests(), "GET", "/api/users/me/follow-requests"],
   ["approveFollowRequest", (e) => e.approveFollowRequest("f1"), "POST", "/api/users/me/follow-requests/f1/approve"],
   ["rejectFollowRequest", (e) => e.rejectFollowRequest("f1"), "POST", "/api/users/me/follow-requests/f1/reject"],

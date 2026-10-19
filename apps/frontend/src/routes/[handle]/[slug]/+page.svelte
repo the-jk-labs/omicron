@@ -4,6 +4,7 @@
   import { Dialog, DropdownMenu, Label, Separator } from "bits-ui";
   import { untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
+  import AiAssistedBadge from "#lib/components/AiAssistedBadge.svelte";
   import Comments from "#lib/components/Comments.svelte";
   import Icon from "#lib/components/Icon.svelte";
   import PageTitle from "#lib/components/PageTitle.svelte";
@@ -301,6 +302,10 @@
             <Icon name="globe" size={14} />
             {originInstance}
           </span>
+        {/if}
+        {#if post.aiAssisted}
+          <Separator.Root orientation="vertical" class="h-3 w-px shrink-0 bg-border" />
+          <AiAssistedBadge />
         {/if}
         {#if post.language}
           <Separator.Root orientation="vertical" class="h-3 w-px shrink-0 bg-border" />

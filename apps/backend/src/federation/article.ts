@@ -7,6 +7,25 @@ import { absoluteBanner, bannerOf } from "@/lib/cover.ts";
 import { normalizeLanguage } from "@/lib/languages.ts";
 import { federationOrigin } from "@/services/federationState.ts";
 
+export const AI_ASSISTED_PROPERTY = "https://docs.omicron.blog/federation/overview/#ai-assisted-post-disclosure";
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+class AiDisclosedArticle extends Article {
+  override async toJsonLd(options?: Parameters<Article["toJsonLd"]>[0]): Promise<unknown> {
+    const jsonLd = await super.toJsonLd(options);
+    if (isJsonObject(jsonLd)) return { ...jsonLd, [AI_ASSISTED_PROPERTY]: true };
+    if (Array.isArray(jsonLd)) {
+      return jsonLd.map((item) =>
+        isJsonObject(item) ? { ...item, [AI_ASSISTED_PROPERTY]: [{ "@value": true }] } : item,
+      );
+    }
+    return jsonLd;
+  }
+}
+
 // The post's banner as an ActivityPub Image.
 //
 // A banner uploaded here is stored root-relative (`/api/uploads/…`), which
@@ -90,7 +109,7 @@ export function buildArticle(
     to.href === PUBLIC_COLLECTION.href
       ? new URL(`/users/${identifier}/posts/${post.id}/replies`, federationOrigin())
       : undefined;
-  return new Article({
+  const values = {
     id: new URL(`/posts/${post.id}`, ctx.getActorUri(identifier)),
     attribution: ctx.getActorUri(identifier),
     name: post.title ?? undefined,
@@ -104,7 +123,24 @@ export function buildArticle(
     url: new URL(`/posts/${post.id}`, ctx.getActorUri(identifier)),
     tags: tags.map((t) => new Hashtag({ name: `#${t.name}`, href: new URL(`/tags/${t.slug}`, federationOrigin()) })),
     replies,
-  });
+  };
+  return post.aiAssisted ? new AiDisclosedArticle(values) : new Article(values);
+}
+
+// Reads the optional Omicron JSON-LD extension; unknown properties are kept in
+// Fedify's parsed JSON-LD document even though its ActivityStreams model omits them.
+export async function articleAiAssisted(article: Article): Promise<boolean> {
+  try {
+    const jsonLd = await article.toJsonLd();
+    if (!isJsonObject(jsonLd)) return false;
+    const value = jsonLd[AI_ASSISTED_PROPERTY];
+    if (value === true) return true;
+    if (Array.isArray(value))
+      return value.some((item) => item === true || (isJsonObject(item) && item["@value"] === true));
+    return isJsonObject(value) && value["@value"] === true;
+  } catch {
+    return false;
+  }
 }
 
 // Extracts the language a remote Article's content is tagged with (rdf:langString),

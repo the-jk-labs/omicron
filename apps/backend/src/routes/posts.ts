@@ -57,6 +57,7 @@ const createPostSchema = z.object({
   contentHtml: z.string(),
   contentJson: z.unknown().optional(),
   status: z.enum(["draft", "scheduled", "published"]).optional(),
+  aiAssisted: z.boolean().optional(),
   // ISO instant a `scheduled` post goes out. The service owns the rules that
   // need more than a shape — that it parses, is far enough ahead of the
   // sweeper, and is required by (and only by) the scheduled state.
@@ -158,7 +159,7 @@ postRoutes.get("/:id", async (c) => {
 postRoutes.get("/:id/related", async (c) => {
   const viewer = c.get("user");
   const row = await postsService.getPost(c.req.param("id"), viewer?.id ?? null);
-  const items = await postsService.relatedPosts(row.post.id);
+  const items = await postsService.relatedPosts(row.post.id, viewer?.id ?? null);
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null) });
 });
 

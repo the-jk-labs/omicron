@@ -325,6 +325,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       title?: string;
       contentHtml: string;
       contentJson?: unknown;
+      aiAssisted?: boolean;
       status?: OwnPostStatus;
       // ISO instant, required by (and only by) `status: "scheduled"`.
       publishAt?: string | null;
@@ -340,6 +341,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
         title?: string;
         contentHtml?: string;
         contentJson?: unknown;
+        aiAssisted?: boolean;
         // Omitting this leaves the post in the state it is already in, which is
         // what makes the composer's autosave safe on a scheduled post.
         status?: OwnPostStatus;
@@ -434,6 +436,8 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
 
     // private-account controls: privacy toggle + the follow-request inbox
     setPrivacy: (isPrivate: boolean) => api.patch<{ user: User }>("/users/me/privacy", { isPrivate }),
+    setShowAiAssistedPosts: (showAiAssistedPosts: boolean) =>
+      api.patch<{ user: User }>("/users/me/preferences", { showAiAssistedPosts }),
     followRequests: () => api.get<{ items: FollowRequest[] }>("/users/me/follow-requests"),
     approveFollowRequest: (id: string) => api.post<{ ok: true }>(`/users/me/follow-requests/${id}/approve`),
     rejectFollowRequest: (id: string) => api.post<{ ok: true }>(`/users/me/follow-requests/${id}/reject`),

@@ -7,7 +7,7 @@ import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import type { RemoteActor } from "@/db/schema.ts";
-import { articleLanguage, isPubliclyAddressed } from "@/federation/article.ts";
+import { articleAiAssisted, articleLanguage, isPubliclyAddressed } from "@/federation/article.ts";
 import { getFederation } from "@/federation/mod.ts";
 import { runOutbound } from "@/federation/outboundGuard.ts";
 import { extractHandleHost, isBlockedHandle, isHostAllowed } from "@/federation/ssrf.ts";
@@ -179,6 +179,7 @@ export async function fetchOutboxPosts(handle: string, remoteActorId: string): P
           // before store (same as the inbox Create path).
           contentHtml: sanitizePostHtml(text(obj.content)),
           apType: "Article",
+          aiAssisted: await articleAiAssisted(obj),
           language: articleLanguage(obj),
           createdAt: obj.published ? new Date(obj.published.epochMilliseconds) : undefined,
         });
