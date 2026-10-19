@@ -1,4 +1,4 @@
-import { goto } from "$app/navigation";
+import { goto, invalidateAll } from "$app/navigation";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { get } from "svelte/store";
@@ -194,6 +194,52 @@ test("a moderator's delete can notify the author", async () => {
   const req = await answerConfirm({ ok: true, notify: true });
   expect(req.notify?.label).toBe("Notify the author by email.");
   await waitFor(() => expect(api.calls.at(-1)?.path).toBe(`/api/posts/${POST_ID}?notify=true`));
+});
+
+test.each([
+  ["moderator", moderator],
+  ["admin", { ...reader, isAdmin: true }],
+] as const)("a %s can confirm an AI-Assisted badge and refresh the post", async (_role, user) => {
+  setup({}, user, {}, { [`POST /api/admin/posts/${POST_ID}/ai-assisted`]: { aiAssisted: true } });
+  await openMenu();
+  expect(menuItems()).not.toContain("Edit");
+  await fireEvent.click(screen.getByRole("menuitem", { name: "Mark as AI-assisted" }));
+  const req = await answerConfirm({ ok: true });
+  expect(req.title).toBe("Mark as AI-assisted");
+  expect(req.description).toContain("hide AI-assisted posts");
+  await waitFor(() => expect(invalidateAll).toHaveBeenCalledOnce());
+  expect(api.calls.at(-1)).toMatchObject({
+    method: "POST",
+    path: `/api/admin/posts/${POST_ID}/ai-assisted`,
+    body: undefined,
+  });
+});
+
+test.each([{ aiAssisted: true }, { remote: true }])("the moderator action is hidden for %o", async (p) => {
+  setup(p, moderator);
+  await openMenu();
+  expect(menuItems()).not.toContain("Mark as AI-assisted");
+});
+
+test("cancelling an AI-Assisted badge makes no request", async () => {
+  setup({}, moderator);
+  await openMenu();
+  await fireEvent.click(screen.getByRole("menuitem", { name: "Mark as AI-assisted" }));
+  await answerConfirm({ ok: false });
+  expect(api.calls).toHaveLength(0);
+  expect(invalidateAll).not.toHaveBeenCalled();
+});
+
+test("a failed badge request shows the error and keeps the post unmarked", async () => {
+  setup({}, moderator, {}, { [`POST /api/admin/posts/${POST_ID}/ai-assisted`]: apiError(403, "Not allowed") });
+  await openMenu();
+  await fireEvent.click(screen.getByRole("menuitem", { name: "Mark as AI-assisted" }));
+  await answerConfirm({ ok: true });
+  await screen.findByText("Not allowed");
+  expect(screen.queryByRole("button", { name: "AI-Assisted post information" })).not.toBeInTheDocument();
+  expect(invalidateAll).not.toHaveBeenCalled();
+  await openMenu();
+  expect(screen.getByRole("menuitem", { name: "Mark as AI-assisted" })).not.toHaveAttribute("aria-disabled", "true");
 });
 
 test("a cancelled delete does nothing; a failed one is shown", async () => {

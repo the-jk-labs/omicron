@@ -27,6 +27,7 @@ const rows: Row[] = [
   ["dashboard", (e) => e.dashboard(), "GET", "/api/dashboard"],
   ["dashboard(days)", (e) => e.dashboard(7), "GET", "/api/dashboard?days=7"],
   // admin
+  ["adminMarkPostAiAssisted", (e) => e.adminMarkPostAiAssisted(ID), "POST", `/api/admin/posts/${ID}/ai-assisted`],
   ["adminSettings", (e) => e.adminSettings(), "GET", "/api/admin/settings"],
   ["setAnalytics", (e) => e.setAnalytics(true), "PUT", "/api/admin/settings/analytics", { onInstanceViews: true }],
   ["adminInstance", (e) => e.adminInstance(), "GET", "/api/admin/instance"],
