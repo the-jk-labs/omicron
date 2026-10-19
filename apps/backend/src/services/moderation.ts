@@ -545,13 +545,13 @@ export async function updateUserDetails(actorId: string, targetId: string, input
 // ── Posts (moderator) ──────────────────────────────────────────────────────
 
 // Only the disclosure changes; moderators do not gain general authoring access.
-export async function markPostAiAssisted(postId: string): Promise<void> {
+export async function setPostAiAssisted(postId: string, aiAssisted: boolean): Promise<void> {
   const row = await postsRepo.findById(postId);
   if (!row) throw notFound("Post not found.");
   if (row.post.remote) throw forbidden("Federated posts cannot be edited here.");
-  if (row.post.aiAssisted) return;
+  if (row.post.aiAssisted === aiAssisted) return;
 
-  const post = await postsRepo.update(postId, { aiAssisted: true });
+  const post = await postsRepo.update(postId, { aiAssisted });
   if (post.status === "published") {
     queue.add("federate_post", { postId, action: "update" });
   }
