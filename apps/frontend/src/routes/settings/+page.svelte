@@ -14,6 +14,7 @@
   import FeedLanguageFilter from "#lib/components/FeedLanguageFilter.svelte";
   import FollowedTagsManager from "#lib/components/FollowedTagsManager.svelte";
   import Icon, { type IconName } from "#lib/components/Icon.svelte";
+  import IdentityConnectionsManager from "#lib/components/IdentityConnectionsManager.svelte";
   import PageTitle from "#lib/components/PageTitle.svelte";
   import PasskeysManager from "#lib/components/PasskeysManager.svelte";
   import ProfileLinksEditor from "#lib/components/ProfileLinksEditor.svelte";
@@ -803,6 +804,9 @@
         <div class="mt-4">
           <WebhookTokensManager initial={data.webhookTokens} />
         </div>
+      </section>
+      <section class="rounded-card border border-border bg-background p-6">
+        <IdentityConnectionsManager />
       </section>
     </div>
   </Tabs.Content>

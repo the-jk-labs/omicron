@@ -10,6 +10,7 @@
   import Icon from "#lib/components/Icon.svelte";
   import PageTitle from "#lib/components/PageTitle.svelte";
   import Button from "#lib/components/ui/Button.svelte";
+  import { oauthReturnTo } from "#lib/oauth.js";
   import { passkeyAutofill, passkeySignInError, passkeysSupported } from "#lib/passkeys.js";
   import type { InstanceInfo } from "#lib/types.js";
 
@@ -75,7 +76,7 @@
 
   async function signedIn() {
     await refreshAll();
-    goto("/");
+    goto(oauthReturnTo(page.url.searchParams.get("returnTo")));
   }
 
   // Lets the password manager offer a saved passkey right in the username field.

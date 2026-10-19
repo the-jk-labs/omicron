@@ -120,6 +120,11 @@
 	handle @federation {
 		reverse_proxy backend:8000
 	}
+	# Server-to-server OAuth requests must never receive an Anubis challenge.
+	@identity path /api/v1/apps /api/v1/accounts/verify_credentials /oauth/token /oauth/revoke
+	handle @identity {
+		reverse_proxy backend:8000
+	}
 	handle {
 		# App (SvelteKit) branch. When the admin enables AI-scraper protection,
 		# the backend swaps the upstream below for the Anubis sidecar (which

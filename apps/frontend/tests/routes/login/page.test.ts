@@ -1,4 +1,5 @@
 import { goto, refreshAll } from "$app/navigation";
+import { page } from "$app/state";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { describe, expect, test, vi } from "vitest";
@@ -39,6 +40,20 @@ test("a username signs in by username", async () => {
   await waitFor(() =>
     expect(auth.username).toHaveBeenCalledWith({ username: "ada", password: "correct horse battery" }),
   );
+});
+
+test("login resumes OAuth consent without authorizing the application automatically", async () => {
+  const originalUrl = page.url;
+  const target = "/oauth/authorize?client_id=client&scope=read%3Aaccounts&state=opaque";
+  page.url = new URL(`http://localhost/login?returnTo=${encodeURIComponent(target)}`);
+  try {
+    auth.username.mockResolvedValue({ error: null });
+    render(LoginPage);
+    await signIn("ada");
+    await waitFor(() => expect(goto).toHaveBeenCalledWith(target));
+  } finally {
+    page.url = originalUrl;
+  }
 });
 
 test("a username typed with a leading @ signs in by username", async () => {

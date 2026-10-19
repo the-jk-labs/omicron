@@ -9,6 +9,7 @@ import { startDeletedUserSweeper } from "@/services/deletedUsers.ts";
 import { seedFederationOrigin, seedFederationRunning } from "@/services/federationState.ts";
 import { getFederationEnabled, getOrigin } from "@/services/instanceSetup.ts";
 import { completeRollover } from "@/services/jwtKeys.ts";
+import { startOAuthSweeper } from "@/services/oauthGc.ts";
 import { backfillSlugs } from "@/services/postSlugs.ts";
 import { startRemoteCacheGcSweeper } from "@/services/remoteCacheGc.ts";
 import { startScheduleSweeper } from "@/services/scheduledPosts.ts";
@@ -60,6 +61,7 @@ async function main() {
   // Erase soft-deleted accounts once their retention window ends. Same
   // database-backed pattern as the sweepers above — see services/deletedUsers.ts.
   startDeletedUserSweeper();
+  startOAuthSweeper();
 
   // srvx picks the runtime's native server (Deno.serve, Bun.serve, node:http).
   // Its graceful shutdown only closes the listener, leaving the sweepers and
