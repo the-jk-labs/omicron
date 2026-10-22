@@ -1,18 +1,26 @@
 import { goto, refreshAll } from "$app/navigation";
+import { page } from "$app/state";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, expect, test, vi } from "vitest";
 import Nav from "#lib/components/Nav.svelte";
 import { notifications } from "#lib/notifications.svelte.js";
+import { reading } from "#lib/prefs.svelte.js";
 import { theme } from "#lib/theme.svelte.js";
 import type { Notification, User } from "#lib/types.js";
-import { fakeFetch } from "../../fakeFetch";
+import { apiError, fakeFetch, type Routes } from "../../fakeFetch";
+import { post } from "../../fixtures";
 
 const signOut = vi.hoisted(() => vi.fn<() => Promise<unknown>>());
 vi.mock("#lib/auth-client.js", () => ({ authClient: { signOut } }));
 
 afterEach(() => {
   notifications.count = 0;
+  page.url = new URL("http://localhost/");
+  page.data = { user: null };
+  reading.defaultFeed = null;
+  reading.feedLangs = [];
+  reading.feedLangMode = "show";
 });
 
 const me = {
@@ -44,11 +52,13 @@ function setup(
   user: User | null = me,
   props: { minimal?: boolean; appName?: string } = {},
   items: Notification[] = [],
+  routes: Routes = {},
 ) {
   api = fakeFetch({
     "GET /api/notifications": { items, nextCursor: null },
     "POST /api/notifications/read": { ok: true },
     "*": { ok: true },
+    ...routes,
   });
   vi.stubGlobal("fetch", api.fetch);
   return render(Nav, { props: { user, ...props } });
@@ -73,7 +83,123 @@ test("the minimal nav is just the logo and the theme toggle", () => {
   setup(me, { minimal: true });
   expect(screen.queryByRole("link", { name: "Search" })).toBe(null);
   expect(screen.queryByRole("button", { name: "Account menu" })).toBe(null);
+  expect(screen.queryByRole("button", { name: "Random post" })).toBe(null);
   expect(screen.getByRole("button", { name: "Toggle dark mode" })).toBeInTheDocument();
+});
+
+test.for(["local", "global"])("the dice open a random %s post with live language filters", async (scope) => {
+  page.url = new URL(`http://localhost/?tab=${scope}`);
+  reading.feedLangs = ["en", "az"];
+  setup(me, {}, [], { "GET /api/posts/random": { post: post() } });
+  await fireEvent.click(screen.getByRole("button", { name: "Random post" }));
+  await waitFor(() => expect(goto).toHaveBeenCalledWith("/@ada/hello-world"));
+  expect(api.calls.some((c) => c.path === `/api/posts/random?scope=${scope}&langMode=show&langs=en%2Caz`)).toBe(true);
+
+  reading.feedLangs = ["tr"];
+  reading.feedLangMode = "hide";
+  await fireEvent.click(screen.getByRole("button", { name: "Random post" }));
+  await waitFor(() =>
+    expect(api.calls.some((c) => c.path === `/api/posts/random?scope=${scope}&langMode=hide&langs=tr`)).toBe(true),
+  );
+});
+
+test("For you rolls without a language filter and keeps its scope on an article", async () => {
+  reading.feedLangs = ["en"];
+  setup(me, {}, [], { "GET /api/posts/random": { post: post() } });
+  const button = screen.getByRole("button", { name: "Random post" });
+  await fireEvent.click(button);
+  await waitFor(() => expect(goto).toHaveBeenCalledWith("/@ada/hello-world"));
+  page.url = new URL("http://localhost/@ada/hello-world");
+  await fireEvent.click(button);
+  await waitFor(() => expect(api.calls.filter((c) => c.path === "/api/posts/random?scope=for-you")).toHaveLength(2));
+});
+
+test("switching tabs changes the next roll, and article navigation preserves that scope", async () => {
+  setup(me, {}, [], { "GET /api/posts/random": { post: post() } });
+  page.url = new URL("http://localhost/?tab=local");
+  const button = screen.getByRole("button", { name: "Random post" });
+  await fireEvent.click(button);
+  await waitFor(() => expect(goto).toHaveBeenCalledWith("/@ada/hello-world"));
+  page.url = new URL("http://localhost/@ada/hello-world");
+  await fireEvent.click(button);
+  await waitFor(() => expect(api.calls.filter((c) => c.path === "/api/posts/random?scope=local")).toHaveLength(2));
+});
+
+test("a remote random post opens its on-instance permalink", async () => {
+  setup(me, {}, [], {
+    "GET /api/posts/random": {
+      post: post({
+        remote: true,
+        slug: null,
+        author: {
+          id: "remote",
+          username: "writer@remote.example",
+          displayName: "Writer",
+          avatarUrl: null,
+          remote: true,
+        },
+      }),
+    },
+  });
+  await fireEvent.click(screen.getByRole("button", { name: "Random post" }));
+  await waitFor(() => expect(goto).toHaveBeenCalledWith("/@writer@remote.example/9e962281"));
+});
+
+test("away from Home the dice fall back to the saved default feed", async () => {
+  page.url = new URL("http://localhost/settings");
+  reading.defaultFeed = "local";
+  setup(me, {}, [], { "GET /api/posts/random": { post: post() } });
+  await fireEvent.click(screen.getByRole("button", { name: "Random post" }));
+  await waitFor(() => expect(api.calls.some((c) => c.path === "/api/posts/random?scope=local")).toBe(true));
+});
+
+test("the dice use the server-selected home tab when the URL has no override", async () => {
+  page.data = { user: null, tab: "global" } as typeof page.data;
+  reading.defaultFeed = "local";
+  setup(me, {}, [], { "GET /api/posts/random": { post: null } });
+  await fireEvent.click(screen.getByRole("button", { name: "Random post" }));
+  await screen.findByRole("status");
+  expect(api.calls.some((c) => c.path === "/api/posts/random?scope=global")).toBe(true);
+});
+
+test("no matches and server failures leave the reader in place and allow retrying", async () => {
+  let attempts = 0;
+  setup(me, {}, [], {
+    "GET /api/posts/random": () =>
+      ++attempts === 1 ? Response.json({ post: null }) : apiError(503, "Please try again."),
+  });
+  const button = screen.getByRole("button", { name: "Random post" });
+  await fireEvent.click(button);
+  expect(await screen.findByRole("status")).toHaveTextContent("No posts match your current feed filters.");
+  expect(button).toBeEnabled();
+  await fireEvent.click(button);
+  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Please try again."));
+  expect(button).toBeEnabled();
+  expect(goto).not.toHaveBeenCalled();
+});
+
+test("the dice disable while loading to prevent duplicate rolls", async () => {
+  let resolve!: (value: Response) => void;
+  setup(me, {}, [], {
+    "GET /api/posts/random": () =>
+      new Promise<Response>((done) => {
+        resolve = done;
+      }),
+  });
+  const button = screen.getByRole("button", { name: "Random post" });
+  await fireEvent.click(button);
+  expect(button).toBeDisabled();
+  await fireEvent.click(button);
+  expect(api.calls.filter((c) => c.path.startsWith("/api/posts/random"))).toHaveLength(1);
+  resolve(Response.json({ post: post() }));
+  await waitFor(() => expect(button).toBeEnabled());
+});
+
+test("the signed-in header has no duplicate Write action", async () => {
+  setup();
+  expect(screen.queryByRole("link", { name: "Write" })).toBe(null);
+  await openMenu("Account menu");
+  expect(screen.getByRole("menuitem", { name: "Write an article" })).toBeInTheDocument();
 });
 
 test("the theme button toggles the theme", async () => {

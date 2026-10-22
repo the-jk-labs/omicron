@@ -35,6 +35,7 @@ import {
   ownCounts,
   pageOf,
   pageOfDue,
+  randomPost,
   relatedPosts,
   resolveTags,
   trending,
@@ -71,6 +72,27 @@ function queued(name: string) {
     .mock.calls.filter(([n]) => n === name)
     .map(([, p]) => p);
 }
+
+describe("randomPost", () => {
+  test.for(["local", "global"] as const)("%s forwards the viewer and language filter", async (scope) => {
+    const row = postWithAuthor();
+    const filter = { mode: "show" as const, langs: ["en"] };
+    vi.mocked(postsRepo.findRandom).mockResolvedValue(row);
+    expect(await randomPost(scope, "me", filter)).toBe(row);
+    expect(postsRepo.findRandom).toHaveBeenCalledWith(scope, "me", filter);
+  });
+
+  test("For you ignores language, just like the home feed", async () => {
+    vi.mocked(postsRepo.findRandom).mockResolvedValue(null);
+    expect(await randomPost("for-you", "me", { mode: "hide", langs: ["en"] })).toBe(null);
+    expect(postsRepo.findRandom).toHaveBeenCalledWith("for-you", "me", null);
+  });
+
+  test("For you requires a viewer", () => {
+    expect(() => randomPost("for-you")).toThrow("You must be signed in.");
+    expect(postsRepo.findRandom).not.toHaveBeenCalled();
+  });
+});
 
 describe("normalizeSummary", () => {
   test.for([null, undefined, "", "   \n "])("%j means no summary", (raw) => {

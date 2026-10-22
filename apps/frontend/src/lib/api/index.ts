@@ -1,5 +1,6 @@
 import type { Passkey } from "@better-auth/passkey/client";
 import type { Session } from "better-auth";
+import type { FeedTab } from "#lib/prefs.svelte.js";
 import type {
   AccessRule,
   AccessRuleInput,
@@ -54,7 +55,7 @@ export type LangFilter = { langMode: "show" | "hide"; langs: string };
 
 // Builds the `?scope=&cursor=&langMode=&langs=` query string for the public
 // timelines, omitting whatever isn't set.
-function timelineQuery(cursor?: string | null, langFilter?: LangFilter | null, scope?: "local"): string {
+function timelineQuery(cursor?: string | null, langFilter?: LangFilter | null, scope?: FeedTab): string {
   const params = new URLSearchParams();
   if (scope) params.set("scope", scope);
   if (cursor) params.set("cursor", cursor);
@@ -309,6 +310,8 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       api.get<Page<Post>>(`/posts${timelineQuery(cursor, langFilter)}`),
     localTimeline: (cursor?: string | null, langFilter?: LangFilter | null) =>
       api.get<Page<Post>>(`/posts${timelineQuery(cursor, langFilter, "local")}`),
+    randomPost: (scope: FeedTab, langFilter?: LangFilter | null) =>
+      api.get<{ post: Post | null }>(`/posts/random${timelineQuery(null, langFilter, scope)}`),
     trendingPosts: () => api.get<{ items: Post[] }>("/posts/trending"),
     post: (id: string) => api.get<{ post: Post }>(`/posts/${id}`),
     // A post by its permalink. The backend resolves the author's live slug, a

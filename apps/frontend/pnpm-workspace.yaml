@@ -10,5 +10,6 @@ skills:
 overrides:
   cookie@<0.7.0: "^0.7.0"
   devalue@<5.9.3: "^5.9.3"
+  markdown-it@>=14.0.0 <14.3.3: 14.3.3
 patchedDependencies:
   emoji-picker-element@1.29.1: patches/emoji-picker-element@1.29.1.patch

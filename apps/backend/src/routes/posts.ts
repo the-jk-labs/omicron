@@ -115,6 +115,17 @@ postRoutes.get("/trending", async (c) => {
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null) });
 });
 
+postRoutes.get("/random", async (c) => {
+  const viewer = c.get("user");
+  const rawScope = c.req.query("scope");
+  const scope = rawScope === "for-you" || rawScope === "local" ? rawScope : "global";
+  if (scope === "for-you") requireUser(c);
+  const langFilter = parseLanguageFilter(c.req.query("langMode"), c.req.query("langs"));
+  const row = await postsService.randomPost(scope, viewer?.id ?? null, langFilter);
+  c.header("Cache-Control", "no-store");
+  return c.json({ post: row ? await enrichPost(row, viewer?.id ?? null) : null });
+});
+
 // Count an on-instance view of a local published post. Fire-and-forget and
 // privacy-gated inside the service (DNT/GPC, bots, instance opt-out); it must
 // never delay or fail serving the page. Drafts and remote posts are skipped.

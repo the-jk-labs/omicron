@@ -2,8 +2,9 @@
 <script lang="ts">
   import { PUBLIC_APP_NAME } from "$app/env/public";
   import { goto } from "$app/navigation";
+  import { page } from "$app/state";
   import { DropdownMenu } from "bits-ui";
-  import { endpoints } from "#lib/api/index.js";
+  import { ApiError, endpoints } from "#lib/api/index.js";
   import logo from "#lib/assets/omicron.svg";
   import { authClient } from "#lib/auth-client.js";
   import Icon from "#lib/components/Icon.svelte";
@@ -17,7 +18,9 @@
   import Avatar from "#lib/components/ui/Avatar.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { timeAgo } from "#lib/format.js";
+  import { postPath } from "#lib/links.js";
   import { notifications } from "#lib/notifications.svelte.js";
+  import { type FeedTab, feedTab, reading } from "#lib/prefs.svelte.js";
   import { theme } from "#lib/theme.svelte.js";
   import { timeZone } from "#lib/timezone.svelte.js";
   import type { Notification, User } from "#lib/types.js";
@@ -42,6 +45,41 @@
     await goto("/", { refreshAll: true });
   }
 
+  let lastFeed = $state<FeedTab | null>(null);
+  let randomLoading = $state(false);
+  let randomMessage = $state("");
+
+  function homeFeed(): FeedTab {
+    return (
+      feedTab(page.url.searchParams.get("tab")) ??
+      feedTab((page.data as { tab?: string }).tab) ??
+      reading.defaultFeed ??
+      "for-you"
+    );
+  }
+
+  // Keep rolling within the chosen feed after navigating from it to an article.
+  $effect(() => {
+    if (page.url.pathname === "/") lastFeed = homeFeed();
+  });
+
+  async function openRandomPost() {
+    if (randomLoading) return;
+    randomLoading = true;
+    randomMessage = "";
+    const scope = page.url.pathname === "/" ? homeFeed() : (lastFeed ?? reading.defaultFeed ?? "for-you");
+    lastFeed = scope;
+    try {
+      const { post } = await endpoints().randomPost(scope, scope === "for-you" ? null : reading.feedLangQuery());
+      if (post) await goto(postPath(post));
+      else randomMessage = "No posts match your current feed filters.";
+    } catch (e) {
+      randomMessage = e instanceof ApiError ? e.message : "Couldn't open a random post. Try again.";
+    } finally {
+      randomLoading = false;
+    }
+  }
+
   // Verbatim Bits UI docs DropdownMenu.Item class.
   const itemClass =
     "rounded-button data-highlighted:bg-muted ring-0! ring-transparent! flex h-10 w-full cursor-pointer select-none items-center gap-2.5 py-3 pl-3 pr-1.5 text-sm font-medium focus-visible:outline-hidden";
@@ -55,10 +93,11 @@
   async function loadNotifications() {
     notifLoading = true;
     try {
-      const page = await endpoints().notifications();
-      notifItems = page.items;
+      const notificationPage = await endpoints().notifications();
+      notifItems = notificationPage.items;
       // The polled count can lag; an unread row on screen is reason enough.
-      if (notifications.count > 0 || page.items.some((n) => !n.read)) await endpoints().markAllNotificationsRead();
+      if (notifications.count > 0 || notificationPage.items.some((n) => !n.read))
+        await endpoints().markAllNotificationsRead();
       notifications.clear();
     } catch {
       // Leave any previously loaded items; the bell stays usable.
@@ -203,8 +242,16 @@
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
 
-        <Button href="/compose" variant="ghost" class="hidden text-muted-foreground sm:inline-flex" aria-label="Write">
-          <Icon name="compose" size={18} /> <span class="hidden sm:inline">Write</span>
+        <Button
+          onclick={openRandomPost}
+          variant="icon"
+          class="border-0! shadow-none!"
+          aria-label="Random post"
+          title="Random post from your current feed"
+          aria-busy={randomLoading}
+          disabled={randomLoading}
+        >
+          <Icon name="dices" size={18} />
         </Button>
 
         <DropdownMenu.Root>
@@ -268,4 +315,7 @@
       {/if}
     </div>
   </nav>
+  {#if randomMessage}
+    <p role="status" class="mx-auto max-w-6xl px-4 pb-3 text-right text-sm text-muted-foreground">{randomMessage}</p>
+  {/if}
 </header>
