@@ -19,6 +19,7 @@
   import Code from "@lucide/svelte/icons/code";
   import Code2 from "@lucide/svelte/icons/code-2";
   import Copy from "@lucide/svelte/icons/copy";
+  import Dices from "@lucide/svelte/icons/dices";
   import Eye from "@lucide/svelte/icons/eye";
   // Single source of truth for icons. Every icon in the app comes from here, so
   // the icon set can be swapped or upgraded in ONE place. Add new icons to this
@@ -98,6 +99,7 @@
     login: LogIn,
     logout: LogOut,
     compose: PenLine,
+    dices: Dices,
     user: UserIcon,
     follow: UserPlus,
     unfollow: UserMinus,

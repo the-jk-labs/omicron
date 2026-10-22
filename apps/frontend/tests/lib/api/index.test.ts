@@ -217,6 +217,13 @@ const rows: Row[] = [
   ["undoEmailChange", (e) => e.undoEmailChange("tok"), "POST", "/api/email-change/undo", { token: "tok" }],
   // feeds + posts
   ["feed", (e) => e.feed("c"), "GET", "/api/feed?cursor=c"],
+  ["randomPost", (e) => e.randomPost("for-you"), "GET", "/api/posts/random?scope=for-you"],
+  [
+    "randomPost(filtered)",
+    (e) => e.randomPost("local", { langMode: "hide", langs: "en,az" }),
+    "GET",
+    "/api/posts/random?scope=local&langMode=hide&langs=en%2Caz",
+  ],
   ["globalTimeline", (e) => e.globalTimeline(), "GET", "/api/posts"],
   [
     "globalTimeline(filter)",
