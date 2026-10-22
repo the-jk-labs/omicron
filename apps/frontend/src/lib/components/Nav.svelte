@@ -247,7 +247,7 @@
           variant="icon"
           class="border-0! shadow-none!"
           aria-label="Random post"
-          title="Random post from your current feed"
+          title="Random post"
           aria-busy={randomLoading}
           disabled={randomLoading}
         >
