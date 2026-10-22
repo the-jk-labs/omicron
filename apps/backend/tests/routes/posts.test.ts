@@ -42,6 +42,7 @@ describe("auth guards", () => {
     ["GET", "/api/posts/drafts"],
     ["GET", "/api/posts/mine"],
     ["GET", "/api/posts/mine/counts"],
+    ["GET", "/api/posts/random?scope=for-you"],
     ["POST", "/api/posts/p1/like"],
     ["DELETE", "/api/posts/p1/like"],
     ["POST", "/api/posts/p1/recommend"],
@@ -124,6 +125,32 @@ describe("timelines", () => {
 });
 
 describe("reading a post", () => {
+  test("random posts use the viewer, scope and language filter without caching", async () => {
+    api.signIn();
+    vi.mocked(postsService.randomPost).mockResolvedValue(row);
+    const res = await api.request("/api/posts/random?scope=local&langMode=hide&langs=az,en");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(await res.json()).toEqual({ post: { id: "p1" } });
+    expect(postsService.randomPost).toHaveBeenCalledWith("local", "me", { mode: "hide", langs: ["az", "en"] });
+    expect(postsService.getPost).not.toHaveBeenCalled();
+  });
+
+  test("random defaults to global and returns null when nothing matches", async () => {
+    vi.mocked(postsService.randomPost).mockResolvedValue(null);
+    const res = await api.request("/api/posts/random");
+    expect(await res.json()).toEqual({ post: null });
+    expect(postsService.randomPost).toHaveBeenCalledWith("global", null, null);
+    expect(enrichPost).not.toHaveBeenCalled();
+  });
+
+  test("random accepts the personalized feed for signed-in readers", async () => {
+    api.signIn();
+    vi.mocked(postsService.randomPost).mockResolvedValue(row);
+    await api.request("/api/posts/random?scope=for-you");
+    expect(postsService.randomPost).toHaveBeenCalledWith("for-you", "me", null);
+  });
+
   test("by id, counting the view and issuing an anonymous reader cookie", async () => {
     const res = await api.request("/api/posts/p1", { headers: { "user-agent": BROWSER } });
     expect(await res.json()).toEqual({ post: { id: "p1" } });

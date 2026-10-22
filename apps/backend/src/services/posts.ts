@@ -589,6 +589,15 @@ export function localTimeline(
   return diversifiedTimelinePage((c, limit) => postsRepo.listLocal(viewerId, c, limit, langFilter), cursor);
 }
 
+export function randomPost(
+  scope: postsRepo.RandomPostScope,
+  viewerId: string | null = null,
+  langFilter: LanguageFilter | null = null,
+) {
+  if (scope === "for-you" && !viewerId) throw forbidden("You must be signed in.");
+  return postsRepo.findRandom(scope, viewerId, scope === "for-you" ? null : langFilter);
+}
+
 // The discovery rail's "Trending" list: a short, unpaginated set of
 // the most engaged posts from the last 30 days, filtered by the viewer's
 // mutes/blocks. Rank = (likes×1 + comments×2, without self-votes) /

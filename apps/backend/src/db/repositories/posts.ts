@@ -17,7 +17,17 @@ import {
 } from "drizzle-orm";
 import { union } from "drizzle-orm/pg-core";
 import { db } from "@/db/client.ts";
-import { type NewPost, posts, postSlugHistory, postTags, remoteActors, tags, users } from "@/db/schema.ts";
+import { authoredFeedSource, recommendedFeedSource } from "@/db/repositories/feedSources.ts";
+import {
+  type NewPost,
+  posts,
+  postSlugHistory,
+  postTags,
+  recommendations,
+  remoteActors,
+  tags,
+  users,
+} from "@/db/schema.ts";
 import type { LanguageFilter } from "@/lib/languages.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
 
@@ -531,6 +541,50 @@ function languageFilter(filter: LanguageFilter | null | undefined) {
     : or(isNull(posts.language), inArray(posts.language, filter.langs));
 }
 
+function timelineConditions(viewerId: string | null, langFilter: LanguageFilter | null, local: boolean) {
+  return and(
+    local ? eq(posts.remote, false) : eq(posts.apType, "Article"),
+    isPublished,
+    notSuspended,
+    notHidden(viewerId),
+    visibleToViewer(viewerId),
+    aiAssistedVisibleToViewer(viewerId),
+    languageFilter(langFilter),
+  );
+}
+
+export type RandomPostScope = "for-you" | "local" | "global";
+
+export async function findRandom(
+  scope: RandomPostScope,
+  viewerId: string | null,
+  langFilter: LanguageFilter | null,
+): Promise<PostWithAuthor | null> {
+  if (scope === "for-you" && !viewerId) return null;
+  let conditions = timelineConditions(viewerId, langFilter, scope === "local");
+  if (scope === "for-you" && viewerId) {
+    const recommended = db
+      .select({ postId: recommendations.postId })
+      .from(recommendations)
+      .where(recommendedFeedSource(viewerId));
+    conditions = and(
+      timelineConditions(viewerId, null, false),
+      or(authoredFeedSource(viewerId), inArray(posts.id, recommended)),
+    );
+  }
+  // One random key per eligible post, across the full archive, not a recent page.
+  // The subquery samples IDs only; repeated recommendations cannot weight a post.
+  const selected = db
+    .select({ id: posts.id })
+    .from(posts)
+    .leftJoin(users, eq(posts.authorId, users.id))
+    .where(conditions)
+    .orderBy(sql`random()`)
+    .limit(1);
+  const [row] = await selectPosts().where(inArray(posts.id, selected));
+  return row ?? null;
+}
+
 // Global (federated) feed: blog-type content across the whole fediverse,
 // local + remote. Filtered to "Article" so microblog Notes (Mastodon,
 // Pixelfed, …) are excluded. Remote posts here are ones already cached on this
@@ -543,18 +597,7 @@ export function listGlobal(
   langFilter: LanguageFilter | null = null,
 ) {
   return selectPosts()
-    .where(
-      and(
-        eq(posts.apType, "Article"),
-        isPublished,
-        notSuspended,
-        notHidden(viewerId),
-        visibleToViewer(viewerId),
-        aiAssistedVisibleToViewer(viewerId),
-        languageFilter(langFilter),
-        beforeCursor(cursor),
-      ),
-    )
+    .where(and(timelineConditions(viewerId, langFilter, false), beforeCursor(cursor)))
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
 }
@@ -667,18 +710,7 @@ export function listLocal(
   langFilter: LanguageFilter | null = null,
 ) {
   return selectPosts()
-    .where(
-      and(
-        eq(posts.remote, false),
-        isPublished,
-        notSuspended,
-        notHidden(viewerId),
-        visibleToViewer(viewerId),
-        aiAssistedVisibleToViewer(viewerId),
-        languageFilter(langFilter),
-        beforeCursor(cursor),
-      ),
-    )
+    .where(and(timelineConditions(viewerId, langFilter, true), beforeCursor(cursor)))
     .orderBy(desc(posts.createdAt), desc(posts.id))
     .limit(limit + 1);
 }
@@ -898,30 +930,12 @@ export function listFeed(userId: string, cursor: Cursor | null, limit = DEFAULT_
   // branch is not — it matches on a tag anyone can apply, so without
   // `visibleToViewer` a private author's post reaches every reader who follows
   // one of its tags.
-  const followedLocal = sql`(
-    select followee_id from follows
-    where follower_id = ${userId} and followee_id is not null and approved = true
-  )`;
-  const followedRemote = sql`(
-    select remote_followee_id from follows
-    where follower_id = ${userId} and remote_followee_id is not null and approved = true
-  )`;
-  const followedTagPosts = sql`(
-    select pt.post_id from post_tags pt
-    join tag_follows tf on tf.tag_id = pt.tag_id
-    where tf.user_id = ${userId}
-  )`;
   return selectPosts()
     .where(
       and(
         eq(posts.apType, "Article"),
         isPublished,
-        or(
-          eq(posts.authorId, userId),
-          sql`${posts.authorId} in ${followedLocal}`,
-          sql`${posts.remoteActorId} in ${followedRemote}`,
-          sql`${posts.id} in ${followedTagPosts}`,
-        ),
+        authoredFeedSource(userId),
         notSuspended,
         notHidden(userId),
         visibleToViewer(userId),

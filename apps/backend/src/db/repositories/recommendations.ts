@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { aliasedTable, and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
+import { recommendedFeedSource } from "@/db/repositories/feedSources.ts";
 import {
   aiAssistedVisibleToViewer,
   isPublished,
@@ -150,14 +151,6 @@ export type FeedRecommendationRow = Awaited<ReturnType<typeof listFeedFor>>[numb
 // publish time, so a boost of an old post surfaces when it was boosted, the
 // way a repost does on any federated timeline.
 export function listFeedFor(userId: string, cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
-  const followedLocal = sql`(
-    select followee_id from follows
-    where follower_id = ${userId} and followee_id is not null and approved = true
-  )`;
-  const followedRemote = sql`(
-    select remote_followee_id from follows
-    where follower_id = ${userId} and remote_followee_id is not null and approved = true
-  )`;
   return db
     .select({
       post: postColumns,
@@ -181,10 +174,7 @@ export function listFeedFor(userId: string, cursor: Cursor | null, limit = DEFAU
       and(
         eq(posts.apType, "Article"),
         isPublished,
-        or(
-          sql`${recommendations.userId} in ${followedLocal}`,
-          sql`${recommendations.remoteActorId} in ${followedRemote}`,
-        ),
+        recommendedFeedSource(userId),
         notSuspended,
         notHidden(userId),
         // Gates on the *post's* author, not the recommender. The `or` above
