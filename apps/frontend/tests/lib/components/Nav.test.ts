@@ -76,6 +76,13 @@ test("the minimal nav is just the logo and the theme toggle", () => {
   expect(screen.getByRole("button", { name: "Toggle dark mode" })).toBeInTheDocument();
 });
 
+test("the signed-in header has no duplicate Write action", async () => {
+  setup();
+  expect(screen.queryByRole("link", { name: "Write" })).toBe(null);
+  await openMenu("Account menu");
+  expect(screen.getByRole("menuitem", { name: "Write an article" })).toBeInTheDocument();
+});
+
 test("the theme button toggles the theme", async () => {
   const toggle = vi.spyOn(theme, "toggle").mockImplementation(() => {});
   setup(null);

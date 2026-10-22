@@ -203,10 +203,6 @@
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
 
-        <Button href="/compose" variant="ghost" class="hidden text-muted-foreground sm:inline-flex" aria-label="Write">
-          <Icon name="compose" size={18} /> <span class="hidden sm:inline">Write</span>
-        </Button>
-
         <DropdownMenu.Root>
           <DropdownMenu.Trigger
             class="inline-flex items-center justify-center rounded-full select-none active:scale-[0.98]"
