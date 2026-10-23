@@ -71,5 +71,16 @@
         controller, imprint).
       </p>
     {/if}
+    {#if (page.data as { umami?: { websiteId: string | null } }).umami?.websiteId}
+      <h2>Optional website statistics</h2>
+      <p>
+        This instance uses <a href="https://umami.is" rel="noopener noreferrer">Umami Cloud</a> for public-page
+        statistics. The tracker and collection requests are proxied through this instance. Page paths, referrer origins,
+        browser information and your IP address are forwarded to Umami Cloud. Query strings, URL fragments, account
+        identifiers and private application pages are excluded. Do Not Track and Global Privacy Control are honoured. No
+        analytics cookies are set. See
+        <a href="https://umami.is/privacy" rel="noopener noreferrer">Umami's privacy policy</a>.
+      </p>
+    {/if}
   </div>
 </article>

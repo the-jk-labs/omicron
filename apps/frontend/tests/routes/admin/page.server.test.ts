@@ -14,6 +14,7 @@ const routes = {
   "GET /api/admin/users/deleted": listed([]),
   "GET /api/admin/instance": { appName: "Omicron" },
   "GET /api/admin/settings": { onInstanceViews: true },
+  "GET /api/admin/umami": { enabled: false, websiteId: "" },
 };
 
 test("a guest is sent to sign in", async () => {
@@ -44,7 +45,10 @@ test("the tab in ?tab= is the one loaded with the page", async () => {
     initial: { users: { users: listed([{ id: "u1" }]), deleted: listed([]) } },
   });
   expect(await load(at("settings").event)).toMatchObject({
-    initial: { instance: { identity: { appName: "Omicron" }, settings: { onInstanceViews: true } } },
+    initial: {
+      instance: { identity: { appName: "Omicron" }, settings: { onInstanceViews: true } },
+      umami: { enabled: false, websiteId: "" },
+    },
   });
   expect(await load(at("nonsense").event)).toMatchObject({ tab: "reports", initial: { reports: queue } });
 });

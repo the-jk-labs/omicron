@@ -7,6 +7,7 @@ import { event } from "./event";
 const base = {
   "GET /api/instance": { setupComplete: true, name: "Omicron" },
   "GET /api/seo": { indexingEnabled: false, verification: { google: "g" } },
+  "GET /api/site": { websiteId: "94db1cb1-74f4-4a40-ad6c-962362670409" },
   "GET /api/me": { user: { id: "u1", username: "ada" } },
   "GET /api/posts/trending": { items: [1, 2, 3, 4, 5, 6].map((id) => ({ id })) },
   "GET /api/users/suggested": { items: [1, 2, 3, 4].map((id) => ({ id })) },
@@ -14,6 +15,24 @@ const base = {
 };
 
 const run = (opts: Parameters<typeof event>[0]) => load(event(opts).event) as Promise<Record<string, unknown>>;
+
+test("loads optional site statistics, failing closed when unavailable", async () => {
+  expect((await run({ routes: base })).umami).toEqual({
+    websiteId: "94db1cb1-74f4-4a40-ad6c-962362670409",
+    allowed: true,
+  });
+  expect((await run({ routes: { ...base, "GET /api/site": apiError(503) } })).umami).toEqual({
+    websiteId: null,
+    allowed: true,
+  });
+});
+
+test.for(["dnt", "sec-gpc"])("%s prevents tracking without hiding the privacy disclosure", async (header) => {
+  expect((await run({ routes: base, headers: { [header]: "1" } })).umami).toEqual({
+    websiteId: "94db1cb1-74f4-4a40-ad6c-962362670409",
+    allowed: false,
+  });
+});
 
 describe("setup gate", () => {
   test("an instance that is not set up sends every page to the wizard", async () => {

@@ -40,6 +40,7 @@ export const load: LayoutServerLoad = async ({ cookies, fetch, route, request })
   // Discoverability config drives the <head> verification tags + noindex. Public
   // and cheap; default to indexable if the backend hiccups.
   const seoPromise = api.seo().catch(() => ({ indexingEnabled: true, verification: {} }));
+  const umamiPromise = api.siteStatistics().catch(() => ({ websiteId: null }));
 
   const userPromise = api
     .me()
@@ -65,9 +66,13 @@ export const load: LayoutServerLoad = async ({ cookies, fetch, route, request })
   }
 
   const seo = await seoPromise;
+  const umami = {
+    ...(await umamiPromise),
+    allowed: request.headers.get("dnt") !== "1" && request.headers.get("sec-gpc") !== "1",
+  };
 
   // The feed language filter, so its card and switches render as saved.
   const feedFilter = feedFilterFrom((name) => cookies.get(name));
 
-  return { user, discover, instance, seo, timeZone, locale, feedFilter };
+  return { user, discover, instance, seo, umami, timeZone, locale, feedFilter };
 };

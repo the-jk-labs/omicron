@@ -11,6 +11,7 @@
   import Nav from "#lib/components/Nav.svelte";
   import PasskeyPrompt from "#lib/components/PasskeyPrompt.svelte";
   import SideNav from "#lib/components/SideNav.svelte";
+  import SiteStatistics from "#lib/components/SiteStatistics.svelte";
   import ConfirmDialog from "#lib/components/ui/ConfirmDialog.svelte";
   import { absoluteBanner, postCardUrl, profileCardUrl } from "#lib/cover.js";
   import { excerpt } from "#lib/format.js";
@@ -499,3 +500,4 @@
 <ConfirmDialog />
 
 <PasskeyPrompt user={data.user} onHome={page.route.id === "/"} />
+<SiteStatistics websiteId={data.umami?.allowed === false ? null : (data.umami?.websiteId ?? null)} />

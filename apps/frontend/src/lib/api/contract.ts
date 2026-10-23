@@ -45,6 +45,7 @@ import type {
   RemoteProfile,
   Tag,
   User,
+  UmamiSettings,
   WebhookToken,
 } from "#lib/types.js";
 import type {
@@ -65,6 +66,7 @@ import type {
   webhookTokenView,
 } from "@/routes/serializers.ts";
 import type { AccessRule as BackendAccessRule, testAccessRules } from "@/services/accessRules.ts";
+import type { UmamiSettings as BackendUmamiSettings } from "@/services/umami.ts";
 
 // What `c.json()` does to a serializer's return value on the way out: `Date`
 // becomes an ISO string, everything else keeps its shape. Applied to the
@@ -99,6 +101,7 @@ type Wire<F extends (...args: never[]) => unknown> = Serialized<ReturnType<F>>;
 
 type _Tag = Assert<Fits<Serialized<TagSummary>, Tag>>;
 type _AccessRule = Assert<Fits<BackendAccessRule, AccessRule>>;
+type _UmamiSettings = Assert<Fits<BackendUmamiSettings, UmamiSettings>>;
 type _AccessRuleTest = Assert<Fits<ReturnType<typeof testAccessRules>, AccessRuleTest>>;
 type _ProfileLink = Assert<Fits<Wire<typeof profileLinkView>, ProfileLink>>;
 // Reached through `postWithAuthor` rather than imported from `@/lib/cover.ts`

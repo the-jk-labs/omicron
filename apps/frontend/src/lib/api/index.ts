@@ -41,6 +41,7 @@ import type {
   PhotoProvider,
   StockPhoto,
   User,
+  UmamiSettings,
   WebhookToken,
 } from "#lib/types.js";
 // SPDX-License-Identifier: AGPL-3.0-or-later
@@ -95,6 +96,9 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     adminSettings: () => api.get<InstanceSettings>("/admin/settings"),
     setAnalytics: (onInstanceViews: boolean) =>
       api.put<InstanceSettings>("/admin/settings/analytics", { onInstanceViews }),
+    siteStatistics: () => api.get<{ websiteId: string | null }>("/site"),
+    adminUmami: () => api.get<UmamiSettings>("/admin/umami"),
+    setAdminUmami: (body: UmamiSettings) => api.put<UmamiSettings>("/admin/umami", body),
 
     // admin instance identity (name + domain + federation toggle, restart-applied)
     adminInstance: () => api.get<AdminInstance>("/admin/instance"),

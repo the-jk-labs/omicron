@@ -332,6 +332,7 @@ export type DashboardSummary = {
 
 // Moderator-tunable instance settings (admin only).
 export type InstanceSettings = { onInstanceViews: boolean };
+export type UmamiSettings = { enabled: boolean; websiteId: string };
 
 // Security controls. `anubisProtection` is the live state of the AI-scraper
 // proof-of-work wall; `anubisManaged` says whether this deployment can toggle it

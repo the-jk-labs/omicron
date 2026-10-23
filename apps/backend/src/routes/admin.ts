@@ -27,6 +27,7 @@ import * as moderation from "@/services/moderation.ts";
 import * as seo from "@/services/seo.ts";
 import * as settings from "@/services/settings.ts";
 import * as tagsService from "@/services/tags.ts";
+import * as umami from "@/services/umami.ts";
 import * as unsplash from "@/services/unsplash.ts";
 import { MAX_AVATAR_BYTES } from "@/services/users.ts";
 
@@ -51,6 +52,22 @@ adminRoutes.put(
     const { onInstanceViews } = c.req.valid("json");
     await settings.setOnInstanceViewsEnabled(onInstanceViews);
     return c.json({ onInstanceViews });
+  },
+);
+
+adminRoutes.get("/umami", async (c) => {
+  requireAdmin(c);
+  c.header("Cache-Control", "no-store");
+  return c.json(await umami.getSettings());
+});
+
+adminRoutes.put(
+  "/umami",
+  jsonBody(z.object({ enabled: z.boolean(), websiteId: z.string().trim().max(4096) })),
+  async (c) => {
+    requireAdmin(c);
+    c.header("Cache-Control", "no-store");
+    return c.json(await umami.setSettings(c.req.valid("json")));
   },
 );
 

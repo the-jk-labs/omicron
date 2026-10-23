@@ -15,6 +15,7 @@ export type AdminInitial = {
   security?: Loaded<"adminSecurity">;
   seo?: Loaded<"adminSeo">;
   unsplash?: Loaded<"adminUnsplash">;
+  umami?: Loaded<"adminUmami">;
   instance?: { identity: Loaded<"adminInstance">; settings: Loaded<"adminSettings"> };
 };
 
@@ -41,8 +42,12 @@ async function loadTab(api: Api, tab: AdminTab): Promise<AdminInitial> {
       return { unsplash: await ok(api.adminUnsplash()) };
     // "settings"
     default: {
-      const [identity, settings] = await Promise.all([ok(api.adminInstance()), ok(api.adminSettings())]);
-      return { instance: { identity, settings } };
+      const [identity, settings, umami] = await Promise.all([
+        ok(api.adminInstance()),
+        ok(api.adminSettings()),
+        ok(api.adminUmami()),
+      ]);
+      return { instance: { identity, settings }, umami };
     }
   }
 }
