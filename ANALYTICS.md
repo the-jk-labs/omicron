@@ -21,7 +21,7 @@ version must publish its source to its users.
 
 ---
 
-## The two data sources
+## The writer dashboard's two data sources
 
 A writer's dashboard is built from two clearly separated sources. They have very
 different privacy properties, so we keep them separate in the data model and in
@@ -41,7 +41,7 @@ We surface, per post and per account:
 - **Replies** — `Create`→`Note`/comment activities in reply to your post.
 - **New followers** — `Follow` activities.
 - **Federated reach** — how many remote inboxes/servers a post was successfully
-  **delivered to** from your outbox. This measures *our* sending, not anyone's
+  **delivered to** from your outbox. This measures _our_ sending, not anyone's
   reading.
 
 These already flow through Omicron's federation layer and the existing
@@ -59,7 +59,7 @@ fediverse client would show.
 
 For reads that happen **on this Omicron instance's own web pages**, we keep a
 simple view count so a writer can see roughly how many times a post was opened
-here. This is the only reader-side measurement in the system, and it is built to
+here. This is separate from the optional admin traffic dashboard below, and is built to
 the standard of privacy-preserving analytics (think Plausible/GoatCounter, not
 Google Analytics).
 
@@ -67,7 +67,7 @@ How a view is counted:
 
 1. A view counts **one reader per post, ever** — not once per day. The stored
    total is an **aggregate integer** — `(post_id, date, views)`, bucketed by the
-   day a reader was *first* counted — with **no row representing an individual
+   day a reader was _first_ counted — with **no row representing an individual
    visit**. Refreshing, re-opening, or coming back next month to the same post
    never increases the count again, so the number can't be inflated by
    reloading or by a genuinely returning reader.
@@ -106,7 +106,7 @@ resistance to casual inflation, not forensic accuracy.
 Your posts are read on Mastodon, other Omicron instances, RSS readers, and
 ActivityPub apps all over the network. Omicron has **no visibility into those
 reads and does not attempt to obtain any.** On-instance view counts only cover
-pages served by *this* instance. We consider this a feature, not a gap:
+pages served by _this_ instance. We consider this a feature, not a gap:
 surveilling the wider fediverse to inflate a number would betray the entire
 point of the platform.
 
@@ -120,15 +120,15 @@ view count.
 Regardless of operator settings, the stock software does **not**:
 
 - Store reader IP addresses, or use browser fingerprinting.
-- Set a cookie for any purpose other than recognising a returning anonymous
-  reader well enough to avoid double-counting their view of the same post; that
-  cookie holds a random value, never an IP, user-agent, or fingerprint, and is
-  itself only ever stored as a one-way hash on the server.
+- Set analytics cookies other than random first-party tokens used for post-read
+  de-duplication or, when explicitly enabled, site-traffic visitor/visit estimates.
+  Traffic tokens are never stored as identifiers: only statistical register
+  maxima are persisted. Neither kind contains an IP, user-agent or fingerprint.
 - Send any data to third-party analytics, ad networks, or external services.
 - Record per-visit event logs that could be mined later.
 - Build demographic, interest, or behavioural profiles of readers.
 - Track watch-time, scroll-depth, or read-completion of individuals.
-- Show writers a list of *who* viewed a post, or any individual reader's history.
+- Show writers a list of _who_ viewed a post, or any individual reader's history.
 
 ---
 
@@ -161,6 +161,119 @@ fediverse engagement.
 - **No writer** can see another writer's dashboard, and no writer can see
   individual reader identities.
 - **Readers** are never shown anyone's analytics.
+- **Admins** can enable and see the instance's aggregate site-traffic dashboard.
+  Moderators and ordinary writers cannot access it. It exposes no reader list.
+
+## Optional site traffic dashboard
+
+**Admin → Traffic** is a separate, first-party measurement system, disabled by
+default. It does not change the writer dashboard's lifetime post-read definition.
+Before enabling it, the operator must update their privacy notice and arrange
+any consent required by their jurisdiction. The software does not provide a
+consent-management platform. The built-in privacy page always describes this
+feature, including alongside an operator-supplied policy.
+
+### What the numbers mean
+
+- **Pageviews:** successful, visible loads and SPA navigations on the public
+  home, information, search, tag, public reading-list, profile and post pages
+  (including cached federated profiles/posts). Refreshes
+  count again. Hash/query-only changes do not. Search terms are never collected.
+- **Unique visitors:** estimated distinct browsers within the selected dates,
+  not verified people. A random HttpOnly first-party cookie lasts up to 400 days;
+  clearing cookies, blocking cookies, private browsing or changing devices can
+  count the same person again. This cookie is separate from authentication and
+  the writer dashboard's reader cookie and is not linked to an account ID.
+- **Visits:** estimated browser sessions. A separate random HttpOnly cookie
+  expires after 30 minutes without a measured pageview, and successful collection
+  renews that expiry. A visit spanning midnight is counted in each affected
+  daily bucket, but once when those days are merged for the whole period.
+- **Breakdowns:** pageviews by public path, referring hostname, country (when
+  configured), and broad device/browser/OS name. Versions, raw user agents,
+  referrer paths, query strings and fragments are not retained. Referrers are
+  per pageview, not session acquisition; internal and absent referrers share a
+  `Direct / internal` bucket.
+
+Known bots, signed-in admins/moderators, private/unpublished/withdrawn local
+content, account/admin routes, assets, APIs, federation requests and feeds are
+excluded. DNT and GPC prevent both counting and issuing traffic cookies. JavaScript
+must be available; blocked requests and unidentified bots affect accuracy. This
+measures the web audience, **not all HTTP requests**, bandwidth, cache hits or
+Cloudflare data-center traffic. It cannot reconstruct earlier traffic.
+
+### Counting without a visitor database
+
+Only `(day, dimension, value, pageviews)` aggregates are retained. The total for
+each UTC day additionally carries two 4,096-register HyperLogLog sketches, one
+for visitor tokens and one for visit tokens. Tokens are SHA-256 hashed with
+separate namespaces before a register is selected; neither the token nor its
+digest is stored. Sketches are combined by register-wise maximum to deduplicate
+returning browsers across days, months and arbitrary ranges. Daily unique counts
+are **never summed** to produce a monthly unique count. Standard error is about
+1.625%, not a guaranteed maximum error; low counts use linear-counting correction.
+This is a probabilistic aggregate, not a list of visitors or their histories.
+
+The collector sends only a pathname and referring origin, serializes SPA
+requests so the browser receives its cookies before the next measurement, and
+does not retry failed measurements. Same-origin checks, a capped request body,
+rate limiting, server-side public-content validation, and a transactional cap of
+500 values per dimension per day limit abuse and storage growth. Overflow goes
+to `Other (daily limit)`. Like any browser-based analytics, this is not a fraud
+detection system: a determined client can forge events or clear cookies.
+
+Daily aggregates are retained for **730 days**, pruned daily, including while
+collection is disabled. Queries cover 1–365 inclusive UTC dates, with the adjacent
+equal-length period as comparison. Today and the current month are incomplete;
+monthly groups at range boundaries can be partial. Missing collection history
+must not be mistaken for zero real-world traffic. Turning collection off leaves
+historical aggregates readable and stops new measurements; previously issued
+browser cookies remain until they expire or the browser removes them.
+
+### Optional local geography
+
+Set `TRAFFIC_GEOIP_PATH` to a local MaxMind-compatible Country/City `.mmdb` file.
+No external IP lookup is performed, and no IP or precise location is retained.
+Only `country.iso_code` is aggregated. Without a readable database, the dashboard
+explains that geography is unavailable, rather than inventing country figures.
+Unknown historical countries cannot be backfilled. Database initialization
+failures disable geography until restart; atomic replacements of a successfully
+loaded database are watched automatically.
+
+In Compose, mount an operator-managed database directory read-only using a
+separate override file, for example:
+
+```yaml
+services:
+  backend:
+    volumes:
+      - ./geoip:/data/geoip:ro
+```
+
+Then set `TRAFFIC_GEOIP_PATH=/data/geoip/country.mmdb` in `.env` and recreate the
+backend with that override. Acquire and update the database under its provider's
+license; Omicron does not download it. The trusted proxy chain must forward the
+real connection address correctly. A CDN/proxy address otherwise locates that
+proxy, not the visitor. Client-supplied country headers are never used. Country
+is an approximate network location, affected by VPNs, not a claim of residence.
+
+### API and deployment
+
+- `POST /api/traffic/pageview`: same-origin browser collection, no sign-in
+  required; `{ path, referrer? }`. Accepted/skipped events return `204`, malformed
+  bodies `400`, oversized bodies `413`, throttled requests `429`. Storage failure
+  is best-effort and does not interrupt navigation.
+- `GET /api/admin/traffic?from=YYYY-MM-DD&to=YYYY-MM-DD`: admin-only aggregate
+  totals, previous-period totals, zero-filled daily and merged monthly series,
+  top breakdowns, and measurement status. Defaults to the last 30 UTC dates.
+- `PUT /api/admin/traffic/settings`: admin-only `{ enabled: boolean }`.
+- `/api/instance` adds `trafficEnabled`, so pages do not send measurements while
+  collection is disabled. Already-open pages adopt enablement on their next
+  layout reload; the server always enforces disabling immediately.
+
+The additive `0044_daily_gateway.sql` migration creates only `traffic_buckets`
+and runs at startup. Take and verify the normal instance backup before deploying
+any migration. No Caddy changes, external analytics account, or extra service is
+required. Geography alone needs the optional database mount and backend restart.
 
 ## Retention
 
@@ -192,12 +305,13 @@ For contributors, the implementation follows Omicron's layered architecture:
 
 ## Summary
 
-| | Collected? | Identifiable? | Opt-out |
-| --- | --- | --- | --- |
-| Fediverse likes / boosts / replies / follows | Yes (public activities) | Only the public actor that acted | n/a — public by nature |
-| Federated reach (deliveries sent) | Yes | No | n/a |
-| On-instance views (1 reader/post, lifetime, aggregate) | Yes, if enabled | No | Moderator switch + DNT/GPC |
-| Anonymous reader cookie (random value, hashed before storage) | Yes, if enabled | No — one-way hash only | Moderator switch + DNT/GPC |
-| Reader IPs, fingerprints, profiles | **Never** | — | — |
+|                                                                | Collected?                  | Identifiable?                    | Opt-out                    |
+| -------------------------------------------------------------- | --------------------------- | -------------------------------- | -------------------------- |
+| Fediverse likes / boosts / replies / follows                   | Yes (public activities)     | Only the public actor that acted | n/a — public by nature     |
+| Federated reach (deliveries sent)                              | Yes                         | No                               | n/a                        |
+| On-instance views (1 reader/post, lifetime, aggregate)         | Yes, if enabled             | No                               | Moderator switch + DNT/GPC |
+| Anonymous reader cookie (random value, hashed before storage)  | Yes, if enabled             | No — one-way hash only           | Moderator switch + DNT/GPC |
+| Reader IPs, fingerprints, profiles                             | **Never**                   | —                                | —                          |
+| Site traffic (daily aggregate counters + cardinality sketches) | Only if an admin enables it | No visitor list or event log     | Admin switch + DNT/GPC     |
 
 We count what happened. We never track who you are.
