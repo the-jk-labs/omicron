@@ -115,6 +115,20 @@ test("lists accounts with their roles and the total", async () => {
   expect(screen.getByText("No deleted accounts.")).toBeInTheDocument();
 });
 
+test("filters and account actions adapt to narrow screens", async () => {
+  setup({ "GET /api/admin/users": page([bob]) });
+  await screen.findByText("1 account total");
+
+  const filters = screen.getByRole("group", { name: "Filter accounts" });
+  expect(filters).toHaveClass("grid", "grid-cols-1");
+  expect(filters.firstElementChild).toHaveClass("flex-col");
+
+  const row = screen.getByRole("link", { name: "Bob" }).closest("li");
+  const layout = row?.firstElementChild;
+  expect(layout).toHaveClass("grid", "sm:flex");
+  expect(layout?.lastElementChild).toHaveClass("col-start-2", "col-span-2");
+});
+
 test("the viewer's own row and, for a moderator, staff rows carry no actions", async () => {
   setup(
     { "GET /api/admin/users": page([user({ id: "me", username: "me" }), user({ isAdmin: true }), bob]) },

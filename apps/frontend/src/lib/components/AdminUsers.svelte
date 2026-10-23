@@ -902,7 +902,7 @@
     },
   ]);
   const segItemClass =
-    "h-7 rounded-button px-2.5 text-xs font-medium text-muted-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-mini focus-visible:outline-hidden";
+    "h-7 flex-1 rounded-button px-2.5 text-xs font-medium text-muted-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-mini focus-visible:outline-hidden sm:flex-initial";
 </script>
 
 <div class="flex flex-col gap-4">
@@ -947,14 +947,18 @@
     {/if}
   </div>
 
-  <div class="flex flex-wrap items-center gap-x-5 gap-y-3" role="group" aria-label="Filter accounts">
-    <div class="flex items-center gap-2">
+  <div
+    class="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center sm:gap-x-5 sm:gap-y-3"
+    role="group"
+    aria-label="Filter accounts"
+  >
+    <div class="flex min-w-0 flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:gap-2">
       <span class="text-xs font-medium text-muted-foreground">Sort</span>
       <ToggleGroup.Root
         type="single"
         value={sort}
         onValueChange={onSortChange}
-        class="inline-flex items-center gap-0.5 rounded-input border border-input bg-background-alt p-0.5 shadow-btn"
+        class="inline-flex w-full items-center gap-0.5 rounded-input border border-input bg-background-alt p-0.5 shadow-btn sm:w-auto"
         aria-label="Sort accounts"
       >
         {#each sortOptions as o (o.value)}
@@ -965,13 +969,13 @@
       </ToggleGroup.Root>
     </div>
     {#each triFilters as f (f.label)}
-      <div class="flex items-center gap-2">
+      <div class="flex min-w-0 flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:gap-2">
         <span class="text-xs font-medium text-muted-foreground">{f.label}</span>
         <ToggleGroup.Root
           type="single"
           value={f.value}
           onValueChange={(v) => onTriChange(f, v)}
-          class="inline-flex items-center gap-0.5 rounded-input border border-input bg-background-alt p-0.5 shadow-btn"
+          class="inline-flex w-full items-center gap-0.5 rounded-input border border-input bg-background-alt p-0.5 shadow-btn sm:w-auto"
         >
           {#each f.options as o (o.value)}
             <ToggleGroup.Item value={o.value} aria-label={`${f.label}: ${o.label}`} class={segItemClass}>
@@ -995,7 +999,7 @@
     <ul class="flex flex-col divide-y divide-border">
       {#each users as u (u.id)}
         <li class="py-3">
-          <div class="flex items-center gap-3">
+          <div class="grid grid-cols-[1.75rem_2.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 sm:flex">
             <Button
               variant="plain"
               class="inline-flex size-7 shrink-0 items-center justify-center rounded-input text-muted-foreground hover:bg-muted"
@@ -1035,11 +1039,12 @@
               </p>
             </div>
             {#if u.id !== selfId && canModerateRow(u)}
-              <div class="flex shrink-0 items-center gap-2">
+              <div class="col-span-2 col-start-2 flex min-w-0 items-center gap-2 sm:col-auto sm:ml-auto sm:shrink-0">
                 {#if !u.isAdmin}
                   <Button
                     variant={u.suspended ? "outline" : "destructive"}
                     size="sm"
+                    class="flex-1 sm:flex-none"
                     disabled={busyId === u.id}
                     onclick={() => toggleSuspend(u)}
                   >
