@@ -28,7 +28,8 @@ export function trafficPath(input: string): string | null {
   if (/[?#%]/.test(path) || unsafeCharacters(path) || path.length > 300) return null;
   if (STATIC_PATHS.has(path)) return path;
   if (/^\/tags\/[^/@]+$/.test(path)) return path;
-  if (/^\/@[a-z0-9_]+(?:\/[^/]+)?$/i.test(path)) return path;
+  if (/^\/@[^/]+(?:\/[^/]+)?$/.test(path)) return path;
+  if (/^\/lists\/(?:[a-z0-9-]+-)?[a-f0-9]{8}$/i.test(path)) return path;
   return null;
 }
 

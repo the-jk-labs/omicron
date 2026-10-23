@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, eq, gte, lte, lt, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { trafficBuckets, type TrafficDimension, posts, users } from "@/db/schema.ts";
+import { trafficBuckets, type TrafficDimension, posts, users, remoteActors, readingLists } from "@/db/schema.ts";
 import { REGISTERS, type Register } from "@/lib/cardinality.ts";
 
 export const MAX_DIMENSION_VALUES = 500;
@@ -9,9 +9,44 @@ export const OTHER_VALUE = "Other (daily limit)";
 export type TrafficBreakdown = { dimension: Exclude<TrafficDimension, "total">; value: string; pageviews: number };
 
 export async function publicContentPath(path: string): Promise<boolean> {
+  const list = /^\/lists\/(?:[a-z0-9-]+-)?([a-f0-9]{8})$/i.exec(path);
+  if (list) {
+    const [row] = await db
+      .select({ id: readingLists.id })
+      .from(readingLists)
+      .innerJoin(users, eq(users.id, readingLists.userId))
+      .where(
+        and(
+          sql`left(${readingLists.id}::text, 8) = ${list[1].toLowerCase()}`,
+          eq(readingLists.visibility, "public"),
+          sql`${users.deletedAt} is null`,
+          sql`${users.suspendedAt} is null`,
+        ),
+      )
+      .limit(1);
+    return !!row;
+  }
   const match = /^\/@([^/]+)(?:\/(.+))?$/.exec(path);
   if (!match) return true;
   const slug = match[2];
+  if (match[1].includes("@")) {
+    if (slug && !/^[a-f0-9]{8}$/i.test(slug)) return false;
+    const [row] = await db
+      .select({ id: remoteActors.id })
+      .from(remoteActors)
+      .where(
+        and(
+          eq(remoteActors.handle, match[1]),
+          ...(slug
+            ? [
+                sql`exists (select 1 from ${posts} where ${posts.remoteActorId} = ${remoteActors.id} and ${posts.remote} = true and ${posts.status} = 'published' and left(${posts.id}::text, 8) = ${slug.toLowerCase()})`,
+              ]
+            : []),
+        ),
+      )
+      .limit(1);
+    return !!row;
+  }
   const postAddress =
     slug && /^[a-f0-9]{8}$/i.test(slug)
       ? sql`(${posts.slug} = ${slug} or (${posts.slug} is null and left(${posts.id}::text, 8) = ${slug.toLowerCase()}))`

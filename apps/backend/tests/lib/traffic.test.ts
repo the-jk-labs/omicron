@@ -2,12 +2,19 @@
 import { expect, test } from "vitest";
 import { referrerHost, technology, trafficBot, trafficPath, trafficRange } from "@/lib/traffic.ts";
 
-test.for(["/", "/about", "/search", "/@alice", "/@alice/hello-world", "/tags/svelte"])(
-  "accepts public path %s",
-  (path) => {
-    expect(trafficPath(path)).toBe(path);
-  },
-);
+test.for([
+  "/",
+  "/about",
+  "/search",
+  "/@alice",
+  "/@alice/hello-world",
+  "/tags/svelte",
+  "/@bob@remote.test",
+  "/@bob@remote.test/01234567",
+  "/lists/reading-01234567",
+])("accepts public path %s", (path) => {
+  expect(trafficPath(path)).toBe(path);
+});
 test.for([
   "/admin",
   "/settings",
