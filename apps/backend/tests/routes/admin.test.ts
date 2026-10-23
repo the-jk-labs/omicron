@@ -17,6 +17,7 @@ vi.mock(import("@/services/seo.ts"));
 vi.mock(import("@/services/settings.ts"));
 vi.mock(import("@/services/tags.ts"));
 vi.mock(import("@/services/unsplash.ts"));
+vi.mock(import("@/services/umami.ts"));
 import { adminRoutes } from "@/routes/admin.ts";
 import * as anubis from "@/services/anubisProtection.ts";
 import { sendTestEmail } from "@/services/email.ts";
@@ -27,6 +28,7 @@ import * as mediaService from "@/services/media.ts";
 import * as moderation from "@/services/moderation.ts";
 import * as seo from "@/services/seo.ts";
 import * as settings from "@/services/settings.ts";
+import * as umami from "@/services/umami.ts";
 
 const api = mount("/api/admin", adminRoutes);
 const UUID = "0b0e7c4e-5d2a-4e0f-9f53-5f5a4f0d3a11";
@@ -37,6 +39,8 @@ type Route = [method: string, path: string, body: unknown, level: Level];
 const routes: Route[] = [
   ["GET", "/settings", undefined, "admin"],
   ["PUT", "/settings/analytics", { onInstanceViews: true }, "admin"],
+  ["GET", "/umami", undefined, "admin"],
+  ["PUT", "/umami", { enabled: true, websiteId: UUID }, "admin"],
   ["GET", "/security", undefined, "admin"],
   ["PUT", "/security/anubis", { anubisProtection: true }, "admin"],
   ["GET", "/security/access-rules", undefined, "admin"],
@@ -179,6 +183,27 @@ describe("admin endpoints", () => {
     expect(await res.json()).toEqual({ aiAssisted: true });
     expect(moderation.setPostAiAssisted).toHaveBeenCalledExactlyOnceWith(UUID, true);
   });
+
+  test("Umami settings accept a snippet as data, not executable markup", async () => {
+    const body = {
+      enabled: true,
+      websiteId: `<script src="https://cloud.umami.is/script.js" data-website-id="${UUID}"></script>`,
+    };
+    vi.mocked(umami.setSettings).mockResolvedValue({ enabled: true, websiteId: UUID });
+    const response = await api.json("/api/admin/umami", "PUT", body);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({ enabled: true, websiteId: UUID });
+    expect(umami.setSettings).toHaveBeenCalledExactlyOnceWith(body);
+  });
+
+  test.for([{ enabled: "true", websiteId: UUID }, { enabled: true }, { enabled: true, websiteId: "x".repeat(4097) }])(
+    "rejects malformed Umami settings %o",
+    async (body) => {
+      expect((await api.json("/api/admin/umami", "PUT", body)).status).toBe(400);
+      expect(umami.setSettings).not.toHaveBeenCalled();
+    },
+  );
 
   test("removing an AI-Assisted badge delegates only the disclosure change", async () => {
     const res = await api.json(`/api/admin/posts/${UUID}/ai-assisted`, "DELETE", {

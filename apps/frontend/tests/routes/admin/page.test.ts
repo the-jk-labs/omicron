@@ -134,6 +134,7 @@ test.for([
         },
         settings: { onInstanceViews: true },
       },
+      umami: { enabled: false, websiteId: "" },
     },
   ],
 ] as const)("the %s tab uses the server's data", ([tab, path, initial]) => {

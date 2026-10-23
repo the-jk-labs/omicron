@@ -13,11 +13,9 @@ analytics here are designed around one rule:
 
 > **We count what happened. We never track who you are.**
 
-If you run your own instance, this describes the default behaviour of the
-software. Operators can turn parts of it off (see [Operator controls](#operator-controls)),
-but they cannot turn on anything described under [What we never collect](#what-we-never-collect)
-without modifying the source — and because Omicron is AGPL, any such modified
-version must publish its source to its users.
+This describes Omicron's built-in writer analytics. Operators can turn view
+counting off or separately opt into [Umami Cloud](#optional-umami-cloud), which
+has different privacy properties and is disabled by default.
 
 ---
 
@@ -117,7 +115,7 @@ view count.
 
 ## What we never collect
 
-Regardless of operator settings, the stock software does **not**:
+Omicron's built-in writer analytics do **not**:
 
 - Store reader IP addresses, or use browser fingerprinting.
 - Set a cookie for any purpose other than recognising a returning anonymous
@@ -150,6 +148,39 @@ individual writers wanting more data about readers.
 Per-instance self-hosting means each community sets its own posture: a privacy-
 maximalist instance can run with on-instance views off and show writers only
 fediverse engagement.
+
+## Optional Umami Cloud
+
+Admins can enable a separate website-statistics integration in **Admin →
+Instance → Umami Cloud**. Paste either the website ID or the Cloud tracking
+snippet, enable the switch and save. Only the UUID is stored: pasted HTML is
+never executed and cannot choose an upstream server. Disable and save to stop
+collection, retaining the ID; clear the field while disabled to remove it.
+Changes apply without a restart or deployment configuration.
+
+The browser fetches `/api/site/script.js` and sends pageviews to
+`/api/site/api/send`. Omicron proxies those to the fixed Umami Cloud script and
+gateway URLs, following Umami's ad-blocker proxy guidance. Same-origin proxying
+can avoid domain blocklists, but does not guarantee that every blocker allows it.
+The script is cached server-side for one hour; collection responses are never
+cached. Disabled instances do not fetch the script or forward pageviews.
+
+Only successful public reading pages are measured: home, profiles, articles,
+tags, and the about/contact/privacy/status pages. Authentication, administration,
+editing, dashboards, search and reading lists are excluded. Query strings and
+fragments are removed. Internal referrers are limited to public paths; external
+referrers are reduced to their origins. No account IDs, identification calls,
+custom events, performance metrics or session replays are enabled. Both browser
+and HTTP DNT/GPC signals are honoured, as is `localStorage['umami.disabled']`.
+
+**Unlike built-in view counting, enabling Umami Cloud forwards visitor IP
+addresses and browser information to a third-party processor**, along with
+public page paths, titles and referrers. Umami uses these to derive anonymous
+sessions and approximate geography without analytics cookies. This data does
+not feed the writer dashboard. A disclosure appears on the instance's privacy
+page even when the operator supplies a custom policy. The operator must review
+Umami's privacy terms, update their policy and arrange any legally required
+consent before enabling it; this integration is not a consent-management system.
 
 ---
 
@@ -199,5 +230,8 @@ For contributors, the implementation follows Omicron's layered architecture:
 | On-instance views (1 reader/post, lifetime, aggregate) | Yes, if enabled | No | Moderator switch + DNT/GPC |
 | Anonymous reader cookie (random value, hashed before storage) | Yes, if enabled | No — one-way hash only | Moderator switch + DNT/GPC |
 | Reader IPs, fingerprints, profiles | **Never** | — | — |
+
+The table covers built-in writer analytics only, not the optional Umami Cloud
+integration described above.
 
 We count what happened. We never track who you are.
