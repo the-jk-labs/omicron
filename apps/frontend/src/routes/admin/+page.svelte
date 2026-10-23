@@ -72,7 +72,7 @@
   </Tabs.Content>
 
   <Tabs.Content value="users" class="mt-6">
-    <section class="rounded-card border border-border bg-background p-6">
+    <section class="rounded-card border border-border bg-background p-4 sm:p-6">
       <h2 class="text-lg font-semibold tracking-tight text-foreground">Users</h2>
       <p class="mt-1 text-sm text-muted-foreground">
         Every local account on this instance. Expand a row for detail; edit, suspend, delete, or change roles.
