@@ -309,6 +309,13 @@
       "when": 1792431414418,
       "tag": "0043_gorgeous_shape",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1792769676301,
+      "tag": "0044_daily_gateway",
+      "breakpoints": true
     }
   ]
 }

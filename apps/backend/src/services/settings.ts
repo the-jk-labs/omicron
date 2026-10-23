@@ -6,6 +6,7 @@ import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
 
 export const SETTING_KEYS = {
   analyticsOnInstanceViews: "analytics.onInstanceViews",
+  trafficEnabled: "analytics.trafficEnabled",
 } as const;
 
 // Whether this instance counts on-instance page views at all. Opt-OUT: on by
@@ -19,4 +20,13 @@ export async function onInstanceViewsEnabled(): Promise<boolean> {
 
 export function setOnInstanceViewsEnabled(enabled: boolean): Promise<void> {
   return settingsRepo.set(SETTING_KEYS.analyticsOnInstanceViews, enabled);
+}
+
+// Site-wide traffic adds cookies and must be explicitly enabled by an admin.
+export async function trafficEnabled(): Promise<boolean> {
+  return (await settingsRepo.get<boolean>(SETTING_KEYS.trafficEnabled)) === true;
+}
+
+export function setTrafficEnabled(enabled: boolean): Promise<void> {
+  return settingsRepo.set(SETTING_KEYS.trafficEnabled, enabled);
 }

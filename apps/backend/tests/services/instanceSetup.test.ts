@@ -241,6 +241,7 @@ describe("publicInfo", () => {
     seedFederationRunning(true);
     vi.mocked(getEmailMode).mockResolvedValue("smtp");
     expect(await publicInfo()).toEqual({
+      trafficEnabled: false,
       name: "My Blog",
       domain: "blog.example",
       federationEnabled: true,

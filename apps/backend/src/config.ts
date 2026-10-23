@@ -148,6 +148,7 @@ const schema = z.object({
   SESSION_SECRET: z.string().min(8),
   PORT: z.coerce.number().int().positive().default(8000),
   UPLOADS_DIR: z.string().min(1).default("./uploads"),
+  TRAFFIC_GEOIP_PATH: z.string().default(""),
 
   // Optional Redis. When set, the rate limiter, Fedify's KV + message queue, and
   // the app job queue are all backed by Redis instead of in-process memory —
@@ -274,6 +275,7 @@ function load() {
     SESSION_SECRET: resolveSessionSecret(),
     PORT: env.PORT,
     UPLOADS_DIR: env.UPLOADS_DIR,
+    TRAFFIC_GEOIP_PATH: env.TRAFFIC_GEOIP_PATH?.trim() || undefined,
     REDIS_URL: env.REDIS_URL?.trim() || undefined,
     RATE_LIMIT_ENABLED: env.RATE_LIMIT_ENABLED,
     RL_LOGIN_MAX: env.RL_LOGIN_MAX,

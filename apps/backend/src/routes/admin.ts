@@ -10,6 +10,7 @@ import {
 } from "@/db/repositories/users.ts";
 import { badRequest } from "@/lib/http.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
+import { trafficRange } from "@/lib/traffic.ts";
 import { jsonBody } from "@/lib/validate.ts";
 import { readUpload, requireAdmin, requireModerator } from "@/routes/middleware.ts";
 import { adminUserDetailView, adminUserView, deletedUserView } from "@/routes/serializers.ts";
@@ -27,10 +28,34 @@ import * as moderation from "@/services/moderation.ts";
 import * as seo from "@/services/seo.ts";
 import * as settings from "@/services/settings.ts";
 import * as tagsService from "@/services/tags.ts";
+import * as traffic from "@/services/traffic.ts";
 import * as unsplash from "@/services/unsplash.ts";
 import { MAX_AVATAR_BYTES } from "@/services/users.ts";
 
 export const adminRoutes = new Hono<AppEnv>();
+
+adminRoutes.get("/traffic", async (c) => {
+  requireAdmin(c);
+  c.header("cache-control", "no-store");
+  let range;
+  try {
+    range = trafficRange(c.req.query("from"), c.req.query("to"));
+  } catch (error) {
+    throw badRequest(error instanceof Error ? error.message : "Invalid date range.");
+  }
+  return c.json(await traffic.summary(range));
+});
+
+adminRoutes.put(
+  "/traffic/settings",
+  jsonBody(z.object({ enabled: z.boolean() }), "Expected { enabled: boolean }."),
+  async (c) => {
+    requireAdmin(c);
+    const { enabled } = c.req.valid("json");
+    await settings.setTrafficEnabled(enabled);
+    return c.json({ enabled });
+  },
+);
 
 // Instance settings an admin can read/change at runtime (admin-only).
 adminRoutes.get("/settings", async (c) => {

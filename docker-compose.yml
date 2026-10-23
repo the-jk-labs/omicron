@@ -116,6 +116,7 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       PORT: 8000
       UPLOADS_DIR: /data/uploads
+      TRAFFIC_GEOIP_PATH: ${TRAFFIC_GEOIP_PATH:-}
       # App-owned writable state (e.g. a web-UI-rotated session secret). Kept
       # separate from the read-only bootstrap `secrets` volume.
       STATE_DIR: /data/state

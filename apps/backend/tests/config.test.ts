@@ -23,6 +23,7 @@ const VARS = [
   "ALLOW_PRIVATE_FEDERATION",
   "PORT",
   "UPLOADS_DIR",
+  "TRAFFIC_GEOIP_PATH",
   "REDIS_URL",
   "RATE_LIMIT_ENABLED",
   "WEBHOOK_SECRET",
@@ -58,6 +59,11 @@ async function load() {
   return await import("@/config.ts");
 }
 
+test("loads the optional local traffic country database path from the environment", async () => {
+  vi.stubEnv("TRAFFIC_GEOIP_PATH", " /geoip/country.mmdb ");
+  expect((await load()).config.TRAFFIC_GEOIP_PATH).toBe("/geoip/country.mmdb");
+});
+
 // Boot failures call process.exit(1); turn that into a catchable error.
 function trapExit() {
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -75,6 +81,7 @@ describe("defaults", () => {
       ALLOW_PRIVATE_FEDERATION: false,
       PORT: 8000,
       UPLOADS_DIR: "./uploads",
+      TRAFFIC_GEOIP_PATH: "",
       REDIS_URL: undefined,
       RATE_LIMIT_ENABLED: true,
       RL_LOGIN_MAX: 15,

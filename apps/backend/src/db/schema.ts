@@ -2,6 +2,7 @@
 import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
+  bigint,
   boolean,
   check,
   customType,
@@ -966,6 +967,37 @@ export const postViewSeen = pgTable(
     visitorKey: text("visitor_key").notNull(),
   },
   (t) => [primaryKey({ columns: [t.postId, t.visitorKey] })],
+);
+
+// Only daily aggregates. Sketches contain register maxima, never visitor IDs.
+const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
+  dataType: () => "bytea",
+  fromDriver: (value) => new Uint8Array(value),
+});
+export type TrafficDimension = "total" | "path" | "referrer" | "country" | "device" | "browser" | "os";
+export const trafficBuckets = pgTable(
+  "traffic_buckets",
+  {
+    day: date("day").notNull(),
+    dimension: text("dimension").$type<TrafficDimension>().notNull(),
+    value: text("value").notNull(),
+    pageviews: bigint("pageviews", { mode: "number" }).notNull().default(0),
+    visitors: bytea("visitors"),
+    visits: bytea("visits"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.day, t.dimension, t.value] }),
+    check(
+      "traffic_dimension_ck",
+      sql`${t.dimension} in ('total', 'path', 'referrer', 'country', 'device', 'browser', 'os')`,
+    ),
+    check("traffic_value_ck", sql`length(${t.value}) <= 300`),
+    check("traffic_pageviews_ck", sql`${t.pageviews} >= 0`),
+    check(
+      "traffic_sketch_ck",
+      sql`(${t.dimension} = 'total' and octet_length(${t.visitors}) = 4096 and octet_length(${t.visits}) = 4096 and ${t.visitors} is not null and ${t.visits} is not null) or (${t.dimension} <> 'total' and ${t.visitors} is null and ${t.visits} is null)`,
+    ),
+  ],
 );
 
 // ── notifications ──────────────────────────────────────────────────────

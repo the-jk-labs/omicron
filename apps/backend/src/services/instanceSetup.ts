@@ -7,6 +7,7 @@ import * as usersRepo from "@/db/repositories/users.ts";
 import { renderMarkdown } from "@/lib/markdown.ts";
 import { type EmailInput, getEmailMode, setEmailConfig } from "@/services/emailSettings.ts";
 import { federationRunning } from "@/services/federationState.ts";
+import { trafficEnabled } from "@/services/settings.ts";
 
 // First-run setup state + the wizard-managed instance settings, layered over the
 // instance_settings key/value store. Precedence for every effective value is
@@ -241,6 +242,7 @@ export async function publicInfo(): Promise<{
   federationEnabled: boolean;
   setupComplete: boolean;
   emailEnabled: boolean;
+  trafficEnabled: boolean;
   // Whether a new account must confirm its email before it can sign in
   // (EMAIL_VERIFICATION_REQUIRED). The register page reads this to decide
   // between "check your inbox" and an instant sign-in.
@@ -269,6 +271,7 @@ export async function publicInfo(): Promise<{
     contactUrl,
     abuseEmail,
     statusUrl,
+    traffic,
   ] = await Promise.all([
     getAppName(),
     getAppDomain(),
@@ -283,6 +286,7 @@ export async function publicInfo(): Promise<{
     settingsRepo.get<string>(SETUP_KEYS.contactUrl),
     settingsRepo.get<string>(SETUP_KEYS.abuseEmail),
     settingsRepo.get<string>(SETUP_KEYS.statusUrl),
+    trafficEnabled(),
   ]);
   return {
     name,
@@ -290,6 +294,7 @@ export async function publicInfo(): Promise<{
     federationEnabled: federationRunning(),
     setupComplete,
     emailEnabled: emailMode !== "console",
+    trafficEnabled: traffic,
     emailVerificationRequired: config.EMAIL_VERIFICATION_REQUIRED,
     bannerText,
     bannerImageUrl,

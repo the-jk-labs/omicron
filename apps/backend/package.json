@@ -36,11 +36,14 @@
     "drizzle-orm": "0.45.4",
     "hono": "4.13.13",
     "ioredis": "6.0.0",
+    "isbot": "5.2.2",
     "katex": "0.19.0",
     "markdown-it": "15.0.3",
+    "maxmind": "5.0.7",
     "postgres": "3.4.9",
     "sanitize-html": "2.18.1",
     "srvx": "1.0.6",
+    "ua-parser-js": "2.0.10",
     "zod": "4.6.7"
   },
   "devDependencies": {

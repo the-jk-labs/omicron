@@ -13,6 +13,7 @@ import { startOAuthSweeper } from "@/services/oauthGc.ts";
 import { backfillSlugs } from "@/services/postSlugs.ts";
 import { startRemoteCacheGcSweeper } from "@/services/remoteCacheGc.ts";
 import { startScheduleSweeper } from "@/services/scheduledPosts.ts";
+import { startTrafficSweeper } from "@/services/traffic.ts";
 import { startUploadGcSweeper } from "@/services/uploadGc.ts";
 import { APP_VERSION } from "@/version.ts";
 
@@ -62,6 +63,7 @@ async function main() {
   // database-backed pattern as the sweepers above — see services/deletedUsers.ts.
   startDeletedUserSweeper();
   startOAuthSweeper();
+  startTrafficSweeper();
 
   // srvx picks the runtime's native server (Deno.serve, Bun.serve, node:http).
   // Its graceful shutdown only closes the listener, leaving the sweepers and
