@@ -3,10 +3,6 @@ import { isIP } from "node:net";
 import { isbot } from "isbot";
 import { UAParser } from "ua-parser-js";
 
-export const TRAFFIC_VISITOR_COOKIE = "omicron_traffic_visitor";
-export const TRAFFIC_VISIT_COOKIE = "omicron_traffic_visit";
-export const VISITOR_MAX_AGE = 400 * 86400;
-export const VISIT_MAX_AGE = 30 * 60;
 export const TRAFFIC_RETENTION_DAYS = 730;
 export const DAY_MS = 86400_000;
 export const isoDay = (date = new Date()): string => date.toISOString().slice(0, 10);

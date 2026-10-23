@@ -969,11 +969,7 @@ export const postViewSeen = pgTable(
   (t) => [primaryKey({ columns: [t.postId, t.visitorKey] })],
 );
 
-// Only daily aggregates. Sketches contain register maxima, never visitor IDs.
-const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
-  dataType: () => "bytea",
-  fromDriver: (value) => new Uint8Array(value),
-});
+// Independent daily counters, with no visitor identifiers or cross-page links.
 export type TrafficDimension = "total" | "path" | "referrer" | "country" | "device" | "browser" | "os";
 export const trafficBuckets = pgTable(
   "traffic_buckets",
@@ -982,8 +978,6 @@ export const trafficBuckets = pgTable(
     dimension: text("dimension").$type<TrafficDimension>().notNull(),
     value: text("value").notNull(),
     pageviews: bigint("pageviews", { mode: "number" }).notNull().default(0),
-    visitors: bytea("visitors"),
-    visits: bytea("visits"),
   },
   (t) => [
     primaryKey({ columns: [t.day, t.dimension, t.value] }),
@@ -993,10 +987,6 @@ export const trafficBuckets = pgTable(
     ),
     check("traffic_value_ck", sql`length(${t.value}) <= 300`),
     check("traffic_pageviews_ck", sql`${t.pageviews} >= 0`),
-    check(
-      "traffic_sketch_ck",
-      sql`(${t.dimension} = 'total' and octet_length(${t.visitors}) = 4096 and octet_length(${t.visits}) = 4096 and ${t.visitors} is not null and ${t.visits} is not null) or (${t.dimension} <> 'total' and ${t.visitors} is null and ${t.visits} is null)`,
-    ),
   ],
 );
 

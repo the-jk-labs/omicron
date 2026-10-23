@@ -42,7 +42,8 @@ test("sends only the path and referrer origin with a first-party, best-effort re
   const [url, init] = fetch.mock.calls[0];
   expect(url).toBe("/api/traffic/pageview");
   expect(JSON.parse(init?.body as string)).toEqual({ path: "/", referrer: "https://example.org" });
-  expect(init).toMatchObject({ keepalive: true, credentials: "same-origin" });
+  expect(init).toMatchObject({ keepalive: true, credentials: "omit", referrerPolicy: "no-referrer" });
+  expect(init?.headers).toEqual({ "content-type": "application/json" });
 });
 test.for<Partial<TrafficNavigation>>([
   { enabled: false },
@@ -57,7 +58,7 @@ test.for<Partial<TrafficNavigation>>([
   await createTrafficReporter(fetch)(navigation(extra));
   expect(fetch).not.toHaveBeenCalled();
 });
-test("requests are serialized so subsequent navigations see cookies from the first response", async () => {
+test("queues rapid navigations without sending credentials or introducing identifiers", async () => {
   const { promise: first, resolve: release } = Promise.withResolvers<Response>();
   const fetch = vi
     .fn<typeof globalThis.fetch>()
@@ -73,6 +74,10 @@ test("requests are serialized so subsequent navigations see cookies from the fir
   release(new Response(null, { status: 204 }));
   await Promise.all([a, b]);
   expect(fetch).toHaveBeenCalledTimes(2);
+  for (const [, init] of fetch.mock.calls) {
+    expect(init?.credentials).toBe("omit");
+    expect(Object.keys(JSON.parse(init?.body as string)).toSorted()).toEqual(["path", "referrer"]);
+  }
   expect(JSON.parse(fetch.mock.calls[1][1]?.body as string).referrer).toBe("https://blog.test");
 });
 test("network failures do not reject navigation or cause retries", async () => {

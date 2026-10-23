@@ -121,9 +121,8 @@ Regardless of operator settings, the stock software does **not**:
 
 - Store reader IP addresses, or use browser fingerprinting.
 - Set analytics cookies other than random first-party tokens used for post-read
-  de-duplication or, when explicitly enabled, site-traffic visitor/visit estimates.
-  Traffic tokens are never stored as identifiers: only statistical register
-  maxima are persisted. Neither kind contains an IP, user-agent or fingerprint.
+  de-duplication, containing no IP, user-agent or fingerprint. The separate site
+  traffic collector sets no cookies and creates no browser/session identifiers.
 - Send any data to third-party analytics, ad networks, or external services.
 - Record per-visit event logs that could be mined later.
 - Build demographic, interest, or behavioural profiles of readers.
@@ -179,55 +178,50 @@ feature, including alongside an operator-supplied policy.
   home, information, search, tag, public reading-list, profile and post pages
   (including cached federated profiles/posts). Refreshes
   count again. Hash/query-only changes do not. Search terms are never collected.
-- **Unique visitors:** estimated distinct browsers within the selected dates,
-  not verified people. A random HttpOnly first-party cookie lasts up to 400 days;
-  clearing cookies, blocking cookies, private browsing or changing devices can
-  count the same person again. This cookie is separate from authentication and
-  the writer dashboard's reader cookie and is not linked to an account ID.
-- **Visits:** estimated browser sessions. A separate random HttpOnly cookie
-  expires after 30 minutes without a measured pageview, and successful collection
-  renews that expiry. A visit spanning midnight is counted in each affected
-  daily bucket, but once when those days are merged for the whole period.
+- **No unique visitor or visit counts:** the collector does not identify browsers
+  or sessions. Pageviews are not people, and repeat loads are counted again.
+  The dashboard reports pageview growth, not audience-size estimates.
 - **Breakdowns:** pageviews by public path, referring hostname, country (when
   configured), and broad device/browser/OS name. Versions, raw user agents,
   referrer paths, query strings and fragments are not retained. Referrers are
-  per pageview, not session acquisition; internal and absent referrers share a
+  per pageview, not a person's journey; internal and absent referrers share a
   `Direct / internal` bucket.
 
 Known bots, signed-in admins/moderators, private/unpublished/withdrawn local
 content, account/admin routes, assets, APIs, federation requests and feeds are
-excluded. DNT and GPC prevent both counting and issuing traffic cookies. JavaScript
+excluded by the web collector. The backend also excludes any authenticated staff
+request it receives. DNT and GPC prevent counting. JavaScript
 must be available; blocked requests and unidentified bots affect accuracy. This
 measures the web audience, **not all HTTP requests**, bandwidth, cache hits or
 Cloudflare data-center traffic. It cannot reconstruct earlier traffic.
 
 ### Counting without a visitor database
 
-Only `(day, dimension, value, pageviews)` aggregates are retained. The total for
-each UTC day additionally carries two 4,096-register HyperLogLog sketches, one
-for visitor tokens and one for visit tokens. Tokens are SHA-256 hashed with
-separate namespaces before a register is selected; neither the token nor its
-digest is stored. Sketches are combined by register-wise maximum to deduplicate
-returning browsers across days, months and arbitrary ranges. Daily unique counts
-are **never summed** to produce a monthly unique count. Standard error is about
-1.625%, not a guaranteed maximum error; low counts use linear-counting correction.
-This is a probabilistic aggregate, not a list of visitors or their histories.
+Only `(day, dimension, value, pageviews)` aggregates are retained. Dimensions
+are independent counters, not rows linking a page, country and device to one
+reader. Monthly and range totals are sums of pageviews, not deduplicated people.
 
-The collector sends only a pathname and referring origin, serializes SPA
-requests so the browser receives its cookies before the next measurement, and
-does not retry failed measurements. Same-origin checks, a capped request body,
+Site traffic does not set or read analytics cookies, use browser storage, create
+browser/session IDs, fingerprint devices, or hash IPs into identifiers. The
+collector omits credentials and the automatic Referer header; its only payload
+is a pathname and referring origin. Existing sign-in and writer-reader cookies
+are not sent with traffic measurements. The writer dashboard remains a separate
+feature with its existing post-read cookie and de-duplication model.
+
+The collector bounds queued SPA requests and does not retry failed measurements.
+Same-origin checks, a capped request body,
 rate limiting, server-side public-content validation, and a transactional cap of
 500 values per dimension per day limit abuse and storage growth. Overflow goes
 to `Other (daily limit)`. Like any browser-based analytics, this is not a fraud
-detection system: a determined client can forge events or clear cookies.
+detection system: a determined client can forge events.
 
 Daily aggregates are retained for **730 days**, pruned daily, including while
 collection is disabled. Queries cover 1–365 inclusive UTC dates, with the adjacent
 equal-length period as comparison. Today and the current month are incomplete;
 monthly groups at range boundaries can be partial. Missing collection history
 must not be mistaken for zero real-world traffic. Turning collection off leaves
-historical aggregates readable and stops new measurements; previously issued
-browser cookies remain until they expire or the browser removes them.
+historical aggregates readable and stops new measurements. This feature issues
+no cookies to expire or remove.
 
 ### Optional local geography
 
@@ -270,10 +264,12 @@ is an approximate network location, affected by VPNs, not a claim of residence.
   collection is disabled. Already-open pages adopt enablement on their next
   layout reload; the server always enforces disabling immediately.
 
-The additive `0044_daily_gateway.sql` migration creates only `traffic_buckets`
-and runs at startup. Take and verify the normal instance backup before deploying
-any migration. No Caddy changes, external analytics account, or extra service is
-required. Geography alone needs the optional database mount and backend restart.
+The startup migration sequence creates `traffic_buckets` in
+`0044_daily_gateway.sql`, then removes unused visitor/visit sketch columns in
+`0045_cookieless_traffic.sql`, preserving pageview counters. Take and verify the
+normal instance backup before deploying any migration. No Caddy changes, external
+analytics account, or extra service is required. Geography alone needs the
+optional database mount and backend restart.
 
 ## Retention
 
@@ -312,6 +308,6 @@ For contributors, the implementation follows Omicron's layered architecture:
 | On-instance views (1 reader/post, lifetime, aggregate)         | Yes, if enabled             | No                               | Moderator switch + DNT/GPC |
 | Anonymous reader cookie (random value, hashed before storage)  | Yes, if enabled             | No — one-way hash only           | Moderator switch + DNT/GPC |
 | Reader IPs, fingerprints, profiles                             | **Never**                   | —                                | —                          |
-| Site traffic (daily aggregate counters + cardinality sketches) | Only if an admin enables it | No visitor list or event log     | Admin switch + DNT/GPC     |
+| Site traffic (cookieless daily pageview counters)              | Only if an admin enables it | No browser IDs or event log      | Admin switch + DNT/GPC     |
 
 We count what happened. We never track who you are.

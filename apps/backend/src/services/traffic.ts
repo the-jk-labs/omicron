@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { createHash } from "node:crypto";
 import * as trafficRepo from "@/db/repositories/traffic.ts";
 import { type TrafficDimension } from "@/db/schema.ts";
 import { readerOptedOut } from "@/lib/analytics.ts";
-import { cardinality, mergeInto, registerOf, REGISTERS } from "@/lib/cardinality.ts";
 import {
   isoDay,
   referrerHost,
@@ -24,15 +22,9 @@ export async function acceptsTraffic(headers: Headers): Promise<boolean> {
   return trafficEnabled();
 }
 
-// Random 128-bit tokens need no secret; signing-key rotation must not split a visitor.
-const register = (kind: string, value: string) =>
-  registerOf(createHash("sha256").update(`traffic:${kind}:${value}`).digest());
-
 export async function recordPageview(input: {
   path: string;
   referrer: string;
-  visitor: string;
-  visit: string;
   userAgent: string;
   ip: string;
 }): Promise<boolean> {
@@ -48,11 +40,11 @@ export async function recordPageview(input: {
       value,
     })),
   ];
-  await trafficRepo.record(isoDay(), register("visitor", input.visitor), register("visit", input.visit), dimensions);
+  await trafficRepo.record(isoDay(), dimensions);
   return true;
 }
 
-export type TrafficMetrics = { pageviews: number; visitors: number; visits: number };
+export type TrafficMetrics = { pageviews: number };
 export type TrafficPoint = TrafficMetrics & { day: string };
 export type TrafficSummary = {
   enabled: boolean;
@@ -68,20 +60,7 @@ export type TrafficSummary = {
 
 type DailyRow = Awaited<ReturnType<typeof trafficRepo.dailyTotals>>[number];
 function metrics(rows: DailyRow[]): TrafficMetrics {
-  const visitors = new Uint8Array(REGISTERS);
-  const visits = new Uint8Array(REGISTERS);
-  let pageviews = 0;
-  for (const row of rows) {
-    pageviews += row.pageviews;
-    if (row.visitors) mergeInto(visitors, row.visitors);
-    if (row.visits) mergeInto(visits, row.visits);
-  }
-  // Estimates may overshoot on small populations; distincts cannot exceed hits.
-  return {
-    pageviews,
-    visitors: Math.min(pageviews, cardinality(visitors)),
-    visits: Math.min(pageviews, cardinality(visits)),
-  };
+  return { pageviews: rows.reduce((total, row) => total + row.pageviews, 0) };
 }
 
 export async function summary(range: TrafficRange): Promise<TrafficSummary> {

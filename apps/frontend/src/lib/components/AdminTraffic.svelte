@@ -10,7 +10,7 @@
   import TrafficRanking from "#lib/components/TrafficRanking.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { countryName, presetRange, trafficChange, TRAFFIC_PRESETS } from "#lib/traffic.js";
-  import type { TrafficMetrics, TrafficSummary } from "#lib/types.js";
+  import type { TrafficSummary } from "#lib/types.js";
 
   let { initial = null }: { initial?: TrafficSummary | null } = $props();
   const seed = untrack(() => initial);
@@ -38,11 +38,6 @@
   const full = new Intl.NumberFormat("en");
   const date = (day: string) =>
     new Date(day).toLocaleDateString("en", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" });
-  const cards: { metric: keyof TrafficMetrics; label: string; hint: string }[] = [
-    { metric: "visitors", label: "Unique visitors", hint: "Estimated distinct browsers" },
-    { metric: "pageviews", label: "Pageviews", hint: "Public page loads and navigations" },
-    { metric: "visits", label: "Visits", hint: "New visit after 30 minutes inactive" },
-  ];
   const points = $derived(summary ? (monthly ? summary.monthly : summary.series) : []);
   const baselineIncomplete = $derived(
     !!summary && (!summary.firstDay || summary.firstDay > summary.range.previousFrom),
@@ -113,7 +108,7 @@
   <header class="flex flex-wrap items-start justify-between gap-4">
     <div>
       <h2 class="text-lg font-semibold tracking-tight text-foreground">Site traffic</h2>
-      <p class="mt-1 text-sm text-muted-foreground">Understand your audience. See how your instance grows.</p>
+      <p class="mt-1 text-sm text-muted-foreground">See how your instance grows without identifying readers.</p>
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <Select.Root type="single" value={preset} onValueChange={selectRange} items={rangeItems} disabled={saving}>
@@ -175,14 +170,14 @@
         />
       </Switch.Root>
       <p class="col-span-2 max-w-prose text-xs leading-relaxed text-muted-foreground">
-        Uses first-party visitor and 30-minute visit cookies. Only aggregate counters are saved; no IPs, raw user
-        agents, or visitor histories. DNT/GPC are honored. Before enabling, update your privacy policy and obtain
-        consent where required.
+        Cookieless pageview counts. No browser identifiers, fingerprinting, or account-linked measurements. Only daily
+        aggregate counters are saved; no IPs, raw user agents, or reader histories. DNT/GPC are honored. Review your
+        privacy policy and local requirements before enabling.
       </p>
     </section>
     {#if !summary.enabled}<p class="rounded-card border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
-        Collection is off. Historical statistics remain available. Enable it to start measuring new visits; past traffic
-        cannot be reconstructed.
+        Collection is off. Historical statistics remain available. Enable it to start measuring new pageviews; past
+        traffic cannot be reconstructed.
       </p>{/if}
   {/if}
 
@@ -200,26 +195,25 @@
     {#if baselineIncomplete}<p class="text-xs text-muted-foreground">
         The comparison period has limited or no recorded history. Growth percentages may not reflect a full baseline.
       </p>{/if}
-    <div class="grid gap-3 sm:grid-cols-3">
-      {#each cards as card (card.metric)}
-        <section class="rounded-card border border-border bg-background p-5">
-          <h3 class="text-sm text-muted-foreground">{card.label}</h3>
-          <div class="mt-2 flex flex-wrap items-baseline gap-3">
-            <p class="text-3xl font-semibold tracking-tight text-foreground tabular-nums">
-              {full.format(summary.totals[card.metric])}
-            </p>
-            <span class="text-xs text-foreground-alt tabular-nums"
-              >{trafficChange(summary.totals[card.metric], summary.previous[card.metric])}</span
-            >
-          </div>
-          <p class="mt-1 text-xs text-muted-foreground">{card.hint}</p>
-        </section>
-      {/each}
-    </div>
+    <section class="rounded-card border border-border bg-background p-5">
+      <h3 class="text-sm text-muted-foreground">Pageviews</h3>
+      <div class="mt-2 flex flex-wrap items-baseline gap-3">
+        <p class="text-3xl font-semibold tracking-tight text-foreground tabular-nums">
+          {full.format(summary.totals.pageviews)}
+        </p>
+        <span class="text-xs text-foreground-alt tabular-nums"
+          >{trafficChange(summary.totals.pageviews, summary.previous.pageviews)}</span
+        >
+      </div>
+      <p class="mt-1 text-xs text-muted-foreground">
+        Public page loads and navigations, not people. Repeat loads count again; unique visitors and visits are not
+        measured.
+      </p>
+    </section>
     {#if summary.totals.pageviews === 0}<p
         class="rounded-card border border-border bg-background-alt px-5 py-8 text-center text-sm text-muted-foreground"
       >
-        No pageviews recorded in this period. Once collection is enabled, public visits from non-staff browsers will
+        No pageviews recorded in this period. Once collection is enabled, public pageviews from non-staff browsers will
         appear here.
       </p>{/if}
     <div class="flex justify-end">
@@ -227,15 +221,7 @@
         >Group by: {monthly ? "Month" : "Day"}</Button
       >
     </div>
-    <div class="grid gap-4 xl:grid-cols-2">
-      <TrafficChart title="Pageviews over time" {points} metric="pageviews" {monthly} /><TrafficChart
-        title="Unique visitors over time"
-        {points}
-        metric="visitors"
-        {monthly}
-      />
-    </div>
-    <TrafficChart title="Visits over time" {points} metric="visits" {monthly} />
+    <TrafficChart title="Pageviews over time" {points} metric="pageviews" {monthly} />
     <div>
       <h2 class="mb-3 text-base font-semibold text-foreground">Content and discovery</h2>
       <div class="grid gap-4 xl:grid-cols-2">
@@ -304,20 +290,19 @@
         ><Icon name="chevronDown" size={15} /> How to read these numbers</Collapsible.Trigger
       ><Collapsible.Content class="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
         <p>
-          Visitors and visits are statistical estimates (HyperLogLog, about 1.6% standard error), not verified people.
-          Multiple devices, private browsing, deleted cookies, or cookies older than 400 days may count the same person
-          again. Estimates are merged across days, never added together.
+          Site traffic does not set or read analytics cookies, use browser storage, or create identifiers from IPs or
+          device characteristics. Pageviews cannot tell you how many people visited or whether someone returned.
         </p>
         <p>
           A pageview is a successful, visible public-page load or client-side navigation. Refreshes count again;
           hash/query-only changes do not. Private content, account/admin pages, staff browsers, known bots, API calls,
-          assets, federation and RSS requests are excluded. Blocked scripts, disabled cookies, unknown bots and failed
-          requests affect accuracy. This is not a raw network-request dashboard.
+          assets, federation and RSS requests are excluded. Blocked scripts, unknown bots and failed requests affect
+          accuracy. This is not a raw network-request dashboard.
         </p>
         <p>
-          A visit expires after 30 minutes without a measured pageview. A visit crossing midnight is unique in each
-          daily bucket but counted once across the selected period. Referrers describe individual pageviews; same-site
-          and missing referrers are grouped together.
+          Referrers describe individual pageviews, not a person's browsing journey. Same-site and missing referrers are
+          grouped together. Dimensions are stored separately, without a record linking a page, country, or device to a
+          reader.
         </p>
         <p>
           All dates use UTC. Today and the current month are incomplete. Comparisons use the immediately preceding equal

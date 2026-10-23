@@ -34,6 +34,21 @@ test("does not collect when a browser has requested Do Not Track", async () => {
   expect(fetch).not.toHaveBeenCalled();
   Object.defineProperty(navigator, "doNotTrack", { value: undefined, configurable: true });
 });
+test("cookieless collection still respects Global Privacy Control", async () => {
+  const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(new Response(null, { status: 204 }));
+  vi.stubGlobal("fetch", fetch);
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+  Object.defineProperty(navigator, "globalPrivacyControl", { value: true, configurable: true });
+  try {
+    page.status = 200;
+    render(TrafficCollector, { props: { enabled: true, staff: false } });
+    navigate();
+    await Promise.resolve();
+    expect(fetch).not.toHaveBeenCalled();
+  } finally {
+    Object.defineProperty(navigator, "globalPrivacyControl", { value: undefined, configurable: true });
+  }
+});
 test("a background tab is measured only when it becomes visible, and cleanup removes its listener", async () => {
   const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(new Response(null, { status: 204 }));
   vi.stubGlobal("fetch", fetch);

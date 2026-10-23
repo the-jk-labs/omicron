@@ -6,13 +6,13 @@ export function trafficSummary(extra: Partial<TrafficSummary> = {}): TrafficSumm
     geographyAvailable: false,
     firstDay: "2026-01-01",
     range: { from: "2026-01-01", to: "2026-01-02", previousFrom: "2025-12-30", previousTo: "2025-12-31", days: 2 },
-    totals: { pageviews: 200, visitors: 50, visits: 75 },
-    previous: { pageviews: 100, visitors: 25, visits: 50 },
+    totals: { pageviews: 200 },
+    previous: { pageviews: 100 },
     series: [
-      { day: "2026-01-01", pageviews: 80, visitors: 30, visits: 40 },
-      { day: "2026-01-02", pageviews: 120, visitors: 40, visits: 50 },
+      { day: "2026-01-01", pageviews: 80 },
+      { day: "2026-01-02", pageviews: 120 },
     ],
-    monthly: [{ day: "2026-01-01", pageviews: 200, visitors: 50, visits: 75 }],
+    monthly: [{ day: "2026-01-01", pageviews: 200 }],
     breakdowns: {
       path: [
         { value: "/", pageviews: 150 },

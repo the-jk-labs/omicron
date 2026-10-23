@@ -79,12 +79,13 @@ export function createTrafficReporter(fetcher: typeof fetch = globalThis.fetch) 
     }
     const body = JSON.stringify({ path: url.pathname, referrer });
     pending++;
-    // Serial requests let the first response's HttpOnly cookies identify later SPA views.
+    // Bound pending work so measurement never overwhelms navigation.
     const send = async () => {
       try {
         await fetcher("/api/traffic/pageview", {
           method: "POST",
-          credentials: "same-origin",
+          credentials: "omit",
+          referrerPolicy: "no-referrer",
           headers: { "content-type": "application/json" },
           body,
           keepalive: true,

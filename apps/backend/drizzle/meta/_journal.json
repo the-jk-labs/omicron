@@ -316,6 +316,13 @@
       "when": 1792769676301,
       "tag": "0044_daily_gateway",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1792773646228,
+      "tag": "0045_cookieless_traffic",
+      "breakpoints": true
     }
   ]
 }

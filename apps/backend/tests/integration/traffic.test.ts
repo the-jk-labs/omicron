@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { afterAll, beforeEach, expect, test } from "vitest";
 import { db, sql } from "@/db/client.ts";
 import * as repo from "@/db/repositories/traffic.ts";
 import { trafficBuckets } from "@/db/schema.ts";
-import { cardinality, mergeInto, registerOf, REGISTERS } from "@/lib/cardinality.ts";
 import { isoDay, trafficRange } from "@/lib/traffic.ts";
 import { trafficRoutes } from "@/routes/traffic.ts";
 import { getOrigin } from "@/services/instanceSetup.ts";
@@ -13,14 +12,35 @@ import { summary } from "@/services/traffic.ts";
 import { mount } from "../routes/harness.ts";
 import { closeDb, mkList, mkPost, mkRemoteActor, mkRemotePost, mkUser, resetDb } from "./harness.ts";
 
-const register = (value: string) => registerOf(createHash("sha256").update(value).digest());
 beforeEach(async () => {
   await resetDb();
   await sql`truncate traffic_buckets, instance_settings`;
 });
 afterAll(closeDb);
 
-test("browser collection, cookies, database aggregates and reporting work together", async () => {
+test("the cookieless migration removes sketches while preserving existing pageviews", async () => {
+  const original = await readFile(new URL("../../drizzle/0044_daily_gateway.sql", import.meta.url), "utf8");
+  const migration = await readFile(new URL("../../drizzle/0045_cookieless_traffic.sql", import.meta.url), "utf8");
+  const rollback = new Error("Roll back the isolated migration fixture.");
+  await expect(
+    sql.begin(async (tx) => {
+      await tx`create schema traffic_privacy_migration`;
+      await tx`set local search_path to traffic_privacy_migration`;
+      await tx.unsafe(original);
+      await tx`insert into traffic_buckets (day, dimension, value, pageviews, visitors, visits)
+      values ('2026-01-01', 'total', '', 7, decode(repeat('00', 4096), 'hex'), decode(repeat('00', 4096), 'hex'))`;
+      for (const statement of migration.split("--> statement-breakpoint")) await tx.unsafe(statement);
+      const rows = await tx`select day::text, dimension, value, pageviews::int from traffic_buckets`;
+      expect([...rows]).toEqual([{ day: "2026-01-01", dimension: "total", value: "", pageviews: 7 }]);
+      const columns = await tx`select column_name from information_schema.columns
+      where table_schema = 'traffic_privacy_migration' and table_name = 'traffic_buckets' order by ordinal_position`;
+      expect(columns.map((row) => row.column_name)).toEqual(["day", "dimension", "value", "pageviews"]);
+      throw rollback;
+    }),
+  ).rejects.toBe(rollback);
+});
+
+test("cookieless collection, privacy gates, database aggregates and reporting work together", async () => {
   const api = mount("/api/traffic", trafficRoutes);
   const headers = {
     origin: await getOrigin(),
@@ -33,44 +53,35 @@ test("browser collection, cookies, database aggregates and reporting work togeth
   await setTrafficEnabled(true);
   const first = await send("/");
   expect(first.status).toBe(204);
-  const cookie = first.headers
-    .getSetCookie()
-    .map((value) => value.split(";")[0])
-    .join("; ");
-  expect(cookie).toContain("omicron_traffic_visitor=");
-  await send("/about?token=discarded", { cookie });
+  expect(first.headers.getSetCookie()).toEqual([]);
+  const cookie = "omicron_traffic_visitor=legacy-secret; omicron_traffic_visit=legacy-secret";
+  expect((await send("/about?token=discarded", { cookie })).headers.getSetCookie()).toEqual([]);
   const range = trafficRange(isoDay(), isoDay());
-  expect((await summary(range)).totals).toEqual({ pageviews: 2, visitors: 1, visits: 1 });
+  expect((await summary(range)).totals).toEqual({ pageviews: 2 });
   await send("/contact", { cookie, dnt: "1" });
   await send("/privacy", { cookie, "sec-gpc": "1" });
   expect((await summary(range)).totals.pageviews).toBe(2);
-  const visitorOnly = cookie.split("; ").find((value) => value.startsWith("omicron_traffic_visitor="))!;
-  await send("/contact", { cookie: visitorOnly });
+  await send("/about?token=discarded");
   const result = await summary(range);
-  expect(result.totals).toEqual({ pageviews: 3, visitors: 1, visits: 2 });
-  expect(result.breakdowns.path).toContainEqual({ value: "/about", pageviews: 1 });
+  expect(result.totals).toEqual({ pageviews: 3 });
+  expect(result.breakdowns.path).toContainEqual({ value: "/about", pageviews: 2 });
+  const stored = await db.select().from(trafficBuckets);
+  expect(stored.every((row) => Object.keys(row).toSorted().join(",") === "day,dimension,pageviews,value")).toBe(true);
+  expect(JSON.stringify(stored)).not.toMatch(/legacy-secret|discarded|Mozilla/);
   await setTrafficEnabled(false);
   expect((await send("/status", { cookie })).headers.getSetCookie()).toEqual([]);
   expect((await summary(range)).totals.pageviews).toBe(3);
 });
 
-test("concurrent hits never lose increments, and returning visitors merge across days", async () => {
-  await Promise.all(
-    Array.from({ length: 12 }, () =>
-      repo.record("2026-01-01", register("visitor"), register("visit"), [{ dimension: "path", value: "/" }]),
-    ),
-  );
-  await repo.record("2026-01-02", register("visitor"), register("visit-2"), [{ dimension: "path", value: "/about" }]);
+test("concurrent and repeated loads count independently without losing pageviews", async () => {
+  await Promise.all(Array.from({ length: 12 }, () => repo.record("2026-01-01", [{ dimension: "path", value: "/" }])));
+  await repo.record("2026-01-02", [{ dimension: "path", value: "/about" }]);
   const rows = await repo.dailyTotals("2026-01-01", "2026-01-02");
   expect(rows.map((r) => r.pageviews)).toEqual([12, 1]);
-  const visitors = new Uint8Array(REGISTERS);
-  const visits = new Uint8Array(REGISTERS);
-  for (const row of rows) {
-    mergeInto(visitors, row.visitors!);
-    mergeInto(visits, row.visits!);
-  }
-  expect(cardinality(visitors)).toBe(1);
-  expect(cardinality(visits)).toBe(2);
+  expect(rows).toEqual([
+    { day: "2026-01-01", pageviews: 12 },
+    { day: "2026-01-02", pageviews: 1 },
+  ]);
   expect(await repo.breakdowns("2026-01-01", "2026-01-02")).toContainEqual({
     dimension: "path",
     value: "/",
@@ -88,9 +99,7 @@ test("new high-cardinality values are capped atomically without dropping total p
     })),
   );
   await Promise.all(
-    ["/new-a", "/new-b", "/page-1"].map((value) =>
-      repo.record("2026-01-01", register("a"), register("b"), [{ dimension: "path", value }]),
-    ),
+    ["/new-a", "/new-b", "/page-1"].map((value) => repo.record("2026-01-01", [{ dimension: "path", value }])),
   );
   const list = await repo.breakdowns("2026-01-01", "2026-01-01");
   expect(list).toHaveLength(repo.MAX_DIMENSION_VALUES + 1);
@@ -115,8 +124,8 @@ test("private, withdrawn, unpublished and nonexistent posts are excluded", async
 });
 
 test("retention removes only buckets older than the inclusive cutoff", async () => {
-  await repo.record("2026-01-01", register("a"), register("b"), [{ dimension: "path", value: "/" }]);
-  await repo.record("2026-01-02", register("a"), register("b"), [{ dimension: "path", value: "/" }]);
+  await repo.record("2026-01-01", [{ dimension: "path", value: "/" }]);
+  await repo.record("2026-01-02", [{ dimension: "path", value: "/" }]);
   await repo.prune("2026-01-02");
   expect(await repo.firstDay()).toBe("2026-01-02");
   expect(await repo.dailyTotals("2026-01-01", "2026-01-02")).toHaveLength(1);

@@ -22,4 +22,8 @@ test("is a placeholder notice naming the instance, with links to act on it", () 
   expect(screen.getByText(`Last updated: ${new Date().getFullYear()} · blog.example`)).toBeInTheDocument();
   expect(screen.getByText("Starlog (blog.example)")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
+  expect(
+    screen.getByText(/without analytics cookies, browser storage, or persistent browser identifiers/),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/visitor cookie|visit cookie|400 days/)).toBeNull();
 });

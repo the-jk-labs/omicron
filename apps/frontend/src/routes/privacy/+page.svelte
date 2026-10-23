@@ -76,11 +76,11 @@
     <h2>Site traffic analytics</h2>
     <p>
       Site traffic collection is currently <strong>{instance?.trafficEnabled ? "enabled" : "disabled"}</strong>. When
-      enabled, successful public-page visits may be counted using a random first-party visitor cookie (up to 400 days)
-      and a visit cookie that expires after 30 minutes without a measured pageview. These are separate from sign-in
-      cookies and are not tied to your account. Administrators see daily aggregate pageviews, estimated unique browsers
-      and visits, public paths, referring domains, and broad device/browser/operating-system categories. If configured,
-      country is determined locally from the connection address; the address is discarded, not stored in analytics.
+      enabled, successful public-page loads may be counted without analytics cookies, browser storage, or persistent
+      browser identifiers. The traffic request omits sign-in cookies. It does not fingerprint readers, hash IPs into
+      identifiers, or measure unique visitors and visits. Administrators see daily aggregate pageviews, public paths,
+      referring domains, and broad device/browser/operating-system categories. If configured, country is determined
+      locally from the connection address; the address is discarded, not stored in analytics.
     </p>
     <p>
       Analytics stores no individual visit log, reader IP, raw user agent, search query, or referrer path. Aggregate

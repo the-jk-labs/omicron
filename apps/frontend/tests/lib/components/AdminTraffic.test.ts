@@ -27,9 +27,9 @@ test("date changes load the selected range, persist it in the URL, and ignore la
   await chooseRange("Last 30 days");
   await waitFor(() => expect(f.calls).toHaveLength(2));
   const result = trafficSummary();
-  second.resolve(Response.json({ ...result, totals: { ...result.totals, visitors: 333 } }));
+  second.resolve(Response.json({ ...result, totals: { pageviews: 333 } }));
   await waitFor(() => expect(screen.getByText("333", { selector: "p" })).toBeInTheDocument());
-  first.resolve(Response.json({ ...result, totals: { ...result.totals, visitors: 777 } }));
+  first.resolve(Response.json({ ...result, totals: { pageviews: 777 } }));
   await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
   expect(screen.getByText("333", { selector: "p" })).toBeInTheDocument();
   expect(screen.queryByText("777", { selector: "p" })).toBeNull();
@@ -41,9 +41,11 @@ test("server-loaded metrics render without a duplicate request and explain their
   vi.stubGlobal("fetch", f.fetch);
   render(AdminTraffic, { props: { initial: trafficSummary() } });
   expect(screen.getByRole("heading", { name: "Site traffic" })).toBeInTheDocument();
-  expect(screen.getByText("50", { selector: "p" })).toBeInTheDocument();
   expect(screen.getByText("200")).toBeInTheDocument();
-  expect(screen.getByText("+50.0%")).toBeInTheDocument();
+  expect(screen.getByText("+100.0%")).toBeInTheDocument();
+  expect(screen.getByText(/Cookieless pageview counts/)).toBeInTheDocument();
+  expect(screen.getByText(/unique visitors and visits are not measured/)).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: /Unique visitors|Visits/ })).toBeNull();
   expect(screen.getByText(/Country lookup is not configured/)).toBeInTheDocument();
   expect(f.calls).toHaveLength(0);
 });

@@ -315,7 +315,7 @@ export type PostStat = {
 // One day's summed view total, for the views-over-time chart.
 export type DayTotals = { day: string; views: number };
 
-export type TrafficMetrics = { pageviews: number; visitors: number; visits: number };
+export type TrafficMetrics = { pageviews: number };
 export type TrafficPoint = TrafficMetrics & { day: string };
 export type TrafficSummary = {
   enabled: boolean;
