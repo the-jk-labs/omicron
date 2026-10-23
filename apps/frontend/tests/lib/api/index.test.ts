@@ -27,6 +27,14 @@ const rows: Row[] = [
   ["dashboard", (e) => e.dashboard(), "GET", "/api/dashboard"],
   ["dashboard(days)", (e) => e.dashboard(7), "GET", "/api/dashboard?days=7"],
   // admin
+  ["adminTraffic", (e) => e.adminTraffic(), "GET", "/api/admin/traffic"],
+  [
+    "adminTraffic(range)",
+    (e) => e.adminTraffic({ from: "2026-01-01", to: "2026-01-31" }),
+    "GET",
+    "/api/admin/traffic?from=2026-01-01&to=2026-01-31",
+  ],
+  ["setTrafficEnabled", (e) => e.setTrafficEnabled(true), "PUT", "/api/admin/traffic/settings", { enabled: true }],
   ["adminMarkPostAiAssisted", (e) => e.adminMarkPostAiAssisted(ID), "POST", `/api/admin/posts/${ID}/ai-assisted`],
   ["adminRemovePostAiAssisted", (e) => e.adminRemovePostAiAssisted(ID), "DELETE", `/api/admin/posts/${ID}/ai-assisted`],
   ["adminSettings", (e) => e.adminSettings(), "GET", "/api/admin/settings"],

@@ -6,6 +6,7 @@ import type { IconName } from "#lib/components/Icon.svelte";
 export const ADMIN_TABS = [
   { value: "reports", label: "Reports", icon: "flag" },
   { value: "users", label: "Users", icon: "users" },
+  { value: "traffic", label: "Traffic", icon: "chart" },
   { value: "federation", label: "Federation", icon: "globe" },
   { value: "email", label: "Email", icon: "mail" },
   { value: "security", label: "Security", icon: "lock" },

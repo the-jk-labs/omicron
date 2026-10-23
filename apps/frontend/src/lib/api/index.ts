@@ -12,6 +12,7 @@ import type {
   Comment,
   CoverCredit,
   DashboardSummary,
+  TrafficSummary,
   DeletedUser,
   DkimGenerateResult,
   EmailDnsResult,
@@ -92,6 +93,9 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
 
     // writer dashboard (own analytics) + moderator instance settings
     dashboard: (days?: number) => api.get<DashboardSummary>(`/dashboard${days ? `?days=${days}` : ""}`),
+    adminTraffic: (range?: { from: string; to: string }) =>
+      api.get<TrafficSummary>(`/admin/traffic${range ? `?${new URLSearchParams(range)}` : ""}`),
+    setTrafficEnabled: (enabled: boolean) => api.put<{ enabled: boolean }>("/admin/traffic/settings", { enabled }),
     adminSettings: () => api.get<InstanceSettings>("/admin/settings"),
     setAnalytics: (onInstanceViews: boolean) =>
       api.put<InstanceSettings>("/admin/settings/analytics", { onInstanceViews }),

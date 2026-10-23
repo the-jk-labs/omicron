@@ -65,3 +65,17 @@ test("a tab that fails to load is left to the browser", async () => {
     initial: { reports: null },
   });
 });
+
+test("traffic is server-loaded only for admins, including a bookmarked date range", async () => {
+  const range = "trafficFrom=2026-01-01&trafficTo=2026-01-31";
+  const { event: admin, calls } = event({
+    user: user({ isAdmin: true }),
+    routes: { "GET /api/admin/traffic?from=2026-01-01&to=2026-01-31": { enabled: true } },
+    url: `https://blog.example/admin?tab=traffic&${range}`,
+  });
+  expect(await load(admin)).toMatchObject({ tab: "traffic", initial: { traffic: { enabled: true } } });
+  expect(calls).toHaveLength(1);
+  const mod = event({ user: user({ isModerator: true }), routes, url: "https://blog.example/admin?tab=traffic" });
+  expect(await load(mod.event)).toMatchObject({ initial: {} });
+  expect(mod.calls).toHaveLength(0);
+});

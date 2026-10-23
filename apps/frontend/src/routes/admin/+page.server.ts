@@ -10,6 +10,7 @@ type Loaded<K extends keyof Api> = Awaited<ReturnType<Api[K]>> | null;
 export type AdminInitial = {
   reports?: Loaded<"adminReports">;
   users?: { users: Loaded<"adminUsers">; deleted: Loaded<"deletedUsers"> };
+  traffic?: Loaded<"adminTraffic">;
   domains?: Loaded<"blockedDomains">;
   email?: Loaded<"adminEmail">;
   security?: Loaded<"adminSecurity">;
@@ -21,8 +22,10 @@ export type AdminInitial = {
 // A failed read is left to the browser, which then shows the error in place.
 const ok = <T>(p: Promise<T>): Promise<T | null> => p.catch(() => null);
 
-async function loadTab(api: Api, tab: AdminTab): Promise<AdminInitial> {
+async function loadTab(api: Api, tab: AdminTab, range?: { from: string; to: string }): Promise<AdminInitial> {
   switch (tab) {
+    case "traffic":
+      return { traffic: await ok(api.adminTraffic(range)) };
     case "reports":
       return { reports: await ok(api.adminReports("open")) };
     case "users": {
@@ -58,6 +61,8 @@ export const load: PageServerLoad = async ({ parent, fetch, url }) => {
   if (!user.isAdmin && !user.isModerator) error(403, "You don't have access to this page.");
   const tab = asAdminTab(url.searchParams.get("tab"));
   const allowed = user.isAdmin || MODERATOR_TABS.includes(tab);
-  const initial = allowed ? await loadTab(endpoints(fetch), tab) : {};
+  const from = url.searchParams.get("trafficFrom");
+  const to = url.searchParams.get("trafficTo");
+  const initial = allowed ? await loadTab(endpoints(fetch), tab, from && to ? { from, to } : undefined) : {};
   return { user, tab, initial };
 };

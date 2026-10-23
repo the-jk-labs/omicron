@@ -51,7 +51,8 @@
       <h2>Cookies and storage</h2>
       <p>
         A session cookie authenticates you. A timezone cookie improves date rendering. Local storage keeps your editor
-        drafts and preferences. No tracking cookies.
+        drafts and preferences. Post-read counting may use a random first-party reader cookie to avoid counting the same
+        browser twice for a post.
       </p>
 
       <h2>Your rights</h2>
@@ -71,5 +72,21 @@
         controller, imprint).
       </p>
     {/if}
+
+    <h2>Site traffic analytics</h2>
+    <p>
+      Site traffic collection is currently <strong>{instance?.trafficEnabled ? "enabled" : "disabled"}</strong>. When
+      enabled, successful public-page visits may be counted using a random first-party visitor cookie (up to 400 days)
+      and a visit cookie that expires after 30 minutes without a measured pageview. These are separate from sign-in
+      cookies and are not tied to your account. Administrators see daily aggregate pageviews, estimated unique browsers
+      and visits, public paths, referring domains, and broad device/browser/operating-system categories. If configured,
+      country is determined locally from the connection address; the address is discarded, not stored in analytics.
+    </p>
+    <p>
+      Analytics stores no individual visit log, reader IP, raw user agent, search query, or referrer path. Aggregate
+      statistics are retained for 730 days. Do Not Track and Global Privacy Control prevent collection. Disabled
+      JavaScript or a blocked analytics request also prevents a site-traffic measurement. The operator is responsible
+      for any consent required by local law.
+    </p>
   </div>
 </article>

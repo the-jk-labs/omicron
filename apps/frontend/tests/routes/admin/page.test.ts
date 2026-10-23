@@ -29,6 +29,7 @@ test("an admin gets the full dashboard, opening on Reports", () => {
   expect(pageTabs().map((t) => t.textContent?.trim())).toEqual([
     "Reports",
     "Users",
+    "Traffic",
     "Federation",
     "Email",
     "Security",

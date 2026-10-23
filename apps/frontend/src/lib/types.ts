@@ -315,6 +315,23 @@ export type PostStat = {
 // One day's summed view total, for the views-over-time chart.
 export type DayTotals = { day: string; views: number };
 
+export type TrafficMetrics = { pageviews: number; visitors: number; visits: number };
+export type TrafficPoint = TrafficMetrics & { day: string };
+export type TrafficSummary = {
+  enabled: boolean;
+  geographyAvailable: boolean;
+  firstDay: string | null;
+  range: { from: string; to: string; previousFrom: string; previousTo: string; days: number };
+  totals: TrafficMetrics;
+  previous: TrafficMetrics;
+  series: TrafficPoint[];
+  monthly: TrafficPoint[];
+  breakdowns: Record<
+    "path" | "referrer" | "country" | "device" | "browser" | "os",
+    { value: string; pageviews: number }[]
+  >;
+};
+
 // The signed-in author's own analytics. `onInstanceViews` is false when a
 // moderator has disabled view counting for the instance, in which case the UI
 // hides the views panels and shows only fediverse engagement. See ANALYTICS.md.
@@ -429,6 +446,7 @@ export type InstanceInfo = {
   domain: string;
   federationEnabled: boolean;
   setupComplete: boolean;
+  trafficEnabled?: boolean;
   // False while the instance is still on the default `console` transport, which
   // writes mail to the backend log instead of sending it. The pages that end at
   // "check your inbox" — password reset, email verification — have to say so

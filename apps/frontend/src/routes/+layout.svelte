@@ -11,6 +11,7 @@
   import Nav from "#lib/components/Nav.svelte";
   import PasskeyPrompt from "#lib/components/PasskeyPrompt.svelte";
   import SideNav from "#lib/components/SideNav.svelte";
+  import TrafficCollector from "#lib/components/TrafficCollector.svelte";
   import ConfirmDialog from "#lib/components/ui/ConfirmDialog.svelte";
   import { absoluteBanner, postCardUrl, profileCardUrl } from "#lib/cover.js";
   import { excerpt } from "#lib/format.js";
@@ -375,6 +376,11 @@
     {@html `<script type="application/ld+json">${serializeJsonLd(jsonLd)}<\/script>`}
   {/if}
 </svelte:head>
+
+<TrafficCollector
+  enabled={data.instance?.trafficEnabled === true}
+  staff={!!(data.user?.isAdmin || data.user?.isModerator)}
+/>
 
 <!-- Fallback for the render boundaries below; `reset` re-attempts the render. -->
 {#snippet failed(error: unknown, reset: () => void)}

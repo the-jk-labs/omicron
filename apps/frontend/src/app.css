@@ -67,6 +67,9 @@
 
   --text-xxs: 10px;
 
+  --spacing-input: 3rem;
+  --spacing-input-sm: 2.5rem;
+
   --font-sans: Twemoji, Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif;
   --font-content: Twemoji, Source Sans 3 Variable, Source Sans 3, ui-sans-serif, system-ui, sans-serif;
   --font-serif: Twemoji, Georgia, Cambria, Times New Roman, serif;

@@ -1,6 +1,7 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { replaceState } from "$app/navigation";
+  import { page } from "$app/state";
   import { Tabs } from "bits-ui";
   import { untrack } from "svelte";
   import { ADMIN_TABS, type AdminTab, asAdminTab } from "#lib/adminTabs.js";
@@ -10,6 +11,7 @@
   import AdminReports from "#lib/components/AdminReports.svelte";
   import AdminSecurity from "#lib/components/AdminSecurity.svelte";
   import AdminSeo from "#lib/components/AdminSeo.svelte";
+  import AdminTraffic from "#lib/components/AdminTraffic.svelte";
   import AdminUnsplash from "#lib/components/AdminUnsplash.svelte";
   import AdminUsers from "#lib/components/AdminUsers.svelte";
   import Icon from "#lib/components/Icon.svelte";
@@ -29,7 +31,9 @@
   let tab = $state<AdminTab>(untrack(() => data.tab));
   function selectTab(value: string) {
     tab = asAdminTab(value);
-    replaceState(`?tab=${tab}`, {});
+    const params = new URLSearchParams(page.url.search);
+    params.set("tab", tab);
+    replaceState(`?${params}`, {});
   }
   // Only the tab the page was opened on comes loaded; the others load themselves.
   const initial = untrack(() => data.initial);
@@ -69,6 +73,14 @@
         <AdminReports initial={initial.reports} />
       </div>
     </section>
+  </Tabs.Content>
+
+  <Tabs.Content value="traffic" class="mt-6">
+    {#if isAdmin}
+      <AdminTraffic initial={initial.traffic} />
+    {:else}
+      {@render requiresAdmin("Site traffic")}
+    {/if}
   </Tabs.Content>
 
   <Tabs.Content value="users" class="mt-6">

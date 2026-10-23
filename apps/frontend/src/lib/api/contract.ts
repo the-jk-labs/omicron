@@ -44,6 +44,7 @@ import type {
   RelationActor,
   RemoteProfile,
   Tag,
+  TrafficSummary,
   User,
   WebhookToken,
 } from "#lib/types.js";
@@ -65,6 +66,7 @@ import type {
   webhookTokenView,
 } from "@/routes/serializers.ts";
 import type { AccessRule as BackendAccessRule, testAccessRules } from "@/services/accessRules.ts";
+import type { TrafficSummary as BackendTrafficSummary } from "@/services/traffic.ts";
 
 // What `c.json()` does to a serializer's return value on the way out: `Date`
 // becomes an ISO string, everything else keeps its shape. Applied to the
@@ -98,6 +100,7 @@ type Wire<F extends (...args: never[]) => unknown> = Serialized<ReturnType<F>>;
 // frontend declares for it.
 
 type _Tag = Assert<Fits<Serialized<TagSummary>, Tag>>;
+type _TrafficSummary = Assert<Fits<BackendTrafficSummary, TrafficSummary>>;
 type _AccessRule = Assert<Fits<BackendAccessRule, AccessRule>>;
 type _AccessRuleTest = Assert<Fits<ReturnType<typeof testAccessRules>, AccessRuleTest>>;
 type _ProfileLink = Assert<Fits<Wire<typeof profileLinkView>, ProfileLink>>;

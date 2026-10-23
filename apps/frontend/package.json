@@ -37,9 +37,13 @@
     "better-auth": "1.7.10",
     "bits-ui": "2.19.5",
     "compression": "1.8.2",
+    "d3-geo": "3.1.1",
     "emoji-picker-element": "1.29.1",
     "highlight.js": "11.12.0",
-    "tiptap-markdown": "0.9.0"
+    "i18n-iso-countries": "7.14.0",
+    "tiptap-markdown": "0.9.0",
+    "topojson-client": "3.1.0",
+    "world-atlas": "2.0.2"
   },
   "devDependencies": {
     "@sveltejs/adapter-node": "6.0.0",
@@ -49,7 +53,10 @@
     "@testing-library/dom": "10.4.2",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/svelte": "5.4.2",
+    "@types/d3-geo": "3.1.1",
     "@types/node": "24.19.2",
+    "@types/topojson-client": "3.1.5",
+    "@types/topojson-specification": "1.0.5",
     "@vitest/coverage-v8": "5.0.5",
     "greenly": "1.2.0",
     "jsdom": "30.1.3",
