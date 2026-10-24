@@ -41,6 +41,7 @@ test.for([null, "<p>Operator privacy policy.</p>"])(
     });
     render(PrivacyPage);
     expect(screen.getByRole("heading", { name: "Optional website statistics" })).toBeInTheDocument();
+    expect(screen.getByText(/configured in Umami Cloud's Europe region/)).toBeInTheDocument();
     expect(
       screen.getByText(/browser information and your IP address are forwarded to Umami Cloud/),
     ).toBeInTheDocument();
