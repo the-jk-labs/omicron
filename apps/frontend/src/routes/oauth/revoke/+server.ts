@@ -1,2 +1,2 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-export { POST } from "../../api/[...path]/+server";
+export { OPTIONS, POST } from "../../api/[...path]/+server";

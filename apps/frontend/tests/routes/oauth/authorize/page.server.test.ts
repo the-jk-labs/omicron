@@ -66,3 +66,21 @@ test("expired consent stays on the page with a useful error", async () => {
   const result = await actions.default({ request, fetch } as never);
   expect(result).toMatchObject({ status: 400, data: { error: "Start again." } });
 });
+
+test("approved native callbacks are returned to the OS rather than fetched by the server", async () => {
+  const { fetch } = fakeFetch({
+    "POST /api/oauth/authorize": { redirect: "org.example.reader:/oauth/callback?code=code&state=x" },
+  });
+  const form = new FormData();
+  form.set("ticket", "ticket");
+  form.set("decision", "allow");
+  const request = new Request("https://omicron.example/oauth/authorize", {
+    method: "POST",
+    headers: { origin: "https://omicron.example" },
+    body: form,
+  });
+  await expect(actions.default({ request, fetch } as never)).rejects.toMatchObject({
+    status: 303,
+    location: "org.example.reader:/oauth/callback?code=code&state=x",
+  });
+});

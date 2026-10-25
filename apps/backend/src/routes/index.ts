@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
 import { adminRoutes } from "@/routes/admin.ts";
+import { clientRoutes } from "@/routes/client.ts";
 import { dashboardRoutes } from "@/routes/dashboard.ts";
 import { emailChangeRoutes } from "@/routes/emailChange.ts";
 import { feedRoutes } from "@/routes/feed.ts";
@@ -26,6 +27,7 @@ import { webhookRoutes } from "@/routes/webhooks.ts";
 // Mounts the JSON API under /api.
 export const apiRoutes = new Hono<AppEnv>();
 
+apiRoutes.route("/client", clientRoutes);
 apiRoutes.route("/me", meRoutes);
 apiRoutes.route("/posts", postRoutes);
 apiRoutes.route("/og", ogRoutes);

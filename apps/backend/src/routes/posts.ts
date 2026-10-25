@@ -8,7 +8,7 @@ import { cookieSecure } from "@/lib/cookies.ts";
 import { parseLanguageFilter } from "@/lib/languages.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { jsonBody } from "@/lib/validate.ts";
-import { requireUser } from "@/routes/middleware.ts";
+import { mayModerate, requireUser } from "@/routes/middleware.ts";
 import { barePost, commentView } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import * as analyticsService from "@/services/analytics.ts";
@@ -191,7 +191,7 @@ postRoutes.patch("/:id", jsonBody(updatePostSchema), async (c) => {
 // deleting their own post is never mailed.
 postRoutes.delete("/:id", async (c) => {
   const user = requireUser(c);
-  await postsService.deletePost(user.id, user.isAdmin || user.isModerator, c.req.param("id"), {
+  await postsService.deletePost(user.id, mayModerate(c), c.req.param("id"), {
     notify: c.req.query("notify") === "true",
   });
   return c.json({ ok: true });
@@ -269,7 +269,7 @@ postRoutes.patch("/:id/comments/:commentId", jsonBody(z.object({ content: z.stri
 // Delete a comment (auth required; author or moderator only).
 postRoutes.delete("/:id/comments/:commentId", async (c) => {
   const user = requireUser(c);
-  await commentsService.remove(user.id, user.isAdmin || user.isModerator, c.req.param("commentId"));
+  await commentsService.remove(user.id, mayModerate(c), c.req.param("commentId"));
   return c.json({ ok: true });
 });
 

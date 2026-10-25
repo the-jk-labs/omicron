@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
+import { matchedRoutes } from "hono/route";
 import { auth } from "@/auth/auth.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { badRequest, forbidden, unauthorized } from "@/lib/http.ts";
 import { readCappedBody } from "@/lib/inboxBody.ts";
+import { OAuthError } from "@/lib/oauthError.ts";
+import { clientAccess } from "@/routes/clientAccess.ts";
 import type { AppEnv } from "@/routes/types.ts";
+import { accessIdentity } from "@/services/oauth.ts";
+import { hasScope } from "@/services/oauthScopes.ts";
 
 export const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -25,6 +30,24 @@ async function userFromJwt(headers: Headers) {
 // none). Loading the row (not just the session's user) keeps the whole `User`
 // shape — isAdmin, isModerator, isPrivate, suspendedAt, deletedAt, actorKeyPair — available downstream.
 export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
+  if (/^Bearer\s+omi_(?:id|at|rt)_/i.test(c.req.header("authorization") ?? "")) {
+    const { user, grant } = await accessIdentity(c.req.raw.headers);
+    const route = matchedRoutes(c).find((candidate) => candidate.method !== "ALL");
+    const access = route ? clientAccess(c.req.method, route.path) : undefined;
+    if (!access?.scope || grant.scopes === "read:accounts" || !hasScope(grant.scopes, access.scope)) {
+      throw new OAuthError(
+        "insufficient_scope",
+        "This application is not authorized for this endpoint.",
+        403,
+        access?.scope ?? undefined,
+      );
+    }
+    c.set("user", user);
+    c.set("oauthScopes", grant.scopes);
+    c.header("Cache-Control", "no-store");
+    await next();
+    return;
+  }
   // Better Auth's cookie cache can outlive a revoked session by up to 5 minutes.
   // The identity every page load asks for, and every write, go to the database.
   const authoritative = !READ_METHODS.has(c.req.method) || c.req.path === "/api/me";
@@ -42,6 +65,12 @@ export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   c.set("user", user && !user.suspendedAt && !user.deletedAt ? user : null);
   await next();
 });
+
+export function mayModerate(c: Context<AppEnv>) {
+  const user = requireUser(c);
+  const scopes = c.get("oauthScopes");
+  return (user.isAdmin || user.isModerator) && (!scopes || hasScope(scopes, "admin:write"));
+}
 
 // Guard for routes that require authentication. Returns the user (non-null).
 export function requireUser(c: { get: (k: "user") => AppEnv["Variables"]["user"] }) {

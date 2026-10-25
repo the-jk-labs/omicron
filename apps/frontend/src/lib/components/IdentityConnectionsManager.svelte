@@ -43,7 +43,7 @@
 
 <h2 class="text-lg font-semibold tracking-tight text-foreground">Connected applications</h2>
 <p class="mt-1 text-sm text-muted-foreground">
-  Applications allowed to verify your public identity. They cannot read private data or post on your behalf.
+  Applications you have authorized. Each can use only its approved permissions. Revoking access also stops renewal.
 </p>
 {#if error}<p role="alert" class="mt-3 text-sm text-destructive">{error}</p>{/if}
 {#if loading}
@@ -57,6 +57,7 @@
         <div class="min-w-0">
           <p class="text-sm font-medium break-words text-foreground">{item.name}</p>
           <p class="text-xs break-all text-muted-foreground">{item.callbackOrigin}</p>
+          <p class="text-xs break-words text-muted-foreground">Permissions: {item.scope ?? "read:accounts"}</p>
           <p class="text-xs text-muted-foreground">Expires <Time iso={item.expiresAt} kind="datetime" /></p>
         </div>
         <Button variant="outline" size="sm" disabled={busy !== null} onclick={() => revoke(item.id)}>

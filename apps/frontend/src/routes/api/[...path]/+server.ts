@@ -82,6 +82,11 @@ const proxy: RequestHandler = async ({ request, url, params, getClientAddress })
     "ratelimit-limit",
     "ratelimit-remaining",
     "ratelimit-reset",
+    "access-control-allow-origin",
+    "access-control-allow-methods",
+    "access-control-allow-headers",
+    "access-control-expose-headers",
+    "access-control-max-age",
   ]) {
     const v = res.headers.get(h);
     if (v) out.set(h, v);
@@ -95,3 +100,4 @@ export const POST = proxy;
 export const PUT = proxy;
 export const PATCH = proxy;
 export const DELETE = proxy;
+export const OPTIONS = proxy;

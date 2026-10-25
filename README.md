@@ -44,6 +44,8 @@ instance in one command and own your words.
 - **Self-hostable** — Docker-first, one command, auto-migrating, seamless
   upgrades.
 - **Real writing tools** — a Tiptap editor with full Markdown support.
+- **Open client API** — build independent clients with scoped OAuth authorization
+  and the same reading, writing, and social APIs as the official apps.
 
 ## Stack
 
@@ -92,6 +94,9 @@ Everything lives at **[docs.omicron.blog](https://docs.omicron.blog)**:
   variables, HTTP and admin APIs, rate limits
 
 ## Development
+
+Building an independent app? See the [client API contract](CLIENT_API.md) for
+application registration, OAuth/PKCE, scopes, API discovery, and token renewal.
 
 ```bash
 # Postgres must be running and DATABASE_URL set.

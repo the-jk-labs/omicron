@@ -113,7 +113,7 @@ test("real cookie → explicit consent → one-use code → identity-only token 
     url: `${origin}/@ada`,
     uri: `${origin}/users/ada`,
   });
-  expect((await app.request("/api/private", { headers: { authorization: `Bearer ${token}` } })).status).toBe(401);
+  expect((await app.request("/api/private", { headers: { authorization: `Bearer ${token}` } })).status).toBe(403);
   const [stored] = await db.select().from(oauthTokens);
   expect(stored.tokenHash).toBe(await hashToken(token));
   expect((await db.select().from(oauthCodes)).length).toBe(0);

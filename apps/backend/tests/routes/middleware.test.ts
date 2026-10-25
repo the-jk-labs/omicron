@@ -7,6 +7,7 @@ const getSession = vi.hoisted(() => vi.fn<(a: { query?: { disableCookieCache?: b
 const verifyJWT = vi.hoisted(() => vi.fn<(a: { body: { token: string } }) => Promise<unknown>>());
 vi.mock("@/auth/auth.ts", () => ({ auth: { api: { getSession, verifyJWT } } }));
 vi.mock(import("@/db/repositories/users.ts"));
+vi.mock(import("@/services/oauth.ts"));
 
 import * as usersRepo from "@/db/repositories/users.ts";
 import { sessionMiddleware } from "@/routes/middleware.ts";
