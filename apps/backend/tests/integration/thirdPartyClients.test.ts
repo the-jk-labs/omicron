@@ -7,7 +7,7 @@ import { auth } from "@/auth/auth.ts";
 import { config } from "@/config.ts";
 import { db } from "@/db/client.ts";
 import * as oauthRepo from "@/db/repositories/oauth.ts";
-import { oauthApps, oauthRefreshTokens, oauthTokens, sessions, users } from "@/db/schema.ts";
+import { likes, oauthApps, oauthRefreshTokens, oauthTokens, sessions, users } from "@/db/schema.ts";
 import { seedFederationRunning } from "@/services/federationState.ts";
 import { getOrigin } from "@/services/instanceSetup.ts";
 import { closeDb, mkPost, mkUser, resetDb } from "./harness.ts";
@@ -128,6 +128,52 @@ test("public discovery and CORS work without federation or a browser session", a
   expect(options.status).toBe(204);
   expect(options.headers.get("access-control-allow-origin")).toBe("*");
 });
+
+test.for([undefined, "null", "https://untrusted.example.test"])(
+  "cookie writes reject Origin %o before persisting an interaction",
+  async (value) => {
+    const author = await mkUser("author");
+    const article = await mkPost(author.id, "public-post");
+    const headers = new Headers({
+      cookie,
+      "content-type": "application/x-www-form-urlencoded",
+      "sec-fetch-site": "same-site",
+      "x-forwarded-for": `192.0.2.${source}`,
+    });
+    if (value !== undefined) headers.set("origin", value);
+    const response = await app.request(`/api/posts/${article.id}/like`, { method: "POST", headers });
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "A same-origin request is required." });
+    expect(await db.select().from(likes)).toHaveLength(0);
+  },
+);
+
+test("same-origin browser cookies still authorize normal writes", async () => {
+  const author = await mkUser("author");
+  const article = await mkPost(author.id, "public-post");
+  const response = await app.request(`/api/posts/${article.id}/like`, {
+    method: "POST",
+    headers: { cookie, origin, "x-forwarded-for": `192.0.2.${source}` },
+  });
+  expect(response.status).toBe(200);
+  expect(await db.select().from(likes)).toMatchObject([{ postId: article.id, userId }]);
+});
+
+test.for([undefined, "https://client.example"])(
+  "OAuth writes remain usable with Origin %o even when a cookie is also present",
+  async (value) => {
+    const { access_token: token } = await grant("write:posts");
+    const author = await mkUser("author");
+    const article = await mkPost(author.id, "public-post");
+    const headers = new Headers({ cookie, authorization: `Bearer ${token}`, "x-forwarded-for": `192.0.2.${source}` });
+    if (value) headers.set("origin", value);
+    const response = await app.request(`/api/posts/${article.id}/like`, { method: "POST", headers });
+    expect(response.status).toBe(200);
+    expect(await db.select().from(likes)).toMatchObject([{ postId: article.id, userId }]);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    expect(response.headers.has("access-control-allow-credentials")).toBe(false);
+  },
+);
 
 test("application verification returns approved permissions without a secret", async () => {
   const credentials = await grant();

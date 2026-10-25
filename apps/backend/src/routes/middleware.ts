@@ -9,7 +9,7 @@ import { readCappedBody } from "@/lib/inboxBody.ts";
 import { OAuthError } from "@/lib/oauthError.ts";
 import { clientAccess } from "@/routes/clientAccess.ts";
 import type { AppEnv } from "@/routes/types.ts";
-import { accessIdentity } from "@/services/oauth.ts";
+import { accessIdentity, requireSameOrigin } from "@/services/oauth.ts";
 import { hasScope } from "@/services/oauthScopes.ts";
 
 export const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -63,6 +63,10 @@ export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   // A suspended or deleted account is treated as signed out at once, regardless
   // of the session cookie cache (its sign-in is also blocked in auth/auth.ts).
   c.set("user", user && !user.suspendedAt && !user.deletedAt ? user : null);
+  // Cookie writes retain their CSRF boundary when Caddy bypasses SvelteKit.
+  if (session && c.get("user") && !READ_METHODS.has(c.req.method)) {
+    await requireSameOrigin(c.req.raw.headers);
+  }
   await next();
 });
 
