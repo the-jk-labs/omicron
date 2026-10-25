@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { beforeEach, expect, test, vi } from "vitest";
-import { DELETE, GET, PATCH, POST, PUT } from "../../../../src/routes/api/[...path]/+server";
+import { DELETE, GET, OPTIONS, PATCH, POST, PUT } from "../../../../src/routes/api/[...path]/+server";
 
 let seen: { url: string; init: RequestInit } | null;
 let reply: () => Response;
@@ -109,4 +109,30 @@ test("the response keeps its status, body, every Set-Cookie and only allowlisted
 test("an encoded slash inside a path segment reaches the backend still encoded", async () => {
   await GET(proxyEvent("https://blog.example/api/tags/a%2Fb/posts"));
   expect(seen!.url).toBe("http://backend.test:8000/api/tags/a%2Fb/posts");
+});
+
+test("browser-client preflights and CORS authorization feedback survive the development proxy", async () => {
+  reply = () =>
+    new Response(null, {
+      status: 204,
+      headers: {
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "GET,POST,PATCH",
+        "access-control-allow-headers": "Authorization,Content-Type",
+        "access-control-expose-headers": "WWW-Authenticate,Retry-After",
+        "access-control-max-age": "600",
+      },
+    });
+  const res = await OPTIONS(
+    proxyEvent("https://blog.example/api/posts", {
+      method: "OPTIONS",
+      headers: { origin: "https://client.example", "access-control-request-method": "PATCH" },
+    }),
+  );
+  expect(seen!.init.method).toBe("OPTIONS");
+  expect(new Headers(seen!.init.headers).get("origin")).toBe("https://client.example");
+  expect(res.status).toBe(204);
+  expect(res.headers.get("access-control-allow-origin")).toBe("*");
+  expect(res.headers.get("access-control-allow-headers")).toContain("Authorization");
+  expect(res.headers.get("access-control-expose-headers")).toContain("WWW-Authenticate");
 });

@@ -25,6 +25,33 @@ test("consent clearly identifies the destination, account and narrow permission"
   expect(screen.getByRole("button", { name: "Allow identity verification" })).toHaveAttribute("value", "allow");
 });
 
+test("full client consent shows approved permissions and renewable access without identity-only promises", () => {
+  render(Page, {
+    data: {
+      consent: {
+        ticket: "ticket",
+        name: "Reader",
+        callbackOrigin: "org.example.reader:/callback",
+        username: "ada",
+        scope: "read write admin:write",
+        renewable: true,
+        permissions: [
+          { scope: "read", description: "Read your private posts and account details." },
+          { scope: "write", description: "Publish and edit posts on your behalf." },
+          { scope: "admin:write", description: "Perform moderation if your role permits it." },
+        ],
+      },
+    } as never,
+    form: null,
+  });
+  expect(screen.getByText(/Read your private posts/)).toBeVisible();
+  expect(screen.getByText(/Publish and edit posts/)).toBeVisible();
+  expect(screen.getByText(/Perform moderation/)).toBeVisible();
+  expect(screen.getByText(/90 days/)).toBeVisible();
+  expect(screen.queryByText(/cannot read your email/)).toBeNull();
+  expect(screen.getByRole("button", { name: "Authorize application" })).toHaveAttribute("value", "allow");
+});
+
 test("authorization failures are accessible and untrusted application names stay text", () => {
   render(Page, {
     data: {

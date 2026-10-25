@@ -47,6 +47,8 @@ const app = async () => ({
   name: "Directory",
   secretHash: await hashToken(secret),
   redirectUris: [callback],
+  scopes: "read:accounts",
+  publicClient: false,
   website: null,
   authorizedAt: null,
   createdAt: new Date(),
@@ -57,6 +59,7 @@ const code = () => ({
   redirectUri: callback,
   userId: "user-1",
   codeChallenge: null as string | null,
+  scopes: "read:accounts",
   expiresAt: new Date(Date.now() + 60_000),
 });
 
@@ -79,19 +82,16 @@ describe("registration", () => {
     expect(repo.createApp).toHaveBeenCalledWith(
       expect.objectContaining({
         id: result.client_id,
-        secretHash: await hashToken(result.client_secret),
+        secretHash: await hashToken(result.client_secret!),
         redirectUris: [callback],
       }),
     );
     expect(JSON.stringify(vi.mocked(repo.createApp).mock.calls)).not.toContain(result.client_secret);
   });
-  test.for([undefined, "", "read", "write", "read:accounts write", "read:accounts read:accounts"])(
-    "rejects unsupported scopes %o",
-    async (scopes) => {
-      await expect(oauth.register({ ...registration(), scopes })).rejects.toMatchObject({ error: "invalid_scope" });
-      expect(repo.createApp).not.toHaveBeenCalled();
-    },
-  );
+  test.for(["", "push", "unknown", "read:accounts read:accounts"])("rejects unsupported scopes %o", async (scopes) => {
+    await expect(oauth.register({ ...registration(), scopes })).rejects.toMatchObject({ error: "invalid_scope" });
+    expect(repo.createApp).not.toHaveBeenCalled();
+  });
   test.for([
     "http://remote.example/cb",
     "javascript:alert(1)",
@@ -210,6 +210,7 @@ describe("consent", () => {
       redirectUri: callback,
       state: "a+/=?&b",
       codeChallenge: null,
+      scopes: "read:accounts",
       expiresAt: new Date(),
     });
     const target = new URL(await oauth.decide({ ticket: "ticket", decision }, headers()));
@@ -244,6 +245,7 @@ describe("token exchange", () => {
       await hashToken("fixture-code"),
       await hashToken(result.access_token),
       expect.any(Date),
+      undefined,
     );
     expect(result).not.toHaveProperty("refresh_token");
   });
@@ -254,7 +256,7 @@ describe("token exchange", () => {
     });
     expect(repo.findCode).not.toHaveBeenCalled();
   });
-  test.for(["refresh_token", "password", "client_credentials", "implicit"])("rejects grant %s", async (grant_type) => {
+  test.for(["password", "client_credentials", "implicit"])("rejects grant %s", async (grant_type) => {
     await expect(oauth.exchange({ ...exchange(), grant_type })).rejects.toMatchObject({
       error: "unsupported_grant_type",
     });
@@ -306,6 +308,8 @@ describe("identity and revocation", () => {
       redirectUri: callback,
       createdAt: new Date(),
       expiresAt: new Date(),
+      scopes: "read:accounts",
+      refreshExpiresAt: null,
     });
     const result = await oauth.verify(bearer());
     expect(result).toEqual({
@@ -346,9 +350,103 @@ describe("identity and revocation", () => {
   test("metadata advertises only implemented flows and scopes", async () => {
     expect(await oauth.metadata()).toMatchObject({
       issuer: origin,
-      scopes_supported: ["read:accounts"],
-      grant_types_supported: ["authorization_code"],
+      scopes_supported: expect.arrayContaining(["read:accounts", "read", "write", "admin:read", "admin:write"]),
+      grant_types_supported: ["authorization_code", "refresh_token"],
       code_challenge_methods_supported: ["S256"],
     });
+  });
+});
+
+describe("third-party applications", () => {
+  test("registers public native clients with URI arrays and no reusable secret", async () => {
+    const result = await oauth.register({
+      client_name: "Reader",
+      redirect_uris: ["org.example.reader:/oauth/callback"],
+      scopes: "read write",
+      token_endpoint_auth_method: "none",
+    });
+    expect(result).toMatchObject({
+      token_endpoint_auth_method: "none",
+      scopes: ["read", "write"],
+      redirect_uris: ["org.example.reader:/oauth/callback"],
+    });
+    expect(result).not.toHaveProperty("client_secret");
+    expect(repo.createApp).toHaveBeenCalledWith(expect.objectContaining({ publicClient: true, scopes: "read write" }));
+  });
+  test("API access requires PKCE and cannot exceed the registered scopes", async () => {
+    vi.mocked(repo.findApp).mockResolvedValue({ ...(await app()), scopes: "read write" });
+    await expect(oauth.prepare({ ...request(), scope: "read write" }, headers())).rejects.toMatchObject({
+      error: "invalid_request",
+    });
+    await expect(
+      oauth.prepare(
+        { ...request(), scope: "admin:write", code_challenge: "x".repeat(43), code_challenge_method: "S256" },
+        headers(),
+      ),
+    ).rejects.toMatchObject({ error: "invalid_scope" });
+    const consent = await oauth.prepare(
+      { ...request(), scope: "read write", code_challenge: "x".repeat(43), code_challenge_method: "S256" },
+      headers(),
+    );
+    expect(consent).toMatchObject({
+      scope: "read write",
+      renewable: true,
+      permissions: expect.arrayContaining([expect.objectContaining({ scope: "write" })]),
+    });
+    expect(repo.createRequest).toHaveBeenCalledWith(expect.objectContaining({ scopes: "read write" }));
+  });
+  test("public clients require PKCE even for identity and cannot submit a secret", async () => {
+    vi.mocked(repo.findApp).mockResolvedValue({ ...(await app()), publicClient: true });
+    await expect(oauth.prepare(request(), headers())).rejects.toMatchObject({ error: "invalid_request" });
+    await expect(oauth.exchange(exchange())).rejects.toMatchObject({ error: "invalid_client" });
+  });
+  test("issues renewable API credentials with the approved scopes, storing only hashes", async () => {
+    const verifier = "a".repeat(43);
+    vi.mocked(repo.findCode).mockResolvedValue({
+      ...code(),
+      scopes: "read write",
+      codeChallenge: createHash("sha256").update(verifier).digest("base64url"),
+    });
+    const result = await oauth.exchange({ ...exchange(), code_verifier: verifier });
+    expect(result.access_token).toMatch(/^omi_at_[\w-]{43}$/);
+    expect(result.refresh_token).toMatch(/^omi_rt_[\w-]{43}$/);
+    expect(result.scope).toBe("read write");
+    expect(repo.exchange).toHaveBeenCalledWith(
+      await hashToken("fixture-code"),
+      await hashToken(result.access_token),
+      expect.any(Date),
+      { tokenHash: await hashToken(result.refresh_token!), expiresAt: expect.any(Date) },
+    );
+  });
+  test("refresh preserves permissions, rotates both secrets, and refuses unavailable accounts", async () => {
+    vi.mocked(repo.findRefresh).mockResolvedValue({
+      id: "grant",
+      userId: "user-1",
+      scopes: "read write",
+      refreshExpiresAt: new Date(Date.now() + 86400_000),
+    } as never);
+    vi.mocked(repo.refresh).mockResolvedValue(true);
+    const input = {
+      client_id: client,
+      client_secret: secret,
+      grant_type: "refresh_token",
+      refresh_token: "old-refresh",
+    };
+    await expect(oauth.exchange({ ...input, scope: "admin:write" })).rejects.toMatchObject({ error: "invalid_scope" });
+    expect(repo.refresh).not.toHaveBeenCalled();
+    const result = await oauth.exchange(input);
+    expect(result.scope).toBe("read write");
+    expect(repo.refresh).toHaveBeenCalledWith(
+      await hashToken("old-refresh"),
+      client,
+      await hashToken(result.access_token),
+      await hashToken(result.refresh_token!),
+      expect.any(Date),
+    );
+    vi.mocked(users.findById).mockResolvedValue(userRow({ suspendedAt: new Date() }));
+    await expect(oauth.exchange(input)).rejects.toMatchObject({ error: "invalid_grant" });
+    vi.mocked(users.findById).mockResolvedValue(userRow());
+    vi.mocked(repo.refresh).mockResolvedValue(false);
+    await expect(oauth.exchange(input)).rejects.toMatchObject({ error: "invalid_grant" });
   });
 });

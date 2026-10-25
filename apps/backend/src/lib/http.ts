@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { OAuthError } from "@/lib/oauthError.ts";
 
 // Thin HTTP helpers so routes stay terse and consistent.
 
@@ -23,6 +24,13 @@ export const tooManyRequests = (msg = "Too many requests.") => new HttpError(429
 
 // Centralized error → JSON response mapping (wired in app.ts via onError).
 export function handleError(err: Error, c: Context): Response {
+  if (err instanceof OAuthError) {
+    c.header("Cache-Control", "no-store");
+    if (err.status === 401 || err.status === 403) {
+      c.header("WWW-Authenticate", `Bearer error="${err.error}"${err.scope ? `, scope="${err.scope}"` : ""}`);
+    }
+    return c.json({ error: err.error, error_description: err.message }, err.status as 400);
+  }
   if (err instanceof HttpError) {
     return c.json({ error: err.message }, err.status as 400);
   }

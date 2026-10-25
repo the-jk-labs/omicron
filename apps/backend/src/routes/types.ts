@@ -5,5 +5,6 @@ import type { User } from "@/db/schema.ts";
 export type AppEnv = {
   Variables: {
     user: User | null;
+    oauthScopes?: string;
   };
 };

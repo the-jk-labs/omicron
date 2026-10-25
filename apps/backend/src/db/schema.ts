@@ -704,12 +704,14 @@ export const sessions = pgTable(
   (t) => [uniqueIndex("sessions_token_idx").on(t.token), index("sessions_user_idx").on(t.userId)],
 );
 
-// ── identity OAuth (Mastodon-compatible, read:accounts only) ──────────────
+// ── OAuth applications and delegated API grants ─────────────────────────
 export const oauthApps = pgTable("oauth_apps", {
   id: text("id").primaryKey(),
   secretHash: text("secret_hash").notNull(),
   name: text("name").notNull(),
   redirectUris: jsonb("redirect_uris").$type<string[]>().notNull(),
+  scopes: text("scopes").notNull().default("read:accounts"),
+  publicClient: boolean("public_client").notNull().default(false),
   website: text("website"),
   authorizedAt: timestamp("authorized_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -730,6 +732,7 @@ export const oauthRequests = pgTable(
       .references(() => sessions.id, { onDelete: "cascade" }),
     redirectUri: text("redirect_uri").notNull(),
     state: text("state"),
+    scopes: text("scopes").notNull().default("read:accounts"),
     codeChallenge: text("code_challenge"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
@@ -747,6 +750,7 @@ export const oauthCodes = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     redirectUri: text("redirect_uri").notNull(),
+    scopes: text("scopes").notNull().default("read:accounts"),
     codeChallenge: text("code_challenge"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
@@ -759,6 +763,8 @@ export const oauthTokens = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     tokenHash: text("token_hash").notNull().unique(),
     codeHash: text("code_hash").notNull().unique(),
+    scopes: text("scopes").notNull().default("read:accounts"),
+    refreshExpiresAt: timestamp("refresh_expires_at", { withTimezone: true }),
     redirectUri: text("redirect_uri").notNull(),
     clientId: text("client_id")
       .notNull()
@@ -770,6 +776,18 @@ export const oauthTokens = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
   (t) => [index("oauth_tokens_user_idx").on(t.userId), index("oauth_tokens_expiry_idx").on(t.expiresAt)],
+);
+
+export const oauthRefreshTokens = pgTable(
+  "oauth_refresh_tokens",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    grantId: uuid("grant_id")
+      .notNull()
+      .references(() => oauthTokens.id, { onDelete: "cascade" }),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+  },
+  (t) => [index("oauth_refresh_tokens_grant_idx").on(t.grantId)],
 );
 
 // ── accounts (Better Auth) ───────────────────────────────────────────────

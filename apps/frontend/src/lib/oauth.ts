@@ -5,6 +5,8 @@ export type IdentityConsent = {
   callbackOrigin: string;
   username: string;
   scope: string;
+  permissions?: { scope: string; description: string }[];
+  renewable?: boolean;
 };
 
 export type IdentityConnection = {
@@ -13,6 +15,8 @@ export type IdentityConnection = {
   callbackOrigin: string;
   createdAt: string;
   expiresAt: string;
+  scope?: string;
+  permissions?: { scope: string; description: string }[];
 };
 
 // Login only resumes this local flow, never an arbitrary return URL.

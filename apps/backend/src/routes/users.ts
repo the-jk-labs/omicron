@@ -13,6 +13,7 @@ import type { AppEnv } from "@/routes/types.ts";
 import { enrichPosts } from "@/services/engagement.ts";
 import * as followRequestsService from "@/services/followRequests.ts";
 import * as followsService from "@/services/follows.ts";
+import { hasScope } from "@/services/oauthScopes.ts";
 import * as postsService from "@/services/posts.ts";
 import * as recommendationsService from "@/services/recommendations.ts";
 import * as relationsService from "@/services/relations.ts";
@@ -73,6 +74,9 @@ userRoutes.patch("/me/privacy", jsonBody(z.object({ isPrivate: z.boolean() })), 
 userRoutes.patch("/me/preferences", jsonBody(z.object({ showAiAssistedPosts: z.boolean() })), async (c) => {
   const viewer = requireUser(c);
   const user = await usersService.setShowAiAssistedPosts(viewer.id, c.req.valid("json").showAiAssistedPosts);
+  const scopes = c.get("oauthScopes");
+  if (scopes && !hasScope(scopes, "read:profile"))
+    return c.json({ user: { ...publicUser(user), showAiAssistedPosts: user.showAiAssistedPosts } });
   return c.json({ user: privateUser(user) });
 });
 

@@ -37,6 +37,7 @@ async function body(c: Context): Promise<Record<string, unknown>> {
 export const oauthRoutes = new Hono<AppEnv>();
 for (const path of [
   "/api/v1/apps",
+  "/api/v1/apps/verify_credentials",
   "/api/v1/accounts/verify_credentials",
   "/api/oauth/*",
   "/oauth/token",
@@ -52,12 +53,10 @@ for (const path of [
   });
 oauthRoutes.onError((err, c) => {
   if (!(err instanceof oauth.OAuthError)) return handleError(err, c);
-  if (err.status === 401)
-    c.header(
-      "WWW-Authenticate",
-      err.error === "invalid_token" ? `Bearer error="invalid_token"` : 'Basic realm="Omicron OAuth"',
-    );
-  return c.json({ error: err.error, error_description: err.message }, err.status as 400);
+  const response = handleError(err, c);
+  if (err.status === 401 && err.error === "invalid_client")
+    response.headers.set("WWW-Authenticate", 'Basic realm="Omicron OAuth"');
+  return response;
 });
 
 const limited = (name: string, max: number, windowMs = 60_000) => rateLimit({ name, max, windowMs });
@@ -90,6 +89,9 @@ oauthRoutes.get("/.well-known/oauth-authorization-server", async (c) => c.json(a
 
 oauthRoutes.post("/api/v1/apps", limited("oauth-register", 10, 3600_000), async (c) =>
   c.json(await oauth.register(await body(c)), 200),
+);
+oauthRoutes.get("/api/v1/apps/verify_credentials", limited("oauth-app", 120), async (c) =>
+  c.json(await oauth.verifyApp(c.req.raw.headers)),
 );
 
 // The HTML consent page is /oauth/authorize in SvelteKit; these are its JSON backing routes.

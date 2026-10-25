@@ -7,6 +7,7 @@ import { handleError } from "@/lib/http.ts";
 import { readCappedBody } from "@/lib/inboxBody.ts";
 import { checkRateLimit, clientIp, rateLimit } from "@/lib/rateLimit.ts";
 import { registerJobHandlers } from "@/queue/handlers.ts";
+import { clientCors } from "@/routes/clientCors.ts";
 import { healthRoutes } from "@/routes/health.ts";
 import { apiRoutes } from "@/routes/index.ts";
 import { READ_METHODS, sessionMiddleware } from "@/routes/middleware.ts";
@@ -107,6 +108,7 @@ export async function buildApp() {
   const app = new Hono<AppEnv>();
   app.use("*", logger());
   app.onError(handleError);
+  app.use("*", clientCors);
   app.route("/", oauthRoutes);
 
   // Mount ActivityPub (WebFinger, actor, inbox/outbox) before app routes.
