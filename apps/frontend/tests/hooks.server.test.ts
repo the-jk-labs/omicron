@@ -209,6 +209,14 @@ describe("security headers", () => {
     expect(caddyfile).toContain(`>Permissions-Policy "${policy}"`);
   });
 
+  // With `=()` Chromium throws NotAllowedError from navigator.credentials.get, breaking passkey sign-in.
+  test("Permissions-Policy lets this origin sign in with a passkey", async () => {
+    const { res } = await run("https://blog.example/");
+    const policy = res.headers.get("permissions-policy") ?? "";
+    expect(policy).toContain("publickey-credentials-get=(self)");
+    expect(policy).not.toContain("publickey-credentials-get=()");
+  });
+
   test("HSTS only when the request really arrived over HTTPS", async () => {
     expect((await run("http://blog.example/")).res.headers.has("strict-transport-security")).toBe(false);
     const proxied = await run("http://blog.example/", { headers: { "x-forwarded-proto": "https" } });

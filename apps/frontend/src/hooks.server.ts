@@ -196,7 +196,7 @@ export const handle: Handle = async ({ event, resolve }) => {
   // dev traffic carries this one.
   response.headers.set(
     "Permissions-Policy",
-    "accelerometer=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(), screen-wake-lock=(), usb=(), xr-spatial-tracking=()",
+    "accelerometer=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), publickey-credentials-get=(self), screen-wake-lock=(), usb=(), xr-spatial-tracking=()",
   );
   // Isolate our browsing context from cross-origin openers.
   response.headers.set("Cross-Origin-Opener-Policy", "same-origin");
