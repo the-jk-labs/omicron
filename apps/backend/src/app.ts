@@ -7,6 +7,7 @@ import { handleError } from "@/lib/http.ts";
 import { readCappedBody } from "@/lib/inboxBody.ts";
 import { checkRateLimit, clientIp, rateLimit } from "@/lib/rateLimit.ts";
 import { registerJobHandlers } from "@/queue/handlers.ts";
+import { appLinksRoutes } from "@/routes/appLinks.ts";
 import { clientCors } from "@/routes/clientCors.ts";
 import { healthRoutes } from "@/routes/health.ts";
 import { apiRoutes } from "@/routes/index.ts";
@@ -110,6 +111,8 @@ export async function buildApp() {
   app.onError(handleError);
   app.use("*", clientCors);
   app.route("/", oauthRoutes);
+  // Ahead of Fedify, which would otherwise claim every /.well-known/ path.
+  app.route("/", appLinksRoutes);
 
   // Mount ActivityPub (WebFinger, actor, inbox/outbox) before app routes.
   // Federation paths are delegated to Fedify's fetch handler; everything else

@@ -111,6 +111,8 @@ services:
       SESSION_SECRET_FILE: /run/secrets/session_secret
       APP_DOMAIN: ${APP_DOMAIN:-localhost:5173}
       FEDERATION_ENABLED: ${FEDERATION_ENABLED:-false}
+      ANDROID_APP_ID: ${ANDROID_APP_ID:-blog.omicron.app}
+      ANDROID_APP_CERT_FINGERPRINTS: ${ANDROID_APP_CERT_FINGERPRINTS:-}
       # Durable, shared queues + rate limits via the bundled redis service.
       # Override or blank it out to run the backend against in-process memory.
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
