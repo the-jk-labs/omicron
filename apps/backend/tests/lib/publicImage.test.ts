@@ -85,7 +85,7 @@ test("fetches a signature-checked raster without any visitor credentials or head
   expect(await fetchPublicImage("https://images.example/a.png")).toEqual({ bytes: PNG, contentType: "image/png" });
   expect(vi.mocked(request).mock.calls[0][1]).toMatchObject({ agent: false, lookup: publicImageLookup });
   expect(vi.mocked(request).mock.calls[0][1]).toHaveProperty("headers", {
-    accept: "image/png, image/jpeg, image/gif, image/webp",
+    accept: "image/png, image/jpeg, image/gif, image/webp, image/svg+xml",
     "accept-encoding": "identity",
   });
 });
@@ -103,8 +103,41 @@ test("relative redirects preserve the pinned transport and the shared deadline",
   expect(vi.mocked(request).mock.calls[1][1]).toHaveProperty("signal", vi.mocked(request).mock.calls[0][1].signal);
 });
 
+// Post banners are often SVG (a Sanity or Figma export), and without this they silently vanished on web and app.
+test("serves a self-contained SVG", async () => {
+  const svg = Buffer.from(
+    '<?xml version="1.0"?>\n<!-- banner -->\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">' +
+      '<defs><linearGradient id="g"><stop style="stop-color:#000"/></linearGradient></defs>' +
+      '<rect fill="url(#g)" width="10" height="10"/><use href="#g"/></svg>',
+  );
+  replies = [{ headers: { "content-type": "image/svg+xml; charset=utf-8" }, chunks: [svg] }];
+  expect(await fetchPublicImage("https://images.example/banner.svg")).toEqual({
+    bytes: svg,
+    contentType: "image/svg+xml",
+  });
+});
+
+const svgReply = (body: string) => ({ headers: { "content-type": "image/svg+xml" }, chunks: [Buffer.from(body)] });
+
 test.for([
-  { headers: { "content-type": "image/svg+xml" }, chunks: [Buffer.from("<svg/>")] },
+  svgReply('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'),
+  svgReply('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>'),
+  svgReply('<svg xmlns="http://www.w3.org/2000/svg"><rect ONCLICK = "alert(1)"/></svg>'),
+  svgReply('<svg xmlns="http://www.w3.org/2000/svg"><foreignObject><p>html</p></foreignObject></svg>'),
+  svgReply('<svg xmlns="http://www.w3.org/2000/svg"><a href="javascript:alert(1)"><rect/></a></svg>'),
+  svgReply('<svg xmlns="http://www.w3.org/2000/svg"><image href="https://tracker.example/pixel.png"/></svg>'),
+  svgReply('<svg xmlns="http://www.w3.org/2000/svg"><use xlink:href="other.svg#icon"/></svg>'),
+  svgReply('<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(https://tracker.example/x)"/></svg>'),
+  svgReply('<svg xmlns="http://www.w3.org/2000/svg"><style>@import "https://evil.example/a.css";</style></svg>'),
+  svgReply('<!DOCTYPE svg [<!ENTITY x "boom">]><svg xmlns="http://www.w3.org/2000/svg">&x;</svg>'),
+  svgReply("<html><body>not an svg</body></html>"),
+])("refuses an SVG with active or external content", async (reply) => {
+  replies = [reply];
+  await expect(fetchPublicImage("https://images.example/a.svg")).rejects.toThrow("Invalid image contents");
+});
+
+test.for([
+  { headers: { "content-type": "text/html" }, chunks: [Buffer.from("<svg/>")] },
   { headers: { "content-type": "image/png" }, chunks: [Buffer.from("<html>not an image</html>")] },
   { headers: { "content-type": "image/png", "content-length": String(MAX_PROXY_IMAGE_BYTES + 1) } },
   { headers: { "content-type": "image/png" }, chunks: [Buffer.alloc(MAX_PROXY_IMAGE_BYTES), PNG] },

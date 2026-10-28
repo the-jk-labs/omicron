@@ -21,3 +21,14 @@ test("returns only image bytes and instance-owned headers, never upstream creden
   expect(response.headers.has("access-control-allow-origin")).toBe(false);
   expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([1, 2]));
 });
+
+// An SVG opened straight from the proxy must not run anything on the instance's origin.
+test("every proxied image is sandboxed with a CSP that forbids scripts and outside requests", async () => {
+  vi.mocked(proxyImage).mockResolvedValue({ bytes: new Uint8Array([60]), contentType: "image/svg+xml" });
+  const app = new Hono().onError(handleError).route("/api/media", imageProxyRoutes);
+  const response = await app.request("/api/media/proxy?url=https%3A%2F%2Fimages.example%2Fa.svg");
+  expect(response.headers.get("content-type")).toBe("image/svg+xml");
+  expect(response.headers.get("content-security-policy")).toBe(
+    "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+  );
+});
