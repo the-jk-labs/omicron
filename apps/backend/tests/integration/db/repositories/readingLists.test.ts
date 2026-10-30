@@ -96,6 +96,22 @@ describe("items", () => {
     expect((await listsRepo.listIdsContaining([a.id], post.id)).size).toBe(0);
   });
 
+  test("savedPostIds is the viewer's own saves across all their lists", async () => {
+    const [ada, bob] = [await mkUser("ada"), await mkUser("bob")];
+    const [a, b] = [await mkList(ada.id, "A", "public"), await mkList(ada.id, "B", "private")];
+    const theirs = await mkList(bob.id, "Bob's", "public");
+    const [p1, p2, p3] = [await mkPost(ada.id, "p1"), await mkPost(ada.id, "p2"), await mkPost(ada.id, "p3")];
+    await listsRepo.addItem(a.id, p1.id);
+    await listsRepo.addItem(b.id, p1.id);
+    await listsRepo.addItem(b.id, p2.id);
+    await listsRepo.addItem(theirs.id, p3.id);
+    const ids = [p1.id, p2.id, p3.id];
+    expect([...(await listsRepo.savedPostIds(ids, ada.id))].toSorted()).toEqual([p1.id, p2.id].toSorted());
+    expect([...(await listsRepo.savedPostIds(ids, bob.id))]).toEqual([p3.id]);
+    expect((await listsRepo.savedPostIds(ids, null)).size).toBe(0);
+    expect((await listsRepo.savedPostIds([], ada.id)).size).toBe(0);
+  });
+
   test("items and counts carry every visibility rule, for each viewer", async () => {
     const [owner, viewer] = [await mkUser("owner"), await mkUser("viewer")];
     const [pub, priv, sus, muted] = [

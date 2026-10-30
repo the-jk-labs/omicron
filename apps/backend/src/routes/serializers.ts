@@ -15,6 +15,8 @@ export type Engagement = {
   commentCount: number;
   recommendCount: number;
   recommended: boolean;
+  // Whether the viewer has the post in any of their reading lists.
+  saved: boolean;
 };
 
 // Who recommended a post, and when — attached only to a feed item that reached
@@ -117,7 +119,7 @@ export function adminUserDetailView(row: {
   user: User;
   postCounts: { draft: number; scheduled: number; published: number };
   followCounts: { followers: number; following: number };
-  recentPosts: { id: string; title: string | null; slug: string | null; status: string; createdAt: Date }[];
+  recentPosts: { id: string; title: string | null; slug: string | null; status: Post["status"]; createdAt: Date }[];
   reports: ReportRow[];
   tags?: TagSummary[];
   links?: LinkSummary[];
@@ -224,6 +226,7 @@ export function postWithAuthor(
     commentCount: engagement?.commentCount ?? 0,
     recommendCount: engagement?.recommendCount ?? 0,
     recommended: engagement?.recommended ?? false,
+    saved: engagement?.saved ?? false,
     // Present only on a "For you" feed item that arrived via a recommendation
     // rather than authorship/follow; null everywhere else (profiles, Local,
     // Global, search, …), which the frontend reads as "not a recommend entry".
@@ -314,13 +317,17 @@ export function commentView(
   // Non-null: exactly one join hits per row (see `comments_author_kind_ck`),
   // and the throw below turns the impossible neither-side case into a 500
   // instead of a malformed payload.
-  author: Exclude<CommentWithAuthor["author"], null> | ReturnType<typeof relationActorRemote>;
+  author: ReturnType<typeof relationActorLocal> | ReturnType<typeof relationActorRemote>;
   parentId: string | null;
   likeCount: number;
   liked: boolean;
   replies: ReturnType<typeof commentView>[];
 } {
-  const author = row.author ?? (row.remoteActor ? relationActorRemote(row.remoteActor) : null);
+  const author = row.author
+    ? relationActorLocal(row.author)
+    : row.remoteActor
+      ? relationActorRemote(row.remoteActor)
+      : null;
   if (!author) throw new Error("commentView: comment has neither local nor remote author");
   return {
     id: row.comment.id,
@@ -405,8 +412,7 @@ export function barePost(p: Omit<Post, "searchVector">) {
   };
 }
 
-// Reading-list payload. `itemCount` is the number of saved posts; `contains` is
-// present only in the save-menu payload (whether the post in question is in it).
+// Reading-list payload. `itemCount` is the number of saved posts.
 export function readingListView(list: {
   id: string;
   title: string;
@@ -415,7 +421,6 @@ export function readingListView(list: {
   isReadLater: boolean;
   createdAt: Date;
   itemCount: number;
-  contains?: boolean;
 }) {
   return {
     id: list.id,
@@ -425,6 +430,10 @@ export function readingListView(list: {
     isReadLater: list.isReadLater,
     itemCount: list.itemCount,
     createdAt: list.createdAt,
-    ...(list.contains !== undefined ? { contains: list.contains } : {}),
   };
+}
+
+// A list in the save menu, saying whether the post in question is in it.
+export function readingListForPostView(list: Parameters<typeof readingListView>[0] & { contains: boolean }) {
+  return { ...readingListView(list), contains: list.contains };
 }

@@ -907,11 +907,11 @@ export const reports = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     reporterId: uuid("reporter_id").references(() => users.id, { onDelete: "set null" }),
-    subjectType: text("subject_type").notNull(), // "post" | "user"
+    subjectType: text("subject_type").$type<"post" | "user">().notNull(),
     postId: uuid("post_id").references(() => posts.id, { onDelete: "cascade" }),
     userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
     reason: text("reason").notNull().default(""),
-    status: text("status").notNull().default("open"), // "open" | "resolved"
+    status: text("status").$type<"open" | "resolved">().notNull().default("open"),
     resolution: text("resolution").notNull().default(""),
     handledBy: uuid("handled_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

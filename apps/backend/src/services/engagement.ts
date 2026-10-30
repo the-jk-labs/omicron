@@ -2,6 +2,7 @@ import * as commentsRepo from "@/db/repositories/comments.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as likesRepo from "@/db/repositories/likes.ts";
 import type { PostWithAuthor } from "@/db/repositories/posts.ts";
+import * as readingListsRepo from "@/db/repositories/readingLists.ts";
 import * as recommendationsRepo from "@/db/repositories/recommendations.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import { postWithAuthor, type RecommendedBy } from "@/routes/serializers.ts";
@@ -18,11 +19,12 @@ export type EnrichableRow = PostWithAuthor & { recommendedBy?: RecommendedBy | n
 
 export async function enrichPosts(rows: EnrichableRow[], viewerId: string | null) {
   const ids = rows.map((r) => r.post.id);
-  const [likeStats, commentCounts, tagsByPost, recommendStats] = await Promise.all([
+  const [likeStats, commentCounts, tagsByPost, recommendStats, saved] = await Promise.all([
     likesRepo.statsFor(ids, viewerId),
     commentsRepo.countsFor(ids),
     tagsRepo.tagsForPosts(ids),
     recommendationsRepo.statsFor(ids, viewerId),
+    readingListsRepo.savedPostIds(ids, viewerId),
   ]);
   return rows.map((row) =>
     postWithAuthor(
@@ -33,6 +35,7 @@ export async function enrichPosts(rows: EnrichableRow[], viewerId: string | null
         commentCount: commentCounts.get(row.post.id) ?? 0,
         recommendCount: recommendStats.get(row.post.id)?.count ?? 0,
         recommended: recommendStats.get(row.post.id)?.recommended ?? false,
+        saved: saved.has(row.post.id),
       },
       tagsByPost.get(row.post.id) ?? [],
       row.recommendedBy ?? null,

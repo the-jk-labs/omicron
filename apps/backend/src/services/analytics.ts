@@ -66,6 +66,9 @@ export type DashboardSummary = {
     comments: number;
     followers: number;
   };
+  // The same counts within the last `days` (the `?days=` window): views and new likes, comments and followers.
+  // `totals` stay all-time.
+  period: { days: number; views: number; likes: number; comments: number; followers: number };
   series: postViewsRepo.DayTotals[];
   posts: PostStat[];
 };
@@ -85,8 +88,14 @@ export async function dashboardFor(authorId: string, sinceDays = 30): Promise<Da
     followsRepo.counts(authorId),
   ]);
 
-  const fromDay = new Date(Date.now() - sinceDays * 86_400_000).toISOString().slice(0, 10);
-  const series = viewsEnabled ? await postViewsRepo.dailyTotalsForAuthor(authorId, fromDay) : [];
+  const since = new Date(Date.now() - sinceDays * 86_400_000);
+  const fromDay = since.toISOString().slice(0, 10);
+  const [series, periodLikes, periodComments, newFollowers] = await Promise.all([
+    viewsEnabled ? postViewsRepo.dailyTotalsForAuthor(authorId, fromDay) : Promise.resolve([]),
+    likesRepo.countSince(ids, since),
+    commentsRepo.countSince(ids, since),
+    followsRepo.followersSince(authorId, since),
+  ]);
 
   const stats: PostStat[] = posts.map((p) => ({
     postId: p.id,
@@ -108,5 +117,13 @@ export async function dashboardFor(authorId: string, sinceDays = 30): Promise<Da
     { views: 0, likes: 0, comments: 0, followers: follows.followers },
   );
 
-  return { onInstanceViews: viewsEnabled, totals, series, posts: stats };
+  const period = {
+    days: sinceDays,
+    views: series.reduce((sum, day) => sum + day.views, 0),
+    likes: periodLikes,
+    comments: periodComments,
+    followers: newFollowers,
+  };
+
+  return { onInstanceViews: viewsEnabled, totals, period, series, posts: stats };
 }

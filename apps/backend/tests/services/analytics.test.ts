@@ -88,6 +88,19 @@ describe("dashboardFor", () => {
     vi.mocked(postViewsRepo.totalsForPosts).mockResolvedValue(new Map([["p1", 10]]));
     vi.mocked(postViewsRepo.dailyTotalsForAuthor).mockResolvedValue([{ day: "2026-06-14", views: 2 }] as never);
     vi.mocked(followsRepo.counts).mockResolvedValue({ followers: 7, following: 1 });
+    vi.mocked(likesRepo.countSince).mockResolvedValue(2);
+    vi.mocked(commentsRepo.countSince).mockResolvedValue(1);
+    vi.mocked(followsRepo.followersSince).mockResolvedValue(3);
+  });
+
+  test("the period counts only the chosen window, while totals stay all-time", async () => {
+    const d = await dashboardFor("me", 7);
+    expect(d.period).toEqual({ days: 7, views: 2, likes: 2, comments: 1, followers: 3 });
+    expect(d.totals).toEqual({ views: 10, likes: 3, comments: 4, followers: 7 });
+    const since = new Date(Date.now() - 7 * 86_400_000);
+    expect(likesRepo.countSince).toHaveBeenCalledWith(["p1", "p2"], since);
+    expect(commentsRepo.countSince).toHaveBeenCalledWith(["p1", "p2"], since);
+    expect(followsRepo.followersSince).toHaveBeenCalledWith("me", since);
   });
 
   test("combines engagement and views per post and in total", async () => {
@@ -113,6 +126,7 @@ describe("dashboardFor", () => {
     const d = await dashboardFor("me");
     expect(d.onInstanceViews).toBe(false);
     expect(d.totals.views).toBe(0);
+    expect(d.period.views).toBe(0);
     expect(d.series).toEqual([]);
     expect(postViewsRepo.totalsForPosts).not.toHaveBeenCalled();
     expect(postViewsRepo.dailyTotalsForAuthor).not.toHaveBeenCalled();

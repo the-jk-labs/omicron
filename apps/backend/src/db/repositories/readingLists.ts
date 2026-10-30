@@ -166,6 +166,19 @@ export async function listIdsContaining(listIds: string[], postId: string): Prom
   return set;
 }
 
+// Which of `postIds` the viewer has saved to any of their lists: the bookmark's filled state on every card.
+export async function savedPostIds(postIds: string[], viewerId: string | null): Promise<Set<string>> {
+  const set = new Set<string>();
+  if (!viewerId || postIds.length === 0) return set;
+  const rows = await db
+    .selectDistinct({ postId: readingListItems.postId })
+    .from(readingListItems)
+    .innerJoin(readingLists, eq(readingLists.id, readingListItems.listId))
+    .where(and(eq(readingLists.userId, viewerId), inArray(readingListItems.postId, postIds)));
+  for (const r of rows as { postId: string }[]) set.add(r.postId);
+  return set;
+}
+
 // Minimal references for federating a list as an OrderedCollection: each saved
 // post's id + (for remote posts) its canonical ActivityPub URI. Ordered
 // newest-added first to match the on-site list order.

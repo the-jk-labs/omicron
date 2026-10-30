@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, desc, eq, isNotNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { follows, remoteActors, users } from "@/db/schema.ts";
 
@@ -280,4 +280,14 @@ export function pendingInboundEdges(followeeId: string) {
     .select()
     .from(follows)
     .where(and(eq(follows.followeeId, followeeId), eq(follows.approved, false)));
+}
+
+// Approved followers of `userId` whose follow began since `since`: the writer dashboard's new followers. A
+// request approved later counts from when it was made.
+export async function followersSince(userId: string, since: Date): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(follows)
+    .where(and(eq(follows.followeeId, userId), eq(follows.approved, true), gte(follows.createdAt, since)));
+  return row?.count ?? 0;
 }

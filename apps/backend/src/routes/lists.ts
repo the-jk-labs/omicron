@@ -4,7 +4,7 @@ import { z } from "zod";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { jsonBody } from "@/lib/validate.ts";
 import { requireUser } from "@/routes/middleware.ts";
-import { readingListView } from "@/routes/serializers.ts";
+import { readingListForPostView, readingListView } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import { enrichPosts } from "@/services/engagement.ts";
 import * as listsService from "@/services/readingLists.ts";
@@ -56,7 +56,7 @@ listRoutes.get("/user/:username", async (c) => {
 listRoutes.get("/for-post/:postId", async (c) => {
   const user = requireUser(c);
   const lists = await listsService.listsForPost(user.id, c.req.param("postId"));
-  return c.json({ lists: lists.map(readingListView) });
+  return c.json({ lists: lists.map(readingListForPostView) });
 });
 
 // List meta + owner + whether the viewer owns it (public, or owner-only).
