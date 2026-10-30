@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { API_VERSION } from "@omicron/contract";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 vi.mock(import("@/db/repositories/instanceSettings.ts"));
@@ -256,6 +257,7 @@ describe("publicInfo", () => {
       contactUrl: null,
       abuseEmail: null,
       statusUrl: null,
+      apiVersion: API_VERSION,
     });
     seedFederationRunning(false);
   });

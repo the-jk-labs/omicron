@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
+import type { Reply } from "@/lib/reply.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import { enrichPosts } from "@/services/engagement.ts";
 import * as searchService from "@/services/search.ts";
@@ -17,7 +18,7 @@ searchRoutes.get("/", async (c) => {
   const tag = (c.req.query("tag") ?? "").trim() || undefined;
   const author = (c.req.query("author") ?? "").trim() || undefined;
 
-  if (!query) return c.json({ posts: [], people: [], tags: [] });
+  if (!query) return c.json({ posts: [], people: [], tags: [] } satisfies Reply<"SearchResults">);
 
   const wantPosts = !scope || scope === "posts";
   const wantPeople = !scope || scope === "people";
@@ -33,5 +34,5 @@ searchRoutes.get("/", async (c) => {
     posts: wantPosts ? await enrichPosts(postRows, viewer?.id ?? null) : [],
     people,
     tags,
-  });
+  } satisfies Reply<"SearchResults">);
 });

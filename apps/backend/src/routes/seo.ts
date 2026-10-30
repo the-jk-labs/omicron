@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as listsRepo from "@/db/repositories/readingLists.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
+import type { Reply } from "@/lib/reply.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import * as seo from "@/services/seo.ts";
 
@@ -22,7 +23,7 @@ export const seoRoutes = new Hono<AppEnv>();
 // does, and that confirms a guess rather than being told (see below).
 seoRoutes.get("/", async (c) => {
   const { indexNowKey: _withheld, ...settings } = await seo.getSeoSettings();
-  return c.json(settings);
+  return c.json(settings satisfies Reply<"SeoSettings">);
 });
 
 // Confirms whether `key` is this instance's IndexNow key, so the app can serve
@@ -31,7 +32,7 @@ seoRoutes.get("/", async (c) => {
 seoRoutes.get("/indexnow-key/:key", async (c) => {
   const { indexNowEnabled, indexNowKey } = await seo.getSeoSettings();
   const ok = indexNowEnabled && !!indexNowKey && c.req.param("key") === indexNowKey;
-  return c.json({ ok });
+  return c.json({ ok } satisfies Reply<"IndexNowCheck">);
 });
 
 // The instance's index pages — author profiles, tag indexes, public reading
@@ -55,7 +56,7 @@ seoRoutes.get("/sitemap-entries", async (c) => {
     lists,
     postCount,
     postsPerPage: postsRepo.SITEMAP_PAGE_SIZE,
-  });
+  } satisfies Reply<"SitemapContents">);
 });
 
 // One page of published local posts. `page` is 1-based; anything unparseable
@@ -64,5 +65,5 @@ seoRoutes.get("/sitemap-entries", async (c) => {
 seoRoutes.get("/sitemap-posts", async (c) => {
   const page = Number.parseInt(c.req.query("page") ?? "1", 10);
   const entries = await postsRepo.listSitemapEntries(Number.isFinite(page) ? page : 1);
-  return c.json(entries);
+  return c.json(entries satisfies Reply<"SitemapPosts">);
 });

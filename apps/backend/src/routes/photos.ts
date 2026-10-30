@@ -2,6 +2,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { rateLimit } from "@/lib/rateLimit.ts";
+import type { Reply } from "@/lib/reply.ts";
 import { jsonBody } from "@/lib/validate.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import type { AppEnv } from "@/routes/types.ts";
@@ -29,7 +30,7 @@ const searchLimiter = rateLimit({
 // needs no configuration, so the picker always has something behind it.
 photoRoutes.get("/providers", async (c) => {
   requireUser(c);
-  return c.json({ providers: await stockPhotos.available() });
+  return c.json({ providers: await stockPhotos.available() } satisfies Reply<"PhotoProviders">);
 });
 
 photoRoutes.get("/search", searchLimiter, async (c) => {
@@ -37,7 +38,7 @@ photoRoutes.get("/search", searchLimiter, async (c) => {
   const provider = stockPhotos.requireProvider(c.req.query("provider"));
   const page = Number(c.req.query("page") ?? "1");
   const items = await stockPhotos.search(provider, c.req.query("q") ?? "", Number.isFinite(page) ? page : 1);
-  return c.json({ items });
+  return c.json({ items } satisfies Reply<"StockPhotos">);
 });
 
 // Called once, when an author picks a photo, for providers that ask to be told.
@@ -54,6 +55,6 @@ photoRoutes.post(
     requireUser(c);
     const { provider, token } = c.req.valid("json");
     await stockPhotos.recordUse(stockPhotos.requireProvider(provider), token);
-    return c.json({ ok: true });
+    return c.json({ ok: true } satisfies Reply<"Ok">);
   },
 );

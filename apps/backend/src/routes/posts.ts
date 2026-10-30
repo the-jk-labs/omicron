@@ -7,6 +7,7 @@ import { isBot, readerOptedOut, VIEW_COOKIE, VIEW_COOKIE_TTL_MS } from "@/lib/an
 import { cookieSecure } from "@/lib/cookies.ts";
 import { parseLanguageFilter } from "@/lib/languages.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
+import type { Reply } from "@/lib/reply.ts";
 import { jsonBody } from "@/lib/validate.ts";
 import { mayModerate, requireUser } from "@/routes/middleware.ts";
 import { barePost, commentView } from "@/routes/serializers.ts";
@@ -45,7 +46,7 @@ postRoutes.get("/", async (c) => {
     c.req.query("scope") === "local"
       ? await postsService.localTimeline(cursor, viewer?.id ?? null, langFilter)
       : await postsService.globalTimeline(cursor, viewer?.id ?? null, langFilter);
-  return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
+  return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor } satisfies Reply<"PostPage">);
 });
 
 // The editor's payload. Every field is optional except the body itself, so a
@@ -73,7 +74,7 @@ const createPostSchema = z.object({
 postRoutes.post("/", jsonBody(createPostSchema), async (c) => {
   const user = requireUser(c);
   const post = await postsService.createPost(user.id, c.req.valid("json"));
-  return c.json({ post: barePost(post) }, 201);
+  return c.json({ post: barePost(post) } satisfies Reply<"SavedPostResponse">, 201);
 });
 
 // The signed-in author's own drafts (auth required). Registered before "/:id"
@@ -82,7 +83,7 @@ postRoutes.get("/drafts", async (c) => {
   const user = requireUser(c);
   const cursor = decodeCursor(c.req.query("cursor"));
   const { items, nextCursor } = await postsService.listDrafts(user.id, cursor);
-  return c.json({ items: await enrichPosts(items, user.id), nextCursor });
+  return c.json({ items: await enrichPosts(items, user.id), nextCursor } satisfies Reply<"PostPage">);
 });
 
 // The signed-in author's own posts in one state — what the three tabs of the
@@ -98,13 +99,13 @@ postRoutes.get("/mine", async (c) => {
   const raw = c.req.query("status");
   const status = raw === "scheduled" || raw === "published" ? raw : "draft";
   const { items, nextCursor } = await postsService.listOwn(user.id, status, cursor);
-  return c.json({ items: await enrichPosts(items, user.id), nextCursor });
+  return c.json({ items: await enrichPosts(items, user.id), nextCursor } satisfies Reply<"PostPage">);
 });
 
 // How many posts the author holds in each state — the tab badges, in one query.
 postRoutes.get("/mine/counts", async (c) => {
   const user = requireUser(c);
-  return c.json(await postsService.ownCounts(user.id));
+  return c.json((await postsService.ownCounts(user.id)) satisfies Reply<"OwnPostCounts">);
 });
 
 // Trending posts (public) — the discovery rail's short "Trending" list.
@@ -112,7 +113,7 @@ postRoutes.get("/mine/counts", async (c) => {
 postRoutes.get("/trending", async (c) => {
   const viewer = c.get("user");
   const items = await postsService.trending(viewer?.id ?? null);
-  return c.json({ items: await enrichPosts(items, viewer?.id ?? null) });
+  return c.json({ items: await enrichPosts(items, viewer?.id ?? null) } satisfies Reply<"PostItems">);
 });
 
 postRoutes.get("/random", async (c) => {
@@ -123,7 +124,7 @@ postRoutes.get("/random", async (c) => {
   const langFilter = parseLanguageFilter(c.req.query("langMode"), c.req.query("langs"));
   const row = await postsService.randomPost(scope, viewer?.id ?? null, langFilter);
   c.header("Cache-Control", "no-store");
-  return c.json({ post: row ? await enrichPost(row, viewer?.id ?? null) : null });
+  return c.json({ post: row ? await enrichPost(row, viewer?.id ?? null) : null } satisfies Reply<"RandomPostResponse">);
 });
 
 // Count an on-instance view of a local published post. Fire-and-forget and
@@ -154,7 +155,7 @@ postRoutes.get("/by/:username/:slug", async (c) => {
   const viewer = c.get("user");
   const row = await postsService.getPostBySlug(c.req.param("username"), c.req.param("slug"), viewer?.id ?? null);
   if (row.post.authorId && row.post.status === "published") countView(c, row);
-  return c.json({ post: await enrichPost(row, viewer?.id ?? null) });
+  return c.json({ post: await enrichPost(row, viewer?.id ?? null) } satisfies Reply<"PostResponse">);
 });
 
 // Single post (public). Drafts are visible only to their author.
@@ -162,7 +163,7 @@ postRoutes.get("/:id", async (c) => {
   const viewer = c.get("user");
   const row = await postsService.getPost(c.req.param("id"), viewer?.id ?? null);
   if (row.post.authorId && row.post.status === "published") countView(c, row);
-  return c.json({ post: await enrichPost(row, viewer?.id ?? null) });
+  return c.json({ post: await enrichPost(row, viewer?.id ?? null) } satisfies Reply<"PostResponse">);
 });
 
 // Posts to read next (public). Sits under the article and is what stops a post
@@ -171,7 +172,7 @@ postRoutes.get("/:id/related", async (c) => {
   const viewer = c.get("user");
   const row = await postsService.getPost(c.req.param("id"), viewer?.id ?? null);
   const items = await postsService.relatedPosts(row.post.id, viewer?.id ?? null);
-  return c.json({ items: await enrichPosts(items, viewer?.id ?? null) });
+  return c.json({ items: await enrichPosts(items, viewer?.id ?? null) } satisfies Reply<"PostItems">);
 });
 
 // An edit sends only what changed, so every field is optional — including the
@@ -183,7 +184,7 @@ const updatePostSchema = createPostSchema.partial();
 postRoutes.patch("/:id", jsonBody(updatePostSchema), async (c) => {
   const user = requireUser(c);
   const post = await postsService.updatePost(user.id, c.req.param("id"), c.req.valid("json"));
-  return c.json({ post: barePost(post) });
+  return c.json({ post: barePost(post) } satisfies Reply<"SavedPostResponse">);
 });
 
 // Delete a post (auth required; author or moderator, local posts only).
@@ -194,20 +195,20 @@ postRoutes.delete("/:id", async (c) => {
   await postsService.deletePost(user.id, mayModerate(c), c.req.param("id"), {
     notify: c.req.query("notify") === "true",
   });
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // Like / unlike a post (auth required). Returns fresh like stats.
 postRoutes.post("/:id/like", async (c) => {
   const user = requireUser(c);
   const stats = await likesService.like(user.id, c.req.param("id"));
-  return c.json({ likeCount: stats.count, liked: stats.liked });
+  return c.json({ likeCount: stats.count, liked: stats.liked } satisfies Reply<"LikeState">);
 });
 
 postRoutes.delete("/:id/like", async (c) => {
   const user = requireUser(c);
   const stats = await likesService.unlike(user.id, c.req.param("id"));
-  return c.json({ likeCount: stats.count, liked: stats.liked });
+  return c.json({ likeCount: stats.count, liked: stats.liked } satisfies Reply<"LikeState">);
 });
 
 // Recommend / un-recommend a post ("repost"; auth required). Federates as an
@@ -215,13 +216,13 @@ postRoutes.delete("/:id/like", async (c) => {
 postRoutes.post("/:id/recommend", async (c) => {
   const user = requireUser(c);
   const stats = await recommendationsService.recommend(user.id, c.req.param("id"));
-  return c.json({ recommendCount: stats.count, recommended: stats.recommended });
+  return c.json({ recommendCount: stats.count, recommended: stats.recommended } satisfies Reply<"RecommendState">);
 });
 
 postRoutes.delete("/:id/recommend", async (c) => {
   const user = requireUser(c);
   const stats = await recommendationsService.unrecommend(user.id, c.req.param("id"));
-  return c.json({ recommendCount: stats.count, recommended: stats.recommended });
+  return c.json({ recommendCount: stats.count, recommended: stats.recommended } satisfies Reply<"RecommendState">);
 });
 
 // Comments (list public, create requires auth).
@@ -229,7 +230,7 @@ postRoutes.get("/:id/comments", async (c) => {
   const viewer = c.get("user");
   const cursor = decodeCursor(c.req.query("cursor"));
   const { items, nextCursor } = await commentsService.list(c.req.param("id"), cursor, viewer?.id ?? null);
-  return c.json({ items: items.map(commentView), nextCursor });
+  return c.json({ items: items.map(commentView), nextCursor } satisfies Reply<"CommentPage">);
 });
 
 const createCommentSchema = z.object({
@@ -254,7 +255,7 @@ postRoutes.post("/:id/comments", jsonBody(createCommentSchema), async (c) => {
         },
         remoteActor: null,
       }),
-    },
+    } satisfies Reply<"CommentResponse">,
     201,
   );
 });
@@ -263,25 +264,25 @@ postRoutes.post("/:id/comments", jsonBody(createCommentSchema), async (c) => {
 postRoutes.patch("/:id/comments/:commentId", jsonBody(z.object({ content: z.string() })), async (c) => {
   const user = requireUser(c);
   const comment = await commentsService.edit(user.id, c.req.param("commentId"), c.req.valid("json").content);
-  return c.json({ comment: { id: comment.id, content: comment.content } });
+  return c.json({ comment: { id: comment.id, content: comment.content } } satisfies Reply<"EditedCommentResponse">);
 });
 
 // Delete a comment (auth required; author or moderator only).
 postRoutes.delete("/:id/comments/:commentId", async (c) => {
   const user = requireUser(c);
   await commentsService.remove(user.id, mayModerate(c), c.req.param("commentId"));
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // Like / unlike a comment (auth required). Returns fresh like stats.
 postRoutes.post("/:id/comments/:commentId/like", async (c) => {
   const user = requireUser(c);
   const stats = await commentLikesService.like(user.id, c.req.param("commentId"));
-  return c.json({ likeCount: stats.count, liked: stats.liked });
+  return c.json({ likeCount: stats.count, liked: stats.liked } satisfies Reply<"LikeState">);
 });
 
 postRoutes.delete("/:id/comments/:commentId/like", async (c) => {
   const user = requireUser(c);
   const stats = await commentLikesService.unlike(user.id, c.req.param("commentId"));
-  return c.json({ likeCount: stats.count, liked: stats.liked });
+  return c.json({ likeCount: stats.count, liked: stats.liked } satisfies Reply<"LikeState">);
 });

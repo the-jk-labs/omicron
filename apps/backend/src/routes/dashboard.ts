@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
+import type { Reply } from "@/lib/reply.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import * as analyticsService from "@/services/analytics.ts";
@@ -13,5 +14,5 @@ dashboardRoutes.get("/", async (c) => {
   const user = requireUser(c);
   const days = Math.min(Math.max(Number(c.req.query("days")) || 30, 1), 365);
   const summary = await analyticsService.dashboardFor(user.id, days);
-  return c.json(summary);
+  return c.json(summary satisfies Reply<"DashboardSummary">);
 });

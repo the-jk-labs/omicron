@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { config } from "@/config.ts";
 import { rateLimit } from "@/lib/rateLimit.ts";
+import type { Reply } from "@/lib/reply.ts";
 import { jsonBody } from "@/lib/validate.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import type { AppEnv } from "@/routes/types.ts";
@@ -28,5 +29,5 @@ const reportSchema = z.object({
 reportRoutes.post("/", reportLimiter, jsonBody(reportSchema), async (c) => {
   const user = requireUser(c);
   await moderation.report(user.id, c.req.valid("json"));
-  return c.json({ ok: true }, 201);
+  return c.json({ ok: true } satisfies Reply<"Ok">, 201);
 });

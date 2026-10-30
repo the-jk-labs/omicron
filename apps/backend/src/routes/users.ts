@@ -6,6 +6,7 @@ import * as usersRepo from "@/db/repositories/users.ts";
 import { badRequest, notFound } from "@/lib/http.ts";
 import { renderMarkdown } from "@/lib/markdown.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
+import type { Reply } from "@/lib/reply.ts";
 import { jsonBody } from "@/lib/validate.ts";
 import { readUpload, requireUser } from "@/routes/middleware.ts";
 import { privateUser, profileLinkView, publicUser } from "@/routes/serializers.ts";
@@ -47,7 +48,7 @@ const updateProfileSchema = z.object({
 userRoutes.patch("/me", jsonBody(updateProfileSchema), async (c) => {
   const viewer = requireUser(c);
   const { user, tags, links } = await usersService.updateProfile(viewer.id, c.req.valid("json"));
-  return c.json({ user: publicUser(user, tags, links.map(profileLinkView)) });
+  return c.json({ user: publicUser(user, tags, links.map(profileLinkView)) } satisfies Reply<"UserResponse">);
 });
 
 // Live preview for the profile's custom Markdown section. Goes through the very
@@ -59,7 +60,7 @@ userRoutes.post("/me/custom-section/preview", jsonBody(z.object({ customSection:
   if (source.length > MAX_CUSTOM_SECTION_LEN) {
     throw badRequest(`Custom section must be ${MAX_CUSTOM_SECTION_LEN.toLocaleString("en-US")} characters or fewer.`);
   }
-  return c.json({ html: renderMarkdown(source) });
+  return c.json({ html: renderMarkdown(source) } satisfies Reply<"CustomSectionPreview">);
 });
 
 // Toggle the signed-in user's private/public account state. Going public
@@ -67,7 +68,7 @@ userRoutes.post("/me/custom-section/preview", jsonBody(z.object({ customSection:
 userRoutes.patch("/me/privacy", jsonBody(z.object({ isPrivate: z.boolean() })), async (c) => {
   const viewer = requireUser(c);
   const user = await usersService.setPrivacy(viewer.id, c.req.valid("json").isPrivate);
-  return c.json({ user: publicUser(user) });
+  return c.json({ user: publicUser(user) } satisfies Reply<"UserResponse">);
 });
 
 // Save whether AI-assisted posts appear in the signed-in user's feeds.
@@ -76,26 +77,28 @@ userRoutes.patch("/me/preferences", jsonBody(z.object({ showAiAssistedPosts: z.b
   const user = await usersService.setShowAiAssistedPosts(viewer.id, c.req.valid("json").showAiAssistedPosts);
   const scopes = c.get("oauthScopes");
   if (scopes && !hasScope(scopes, "read:profile"))
-    return c.json({ user: { ...publicUser(user), showAiAssistedPosts: user.showAiAssistedPosts } });
-  return c.json({ user: privateUser(user) });
+    return c.json({
+      user: { ...publicUser(user), showAiAssistedPosts: user.showAiAssistedPosts },
+    } satisfies Reply<"PreferencesResponse">);
+  return c.json({ user: privateUser(user) } satisfies Reply<"PreferencesResponse">);
 });
 
 // Pending follow requests to the signed-in (private) user, and approve/reject.
 userRoutes.get("/me/follow-requests", async (c) => {
   const viewer = requireUser(c);
-  return c.json({ items: await followRequestsService.list(viewer.id) });
+  return c.json({ items: await followRequestsService.list(viewer.id) } satisfies Reply<"FollowRequests">);
 });
 
 userRoutes.post("/me/follow-requests/:id/approve", async (c) => {
   const viewer = requireUser(c);
   await followRequestsService.approve(viewer.id, c.req.param("id"));
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 userRoutes.post("/me/follow-requests/:id/reject", async (c) => {
   const viewer = requireUser(c);
   await followRequestsService.reject(viewer.id, c.req.param("id"));
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // Upload a new avatar (raw image body; content-type identifies the format).
@@ -104,25 +107,25 @@ userRoutes.post("/me/avatar", async (c) => {
   const contentType = (c.req.header("content-type") ?? "").split(";")[0].trim();
   const bytes = await readUpload(c, MAX_AVATAR_BYTES, "Image too large (max 2 MB).");
   const user = await usersService.setAvatar(viewer.id, bytes, contentType);
-  return c.json({ user: publicUser(user) });
+  return c.json({ user: publicUser(user) } satisfies Reply<"UserResponse">);
 });
 
 // Remove the current avatar (revert to initials).
 userRoutes.delete("/me/avatar", async (c) => {
   const viewer = requireUser(c);
   const user = await usersService.removeAvatar(viewer.id);
-  return c.json({ user: publicUser(user) });
+  return c.json({ user: publicUser(user) } satisfies Reply<"UserResponse">);
 });
 
 // Relation-management lists for the signed-in user (Settings → Connections).
 userRoutes.get("/me/muted", async (c) => {
   const viewer = requireUser(c);
-  return c.json({ items: await relationsService.listRelation("mute", viewer.id) });
+  return c.json({ items: await relationsService.listRelation("mute", viewer.id) } satisfies Reply<"RelationItems">);
 });
 
 userRoutes.get("/me/blocked", async (c) => {
   const viewer = requireUser(c);
-  return c.json({ items: await relationsService.listRelation("block", viewer.id) });
+  return c.json({ items: await relationsService.listRelation("block", viewer.id) } satisfies Reply<"RelationItems">);
 });
 
 // Remove a follower — force someone to stop following you without blocking them
@@ -131,14 +134,14 @@ userRoutes.get("/me/blocked", async (c) => {
 userRoutes.delete("/me/followers/:identifier", async (c) => {
   const viewer = requireUser(c);
   await followsService.removeFollower(viewer.id, c.req.param("identifier"));
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // "Who to follow" suggestions (public). Registered before "/:username" so the
 // literal "suggested" segment isn't captured as a username.
 userRoutes.get("/suggested", async (c) => {
   const viewer = c.get("user");
-  return c.json({ items: await usersService.suggestedFollows(viewer?.id ?? null) });
+  return c.json({ items: await usersService.suggestedFollows(viewer?.id ?? null) } satisfies Reply<"SuggestedUsers">);
 });
 
 // Public profile + the viewer's follow/mute/block state.
@@ -158,7 +161,7 @@ userRoutes.get("/:username", async (c) => {
     isMuted,
     isBlocked,
     locked,
-  });
+  } satisfies Reply<"Profile">);
 });
 
 // Public follower / following lists for a profile (local + cached remote).
@@ -166,14 +169,14 @@ userRoutes.get("/:username/followers", async (c) => {
   const viewer = c.get("user");
   return c.json({
     items: await followsService.followersOf(c.req.param("username"), viewer?.id ?? null),
-  });
+  } satisfies Reply<"RelationItems">);
 });
 
 userRoutes.get("/:username/following", async (c) => {
   const viewer = c.get("user");
   return c.json({
     items: await followsService.followingOf(c.req.param("username"), viewer?.id ?? null),
-  });
+  } satisfies Reply<"RelationItems">);
 });
 
 // A user's posts (public, cursor-paginated). Filtered by the viewer's mutes/blocks.
@@ -184,7 +187,7 @@ userRoutes.get("/:username/posts", async (c) => {
   if (!user || user.deletedAt) throw notFound("User not found.");
   const cursor = decodeCursor(c.req.query("cursor"));
   const { items, nextCursor } = await postsService.listByAuthor(user.id, cursor, viewer?.id ?? null);
-  return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
+  return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor } satisfies Reply<"PostPage">);
 });
 
 // A user's "Recommendations" tab (public, cursor-paginated): posts they've
@@ -196,20 +199,20 @@ userRoutes.get("/:username/recommendations", async (c) => {
   if (!user || user.deletedAt) throw notFound("User not found.");
   const cursor = decodeCursor(c.req.query("cursor"));
   const { items, nextCursor } = await recommendationsService.listByUser(user.id, viewer?.id ?? null, cursor);
-  return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
+  return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor } satisfies Reply<"PostPage">);
 });
 
 // Follow / unfollow (auth required).
 userRoutes.post("/:username/follow", async (c) => {
   const viewer = requireUser(c);
   const { state } = await followsService.follow(viewer.id, c.req.param("username"));
-  return c.json({ ok: true, state }, 201);
+  return c.json({ ok: true, state } satisfies Reply<"FollowResponse">, 201);
 });
 
 userRoutes.delete("/:username/follow", async (c) => {
   const viewer = requireUser(c);
   await followsService.unfollow(viewer.id, c.req.param("username"));
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // Mute / unmute a local user (auth required). Muting silently hides their posts
@@ -217,13 +220,13 @@ userRoutes.delete("/:username/follow", async (c) => {
 userRoutes.post("/:username/mute", async (c) => {
   const viewer = requireUser(c);
   await relationsService.setLocal("mute", viewer.id, c.req.param("username"), true);
-  return c.json({ ok: true }, 201);
+  return c.json({ ok: true } satisfies Reply<"Ok">, 201);
 });
 
 userRoutes.delete("/:username/mute", async (c) => {
   const viewer = requireUser(c);
   await relationsService.setLocal("mute", viewer.id, c.req.param("username"), false);
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // Block / unblock a local user (auth required). Blocking hides posts in both
@@ -231,11 +234,11 @@ userRoutes.delete("/:username/mute", async (c) => {
 userRoutes.post("/:username/block", async (c) => {
   const viewer = requireUser(c);
   await relationsService.setLocal("block", viewer.id, c.req.param("username"), true);
-  return c.json({ ok: true }, 201);
+  return c.json({ ok: true } satisfies Reply<"Ok">, 201);
 });
 
 userRoutes.delete("/:username/block", async (c) => {
   const viewer = requireUser(c);
   await relationsService.setLocal("block", viewer.id, c.req.param("username"), false);
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });

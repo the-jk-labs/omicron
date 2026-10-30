@@ -1,0 +1,16 @@
+# The backend image is built from the repository root (docker build -f apps/backend/Dockerfile .); this file, named
+# after its Dockerfile, applies to that build only. Everything is left out except what the Dockerfile copies, which
+# keeps the context small and local secrets out of it.
+*
+!apps/backend/package.json
+!apps/backend/pnpm-lock.yaml
+!apps/backend/pnpm-workspace.yaml
+!apps/backend/deno.json
+!apps/backend/src
+!apps/backend/drizzle
+!apps/backend/assets
+!apps/backend/scripts
+!packages/contract/package.json
+!packages/contract/pnpm-lock.yaml
+!packages/contract/pnpm-workspace.yaml
+!packages/contract/src
