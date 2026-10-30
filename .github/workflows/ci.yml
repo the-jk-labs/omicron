@@ -178,6 +178,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: |
             apps/mobile/pnpm-lock.yaml
+            apps/frontend/pnpm-lock.yaml
             packages/contract/pnpm-lock.yaml
 
       - name: Install
@@ -186,6 +187,12 @@ jobs:
       # The API contract (packages/contract), linked into this app; its own install brings zod.
       - name: Install the API contract
         working-directory: packages/contract
+        run: pnpm install --frozen-lockfile
+
+      # The composer bundle (editor-web) is the web's own Tiptap editor, imported from apps/frontend, so its
+      # type check resolves Tiptap from the web app's dependencies.
+      - name: Install the web app (for the composer's editor)
+        working-directory: apps/frontend
         run: pnpm install --frozen-lockfile
 
       - parallel:

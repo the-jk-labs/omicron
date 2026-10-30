@@ -60,3 +60,8 @@ minimumReleaseAgeExclude:
   - expo-splash-screen@58.0.12
   - expo-system-ui@58.0.7
   - expo-updates@58.0.19
+auditConfig:
+  ignoreGhsas:
+    # zod <4.6.6 (memory exhaustion on oversized collections), reached only through @expo/cli, which pins zod 3 and
+    # validates its own local config at build time. zod 3 has no patched release; the app itself uses zod 4.6.7.
+    - GHSA-mrhx-c7xc-m3w5
