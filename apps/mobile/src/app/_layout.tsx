@@ -22,7 +22,7 @@ void SplashScreen.preventAutoHideAsync();
 /** Last resort when the app shell itself throws; screens have their own boundary (`ScreenError`). */
 export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
   return (
-    <View className="flex-1 justify-center bg-background">
+    <View className="bg-background flex-1 justify-center">
       <EmptyState
         icon="triangle-alert"
         title="Something went wrong"
@@ -50,7 +50,7 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <GestureHandlerRootView className="flex-1 bg-background">
+    <GestureHandlerRootView className="bg-background flex-1">
       <KeyboardProvider>
         <StatusBar style="auto" />
         {/* Choosing an instance swaps the whole app, so it cross-fades rather than pushing. */}

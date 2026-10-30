@@ -106,7 +106,7 @@ function MenuRow({ item, onPress }: { item: MenuItem; onPress: () => void }) {
       accessibilityRole="menuitem"
       pressedScale={0.99}
       onPress={onPress}
-      className="min-h-14 flex-row items-center gap-3 border-b border-border px-3 py-2.5 last:border-b-0 active:bg-muted"
+      className="border-border active:bg-muted min-h-14 flex-row items-center gap-3 border-b px-3 py-2.5 last:border-b-0"
     >
       <View
         className={cn(
@@ -168,7 +168,7 @@ export function MenuSheet({
         {groups.map((group) => (
           <View
             key={group[0].label}
-            className="overflow-hidden rounded-card border border-border-card bg-background-alt"
+            className="border-border-card bg-background-alt overflow-hidden rounded-card border"
           >
             {group.map((item) => (
               <MenuRow

@@ -56,7 +56,7 @@ export function ConnectivityBanner() {
           accessibilityLiveRegion="polite"
           disabled={status !== "down"}
           onPress={() => void confirmInstance(origin)}
-          className="flex-row items-center gap-2 rounded-full bg-dark px-4 py-2 shadow-popover"
+          className="bg-dark flex-row items-center gap-2 rounded-full px-4 py-2 shadow-popover"
         >
           <Icon name={content.icon} size={14} className="text-background" />
           <Text size="xs" weight="semibold" tone="inverse">

@@ -130,7 +130,7 @@ function CodeBlock({ code, language, title }: { code: string; language: string |
   const tokens = useMemo(() => highlightCode(code, language), [code, language]);
   const caption = title ?? (language ? codeLanguageLabel(language) : "");
   return (
-    <View className="my-6 overflow-hidden rounded-lg bg-muted">
+    <View className="bg-muted my-6 overflow-hidden rounded-lg">
       <View className="flex-row items-center justify-between pr-1 pl-4">
         <Text size="xs" weight="medium" tone="muted" numberOfLines={1} className="flex-1">
           {caption}
@@ -147,7 +147,7 @@ function CodeBlock({ code, language, title }: { code: string; language: string |
         />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="px-4 pb-4">
-        <RNText selectable className="text-[13px] leading-5 text-foreground" style={{ fontFamily: MONO }}>
+        <RNText selectable className="text-foreground text-[13px] leading-5" style={{ fontFamily: MONO }}>
           {tokens.map((token, index) => (
             <RNText key={index} className={token.tone ? TONE_CLASS[token.tone] : undefined}>
               {token.text}
@@ -163,7 +163,7 @@ function Details({ summary, children }: { summary: Inline[]; children: Block[] }
   const [open, setOpen] = useState(false);
   const chevron = useAnimatedStyle(() => ({ transform: [{ rotate: withTiming(open ? "90deg" : "0deg") }] }));
   return (
-    <View className="my-5 rounded-card-sm border border-border">
+    <View className="border-border my-5 rounded-card-sm border">
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
@@ -173,7 +173,7 @@ function Details({ summary, children }: { summary: Inline[]; children: Block[] }
         <Animated.View style={chevron}>
           <Icon name="chevron-right" size={16} />
         </Animated.View>
-        <RNText className="flex-1 font-content-semibold text-base text-foreground">
+        <RNText className="text-foreground flex-1 font-content-semibold text-base">
           <InlineRuns items={summary} />
         </RNText>
       </Pressable>
@@ -189,11 +189,11 @@ function Details({ summary, children }: { summary: Inline[]; children: Block[] }
 function Table({ rows }: { rows: { header: boolean; cells: Block[][] }[] }) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} className="my-6">
-      <View className="border-t border-l border-border">
+      <View className="border-border border-t border-l">
         {rows.map((row, rowIndex) => (
           <View key={rowIndex} className={cn("flex-row", row.header && "bg-muted")}>
             {row.cells.map((cell, cellIndex) => (
-              <View key={cellIndex} className="w-40 border-r border-b border-border px-3 py-2">
+              <View key={cellIndex} className="border-border w-40 border-r border-b px-3 py-2">
                 <Blocks blocks={cell} compact />
               </View>
             ))}
@@ -224,7 +224,7 @@ function BlockView({ block, compact }: { block: Block; compact?: boolean }): Rea
       );
     case "blockquote":
       return (
-        <View className="my-6 border-l-[3px] border-foreground pl-5">
+        <View className="border-foreground my-6 border-l-[3px] pl-5">
           <QuoteContext value>
             <Blocks blocks={block.children} />
           </QuoteContext>
@@ -248,7 +248,7 @@ function BlockView({ block, compact }: { block: Block; compact?: boolean }): Rea
     case "image":
       return <ContentImage src={block.src} alt={block.alt} widthPercent={block.widthPercent} />;
     case "rule":
-      return <View className="my-10 h-px bg-border" />;
+      return <View className="bg-border my-10 h-px" />;
     case "table":
       return <Table rows={block.rows} />;
     case "details":

@@ -56,7 +56,7 @@ function ReaderHeader({ post }: { post: Post }) {
         <View className="flex-row flex-wrap gap-2">
           {post.aiAssisted && <AiAssistedBadge />}
           {post.remote && (
-            <View className="flex-row items-center gap-1 rounded-full bg-muted px-2 py-0.5">
+            <View className="bg-muted flex-row items-center gap-1 rounded-full px-2 py-0.5">
               <Icon name="globe" size={12} className="text-muted-foreground" />
               <Text size="xs" tone="muted">
                 From {post.author.username.split("@")[1]}
@@ -174,13 +174,13 @@ export default function Reader() {
           <HtmlContent html={post.contentHtml} />
           <TagList tags={post.tags} />
 
-          <View ref={commentsRef} className="border-t border-border pt-6">
+          <View ref={commentsRef} className="border-border border-t pt-6">
             <Comments postId={post.id} />
           </View>
         </View>
 
         {(related.data?.length ?? 0) > 0 && (
-          <View className="mt-10 border-t border-border pt-6">
+          <View className="border-border mt-10 border-t pt-6">
             <Text size="lg" weight="bold" className="px-5">
               Read next
             </Text>
@@ -193,7 +193,7 @@ export default function Reader() {
 
       {/* Actions stay in reach while reading, instead of only at the end of the article. */}
       <View
-        className="absolute inset-x-0 bottom-0 flex-row items-center border-t border-border bg-background px-2"
+        className="border-border bg-background absolute inset-x-0 bottom-0 flex-row items-center border-t px-2"
         style={{ paddingBottom: insets.bottom }}
       >
         <LikeButton post={post} />

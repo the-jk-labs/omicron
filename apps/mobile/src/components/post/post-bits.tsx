@@ -32,7 +32,7 @@ export function TagList({ tags, className }: { tags: readonly Tag[]; className?:
     <View className={`flex-row flex-wrap gap-2 ${className ?? ""}`}>
       {tags.map((tag) => (
         <Link key={tag.slug} href={tagPath(tag.slug)} asChild>
-          <PressableScale accessibilityRole="link" className="rounded-full bg-muted px-3 py-1">
+          <PressableScale accessibilityRole="link" className="bg-muted rounded-full px-3 py-1">
             <Text size="xs" weight="medium" tone="alt">
               #{tag.name}
             </Text>
@@ -51,7 +51,7 @@ export function AiAssistedBadge({ compact = false }: { compact?: boolean }) {
       accessibilityRole="button"
       accessibilityLabel="AI-Assisted post information"
       onPress={() => toast("This post was written with AI assistance.")}
-      className="flex-row items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5"
+      className="border-border bg-muted flex-row items-center gap-1 rounded-full border px-2 py-0.5"
     >
       <Icon name="sparkles" size={12} />
       <Text size="xs" weight="medium">

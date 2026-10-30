@@ -20,7 +20,7 @@ export function EmptyState({
 }) {
   return (
     <View className="items-center gap-3 px-8 py-16">
-      <View className="size-12 items-center justify-center rounded-full bg-muted">
+      <View className="bg-muted size-12 items-center justify-center rounded-full">
         <Icon name={icon} size={22} className="text-muted-foreground" />
       </View>
       <Text weight="semibold" className="text-center">

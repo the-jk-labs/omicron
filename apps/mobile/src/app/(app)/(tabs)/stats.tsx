@@ -72,7 +72,7 @@ function PostRow({ stat, username, now }: { stat: PostStat; username: string; no
   const days = Math.max(1, (now - new Date(stat.createdAt).getTime()) / DAY);
   return (
     <Link href={postPath({ id: stat.postId, slug: stat.slug, author: { username } })} asChild>
-      <PressableScale pressedScale={0.99} className="gap-1 border-b border-border py-3">
+      <PressableScale pressedScale={0.99} className="border-border gap-1 border-b py-3">
         <Text weight="medium" numberOfLines={2}>
           {stat.title || "Untitled"}
         </Text>

@@ -22,7 +22,7 @@ export function Skeleton({ className, ...props }: ViewProps) {
 
 export function PostCardSkeleton() {
   return (
-    <View className="gap-3 border-b border-border px-4 py-5">
+    <View className="border-border gap-3 border-b px-4 py-5">
       <View className="flex-row items-center gap-2">
         <Skeleton className="size-6 rounded-full" />
         <Skeleton className="h-3 w-32" />

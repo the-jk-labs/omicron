@@ -68,7 +68,7 @@ export function ProfileHeader({ profile, isSelf }: { profile: ProfileData; isSel
           <UserAvatar name={user.displayName} url={user.avatarUrl} size={AVATAR_SIZE} />
           <View className="flex-row items-center gap-2">
             <IconButton
-              className="size-9 border border-input"
+              className="border-input size-9 border"
               size={16}
               iconClassName="text-foreground"
               icon="share-2"

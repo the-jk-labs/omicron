@@ -30,9 +30,9 @@ export const DraftCard = memo(function DraftCard({
   const goesOut = scheduled && post.publishAt ? formatScheduleLong(post.publishAt) : null;
 
   return (
-    <View className="border-b border-border px-4 py-5">
+    <View className="border-border border-b px-4 py-5">
       <View className="mb-3 flex-row items-center gap-1.5">
-        <View className="shrink flex-row items-center gap-1.5 rounded-full bg-muted px-2.5 py-1">
+        <View className="bg-muted shrink flex-row items-center gap-1.5 rounded-full px-2.5 py-1">
           <Icon name={goesOut ? "calendar-clock" : "file-pen-line"} size={13} className="text-muted-foreground" />
           <Text size="xs" weight="medium" tone="muted" numberOfLines={1}>
             {goesOut ? `Goes out ${goesOut}` : "Draft"}
@@ -77,7 +77,7 @@ export const DraftCard = memo(function DraftCard({
             contentFit="cover"
             transition={150}
             onError={() => setCoverFailed(true)}
-            className="mt-3 aspect-video w-full rounded-card border border-border"
+            className="border-border mt-3 aspect-video w-full rounded-card border"
           />
         )}
       </PressableScale>

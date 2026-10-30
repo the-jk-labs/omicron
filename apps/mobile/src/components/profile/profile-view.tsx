@@ -67,7 +67,7 @@ function ProfileMenu({ profile }: { profile: ProfileData }) {
   return (
     <>
       <IconButton
-        className="size-9 border border-input"
+        className="border-input size-9 border"
         size={16}
         iconClassName="text-foreground"
         icon="ellipsis-vertical"

@@ -16,7 +16,7 @@ export function Badge({ children, className }: { children: string; className?: s
 export function CountBadge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
-    <View className="absolute -top-1 -right-1.5 min-w-4 items-center rounded-full bg-destructive px-1">
+    <View className="bg-destructive absolute -top-1 -right-1.5 min-w-4 items-center rounded-full px-1">
       <Text size="xxs" weight="bold" className="text-white">
         {count > 99 ? "99+" : String(count)}
       </Text>

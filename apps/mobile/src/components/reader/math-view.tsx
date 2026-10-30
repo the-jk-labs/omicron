@@ -13,7 +13,7 @@ export function MathView({ formula, display }: { formula: Formula; display: bool
   const color = useThemeColor("--color-foreground");
   const math = typesetMath(formula.mathml, display);
   // Shouldn't happen with the backend's MathML, but the TeX source still says what the formula was.
-  if (!math) return <Text className="font-content text-foreground">{formula.tex}</Text>;
+  if (!math) return <Text className="text-foreground font-content">{formula.tex}</Text>;
 
   const size = display ? DISPLAY_SIZE : FONT_SIZE;
   const svg = <SvgXml xml={math.svg} color={color} width={math.width * size} height={math.height * size} />;

@@ -104,7 +104,7 @@ export default function SignIn() {
         <Field
           label="Password"
           right={
-            <Link href="/forgot-password" className="font-sans-medium text-sm text-muted-foreground underline">
+            <Link href="/forgot-password" className="text-muted-foreground font-sans-medium text-sm underline">
               Forgot password?
             </Link>
           }
@@ -137,7 +137,7 @@ export default function SignIn() {
         <Text size="sm" tone="muted">
           New here?
         </Text>
-        <Link href="/register" className="font-sans-semibold text-sm text-foreground underline">
+        <Link href="/register" className="text-foreground font-sans-semibold text-sm underline">
           Create an account
         </Link>
       </View>

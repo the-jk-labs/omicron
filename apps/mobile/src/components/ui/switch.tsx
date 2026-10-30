@@ -32,7 +32,7 @@ export function Switch({
       className={disabled ? "opacity-50" : undefined}
     >
       <Animated.View className="h-7 w-12 justify-center rounded-full px-[3px]" style={trackStyle}>
-        <Animated.View className="size-[22px] rounded-full bg-background" style={thumbStyle} />
+        <Animated.View className="bg-background size-[22px] rounded-full" style={thumbStyle} />
       </Animated.View>
     </Pressable>
   );

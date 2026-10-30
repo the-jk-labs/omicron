@@ -50,7 +50,7 @@ function Discover() {
           <View className="flex-row flex-wrap gap-2 px-4">
             {tags.data?.slice(0, 12).map((tag) => (
               <Link key={tag.slug} href={tagPath(tag.slug)} asChild>
-                <PressableScale className="rounded-full bg-muted px-3 py-1.5">
+                <PressableScale className="bg-muted rounded-full px-3 py-1.5">
                   <Text size="sm" weight="medium" tone="alt">
                     #{tag.name}
                   </Text>
@@ -86,8 +86,8 @@ function Discover() {
 function TagRow({ tag }: { tag: TagWithCount }) {
   return (
     <Link href={tagPath(tag.slug)} asChild>
-      <PressableScale pressedScale={0.99} className="flex-row items-center gap-3 border-b border-border px-4 py-3">
-        <View className="size-10 items-center justify-center rounded-full bg-muted">
+      <PressableScale pressedScale={0.99} className="border-border flex-row items-center gap-3 border-b px-4 py-3">
+        <View className="bg-muted size-10 items-center justify-center rounded-full">
           <Icon name="hash" size={18} />
         </View>
         <View className="flex-1">

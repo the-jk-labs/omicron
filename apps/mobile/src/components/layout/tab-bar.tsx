@@ -85,7 +85,7 @@ export function TabBar({ state, emitter, navigateToTab, tabs }: BottomTabBarProp
     <Animated.View
       onLayout={(event) => setHeight(event.nativeEvent.layout.height)}
       accessibilityRole="tablist"
-      className="absolute inset-x-0 bottom-0 flex-row border-t border-border bg-background"
+      className="border-border bg-background absolute inset-x-0 bottom-0 flex-row border-t"
       style={[{ paddingBottom: insets.bottom }, style]}
     >
       {tabs.map((tab) => {

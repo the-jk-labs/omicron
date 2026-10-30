@@ -105,10 +105,10 @@ function Thread({
 }) {
   const count = thread.replies.length;
   return (
-    <View className="gap-3 border-t border-border pt-4">
+    <View className="border-border gap-3 border-t pt-4">
       <CommentRow comment={thread} postId={postId} onReply={() => onReply(thread)} onEdit={() => onEdit(thread)} />
       {count > 0 && expanded && (
-        <Animated.View entering={FadeIn.duration(160)} className="ml-10 gap-3 border-l border-border pl-3">
+        <Animated.View entering={FadeIn.duration(160)} className="border-border ml-10 gap-3 border-l pl-3">
           {thread.replies.map((reply) => (
             <CommentRow
               key={reply.id}

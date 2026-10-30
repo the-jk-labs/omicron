@@ -47,7 +47,7 @@ export default function ListScreen() {
         empty={{ title: "This list is empty", description: "Save stories here from any post." }}
         header={
           info ? (
-            <View className="gap-2 border-b border-border px-4 py-5">
+            <View className="border-border gap-2 border-b px-4 py-5">
               <Text size="2xl" weight="bold">
                 {info.list.title}
               </Text>

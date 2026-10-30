@@ -59,7 +59,7 @@ function PasswordConfirmed({
       : `${action.grant ? "Make" : "Remove"} ${action.kind === "admin" ? "admin" : "moderator"}`;
 
   return (
-    <View className="gap-3 rounded-card border border-border p-4">
+    <View className="border-border gap-3 rounded-card border p-4">
       <Text weight="semibold">{title}</Text>
       {action.kind === "delete" && (
         <Field label={`Type ${username} to confirm`}>

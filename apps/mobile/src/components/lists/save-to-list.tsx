@@ -130,7 +130,7 @@ function SaveToListBody({ postId }: { postId: string }) {
           accessibilityRole="checkbox"
           accessibilityState={{ checked: list.contains }}
           onPress={() => toggle.mutate(list)}
-          className="h-12 flex-row items-center gap-3 rounded-9px px-3 active:bg-muted"
+          className="active:bg-muted h-12 flex-row items-center gap-3 rounded-9px px-3"
         >
           <Icon
             name={list.contains ? "bookmark-check" : "bookmark"}
