@@ -60,7 +60,7 @@
               </a>
               <div class="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
                 <ReactionCount icon="heart" count={post.likeCount} singular="like" size={12} />
-                <ReactionCount icon="comment" count={post.commentCount} singular="response" size={12} />
+                <ReactionCount icon="comment" count={post.commentCount} singular="comment" size={12} />
                 <ReactionCount icon="recommend" count={post.recommendCount} singular="recommendation" size={12} />
               </div>
             </div>

@@ -84,9 +84,9 @@ describe("PostCard reaction counters", () => {
     expect(likeWrap).not.toBeNull();
     expect(likeWrap!.querySelector('[aria-hidden="true"]')).toHaveTextContent("2");
 
-    const commentSr = screen.getByText("5 responses");
+    const commentSr = screen.getByText("5 comments");
     expect(commentSr).toHaveClass("sr-only");
-    const commentWrap = commentSr.closest('[title="5 responses"]');
+    const commentWrap = commentSr.closest('[title="5 comments"]');
     expect(commentWrap).not.toBeNull();
     expect(commentWrap!.querySelector('[aria-hidden="true"]')).toHaveTextContent("5");
 
@@ -106,7 +106,7 @@ describe("PostCard reaction counters", () => {
     render(PostCard, { props: { post: counted } });
 
     expect(screen.getByText("1 like")).toBeInTheDocument();
-    expect(screen.getByText("1 response")).toBeInTheDocument();
+    expect(screen.getByText("1 comment")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Recommend (1 recommendation)" })).toBeInTheDocument();
   });
 
@@ -125,7 +125,7 @@ describe("PostCard reaction counters", () => {
 
     // `post` has 0 for every counter.
     expect(screen.getByText("0 likes")).toBeInTheDocument();
-    expect(screen.getByText("0 responses")).toBeInTheDocument();
+    expect(screen.getByText("0 comments")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Recommend (0 recommendations)" })).toBeInTheDocument();
   });
 

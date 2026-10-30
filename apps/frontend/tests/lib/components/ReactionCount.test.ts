@@ -16,14 +16,14 @@ describe("ReactionCount", () => {
 
   it("uses singular for count 1 and plural for 0 and many", () => {
     const { unmount } = render(ReactionCount, {
-      props: { icon: "comment", count: 1, singular: "response", size: 12 },
+      props: { icon: "comment", count: 1, singular: "comment", size: 12 },
     });
-    expect(screen.getByText("1 response")).toBeInTheDocument();
-    expect(screen.getByTitle("1 response")).toBeInTheDocument();
+    expect(screen.getByText("1 comment")).toBeInTheDocument();
+    expect(screen.getByTitle("1 comment")).toBeInTheDocument();
     unmount();
 
-    render(ReactionCount, { props: { icon: "comment", count: 0, singular: "response", size: 12 } });
-    expect(screen.getByText("0 responses")).toBeInTheDocument();
+    render(ReactionCount, { props: { icon: "comment", count: 0, singular: "comment", size: 12 } });
+    expect(screen.getByText("0 comments")).toBeInTheDocument();
   });
 
   it("supports custom plural for recommendation", () => {

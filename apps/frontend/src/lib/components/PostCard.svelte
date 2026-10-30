@@ -145,7 +145,7 @@
     >
     {#if post.aiAssisted}<AiAssistedBadge />{/if}
     <ReactionCount icon="heart" count={post.likeCount} singular="like" size={13} />
-    <ReactionCount icon="comment" count={post.commentCount} singular="response" size={13} />
+    <ReactionCount icon="comment" count={post.commentCount} singular="comment" size={13} />
     <span class="ml-auto flex shrink-0 items-center gap-1">
       <RecommendButton postId={post.id} recommended={post.recommended} recommendCount={post.recommendCount} size="xs" />
       <SaveToListButton postId={post.id} {signedIn} />

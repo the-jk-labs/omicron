@@ -5,7 +5,7 @@
 //
 // The field keeps its `rows` attribute as the floor (an empty box still looks
 // like a comment box) and stops growing at MAX_HEIGHT_PX, after which it
-// scrolls — otherwise a 2000-character response would push its own Respond
+// scrolls — otherwise a 2000-character comment would push its own Comment
 // button off the screen.
 
 const MAX_HEIGHT_PX = 320;

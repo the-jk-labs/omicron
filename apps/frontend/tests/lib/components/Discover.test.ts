@@ -37,9 +37,9 @@ describe("Discover trending counters", () => {
     expect(likeSr.closest('[title="1 like"]')).not.toBeNull();
     expect(likeSr.closest('[title="1 like"]')!.querySelector('[aria-hidden="true"]')).toHaveTextContent("1");
 
-    const commentSr = screen.getByText("2 responses");
+    const commentSr = screen.getByText("2 comments");
     expect(commentSr).toHaveClass("sr-only");
-    expect(commentSr.closest('[title="2 responses"]')).not.toBeNull();
+    expect(commentSr.closest('[title="2 comments"]')).not.toBeNull();
 
     const recSr = screen.getByText("3 recommendations");
     expect(recSr).toHaveClass("sr-only");
@@ -51,14 +51,14 @@ describe("Discover trending counters", () => {
     const solo: Post = { ...post, likeCount: 1, commentCount: 1, recommendCount: 1 };
     const { unmount } = render(Discover, { props: { data: { posts: [solo], people: [], tags: [] } } });
     expect(screen.getByText("1 like")).toBeInTheDocument();
-    expect(screen.getByText("1 response")).toBeInTheDocument();
+    expect(screen.getByText("1 comment")).toBeInTheDocument();
     expect(screen.getByText("1 recommendation")).toBeInTheDocument();
     unmount();
 
     const zero: Post = { ...post, likeCount: 0, commentCount: 0, recommendCount: 0 };
     render(Discover, { props: { data: { posts: [zero], people: [], tags: [] } } });
     expect(screen.getByText("0 likes")).toBeInTheDocument();
-    expect(screen.getByText("0 responses")).toBeInTheDocument();
+    expect(screen.getByText("0 comments")).toBeInTheDocument();
     expect(screen.getByText("0 recommendations")).toBeInTheDocument();
   });
 });

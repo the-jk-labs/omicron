@@ -54,15 +54,15 @@ describe("excerpt", () => {
 describe("countLabel", () => {
   it("uses the singular form only for one", () => {
     expect(countLabel(1, "like")).toBe("1 like");
-    expect(countLabel(1, "response")).toBe("1 response");
+    expect(countLabel(1, "comment")).toBe("1 comment");
     expect(countLabel(1, "recommendation")).toBe("1 recommendation");
   });
 
   it("uses the plural form for zero and for many", () => {
     expect(countLabel(0, "like")).toBe("0 likes");
     expect(countLabel(2, "like")).toBe("2 likes");
-    expect(countLabel(0, "response")).toBe("0 responses");
-    expect(countLabel(5, "response")).toBe("5 responses");
+    expect(countLabel(0, "comment")).toBe("0 comments");
+    expect(countLabel(5, "comment")).toBe("5 comments");
     expect(countLabel(0, "recommendation")).toBe("0 recommendations");
     expect(countLabel(3, "recommendation")).toBe("3 recommendations");
   });

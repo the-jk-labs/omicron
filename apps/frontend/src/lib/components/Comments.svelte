@@ -63,7 +63,7 @@
     ui.expanded = new Set(ui.expanded);
   }
 
-  // Total responses = top-level comments + every reply.
+  // Total comments = top-level comments + every reply.
   const total = $derived(comments.reduce((n, c) => n + 1 + c.replies.length, 0));
 
   async function submit(e: SubmitEvent) {
@@ -245,7 +245,7 @@
 
 <section class="mt-2">
   <h2 class="mb-5 text-lg font-semibold tracking-tight text-foreground">
-    Responses ({total})
+    Comments ({total})
   </h2>
 
   {#if user}
@@ -266,7 +266,7 @@
         {#if error}<p class="mt-1.5 text-sm text-destructive">{error}</p>{/if}
         <div class="mt-2 flex justify-end">
           <Button type="submit" variant="solid" size="sm" disabled={busy || !draft.trim()}>
-            {busy ? "Posting…" : "Respond"}
+            {busy ? "Posting…" : "Comment"}
           </Button>
         </div>
       </div>
@@ -278,7 +278,7 @@
   {/if}
 
   {#if comments.length === 0}
-    <p class="py-6 text-center text-sm text-muted-foreground">No responses yet. Be the first.</p>
+    <p class="py-6 text-center text-sm text-muted-foreground">No comments yet. Be the first.</p>
   {:else}
     <ul class="flex flex-col gap-6">
       {#each comments as comment (comment.id)}
@@ -287,7 +287,7 @@
     </ul>
 
     {#if cursor}
-      <LoadMoreButton load={loadMore} loading={loadingMore} label="Show more responses" size="sm" class="mt-6" />
+      <LoadMoreButton load={loadMore} loading={loadingMore} label="Show more comments" size="sm" class="mt-6" />
     {/if}
   {/if}
 </section>

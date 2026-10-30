@@ -65,7 +65,7 @@ export function excerpt(html: string, len = 180): string {
   return `${head.replace(/[\s.,;:!?-]+$/, "")}…`;
 }
 
-// A counter as a phrase — "2 likes", "1 response" — for tooltips and
+// A counter as a phrase — "2 likes", "1 comment" — for tooltips and
 // screen-reader labels, where the bare number the counter shows ("2") names
 // nothing on its own.
 export function countLabel(n: number, one: string, many = `${one}s`): string {

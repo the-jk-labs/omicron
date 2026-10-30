@@ -55,7 +55,7 @@
   // the content as the accessible name — so the labels carry the counts
   // themselves, or a screen reader hears "Like" and never the number.
   const likeLabel = $derived(`${liked ? "Unlike" : "Like"} (${countLabel(likeCount, "like")})`);
-  const commentLabel = $derived(countLabel(commentCount, "response"));
+  const commentLabel = $derived(countLabel(commentCount, "comment"));
   // Enhance server-rendered code blocks with a copy-to-clipboard button. The
   // content is injected via {@html}, so we reach into the DOM after each render.
   let contentEl = $state<HTMLElement>();
@@ -482,7 +482,7 @@
       <span class="tabular-nums">{likeCount}</span>
     </Button>
     <a
-      href="#responses"
+      href="#comments"
       aria-label={commentLabel}
       title={commentLabel}
       class="inline-flex h-10 items-center gap-1.5 rounded-input px-4 text-sm font-medium text-muted-foreground hover:bg-muted"
@@ -498,8 +498,8 @@
 </article>
 
 <!-- scroll-mt clears the 64px sticky header, so the comment-count button
-     above lands on the "Responses" heading rather than under the nav. -->
-<div id="responses" class="mt-12 scroll-mt-20 border-t border-border pt-8">
+     above lands on the "Comments" heading rather than under the nav. -->
+<div id="comments" class="mt-12 scroll-mt-20 border-t border-border pt-8">
   <Comments
     postId={post.id}
     initial={data.comments}
@@ -514,7 +514,7 @@
        reach the rest of the archive from an article. Real <a> links, rendered
        server-side, so both audiences follow the same ones.
 
-       Last on the page, below the responses: a reader who reaches the end of an
+       Last on the page, below the comments: a reader who reaches the end of an
        article is either replying to it or leaving, and an exit ramp placed
        above the reply box pushes that box off screen at the moment it is
        wanted. The thread paginates, so the bottom stays reachable. -->
