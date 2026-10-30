@@ -53,7 +53,7 @@ test("an old slug or short-id link moves permanently to the current URL", async 
 test("a percent-encoded canonical path is not redirected to itself", async () => {
   const remote = post({
     slug: null,
-    author: { id: "r", username: "bob@remote.example", displayName: "Bob", avatarUrl: null },
+    author: { id: "r", username: "bob@remote.example", displayName: "Bob", avatarUrl: null, remote: false },
   });
   const { event: e } = event({
     url: "https://blog.example/@bob%40remote.example/9e962281",

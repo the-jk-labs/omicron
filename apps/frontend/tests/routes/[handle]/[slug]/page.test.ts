@@ -90,7 +90,10 @@ test("shows the title, author, read time and language", () => {
 });
 
 test("a federated post names its origin instance", () => {
-  setup({ remote: true, author: { id: "r1", username: "zed@social.example", displayName: "Zed", avatarUrl: null } });
+  setup({
+    remote: true,
+    author: { id: "r1", username: "zed@social.example", displayName: "Zed", avatarUrl: null, remote: false },
+  });
   expect(screen.getByText("social.example")).toBeInTheDocument();
 });
 
@@ -169,7 +172,10 @@ test("a reader can only share and report; a signed-out visitor only share", asyn
 
 test("nobody edits or deletes a federated post locally", async () => {
   setup(
-    { remote: true, author: { id: "author-1", username: "ada@far.example", displayName: "Ada", avatarUrl: null } },
+    {
+      remote: true,
+      author: { id: "author-1", username: "ada@far.example", displayName: "Ada", avatarUrl: null, remote: false },
+    },
     author,
   );
   await openMenu();

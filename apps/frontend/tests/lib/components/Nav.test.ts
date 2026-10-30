@@ -37,7 +37,7 @@ function notif(o: Partial<Notification> = {}): Notification {
   return {
     id: "n1",
     type: "like",
-    actor: { id: "u2", username: "bob", displayName: "Bob", avatarUrl: null },
+    actor: { id: "u2", username: "bob", displayName: "Bob", avatarUrl: null, remote: false },
     postId: "p1",
     postTitle: "Hello world",
     commentSnippet: null,

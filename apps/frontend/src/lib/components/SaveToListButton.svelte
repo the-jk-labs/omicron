@@ -3,7 +3,7 @@
   import { Popover } from "bits-ui";
   import { endpoints, ApiError } from "#lib/api/index.js";
   import Icon from "#lib/components/Icon.svelte";
-  import type { ReadingList } from "#lib/types.js";
+  import type { ReadingListForPost } from "#lib/types.js";
 
   // "Save to list" control — the reading-list analogue of YouTube's Save button.
   // Opens a popover of the signed-in user's lists (Read later pinned first),
@@ -12,7 +12,7 @@
   let { postId, signedIn }: { postId: string; signedIn: boolean } = $props();
 
   let open = $state(false);
-  let lists = $state<ReadingList[]>([]);
+  let lists = $state<ReadingListForPost[]>([]);
   let loaded = $state(false);
   let loading = $state(false);
   let busy = $state<Set<string>>(new Set());
@@ -37,7 +37,7 @@
     }
   }
 
-  async function toggle(list: ReadingList) {
+  async function toggle(list: ReadingListForPost) {
     if (busy.has(list.id)) return;
     busy = new Set(busy).add(list.id);
     const wasIn = !!list.contains;

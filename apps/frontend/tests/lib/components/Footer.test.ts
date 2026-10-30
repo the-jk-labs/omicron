@@ -23,6 +23,7 @@ describe("Footer", () => {
           contactEmail: null,
           contactUrl: "https://example.com/contact",
           abuseEmail: null,
+          apiVersion: 1,
           statusUrl: "https://status.example.com",
         },
       },

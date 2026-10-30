@@ -57,7 +57,11 @@ describe("postFeedItem", () => {
 
   test("an untitled post and an author without a display name still read", () => {
     const item = postFeedItem(
-      post({ title: null, slug: null, author: { id: "a", username: "ada", displayName: "", avatarUrl: null } }),
+      post({
+        title: null,
+        slug: null,
+        author: { id: "a", username: "ada", displayName: "", avatarUrl: null, remote: false },
+      }),
       ORIGIN,
     );
     expect(item).toMatchObject({ title: "Untitled", creator: "ada", link: `${ORIGIN}/@ada/9e962281` });

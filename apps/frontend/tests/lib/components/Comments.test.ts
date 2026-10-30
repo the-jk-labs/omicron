@@ -10,7 +10,13 @@ import { confirmRequest } from "#lib/components/ui/confirm.js";
 import type { Comment, User } from "#lib/types.js";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
-const author = (id: string, name: string) => ({ id, username: name.toLowerCase(), displayName: name, avatarUrl: null });
+const author = (id: string, name: string) => ({
+  id,
+  username: name.toLowerCase(),
+  displayName: name,
+  avatarUrl: null,
+  remote: false,
+});
 function comment(id: string, by = author("u-bob", "Bob"), overrides: Partial<Comment> = {}): Comment {
   return {
     id,
