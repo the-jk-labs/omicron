@@ -1,0 +1,42 @@
+{
+  "cli": {
+    "version": ">= 16.24.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "node": "24.22.1",
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_VARIANT": "development"
+      },
+      "channel": "development"
+    },
+    "preview": {
+      "node": "24.22.1",
+      "distribution": "internal",
+      "channel": "preview",
+      "android": {
+        "buildType": "apk"
+      },
+      "cache": {
+        "paths": ["/home/builder/.gradle/caches", "/home/builder/.gradle/wrapper", "/home/builder/.npm"]
+      }
+    },
+    "production": {
+      "node": "24.22.1",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "channel": "production"
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

@@ -1,0 +1,62 @@
+nodeLinker: hoisted
+saveExact: true
+engineStrict: true
+minimumReleaseAge: 1440
+minimumReleaseAgeExcludePrune: true
+trustPolicy: "no-downgrade"
+trustPolicyExcludePrune: true
+allowBuilds:
+  msgpackr-extract: true
+  unrs-resolver: true
+trustPolicyExclude:
+  - semver@6.3.1
+  - expo
+  - expo-*
+  - babel-preset-expo
+  - "@expo/*"
+minimumReleaseAgeExclude:
+  - "@expo/cli@58.1.17"
+  - "@expo/config-plugins@58.0.11"
+  - "@expo/config@58.0.9"
+  - "@expo/image-utils@0.12.6"
+  - "@expo/inline-modules@0.2.8"
+  - "@expo/local-build-cache-provider@58.0.9"
+  - "@expo/metro-config@58.0.19"
+  - "@expo/modules-macros-linux-arm64@0.27.1"
+  - "@expo/modules-macros-linux-x64@0.27.1"
+  - "@expo/modules-macros-win32-arm64@0.27.1"
+  - "@expo/modules-macros-win32-x64@0.27.1"
+  - "@expo/prebuild-config@58.0.17"
+  - "@expo/require-utils@58.0.5"
+  - "@expo/router-server@58.0.19"
+  - "@noxcturnal/noxcturnal-darwin-arm64@0.1.11"
+  - "@noxcturnal/noxcturnal-darwin-x64@0.1.11"
+  - "@noxcturnal/noxcturnal-linux-arm64-gnu@0.1.11"
+  - "@noxcturnal/noxcturnal-linux-arm64-musl@0.1.11"
+  - "@noxcturnal/noxcturnal-linux-x64-gnu@0.1.11"
+  - "@noxcturnal/noxcturnal-linux-x64-musl@0.1.11"
+  - "@noxcturnal/noxcturnal-win32-arm64-msvc@0.1.11"
+  - "@noxcturnal/noxcturnal-win32-x64-msvc@0.1.11"
+  - babel-preset-expo@58.0.22
+  - expo-asset@58.0.19
+  - expo-constants@58.0.14
+  - expo-file-system@58.0.13
+  - expo-font@58.0.11
+  - expo-modules-autolinking@58.0.16
+  - expo-modules-cli@0.4.0
+  - expo-modules-core@58.0.28
+  - expo-modules-jsi@58.0.21
+  - expo-modules-macros@0.27.1
+  - expo@58.0.21
+  - noxcturnal@0.1.11
+  - "@expo/ui@58.0.25"
+  - expo-dev-client@58.0.17
+  - expo-dev-launcher@58.0.17
+  - expo-image-manipulator@58.0.16
+  - expo-image@58.0.18
+  - expo-linking@58.0.15
+  - expo-router@58.0.28
+  - expo-sharing@58.0.21
+  - expo-splash-screen@58.0.12
+  - expo-system-ui@58.0.7
+  - expo-updates@58.0.19

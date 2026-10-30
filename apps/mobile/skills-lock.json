@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "skills": {
+    "animation-vocabulary": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/animation-vocabulary/SKILL.md",
+      "computedHash": "0058036865ecbb864fd0c4132efcc62425355d6e99c7e6ef6a936742d62a5dea"
+    },
+    "emil-design-eng": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/emil-design-eng/SKILL.md",
+      "computedHash": "51f2537e04d15911b41d78e2de24c36a0e26d41beae15e82a954fe5496a5eda9"
+    },
+    "expo-data-fetching": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/expo/skills/expo-data-fetching/SKILL.md",
+      "computedHash": "65ff249dd459aa4daf8cd0c98e34a551dfb579b6f3378fbfc1d80e1732d9750f"
+    },
+    "expo-dev-client": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/expo/skills/expo-dev-client/SKILL.md",
+      "computedHash": "01423bf2dc0cab9a37128c4ca8e1018deeb29109b972d781b3c0b477188c5989"
+    },
+    "expo-native-ui": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/expo/skills/expo-native-ui/SKILL.md",
+      "computedHash": "0afc4dd15299d02da2dafefd1775e975ae99f3649f940e1f51d9d00ad6c64706"
+    },
+    "expo-ui": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/expo/skills/expo-ui/SKILL.md",
+      "computedHash": "aacbebd4e76f98abfff29a73a5ef806bf6c34b4e4a5155fbbc6f3bc3866e8cbb"
+    },
+    "expo-upgrade": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/expo/skills/expo-upgrade/SKILL.md",
+      "computedHash": "919fd44ea539d9c8d0057edfb092d9602444d7f4ea6302f227caf56684fd6993"
+    },
+    "nitro-fetch": {
+      "source": "margelo/react-native-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-native-nitro-fetch/SKILL.md",
+      "computedHash": "8bba6ef22ee96510b10f0ea576f67a1cf1fafb22f457f30988adc388648b85e1"
+    },
+    "react-native-best-practices": {
+      "source": "callstackincubator/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-native-best-practices/SKILL.md",
+      "computedHash": "4b2b9561ff7b4b9d15ff76d2dd2a6191e3cdc7f36c06d171e377bfefcbcb2bfb"
+    },
+    "react-native-mmkv": {
+      "source": "margelo/react-native-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-native-mmkv/SKILL.md",
+      "computedHash": "96b4224d99089192160f9a2d1f3c29f4ca9155dfa69d2583719c2dad95826959"
+    },
+    "review-animations": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/review-animations/SKILL.md",
+      "computedHash": "b4e5f0f4fe3e2743c85bf7354108f48a0b9d502cb20ef5c4a9c195da91f93736"
+    },
+    "uniwind": {
+      "source": "uni-stack/uniwind",
+      "sourceType": "github",
+      "skillPath": "skills/uniwind/SKILL.md",
+      "computedHash": "a7a64eafd6f61bfdcde777df888db180ff6e1f6955ed615a1673084e9e1de066"
+    },
+    "vercel-composition-patterns": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/composition-patterns/SKILL.md",
+      "computedHash": "575757e3e25761c8c562d6e395d29f0b76c98b1273c0bd72d88e6ab1bc9c7d42"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "ca7b0c0c6e5f2750043f7f0cd72d16ac4e2abc48f9b5500d047a4b77a2506212"
+    },
+    "vercel-react-native-skills": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-native-skills/SKILL.md",
+      "computedHash": "41d24eafa7c3d82e270439808f7cfbc4d51aeb2d14f2809a2267c16275784d06"
+    }
+  }
+}

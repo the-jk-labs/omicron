@@ -3,18 +3,11 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@/assets/*": [
-        "./assets/*"
-      ]
-    }
+      "@/*": ["./src/*"]
+    },
+    "verbatimModuleSyntax": true,
+    "types": ["node"]
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
-  ]
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts", "uniwind-types.d.ts", "vitest.config.mts"],
+  "exclude": ["node_modules", "android", "ios", ".agents", "editor-web"]
 }
