@@ -5,6 +5,8 @@ export type Device = { browser: string | null; os: string | null; mobile: boolea
 // Order matters: Edge, Opera and Samsung Internet all also claim to be Chrome,
 // and Chrome claims to be Safari.
 const BROWSERS: [RegExp, string][] = [
+  // The mobile app names itself ("Omicron/0.1.0 (Android 16; …)"); it's no browser at all.
+  [/^Omicron\//, "Omicron app"],
   [/\bEdg(e|A|iOS)?\//, "Edge"],
   [/\bOPR\/|\bOpera\b/, "Opera"],
   [/\bSamsungBrowser\//, "Samsung Internet"],
@@ -15,7 +17,7 @@ const BROWSERS: [RegExp, string][] = [
 
 // iPadOS 13+ asks for desktop pages, so an iPad usually reads as a Mac.
 const SYSTEMS: [RegExp, string][] = [
-  [/\biPhone|\biPod/, "iOS"],
+  [/\biPhone|\biPod|\(iOS\b/, "iOS"],
   [/\biPad/, "iPadOS"],
   [/\bAndroid/, "Android"],
   [/\bWindows NT/, "Windows"],
