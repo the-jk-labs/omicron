@@ -1,0 +1,21 @@
+{
+  "name": "@omicron/contract",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The Omicron API contract: zod/mini schemas for every payload, shared by the backend, web and mobile apps.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": ">=12.15.0 <13",
+      "onFail": "download"
+    }
+  }
+}

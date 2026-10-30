@@ -1,53 +1,28 @@
-# Omicron for Android
+# Omicron for Android and iOS
 
-The Android client for [Omicron](https://github.com/the-jk-labs/omicron), a federated and self-hostable ActivityPub blogging platform.
+The mobile app for [Omicron](https://github.com/the-jk-labs/omicron), the federated, self-hostable blogging
+platform. It connects to any Omicron instance (omicron.blog is offered first) and covers what the web app does:
+reading, writing, following, lists, notifications, settings and moderation.
 
-This repository contains the Android-first Kotlin Multiplatform client. Android is the only active target; shared application code belongs in `composeApp/src/commonMain` so a future target can be introduced without relocating product code.
+Built with Expo SDK 58 and React Native. No Google Play Services.
 
-## Requirements
+## Develop
 
-- JDK 17
-- Android SDK Platform 36
-
-## Build
+Requires Node 24.22+, pnpm 12, and Android Studio (or Xcode) for a development build.
 
 ```sh
-./gradlew :composeApp:assembleDebug
-./gradlew :composeApp:lintDebug
-./gradlew :composeApp:testDebugUnitTest
+pnpm install
+pnpm android          # builds and installs the dev client (blog.omicron.app.dev)
+pnpm start            # Metro for an installed dev client
+pnpm fmt && pnpm check
 ```
 
-## Development
+The composer's editor is a small web bundle built from `editor-web/`: run `pnpm editor:build` after changing it.
 
-- [Development guide](docs/development.md): setup, workflow, verification, and pull requests.
-- [Architecture](docs/architecture.md): package boundaries, state, networking, persistence, and UI conventions.
-- [Roadmap](roadmap.md): ordered releases, exit criteria, and API constraints.
-- [Decision records](docs/adr/README.md): durable technical decisions and their rationale.
+Builds and over-the-air updates use EAS (`eas.json`). Set `EAS_PROJECT_ID` (from `eas init`) to enable updates.
 
-## Current Capability
-
-- Connect to an HTTPS Omicron instance, defaulting to `https://omicron.blog`.
-- Retrieve and retain public instance metadata from `GET /api/instance`.
-- Present loading, invalid-address, unreachable, and retry states for instance connection.
-- Sign in, register, and restore sessions with per-origin credential storage.
-- Open saved Home cards immediately on restart, then restore the session and refresh posts in the background with inline retry feedback.
-- Use the web-aligned signed-in mobile navigation for Home, Lists, Write, Stats, and Profile; open search, notifications, and account actions from the top bar, with appearance choices in Settings.
-- Browse Global/Local timelines and the signed-in For you feed; read posts natively with responsive cards and working feed actions.
-- Like, recommend, save, comment, follow, mute, and block with optimistic rollback.
-- Open Followers and Following from local profile counts in a dedicated people screen with switchable lists, direct follow controls, and confirmation before unfollowing or cancelling a follow request.
-- Create and browse reading lists, view writer analytics, and read notifications using the confirmed shared API.
-- Search articles, tags, and people; browse tag pages, trending posts, topics, and suggested people.
-- Compose and schedule posts, then manage drafts, scheduled posts, and published posts from the owner profile.
-- Change the connected instance, persist a System/Light/Dark appearance choice, view app information, and sign out in Settings.
-- Reopen previously loaded public articles offline from Settings and remove cached copies by instance.
-- Use bundled Inter interface typography and Source Sans 3 article/composer typography.
-
-Release hardening remains outstanding. See [roadmap.md](roadmap.md).
-
-## Repository Rules
-
-`AGENTS.md` is required reading for contributors and coding agents. It defines the source of truth, design system, architecture, API rules, and quality bar for this client.
+Contributors and coding agents: read [AGENTS.md](AGENTS.md) and [STYLE.md](STYLE.md).
 
 ## License
 
-AGPL-3.0-or-later. See the [root license](../../LICENSE).
+AGPL-3.0-or-later, like the rest of Omicron. See [LICENSE](../../LICENSE).

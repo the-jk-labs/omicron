@@ -42,7 +42,7 @@ test("someone else's draft is forbidden; a missing one is a 404", async () => {
   await expect(
     compose("p1", {
       "GET /api/posts/p1": {
-        post: post({ author: { id: "other", username: "x", displayName: "X", avatarUrl: null } }),
+        post: post({ author: { id: "other", username: "x", displayName: "X", avatarUrl: null, remote: false } }),
       },
     }),
   ).rejects.toMatchObject({ status: 403 });

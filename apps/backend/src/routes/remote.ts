@@ -4,6 +4,7 @@ import { config } from "@/config.ts";
 import { notFound } from "@/lib/http.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { clientIp, rateLimit } from "@/lib/rateLimit.ts";
+import type { Reply } from "@/lib/reply.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import { remoteProfile } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
@@ -56,46 +57,46 @@ remoteRoutes.get("/users/:handle", async (c) => {
     viewer?.id ?? null,
     callerKey(c),
   );
-  return c.json(remoteProfile(actor, isFollowing, { isMuted, isBlocked }, tags));
+  return c.json(remoteProfile(actor, isFollowing, { isMuted, isBlocked }, tags) satisfies Reply<"RemoteProfile">);
 });
 
 // Follow / unfollow a remote actor (auth required).
 remoteRoutes.post("/users/:handle/follow", async (c) => {
   const viewer = requireUser(c);
   await remoteProfilesService.follow(viewer.id, c.req.param("handle"));
-  return c.json({ ok: true }, 201);
+  return c.json({ ok: true } satisfies Reply<"Ok">, 201);
 });
 
 remoteRoutes.delete("/users/:handle/follow", async (c) => {
   const viewer = requireUser(c);
   await remoteProfilesService.unfollow(viewer.id, c.req.param("handle"));
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // Mute / unmute a remote actor (auth required). Local-only hiding.
 remoteRoutes.post("/users/:handle/mute", async (c) => {
   const viewer = requireUser(c);
   await relationsService.setRemote("mute", viewer.id, c.req.param("handle"), true);
-  return c.json({ ok: true }, 201);
+  return c.json({ ok: true } satisfies Reply<"Ok">, 201);
 });
 
 remoteRoutes.delete("/users/:handle/mute", async (c) => {
   const viewer = requireUser(c);
   await relationsService.setRemote("mute", viewer.id, c.req.param("handle"), false);
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // Block / unblock a remote actor (auth required). Local-only, not federated.
 remoteRoutes.post("/users/:handle/block", async (c) => {
   const viewer = requireUser(c);
   await relationsService.setRemote("block", viewer.id, c.req.param("handle"), true);
-  return c.json({ ok: true }, 201);
+  return c.json({ ok: true } satisfies Reply<"Ok">, 201);
 });
 
 remoteRoutes.delete("/users/:handle/block", async (c) => {
   const viewer = requireUser(c);
   await relationsService.setRemote("block", viewer.id, c.req.param("handle"), false);
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // A remote actor's posts (their cached outbox), cursor-paginated.
@@ -104,7 +105,7 @@ remoteRoutes.get("/users/:handle/posts", async (c) => {
   const handle = c.req.param("handle");
   const cursor = decodeCursor(c.req.query("cursor"));
   const { items, nextCursor } = await remoteProfilesService.getPosts(handle, cursor, viewer?.id ?? null, callerKey(c));
-  return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
+  return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor } satisfies Reply<"PostPage">);
 });
 
 // A remote actor's "Recommendations" tab: posts they've boosted (recorded from
@@ -115,5 +116,5 @@ remoteRoutes.get("/users/:handle/recommendations", async (c) => {
   const cursor = decodeCursor(c.req.query("cursor"));
   const actor = await remoteProfilesService.getProfile(handle, callerKey(c));
   const { items, nextCursor } = await recommendationsService.listByRemoteActor(actor.id, viewer?.id ?? null, cursor);
-  return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
+  return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor } satisfies Reply<"PostPage">);
 });

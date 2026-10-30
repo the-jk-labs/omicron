@@ -30,6 +30,7 @@
     "@fedify/redis": "2.4.4",
     "@hono/zod-validator": "0.9.1",
     "@imagemagick/magick-wasm": "0.0.44",
+    "@omicron/contract": "link:../../packages/contract",
     "@vscode/markdown-it-katex": "1.1.2",
     "bcryptjs": "3.0.3",
     "better-auth": "1.7.14",

@@ -1,0 +1,16 @@
+# Text is stored and checked out with LF line endings on every OS, so an editor or script on Windows
+# can't slip CRLF into the repository.
+* text=auto eol=lf
+
+# Never touched, even if one happens to look like text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.wasm binary

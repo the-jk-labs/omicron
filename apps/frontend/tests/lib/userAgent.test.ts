@@ -49,3 +49,10 @@ test("unknown or missing agents still get a label", () => {
   expect(deviceLabel(parseUserAgent("curl/8.9.1"))).toBe("Unknown device");
   expect(deviceLabel(parseUserAgent("SomeApp/1.0 (Windows NT 10.0)"))).toBe("Windows");
 });
+
+test("the mobile app reads as itself on its system", () => {
+  const android = parseUserAgent("Omicron/0.1.0 (Android 16; SM-S938B)");
+  expect(deviceLabel(android)).toBe("Omicron app on Android");
+  expect(android.mobile).toBe(true);
+  expect(deviceLabel(parseUserAgent("Omicron/0.1.0 (iOS 18.1)"))).toBe("Omicron app on iOS");
+});

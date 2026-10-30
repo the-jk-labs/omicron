@@ -10,6 +10,7 @@ import {
 } from "@/db/repositories/users.ts";
 import { badRequest } from "@/lib/http.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
+import type { Reply } from "@/lib/reply.ts";
 import { jsonBody } from "@/lib/validate.ts";
 import { readUpload, requireAdmin, requireModerator } from "@/routes/middleware.ts";
 import { adminUserDetailView, adminUserView, deletedUserView } from "@/routes/serializers.ts";
@@ -36,7 +37,7 @@ export const adminRoutes = new Hono<AppEnv>();
 // Instance settings an admin can read/change at runtime (admin-only).
 adminRoutes.get("/settings", async (c) => {
   requireAdmin(c);
-  return c.json({ onInstanceViews: await settings.onInstanceViewsEnabled() });
+  return c.json({ onInstanceViews: await settings.onInstanceViewsEnabled() } satisfies Reply<"InstanceSettings">);
 });
 
 const analyticsSchema = z.object({ onInstanceViews: z.boolean() });
@@ -51,14 +52,14 @@ adminRoutes.put(
     requireAdmin(c);
     const { onInstanceViews } = c.req.valid("json");
     await settings.setOnInstanceViewsEnabled(onInstanceViews);
-    return c.json({ onInstanceViews });
+    return c.json({ onInstanceViews } satisfies Reply<"InstanceSettings">);
   },
 );
 
 adminRoutes.get("/umami", async (c) => {
   requireAdmin(c);
   c.header("Cache-Control", "no-store");
-  return c.json(await umami.getSettings());
+  return c.json((await umami.getSettings()) satisfies Reply<"UmamiSettings">);
 });
 
 adminRoutes.put(
@@ -67,7 +68,7 @@ adminRoutes.put(
   async (c) => {
     requireAdmin(c);
     c.header("Cache-Control", "no-store");
-    return c.json(await umami.setSettings(c.req.valid("json")));
+    return c.json((await umami.setSettings(c.req.valid("json"))) satisfies Reply<"UmamiSettings">);
   },
 );
 
@@ -85,7 +86,7 @@ async function securitySnapshot() {
 
 adminRoutes.get("/security", async (c) => {
   requireAdmin(c);
-  return c.json(await securitySnapshot());
+  return c.json((await securitySnapshot()) satisfies Reply<"SecuritySettings">);
 });
 
 const securitySchema = z.object({ anubisProtection: z.boolean() });
@@ -100,7 +101,7 @@ adminRoutes.put("/security/anubis", jsonBody(securitySchema, "Expected { anubisP
   } catch (err) {
     throw badRequest(err instanceof Error ? err.message : "Could not update scraper protection.");
   }
-  return c.json(await securitySnapshot());
+  return c.json((await securitySnapshot()) satisfies Reply<"SecuritySettings">);
 });
 
 const accessDraftSchema = z.object({ network: z.string().trim().min(1).max(64), action: z.enum(["allow", "block"]) });
@@ -124,7 +125,7 @@ async function securityOperation<T>(operation: () => Promise<T>): Promise<T> {
 
 adminRoutes.get("/security/access-rules", async (c) => {
   requireAdmin(c);
-  return c.json({ rules: await anubis.accessRules() });
+  return c.json({ rules: await anubis.accessRules() } satisfies Reply<"AccessRules">);
 });
 
 adminRoutes.post(
@@ -132,7 +133,9 @@ adminRoutes.post(
   jsonBody(accessRuleSchema, "Enter an IP range, action and valid expiry."),
   async (c) => {
     requireAdmin(c);
-    return c.json({ rules: await securityOperation(() => anubis.addAccessRule(c.req.valid("json"))) });
+    return c.json({
+      rules: await securityOperation(() => anubis.addAccessRule(c.req.valid("json"))),
+    } satisfies Reply<"AccessRules">);
   },
 );
 
@@ -143,13 +146,15 @@ adminRoutes.patch(
     requireAdmin(c);
     return c.json({
       rules: await securityOperation(() => anubis.updateAccessRule(c.req.param("id"), c.req.valid("json").enabled)),
-    });
+    } satisfies Reply<"AccessRules">);
   },
 );
 
 adminRoutes.delete("/security/access-rules/:id", async (c) => {
   requireAdmin(c);
-  return c.json({ rules: await securityOperation(() => anubis.updateAccessRule(c.req.param("id"), null)) });
+  return c.json({
+    rules: await securityOperation(() => anubis.updateAccessRule(c.req.param("id"), null)),
+  } satisfies Reply<"AccessRules">);
 });
 
 adminRoutes.post(
@@ -158,7 +163,9 @@ adminRoutes.post(
   async (c) => {
     requireAdmin(c);
     const { ip, path, draft } = c.req.valid("json");
-    return c.json(await securityOperation(() => anubis.previewAccessRules(ip, path, draft)));
+    return c.json(
+      (await securityOperation(() => anubis.previewAccessRules(ip, path, draft))) satisfies Reply<"AccessRuleTest">,
+    );
   },
 );
 
@@ -169,7 +176,7 @@ adminRoutes.post(
 // read the same settings; this is the admin-only write side.
 adminRoutes.get("/seo", async (c) => {
   requireAdmin(c);
-  return c.json(await seo.getSeoSettings());
+  return c.json((await seo.getSeoSettings()) satisfies Reply<"AdminSeoSettings">);
 });
 
 const seoSchema = z.object({
@@ -181,7 +188,7 @@ const seoSchema = z.object({
 adminRoutes.put("/seo", jsonBody(seoSchema, "Invalid SEO settings."), async (c) => {
   requireAdmin(c);
   await seo.setSeoSettings(c.req.valid("json"));
-  return c.json(await seo.getSeoSettings());
+  return c.json((await seo.getSeoSettings()) satisfies Reply<"AdminSeoSettings">);
 });
 
 // ── Media (Unsplash banner picker) ──────────────────────────────────────────
@@ -192,7 +199,7 @@ adminRoutes.put("/seo", jsonBody(seoSchema, "Invalid SEO settings."), async (c) 
 // one ends up in a browser cache or a screenshot.
 adminRoutes.get("/unsplash", async (c) => {
   requireAdmin(c);
-  return c.json({ configured: await unsplash.configured() });
+  return c.json({ configured: await unsplash.configured() } satisfies Reply<"UnsplashState">);
 });
 
 // A blank (or omitted) key clears it, which is how the feature is turned off.
@@ -201,7 +208,7 @@ const unsplashSchema = z.object({ accessKey: z.string().trim().max(200).nullish(
 adminRoutes.put("/unsplash", jsonBody(unsplashSchema, "Expected { accessKey: string | null }."), async (c) => {
   requireAdmin(c);
   await unsplash.setAccessKey(c.req.valid("json").accessKey ?? null);
-  return c.json({ configured: await unsplash.configured() });
+  return c.json({ configured: await unsplash.configured() } satisfies Reply<"UnsplashState">);
 });
 
 // ── Instance identity (runtime config) ──────────────────────────────────────
@@ -225,7 +232,7 @@ async function instanceSnapshot() {
 
 adminRoutes.get("/instance", async (c) => {
   requireAdmin(c);
-  return c.json(await instanceSnapshot());
+  return c.json((await instanceSnapshot()) satisfies Reply<"AdminInstance">);
 });
 
 const email = z
@@ -271,7 +278,7 @@ adminRoutes.put("/instance", jsonBody(instanceSchema), async (c) => {
   if (body.federationEnabled !== undefined) {
     await setup.setFederationEnabled(body.federationEnabled);
   }
-  return c.json(await instanceSnapshot());
+  return c.json((await instanceSnapshot()) satisfies Reply<"AdminInstance">);
 });
 
 // Upload the banner image shown on the signed-out visitor card. Reuses the same
@@ -285,14 +292,14 @@ adminRoutes.post("/instance/banner", async (c) => {
   const bytes = await readUpload(c, mediaService.MAX_IMAGE_BYTES, "Image too large (max 5 MB).");
   const url = await mediaService.saveImage(viewer.id, bytes, contentType);
   await setup.setBannerImageUrl(url);
-  return c.json(await instanceSnapshot(), 201);
+  return c.json((await instanceSnapshot()) satisfies Reply<"AdminInstance">, 201);
 });
 
 // Revert the banner image to the bundled default artwork.
 adminRoutes.delete("/instance/banner", async (c) => {
   requireAdmin(c);
   await setup.setBannerImageUrl(null);
-  return c.json(await instanceSnapshot());
+  return c.json((await instanceSnapshot()) satisfies Reply<"AdminInstance">);
 });
 
 // Rotate the auto-managed session secret. Restart-applied and signs everyone out
@@ -307,7 +314,7 @@ adminRoutes.post("/instance/rotate-secret", async (c) => {
   } catch (err) {
     throw badRequest(err instanceof Error ? err.message : "Could not rotate the session secret.");
   }
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // ── Email (runtime-configurable delivery) ────────────────────────────────────
@@ -316,7 +323,7 @@ adminRoutes.post("/instance/rotate-secret", async (c) => {
 // so the admin form can show what's set without ever leaking the secret.
 adminRoutes.get("/email", async (c) => {
   requireAdmin(c);
-  return c.json(await emailSettings.redactedConfig());
+  return c.json((await emailSettings.redactedConfig()) satisfies Reply<"EmailSettings">);
 });
 
 const emailUpdateSchema = z.object({
@@ -346,7 +353,7 @@ const emailUpdateSchema = z.object({
 adminRoutes.put("/email", jsonBody(emailUpdateSchema), async (c) => {
   requireAdmin(c);
   await emailSettings.setEmailConfig(c.req.valid("json"));
-  return c.json(await emailSettings.redactedConfig());
+  return c.json((await emailSettings.redactedConfig()) satisfies Reply<"EmailSettings">);
 });
 
 // Generate (or rotate, if the domain changed) the DKIM keypair for a sending
@@ -360,7 +367,11 @@ adminRoutes.post("/email/dkim", jsonBody(dkimSchema), async (c) => {
   requireAdmin(c);
   const domain = c.req.valid("json").domain.toLowerCase();
   const { selector, publicKey } = await emailSettings.ensureDkimKeys(domain);
-  return c.json({ domain, selector, records: dnsRecords(domain, selector, publicKey) });
+  return c.json({
+    domain,
+    selector,
+    records: dnsRecords(domain, selector, publicKey),
+  } satisfies Reply<"DkimGenerateResult">);
 });
 
 // Live-verify that the SPF/DKIM/DMARC records are actually published, so email
@@ -375,13 +386,13 @@ adminRoutes.get("/email/dns", async (c) => {
   return c.json({
     records: dnsRecords(cfg.dkim.domain, cfg.dkim.selector, cfg.dkim.publicKey),
     report,
-  });
+  } satisfies Reply<"EmailDnsResult">);
 });
 
 // Preflight whether this host can send self-hosted (direct) mail at all.
 adminRoutes.get("/email/port25", async (c) => {
   requireAdmin(c);
-  return c.json(await checkOutboundPort25());
+  return c.json((await checkOutboundPort25()) satisfies Reply<"Port25Check">);
 });
 
 const emailTestSchema = z.object({
@@ -397,7 +408,7 @@ adminRoutes.post("/email/test", jsonBody(emailTestSchema), async (c) => {
   } catch (err) {
     throw badRequest(`Could not send the test email: ${err instanceof Error ? err.message : String(err)}`);
   }
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // ── Users ──────────────────────────────────────────────────────────────────
@@ -434,7 +445,7 @@ adminRoutes.get("/users", async (c) => {
     moderation.countUsers(),
     moderation.countFilteredUsers(q, filter),
   ]);
-  return c.json({ users: users.map(adminUserView), nextCursor, total, filteredTotal });
+  return c.json({ users: users.map(adminUserView), nextCursor, total, filteredTotal } satisfies Reply<"AdminUsers">);
 });
 
 const suspendSchema = z.object({ suspend: z.boolean(), notify: z.boolean().optional() });
@@ -445,7 +456,7 @@ adminRoutes.post("/users/:id/suspend", jsonBody(suspendSchema, "Expected { suspe
   const viewer = requireModerator(c);
   const { suspend, notify } = c.req.valid("json");
   await moderation.setSuspended(viewer.id, c.req.param("id"), suspend, { notify });
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 const deleteUserSchema = z.object({
@@ -461,7 +472,7 @@ adminRoutes.post("/users/:id/delete", jsonBody(deleteUserSchema), async (c) => {
   const viewer = requireModerator(c);
   const { username, password, notify } = c.req.valid("json");
   await moderation.deleteUser(viewer.id, c.req.param("id"), { username, password, notify });
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // Restore a deleted account within its retention window. The account is
@@ -471,7 +482,7 @@ const restoreSchema = z.object({ notify: z.boolean().optional() });
 adminRoutes.post("/users/:id/restore", jsonBody(restoreSchema.catch({})), async (c) => {
   requireModerator(c);
   await moderation.restoreUser(c.req.param("id"), { notify: c.req.valid("json").notify });
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // Recently deleted accounts awaiting restore or expiry, newest deletion
@@ -490,7 +501,12 @@ adminRoutes.get("/users/deleted", async (c) => {
     moderation.countDeletedUsers(),
     moderation.countDeletedUsers(q),
   ]);
-  return c.json({ users: users.map(deletedUserView), nextCursor, total, filteredTotal });
+  return c.json({
+    users: users.map(deletedUserView),
+    nextCursor,
+    total,
+    filteredTotal,
+  } satisfies Reply<"DeletedUsers">);
 });
 
 // Permanently erase a deleted account before its window ends (frees the handle
@@ -499,7 +515,7 @@ adminRoutes.get("/users/deleted", async (c) => {
 adminRoutes.delete("/users/deleted/:id", async (c) => {
   requireAdmin(c);
   await moderation.purgeDeletedUser(c.req.param("id"));
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 const roleSchema = z.object({
@@ -515,7 +531,7 @@ adminRoutes.post("/users/:id/role", jsonBody(roleSchema), async (c) => {
   const admin = requireAdmin(c);
   const { makeAdmin, password, notify } = c.req.valid("json");
   await moderation.setAdminRole(admin.id, c.req.param("id"), { makeAdmin, password, notify });
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 const moderatorRoleSchema = z.object({
@@ -531,14 +547,16 @@ adminRoutes.post("/users/:id/moderator-role", jsonBody(moderatorRoleSchema), asy
   const admin = requireAdmin(c);
   const { makeModerator, password, notify } = c.req.valid("json");
   await moderation.setModeratorRole(admin.id, c.req.param("id"), { makeModerator, password, notify });
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // Full detail for one account: the table row plus counts, latest posts and
 // reports filed against the account or its posts.
 adminRoutes.get("/users/:id", async (c) => {
   requireModerator(c);
-  return c.json(adminUserDetailView(await moderation.getUserDetail(c.req.param("id"))));
+  return c.json(
+    adminUserDetailView(await moderation.getUserDetail(c.req.param("id"))) satisfies Reply<"AdminUserDetail">,
+  );
 });
 
 // Edit another account's profile + login email. Every field optional: the
@@ -567,7 +585,7 @@ const adminUpdateUserSchema = z.object({
 adminRoutes.patch("/users/:id", jsonBody(adminUpdateUserSchema), async (c) => {
   const viewer = requireModerator(c);
   const user = await moderation.updateUserDetails(viewer.id, c.req.param("id"), c.req.valid("json"));
-  return c.json({ user: adminUserView(user) });
+  return c.json({ user: adminUserView(user) } satisfies Reply<"AdminUserResponse">);
 });
 
 // Replace another account's avatar (raw image body; content-type identifies
@@ -578,21 +596,21 @@ adminRoutes.post("/users/:id/avatar", async (c) => {
   const contentType = (c.req.header("content-type") ?? "").split(";")[0].trim();
   const bytes = await readUpload(c, MAX_AVATAR_BYTES, "Image too large (max 2 MB).");
   const user = await moderation.setUserAvatar(viewer.id, c.req.param("id"), bytes, contentType);
-  return c.json({ user: adminUserView(user) });
+  return c.json({ user: adminUserView(user) } satisfies Reply<"AdminUserResponse">);
 });
 
 // Clear another account's avatar so the profile falls back to initials.
 adminRoutes.delete("/users/:id/avatar", async (c) => {
   const viewer = requireModerator(c);
   const user = await moderation.removeUserAvatar(viewer.id, c.req.param("id"));
-  return c.json({ user: adminUserView(user) });
+  return c.json({ user: adminUserView(user) } satisfies Reply<"AdminUserResponse">);
 });
 
 // Resend the verification email to an unverified account.
 adminRoutes.post("/users/:id/verification-email", async (c) => {
   const viewer = requireModerator(c);
   await moderation.resendVerification(viewer.id, c.req.param("id"));
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // Manually mark an account's email verified — the escape hatch for when
@@ -600,7 +618,7 @@ adminRoutes.post("/users/:id/verification-email", async (c) => {
 adminRoutes.post("/users/:id/verify", async (c) => {
   const viewer = requireModerator(c);
   await moderation.verifyEmail(viewer.id, c.req.param("id"));
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // ── Posts ────────────────────────────────────────────────────────────────
@@ -608,13 +626,13 @@ adminRoutes.post("/users/:id/verify", async (c) => {
 adminRoutes.post("/posts/:id/ai-assisted", async (c) => {
   requireModerator(c);
   await moderation.setPostAiAssisted(c.req.param("id"), true);
-  return c.json({ aiAssisted: true });
+  return c.json({ aiAssisted: true } satisfies Reply<"AiAssistedState">);
 });
 
 adminRoutes.delete("/posts/:id/ai-assisted", async (c) => {
   requireModerator(c);
   await moderation.setPostAiAssisted(c.req.param("id"), false);
-  return c.json({ aiAssisted: false });
+  return c.json({ aiAssisted: false } satisfies Reply<"AiAssistedState">);
 });
 
 // Remove any local post (moderator override of the author-only delete).
@@ -622,7 +640,7 @@ adminRoutes.delete("/posts/:id/ai-assisted", async (c) => {
 adminRoutes.delete("/posts/:id", async (c) => {
   const viewer = requireModerator(c);
   await moderation.removePost(c.req.param("id"), viewer.id, { notify: c.req.query("notify") === "true" });
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // ── Reports (moderation queue) ─────────────────────────────────────────────
@@ -633,7 +651,7 @@ adminRoutes.get("/reports", async (c) => {
   const status = c.req.query("status");
   const filter = status === "open" || status === "resolved" ? status : undefined;
   const [reports, openCount] = await Promise.all([moderation.listReports(filter), moderation.openReportCount()]);
-  return c.json({ reports, openCount });
+  return c.json({ reports, openCount } satisfies Reply<"AdminReports">);
 });
 
 const resolveSchema = z.object({ resolution: z.string().optional() });
@@ -643,7 +661,7 @@ adminRoutes.post("/reports/:id/resolve", jsonBody(resolveSchema.catch({})), asyn
   const viewer = requireModerator(c);
   const resolution = c.req.valid("json").resolution ?? "";
   await moderation.resolveReport(viewer.id, c.req.param("id"), resolution);
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // ── Defederation (domain blocklist) ────────────────────────────────────────
@@ -651,7 +669,7 @@ adminRoutes.post("/reports/:id/resolve", jsonBody(resolveSchema.catch({})), asyn
 // The blocklist, alphabetical.
 adminRoutes.get("/domains", async (c) => {
   requireAdmin(c);
-  return c.json({ domains: await moderation.listBlockedDomains() });
+  return c.json({ domains: await moderation.listBlockedDomains() } satisfies Reply<"BlockedDomains">);
 });
 
 const blockDomainSchema = z.object({ domain: z.string().min(1), reason: z.string().optional() });
@@ -662,21 +680,21 @@ adminRoutes.post("/domains", jsonBody(blockDomainSchema, "Expected { domain, rea
   requireAdmin(c);
   const { domain, reason } = c.req.valid("json");
   const result = await moderation.blockDomain(domain, reason ?? "");
-  return c.json(result, 201);
+  return c.json(result satisfies Reply<"BlockedDomainResult">, 201);
 });
 
 // Re-federate a domain. The param is the normalized domain (its primary key).
 adminRoutes.delete("/domains/:domain", async (c) => {
   requireAdmin(c);
   await moderation.unblockDomain(c.req.param("domain"));
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // ── Tags (alias + merge for fragmented / misspelled tags) ────────────────────
 
 adminRoutes.get("/tags/aliases", async (c) => {
   requireAdmin(c);
-  return c.json({ aliases: await tagsService.listAliases() });
+  return c.json({ aliases: await tagsService.listAliases() } satisfies Reply<"TagAliases">);
 });
 
 const tagAliasSchema = z.object({ alias: z.string().min(1), target: z.string().min(1) });
@@ -685,7 +703,7 @@ adminRoutes.post("/tags/alias", jsonBody(tagAliasSchema), async (c) => {
   requireAdmin(c);
   const { alias, target } = c.req.valid("json");
   await tagsService.createAlias(alias, target);
-  return c.json({ ok: true }, 201);
+  return c.json({ ok: true } satisfies Reply<"Ok">, 201);
 });
 
 const tagMergeSchema = z.object({ from: z.string().min(1), to: z.string().min(1) });
@@ -694,5 +712,5 @@ adminRoutes.post("/tags/merge", jsonBody(tagMergeSchema), async (c) => {
   requireAdmin(c);
   const { from, to } = c.req.valid("json");
   await tagsService.merge(from, to);
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });

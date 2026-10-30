@@ -60,9 +60,16 @@ jobs:
           # a built-in Temporal, as Deno has: Node 26 ships it, Node 24 doesn't.
           node-version: 26
           cache: pnpm
-          cache-dependency-path: apps/backend/pnpm-lock.yaml
+          cache-dependency-path: |
+            apps/backend/pnpm-lock.yaml
+            packages/contract/pnpm-lock.yaml
 
       - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # The API contract (packages/contract), linked into this app; its own install brings zod.
+      - name: Install the API contract
+        working-directory: packages/contract
         run: pnpm install --frozen-lockfile
 
       # Independent of each other once installed; one failing still fails the job.
@@ -109,20 +116,17 @@ jobs:
           # Node major that the runtime image ships.
           node-version: 24
           cache: pnpm
-          cache-dependency-path: apps/frontend/pnpm-lock.yaml
+          cache-dependency-path: |
+            apps/frontend/pnpm-lock.yaml
+            packages/contract/pnpm-lock.yaml
 
       - parallel:
           - name: Install
             run: pnpm install --frozen-lockfile
 
-          # The typecheck reads the backend's serializers to prove this app's API
-          # types still match them (apps/frontend/src/lib/api/contract.ts), so it
-          # resolves the backend's own npm dependencies — drizzle-orm above all,
-          # which every `db/schema.ts` type flows from. Without this step
-          # svelte-check fails with 45 "Cannot find module 'drizzle-orm'"
-          # errors on backend source, none of which are the frontend's fault.
-          - name: Install backend dependencies (for the cross-app typecheck)
-            working-directory: apps/backend
+          # The API types come from the contract (packages/contract); its own install brings zod.
+          - name: Install the API contract
+            working-directory: packages/contract
             run: pnpm install --frozen-lockfile
 
       - parallel:
@@ -147,35 +151,75 @@ jobs:
       # here to catch it before release.
       - parallel:
           - name: Build backend image
-            run: docker build -t omicron-backend ./apps/backend
+            run: docker build -t omicron-backend -f apps/backend/Dockerfile .
           - name: Build frontend image
             run: docker build -t omicron-frontend ./apps/frontend
 
-  android:
-    name: Android (build · lint · test)
+  mobile:
+    name: Mobile (typecheck · lint · test)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     defaults:
       run:
         working-directory: apps/mobile
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-java@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
         with:
-          distribution: temurin
-          java-version: "17"
-      # The SDK download and the Gradle cache restore don't touch each other.
+          package_json_file: apps/mobile/package.json
+          version: 12.x
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          # Matches the Node that eas.json builds with.
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: |
+            apps/mobile/pnpm-lock.yaml
+            apps/frontend/pnpm-lock.yaml
+            packages/contract/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # The API contract (packages/contract), linked into this app; its own install brings zod.
+      - name: Install the API contract
+        working-directory: packages/contract
+        run: pnpm install --frozen-lockfile
+
+      # The composer bundle (editor-web) is the web's own Tiptap editor, imported from apps/frontend, so its
+      # type check resolves Tiptap from the web app's dependencies.
+      - name: Install the web app (for the composer's editor)
+        working-directory: apps/frontend
+        run: pnpm install --frozen-lockfile
+
       - parallel:
-          - name: Install Android SDK Platform 36
+          # TypeScript, oxfmt, oxlint, Vitest and the asset check (greenly.config.ts).
+          - name: Run Checks
+            run: pnpm check
+
+          # Native modules must match the Expo SDK, or a dev build breaks in ways
+          # no unit test sees.
+          - name: Expo dependency check
+            run: pnpm expo install --check
+
+          - name: Audit dependencies
+            # Same policy as the other apps: print all advisories, fail only on
+            # high/critical.
             run: |
-              for candidate in /usr/local/lib/android/sdk/cmdline-tools/*/bin/sdkmanager; do
-                if [ -x "$candidate" ]; then
-                  sdkmanager="$candidate"
-                fi
-              done
-              test -n "$sdkmanager"
-              yes | "$sdkmanager" --licenses
-              "$sdkmanager" "platforms;android-36" "build-tools;36.0.0"
-          - uses: gradle/actions/setup-gradle@v6
-      - name: Build, lint, and test
-        run: ./gradlew --no-daemon :composeApp:assembleDebug :composeApp:lintDebug :composeApp:testDebugUnitTest
+              pnpm audit --prod || true
+              pnpm audit --prod --audit-level high
+
+  mobile-react-doctor:
+    name: Mobile (React Doctor)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: millionco/react-doctor@v2
+        with:
+          directory: apps/mobile
+          comment: false

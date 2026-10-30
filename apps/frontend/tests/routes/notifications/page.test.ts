@@ -14,7 +14,7 @@ function notif(o: Partial<Notification> = {}): Notification {
   return {
     id: "n1",
     type: "follow",
-    actor: { id: "u2", username: "bob", displayName: "Bob", avatarUrl: null },
+    actor: { id: "u2", username: "bob", displayName: "Bob", avatarUrl: null, remote: false },
     postId: null,
     postTitle: null,
     commentSnippet: null,
@@ -59,7 +59,9 @@ test("opening the page marks everything read and clears the badge", async () => 
 test("Load more appends older notifications", async () => {
   setup([notif()], "c1", {
     "GET /api/notifications?cursor=c1": {
-      items: [notif({ id: "n9", actor: { id: "u3", username: "cy", displayName: "Cy", avatarUrl: null } })],
+      items: [
+        notif({ id: "n9", actor: { id: "u3", username: "cy", displayName: "Cy", avatarUrl: null, remote: false } }),
+      ],
       nextCursor: null,
     },
   });

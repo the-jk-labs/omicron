@@ -2,9 +2,10 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { decodeCursor } from "@/lib/pagination.ts";
+import type { Reply } from "@/lib/reply.ts";
 import { jsonBody } from "@/lib/validate.ts";
 import { requireUser } from "@/routes/middleware.ts";
-import { readingListView } from "@/routes/serializers.ts";
+import { readingListForPostView, readingListView } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import { enrichPosts } from "@/services/engagement.ts";
 import * as listsService from "@/services/readingLists.ts";
@@ -26,14 +27,14 @@ const listSchema = z.object({
 listRoutes.get("/", async (c) => {
   const user = requireUser(c);
   const lists = await listsService.myLists(user.id);
-  return c.json({ lists: lists.map(readingListView) });
+  return c.json({ lists: lists.map(readingListView) } satisfies Reply<"ReadingLists">);
 });
 
 // Create a list (auth). Defaults to public unless `visibility: "private"`.
 listRoutes.post("/", jsonBody(listSchema), async (c) => {
   const user = requireUser(c);
   const list = await listsService.createList(user.id, c.req.valid("json"));
-  return c.json({ list: readingListView(list) }, 201);
+  return c.json({ list: readingListView(list) } satisfies Reply<"ReadingListResponse">, 201);
 });
 
 // The signed-in user's read-later list meta. Registered before "/:id" so
@@ -41,14 +42,14 @@ listRoutes.post("/", jsonBody(listSchema), async (c) => {
 listRoutes.get("/read-later", async (c) => {
   const user = requireUser(c);
   const list = await listsService.readLater(user.id);
-  return c.json({ list: readingListView(list) });
+  return c.json({ list: readingListView(list) } satisfies Reply<"ReadingListResponse">);
 });
 
 // A user's lists for their profile (public-only unless the viewer is the owner).
 listRoutes.get("/user/:username", async (c) => {
   const viewer = c.get("user");
   const lists = await listsService.listsForProfile(c.req.param("username"), viewer?.id ?? null);
-  return c.json({ lists: lists.map(readingListView) });
+  return c.json({ lists: lists.map(readingListView) } satisfies Reply<"ReadingLists">);
 });
 
 // Every list the signed-in user owns, each flagged whether it contains the post
@@ -56,14 +57,14 @@ listRoutes.get("/user/:username", async (c) => {
 listRoutes.get("/for-post/:postId", async (c) => {
   const user = requireUser(c);
   const lists = await listsService.listsForPost(user.id, c.req.param("postId"));
-  return c.json({ lists: lists.map(readingListView) });
+  return c.json({ lists: lists.map(readingListForPostView) } satisfies Reply<"ReadingListsForPost">);
 });
 
 // List meta + owner + whether the viewer owns it (public, or owner-only).
 listRoutes.get("/:id", async (c) => {
   const viewer = c.get("user");
   const { list, isOwner, owner } = await listsService.getList(c.req.param("id"), viewer?.id ?? null);
-  return c.json({ list: readingListView(list), isOwner, owner });
+  return c.json({ list: readingListView(list), isOwner, owner } satisfies Reply<"ReadingListDetail">);
 });
 
 // A list's posts (paginated, newest-added first).
@@ -71,32 +72,32 @@ listRoutes.get("/:id/items", async (c) => {
   const viewer = c.get("user");
   const cursor = decodeCursor(c.req.query("cursor"));
   const { items, nextCursor } = await listsService.listItems(c.req.param("id"), viewer?.id ?? null, cursor);
-  return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
+  return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor } satisfies Reply<"PostPage">);
 });
 
 // Edit a list (owner only).
 listRoutes.patch("/:id", jsonBody(listSchema), async (c) => {
   const user = requireUser(c);
   const list = await listsService.updateList(user.id, c.req.param("id"), c.req.valid("json"));
-  return c.json({ list: readingListView(list) });
+  return c.json({ list: readingListView(list) } satisfies Reply<"ReadingListResponse">);
 });
 
 // Delete a list (owner only; the read-later list can't be deleted).
 listRoutes.delete("/:id", async (c) => {
   const user = requireUser(c);
   await listsService.deleteList(user.id, c.req.param("id"));
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 // Add / remove a post (owner only).
 listRoutes.post("/:id/items", jsonBody(z.object({ postId: z.string() })), async (c) => {
   const user = requireUser(c);
   await listsService.addItem(user.id, c.req.param("id"), c.req.valid("json").postId);
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
 listRoutes.delete("/:id/items/:postId", async (c) => {
   const user = requireUser(c);
   await listsService.removeItem(user.id, c.req.param("id"), c.req.param("postId"));
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });

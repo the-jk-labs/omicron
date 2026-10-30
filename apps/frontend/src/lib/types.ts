@@ -1,591 +1,71 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Shared API types (mirror the backend serializers).
-
-export type User = {
-  id: string;
-  username: string;
-  displayName: string;
-  bio: string;
-  // Optional contact email the user shows on their profile; "" when unset.
-  publicEmail: string;
-  // Free-form Markdown block shown at the top of the profile's About tab.
-  // `customSection` is the source the owner edits; `customSectionHtml` is the
-  // rendered, server-sanitized HTML to display. Both "" when unset.
-  customSection: string;
-  customSectionHtml: string;
-  avatarUrl: string | null;
-  isAdmin: boolean;
-  // Moderator role: reports queue plus user/post/report operations, but no
-  // instance-level access. Admins implicitly hold every moderator power.
-  isModerator: boolean;
-  // Private account (Instagram-style): posts are visible only to approved
-  // followers and following requires approval. Public by default.
-  isPrivate: boolean;
-  // Present only on the signed-in user's own record.
-  showAiAssistedPosts?: boolean;
-  createdAt: string;
-  // When the profile last changed. Versions the profile's share card, so an
-  // edited profile is a new `og:image` URL for scrapers to fetch.
-  updatedAt: string;
-  tags: Tag[];
-  links: ProfileLink[];
-  // Private account fields — present only on the signed-in user's own record
-  // (from /api/me), never on other users' public profiles.
-  email?: string;
-  emailVerified?: boolean;
-};
-
-// An external link a user features on their profile. `platform` is a key from
-// the shared registry (see lib/profileLinks.ts) driving the brand icon + label.
-export type ProfileLink = { platform: string; url: string; label: string };
-
-export type PostAuthor = {
-  id: string;
-  username: string;
-  displayName: string;
-  avatarUrl: string | null;
-  // True when the author is a cached remote actor (username is a user@host handle).
-  remote?: boolean;
-};
-
-// A tag attached to a post. `slug` is the normalized key used in URLs; `name`
-// is the display form. `postCount` is present in discovery/search payloads.
-export type Tag = { slug: string; name: string };
-export type TagWithCount = Tag & { postCount: number };
-
-// Attribution for a post's banner image, as one line under the banner: the
-// photographer, where the photo came from, and — for a Creative Commons image
-// — the licence it carries. Null for an uploaded banner, which needs none.
-// Mirrors the backend's CoverCredit (lib/cover.ts).
-export type CoverCredit = {
-  name: string;
-  nameUrl: string;
-  source: string;
-  sourceUrl: string;
-  // Absent for Unsplash, which serves photos under its own licence rather than
-  // a named public one, so there is nothing to link a reader to.
-  license?: string;
-  licenseUrl?: string;
-};
-
-// The three states a post the signed-in author owns can be in. `scheduled` is a
-// draft with a time attached: private and unfederated exactly like one, until
-// the instance publishes it on that schedule.
-export type OwnPostStatus = "draft" | "scheduled" | "published";
-
-export type Post = {
-  id: string;
-  title: string | null;
-  // The readable half of the permalink: `/@author/<slug>`, allocated server-side
-  // from the title and unique within the author. Null on a remote post (its
-  // origin owns the URL) and on an untitled draft, both of which are addressed
-  // by the post's short id instead. Build links with `postPath`, never by hand.
-  slug?: string | null;
-  contentHtml: string;
-  contentJson?: unknown;
-  remote: boolean;
-  // Author disclosure that AI helped create this post.
-  aiAssisted: boolean;
-  status?: OwnPostStatus;
-  // When a scheduled post goes out, as an ISO instant. Only ever present on the
-  // author's own scheduled posts — every public listing filters them out, and a
-  // direct link to one 404s for anyone else.
-  publishAt?: string | null;
-  // BCP-47 primary language subtag (e.g. "en", "tr"), or null/undefined when the
-  // author didn't specify one.
-  language?: string | null;
-  // Short plain-text preview, set by an ingesting CMS (`description` on the
-  // content webhook) or derived from the body on ingest. Null for posts written
-  // in the editor, whose preview the card derives itself.
-  summary?: string | null;
-  // The banner the author explicitly chose — an uploaded `/api/uploads/…` path,
-  // a stock photo, or a CMS's own URL. Null when they chose none, which is
-  // what the editor seeds its picker from: only an explicit choice is one.
-  coverUrl?: string | null;
-  // The banner to actually show: `coverUrl`, or the first image in the body
-  // standing in for it. Resolved server-side (backend lib/cover.ts) so the
-  // page, the cards, the share tags and the federated Article all agree on
-  // one answer. Every reader surface should use this, never `coverUrl`.
-  bannerUrl?: string | null;
-  // Who to credit for the banner — present on a photo picked from a stock
-  // provider, whose terms require it, and null otherwise.
-  coverCredit?: CoverCredit | null;
-  createdAt: string;
-  // When the post's own content last changed (body, title, tags, cover,
-  // language) — not engagement. Drives `dateModified` in the page's structured
-  // data. Equal to `createdAt` for a post nobody has edited.
-  updatedAt?: string;
-  author: PostAuthor;
-  tags: Tag[];
-  likeCount: number;
-  liked: boolean;
-  commentCount: number;
-  // "Repost" — federates as ActivityPub Announce. `recommended` is the
-  // signed-in viewer's own state, mirroring `liked`.
-  recommendCount: number;
-  recommended: boolean;
-  // Present only on a "For you" feed item that reached the viewer via a
-  // recommendation from someone they follow, rather than authorship/follow —
-  // null on every other listing (profiles, Local, Global, search, …), and the
-  // signal the card uses to show its "X recommended this" banner.
-  recommendedBy?: RecommendedBy | null;
-};
-
-// Who recommended a post, and when — see `Post.recommendedBy`. Shaped like
-// `PostAuthor` (local-or-remote, `username` a `user@host` handle for a remote
-// recommender) so `/@${username}` resolves either way.
-export type RecommendedBy = {
-  id: string;
-  username: string;
-  displayName: string;
-  avatarUrl: string | null;
-  remote: boolean;
-  recommendedAt: string;
-};
-
-// A publishing token for the content webhook, as shown on the owner's Settings
-// page. The token itself is never in this payload — it is returned exactly once,
-// by the mint call, and only its hash is stored.
-export type WebhookToken = {
-  id: string;
-  label: string;
-  lastUsedAt: string | null;
-  createdAt: string;
-};
-
-// A tag's detail payload, powering the tag page header.
-export type TagDetail = {
-  tag: Tag;
-  postCount: number;
-  followerCount: number;
-  isFollowing: boolean;
-};
-
-export type Comment = {
-  id: string;
-  content: string;
-  createdAt: string;
-  author: PostAuthor;
-  parentId: string | null;
-  likeCount: number;
-  liked: boolean;
-  replies: Comment[];
-};
-
-// A reading list (YouTube-playlist-style collection of posts). `isReadLater`
-// marks the special per-user "Read later" list. `contains` is present only in
-// the save-menu payload (whether a given post is already in this list).
-export type ReadingList = {
-  id: string;
-  title: string;
-  description: string;
-  visibility: "public" | "private";
-  isReadLater: boolean;
-  itemCount: number;
-  createdAt: string;
-  contains?: boolean;
-};
-
-// A single list's detail payload (header + ownership).
-export type ReadingListDetail = {
-  list: ReadingList;
-  isOwner: boolean;
-  owner: { username: string; displayName: string };
-};
-
-export type Page<T> = {
-  items: T[];
-  nextCursor: string | null;
-};
-
-// An in-app notification (mirrors the backend `notificationView`). `actor` is
-// the local-or-remote user who triggered it, in the same `{ username, remote }`
-// shape as PostAuthor so `/@${actor.username}` links resolve either way; it is
-// null only if the actor was deleted. `postId` targets /posts/:id (canonical
-// redirect); `postTitle`/`commentSnippet` give the row its context.
-export type NotificationType =
-  | "follow"
-  | "follow_request"
-  | "follow_accepted"
-  | "like"
-  | "comment"
-  | "reply"
-  | "comment_like"
-  | "recommend"
-  // A scheduled post of the reader's own went live. The only type with no
-  // actor — a timer did it, not a person — which the renderers key off to show
-  // it as a statement rather than as "<someone> did <something>".
-  | "post_published";
-
-export type Notification = {
-  id: string;
-  type: NotificationType;
-  actor: PostAuthor | null;
-  postId: string | null;
-  postTitle: string | null;
-  commentSnippet: string | null;
-  read: boolean;
-  createdAt: string;
-};
-
-// The viewer's follow relationship to a profile: not following, a pending
-// request (private account awaiting approval), or an approved follow.
-export type FollowState = "none" | "requested" | "following";
-
-export type Profile = {
-  user: User;
-  counts: { followers: number; following: number };
-  followState: FollowState;
-  isFollowing: boolean;
-  isMuted: boolean;
-  isBlocked: boolean;
-  // A private profile the viewer can't see into (not the owner, not an approved
-  // follower): header + counts render, but posts and follower lists are hidden.
-  locked: boolean;
-};
-
-// A pending follow request shown on the /follow-requests page.
-export type FollowRequest = {
-  requestId: string;
-  actor: RelationActor;
-  createdAt: string;
-};
-
-// A remote actor's profile, shaped like the local profile response so the
-// profile page can render either with one layout.
-export type RemoteProfile = {
-  user: {
-    id: string;
-    username: string; // user@host handle
-    displayName: string;
-    bio: string;
-    avatarUrl: string | null;
-    host: string;
-    apId: string;
-    remote: true;
-    tags: Tag[];
-  };
-  counts: { followers: number; following: number };
-  isFollowing: boolean;
-  isMuted: boolean;
-  isBlocked: boolean;
-};
-
-// A followed / muted / blocked account in the connections lists. `username` is
-// a plain username for local accounts and a `user@host` handle for remote ones,
-// so `/@${username}` links resolve to the right profile either way.
-export type RelationActor = {
-  id: string;
-  username: string;
-  displayName: string;
-  avatarUrl: string | null;
-  remote: boolean;
-};
-
-// A "who to follow" suggestion — a local account plus a follower count for
-// social proof. Reuses the `RelationActor` shape so `/@${username}` links and
-// the Follow button work unchanged.
-export type SuggestedUser = RelationActor & { followerCount: number };
-
-// Site-search payload: matching articles, people and tags. People reuse the
-// `RelationActor` shape so `/@${username}` links resolve local or remote.
-export type SearchResults = {
-  posts: Post[];
-  people: RelationActor[];
-  tags: TagWithCount[];
-};
-
-// ── writer dashboard (analytics) ──
-// Per-post aggregate stats. `views` counts one distinct reader per day (a
-// refresh never inflates it) and is 0 when on-instance view counting is disabled
-// for the instance (see `DashboardSummary.onInstanceViews`).
-export type PostStat = {
-  postId: string;
-  title: string | null;
-  // The post's slug (null for an untitled post), so the dashboard can link each
-  // row straight to its canonical /@author/<slug> URL instead of resolving it
-  // through the legacy id permalink on every navigation.
-  slug: string | null;
-  createdAt: string;
-  views: number;
-  likes: number;
-  comments: number;
-};
-
-// One day's summed view total, for the views-over-time chart.
-export type DayTotals = { day: string; views: number };
-
-// The signed-in author's own analytics. `onInstanceViews` is false when a
-// moderator has disabled view counting for the instance, in which case the UI
-// hides the views panels and shows only fediverse engagement. See ANALYTICS.md.
-export type DashboardSummary = {
-  onInstanceViews: boolean;
-  totals: {
-    views: number;
-    likes: number;
-    comments: number;
-    followers: number;
-  };
-  series: DayTotals[];
-  posts: PostStat[];
-};
-
-// Moderator-tunable instance settings (admin only).
-export type InstanceSettings = { onInstanceViews: boolean };
-export type UmamiSettings = { enabled: boolean; websiteId: string };
-
-// Security controls. `anubisProtection` is the live state of the AI-scraper
-// proof-of-work wall; `anubisManaged` says whether this deployment can toggle it
-// (Caddy admin reachable) — false in a bare dev run, so the UI explains instead.
-export type SecuritySettings = { anubisProtection: boolean; anubisManaged: boolean };
-
-export type AccessRule = {
-  id: string;
-  network: string;
-  action: "allow" | "block";
-  reason: string;
-  enabled: boolean;
-  createdAt: string;
-  expiresAt: string;
-};
-export type AccessRuleInput = {
-  network: string;
-  action: "allow" | "block";
-  reason: string;
-  expiresInHours: 1 | 24 | 168 | 720;
-};
-export type AccessRuleTest = {
-  action: "allow" | "block" | "default" | "exempt";
-  ruleId: string | null;
-  message: string;
-};
-
-// Discoverability / SEO. `indexingEnabled` drives robots.txt + a site-wide
-// `noindex`; `verification` holds per-engine site-verification tokens (the meta
-// `content` value only), keyed by engine (google/bing/yandex).
-export type SeoVerification = { google?: string; bing?: string; yandex?: string };
-export type SeoSettings = {
-  indexingEnabled: boolean;
-  verification: SeoVerification;
-  // IndexNow: push new and edited post URLs to participating engines (Bing,
-  // Yandex, Seznam — not Google) instead of waiting to be crawled. Off unless
-  // an admin turns it on, since it sends this instance's URLs to third parties.
-  indexNowEnabled: boolean;
-  // Present only on the admin payload — the public /seo endpoint withholds it.
-  indexNowKey?: string | null;
-};
-
-// Free-photo search for the editor's banner picker. Openverse needs no
-// credentials and is always available; Unsplash appears only when an operator
-// has configured a key, which never reaches the browser — searches are proxied
-// through /api/photos either way.
-export type PhotoProvider = "openverse" | "unsplash";
-
-export type StockPhoto = {
-  id: string;
-  alt: string;
-  thumbUrl: string;
-  bannerUrl: string;
-  credit: CoverCredit;
-  // Passed back to /photos/use when this photo is chosen, for providers that
-  // ask to be told (Unsplash's download count). Null when the provider asks for
-  // nothing; opaque to us either way.
-  useToken: string | null;
-};
-
-// Everything the instance publishes that belongs in the sitemap, in the raw
-// form /sitemap.xml needs to build URLs from (the permalink logic lives in
-// $lib/links, frontend-side, so the backend sends parts rather than URLs).
-//
-// Each carries its own lastmod: a post's own edit time, and for the index
-// pages the newest thing they list — which is when the page actually changed.
-export type SitemapEntry = {
-  id: string;
-  title: string | null;
-  slug: string | null;
-  authorUsername: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type SitemapProfile = { username: string; lastPostAt: string };
-export type SitemapTag = { slug: string; lastPostAt: string };
-export type SitemapList = { id: string; title: string; lastItemAt: string };
-
-// The index pages plus a count of posts. Posts are not inlined: they are the
-// only kind that can exceed the sitemap spec's 50,000-URL file limit, so they
-// are fetched a page at a time from /seo/sitemap-posts instead.
-export type SitemapContents = {
-  profiles: SitemapProfile[];
-  tags: SitemapTag[];
-  lists: SitemapList[];
-  postCount: number;
-  postsPerPage: number;
-};
-
-// Public instance identity (unauthenticated). Drives the app-name chrome and
-// the first-run setup gate.
-export type InstanceInfo = {
-  name: string;
-  domain: string;
-  federationEnabled: boolean;
-  setupComplete: boolean;
-  // False while the instance is still on the default `console` transport, which
-  // writes mail to the backend log instead of sending it. The pages that end at
-  // "check your inbox" — password reset, email verification — have to say so
-  // rather than promising a message that will never arrive.
-  emailEnabled: boolean;
-  // True when the instance blocks sign-in until the confirmation link is
-  // clicked (EMAIL_VERIFICATION_REQUIRED). Register then ends at
-  // "check your inbox" instead of an instant sign-in.
-  emailVerificationRequired: boolean;
-  // Admin-customizable signed-out visitor card; null means "use the built-in
-  // default" (a generated sentence / the bundled artwork).
-  bannerText: string | null;
-  bannerImageUrl: string | null;
-  aboutHtml: string | null;
-  rulesHtml: string | null;
-  privacyPolicyHtml: string | null;
-  contactEmail: string | null;
-  contactUrl: string | null;
-  abuseEmail: string | null;
-  statusUrl: string | null;
-};
-
-// Web-managed email settings. `EmailInput` is what the wizard/admin form sends
-// (all fields optional; a blank secret means "leave unchanged"); the backend
-// never echoes secrets back, so `EmailSettings` reports `has…` booleans instead.
-export type EmailMode = "console" | "smtp" | "relay" | "direct";
-export type EmailInput = {
-  mode?: EmailMode;
-  from?: string;
-  smtp?: {
-    host?: string;
-    port?: number;
-    username?: string;
-    password?: string;
-    tls?: boolean;
-  };
-  relay?: {
-    provider?: "resend";
-    apiKey?: string;
-  };
-};
-export type EmailSettings = {
-  mode: EmailMode;
-  from: string;
-  smtp: {
-    host?: string;
-    port: number;
-    username?: string;
-    tls: boolean;
-    hasPassword: boolean;
-  };
-  relay: { provider: "resend"; hasApiKey: boolean };
-  dkim: { domain?: string; selector: string; hasKey: boolean };
-};
-
-// Path B DNS setup: the records to publish, and a live verification report.
-export type DnsRecord = { host: string; type: "TXT"; value: string };
-export type EmailDnsRecords = { spf: DnsRecord; dkim: DnsRecord; dmarc: DnsRecord };
-export type DnsCheck = { host: string; ok: boolean; expected: string; found: string[] };
-export type EmailDnsReport = {
-  domain: string;
-  mx: DnsCheck;
-  spf: DnsCheck;
-  dkim: DnsCheck;
-  dmarc: DnsCheck;
-  healthy: boolean;
-};
-export type DkimGenerateResult = { domain: string; selector: string; records: EmailDnsRecords };
-export type EmailDnsResult = { records: EmailDnsRecords; report: EmailDnsReport };
-
-// Admin view of the instance identity. `federationEnabled` is the desired value
-// (applies on restart); `federationRunning` is what the process is actually
-// running now; `sessionSecretManaged` says whether the secret can be rotated from
-// the UI (false when pinned via env / secret file).
-export type AdminInstance = {
-  appName: string;
-  appDomain: string;
-  federationEnabled: boolean;
-  federationRunning: boolean;
-  sessionSecretManaged: boolean;
-  bannerText: string | null;
-  bannerImageUrl: string | null;
-  about: string;
-  rules: string;
-  privacyPolicy: string;
-  contactEmail: string;
-  contactUrl: string;
-  abuseEmail: string;
-  statusUrl: string;
-};
-
-// ── moderation (admin only) ──
-// A row in the admin user table. Exposes the moderation-relevant private fields
-// (login email, verification + suspension state) plus the editable profile
-// fields — admin surfaces only.
-export type AdminUser = {
-  id: string;
-  username: string;
-  displayName: string;
-  bio: string;
-  publicEmail: string;
-  customSection: string;
-  avatarUrl: string | null;
-  isAdmin: boolean;
-  isModerator: boolean;
-  email: string;
-  emailVerified: boolean;
-  suspended: boolean;
-  createdAt: string;
-};
-
-// A defederated domain (admin only). Blocking a domain also blocks its subdomains.
-export type BlockedDomain = { domain: string; reason: string; createdAt: string };
-
-// A recently deleted account awaiting restore or expiry (admin only).
-// `deletedBy` is the deleting moderator's username (null when unknown);
-// `expiresAt` is when the retention window ends and the row is erased for good.
-export type DeletedUser = {
-  id: string;
-  username: string;
-  displayName: string;
-  avatarUrl: string | null;
-  email: string;
-  postCount: number;
-  deletedBy: string | null;
-  deletedAt: string;
-  expiresAt: string;
-};
-
-// A report in the moderation queue, enriched with light subject/reporter info.
-export type Report = {
-  id: string;
-  subjectType: "post" | "user";
-  reason: string;
-  status: "open" | "resolved";
-  resolution: string;
-  createdAt: string;
-  resolvedAt: string | null;
-  reporter: { username: string; displayName: string } | null;
-  postId: string | null;
-  postTitle: string | null;
-  postAuthor: string | null;
-  userId: string | null;
-  userUsername: string | null;
-  userDisplayName: string | null;
-};
-
-// Full admin detail for one account: the table row plus post/follow counts,
-// the latest posts, the profile tags/links backing the edit form, and the
-// reports filed against the account or its posts.
-export type AdminUserDetail = {
-  user: AdminUser;
-  postCounts: { draft: number; scheduled: number; published: number };
-  followCounts: { followers: number; following: number };
-  recentPosts: { id: string; title: string | null; slug: string | null; status: string; createdAt: string }[];
-  reports: Report[];
-  tags: Tag[];
-  links: ProfileLink[];
-};
+// The API's types, from the shared contract (packages/contract), where each field is documented. This app trusts
+// the payloads: it ships with the backend, and the backend's own check proves its serializers fit the contract.
+export type {
+  AccessRule,
+  AccessRuleInput,
+  AccessRuleTest,
+  AdminInstance,
+  AdminSeoSettings,
+  AdminUser,
+  AdminUserDetail,
+  BarePost,
+  BlockedDomain,
+  Comment,
+  ConnectedApp,
+  CoverCredit,
+  DashboardSummary,
+  DayTotals,
+  DeletedUser,
+  DkimGenerateResult,
+  DnsCheck,
+  DnsRecord,
+  EmailDnsRecords,
+  EmailDnsReport,
+  EmailDnsResult,
+  EmailInput,
+  EmailMode,
+  EmailSettings,
+  FollowRequest,
+  FollowState,
+  InstanceInfo,
+  InstanceSettings,
+  LikeState,
+  Me,
+  Notification,
+  NotificationType,
+  OwnPostCounts,
+  OwnPostStatus,
+  Page,
+  PhotoProvider,
+  Post,
+  PostAuthor,
+  PostStat,
+  Profile,
+  ProfileLink,
+  ReadingList,
+  ReadingListDetail,
+  ReadingListForPost,
+  RecommendedBy,
+  RecommendState,
+  RelationActor,
+  RemoteProfile,
+  Report,
+  SearchResults,
+  SecuritySettings,
+  SeoSettings,
+  SeoVerification,
+  SitemapContents,
+  SitemapEntry,
+  SitemapList,
+  SitemapProfile,
+  SitemapTag,
+  StockPhoto,
+  SuggestedUser,
+  Tag,
+  TagDetail,
+  TagWithCount,
+  UmamiSettings,
+  User,
+  WebhookToken,
+} from "@omicron/contract";

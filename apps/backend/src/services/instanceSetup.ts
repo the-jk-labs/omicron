@@ -1,4 +1,5 @@
 import process from "node:process";
+import { API_VERSION } from "@omicron/contract";
 import { config } from "@/config.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
@@ -254,6 +255,8 @@ export async function publicInfo(): Promise<{
   contactUrl: string | null;
   abuseEmail: string | null;
   statusUrl: string | null;
+  // The API contract version (packages/contract), bumped on every breaking change.
+  apiVersion: number;
 }> {
   const [
     name,
@@ -298,6 +301,7 @@ export async function publicInfo(): Promise<{
     privacyPolicyHtml: privacyPolicyHtml?.trim() || null,
     contactEmail: contactEmail?.trim() || null,
     contactUrl: contactUrl?.trim() || null,
+    apiVersion: API_VERSION,
     abuseEmail: abuseEmail?.trim() || null,
     statusUrl: statusUrl?.trim() || null,
   };

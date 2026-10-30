@@ -131,3 +131,15 @@ describe("listing", () => {
     expect((await commentsRepo.countsFor([])).size).toBe(0);
   });
 });
+
+test("countSince counts comments on the given posts from a moment on", async () => {
+  const [ada, bob] = [await mkUser("ada"), await mkUser("bob")];
+  const [post, other] = [await mkPost(ada.id, "p"), await mkPost(bob.id, "o")];
+  await mkComment(post.id, bob.id);
+  await mkComment(post.id, ada.id);
+  await mkComment(other.id, ada.id);
+  const hourAgo = new Date(Date.now() - 3_600_000);
+  expect(await commentsRepo.countSince([post.id], hourAgo)).toBe(2);
+  expect(await commentsRepo.countSince([post.id], new Date(Date.now() + 3_600_000))).toBe(0);
+  expect(await commentsRepo.countSince([], hourAgo)).toBe(0);
+});

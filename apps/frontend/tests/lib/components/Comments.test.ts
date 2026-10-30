@@ -10,7 +10,13 @@ import { confirmRequest } from "#lib/components/ui/confirm.js";
 import type { Comment, User } from "#lib/types.js";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
-const author = (id: string, name: string) => ({ id, username: name.toLowerCase(), displayName: name, avatarUrl: null });
+const author = (id: string, name: string) => ({
+  id,
+  username: name.toLowerCase(),
+  displayName: name,
+  avatarUrl: null,
+  remote: false,
+});
 function comment(id: string, by = author("u-bob", "Bob"), overrides: Partial<Comment> = {}): Comment {
   return {
     id,
@@ -56,7 +62,7 @@ test("a guest is invited to sign in and sent there to like or reply", async () =
   expect(goto).toHaveBeenCalledWith("/login");
 });
 
-test("posting a response puts it on top and bumps the count", async () => {
+test("posting a comment puts it on top and bumps the count", async () => {
   const { calls, onCountChange } = setup({
     items: [comment("c1")],
     routes: {
@@ -64,7 +70,7 @@ test("posting a response puts it on top and bumps the count", async () => {
     },
   });
   const box = screen.getByPlaceholderText("What are your thoughts?");
-  const respond = screen.getByRole("button", { name: "Respond" });
+  const respond = screen.getByRole("button", { name: "Comment" });
   expect(respond).toBeDisabled();
   await fireEvent.input(box, { target: { value: "Great" } });
   await fireEvent.submit(box.closest("form")!);
@@ -74,7 +80,7 @@ test("posting a response puts it on top and bumps the count", async () => {
   expect(box).toHaveValue("");
 });
 
-test("a rejected response shows the server's reason", async () => {
+test("a rejected comment shows the server's reason", async () => {
   setup({ routes: { "POST /api/posts/p1/comments": apiError(429, "Slow down") } });
   const box = screen.getByPlaceholderText("What are your thoughts?");
   await fireEvent.input(box, { target: { value: "x" } });
@@ -153,7 +159,7 @@ test("a moderator may delete anyone's comment, after confirming; the thread's re
   get(confirmRequest)!.resolve({ ok: true, notify: false });
   await waitFor(() => expect(screen.queryByText("comment c1")).toBe(null));
   expect(onCountChange).toHaveBeenCalledWith(-2);
-  expect(screen.getByText(/No responses|Be the first|no responses/i)).toBeInTheDocument();
+  expect(screen.getByText(/No comments|Be the first|no comments/i)).toBeInTheDocument();
 });
 
 test("a regular reader cannot delete someone else's comment", () => {
@@ -161,16 +167,16 @@ test("a regular reader cannot delete someone else's comment", () => {
   expect(screen.queryByRole("button", { name: "Delete comment" })).toBe(null);
 });
 
-test("more responses load after the current ones", async () => {
+test("more comments load after the current ones", async () => {
   const { calls } = setup({
     items: [comment("c1")],
     cursor: "cur",
     routes: { "GET /api/posts/p1/comments": { items: [comment("c2")], nextCursor: null } },
   });
-  await fireEvent.click(screen.getByRole("button", { name: "Show more responses" }));
+  await fireEvent.click(screen.getByRole("button", { name: "Show more comments" }));
   await waitFor(() => screen.getByText("comment c2"));
   expect(calls[0].path).toBe("/api/posts/p1/comments?cursor=cur");
-  expect(screen.queryByRole("button", { name: "Show more responses" })).toBe(null);
+  expect(screen.queryByRole("button", { name: "Show more comments" })).toBe(null);
   const text = document.body.textContent;
   expect(text.indexOf("comment c1")).toBeLessThan(text.indexOf("comment c2"));
 });

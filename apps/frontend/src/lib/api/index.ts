@@ -6,6 +6,7 @@ import type {
   AccessRuleInput,
   AccessRuleTest,
   AdminInstance,
+  AdminSeoSettings,
   AdminUser,
   AdminUserDetail,
   BlockedDomain,
@@ -20,6 +21,7 @@ import type {
   FollowRequest,
   InstanceInfo,
   InstanceSettings,
+  Me,
   Notification,
   OwnPostStatus,
   Page,
@@ -27,6 +29,7 @@ import type {
   Profile,
   ReadingList,
   ReadingListDetail,
+  ReadingListForPost,
   RelationActor,
   RemoteProfile,
   Report,
@@ -83,13 +86,13 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
       appDomain?: string;
       email?: EmailInput;
       admin: { username: string; email: string; password: string; displayName?: string };
-    }) => api.post<{ user: User }>("/setup", body),
+    }) => api.post<{ user: Me }>("/setup", body),
     // Send a wizard test email with not-yet-saved details (open pre-setup).
     testSetupEmail: (body: { to: string; email?: EmailInput }) => api.post<{ ok: true }>("/setup/test-email", body),
 
     // The signed-in user's rich self-view (profile tags + links). Authentication
     // itself is Better Auth ($lib/auth-client); this is the app profile payload.
-    me: () => api.get<{ user: User | null }>("/me"),
+    me: () => api.get<{ user: Me | null }>("/me"),
 
     // writer dashboard (own analytics) + moderator instance settings
     dashboard: (days?: number) => api.get<DashboardSummary>(`/dashboard${days ? `?days=${days}` : ""}`),
@@ -142,8 +145,8 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     verifyIndexNowKey: (key: string) => api.get<{ ok: boolean }>(`/seo/indexnow-key/${encodeURIComponent(key)}`),
     sitemapEntries: () => api.get<SitemapContents>("/seo/sitemap-entries"),
     sitemapPosts: (page: number) => api.get<SitemapEntry[]>(`/seo/sitemap-posts?page=${page}`),
-    adminSeo: () => api.get<SeoSettings>("/admin/seo"),
-    setAdminSeo: (body: Partial<SeoSettings>) => api.put<SeoSettings>("/admin/seo", body),
+    adminSeo: () => api.get<AdminSeoSettings>("/admin/seo"),
+    setAdminSeo: (body: Partial<AdminSeoSettings>) => api.put<AdminSeoSettings>("/admin/seo", body),
     // The Unsplash access key. Never read back — only whether one is set.
     adminUnsplash: () => api.get<{ configured: boolean }>("/admin/unsplash"),
     setAdminUnsplash: (accessKey: string | null) => api.put<{ configured: boolean }>("/admin/unsplash", { accessKey }),
@@ -393,7 +396,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     list: (id: string) => api.get<ReadingListDetail>(`/lists/${id}`),
     listItems: (id: string, cursor?: string | null) =>
       api.get<Page<Post>>(`/lists/${id}/items${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`),
-    listsForPost: (postId: string) => api.get<{ lists: ReadingList[] }>(`/lists/for-post/${postId}`),
+    listsForPost: (postId: string) => api.get<{ lists: ReadingListForPost[] }>(`/lists/for-post/${postId}`),
     createList: (body: { title: string; description?: string; visibility?: "public" | "private" }) =>
       api.post<{ list: ReadingList }>("/lists", body),
     updateList: (id: string, body: { title?: string; description?: string; visibility?: "public" | "private" }) =>

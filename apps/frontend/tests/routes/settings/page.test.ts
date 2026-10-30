@@ -5,7 +5,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/sve
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { reading } from "#lib/prefs.svelte.js";
 import { theme } from "#lib/theme.svelte.js";
-import type { User } from "#lib/types.js";
+import type { Me } from "#lib/types.js";
 import SettingsPage from "../../../src/routes/settings/+page.svelte";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
@@ -36,7 +36,7 @@ vi.mock(import("#lib/password.js"), async (importOriginal) => ({
   isPwnedPasswordClient: async () => pwned.value,
 }));
 
-function me(o: Partial<User> = {}): User {
+function me(o: Partial<Me> = {}): Me {
   return {
     id: "u1",
     username: "ada",
@@ -61,9 +61,9 @@ function me(o: Partial<User> = {}): User {
 }
 
 let api: ReturnType<typeof fakeFetch>;
-function setup(user: User = me(), routes: Parameters<typeof fakeFetch>[0] = {}) {
+function setup(user: Me = me(), routes: Parameters<typeof fakeFetch>[0] = {}) {
   api = fakeFetch({
-    "PATCH /api/users/me": (req) => req.json().then((b: Partial<User>) => Response.json({ user: { ...user, ...b } })),
+    "PATCH /api/users/me": (req) => req.json().then((b: Partial<Me>) => Response.json({ user: { ...user, ...b } })),
     "POST /api/users/me/avatar": { user },
     "DELETE /api/users/me/avatar": { user: { ...user, avatarUrl: null } },
     "PATCH /api/users/me/privacy": { user },

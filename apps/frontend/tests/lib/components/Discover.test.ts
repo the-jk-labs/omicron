@@ -12,16 +12,24 @@ const post: Post = {
   contentHtml: "<p>Body</p>",
   remote: false,
   aiAssisted: false,
+  contentJson: null,
+  status: "published",
+  publishAt: null,
+  language: null,
   summary: null,
+  coverUrl: null,
   bannerUrl: null,
+  coverCredit: null,
   createdAt: "2026-08-20T12:00:00.000Z",
-  author: { id: "author-1", username: "alice", displayName: "Alice", avatarUrl: null },
+  updatedAt: "2026-08-20T12:00:00.000Z",
+  author: { id: "author-1", username: "alice", displayName: "Alice", avatarUrl: null, remote: false },
   tags: [],
   likeCount: 1,
   liked: false,
   commentCount: 2,
   recommendCount: 3,
   recommended: false,
+  saved: false,
   recommendedBy: null,
 };
 
@@ -37,9 +45,9 @@ describe("Discover trending counters", () => {
     expect(likeSr.closest('[title="1 like"]')).not.toBeNull();
     expect(likeSr.closest('[title="1 like"]')!.querySelector('[aria-hidden="true"]')).toHaveTextContent("1");
 
-    const commentSr = screen.getByText("2 responses");
+    const commentSr = screen.getByText("2 comments");
     expect(commentSr).toHaveClass("sr-only");
-    expect(commentSr.closest('[title="2 responses"]')).not.toBeNull();
+    expect(commentSr.closest('[title="2 comments"]')).not.toBeNull();
 
     const recSr = screen.getByText("3 recommendations");
     expect(recSr).toHaveClass("sr-only");
@@ -51,14 +59,14 @@ describe("Discover trending counters", () => {
     const solo: Post = { ...post, likeCount: 1, commentCount: 1, recommendCount: 1 };
     const { unmount } = render(Discover, { props: { data: { posts: [solo], people: [], tags: [] } } });
     expect(screen.getByText("1 like")).toBeInTheDocument();
-    expect(screen.getByText("1 response")).toBeInTheDocument();
+    expect(screen.getByText("1 comment")).toBeInTheDocument();
     expect(screen.getByText("1 recommendation")).toBeInTheDocument();
     unmount();
 
     const zero: Post = { ...post, likeCount: 0, commentCount: 0, recommendCount: 0 };
     render(Discover, { props: { data: { posts: [zero], people: [], tags: [] } } });
     expect(screen.getByText("0 likes")).toBeInTheDocument();
-    expect(screen.getByText("0 responses")).toBeInTheDocument();
+    expect(screen.getByText("0 comments")).toBeInTheDocument();
     expect(screen.getByText("0 recommendations")).toBeInTheDocument();
   });
 });

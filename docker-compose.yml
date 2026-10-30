@@ -87,7 +87,10 @@ services:
       retries: 10
 
   backend:
-    build: ./apps/backend
+    # From the repository root, so the image can include the API contract (packages/contract).
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
     restart: unless-stopped
     depends_on:
       postgres:

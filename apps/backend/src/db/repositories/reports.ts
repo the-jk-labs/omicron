@@ -14,9 +14,9 @@ const subjectUser = aliasedTable(users, "subject_user");
 // it and what it targets (post title / author, or the reported account handle).
 export type ReportRow = {
   id: string;
-  subjectType: string;
+  subjectType: "post" | "user";
   reason: string;
-  status: string;
+  status: "open" | "resolved";
   resolution: string;
   createdAt: Date;
   resolvedAt: Date | null;

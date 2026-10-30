@@ -35,6 +35,7 @@ function summary(o: Partial<DashboardSummary> = {}): DashboardSummary {
   return {
     onInstanceViews: true,
     totals: { views: 1200, likes: 30, comments: 10, followers: 4 },
+    period: { days: 30, views: 10, likes: 2, comments: 1, followers: 1 },
     series: [
       { day: "2026-01-04", views: 0 },
       { day: "2026-01-05", views: 8 },

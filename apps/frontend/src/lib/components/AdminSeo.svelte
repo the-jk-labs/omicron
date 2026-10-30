@@ -4,10 +4,10 @@
   import { untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
   import Button from "#lib/components/ui/Button.svelte";
-  import type { SeoSettings, SeoVerification } from "#lib/types.js";
+  import type { AdminSeoSettings, SeoVerification } from "#lib/types.js";
 
   // `initial` is the server-loaded config; without it the browser loads it.
-  let { initial = null }: { initial?: SeoSettings | null } = $props();
+  let { initial = null }: { initial?: AdminSeoSettings | null } = $props();
   const seed = untrack(() => initial);
 
   // Discoverability controls (services/seo.ts). Two things: the master indexing
@@ -52,7 +52,7 @@
     "h-11 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus:border-foreground";
   const labelClass = "text-sm font-medium leading-none text-foreground";
 
-  function apply(s: SeoSettings) {
+  function apply(s: AdminSeoSettings) {
     indexingEnabled = s.indexingEnabled;
     verification = { ...s.verification };
     indexNowEnabled = s.indexNowEnabled;

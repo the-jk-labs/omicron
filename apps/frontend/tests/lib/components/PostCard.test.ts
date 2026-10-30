@@ -24,16 +24,24 @@ const post: Post = {
   contentHtml: "<p>Historically, UNIX systems have maintained two different time values for a file.</p>",
   remote: false,
   aiAssisted: false,
+  contentJson: null,
+  status: "published",
+  publishAt: null,
+  language: null,
   summary: null,
+  coverUrl: null,
   bannerUrl: null,
+  coverCredit: null,
   createdAt: "2026-08-20T12:00:00.000Z",
-  author: { id: "author-1", username: "timev", displayName: "timev", avatarUrl: null },
+  updatedAt: "2026-08-20T12:00:00.000Z",
+  author: { id: "author-1", username: "timev", displayName: "timev", avatarUrl: null, remote: false },
   tags: [],
   likeCount: 0,
   liked: false,
   commentCount: 0,
   recommendCount: 0,
   recommended: false,
+  saved: false,
   recommendedBy: null,
 };
 
@@ -84,9 +92,9 @@ describe("PostCard reaction counters", () => {
     expect(likeWrap).not.toBeNull();
     expect(likeWrap!.querySelector('[aria-hidden="true"]')).toHaveTextContent("2");
 
-    const commentSr = screen.getByText("5 responses");
+    const commentSr = screen.getByText("5 comments");
     expect(commentSr).toHaveClass("sr-only");
-    const commentWrap = commentSr.closest('[title="5 responses"]');
+    const commentWrap = commentSr.closest('[title="5 comments"]');
     expect(commentWrap).not.toBeNull();
     expect(commentWrap!.querySelector('[aria-hidden="true"]')).toHaveTextContent("5");
 
@@ -106,7 +114,7 @@ describe("PostCard reaction counters", () => {
     render(PostCard, { props: { post: counted } });
 
     expect(screen.getByText("1 like")).toBeInTheDocument();
-    expect(screen.getByText("1 response")).toBeInTheDocument();
+    expect(screen.getByText("1 comment")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Recommend (1 recommendation)" })).toBeInTheDocument();
   });
 
@@ -125,7 +133,7 @@ describe("PostCard reaction counters", () => {
 
     // `post` has 0 for every counter.
     expect(screen.getByText("0 likes")).toBeInTheDocument();
-    expect(screen.getByText("0 responses")).toBeInTheDocument();
+    expect(screen.getByText("0 comments")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Recommend (0 recommendations)" })).toBeInTheDocument();
   });
 

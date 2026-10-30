@@ -5,6 +5,7 @@ import { config } from "@/config.ts";
 import { badRequest } from "@/lib/http.ts";
 import { readCappedBody } from "@/lib/inboxBody.ts";
 import { rateLimit } from "@/lib/rateLimit.ts";
+import type { Reply } from "@/lib/reply.ts";
 import { jsonBody } from "@/lib/validate.ts";
 import { parseContent } from "@/lib/webhook.ts";
 import { requireUser } from "@/routes/middleware.ts";
@@ -76,7 +77,7 @@ webhookRoutes.post("/content", ingestLimiter, async (c) => {
 webhookRoutes.get("/tokens", async (c) => {
   const user = requireUser(c);
   const tokens = await webhookTokens.list(user.id);
-  return c.json({ tokens: tokens.map(webhookTokenView) });
+  return c.json({ tokens: tokens.map(webhookTokenView) } satisfies Reply<"WebhookTokens">);
 });
 
 // Mint a token. The plaintext is in this response and nowhere else, ever —
@@ -89,12 +90,12 @@ webhookRoutes.post(
   async (c) => {
     const user = requireUser(c);
     const { token, row } = await webhookTokens.mint(user.id, c.req.valid("json").label);
-    return c.json({ token, tokenInfo: webhookTokenView(row) }, 201);
+    return c.json({ token, tokenInfo: webhookTokenView(row) } satisfies Reply<"MintedWebhookToken">, 201);
   },
 );
 
 webhookRoutes.delete("/tokens/:id", async (c) => {
   const user = requireUser(c);
   await webhookTokens.revoke(user.id, c.req.param("id"));
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });

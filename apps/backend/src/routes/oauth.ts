@@ -4,6 +4,7 @@ import type { Context } from "hono";
 import { handleError } from "@/lib/http.ts";
 import { readCappedBody } from "@/lib/inboxBody.ts";
 import { rateLimit } from "@/lib/rateLimit.ts";
+import type { Reply } from "@/lib/reply.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import * as oauth from "@/services/oauth.ts";
 
@@ -113,9 +114,9 @@ oauthRoutes.get("/api/v1/accounts/verify_credentials", limited("oauth-identity",
   c.json(await oauth.verify(c.req.raw.headers)),
 );
 oauthRoutes.get("/api/oauth/connections", limited("oauth-connections", 60), async (c) =>
-  c.json({ connections: await oauth.connections(c.req.raw.headers) }),
+  c.json({ connections: await oauth.connections(c.req.raw.headers) } satisfies Reply<"ConnectedApps">),
 );
 oauthRoutes.delete("/api/oauth/connections/:id", limited("oauth-disconnect", 30), async (c) => {
   await oauth.disconnect(c.req.param("id"), c.req.raw.headers);
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });

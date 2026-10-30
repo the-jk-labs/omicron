@@ -44,3 +44,15 @@ test("comment likes mirror post likes", async () => {
   await commentLikesRepo.remove(c1.id, bob.id);
   expect((await commentLikesRepo.statsFor([c1.id], null)).get(c1.id)).toEqual({ count: 1, liked: false });
 });
+
+test("countSince counts likes on the given posts from a moment on", async () => {
+  const [ada, bob] = [await mkUser("ada"), await mkUser("bob")];
+  const [p1, p2, other] = [await mkPost(ada.id, "p1"), await mkPost(ada.id, "p2"), await mkPost(bob.id, "o")];
+  await likesRepo.add(p1.id, bob.id);
+  await likesRepo.add(p2.id, bob.id);
+  await likesRepo.add(other.id, ada.id);
+  const hourAgo = new Date(Date.now() - 3_600_000);
+  expect(await likesRepo.countSince([p1.id, p2.id], hourAgo)).toBe(2);
+  expect(await likesRepo.countSince([p1.id, p2.id], new Date(Date.now() + 3_600_000))).toBe(0);
+  expect(await likesRepo.countSince([], hourAgo)).toBe(0);
+});

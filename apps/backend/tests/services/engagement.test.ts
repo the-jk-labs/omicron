@@ -4,11 +4,13 @@ import { postWithAuthor } from "../fixtures.ts";
 
 vi.mock(import("@/db/repositories/comments.ts"));
 vi.mock(import("@/db/repositories/likes.ts"));
+vi.mock(import("@/db/repositories/readingLists.ts"));
 vi.mock(import("@/db/repositories/recommendations.ts"));
 vi.mock(import("@/db/repositories/tags.ts"));
 
 import * as commentsRepo from "@/db/repositories/comments.ts";
 import * as likesRepo from "@/db/repositories/likes.ts";
+import * as readingListsRepo from "@/db/repositories/readingLists.ts";
 import * as recommendationsRepo from "@/db/repositories/recommendations.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
 import { enrichPost, enrichPosts } from "@/services/engagement.ts";
@@ -18,6 +20,7 @@ beforeEach(() => {
   vi.mocked(commentsRepo.countsFor).mockResolvedValue(new Map([["p1", 5]]));
   vi.mocked(tagsRepo.tagsForPosts).mockResolvedValue(new Map([["p1", [{ slug: "deno", name: "Deno" }]]]));
   vi.mocked(recommendationsRepo.statsFor).mockResolvedValue(new Map([["p1", { count: 1, recommended: false }]]));
+  vi.mocked(readingListsRepo.savedPostIds).mockResolvedValue(new Set(["p1"]));
 });
 
 test("attaches counts, viewer state and tags from batched lookups", async () => {
@@ -29,6 +32,7 @@ test("attaches counts, viewer state and tags from batched lookups", async () => 
     commentCount: 5,
     recommendCount: 1,
     recommended: false,
+    saved: true,
     tags: [{ slug: "deno", name: "Deno" }],
     recommendedBy: null,
   });
@@ -40,12 +44,14 @@ test("attaches counts, viewer state and tags from batched lookups", async () => 
     commentCount: 0,
     recommendCount: 0,
     recommended: false,
+    saved: false,
     tags: [],
   });
   // One query per kind, however many posts.
   expect(likesRepo.statsFor).toHaveBeenCalledOnce();
   expect(likesRepo.statsFor).toHaveBeenCalledWith(["p1", "p2"], "viewer");
   expect(recommendationsRepo.statsFor).toHaveBeenCalledWith(["p1", "p2"], "viewer");
+  expect(readingListsRepo.savedPostIds).toHaveBeenCalledWith(["p1", "p2"], "viewer");
 });
 
 test("keeps the input order", async () => {

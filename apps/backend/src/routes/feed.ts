@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
+import type { Reply } from "@/lib/reply.ts";
 import { requireUser } from "@/routes/middleware.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import { enrichPosts } from "@/services/engagement.ts";
@@ -15,5 +16,5 @@ feedRoutes.get("/", async (c) => {
   const user = requireUser(c);
   const cursor = c.req.query("cursor") ?? null;
   const { items, nextCursor } = await feedService.homeFeed(user.id, cursor);
-  return c.json({ items: await enrichPosts(items, user.id), nextCursor });
+  return c.json({ items: await enrichPosts(items, user.id), nextCursor } satisfies Reply<"PostPage">);
 });

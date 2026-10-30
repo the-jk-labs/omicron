@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { badRequest, payloadTooLarge } from "@/lib/http.ts";
 import { readCappedBody } from "@/lib/inboxBody.ts";
 import { clientIp, rateLimit } from "@/lib/rateLimit.ts";
+import type { Reply } from "@/lib/reply.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import * as umami from "@/services/umami.ts";
 
@@ -14,7 +15,7 @@ siteRoutes.use("*", async (c, next) => {
   await next();
 });
 
-siteRoutes.get("/", async (c) => c.json({ websiteId: await umami.websiteId() }));
+siteRoutes.get("/", async (c) => c.json({ websiteId: await umami.websiteId() } satisfies Reply<"SiteStatistics">));
 
 siteRoutes.get("/script.js", async (c) => {
   if (!(await umami.websiteId())) return c.notFound();

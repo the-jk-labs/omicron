@@ -20,7 +20,7 @@ test("a guest is sent to sign in", async () => {
 
 test("a federated post or someone else's is forbidden", async () => {
   await expect(edit({ "GET /api/posts/p1": { post: post({ remote: true }) } })).rejects.toMatchObject({ status: 403 });
-  const other = post({ author: { id: "x", username: "x", displayName: "X", avatarUrl: null } });
+  const other = post({ author: { id: "x", username: "x", displayName: "X", avatarUrl: null, remote: false } });
   await expect(edit({ "GET /api/posts/p1": { post: other } })).rejects.toMatchObject({
     status: 403,
     body: { message: "You can only edit your own posts." },

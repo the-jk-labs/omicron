@@ -11,8 +11,6 @@ export default defineConfig({
     sveltekit({
       preprocess: vitePreprocess(),
       adapter: adapter({ precompress: true }),
-      // Backend source, for deriving API types from its serializers. Only ever `import type` through it.
-      alias: { "@": "../backend/src" },
       // `auto` nonces SSR scripts/styles and hashes prerendered ones.
       csp: {
         mode: "auto",

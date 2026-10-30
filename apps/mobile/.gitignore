@@ -1,7 +1,50 @@
-.gradle/
-.idea/
-local.properties
-*.iml
-**/build/
-.cxx/
-.externalNativeBuild/
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+/.idea
+
+# agent skills (restored from skills-lock.json by `pnpm install:skills`)
+.agents
+.claude/skills/**
+
+# vitest
+.vitest/
+coverage/
+
+# editor bundle: only the generated module is committed
+editor-web/build/index.html

@@ -5,6 +5,7 @@ import { auth } from "@/auth/auth.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { badRequest, conflict } from "@/lib/http.ts";
 import { clientIp, rateLimit } from "@/lib/rateLimit.ts";
+import type { Reply } from "@/lib/reply.ts";
 import { privateUser } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import { sendTestEmail } from "@/services/email.ts";
@@ -15,7 +16,7 @@ import * as setup from "@/services/instanceSetup.ts";
 // frontend chrome (app name) and the first-run setup gate.
 export const instanceRoutes = new Hono<AppEnv>();
 
-instanceRoutes.get("/", async (c) => c.json(await setup.publicInfo()));
+instanceRoutes.get("/", async (c) => c.json((await setup.publicInfo()) satisfies Reply<"InstanceInfo">));
 
 // Caddy on-demand TLS "ask" endpoint. Caddy calls this (over the internal
 // network, before serving TLS) with ?domain=<sni>; a 2xx means "issue a
@@ -105,7 +106,7 @@ setupRoutes.post("/", async (c) => {
   await setup.completeSetup({ appName, appDomain, email });
 
   const user = await usersRepo.findByUsername(admin.username.trim().toLowerCase());
-  return c.json({ user: user ? privateUser(user) : null }, 201);
+  return c.json({ user: user ? privateUser(user) : null } satisfies Reply<"MeResponse">, 201);
 });
 
 // Send a test email during the wizard so the operator can confirm SMTP works
@@ -142,5 +143,5 @@ setupRoutes.post("/test-email", testEmailLimiter, async (c) => {
     console.warn("setup: test email failed:", err instanceof Error ? err.message : err);
     throw badRequest("Couldn't send the test email. Check the settings; the server log has the details.");
   }
-  return c.json({ ok: true });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
 });

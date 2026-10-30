@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { likes } from "@/db/schema.ts";
 
@@ -34,4 +34,14 @@ export async function statsFor(postIds: string[], viewerId: string | null): Prom
     map.set(r.postId, { count: r.count, liked: r.liked });
   }
   return map;
+}
+
+// Likes given to any of `postIds` since `since`: the writer dashboard's period total.
+export async function countSince(postIds: string[], since: Date): Promise<number> {
+  if (postIds.length === 0) return 0;
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(likes)
+    .where(and(inArray(likes.postId, postIds), gte(likes.createdAt, since)));
+  return row?.count ?? 0;
 }

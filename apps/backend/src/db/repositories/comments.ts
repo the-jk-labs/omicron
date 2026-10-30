@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, asc, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { comments, type NewComment, remoteActors, users } from "@/db/schema.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
@@ -179,4 +179,14 @@ export async function countsFor(postIds: string[]): Promise<Map<string, number>>
 
   for (const r of rows as { postId: string; count: number }[]) map.set(r.postId, r.count);
   return map;
+}
+
+// Comments on any of `postIds` since `since`: the writer dashboard's period total.
+export async function countSince(postIds: string[], since: Date): Promise<number> {
+  if (postIds.length === 0) return 0;
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(comments)
+    .where(and(inArray(comments.postId, postIds), gte(comments.createdAt, since)));
+  return row?.count ?? 0;
 }

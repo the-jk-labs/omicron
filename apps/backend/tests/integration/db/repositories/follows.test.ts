@@ -131,3 +131,14 @@ describe("outbound remote follows", () => {
     expect(await followsRepo.isFollowingRemote(ada.id, eve.id)).toBe(false);
   });
 });
+
+test("followersSince counts approved followers from a moment on", async () => {
+  const [ada, bob, cy, dee] = [await mkUser("ada"), await mkUser("bob"), await mkUser("cy"), await mkUser("dee")];
+  await followsRepo.createLocal(bob.id, ada.id);
+  await followsRepo.createLocal(cy.id, ada.id);
+  await followsRepo.createLocal(dee.id, ada.id, false); // still a request
+  await followsRepo.createLocal(ada.id, bob.id); // ada following, not a follower
+  const hourAgo = new Date(Date.now() - 3_600_000);
+  expect(await followsRepo.followersSince(ada.id, hourAgo)).toBe(2);
+  expect(await followsRepo.followersSince(ada.id, new Date(Date.now() + 3_600_000))).toBe(0);
+});
