@@ -65,6 +65,37 @@ Core goals:
 
 ---
 
+## API contract (STRICT)
+
+`packages/contract` holds a zod/mini schema for every payload the API sends,
+and is the one definition of the API's shapes. Each app links it
+(`"@omicron/contract": "link:../../packages/contract"`):
+
+- **Backend:** every route types its body with the schema it promises,
+  `c.json(body satisfies Reply<"PostPage">)` (`src/lib/reply.ts`), and
+  `tests/contract/contract.test.ts` proves each serializer and service result
+  fits, then parses real serializer output at runtime. The image is built from
+  the repository root (`docker build -f apps/backend/Dockerfile .`) so it
+  includes `packages/contract`.
+- **Frontend:** `import type` only (`$lib/types.ts` re-exports them): its image
+  is built from `apps/frontend` and can't see `packages/`. It ships with the
+  backend, so it trusts the payloads.
+- **Mobile:** every request names its response schema and is checked with it
+  (`src/lib/api/parse.ts`): a list item that doesn't fit is left out, anything
+  else is a `ContractError`.
+
+Rules:
+
+- A response shape change is a contract change: update the schema and all three
+  apps in the same PR. Fields are strict (no `?` for "older instances may omit
+  it") while Omicron is in beta.
+- Bump `API_VERSION` in `packages/contract` on every breaking change (a field
+  removed, renamed or retyped); the backend reports it from `/api/instance`, and
+  the app asks its people to update when an instance is ahead of it.
+- `packages/contract` imports nothing but `zod/mini`.
+
+---
+
 ## Architecture Rules (STRICT)
 
 ### 1. Layered Architecture
@@ -156,9 +187,8 @@ that choice must stay swappable.
   (`tests/test.env`); any local Postgres with that role and database works, or
   set `DATABASE_URL` (e.g. to a throwaway `postgres:16-alpine` container).
 
-- The frontend's svelte-check reads the backend's serializers
-  (`apps/frontend/src/lib/api/contract.ts`), so install the backend's
-  dependencies (`pnpm install` in `apps/backend`) before checking the frontend.
+- Every app links `packages/contract` (see "API contract" below), so run
+  `pnpm install` in `packages/contract` once before checking any of them.
 
 ---
 

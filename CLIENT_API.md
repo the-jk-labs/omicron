@@ -31,8 +31,10 @@ The existing HTTP and admin references are at
 <https://docs.omicron.blog/reference/admin-api/>. The source-level contracts are
 [`apps/frontend/src/lib/api/index.ts`](apps/frontend/src/lib/api/index.ts)
 (request fields and operations),
-[`apps/frontend/src/lib/api/contract.ts`](apps/frontend/src/lib/api/contract.ts)
-(JSON response types), and the backend route validators/serializers. The
+[`packages/contract`](packages/contract/src/index.ts)
+(zod/mini schemas for every JSON response, which the backend's own check proves
+its serializers fit), and the backend route validators. `GET /api/instance`
+reports the contract's `apiVersion`, bumped on every breaking change. The
 instance's `/api/client` is authoritative for delegated scopes.
 
 ## Register an application

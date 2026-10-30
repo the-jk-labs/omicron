@@ -107,9 +107,8 @@ cd apps/frontend && pnpm install && pnpm dev  # http://localhost:5173
 Development uses pnpm throughout; Deno runs the backend underneath
 (`pnpm dev` starts it) and in the production container.
 
-The frontend typecheck reads the backend's serializers
-(`apps/frontend/src/lib/api/contract.ts`), so install the backend's
-dependencies before running the frontend's `pnpm check`.
+The API's shapes live in `packages/contract`, which every app links: run
+`pnpm install` there once before any app's `pnpm check`.
 
 ### Tests
 
