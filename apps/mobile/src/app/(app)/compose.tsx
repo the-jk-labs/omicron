@@ -180,7 +180,7 @@ function Composer({ post }: { post: Post | undefined }) {
           multiline
           maxLength={200}
           placeholderTextColorClassName="accent-muted-foreground"
-          className="text-foreground px-5 pt-2 pb-1 font-content-bold text-3xl"
+          className="px-5 pt-2 pb-1 font-content-bold text-3xl text-foreground"
           submitBehavior="blurAndSubmit"
           onSubmitEditing={() => editor.focus("start")}
         />

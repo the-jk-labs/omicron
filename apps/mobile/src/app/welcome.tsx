@@ -62,7 +62,7 @@ export default function Welcome() {
 
   return (
     <KeyboardAwareScrollView
-      className="bg-background flex-1"
+      className="flex-1 bg-background"
       contentContainerClassName="grow justify-center gap-8 px-6"
       contentContainerStyle={{ paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }}
       keyboardShouldPersistTaps="handled"
@@ -91,7 +91,7 @@ export default function Welcome() {
               onPress={() => void connect(instance.origin)}
             >
               <Card className="flex-row items-center gap-3">
-                <View className="bg-muted size-10 items-center justify-center rounded-full">
+                <View className="size-10 items-center justify-center rounded-full bg-muted">
                   <Icon name="globe" size={20} />
                 </View>
                 <View className="flex-1">

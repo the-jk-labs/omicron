@@ -44,7 +44,7 @@ export default function TagScreen() {
         empty={{ title: "No posts with this tag yet" }}
         header={
           info ? (
-            <View className="border-border gap-3 border-b px-4 py-5">
+            <View className="gap-3 border-b border-border px-4 py-5">
               <Text size="3xl" weight="bold">
                 #{info.tag.name}
               </Text>

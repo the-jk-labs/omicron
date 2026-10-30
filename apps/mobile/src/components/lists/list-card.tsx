@@ -13,9 +13,9 @@ export function ListCard({ list }: { list: ReadingList }) {
       <PressableScale
         accessibilityRole="link"
         pressedScale={0.99}
-        className="border-border-card bg-background-alt flex-row items-center gap-4 rounded-card border p-4 shadow-card"
+        className="flex-row items-center gap-4 rounded-card border border-border-card bg-background-alt p-4 shadow-card"
       >
-        <View className="bg-muted size-12 items-center justify-center rounded-card-sm">
+        <View className="size-12 items-center justify-center rounded-card-sm bg-muted">
           <Icon name={list.isReadLater ? "clock" : "library"} size={22} />
         </View>
         <View className="flex-1 gap-0.5">

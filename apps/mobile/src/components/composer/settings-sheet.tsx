@@ -48,7 +48,7 @@ function TagEditor({ tags, onChange }: { tags: string[]; onChange: (tags: string
             key={tag}
             accessibilityLabel={`Remove tag ${tag}`}
             onPress={() => onChange(tags.filter((t) => t !== tag))}
-            className="bg-muted flex-row items-center gap-1 rounded-full px-3 py-1"
+            className="flex-row items-center gap-1 rounded-full bg-muted px-3 py-1"
           >
             <Text size="sm" weight="medium" tone="alt">
               #{tag}
@@ -76,7 +76,7 @@ function TagEditor({ tags, onChange }: { tags: string[]; onChange: (tags: string
             <PressableScale
               key={tag.slug}
               onPress={() => add(tag.name)}
-              className="border-border rounded-full border px-3 py-1"
+              className="rounded-full border border-border px-3 py-1"
             >
               <Text size="xs" tone="alt">
                 #{tag.name} · {tag.postCount}
@@ -106,7 +106,7 @@ function LanguagePicker({ value, onChange }: { value: string | null; onChange: (
                 onChange(language.code || null);
                 setOpen(false);
               }}
-              className="active:bg-muted flex-row items-center justify-between rounded-button px-3 py-2.5"
+              className="flex-row items-center justify-between rounded-button px-3 py-2.5 active:bg-muted"
             >
               <Text size="sm">
                 {language.name}

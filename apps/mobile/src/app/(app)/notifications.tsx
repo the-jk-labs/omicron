@@ -25,7 +25,7 @@ function NotificationRow({ item }: { item: Notification }) {
       pressedScale={0.99}
       disabled={!href}
       onPress={() => href && router.push(href)}
-      className={`border-border flex-row gap-3 border-b px-4 py-4 ${item.read ? "" : "bg-dark-04"}`}
+      className={`flex-row gap-3 border-b border-border px-4 py-4 ${item.read ? "" : "bg-dark-04"}`}
     >
       <View className="w-8 items-center pt-1">
         <Icon

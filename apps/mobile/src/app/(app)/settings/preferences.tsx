@@ -74,7 +74,7 @@ function LanguagePicker({
               accessibilityRole="checkbox"
               accessibilityState={{ checked: on }}
               onPress={() => onToggle(language.code)}
-              className="active:bg-muted h-12 flex-row items-center gap-3 rounded-9px px-3"
+              className="h-12 flex-row items-center gap-3 rounded-9px px-3 active:bg-muted"
             >
               <View className="flex-1">
                 <Text weight="medium" numberOfLines={1}>
@@ -142,7 +142,7 @@ function LanguageFilter() {
                 accessibilityRole="button"
                 accessibilityLabel={`Remove ${LANGUAGES.find((l) => l.code === code)?.name ?? code}`}
                 onPress={() => toggle(code)}
-                className="bg-muted h-8 flex-row items-center gap-1.5 rounded-full pr-2.5 pl-3 active:opacity-70"
+                className="h-8 flex-row items-center gap-1.5 rounded-full bg-muted pr-2.5 pl-3 active:opacity-70"
               >
                 <Text size="sm" weight="medium">
                   {LANGUAGES.find((l) => l.code === code)?.name ?? code}

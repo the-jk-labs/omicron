@@ -17,7 +17,7 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
   const insets = useSafeAreaInsets();
   const { theme } = useUniwind();
   return (
-    <View className="bg-background flex-1">
+    <View className="flex-1 bg-background">
       <View className="px-2" style={{ paddingTop: insets.top + 4 }}>
         <IconButton icon="x" label="Close" onPress={goBack} iconClassName="text-foreground" />
       </View>
@@ -51,7 +51,7 @@ export function FormError({ message }: { message: string | null }) {
   return (
     <View
       accessibilityLiveRegion="polite"
-      className="border-destructive/30 bg-destructive/10 rounded-input border px-3 py-2.5"
+      className="rounded-input border border-destructive/30 bg-destructive/10 px-3 py-2.5"
     >
       <Text size="sm" tone="destructive">
         {message}

@@ -40,7 +40,7 @@ function ToolButton({
   );
 }
 
-const Divider = () => <View className="bg-border mx-1 h-6 w-px" />;
+const Divider = () => <View className="mx-1 h-6 w-px bg-border" />;
 
 /** The web editor's toolbar, as one scrolling row above the keyboard. */
 export function ComposerToolbar({
@@ -59,7 +59,7 @@ export function ComposerToolbar({
   const inTable = Boolean(active?.table);
 
   return (
-    <View className="border-border bg-background border-t">
+    <View className="border-t border-border bg-background">
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

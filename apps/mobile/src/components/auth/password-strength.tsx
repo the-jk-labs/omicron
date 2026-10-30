@@ -11,9 +11,9 @@ export function PasswordStrength({ password }: { password: string }) {
   return (
     <View className="gap-2">
       <View className="flex-row items-center gap-3">
-        <View className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
+        <View className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
           <Animated.View
-            className={strength.score >= 3 ? "bg-foreground h-full" : "bg-destructive h-full"}
+            className={strength.score >= 3 ? "h-full bg-foreground" : "h-full bg-destructive"}
             style={fill}
           />
         </View>

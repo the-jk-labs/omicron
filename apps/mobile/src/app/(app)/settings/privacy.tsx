@@ -51,7 +51,7 @@ function Connections() {
         value={kind}
         onChange={setKind}
       />
-      <View className="border-border-card bg-background-alt overflow-hidden rounded-card border">
+      <View className="overflow-hidden rounded-card border border-border-card bg-background-alt">
         {list.isPending ? (
           <View className="py-6">
             <Spinner />

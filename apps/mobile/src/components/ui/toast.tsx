@@ -21,7 +21,7 @@ export function ToastHost() {
           exiting={FadeOutDown.duration(160)}
           layout={LinearTransition.duration(180)}
           accessibilityLiveRegion="polite"
-          className="bg-dark flex-row items-center gap-2 self-center rounded-card-sm px-4 py-3 shadow-popover"
+          className="flex-row items-center gap-2 self-center rounded-card-sm bg-dark px-4 py-3 shadow-popover"
         >
           {item.tone === "error" && <Icon name="triangle-alert" size={16} className="text-background" />}
           <Text size="sm" weight="medium" tone="inverse" className="shrink">

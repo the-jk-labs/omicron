@@ -130,7 +130,7 @@ export default function Register() {
     return (
       <AuthShell title="Check your inbox">
         <View className="items-center gap-4">
-          <View className="bg-muted size-14 items-center justify-center rounded-full">
+          <View className="size-14 items-center justify-center rounded-full bg-muted">
             <Icon name="mail" size={26} />
           </View>
           <Text size="sm" tone="muted" className="text-center">
@@ -261,7 +261,7 @@ export default function Register() {
         <Text size="sm" tone="muted">
           Already have an account?
         </Text>
-        <Link href="/sign-in" dismissTo className="text-foreground font-sans-semibold text-sm underline">
+        <Link href="/sign-in" dismissTo className="font-sans-semibold text-sm text-foreground underline">
           Sign in
         </Link>
       </View>

@@ -48,7 +48,7 @@ export function PublishSheet({
           Publish now
         </Button>
 
-        <View className="border-border gap-3 rounded-card border p-4">
+        <View className="gap-3 rounded-card border border-border p-4">
           <Text weight="semibold">{scheduledAt ? "Reschedule" : "Schedule for later"}</Text>
           {Platform.OS === "ios" ? (
             <DateTimePicker

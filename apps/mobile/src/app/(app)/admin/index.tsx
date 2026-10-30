@@ -83,7 +83,7 @@ function ReportCard({ report }: { report: Report }) {
   return (
     <Card className="gap-3 p-0">
       <View className="flex-row items-center gap-3 px-4 pt-4">
-        <View className="bg-muted size-9 items-center justify-center rounded-full">
+        <View className="size-9 items-center justify-center rounded-full bg-muted">
           <Icon name={report.subjectType === "post" ? "file-text" : "user"} size={16} />
         </View>
         <View className="flex-1">
@@ -104,7 +104,7 @@ function ReportCard({ report }: { report: Report }) {
           if (report.subjectType !== "post") router.push(profilePath(report.userUsername ?? ""));
           else if (report.postId) router.push({ pathname: "/posts/[id]", params: { id: report.postId } });
         }}
-        className="border-border bg-background mx-4 flex-row items-center gap-3 rounded-input border px-3 py-2.5"
+        className="mx-4 flex-row items-center gap-3 rounded-input border border-border bg-background px-3 py-2.5"
       >
         <View className="flex-1">
           <Text weight="medium" numberOfLines={2}>
@@ -122,7 +122,7 @@ function ReportCard({ report }: { report: Report }) {
       </PressableScale>
 
       {report.reason ? (
-        <View className="border-border mx-4 border-l-2 pl-3">
+        <View className="mx-4 border-l-2 border-border pl-3">
           <Text size="sm" className="font-content-italic">
             {report.reason}
           </Text>
@@ -130,7 +130,7 @@ function ReportCard({ report }: { report: Report }) {
       ) : null}
 
       {open ? (
-        <View className="border-border flex-row gap-2 border-t p-3">
+        <View className="flex-row gap-2 border-t border-border p-3">
           <Button
             size="sm"
             variant="outline"
@@ -246,7 +246,7 @@ function Users() {
         <PressableScale
           pressedScale={0.99}
           onPress={() => router.push({ pathname: "/admin/users/[id]", params: { id: item.id } })}
-          className="border-border flex-row items-center gap-3 border-b px-4 py-3"
+          className="flex-row items-center gap-3 border-b border-border px-4 py-3"
         >
           <UserAvatar name={item.displayName} url={item.avatarUrl} size={36} />
           <View className="flex-1">
@@ -268,7 +268,7 @@ function Users() {
         </PressableScale>
       )}
       ListHeaderComponent={
-        <View className="border-border gap-3 border-b py-3">
+        <View className="gap-3 border-b border-border py-3">
           <View className="justify-center px-4">
             <Input
               value={text}

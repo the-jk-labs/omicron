@@ -60,10 +60,10 @@ export function PillTabs<T extends string>({ tabs, value, onChange, className }:
     <ScrollView horizontal showsHorizontalScrollIndicator={false} className={cn("grow-0", className)}>
       <View
         accessibilityRole="tablist"
-        className="border-border-input bg-background-alt flex-row gap-1 rounded-input border p-1 shadow-btn"
+        className="flex-row gap-1 rounded-input border border-border-input bg-background-alt p-1 shadow-btn"
       >
         <Animated.View
-          className="bg-background absolute top-1 bottom-1 left-0 rounded-button shadow-mini"
+          className="absolute top-1 bottom-1 left-0 rounded-button bg-background shadow-mini"
           style={markerStyle}
         />
         {tabs.map((tab) => {
@@ -128,7 +128,7 @@ export function UnderlineTabs<T extends string>({ tabs, value, onChange, classNa
           </Pressable>
         );
       })}
-      <Animated.View className="bg-foreground absolute -bottom-px left-0 h-[3px] rounded-full" style={markerStyle} />
+      <Animated.View className="absolute -bottom-px left-0 h-[3px] rounded-full bg-foreground" style={markerStyle} />
     </View>
   );
 }

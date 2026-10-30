@@ -33,6 +33,39 @@
   --font-content-bold: "SourceSans3_700Bold";
 }
 
+/* The theme colours by name, as Uniwind registers them once Metro runs, so tooling that reads this file (oxfmt
+   sorting classes) knows `bg-muted` on a fresh install too. The values are set per scheme in the layer below. */
+@theme {
+  --color-background: unset;
+  --color-background-alt: unset;
+  --color-foreground: unset;
+  --color-foreground-alt: unset;
+  --color-muted: unset;
+  --color-muted-foreground: unset;
+  --color-border: unset;
+  --color-border-card: unset;
+  --color-input: unset;
+  --color-border-input: unset;
+  --color-dark: unset;
+  --color-dark-10: unset;
+  --color-dark-40: unset;
+  --color-dark-04: unset;
+  --color-accent: unset;
+  --color-accent-foreground: unset;
+  --color-destructive: unset;
+  --color-tertiary: unset;
+  --color-line: unset;
+  --color-contrast: unset;
+  --color-hl-comment: unset;
+  --color-hl-keyword: unset;
+  --color-hl-string: unset;
+  --color-hl-name: unset;
+  --color-hl-literal: unset;
+  --color-hl-type: unset;
+  --color-repost: unset;
+  --color-saved: unset;
+}
+
 @layer theme {
   :root {
     @variant light {

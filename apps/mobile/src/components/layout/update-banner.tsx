@@ -23,7 +23,7 @@ export function UpdateBanner() {
         entering={FadeInUp.duration(200)}
         exiting={FadeOutUp.duration(160)}
         accessibilityLiveRegion="polite"
-        className="bg-dark flex-row items-center gap-3 rounded-card py-2 pr-1 pl-4 shadow-popover"
+        className="flex-row items-center gap-3 rounded-card bg-dark py-2 pr-1 pl-4 shadow-popover"
       >
         <Icon name="circle-arrow-up" size={18} className="text-background" />
         <Text size="sm" weight="medium" tone="inverse" className="flex-1">

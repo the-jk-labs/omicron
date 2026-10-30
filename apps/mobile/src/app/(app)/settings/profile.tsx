@@ -105,7 +105,7 @@ function LinksEditor({ links, onChange }: { links: LinkDraft[]; onChange: (links
                   onChange([...links, { id: linkId(), platform: platform.key, value: "", label: "" }]);
                   setPicking(false);
                 }}
-                className="border-border active:bg-muted flex-row items-center gap-1.5 rounded-full border px-3 py-1.5"
+                className="flex-row items-center gap-1.5 rounded-full border border-border px-3 py-1.5 active:bg-muted"
               >
                 <LinkIcon platform={platform.key} size={14} />
                 <Text size="sm">{platform.label}</Text>

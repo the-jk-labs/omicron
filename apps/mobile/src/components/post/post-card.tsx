@@ -38,7 +38,7 @@ export const PostCard = memo(function PostCard({ post }: { post: Post }) {
   );
 
   return (
-    <View className="border-border border-b px-4 py-5">
+    <View className="border-b border-border px-4 py-5">
       {post.recommendedBy && (
         <Link href={profilePath(post.recommendedBy.username)} asChild>
           <PressableScale accessibilityRole="link" className="mb-2 flex-row items-center gap-1.5">
@@ -64,7 +64,7 @@ export const PostCard = memo(function PostCard({ post }: { post: Post }) {
               {post.author.displayName}
             </Text>
             {/* A remote author is marked, not named: the host left too little room for the name; their profile has it. */}
-            {originInstance && <Icon name="globe" size={13} className="text-muted-foreground -ml-1" />}
+            {originInstance && <Icon name="globe" size={13} className="-ml-1 text-muted-foreground" />}
           </PressableScale>
         </Link>
         {age}
@@ -103,7 +103,7 @@ export const PostCard = memo(function PostCard({ post }: { post: Post }) {
               contentFit="cover"
               transition={150}
               onError={() => setCoverFailed(true)}
-              className="border-border mt-3 aspect-video w-full rounded-card border"
+              className="mt-3 aspect-video w-full rounded-card border border-border"
             />
           )}
         </PressableScale>

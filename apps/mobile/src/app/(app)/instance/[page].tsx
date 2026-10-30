@@ -44,7 +44,7 @@ export default function InstancePage() {
           <EmptyState icon="file-text" title={`${name} hasn't written this page yet`} />
         )}
         {info && page === "about" && (
-          <View className="border-border gap-2 border-t pt-4">
+          <View className="gap-2 border-t border-border pt-4">
             {info.contactEmail ? (
               <Text size="sm" tone="muted">
                 Contact: {info.contactEmail}
