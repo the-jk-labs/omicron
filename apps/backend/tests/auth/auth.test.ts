@@ -591,3 +591,47 @@ describe("a session deleted from the database", () => {
     expect((await auth.api.getSession({ headers }))?.user.email).toBe("ada@example.com");
   });
 });
+
+describe("native clients (Better Auth Expo plugin)", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    for (const rows of Object.values(store)) rows.length = 0;
+    vi.stubEnv("APP_DOMAIN", "localhost:3000");
+    vi.stubEnv("HIBP_CHECK_ENABLED", "false");
+    vi.stubEnv("EMAIL_VERIFICATION_REQUIRED", "false");
+  });
+
+  // The Expo client sends its scheme as `expo-origin`; native requests carry no Origin of their own.
+  async function signUpFromApp(appOrigin: string) {
+    const { auth } = await import("@/auth/auth.ts");
+    return auth.handler(
+      new Request("http://localhost:3000/api/auth/sign-up/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "expo-origin": appOrigin },
+        body: JSON.stringify({
+          email: "app@example.com",
+          password: "Unique-test-password-123!",
+          name: "App user",
+          username: "app_user",
+        }),
+      }),
+    );
+  }
+
+  it.each(["omicron://", "omicron-dev://"])("can register from the %s scheme", async (scheme) => {
+    const response = await signUpFromApp(scheme);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-cookie")).toContain("omicron.session_token=");
+  });
+
+  // Better Auth skips its origin check under tests, so assert on what it would trust.
+  it("trusts the app schemes alongside the instance origin, and nothing else", async () => {
+    const { auth } = await import("@/auth/auth.ts");
+    const trusted = auth.options.trustedOrigins;
+    if (typeof trusted !== "function") throw new Error("trustedOrigins should be resolved per request");
+    const origins = trusted(
+      new Request("https://blog.example/api/auth/sign-out", { headers: { host: "blog.example" } }),
+    );
+    expect(origins).toEqual(["omicron://", "omicron-dev://", "https://blog.example"]);
+  });
+});

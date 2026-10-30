@@ -1,3 +1,4 @@
+import { expo } from "@better-auth/expo";
 import { getAuthenticatorName, passkey } from "@better-auth/passkey";
 import bcrypt from "bcryptjs";
 // SPDX-License-Identifier: AGPL-3.0-or-later
@@ -27,6 +28,8 @@ const BCRYPT_COST = 12;
 const SESSION_TTL_S = 60 * 60 * 24 * 30;
 const USERNAME_RE = /^[a-z0-9_]{3,30}$/;
 const PASSKEY_NAME_MAX = 60;
+// Deep-link schemes native Omicron clients sign in from (release and dev builds).
+export const APP_ORIGINS = ["omicron://", "omicron-dev://"];
 
 // Better Auth reads the session for these through its cookie cache, which can
 // outlive a revoked session by up to 5 minutes; they must check the database.
@@ -97,6 +100,7 @@ export const auth = betterAuth({
           Promise.resolve({ name: getAuthenticatorName(verification.registrationInfo?.aaguid) }),
       },
     }),
+    expo(),
   ],
   disabledPaths: [
     "/sign-in/email-otp",
@@ -209,11 +213,12 @@ export const auth = betterAuth({
       return undefined;
     }),
   },
-  // Trust the real public origin (a wizard-set domain ≠ APP_DOMAIN) from forwarded headers.
+  // Trust the real public origin (a wizard-set domain ≠ APP_DOMAIN) from forwarded headers,
+  // plus the native clients' schemes.
   trustedOrigins: (request) => {
     const proto = request?.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
     const host = request?.headers.get("x-forwarded-host") ?? request?.headers.get("host");
-    return host ? [`${proto || "https"}://${host}`] : [];
+    return [...APP_ORIGINS, ...(host ? [`${proto || "https"}://${host}`] : [])];
   },
   session: {
     expiresIn: SESSION_TTL_S,

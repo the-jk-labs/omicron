@@ -35,6 +35,8 @@ const VARS = [
   "HIBP_CHECK_ENABLED",
   "UPLOAD_GC_GRACE_DAYS",
   "REMOTE_CACHE_RETENTION_DAYS",
+  "ANDROID_APP_ID",
+  "ANDROID_APP_CERT_FINGERPRINTS",
 ];
 
 let stateDir: string;
@@ -402,5 +404,29 @@ describe("dotenv", () => {
     mkdirSync(join(stateDir, "empty"));
     vi.stubEnv("DOTENV_PATH", join(stateDir, "empty", ".env"));
     expect((await load()).config.APP_DOMAIN).toBe("localhost:5173");
+  });
+});
+
+describe("Android App Links", () => {
+  const A = Array.from({ length: 32 }, () => "AB").join(":");
+  const B = Array.from({ length: 32 }, () => "0F").join(":");
+
+  test("defaults to the Omicron app with no fingerprints", async () => {
+    const { config } = await load();
+    expect(config.ANDROID_APP_ID).toBe("blog.omicron.app");
+    expect(config.ANDROID_APP_CERT_FINGERPRINTS).toEqual([]);
+  });
+
+  test("splits a comma-separated list, trimming and upper-casing each fingerprint", async () => {
+    vi.stubEnv("ANDROID_APP_CERT_FINGERPRINTS", ` ${A.toLowerCase()} ,${B},`);
+    const { config } = await load();
+    expect(config.ANDROID_APP_CERT_FINGERPRINTS).toEqual([A, B]);
+  });
+
+  test("refuses to boot on something that isn't a SHA-256 fingerprint", async () => {
+    const exit = trapExit();
+    vi.stubEnv("ANDROID_APP_CERT_FINGERPRINTS", "AB:CD");
+    await expect(load()).rejects.toThrow("exit 1");
+    expect(exit).toHaveBeenCalledWith(1);
   });
 });

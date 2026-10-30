@@ -15,6 +15,8 @@ imageProxyRoutes.get("/proxy", limiter, async (c) => {
       "cache-control": "public, max-age=3600",
       "x-content-type-options": "nosniff",
       "cross-origin-resource-policy": "same-origin",
+      // Opened directly, a proxied SVG is a document on the instance's origin: it may not run or load anything.
+      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
     },
   });
 });

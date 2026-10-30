@@ -12,7 +12,20 @@ const TYPES: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/gif": "gif",
   "image/webp": "webp",
+  "image/svg+xml": "svg",
 };
+
+// SVG is markup the proxy serves from the instance's own origin, so beyond being an <svg> document it must hold
+// nothing that runs or fetches: no scripts, handlers, embedded HTML, entities, or references outside the file.
+const SVG_ROOT = /^\s*(?:<\?xml[^>]*\?>\s*)?(?:<!--[\s\S]*?-->\s*)*<svg[\s>/]/i;
+const SVG_ACTIVE = /<script|<foreignobject|<!doctype|<!entity|[\s/"']on[a-z]+\s*=|javascript:|@import/i;
+// Links may only point inside the file (#id) or at an embedded raster (data:image/…).
+const SVG_EXTERNAL = /[\s:]href\s*=\s*["']\s*(?!#|data:image\/)|url\(\s*["']?\s*(?!#|data:image\/)/i;
+
+export function isSelfContainedSvg(bytes: Uint8Array): boolean {
+  const text = new TextDecoder().decode(bytes);
+  return SVG_ROOT.test(text) && !SVG_ACTIVE.test(text) && !SVG_EXTERNAL.test(text);
+}
 
 export function isPublicImageAddress(address: string): boolean {
   if (isIP(address) === 4) return !isPrivateIPv4Number(parseIPv4ToNumber(address)!);
@@ -106,7 +119,8 @@ function readImage(url: URL, signal: AbortSignal): Promise<ImageHop> {
         });
         res.on("end", () => {
           const bytes = Buffer.concat(chunks);
-          if (!sniffMatches(bytes, ext)) reject(new Error("Invalid image contents."));
+          if (!(ext === "svg" ? isSelfContainedSvg(bytes) : sniffMatches(bytes, ext)))
+            reject(new Error("Invalid image contents."));
           else resolve({ bytes, contentType });
         });
       },
