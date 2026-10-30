@@ -1,0 +1,11 @@
+[
+  "@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf",
+  "@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf",
+  "@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf",
+  "@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf",
+  "@expo-google-fonts/source-sans-3/400Regular/SourceSans3_400Regular.ttf",
+  "@expo-google-fonts/source-sans-3/400Regular_Italic/SourceSans3_400Regular_Italic.ttf",
+  "@expo-google-fonts/source-sans-3/600SemiBold/SourceSans3_600SemiBold.ttf",
+  "@expo-google-fonts/source-sans-3/600SemiBold_Italic/SourceSans3_600SemiBold_Italic.ttf",
+  "@expo-google-fonts/source-sans-3/700Bold/SourceSans3_700Bold.ttf"
+]
