@@ -2,22 +2,17 @@
  *
  * Anubis renders the "Making sure you're not a bot!" screen itself — it answers
  * before the request ever reaches this app — so the first page a visitor sees on
- * a protected route is not ours to write. Out of the box it arrives in Anubis's
- * own colours: a gruvbox dark background, a serif display face for the heading
- * and a magenta progress bar, none of which appear anywhere else on this site.
- * The visitor's honest reading of that is "I have landed on the wrong site".
+ * a protected route is not ours to write. Caddy serves this stylesheet at the
+ * upstream stylesheet path and swaps Anubis's pensive, happy and reject images
+ * for original Omicron artwork (see the @anubis_theme and @anubis_mascot handlers
+ * in the Caddyfile). Nothing is patched, forked or rebuilt; the pinned upstream
+ * image is untouched.
  *
- * The one seam we have is the stylesheet. Anubis links exactly one, at a fixed
- * path, and Caddy sits in front of Anubis — so Caddy answers that path with this
- * file instead (see the `@anubis_theme` handler in the Caddyfile). Nothing is
- * patched, forked or rebuilt; the pinned upstream image is untouched.
- *
- * What this deliberately does NOT do: the mascot, the "Protected by Anubis"
- * footer and the page's wording all stay exactly as upstream ships them. Anubis
- * is MIT and its authors sell custom images, custom titles and "Anubis" removal
- * as BotStopper — restyling the frame while leaving their attribution and their
- * jackal in place is the line this file stays on. An operator who wants the rest
- * should buy BotStopper: https://anubis.techaro.lol/docs/admin/botstopper
+ * The challenge wording and Anubis/Techaro attribution remain upstream. The
+ * upstream mascot-designer credit is hidden below because its illustration is no
+ * longer shown. Changing the page title or removing the service attribution is
+ * outside this skin; use BotStopper for that:
+ * https://anubis.techaro.lol/docs/admin/botstopper
  *
  * The text is already localized, and better than this app is: Anubis renders it
  * server-side in whichever of its ~25 languages best matches the visitor's
@@ -34,11 +29,10 @@
  * read, so a reader who forced dark on a light machine gets a light challenge
  * screen. Unfixable from here, and mild.
  *
- * Upgrade note (written against Anubis v1.28.2): if a later Anubis moves its
- * stylesheet URL the Caddy handler stops matching, Anubis serves its own CSS
- * again and the screen goes back to looking upstream — visibly plain, never
- * broken. If it keeps the URL but renames elements, the generic element rules
- * below still carry the page. Re-check this file when bumping the image tag.
+ * Upgrade note (written against Anubis v1.28.2): if a later Anubis changes its
+ * stylesheet or mascot-image paths, Caddy stops matching them and Anubis falls
+ * back to its own files. Recheck the Caddy handlers and these selectors when
+ * bumping the image tag.
  */
 
 :root {
@@ -246,4 +240,10 @@ footer p {
 
 footer p:last-child {
   margin-bottom: 0;
+}
+
+/* The original mascot credit no longer describes the replacement artwork. Keep
+   Anubis and Techaro's service attribution in the preceding paragraph. */
+footer p:has(a[href*="celphase.bsky.social"]) {
+  display: none;
 }

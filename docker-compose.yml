@@ -316,6 +316,8 @@ services:
       # path Anubis links its own stylesheet from. See anubis-theme.css and the
       # @anubis_theme handler in the Caddyfile.
       - ./anubis-theme.css:/srv/anubis-theme.css:ro
+      # Original Omicron artwork for Anubis's challenge, success and denial states.
+      - ./assets/anubis:/srv/anubis-images:ro
       - caddy_data:/data
       - caddy_config:/config
       - caddy_admin:/run/caddy-admin
