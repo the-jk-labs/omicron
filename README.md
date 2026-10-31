@@ -15,6 +15,7 @@
   <a href="https://docs.omicron.blog/federation/overview/"><img src="https://img.shields.io/badge/protocol-ActivityPub-6364FF?style=flat-square" alt="ActivityPub" /></a>
   <a href="https://github.com/the-jk-labs/omicron/commits/main"><img src="https://img.shields.io/github/last-commit/the-jk-labs/omicron?style=flat-square" alt="Last commit" /></a>
   <a href="https://github.com/the-jk-labs/omicron/stargazers"><img src="https://img.shields.io/github/stars/the-jk-labs/omicron?style=flat-square" alt="GitHub stars" /></a>
+  <a href="https://www.opensourcealternatives.to"><img src="https://www.opensourcealternatives.to/badge-osa.svg" alt="As seen on Open Source Alternatives" /></a>
 </p>
 
 <p align="center">
