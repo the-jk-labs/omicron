@@ -4,7 +4,7 @@
 # via BACKUP_REPOSITORY. No vendor SDKs involved, restic's format is open.
 #
 # Keep the postgresql client major in sync with the `postgres` service image.
-FROM alpine:3
+FROM alpine:3.24.3
 RUN apk add --no-cache restic postgresql16-client \
  && rm -rf /var/cache/apk/*
 COPY db-env.sh backup entrypoint restore-from /usr/local/bin/

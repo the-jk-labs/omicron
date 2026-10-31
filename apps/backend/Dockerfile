@@ -4,7 +4,7 @@
 # The image keeps the repository's layout, which the app's `link:../../packages/contract` dependency relies on.
 
 # --- deps: resolve node_modules from the lockfiles ---------------------------
-FROM node:24-alpine AS deps
+FROM node:24.22.2-alpine3.24 AS deps
 # Corepack pins pnpm to the version in package.json's "packageManager" field.
 RUN corepack enable
 WORKDIR /app/packages/contract
@@ -15,7 +15,7 @@ COPY apps/backend/package.json apps/backend/pnpm-lock.yaml apps/backend/pnpm-wor
 RUN pnpm install --frozen-lockfile
 
 # --- runtime: Deno with the installed dependencies --------------------------
-FROM denoland/deno:2.9.4
+FROM denoland/deno:2.9.8
 
 WORKDIR /app/packages/contract
 COPY packages/contract/package.json ./

@@ -18,7 +18,7 @@ services:
   # Each is 32 random bytes as 64 hex characters — which is also exactly the
   # Ed25519 seed length Anubis wants for anubis_ed25519_key.
   init-secrets:
-    image: alpine:3
+    image: alpine:3.24.3
     command:
       - sh
       - -c
@@ -41,7 +41,7 @@ services:
       - secrets:/secrets
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.15-alpine3.24
     restart: unless-stopped
     depends_on:
       init-secrets:
@@ -74,7 +74,7 @@ services:
     # BACK is not: 7.4 cannot read Redis 8's RDB (format v14) and exits on start.
     # To return to 7.x, delete the `redis_data` volume; only queued jobs and
     # undelivered activities live here, never user content.
-    image: redis:8-alpine
+    image: redis:8.10.3-alpine3.23
     restart: unless-stopped
     # Light persistence so the queue survives a restart of Redis itself.
     command: ["redis-server", "--save", "60", "1", "--appendonly", "no"]
@@ -302,7 +302,7 @@ services:
   # (gated by the backend), so going public needs only a DNS record — no certs
   # to request, no config files to edit. See Caddyfile for the routing.
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2.11.7-alpine
     restart: unless-stopped
     depends_on:
       - frontend
