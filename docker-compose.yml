@@ -246,7 +246,7 @@ services:
     # Pinned to a specific release so an upgrade is a deliberate bump, never a
     # silent breaking change on the next pull. Check for newer stable tags at
     # https://github.com/TecharoHQ/anubis/releases before raising this.
-    image: ghcr.io/techarohq/anubis:v1.26.2
+    image: ghcr.io/techarohq/anubis:v1.28.2
     restart: unless-stopped
     depends_on:
       init-secrets:
