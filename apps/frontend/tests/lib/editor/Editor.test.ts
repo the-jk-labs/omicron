@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Editor as TiptapEditor } from "@tiptap/core";
+import type { Content, Editor as TiptapEditor } from "@tiptap/core";
 import { beforeEach, expect, test, vi } from "vitest";
 import Editor from "#lib/editor/Editor.svelte";
 import { EDIT_ALT_EVENT } from "#lib/editor/resizable-image.js";
@@ -30,12 +30,12 @@ beforeEach(() => {
 });
 
 let api: ReturnType<typeof fakeFetch>;
-async function setup(content?: string, routes: Parameters<typeof fakeFetch>[0] = {}) {
+async function setup(content?: Content, routes: Parameters<typeof fakeFetch>[0] = {}, previewHtml?: string) {
   let n = 0;
   api = fakeFetch({ "POST /api/uploads": () => Response.json({ url: `/api/uploads/img${++n}.webp` }), ...routes });
   vi.stubGlobal("fetch", api.fetch);
   const onUpdate = vi.fn<(html: string, json: unknown) => void>();
-  render(Editor, { props: { onUpdate, content } });
+  render(Editor, { props: { onUpdate, content, previewHtml } });
   const dom = await waitFor(() => {
     const el = document.querySelector<HTMLElement & { editor?: TiptapEditor }>(".tiptap");
     if (!el?.editor) throw new Error("editor not mounted");
@@ -93,6 +93,54 @@ test("upload failures are announced to assistive technology", async () => {
 test("stored HTML is parsed as HTML, not escaped as Markdown text", async () => {
   const { editor } = await setup("<p>alpha <strong>beta</strong></p>");
   expect(editor.getHTML()).toBe("<p>alpha <strong>beta</strong></p>");
+});
+
+test("unsupported imported structures cannot be silently rewritten by opening the editor", async () => {
+  const { editor, dom, onUpdate } = await setup(
+    '<figure><img src="/a.png" alt="A graph"><figcaption lang="fr">Sales graph</figcaption></figure>',
+  );
+  expect(editor.getHTML()).not.toContain("<figure");
+  expect(screen.getByRole("alert")).toHaveTextContent("simplify imported content");
+  expect(dom).toHaveAttribute("contenteditable", "false");
+  expect(dom).toHaveAttribute("aria-readonly", "true");
+  expect(screen.getByRole("button", { name: "Bold" })).toBeDisabled();
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test("acknowledging import loss only updates the saved body after a content edit", async () => {
+  const { editor, dom, onUpdate } = await setup("<figure><p>Original</p><figcaption>Caption</figcaption></figure>");
+  await tool("Edit simplified content");
+  expect(dom).toHaveAttribute("contenteditable", "true");
+  expect(dom).toHaveAttribute("aria-readonly", "false");
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(onUpdate).not.toHaveBeenCalled();
+  editor.commands.insertContent("Edited ");
+  expect(onUpdate).toHaveBeenCalledWith(expect.stringContaining("Edited"), expect.any(Object));
+});
+
+test("programmatic changes cannot serialize a blocked import", async () => {
+  const { editor, onUpdate } = await setup("<figure><p>Original</p><figcaption>Caption</figcaption></figure>");
+  editor.commands.insertContent("Changed ");
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test("a stored JSON body cannot bypass the comparison with original HTML", async () => {
+  const { dom, onUpdate } = await setup(
+    { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Caption" }] }] },
+    {},
+    "<figure><figcaption>Caption</figcaption></figure>",
+  );
+  expect(screen.getByRole("alert")).toHaveTextContent("element: figcaption");
+  expect(dom).toHaveAttribute("contenteditable", "false");
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test("supported markup remains editable without an import warning", async () => {
+  const { dom } = await setup(
+    '<h2 lang="fr">Title</h2><p dir="rtl">Text <b>bold</b> <i>italic</i></p><img src="/a.png" alt="A graph"><table><caption>Sales</caption><tbody><tr><th scope="col">Year</th><td>2026</td></tr></tbody></table>',
+  );
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(dom).toHaveAttribute("contenteditable", "true");
 });
 
 test("the status line counts characters and words and estimates reading time", async () => {

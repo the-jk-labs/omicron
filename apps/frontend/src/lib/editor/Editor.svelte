@@ -14,6 +14,7 @@
   import { countWords, readTimeFromWords } from "#lib/format.js";
   import { proxyImageHtml } from "#lib/imageProxy.js";
   import { checkAccessibility, type AccessibilityIssue } from "./check-accessibility";
+  import { contentLoss } from "./contentLoss";
   import EditorNavigation from "./EditorNavigation.svelte";
   import { extensions } from "./extensions";
   import { isAcceptedImage, prepareImage } from "./image";
@@ -43,6 +44,9 @@
   // Read once: after mount the live editor owns the body.
   const preview = untrack(() => proxyImageHtml(previewHtml));
   let mounted = $state(false);
+  let importLosses = $state<string[]>([]);
+  let importAcknowledged = $state(false);
+  const importBlocked = $derived(importLosses.length > 0 && !importAcknowledged);
 
   let element = $state<HTMLDivElement | null>(null);
   let editor = $state.raw<Editor>(undefined!);
@@ -482,16 +486,27 @@
       ],
       content: initialContent,
       editorProps: {
-        attributes: { class: "tiptap prose-omicron", "aria-label": "Article body", "aria-multiline": "true" },
+        attributes: () => ({
+          class: "tiptap prose-omicron",
+          "aria-label": "Article body",
+          "aria-multiline": "true",
+          "aria-readonly": String(editor?.isEditable === false),
+        }),
         handlePaste,
         handleDrop,
       },
       onUpdate: ({ editor: ed }) => {
+        if (importBlocked) return;
         onUpdate(ed.getHTML(), ed.getJSON());
         refreshStats(ed);
       },
       onTransaction: ({ editor: ed }) => refreshActive(ed),
     });
+    const originalHtml = typeof content === "string" ? content : previewHtml;
+    if (originalHtml) {
+      importLosses = contentLoss(originalHtml, editor.getHTML());
+      if (importLosses.length) editor.setEditable(false, false);
+    }
     refreshActive();
     // A reopened draft arrives with its body already in place, so the counter
     // has to start from that rather than from zero.
@@ -558,7 +573,31 @@
     "rounded-button data-highlighted:bg-muted ring-0! ring-transparent! flex h-9 w-full cursor-pointer select-none items-center gap-2.5 px-2.5 text-sm font-medium focus-visible:outline-hidden";
 </script>
 
-<div>
+{#if importBlocked}
+  <div role="alert" class="mb-4 rounded-card border border-border bg-background-alt p-4 text-sm">
+    <p class="font-semibold text-foreground">Rich editing may simplify imported content.</p>
+    <p class="mt-2 text-muted-foreground">
+      Some structure or accessibility information cannot be represented by this editor. The original body stays
+      unchanged unless you explicitly continue and edit it. Keep an export before continuing if you need the original
+      markup.
+    </p>
+    <p class="mt-2 break-words text-muted-foreground">
+      Affected information: {importLosses.slice(0, 8).join(", ")}{importLosses.length > 8 ? ", …" : ""}.
+    </p>
+    <Button
+      variant="outline"
+      size="sm"
+      class="mt-3"
+      onclick={() => {
+        importAcknowledged = true;
+        editor.setEditable(true, false);
+      }}>Edit simplified content</Button
+    >
+  </div>
+{/if}
+
+<fieldset disabled={importBlocked} class="min-w-0">
+  <legend class="sr-only">Article editor</legend>
   <Toolbar.Root
     aria-label="Article formatting"
     class="no-scrollbar mb-4 flex w-full items-center justify-start gap-0.5 overflow-x-auto rounded-10px border border-border bg-background-alt px-2 py-1 shadow-mini sm:justify-between sm:gap-0"
@@ -750,7 +789,7 @@
     </Collapsible.Content>
   </Collapsible.Root>
   <AccessibilityGuidance />
-</div>
+</fieldset>
 
 <Dialog.Root bind:open={codeOpen}>
   <Dialog.Portal>
