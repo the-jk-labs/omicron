@@ -182,8 +182,8 @@ importers:
         specifier: 2.4.5
         version: 2.4.5
       '@fedify/redis':
-        specifier: 2.4.4
-        version: 2.4.4(@fedify/fedify@2.4.5)(ioredis@6.0.0)
+        specifier: 2.4.5
+        version: 2.4.5(@fedify/fedify@2.4.5)(ioredis@6.0.0)
       '@hono/zod-validator':
         specifier: 0.9.1
         version: 0.9.1(hono@4.13.14)(zod@4.6.7)
@@ -741,10 +741,10 @@ packages:
     resolution: {integrity: sha512-XHi/dyLeDBKt1gkfyGxNVFgxmijOVdRdlwZGCwslStrE9+5KHeJPaDTZ5vwchrYIZFbeMlD1qjcYNnxVXNvlxg==}
     engines: {bun: '>=1.1.0', deno: '>=2.0.0', node: '>=22.0.0'}
 
-  '@fedify/redis@2.4.4':
-    resolution: {integrity: sha512-uWma1s32R2EJFFdonCnQ2eU1XvDimT6cuk/zrG5p+Le6SQAdVeIrItTg6D7XNLh8q1q6tuNKaITnnUJk/HxZfg==}
+  '@fedify/redis@2.4.5':
+    resolution: {integrity: sha512-MdzYTcZS6VtkiZvT0UHogufeceCcdUcZzgDsgoXVP2sOdawi4C4dJTd1cNdfblRkbmQiGbOsA8kg8WiWbqW5RQ==}
     peerDependencies:
-      '@fedify/fedify': ^2.4.4
+      '@fedify/fedify': ^2.4.5
       ioredis: ^5.8.2
 
   '@fedify/uri-template@2.4.5':
@@ -2610,7 +2610,7 @@ snapshots:
       temporal-polyfill: 1.0.5
       urlpattern-polyfill: 10.1.0
 
-  '@fedify/redis@2.4.4(@fedify/fedify@2.4.5)(ioredis@6.0.0)':
+  '@fedify/redis@2.4.5(@fedify/fedify@2.4.5)(ioredis@6.0.0)':
     dependencies:
       '@fedify/fedify': 2.4.5
       '@logtape/logtape': 2.3.2

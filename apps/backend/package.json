@@ -27,7 +27,7 @@
     "@better-auth/expo": "1.7.14",
     "@better-auth/passkey": "1.7.14",
     "@fedify/fedify": "2.4.5",
-    "@fedify/redis": "2.4.4",
+    "@fedify/redis": "2.4.5",
     "@hono/zod-validator": "0.9.1",
     "@imagemagick/magick-wasm": "0.0.45",
     "@omicron/contract": "link:../../packages/contract",
