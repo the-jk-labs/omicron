@@ -13,6 +13,8 @@ apps/frontend/.vite/
 # Test coverage reports
 coverage/
 coverage-int/
+apps/frontend/playwright-report/
+apps/frontend/test-results/
 
 # Deno
 apps/backend/.deno/
