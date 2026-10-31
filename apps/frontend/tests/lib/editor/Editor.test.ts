@@ -386,7 +386,7 @@ test("passages can have an independent language and direction", async () => {
   editor.commands.setTextSelection({ from: 1, to: 6 });
   await tool("Text language");
   await fireEvent.input(await screen.findByLabelText("Language tag"), { target: { value: "fr" } });
-  await fireEvent.keyDown(screen.getByRole("button", { name: "Text direction" }), { key: "Enter" });
+  await fireEvent.keyDown(screen.getByRole("button", { name: "Text direction: Inherit" }), { key: "Enter" });
   await fireEvent.pointerUp(await screen.findByRole("option", { name: "Right to left" }));
   await expectAccessible();
   await tool("Save");

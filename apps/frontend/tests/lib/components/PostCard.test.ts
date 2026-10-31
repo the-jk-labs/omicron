@@ -68,6 +68,17 @@ describe("PostCard", () => {
     const heading = container.querySelector("h2");
     expect(heading).not.toBeNull();
     expect(heading!.contains(excerpt)).toBe(false);
+    expect(excerpt.closest("a")).toBeNull();
+    expect(screen.getByRole("link", { name: post.title! })).not.toHaveTextContent("Historically");
+  });
+
+  it("an untitled post still uses its excerpt as the link name", () => {
+    render(PostCard, { props: { post: { ...post, title: null } } });
+    expect(
+      screen.getByRole("link", {
+        name: "Historically, UNIX systems have maintained two different time values for a file.",
+      }),
+    ).toHaveAttribute("href", expect.stringContaining("/@timev/"));
   });
 
   it("shows an accessible AI-Assisted badge with its explanation", async () => {

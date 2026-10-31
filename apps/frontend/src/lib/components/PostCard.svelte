@@ -18,17 +18,7 @@
   // `eager` for the first cards of a list: they are on screen at first paint.
   let { post, eager = false }: { post: Post; eager?: boolean } = $props();
 
-  // The card's body is one big link over the title, the summary and the
-  // thumbnail, so its accessible name was everything inside it concatenated:
-  // "UNIX-programming-timev Historically, UNIX systems have maintained two
-  // different time values for a file." Anyone pulling up a list of links, or
-  // tabbing through a feed, heard the whole excerpt on every card before they
-  // could tell one post from the next. Naming the link from the heading alone
-  // fixes that and leaves the hit area, the markup and the styling untouched.
-  //
-  // Only when there is a title: an untitled post (a remote note, mostly) has no
-  // heading to point at, and its summary is then the only thing that can name
-  // the link — which is what happens without the attribute.
+  // Stretch the title link over the preview, without turning the excerpt into its label.
   const titleId = $props.id();
 
   const signedIn = $derived(!!page.data.user);
@@ -86,15 +76,15 @@
     {/if}
   </div>
 
-  <Button
-    href={postPath(post)}
-    variant="plain"
-    aria-labelledby={post.title ? titleId : undefined}
-    hreflang={post.language ?? undefined}
-    class="group block w-full text-left"
-  >
-    <div class="flex items-start gap-4">
-      <div class="min-w-0 flex-1">
+  <div class="group relative flex items-start gap-4">
+    <div class="min-w-0 flex-1">
+      <Button
+        href={postPath(post)}
+        variant="plain"
+        aria-labelledby={post.title ? titleId : undefined}
+        hreflang={post.language ?? undefined}
+        class="block w-full text-left after:absolute after:inset-0"
+      >
         {#if post.title}
           <h2
             id={titleId}
@@ -102,30 +92,32 @@
           >
             {post.title}
           </h2>
-        {/if}
-        {#if summary}
+        {:else if summary}
           <p class="mt-1.5 line-clamp-3 text-muted-foreground">{summary}</p>
         {/if}
-      </div>
-      {#if post.bannerUrl && !coverFailed}
-        <!-- Decorative: the title beside it already names the post. -->
-        <!-- The CSS box is already fixed, so this thumbnail cannot shift the
+      </Button>
+      {#if post.title && summary}
+        <p class="mt-1.5 line-clamp-3 text-muted-foreground">{summary}</p>
+      {/if}
+    </div>
+    {#if post.bannerUrl && !coverFailed}
+      <!-- Decorative: the title beside it already names the post. -->
+      <!-- The CSS box is already fixed, so this thumbnail cannot shift the
              layout; `width`/`height` are set anyway so the space is reserved
              even before the stylesheet applies. No `decoding="async"`, and eager
              near the top: both let the first paint go out without the image, so
              even a cached one flickered in a frame later. -->
-        <img
-          src={imageUrl(post.bannerUrl)}
-          alt=""
-          width="144"
-          height="96"
-          loading={eager ? "eager" : "lazy"}
-          onerror={() => (coverFailed = true)}
-          class="mt-1 h-20 w-28 shrink-0 rounded-card border border-border object-cover sm:h-24 sm:w-36"
-        />
-      {/if}
-    </div>
-  </Button>
+      <img
+        src={imageUrl(post.bannerUrl)}
+        alt=""
+        width="144"
+        height="96"
+        loading={eager ? "eager" : "lazy"}
+        onerror={() => (coverFailed = true)}
+        class="mt-1 h-20 w-28 shrink-0 rounded-card border border-border object-cover sm:h-24 sm:w-36"
+      />
+    {/if}
+  </div>
 
   {#if post.tags?.length}
     <TagList tags={post.tags} class="mt-3" />

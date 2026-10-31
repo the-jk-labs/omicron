@@ -79,7 +79,7 @@
         </div>
         <Select.Root type="single" bind:value={direction}>
           <Select.Trigger
-            aria-label="Text direction"
+            aria-label={`Text direction: ${directions.find((item) => item.value === direction)?.label ?? "Inherit"}`}
             class="inline-flex h-10 w-full items-center justify-between gap-2 rounded-input border border-border-input bg-background px-3 text-sm shadow-btn outline-hidden transition-colors focus:border-foreground"
           >
             {directions.find((item) => item.value === direction)?.label ?? "Inherit"}
