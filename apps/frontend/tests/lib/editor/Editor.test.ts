@@ -4,6 +4,7 @@ import type { Editor as TiptapEditor } from "@tiptap/core";
 import { beforeEach, expect, test, vi } from "vitest";
 import Editor from "#lib/editor/Editor.svelte";
 import { EDIT_ALT_EVENT } from "#lib/editor/resizable-image.js";
+import { expectAccessible } from "../../accessibility";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 vi.mock(import("#lib/editor/image.js"), async (importOriginal) => ({
@@ -74,6 +75,19 @@ test("once Tiptap starts, it replaces the static body: one editable surface rema
   const { dom } = await setup("<p>Body</p>");
   expect(document.querySelectorAll(".tiptap")).toHaveLength(1);
   expect(dom).toHaveAttribute("contenteditable", "true");
+});
+
+test("the editable body has a persistent accessible name and multiline textbox semantics", async () => {
+  const { dom } = await setup();
+  expect(screen.getByRole("textbox", { name: "Article body" })).toBe(dom);
+  expect(dom).toHaveAttribute("aria-multiline", "true");
+  await expectAccessible(document.body);
+});
+
+test("upload failures are announced to assistive technology", async () => {
+  await setup("<p></p>", { "POST /api/uploads": apiError(413, "Image too large") });
+  await fireEvent.change(imageInput(), { target: { files: [png("a.png")] } });
+  expect(await screen.findByRole("alert")).toHaveTextContent("Image too large");
 });
 
 test("stored HTML is parsed as HTML, not escaped as Markdown text", async () => {
@@ -213,6 +227,14 @@ test("an image's alt text is edited through the dialog and stored trimmed", asyn
   expect(editor.getJSON().content[0].attrs).toMatchObject({ alt: "A rabbit" });
 });
 
+test("saving an explicitly decorative image retains an empty alt instead of an unreviewed null", async () => {
+  const { editor, dom } = await setup('<img src="/api/uploads/x.webp"><p></p>');
+  dom.dispatchEvent(new CustomEvent(EDIT_ALT_EVENT, { detail: { pos: 0, alt: "" } }));
+  await screen.findByLabelText("Alt text");
+  await fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(editor.getJSON().content[0].attrs!.alt).toBe("");
+});
+
 test("alt text isn't written to a position that's no longer the image", async () => {
   const { editor, dom } = await setup('<p>text</p><img src="/api/uploads/x.webp">');
   dom.dispatchEvent(new CustomEvent(EDIT_ALT_EVENT, { detail: { pos: 0, alt: "old" } }));
@@ -220,4 +242,126 @@ test("alt text isn't written to a position that's no longer the image", async ()
   await fireEvent.click(screen.getByRole("button", { name: "Save" }));
   expect(editor.getJSON().content[0].type).toBe("paragraph");
   expect(JSON.stringify(editor.getJSON())).not.toContain('"alt":"new"');
+});
+
+test("image settings resize without dragging, preserve the alternative, and support undo", async () => {
+  const { editor } = await setup('<img src="/a.png" alt="A cat" width="40%"><p></p>');
+  editor.commands.setNodeSelection(0);
+  await tool("Image settings");
+  expect(await screen.findByLabelText("Image width (%)")).toHaveValue(40);
+  await fireEvent.input(screen.getByLabelText("Image width (%)"), { target: { value: "65" } });
+  await expectAccessible();
+  await fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(editor.getJSON().content[0].attrs).toMatchObject({ width: "65%", alt: "A cat" });
+  editor.commands.undo();
+  expect(editor.getAttributes("image").width).toBe("40%");
+});
+
+test("invalid image widths are explained without updating the image", async () => {
+  const { editor, dom } = await setup('<img src="/a.png" alt="A cat" width="40%"><p></p>');
+  dom.dispatchEvent(new CustomEvent(EDIT_ALT_EVENT, { detail: { pos: 0, alt: "A cat" } }));
+  const width = await screen.findByLabelText("Image width (%)");
+  await fireEvent.input(width, { target: { value: "101" } });
+  await fireEvent.submit(width.closest("form")!);
+  expect(screen.getByRole("alert")).toHaveTextContent("10 to 100 percent");
+  expect(editor.getJSON().content[0].attrs!.width).toBe("40%");
+});
+
+test("the accessibility review locates an image and updates after repair", async () => {
+  const { editor } = await setup('<img src="/a.png"><p></p>');
+  await fireEvent.click(screen.getByRole("button", { name: "Check accessibility (1)" }));
+  await fireEvent.click(await screen.findByRole("button", { name: "Review image 1" }));
+  await fireEvent.input(await screen.findByLabelText("Alt text"), { target: { value: "A cat" } });
+  await fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(editor.getJSON().content[0].attrs!.alt).toBe("A cat");
+  await screen.findByRole("button", { name: "Check accessibility (0)" });
+  expect(screen.getByRole("status")).toHaveTextContent("Manual review is still needed");
+});
+
+test("table accessibility settings save a native caption and headers", async () => {
+  const { editor } = await setup(
+    "<table><tr><td>Month</td><td>Count</td></tr><tr><td>June</td><td>10</td></tr></table>",
+  );
+  editor.commands.setTextSelection(4);
+  await fireEvent.keyDown(await screen.findByRole("button", { name: "Edit table" }), { key: "Enter" });
+  await fireEvent.click(await screen.findByRole("menuitem", { name: "Table accessibility" }));
+  await fireEvent.input(await screen.findByLabelText("Table caption"), { target: { value: "Monthly sales" } });
+  await fireEvent.click(screen.getByRole("checkbox", { name: "Header row" }));
+  await expectAccessible();
+  await fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(editor.getHTML()).toContain("<caption>Monthly sales</caption>");
+  expect(editor.getHTML()).toContain("<th");
+  expect(editor.getHTML()).toContain("June");
+});
+
+test("table header scope controls cannot add invalid scope attributes to data cells", async () => {
+  const { editor } = await setup("<table><tr><td>Data</td></tr></table>");
+  editor.commands.setTextSelection(4);
+  await fireEvent.keyDown(await screen.findByRole("button", { name: "Edit table" }), { key: "Enter" });
+  expect(await screen.findByRole("menuitem", { name: "Header applies to row" })).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
+});
+
+test("find supports forward and backward results, alternatives, and no-match feedback", async () => {
+  const { editor } = await setup('<p>Sales report</p><img src="/a.png" alt="Sales graph"><p></p>');
+  await tool("Find and navigate");
+  const input = await screen.findByRole("searchbox", { name: "Find in article" });
+  await fireEvent.input(input, { target: { value: "Sales" } });
+  expect(screen.getByRole("status")).toHaveTextContent("Result 1 of 2");
+  await tool("Next result");
+  expect(screen.getByRole("status")).toHaveTextContent("Image description: Sales graph");
+  await tool("Previous result");
+  await tool("Edit result");
+  expect(editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to)).toBe("Sales");
+  await tool("Next result");
+  await tool("Edit result");
+  expect(await screen.findByLabelText("Alt text")).toHaveValue("Sales graph");
+  await tool("Cancel");
+  await fireEvent.input(input, { target: { value: "missing" } });
+  expect(screen.getByRole("status")).toHaveTextContent("No matches found");
+  await expectAccessible();
+});
+
+test("document navigation moves editing focus to the chosen element", async () => {
+  const { editor, dom } = await setup("<p>Opening</p><h2>Section</h2><p>Body</p>");
+  await tool("Find and navigate");
+  await fireEvent.keyDown(await screen.findByRole("button", { name: "Go to document element" }), { key: "Enter" });
+  await fireEvent.pointerUp(await screen.findByRole("option", { name: "Heading 2: Section" }));
+  await waitFor(() => expect(editor.isActive("heading", { level: 2 })).toBe(true));
+  await waitFor(() => expect(dom).toHaveFocus());
+});
+
+test("passages can have an independent language and direction", async () => {
+  const { editor } = await setup("<p>Hello world</p>");
+  editor.commands.setTextSelection({ from: 1, to: 6 });
+  await tool("Text language");
+  await fireEvent.input(await screen.findByLabelText("Language tag"), { target: { value: "fr" } });
+  await fireEvent.keyDown(screen.getByRole("button", { name: "Text direction" }), { key: "Enter" });
+  await fireEvent.pointerUp(await screen.findByRole("option", { name: "Right to left" }));
+  await expectAccessible();
+  await tool("Save");
+  expect(editor.getHTML()).toContain('<span lang="fr" dir="rtl">Hello</span>');
+});
+
+test("invalid passage language tags keep the dialog open with an actionable error", async () => {
+  await setup("<p>Hello</p>");
+  await tool("Text language");
+  await fireEvent.input(await screen.findByLabelText("Language tag"), { target: { value: "not_a_tag" } });
+  await tool("Save");
+  expect(screen.getByRole("alert")).toHaveTextContent("Enter a valid language tag");
+});
+
+test("an image's rendered alternative keeps its declared language in the editing view", async () => {
+  const { dom } = await setup('<img src="/a.png" alt="A cat" lang="fr"><p></p>');
+  expect(dom.querySelector("img")).toHaveAttribute("lang", "fr");
+});
+
+test("editing an alternative does not change an existing non-percentage image width", async () => {
+  const { editor, dom } = await setup('<img src="/a.png" alt="Old description" width="400"><p></p>');
+  dom.dispatchEvent(new CustomEvent(EDIT_ALT_EVENT, { detail: { pos: 0, alt: "Old description" } }));
+  await fireEvent.input(await screen.findByLabelText("Alt text"), { target: { value: "A cat" } });
+  await tool("Save");
+  expect(editor.getJSON().content[0].attrs!.width).toBe("400");
 });

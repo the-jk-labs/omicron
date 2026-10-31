@@ -2,16 +2,23 @@
 <script lang="ts">
   import { type Content, Editor, generateJSON } from "@tiptap/core";
   import { Placeholder } from "@tiptap/extension-placeholder";
-  import { Dialog, DropdownMenu, Label, Select, Toolbar } from "bits-ui";
+  import type { Node as DocumentNode } from "@tiptap/pm/model";
+  import { Checkbox, Collapsible, Dialog, DropdownMenu, Label, Select, Toolbar } from "bits-ui";
   import { onDestroy, onMount, untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
   import { CODE_LANGUAGES, codeLanguageLabel } from "#lib/codeLanguages.js";
+  import AccessibilityGuidance from "#lib/components/AccessibilityGuidance.svelte";
   import EmojiTrigger from "#lib/components/EmojiTrigger.svelte";
   import Icon, { type IconName } from "#lib/components/Icon.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
   import { countWords, readTimeFromWords } from "#lib/format.js";
   import { proxyImageHtml } from "#lib/imageProxy.js";
+  import { checkAccessibility, type AccessibilityIssue } from "./check-accessibility";
+  import EditorNavigation from "./EditorNavigation.svelte";
   import { extensions } from "./extensions";
   import { isAcceptedImage, prepareImage } from "./image";
+  import { focusElement, type TextMatch } from "./navigation";
+  import PassageLanguage from "./PassageLanguage.svelte";
   import { EDIT_ALT_EVENT, type EditAltDetail } from "./resizable-image";
 
   // Isolated Tiptap integration. The parent receives content via `onUpdate`.
@@ -38,7 +45,7 @@
   let mounted = $state(false);
 
   let element = $state<HTMLDivElement | null>(null);
-  let editor: Editor;
+  let editor = $state.raw<Editor>(undefined!);
 
   // The status line every desktop editor has: how much is there, and how long
   // it will take to read. Recomputed from the document itself rather than from
@@ -48,6 +55,9 @@
   // fires for every arrow key, and walking the whole document that often buys
   // nothing that changes on screen.
   let stats = $state({ characters: 0, words: 0, minutes: 0 });
+  let issues = $state<AccessibilityIssue[]>([]);
+  let checksOpen = $state(false);
+  let documentNode = $state.raw<DocumentNode | null>(null);
 
   function refreshStats(ed: Editor) {
     // One newline per block, so paragraphs are counted as separated rather than
@@ -60,6 +70,8 @@
     const words = countWords(text);
     const characters = text.replace(/\n/g, "").length;
     stats = { characters, words, minutes: words ? readTimeFromWords(words) : 0 };
+    issues = checkAccessibility(ed.state.doc);
+    documentNode = ed.state.doc;
   }
 
   import { locale } from "#lib/locale.svelte.js";
@@ -85,6 +97,8 @@
     codeBlock: false,
     link: false,
     table: false,
+    tableHeader: false,
+    image: false,
   });
 
   // Tiptap v3 emits the first `onTransaction` synchronously *inside* the
@@ -105,6 +119,8 @@
       codeBlock: ed.isActive("codeBlock"),
       link: ed.isActive("link"),
       table: ed.isActive("table"),
+      tableHeader: ed.isActive("tableHeader"),
+      image: ed.isActive("image"),
     };
     // What the block under the cursor is currently labelled as, so the toolbar
     // can say so rather than making the author open the dialog to find out.
@@ -167,8 +183,46 @@
     editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
   }
 
-  type TableAction = { label: string; icon: IconName; run: () => void; divider?: boolean };
+  let tableOpen = $state(false);
+  let tableCaption = $state("");
+  let tableHeaderRow = $state(false);
+  let tableHeaderColumn = $state(false);
+  let originalHeaderRow = false;
+  let originalHeaderColumn = false;
+
+  function openTableSettings() {
+    const from = editor.state.selection.$from;
+    let depth = from.depth;
+    while (depth > 0 && from.node(depth).type.name !== "table") depth--;
+    if (!depth) return;
+    const table = from.node(depth);
+    tableCaption = table.attrs.caption ?? "";
+    originalHeaderRow = tableHeaderRow =
+      !!table.firstChild &&
+      [...Array(table.firstChild.childCount).keys()].every(
+        (i) => table.firstChild!.child(i).type.name === "tableHeader",
+      );
+    originalHeaderColumn = tableHeaderColumn = [...Array(table.childCount).keys()].every(
+      (i) => table.child(i).firstChild?.type.name === "tableHeader",
+    );
+    tableOpen = true;
+  }
+
+  function applyTableSettings(event: SubmitEvent) {
+    event.preventDefault();
+    const chain = editor
+      .chain()
+      .focus()
+      .updateAttributes("table", { caption: tableCaption.trim() || null });
+    if (tableHeaderRow !== originalHeaderRow) chain.toggleHeaderRow();
+    if (tableHeaderColumn !== originalHeaderColumn) chain.toggleHeaderColumn();
+    chain.run();
+    tableOpen = false;
+  }
+
+  type TableAction = { label: string; icon: IconName; run: () => void; divider?: boolean; headerOnly?: boolean };
   const tableActions: TableAction[] = [
+    { label: "Table accessibility", icon: "table", run: openTableSettings },
     { label: "Row above", icon: "plus", run: () => editor.chain().focus().addRowBefore().run() },
     { label: "Row below", icon: "plus", run: () => editor.chain().focus().addRowAfter().run() },
     {
@@ -187,6 +241,19 @@
       icon: "table",
       divider: true,
       run: () => editor.chain().focus().toggleHeaderRow().run(),
+    },
+    { label: "Toggle header column", icon: "table", run: () => editor.chain().focus().toggleHeaderColumn().run() },
+    {
+      label: "Header applies to column",
+      icon: "table",
+      headerOnly: true,
+      run: () => editor.chain().focus().setCellAttribute("scope", "col").run(),
+    },
+    {
+      label: "Header applies to row",
+      icon: "table",
+      headerOnly: true,
+      run: () => editor.chain().focus().setCellAttribute("scope", "row").run(),
     },
     // Only does anything across a multi-cell selection; Tiptap no-ops otherwise
     // rather than erroring, so it needs no guard of its own.
@@ -230,16 +297,27 @@
   let altOpen = $state(false);
   let altText = $state("");
   let altPos: number | null = null;
+  let imageWidth = $state<number | undefined>(100);
+  let initialImageWidth = 100;
+  let imageSettingsError = $state("");
 
   function openAltDialog(event: Event) {
     const { pos, alt } = (event as CustomEvent<EditAltDetail>).detail;
     altPos = pos;
     altText = alt;
+    const width = editor.state.doc.nodeAt(pos)?.attrs.width;
+    imageWidth = typeof width === "string" && width.endsWith("%") ? Number.parseFloat(width) : 100;
+    initialImageWidth = imageWidth;
+    imageSettingsError = "";
     altOpen = true;
   }
 
   function applyAlt(e: SubmitEvent) {
     e.preventDefault();
+    if (imageWidth === undefined || !Number.isInteger(imageWidth) || imageWidth < 10 || imageWidth > 100) {
+      imageSettingsError = "Choose a whole-number width from 10 to 100 percent.";
+      return;
+    }
     altOpen = false;
     if (altPos === null) return;
     const node = editor.state.doc.nodeAt(altPos);
@@ -250,15 +328,41 @@
       editor.view.dispatch(
         editor.view.state.tr.setNodeMarkup(altPos, undefined, {
           ...node.attrs,
-          // An empty description is stored as null rather than "", which is how
-          // the node view tells "not described yet" from "deliberately
-          // decorative" — and `alt=""` is the correct markup for the latter.
-          alt: altText.trim() || null,
+          // Saving an empty alternative explicitly marks this image decorative.
+          alt: altText.trim(),
+          width: imageWidth === initialImageWidth ? node.attrs.width : `${imageWidth}%`,
         }),
       );
     }
     altPos = null;
     editor.commands.focus();
+  }
+
+  function openSelectedImage() {
+    const pos = editor.state.selection.from;
+    const node = editor.state.doc.nodeAt(pos);
+    if (node?.type.name !== "image") return;
+    openAltDialog(new CustomEvent(EDIT_ALT_EVENT, { detail: { pos, alt: node.attrs.alt ?? "" } }));
+  }
+
+  function reviewIssue(issue: AccessibilityIssue) {
+    if (issue.kind === "image") {
+      editor.commands.setNodeSelection(issue.pos);
+      openSelectedImage();
+    } else {
+      editor
+        .chain()
+        .focus()
+        .setTextSelection(issue.pos + (issue.kind === "table" ? 3 : 1))
+        .run();
+      if (issue.kind === "table") openTableSettings();
+    }
+  }
+
+  function editAlternative(match: TextMatch) {
+    focusElement(editor, match.pos);
+    if (match.alternative === "image") openSelectedImage();
+    else openTableSettings();
   }
 
   // Emoji picker: inserts the picked Unicode emoji at the cursor. Emoji are
@@ -378,7 +482,7 @@
       ],
       content: initialContent,
       editorProps: {
-        attributes: { class: "tiptap prose-omicron" },
+        attributes: { class: "tiptap prose-omicron", "aria-label": "Article body", "aria-multiline": "true" },
         handlePaste,
         handleDrop,
       },
@@ -456,6 +560,7 @@
 
 <div>
   <Toolbar.Root
+    aria-label="Article formatting"
     class="no-scrollbar mb-4 flex w-full items-center justify-start gap-0.5 overflow-x-auto rounded-10px border border-border bg-background-alt px-2 py-1 shadow-mini sm:justify-between sm:gap-0"
   >
     <!-- Text style: a single dropdown for normal text + Heading 1–6. -->
@@ -539,7 +644,11 @@
               {#if action.divider}
                 <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-border" />
               {/if}
-              <DropdownMenu.Item onSelect={action.run} class={itemClass}>
+              <DropdownMenu.Item
+                onSelect={action.run}
+                disabled={action.headerOnly && !active.tableHeader}
+                class={itemClass}
+              >
                 <Icon name={action.icon} size={16} />
                 {action.label}
               </DropdownMenu.Item>
@@ -549,26 +658,35 @@
       </DropdownMenu.Root>
     {/if}
 
+    {#if active.image}
+      <Toolbar.Button onclick={openSelectedImage} aria-label="Image settings" title="Image settings" class={btn}>
+        <Icon name="settings" size={18} />
+      </Toolbar.Button>
+    {/if}
+
     <!-- Emoji picker. The web component is lazy-loaded on first open (see
          EmojiPicker.svelte), so it stays out of the editor's initial work. -->
+    {#if mounted}<PassageLanguage {editor} />{/if}
     <EmojiTrigger onPick={insertEmoji} class={`${btn} text-foreground/60`} />
   </Toolbar.Root>
 
   <input
     bind:this={imageInput}
     type="file"
+    hidden
+    aria-label="Upload article images"
     accept="image/png,image/jpeg,image/webp,image/gif"
     class="hidden"
     onchange={onImagePick}
   />
 
   {#if uploading}
-    <p class="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
+    <p role="status" class="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
       <Icon name="spinner" size={15} class="animate-spin" /> Uploading image…
     </p>
   {/if}
   {#if uploadError}
-    <p class="mb-3 text-sm text-destructive">{uploadError}</p>
+    <p role="alert" class="mb-3 text-sm text-destructive">{uploadError}</p>
   {/if}
 
   <!-- The body as the server can render it, in the editor's own classes and
@@ -596,6 +714,42 @@
     <span aria-hidden="true">·</span>
     <span>{stats.minutes} min read</span>
   </p>
+
+  {#if mounted && documentNode}
+    <EditorNavigation {editor} doc={documentNode} onAlternative={editAlternative} />
+  {/if}
+  <Collapsible.Root bind:open={checksOpen} class="mt-4 rounded-card border border-border bg-background-alt p-4">
+    <Collapsible.Trigger
+      class="inline-flex h-10 items-center gap-2 rounded-input px-3 text-sm font-medium text-foreground hover:bg-muted"
+    >
+      <Icon name="check" size={16} /> Check accessibility ({issues.length})
+    </Collapsible.Trigger>
+    <Collapsible.Content class="mt-3 space-y-3 text-sm">
+      <p role="status">
+        {issues.length
+          ? `${issues.length} items to review.`
+          : "No issues found by these checks. Manual review is still needed."}
+      </p>
+      <p class="text-muted-foreground">
+        Describe informative images; save an empty alternative only for decorative images. Use descriptive links,
+        ordered headings, and table headers. These checks cannot judge descriptions, reading order, or every WCAG
+        requirement.
+      </p>
+      <ul class="space-y-3">
+        {#each issues as issue (`${issue.code}-${issue.pos}`)}
+          <li class="flex flex-wrap items-center justify-between gap-2">
+            <span class="min-w-0 flex-1 text-muted-foreground">{issue.message}</span>
+            <Button variant="outline" size="sm" onclick={() => reviewIssue(issue)}>Review {issue.label}</Button>
+          </li>
+        {/each}
+      </ul>
+      <p class="text-muted-foreground">
+        Keyboard: Tab moves between controls; arrow keys navigate the formatting toolbar. Use Image settings for
+        resizing without dragging. Standard undo and redo shortcuts work in the body.
+      </p>
+    </Collapsible.Content>
+  </Collapsible.Root>
+  <AccessibilityGuidance />
 </div>
 
 <Dialog.Root bind:open={codeOpen}>
@@ -700,7 +854,7 @@
       <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Describe this image</Dialog.Title>
       <Dialog.Description class="mt-1 text-sm text-muted-foreground">
         Read aloud to people using a screen reader, and shown if the image fails to load. Leave it empty if the image is
-        purely decorative.
+        purely decorative. You can also resize the image without dragging.
       </Dialog.Description>
       <form onsubmit={applyAlt} class="mt-4 flex flex-col gap-4">
         <div class="flex flex-col gap-1.5">
@@ -715,6 +869,25 @@
             class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-hidden placeholder:text-muted-foreground focus:border-foreground"
           />
         </div>
+        <div class="flex flex-col gap-1.5">
+          <Label.Root for="image-width" class="text-sm leading-none font-medium">Image width (%)</Label.Root>
+          <input
+            id="image-width"
+            type="number"
+            min="10"
+            max="100"
+            step="1"
+            required
+            bind:value={imageWidth}
+            aria-invalid={!!imageSettingsError}
+            aria-describedby="image-width-hint"
+            class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-hidden focus:border-foreground"
+          />
+          <p id="image-width-hint" class="text-xs text-muted-foreground">
+            10–100 percent of the article width. The aspect ratio stays unchanged.
+          </p>
+        </div>
+        {#if imageSettingsError}<p role="alert" class="text-sm text-destructive">{imageSettingsError}</p>{/if}
         <div class="flex justify-end gap-2">
           <Dialog.Close
             class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
@@ -727,6 +900,61 @@
           >
             Save
           </button>
+        </div>
+      </form>
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
+
+<Dialog.Root bind:open={tableOpen}>
+  <Dialog.Portal>
+    <Dialog.Overlay
+      class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
+    />
+    <Dialog.Content
+      class="fixed top-1/2 left-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[420px]"
+    >
+      <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Table accessibility</Dialog.Title>
+      <Dialog.Description class="mt-1 text-sm text-muted-foreground"
+        >Describe the table and identify its data headers. Review complex relationships manually.</Dialog.Description
+      >
+      <form onsubmit={applyTableSettings} class="mt-4 flex flex-col gap-4">
+        <Label.Root for="table-caption" class="text-sm leading-none font-medium">Table caption</Label.Root>
+        <input
+          id="table-caption"
+          bind:value={tableCaption}
+          class="rounded-input border border-input bg-background px-3.5 py-2.5 text-sm shadow-btn outline-hidden focus:border-foreground"
+        />
+        {#each ["row", "column"] as axis (axis)}
+          <div class="flex items-center space-x-3">
+            <Checkbox.Root
+              id={`table-header-${axis}`}
+              checked={axis === "row" ? tableHeaderRow : tableHeaderColumn}
+              onCheckedChange={(checked) => {
+                if (axis === "row") tableHeaderRow = checked;
+                else tableHeaderColumn = checked;
+              }}
+              class="peer inline-flex size-[25px] items-center justify-center rounded-md border border-muted bg-foreground transition-all duration-150 ease-in-out active:scale-[0.98] data-[state=unchecked]:border-border-input data-[state=unchecked]:bg-background data-[state=unchecked]:hover:border-dark-40"
+            >
+              {#snippet children({ checked })}{#if checked}<Icon
+                    name="check"
+                    size={15}
+                    class="text-background"
+                  />{/if}{/snippet}
+            </Checkbox.Root>
+            <Label.Root
+              for={`table-header-${axis}`}
+              class="text-sm leading-none font-medium peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >Header {axis}</Label.Root
+            >
+          </div>
+        {/each}
+        <div class="flex justify-end gap-2">
+          <Dialog.Close
+            class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
+            >Cancel</Dialog.Close
+          >
+          <Button type="submit" variant="solid">Save</Button>
         </div>
       </form>
     </Dialog.Content>
