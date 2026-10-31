@@ -167,9 +167,14 @@ export const RENDERABLE_POST_TAGS: ReadonlySet<string> = new Set(
   [...ALLOWED_TAGS, ...MATHML_TAGS].map((t) => t.toLowerCase()),
 );
 
+// Content references must not collide with, or label, controls in the app shell.
+const CONTENT_ID_PREFIX = "omicron-content-";
+const contentId = (id: string) => (id.startsWith(CONTENT_ID_PREFIX) ? id : `${CONTENT_ID_PREFIX}${id}`);
+
 const CONFIG: sanitizeHtml.IOptions = {
   allowedTags: [...ALLOWED_TAGS, ...MATHML_TAGS],
   allowedAttributes: {
+    "*": ["lang", "dir", "id", "aria-label", "aria-labelledby", "aria-describedby"],
     // `rel`/`target` are re-set by transformTags below; they must be allowed
     // here or the attribute filter would strip them straight back off.
     a: ["href", "name", "rel", "target"],
@@ -190,8 +195,8 @@ const CONFIG: sanitizeHtml.IOptions = {
     pre: ["class", "data-title"],
     span: ["class"],
     // Table cell alignment/spanning is structural, not stylistic.
-    th: ["colspan", "rowspan", "scope"],
-    td: ["colspan", "rowspan"],
+    th: ["colspan", "rowspan", "scope", "headers"],
+    td: ["colspan", "rowspan", "headers"],
     col: ["span"],
     colgroup: ["span"],
     ...Object.fromEntries(MATHML_TAGS.map((tag) => [tag, MATHML_ATTRIBUTES])),
@@ -219,6 +224,18 @@ const CONFIG: sanitizeHtml.IOptions = {
   // Harden every surviving link against tab-nabbing and referrer leakage, and
   // mark it nofollow. Applied uniformly regardless of the source's own rel.
   transformTags: {
+    "*": (tagName, attribs) => {
+      for (const name of ["id", "name"]) {
+        if (attribs[name]) attribs[name] = contentId(attribs[name]);
+      }
+      for (const name of ["headers", "aria-labelledby", "aria-describedby"]) {
+        if (attribs[name]) attribs[name] = attribs[name].trim().split(/\s+/).map(contentId).join(" ");
+      }
+      if (attribs.href?.startsWith("#") && attribs.href.length > 1) {
+        attribs.href = `#${contentId(attribs.href.slice(1))}`;
+      }
+      return { tagName, attribs };
+    },
     a: sanitizeHtml.simpleTransform("a", {
       rel: "noopener noreferrer nofollow",
       target: "_blank",
