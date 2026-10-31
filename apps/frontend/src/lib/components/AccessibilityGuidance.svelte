@@ -40,7 +40,8 @@
       </li>
       <li>
         <strong class="text-foreground">Motion:</strong> prefer still images. Avoid flashing content and animations that readers
-        cannot pause. An image description does not replace a pause control.
+        cannot pause. An image description does not replace a pause control. Use Image display in the navigation to hide images
+        while reading or editing. It follows reduced-motion preferences by default and never changes the saved article.
       </li>
       <li>
         <strong class="text-foreground">Final review:</strong> use Preview where available, check links with the keyboard,

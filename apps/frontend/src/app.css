@@ -122,6 +122,19 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* Opacity leaves image alternatives in the accessibility tree and preserves layout. */
+:root[data-image-display="hide"] img {
+  opacity: 0 !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-image-display="show"]) img {
+    opacity: 0 !important;
+  }
+}
+.hidden-image-description {
+  @apply block rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground;
+}
+
 /* Keep focus visible even where a component removes the browser outline. */
 :where(a, button, input, textarea, select, summary, [tabindex], [contenteditable="true"]):focus-visible {
   outline: 2px solid var(--color-foreground) !important;

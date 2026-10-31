@@ -3,6 +3,7 @@
   import "../app.css";
   import { PUBLIC_APP_NAME } from "$app/env/public";
   import { page } from "$app/state";
+  import { onMount } from "svelte";
   import { noPageScroll } from "#lib/actions/noPageScroll.js";
   import { canonicalOrigin } from "#lib/canonical.js";
   import Discover from "#lib/components/Discover.svelte";
@@ -16,6 +17,7 @@
   import ConfirmDialog from "#lib/components/ui/ConfirmDialog.svelte";
   import { absoluteBanner, postCardUrl, profileCardUrl } from "#lib/cover.js";
   import { excerpt } from "#lib/format.js";
+  import { imageDisplay } from "#lib/imageDisplay.svelte.js";
   import { rememberLocale } from "#lib/locale.svelte.js";
   import { blogPostingLd, breadcrumbLd, profilePageLd, serializeJsonLd, webSiteLd } from "#lib/seo.js";
   import { rememberTimeZone } from "#lib/timezone.svelte.js";
@@ -23,6 +25,7 @@
   import type { LayoutData } from "./$types";
 
   let { data, children }: { data: LayoutData; children: import("svelte").Snippet } = $props();
+  onMount(() => imageDisplay.start(document.body));
 
   // A render-time throw (which SvelteKit's load-error handling misses) otherwise
   // unmounts the whole app to an empty <body>; the boundary below contains it.

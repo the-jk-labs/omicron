@@ -8,6 +8,7 @@
   import logo from "#lib/assets/omicron.svg";
   import { authClient } from "#lib/auth-client.js";
   import Icon from "#lib/components/Icon.svelte";
+  import ImageDisplay from "#lib/components/ImageDisplay.svelte";
   import {
     notificationAction,
     notificationHref,
@@ -132,6 +133,7 @@
     {/if}
 
     <div class="flex shrink-0 items-center gap-1.5">
+      <ImageDisplay />
       {#if !minimal}
         <!-- Icon-only search fallback (below sm) — the pill is hidden here -->
         <Button
