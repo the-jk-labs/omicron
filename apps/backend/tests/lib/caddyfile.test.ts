@@ -73,8 +73,10 @@ test("the challenge screen's stylesheet is wired end to end", () => {
   expect(CADDYFILE).toContain("rewrite * /anubis-theme.css");
 
   const compose = readFileSync(new URL("../../../../docker-compose.yml", import.meta.url), "utf8");
+  expect(compose).toContain("image: ghcr.io/techarohq/anubis:v1.28.2");
   expect(compose).toContain("./anubis-theme.css:/srv/anubis-theme.css:ro");
 
   const css = readFileSync(new URL("../../../../anubis-theme.css", import.meta.url), "utf8");
   expect(css.length, "anubis-theme.css is shipped but empty").toBeGreaterThan(0);
+  expect(css).toContain("Upgrade note (written against Anubis v1.28.2)");
 });

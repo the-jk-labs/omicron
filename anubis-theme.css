@@ -34,7 +34,7 @@
  * read, so a reader who forced dark on a light machine gets a light challenge
  * screen. Unfixable from here, and mild.
  *
- * Upgrade note (written against Anubis v1.26.2): if a later Anubis moves its
+ * Upgrade note (written against Anubis v1.28.2): if a later Anubis moves its
  * stylesheet URL the Caddy handler stops matching, Anubis serves its own CSS
  * again and the screen goes back to looking upstream — visibly plain, never
  * broken. If it keeps the URL but renames elements, the generic element rules
