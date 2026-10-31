@@ -86,12 +86,9 @@
 	@anubis_boot path /.within.website/x/cmd/anubis/static/js/main.mjs /.within.website/x/cmd/anubis/static/locales/*
 	header @anubis_boot >Cache-Control "no-cache"
 
-	# Anubis's stylesheet, answered with Omicron's own — see anubis-theme.css for
-	# what it changes, what it deliberately leaves alone, and why this is the only
-	# seam available. Anubis renders the challenge screen itself and never forwards
-	# those requests, so the app cannot style that page; Caddy sits in front of
-	# Anubis, so answering the stylesheet's path here wins and the pinned upstream
-	# image stays untouched.
+	# Anubis renders the challenge screen itself and never forwards these requests,
+	# so the frontend cannot brand it. Caddy serves the local stylesheet here and
+	# the local mascot artwork below, keeping the pinned Anubis image untouched.
 	#
 	# Both of Anubis's stylesheet URLs are matched: the templates link the minified
 	# one, and the unminified path exists too.
@@ -109,6 +106,17 @@
 	handle @anubis_theme {
 		root * /srv
 		rewrite * /anubis-theme.css
+		header Cache-Control "no-cache"
+		file_server
+	}
+
+	# Replace only Anubis's three mascot states with original Omicron artwork.
+	# The query-string cache buster is ignored by path matching; no Anubis image is
+	# modified. Recheck these upstream paths when upgrading the pinned Anubis image.
+	@anubis_mascot path /.within.website/x/cmd/anubis/static/img/pensive.webp /.within.website/x/cmd/anubis/static/img/happy.webp /.within.website/x/cmd/anubis/static/img/reject.webp
+	handle @anubis_mascot {
+		uri strip_prefix /.within.website/x/cmd/anubis/static/img
+		root * /srv/anubis-images
 		header Cache-Control "no-cache"
 		file_server
 	}
