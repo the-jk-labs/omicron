@@ -3,6 +3,7 @@
   import { Tabs, Toolbar } from "bits-ui";
   import { fitPre } from "#lib/actions/fitPre.js";
   import { endpoints, ApiError } from "#lib/api/index.js";
+  import AccessibilityGuidance from "#lib/components/AccessibilityGuidance.svelte";
   import EmojiTrigger from "#lib/components/EmojiTrigger.svelte";
   import Icon, { type IconName } from "#lib/components/Icon.svelte";
   import { proxyImageHtml } from "#lib/imageProxy.js";
@@ -173,6 +174,7 @@
 
   <Tabs.Content value="write" class="flex flex-col gap-2 focus-visible:outline-hidden">
     <Toolbar.Root
+      aria-label="Profile formatting"
       class="no-scrollbar flex w-full items-center gap-0.5 overflow-x-auto rounded-10px border border-border bg-background-alt px-2 py-1 shadow-mini"
     >
       {#each tools as tool (tool.label)}
@@ -188,6 +190,7 @@
     </Toolbar.Root>
 
     <textarea
+      aria-label="Profile content (Markdown)"
       bind:this={textarea}
       bind:value
       rows={14}
@@ -203,11 +206,11 @@
     class="min-h-[220px] rounded-card border border-border bg-background-alt px-5 py-4 focus-visible:outline-hidden"
   >
     {#if previewLoading}
-      <p class="flex items-center gap-2 text-sm text-muted-foreground">
+      <p role="status" class="flex items-center gap-2 text-sm text-muted-foreground">
         <Icon name="spinner" size={15} class="animate-spin" /> Rendering…
       </p>
     {:else if previewError}
-      <p class="text-sm text-destructive">{previewError}</p>
+      <p role="alert" class="text-sm text-destructive">{previewError}</p>
     {:else if previewHtml}
       <!-- Rendered and sanitized server-side; see backend lib/markdown.ts. -->
       <div use:fitPre class="prose-omicron prose-compact min-w-0">{@html proxyImageHtml(previewHtml)}</div>
@@ -216,3 +219,5 @@
     {/if}
   </Tabs.Content>
 </Tabs.Root>
+
+<AccessibilityGuidance />

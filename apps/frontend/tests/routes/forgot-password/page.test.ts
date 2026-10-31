@@ -3,6 +3,12 @@ import { page } from "$app/state";
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, expect, test, vi } from "vitest";
 import ForgotPasswordPage from "../../../src/routes/forgot-password/+page.svelte";
+import { expectAccessible } from "../../accessibility";
+
+test("accessibility: password recovery", async () => {
+  render(ForgotPasswordPage);
+  await expectAccessible();
+});
 
 const requestPasswordReset = vi.hoisted(() =>
   vi.fn<(a: unknown) => Promise<{ error?: { message?: string } | null }>>(),

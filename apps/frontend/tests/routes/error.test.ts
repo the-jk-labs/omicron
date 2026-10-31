@@ -2,6 +2,12 @@
 import { render, screen } from "@testing-library/svelte";
 import { afterEach, expect, test, vi } from "vitest";
 import ErrorPage from "../../src/routes/+error.svelte";
+import { expectAccessible } from "../accessibility";
+
+test("accessibility: error page", async () => {
+  render(ErrorPage);
+  await expectAccessible();
+});
 
 const state = vi.hoisted(() => ({ status: 404, error: null as { message: string } | null }));
 vi.mock(

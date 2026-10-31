@@ -3,6 +3,7 @@ import { replaceState } from "$app/navigation";
 import { fireEvent, render, screen, within } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
 import AdminPage from "../../../src/routes/admin/+page.svelte";
+import { expectAccessible } from "../../accessibility";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 let api: ReturnType<typeof fakeFetch>;
@@ -16,6 +17,15 @@ function setup(user: { isAdmin: boolean; isModerator: boolean }, tab = "reports"
 // panels stay mounted, so queries are scoped to what's on screen.
 const pageTabs = () => within(screen.getAllByRole("tablist")[0]).getAllByRole("tab");
 const panel = () => within(screen.getAllByRole("tabpanel")[0]);
+
+test.for(["Reports", "Users", "Federation", "Email", "Security", "Discoverability", "Media", "Instance"])(
+  "accessibility: admin %s",
+  async (name) => {
+    setup({ isAdmin: true, isModerator: false });
+    await openTab(name);
+    await expectAccessible();
+  },
+);
 
 async function openTab(name: string) {
   const tab = screen.getByRole("tab", { name });

@@ -2,8 +2,9 @@
 import { render, screen } from "@testing-library/svelte";
 import { expect, test } from "vitest";
 import Page from "../../../../src/routes/oauth/authorize/+page.svelte";
+import { expectAccessible } from "../../../accessibility";
 
-test("consent clearly identifies the destination, account and narrow permission", () => {
+test("accessibility: consent identifies the destination, account and narrow permission", async () => {
   render(Page, {
     data: {
       consent: {
@@ -23,6 +24,7 @@ test("consent clearly identifies the destination, account and narrow permission"
   expect(screen.getByText(/cannot read your email/)).toBeVisible();
   expect(screen.getByRole("button", { name: "Deny" })).toHaveAttribute("value", "deny");
   expect(screen.getByRole("button", { name: "Allow identity verification" })).toHaveAttribute("value", "allow");
+  await expectAccessible();
 });
 
 test("full client consent shows approved permissions and renewable access without identity-only promises", () => {

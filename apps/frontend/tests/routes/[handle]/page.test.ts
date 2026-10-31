@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { Post, User } from "#lib/types.js";
 import ProfilePage from "../../../src/routes/[handle]/+page.svelte";
+import { expectAccessible } from "../../accessibility";
 import { apiError, fakeFetch } from "../../fakeFetch";
 import { post } from "../../fixtures";
 
@@ -77,6 +78,11 @@ function setup(d: ReturnType<typeof data>, routes: Parameters<typeof fakeFetch>[
 }
 
 const writeText = vi.fn<(s: string) => Promise<void>>();
+
+test("accessibility: profile", async () => {
+  setup(data());
+  await expectAccessible();
+});
 beforeEach(() => {
   writeText.mockResolvedValue(undefined);
   Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });

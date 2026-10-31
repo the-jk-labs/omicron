@@ -3,6 +3,7 @@ import { goto } from "$app/navigation";
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import SearchPage from "../../../src/routes/search/+page.svelte";
+import { expectAccessible } from "../../accessibility";
 import { post } from "../../fixtures";
 
 beforeEach(() => vi.useFakeTimers());
@@ -22,6 +23,12 @@ const selectedTab = () =>
     .getAllByRole("tab")
     .find((t) => t.getAttribute("aria-selected") === "true")
     ?.textContent?.trim();
+
+test("accessibility: search results and filters", async () => {
+  vi.useRealTimers();
+  setup("deno", { posts: [post()], tags: [tag("deno", 1)], people: [person] });
+  await expectAccessible();
+});
 
 test("with no query it shows the prompt and no results", () => {
   setup("");

@@ -3,7 +3,15 @@ import { fireEvent, render, screen } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
 import type { ReadingList } from "#lib/types.js";
 import ListsPage from "../../../src/routes/lists/+page.svelte";
+import { expectAccessible } from "../../accessibility";
 import { fakeFetch } from "../../fakeFetch";
+
+test("accessibility: reading lists and creation dialog", async () => {
+  render(ListsPage, { props: { data: { lists: [list("rl", "Read later", { isReadLater: true })] } as never } });
+  await expectAccessible();
+  await fireEvent.click(screen.getByRole("button", { name: /New list/ }));
+  await expectAccessible();
+});
 
 function list(id: string, title: string, o: Partial<ReadingList> = {}): ReadingList {
   return {

@@ -122,6 +122,26 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* Keep focus visible even where a component removes the browser outline. */
+:where(a, button, input, textarea, select, summary, [tabindex], [contenteditable="true"]):focus-visible {
+  outline: 2px solid var(--color-foreground) !important;
+  outline-offset: 3px;
+}
+:where(a, button, input, textarea, select, summary, [tabindex], [contenteditable="true"]) {
+  scroll-margin-block: 6rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Horizontally scrollable strips (e.g. the editor toolbar on phones) without a
    visible scrollbar. */
 .no-scrollbar {
@@ -675,6 +695,7 @@ html {
   @apply absolute bottom-2 left-2 z-10 rounded-input border border-background/40 bg-dark/75 px-2 py-1 text-xs font-semibold tracking-wide text-background uppercase opacity-0 transition-opacity;
 }
 .tiptap .img-resizer:hover .img-alt-button,
+.tiptap .img-resizer:focus-within .img-alt-button,
 .tiptap .img-resizer.is-selected .img-alt-button,
 .tiptap .img-alt-button[data-missing="true"] {
   @apply opacity-100;

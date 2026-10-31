@@ -6,6 +6,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { reading } from "#lib/prefs.svelte.js";
 import type { Page, Post } from "#lib/types.js";
 import HomePage from "../../src/routes/+page.svelte";
+import { expectAccessible } from "../accessibility";
 import { apiError, fakeFetch } from "../fakeFetch";
 import { post } from "../fixtures";
 
@@ -43,6 +44,11 @@ async function openTab(name: string) {
 }
 const feedCalls = () =>
   api.calls.map((c) => c.path).filter((p) => p.startsWith("/api/posts") || p.startsWith("/api/feed"));
+
+test.for([true, false])("accessibility: home (signed in: %s)", async (signedIn) => {
+  setup(signedIn, page([post()]));
+  await expectAccessible();
+});
 
 test("a guest sees the hero and the preloaded Global feed", () => {
   setup(false, page([post()]));

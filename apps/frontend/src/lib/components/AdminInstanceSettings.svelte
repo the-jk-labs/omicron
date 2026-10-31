@@ -3,6 +3,7 @@
   import { Dialog, Label, Switch } from "bits-ui";
   import { untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
+  import AccessibilityGuidance from "#lib/components/AccessibilityGuidance.svelte";
   import Icon from "#lib/components/Icon.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
@@ -275,6 +276,8 @@
       <input
         bind:this={bannerFileInput}
         type="file"
+        hidden
+        aria-label="Upload instance banner"
         accept="image/png,image/jpeg,image/webp,image/gif"
         onchange={onBannerFile}
         class="hidden"
@@ -306,6 +309,8 @@
       <textarea id="admin-privacy" bind:value={privacyPolicy} disabled={loading} maxlength={20_000} class={textarea}
       ></textarea>
     </div>
+
+    <AccessibilityGuidance />
 
     <div class="grid gap-4 sm:grid-cols-2">
       <div class="flex flex-col gap-1.5">

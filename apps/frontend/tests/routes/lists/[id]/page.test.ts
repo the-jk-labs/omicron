@@ -6,8 +6,14 @@ import { expect, test, vi } from "vitest";
 import { confirmRequest } from "#lib/components/ui/confirm.js";
 import type { Post, ReadingList } from "#lib/types.js";
 import ListPage from "../../../../src/routes/lists/[id]/+page.svelte";
+import { expectAccessible } from "../../../accessibility";
 import { apiError, fakeFetch } from "../../../fakeFetch";
 import { post } from "../../../fixtures";
+
+test("accessibility: a reading list", async () => {
+  setup({ isOwner: true });
+  await expectAccessible();
+});
 
 const LIST_ID = "1f2e3d4c-0000-1111-2222-333344445555";
 function list(o: Partial<ReadingList> = {}): ReadingList {

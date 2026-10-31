@@ -222,7 +222,7 @@
           </svg>
 
           <!-- pointer overlay: one hit-zone per day -->
-          <div class="absolute inset-0 flex" role="img" aria-label="Daily views">
+          <div class="absolute inset-0 flex" role="group" aria-label="Daily views">
             {#each points as p, i (p.day)}
               <button
                 type="button"

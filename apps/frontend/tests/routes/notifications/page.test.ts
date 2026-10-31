@@ -4,7 +4,13 @@ import { afterEach, expect, test, vi } from "vitest";
 import { notifications } from "#lib/notifications.svelte.js";
 import type { Notification } from "#lib/types.js";
 import NotificationsPage from "../../../src/routes/notifications/+page.svelte";
+import { expectAccessible } from "../../accessibility";
 import { fakeFetch } from "../../fakeFetch";
+
+test("accessibility: notifications", async () => {
+  setup([notif()]);
+  await expectAccessible();
+});
 
 afterEach(() => {
   notifications.count = 0;

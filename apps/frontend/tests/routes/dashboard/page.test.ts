@@ -4,6 +4,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { timeZone } from "#lib/timezone.svelte.js";
 import type { DashboardSummary, PostStat } from "#lib/types.js";
 import DashboardPage from "../../../src/routes/dashboard/+page.svelte";
+import { expectAccessible } from "../../accessibility";
 
 vi.mock(import("#lib/timezone.svelte.js"), async (importOriginal) => ({
   ...(await importOriginal()),
@@ -49,6 +50,11 @@ function summary(o: Partial<DashboardSummary> = {}): DashboardSummary {
 const setup = (s: DashboardSummary) =>
   render(DashboardPage, { props: { data: { summary: s, username: "ada" } as never } });
 const card = (label: string) => screen.getAllByText(label, { selector: "span" })[0].closest("div")!.parentElement!;
+
+test("accessibility: writer statistics", async () => {
+  setup(summary());
+  await expectAccessible();
+});
 
 test("an author with no posts is told stats appear after publishing", () => {
   setup(summary({ posts: [] }));

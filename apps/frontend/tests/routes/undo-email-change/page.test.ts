@@ -4,7 +4,13 @@ import { page } from "$app/state";
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { afterEach, expect, test, vi } from "vitest";
 import UndoPage from "../../../src/routes/undo-email-change/+page.svelte";
+import { expectAccessible } from "../../accessibility";
 import { apiError, fakeFetch } from "../../fakeFetch";
+
+test("accessibility: email-change recovery", async () => {
+  open("tok");
+  await expectAccessible();
+});
 
 function open(token: string | null, routes: Parameters<typeof fakeFetch>[0] = {}) {
   page.url = new URL(`http://localhost/undo-email-change${token === null ? "" : `?token=${token}`}`);

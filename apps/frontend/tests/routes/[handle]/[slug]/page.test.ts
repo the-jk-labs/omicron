@@ -6,6 +6,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { confirmRequest } from "#lib/components/ui/confirm.js";
 import type { Post, User } from "#lib/types.js";
 import PostPage from "../../../../src/routes/[handle]/[slug]/+page.svelte";
+import { expectAccessible } from "../../../accessibility";
 import { apiError, fakeFetch } from "../../../fakeFetch";
 import { post } from "../../../fixtures";
 
@@ -69,6 +70,13 @@ async function openMenu() {
   await screen.findByRole("menu");
 }
 const menuItems = () => screen.queryAllByRole("menuitem").map((i) => i.textContent?.trim());
+
+test("accessibility: article and its actions menu", async () => {
+  setup();
+  await expectAccessible();
+  await openMenu();
+  await expectAccessible();
+});
 
 async function answerConfirm(result: { ok: boolean; notify?: boolean }) {
   await waitFor(() => expect(get(confirmRequest)).not.toBe(null));
