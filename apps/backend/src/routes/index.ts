@@ -2,6 +2,7 @@
 import { Hono } from "hono";
 import { adminRoutes } from "@/routes/admin.ts";
 import { clientRoutes } from "@/routes/client.ts";
+import { contentRoutes } from "@/routes/content.ts";
 import { dashboardRoutes } from "@/routes/dashboard.ts";
 import { emailChangeRoutes } from "@/routes/emailChange.ts";
 import { feedRoutes } from "@/routes/feed.ts";
@@ -28,6 +29,7 @@ import { webhookRoutes } from "@/routes/webhooks.ts";
 export const apiRoutes = new Hono<AppEnv>();
 
 apiRoutes.route("/client", clientRoutes);
+apiRoutes.route("/content", contentRoutes);
 apiRoutes.route("/me", meRoutes);
 apiRoutes.route("/posts", postRoutes);
 apiRoutes.route("/og", ogRoutes);

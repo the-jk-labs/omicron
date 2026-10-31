@@ -9,6 +9,7 @@
   import AvatarCropper from "#lib/components/AvatarCropper.svelte";
   import ChangeEmailDialog from "#lib/components/ChangeEmailDialog.svelte";
   import ConnectionsManager from "#lib/components/ConnectionsManager.svelte";
+  import ContentPortability from "#lib/components/ContentPortability.svelte";
   import CustomSectionEditor from "#lib/components/CustomSectionEditor.svelte";
   import EmojiTrigger from "#lib/components/EmojiTrigger.svelte";
   import FeedLanguageFilter from "#lib/components/FeedLanguageFilter.svelte";
@@ -45,6 +46,7 @@
     { value: "privacy", label: "Privacy", icon: "eye" },
     { value: "account", label: "Account", icon: "lock" },
     { value: "integrations", label: "Integrations", icon: "plug" },
+    { value: "content", label: "Content", icon: "posts" },
   ] as const satisfies readonly { value: string; label: string; icon: IconName }[];
   type Tab = (typeof TABS)[number]["value"];
 
@@ -784,6 +786,10 @@
         </div>
       </section>
     </div>
+  </Tabs.Content>
+
+  <Tabs.Content value="content" class="mt-6">
+    <ContentPortability />
   </Tabs.Content>
 
   <Tabs.Content value="integrations" class="mt-6">

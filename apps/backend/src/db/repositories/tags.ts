@@ -19,7 +19,7 @@ export async function resolveAlias(slug: string): Promise<string> {
   return target?.slug ?? slug;
 }
 
-async function resolveSlugs(slugs: string[]): Promise<string[]> {
+export async function resolveSlugs(slugs: string[]): Promise<string[]> {
   if (slugs.length === 0) return slugs;
   const aliases = await db.select().from(tagAliases).where(inArray(tagAliases.aliasSlug, slugs));
   if (aliases.length === 0) return slugs;

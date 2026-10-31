@@ -13,6 +13,7 @@ RUN pnpm run build
 FROM node:24.22.2-alpine3.24
 WORKDIR /app
 ENV NODE_ENV=production
+ENV BODY_SIZE_LIMIT=50m
 COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./

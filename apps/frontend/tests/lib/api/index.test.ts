@@ -24,6 +24,22 @@ const rows: Row[] = [
   ],
   ["testSetupEmail", (e) => e.testSetupEmail({ to: "a@b.c" }), "POST", "/api/setup/test-email", { to: "a@b.c" }],
   ["me", (e) => e.me(), "GET", "/api/me"],
+  ["previewContent", (e) => e.previewContent(bytes as never), "POST", "/api/content/preview", "img"],
+  [
+    "importContent",
+    (e) => e.importContent(bytes as never, false),
+    "POST",
+    "/api/content/import?preservePublished=false",
+    "img",
+  ],
+  [
+    "importContent(published)",
+    (e) => e.importContent(bytes as never, true),
+    "POST",
+    "/api/content/import?preservePublished=true",
+    "img",
+  ],
+  ["exportContent", (e) => e.exportContent(), "GET", "/api/content/export"],
   ["dashboard", (e) => e.dashboard(), "GET", "/api/dashboard"],
   ["dashboard(days)", (e) => e.dashboard(7), "GET", "/api/dashboard?days=7"],
   // admin
