@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import { ReadableStream } from "node:stream/web";
 import { beforeEach, expect, test, vi } from "vitest";
 import { DELETE, GET, OPTIONS, PATCH, POST, PUT } from "../../../../src/routes/api/[...path]/+server";
 
@@ -109,6 +110,45 @@ test("the response keeps its status, body, every Set-Cookie and only allowlisted
 test("an encoded slash inside a path segment reaches the backend still encoded", async () => {
   await GET(proxyEvent("https://blog.example/api/tags/a%2Fb/posts"));
   expect(seen!.url).toBe("http://backend.test:8000/api/tags/a%2Fb/posts");
+});
+
+test.for(["preview", "import"])("content %s accepts more than the ordinary 5 MB upload cap", async (operation) => {
+  const bytes = new Uint8Array(5 * 1024 * 1024 + 1);
+  const response = await POST(
+    proxyEvent(`https://blog.example/api/content/${operation}`, { method: "POST", body: bytes }),
+  );
+  expect(response.status).toBe(200);
+  expect((seen!.init.body as ArrayBuffer).byteLength).toBe(bytes.length);
+});
+
+test("ordinary routes retain their 5 MB limit", async () => {
+  const response = await POST(
+    proxyEvent("https://blog.example/api/uploads", { method: "POST", body: new Uint8Array(5 * 1024 * 1024 + 1) }),
+  );
+  expect(response.status).toBe(413);
+  expect(seen).toBeNull();
+});
+
+test("content archives cannot bypass the 50 MB cap with a declared or streamed body", async () => {
+  const declared = await POST(
+    proxyEvent("https://blog.example/api/content/preview", {
+      method: "POST",
+      body: "tiny",
+      headers: { "content-length": String(50 * 1024 * 1024 + 1) },
+    }),
+  );
+  expect(declared.status).toBe(413);
+  const body = new ReadableStream({
+    start(controller) {
+      controller.enqueue(new Uint8Array(50 * 1024 * 1024 + 1));
+      controller.close();
+    },
+  });
+  const streamed = await POST(
+    proxyEvent("https://blog.example/api/content/import", { method: "POST", body, duplex: "half" } as RequestInit),
+  );
+  expect(streamed.status).toBe(413);
+  expect(seen).toBeNull();
 });
 
 test("browser-client preflights and CORS authorization feedback survive the development proxy", async () => {

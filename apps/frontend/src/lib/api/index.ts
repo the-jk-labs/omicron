@@ -11,6 +11,8 @@ import type {
   AdminUserDetail,
   BlockedDomain,
   Comment,
+  ContentImportPreview,
+  ContentImportResult,
   CoverCredit,
   DashboardSummary,
   DeletedUser,
@@ -48,7 +50,7 @@ import type {
   WebhookToken,
 } from "#lib/types.js";
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { makeApi } from "./client";
+import { ApiError, makeApi } from "./client";
 
 type LikeState = { likeCount: number; liked: boolean };
 type RecommendState = { recommendCount: number; recommended: boolean };
@@ -93,6 +95,23 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // The signed-in user's rich self-view (profile tags + links). Authentication
     // itself is Better Auth ($lib/auth-client); this is the app profile payload.
     me: () => api.get<{ user: Me | null }>("/me"),
+
+    previewContent: (file: File) =>
+      api.postRaw<ContentImportPreview>("/content/preview", file, "application/octet-stream"),
+    importContent: (file: File, preservePublished: boolean) =>
+      api.postRaw<ContentImportResult>(
+        `/content/import?preservePublished=${preservePublished}`,
+        file,
+        "application/octet-stream",
+      ),
+    exportContent: async () => {
+      const response = await (fetchFn ?? globalThis.fetch)("/api/content/export");
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new ApiError(response.status, body?.error ?? `Export failed (${response.status}).`);
+      }
+      return response.blob();
+    },
 
     // writer dashboard (own analytics) + moderator instance settings
     dashboard: (days?: number) => api.get<DashboardSummary>(`/dashboard${days ? `?days=${days}` : ""}`),

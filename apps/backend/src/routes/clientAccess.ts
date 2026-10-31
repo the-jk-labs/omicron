@@ -175,6 +175,9 @@ allow(
 );
 allow(null, "GET", "/instance/tls-check", "/site/script.js");
 allow(null, "POST", "/setup", "/setup/test-email", "/email-change/undo", "/site/api/send", "/webhooks/content");
+// Bulk content transfer requires a first-party session, not a delegated grant.
+allow(null, "GET", "/content/export");
+allow(null, "POST", "/content/preview", "/content/import");
 
 export const clientOperations: readonly Access[] = operations;
 

@@ -45,6 +45,8 @@ instance in one command and own your words.
 - **Self-hostable** — Docker-first, one command, auto-migrating, seamless
   upgrades.
 - **Real writing tools** — a Tiptap editor with full Markdown support.
+- **Portable content** — export posts, drafts, and local images from Settings →
+  Content; import Omicron, Medium, Substack, WordPress WXR, or RSS exports.
 - **Open client API** — build independent clients with scoped OAuth authorization
   and the same reading, writing, and social APIs as the official apps.
 

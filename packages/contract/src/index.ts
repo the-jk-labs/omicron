@@ -135,6 +135,57 @@ export type CoverCredit = z.infer<typeof CoverCredit>;
 export const OwnPostStatus = z.enum(["draft", "scheduled", "published"]);
 export type OwnPostStatus = z.infer<typeof OwnPostStatus>;
 
+/** One post in a versioned content archive; image paths are relative to the manifest. */
+export const ContentArchivePost = z.object({
+  key: z.string(),
+  title: z.nullable(z.string()),
+  contentHtml: z.string(),
+  status: OwnPostStatus,
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  tags: z.array(z.string()),
+  language: z.nullable(z.string()),
+  summary: z.nullable(z.string()),
+  coverUrl: z.nullable(z.string()),
+  coverCredit: z.nullable(CoverCredit),
+  aiAssisted: z.boolean(),
+  protected: z.boolean(),
+});
+export type ContentArchivePost = z.infer<typeof ContentArchivePost>;
+
+/** Versioned ZIP manifest; no credentials or social data. */
+export const ContentArchive = z.object({
+  format: z.literal("omicron"),
+  version: z.literal(1),
+  exportedAt: z.string(),
+  posts: z.array(ContentArchivePost),
+});
+export type ContentArchive = z.infer<typeof ContentArchive>;
+
+export const ContentImportPreview = z.object({
+  format: z.enum(["omicron", "medium", "substack", "wordpress", "rss"]),
+  items: z.array(
+    z.object({
+      key: z.string(),
+      title: z.string(),
+      status: OwnPostStatus,
+      createdAt: z.string(),
+      duplicate: z.boolean(),
+      warnings: z.array(z.string()),
+    }),
+  ),
+  imageCount: z.number(),
+  warnings: z.array(z.string()),
+});
+export type ContentImportPreview = z.infer<typeof ContentImportPreview>;
+
+export const ContentImportResult = z.object({
+  imported: z.number(),
+  skipped: z.number(),
+  failed: z.array(z.object({ title: z.string(), error: z.string() })),
+});
+export type ContentImportResult = z.infer<typeof ContentImportResult>;
+
 /** Who recommended a feed post, for its "X recommended this" banner. Shaped like `PostAuthor`. */
 export const RecommendedBy = z.extend(RelationActor, { recommendedAt: z.string() });
 export type RecommendedBy = z.infer<typeof RecommendedBy>;

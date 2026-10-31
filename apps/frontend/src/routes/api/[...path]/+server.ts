@@ -9,6 +9,35 @@ import type { RequestHandler } from "@sveltejs/kit";
 
 const BACKEND = INTERNAL_API_URL ?? "http://localhost:8000";
 
+async function readBody(request: Request, max: number): Promise<Uint8Array<ArrayBuffer> | null> {
+  if (Number(request.headers.get("content-length")) > max) return null;
+  if (!request.body) return new Uint8Array();
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > max) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return bytes;
+}
+
 const proxy: RequestHandler = async ({ request, url, params, getClientAddress }) => {
   // TLS approval is for Caddy's direct backend connection, not the public proxy.
   if (/^instance\/tls-check(?:\/|$)/.test(params.path ?? "")) {
@@ -48,7 +77,11 @@ const proxy: RequestHandler = async ({ request, url, params, getClientAddress })
   if (!["GET", "HEAD"].includes(request.method)) {
     // Forward the body as raw bytes so binary uploads (e.g. avatar images) pass
     // through untouched; JSON bodies are equally preserved.
-    init.body = await request.arrayBuffer();
+    const archive = request.method === "POST" && /^content\/(?:preview|import)\/?$/.test(params.path ?? "");
+    const max = (archive ? 50 : 5) * 1024 * 1024;
+    const bytes = await readBody(request, max);
+    if (!bytes) return Response.json({ error: `Request body exceeds ${archive ? 50 : 5} MB.` }, { status: 413 });
+    init.body = bytes.buffer;
   }
 
   const res = await fetch(target, init);
