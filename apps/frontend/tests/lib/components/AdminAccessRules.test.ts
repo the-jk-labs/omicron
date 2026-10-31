@@ -76,7 +76,7 @@ test("adds a temporary rule from the dialog, then returns to the updated list", 
     reason: "Suspicious traffic",
     expiresInHours: 24,
   });
-  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   expect(screen.getByText(rule.network)).toBeInTheDocument();
   expect(screen.getByText("1 active")).toBeInTheDocument();
 });

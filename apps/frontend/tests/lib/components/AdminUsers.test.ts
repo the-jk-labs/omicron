@@ -291,7 +291,7 @@ test("deleting needs the typed username and a password, then moves the account t
     notify: false,
   });
   expect(screen.getByText("1 account total")).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Delete this account" })).toBe(null);
+  await waitFor(() => expect(screen.queryByRole("button", { name: "Delete this account" })).toBe(null));
 });
 
 test("a refused delete keeps the dialog open with the reason", async () => {
@@ -346,6 +346,7 @@ test("removing a moderator role and a failed role change", async () => {
   await fireEvent.input(screen.getByLabelText("Your password"), { target: { value: "pw" } });
   await fireEvent.click(screen.getByRole("button", { name: "Remove moderator" }));
   await waitFor(() => expect(screen.queryByText("Moderator")).toBe(null));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBe(null));
   expect(calls.find((c) => c.path.includes("u-bob/moderator-role"))?.body).toMatchObject({ makeModerator: false });
 
   await openMenu("ada", "Make moderator…");

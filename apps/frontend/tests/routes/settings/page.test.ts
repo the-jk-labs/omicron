@@ -348,7 +348,7 @@ test("changing the password signs out other sessions and confirms", async () => 
     newPassword: GOOD,
     revokeOtherSessions: true,
   });
-  expect(screen.queryByRole("dialog")).toBe(null);
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBe(null));
 });
 
 test.for([

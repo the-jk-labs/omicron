@@ -15,7 +15,7 @@ function setup(value = "", routes: Parameters<typeof fakeFetch>[0] = {}, maxLeng
   return render(CustomSectionEditor, { props: { value, maxLength } });
 }
 
-const area = () => screen.getByRole("textbox") as HTMLTextAreaElement;
+const area = () => screen.getByRole<HTMLTextAreaElement>("textbox");
 async function select(start: number, end = start) {
   area().focus();
   area().setSelectionRange(start, end);
