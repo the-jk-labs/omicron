@@ -719,3 +719,100 @@ test("native clipboard rich-caption review at a cell target can cancel, accept a
   await expect(cell).toHaveText("alpha");
   await expect(body.getByRole("table", { name: "Destination table", exact: true })).toBeVisible();
 });
+
+for (const kind of ["paste", "drop"] as const) {
+  test(`native ${kind} remaps colliding description IDs without changing either image's association`, async ({
+    page,
+  }) => {
+    await signedIn(page);
+    await ready(page, composerPath);
+    const body = page.getByRole("textbox", { name: "Article body", exact: true });
+    await writeClipboard(
+      page,
+      '<img src="/api/uploads/chart.gif" alt="Existing chart" aria-describedby="details"><p id="details">Existing description</p><p>Target</p>',
+    );
+    await body.focus();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.press("ControlOrMeta+v");
+    const original = body.getByRole("img", { name: "Existing chart", exact: true });
+    await expect(original).toHaveAccessibleDescription("Existing description");
+    const html =
+      '<img src="/api/uploads/chart.gif" alt="New chart" aria-describedby="details"><p id="details">New description</p>';
+    if (kind === "paste") {
+      await writeClipboard(page, html);
+      await page.keyboard.press("ControlOrMeta+End");
+      await page.keyboard.press("ControlOrMeta+v");
+    } else {
+      await page.keyboard.press("ControlOrMeta+a");
+      await dragContent(page, body.locator("p").last(), html);
+    }
+    const image = body.getByRole("img", { name: "New chart", exact: true });
+    await expect(image).toHaveAccessibleDescription("New description");
+    await expect(image).toHaveAttribute("aria-describedby", "details-copy");
+    await expect(original).toHaveAccessibleDescription("Existing description");
+    await expect(body.locator('[id="details"]')).toHaveCount(1);
+    await expect(body.locator('[id="details-copy"]')).toHaveText("New description");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(image).toHaveCount(0);
+    await expect(original).toHaveAccessibleDescription("Existing description");
+    await expect(body.locator('[id="details-copy"]')).toHaveCount(0);
+  });
+}
+
+test("native image-only copy cannot silently lose its long description when pasted over the article", async ({
+  page,
+}) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await writeClipboard(
+    page,
+    '<img src="/api/uploads/chart.gif" alt="Sales chart" aria-describedby="details"><p id="details">Full description</p>',
+  );
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+v");
+  const image = body.getByRole("img", { name: "Sales chart", exact: true });
+  await expect(image).toHaveAccessibleDescription("Full description");
+  await image.click();
+  await expect(body.locator(".img-resizer.is-selected")).toHaveCount(1);
+  await page.keyboard.press("ControlOrMeta+c");
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+v");
+  const dialog = page.getByRole("dialog", { name: "Review pasted content" });
+  await expect(dialog).toContainText("missing aria-describedby target: details");
+  await expect(dialog.getByRole("button", { name: "Paste simplified content" })).toHaveCount(0);
+  await expect(image).toHaveAccessibleDescription("Full description");
+  await page.keyboard.press("Escape");
+  await expect(body).toBeFocused();
+  await expect(image).toHaveAccessibleDescription("Full description");
+  await expect(body.locator("#details")).toHaveText("Full description");
+});
+
+test("repeated native table paste remaps caption, description and header IDs as one undoable transfer", async ({
+  page,
+}) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await writeClipboard(page, complexTableHtml);
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+v");
+  await expect(body.getByRole("table", { name: "Sales by region", exact: true })).toHaveCount(1);
+  await page.keyboard.press("ControlOrMeta+End");
+  await page.keyboard.press("ControlOrMeta+v");
+  const tables = body.getByRole("table", { name: "Sales by region", exact: true });
+  await expect(tables).toHaveCount(2);
+  await expect(tables.nth(1)).toHaveAttribute("aria-labelledby", "sales-caption-copy");
+  await expect(tables.nth(1)).toHaveAccessibleDescription("Values exclude returns.");
+  await expect(tables.nth(1).locator("#totals-copy")).toHaveAttribute("colspan", "2");
+  await expect(tables.nth(1).locator('[headers="north-copy count-copy"]')).toHaveText("20");
+  await expect(body.locator('[id="sales-caption"]')).toHaveCount(1);
+  await expect(body.locator('[id="sales-caption-copy"]')).toHaveCount(1);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(tables).toHaveCount(1);
+  await expect(tables.first()).toHaveAccessibleDescription("Values exclude returns.");
+});

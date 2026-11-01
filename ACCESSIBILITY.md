@@ -102,9 +102,14 @@ evaluation rather than silently treating the standards as interchangeable.
 - Editor transfer edge cases use real ProseMirror text/cell selections and parsed
   slices. Tests cover partial replacement, destination table cells, spans and
   explicit headers, rich/nested-caption loss detection, mapped asynchronous image
-  uploads, long-description associations, cancellation, and undo. Two unresolved
-  association defects are pinned below; attribute retention alone is not proof
-  that references still resolve correctly.
+  uploads, long-description associations, cancellation, and undo. The reference
+  follow-up below fixes the two association defects found by those tests;
+  attribute retention alone is not proof that references still resolve correctly.
+- External transfers remap colliding IDs together with bundled ARIA IDREFs,
+  table headers, caption metadata, and same-document fragment links. The proposed
+  result is checked before insertion and again after uploads. Missing/ambiguous
+  targets wait for repair, without an option to insert broken references. The
+  existing authoring body is not rewritten to repair older reference defects.
 
 ### Limits of these checks
 
@@ -132,6 +137,10 @@ with cancellation/acceptance/undo. A trusted HTML drop targets a data cell while
 the old selection covers the article; the helper asserts the event is trusted
 and includes HTML. Rectangular cell selections and backward selections are
 currently component-only checks, not complete browser selection coverage.
+Additional native paste/drop checks verify collision remapping and undo; an
+image-only native copy/paste is held for repair when its long-description target
+would be removed. Repeated table paste checks remapped caption/header/description
+IDs. These checks do not establish that a unique target has the intended meaning.
 Pointer-drag tests use a controlled HTML source and Chromium's trusted drag events
 for loss review in both themes and internal image movement. A document-navigation
 and native cut/paste check verifies a keyboard alternative to moving an image.
@@ -160,7 +169,7 @@ correct. The writing guide supplies manual review instructions alongside it.
   preserve tested metadata; opening-import, clipboard, and external-drop warnings cover detected
   inventory losses, not all semantic changes or arbitrary allowed HTML/MathML.
   Cross-application transfer formats, arbitrary partial/cell selections,
-  contextual ID-reference integrity, and operating-system file-manager drags
+  reference meaning and header semantics, and operating-system file-manager drags
   still need evaluation beyond the controlled fixtures.
 - Evaluate the image-hiding mechanism in every reading/editing surface and
   assess flashing content. Hiding is not frame-level pause/resume and does not
@@ -324,6 +333,56 @@ No production services, data, or native mobile files are changed. Manual
 accessibility evaluation remains skipped, and no criterion or WCAG/ATAG
 conformance claim is signed off.
 
+### Reference-safe editor transfers — 2026-11-01
+
+The three association pins above were converted to ordinary tests and first
+confirmed failing at duplicate IDs and the missing description target. They now
+pass with no expected failures. For a unique incoming ID that collides with a
+surviving destination ID, the editor chooses an unused `-copy` suffix and updates
+the incoming references together. It retains IDs whose original targets are
+being replaced, preserving references elsewhere in the article. Source nodes,
+marks, caption attributes, slice boundaries, alternatives, and text are retained.
+
+The actual proposed document and the incoming slice are checked for duplicate
+IDs and unresolved/ambiguous `aria-labelledby`, `aria-describedby`, `headers`,
+and local fragment links. Newly transferred defects cannot hide behind an
+identical pre-existing defect. Reference checks run before uploads, when a
+structural-simplification review is accepted, and after asynchronous uploads;
+collision remapping is recalculated against the current mapped target.
+
+Missing or ambiguous targets open a repair-only review with **Cancel**, not a
+button to accept broken relationships. The author can include referenced
+descriptions/headers, resolve ambiguous source IDs, or deliberately paste as
+plain text. An already completed upload is not undone if intervening edits make
+its reference invalid; the guard prevents document insertion, not storage rollback.
+Ordinary detected structure loss retains the existing cancel/accept workflow.
+
+The new browser cases also reproduced adjacent transfers sharing an undo group:
+one undo removed the remapped transfer and the immediately preceding paste.
+Component regressions confirmed this and grouping with a following plain paste.
+Handled transfers now close their history group before and after insertion, so
+undo preserves neighboring edits. This is not a change to native internal drags.
+
+Verification with Node 26.7.0 / pnpm 12.16.1:
+
+- `pnpm fmt`, then `pnpm check --strict`: 175 files and 1,725 passing tests,
+  zero expected failures and no type/lint warnings.
+- Four targeted editor suites pass with shuffled order (seed `20261101`): 141 tests.
+- `pnpm test:accessibility`: 47 named checks pass, with existing jsdom canvas diagnostics.
+- `pnpm test:browser`: 42 Chromium checks pass on an unmodified full rerun. The
+  first full run passed 41 but hit the same existing article-menu `ready()`
+  timeout recorded in the test-only phase; it is not fixed here. The four new
+  native-browser cases passed in both full runs after the undo-boundary repair.
+  The build retains its existing large-chunk advisory.
+- `git diff --check` passes.
+
+Only frontend application code, tests, and this evidence register change. There
+are no API/schema/dependency changes, production operations, or mobile changes.
+The guard does not establish appropriate descriptions, table-header semantics,
+or cross-application equivalence. Internal model drags/copies and stored-content
+opening are not covered by this new external-transfer reference guard. Manual
+evaluation remains skipped; WCAG/ATAG conformance remains unestablished.
+
 ## Transformation inventory and remaining preservation checks
 
 This is a source-path inventory, not proof that each transformation preserves
@@ -336,9 +395,9 @@ are relative to `apps/backend/src/`.
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
 | Rich HTML/JSON editing                 | `editor/extensions.ts`, `content-accessibility.ts`; round trips include caption metadata and complex table spans/headers | Arbitrary nesting/tables, rich captions, MathML; detection is inventory-based                           |
 | Open imported HTML                     | `editor/Editor.svelte`, `contentLoss.ts`; component and browser autosave regression                                      | Attribute relocation/meaning changes, all supported imported formats                                   |
-| Clipboard HTML and text                | Parsed-slice review, partial/cell selections, complex table fixture, cancellation/undo; native Chromium checks            | Cross-application formats, arbitrary selections/tables, destination-ID collisions and semantic loss    |
-| Clipboard image files                  | Single-file rehosting retains attributes/text and a bundled long description; ambiguous counts fail without writes     | Description targets outside selections, multi-image associations, other browsers, optimized meaning   |
-| Drag/drop                              | Shared review, mapped targets, rehosting; component and trusted-pointer table-cell fixtures                              | Destination-ID collisions, OS/application payloads, arbitrary selections and assistive technologies   |
+| Clipboard HTML and text                | Parsed-slice review, partial/cell selections, ID remapping and result-reference guard; native Chromium and undo checks    | Cross-application formats, arbitrary selections/tables, header semantics and semantic loss             |
+| Clipboard image files                  | Rehosting retains attributes/text and bundled long descriptions; missing targets wait for repair before insertion       | Multi-image associations, other browsers, optimized meaning, storage rollback after a late guard      |
+| Drag/drop                              | Shared review, mapped targets, ID remapping/rehosting; component and trusted-pointer table-cell fixtures                  | Internal-copy ID collisions, OS/application payloads, arbitrary selections and assistive technologies |
 | Image optimization / crop              | `editor/image.ts`, `components/AvatarCropper.svelte`; image/crop tests                                                   | Meaning after crop/downscale, animation and embedded metadata evaluation                               |
 | Profile / instance Markdown            | Backend `lib/markdown.ts` then `lib/sanitize.ts`; Markdown/sanitizer tests                                               | Representative mixed languages, tables, MathML and preview/save equality                               |
 | API post create/update                 | Backend `services/posts.ts` then sanitizer; real-session HTTP/store/read/edit fixture in all publication states           | Other payloads, editor JSON consistency, browser-to-API workflows                                        |

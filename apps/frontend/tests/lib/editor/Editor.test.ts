@@ -1075,8 +1075,8 @@ test.for(["paste", "drop"] as const)(
   },
 );
 
-test.fails.for(["paste", "drop"] as const)(
-  "BUG: %s must preserve unique description IDs or hold the insertion for review",
+test.for(["paste", "drop"] as const)(
+  "%s preserves unique description IDs and the correct image association",
   async (kind) => {
     const { editor } = await setup('<p id="details">Existing description</p><p>Target</p>');
     const pos = textPosition(editor, "Target");
@@ -1090,7 +1090,6 @@ test.fails.for(["paste", "drop"] as const)(
       pos,
     );
     const result = serialized(editor);
-    // The pre-insertion inventory ignores collisions with IDs already in the destination.
     expect(
       result.querySelectorAll('[id="details"]').length,
       "description IDs must stay unique or insertion must wait for review",
@@ -1129,7 +1128,7 @@ test("a copied table-cell fragment is held for review rather than silently inser
   expect(await screen.findByRole("dialog")).toHaveTextContent("element: table");
 });
 
-test.fails("BUG: a copied image must retain its long description or wait for review", async () => {
+test("a copied image waits for review when its long description is outside the selection", async () => {
   const { editor } = await setup(
     '<img src="/chart.png" alt="Chart" aria-describedby="details"><p id="details">Full description</p>',
   );
@@ -1143,7 +1142,6 @@ test.fails("BUG: a copied image must retain its long description or wait for rev
   const before = editor.getHTML();
   pasteHtml(editor, copied);
   const body = serialized(editor);
-  // The inventory compares IDREF strings but does not require their targets in the destination.
   expect(
     body.querySelector('[aria-describedby="details"]') === null || body.querySelector("#details") !== null,
     "the copied image must retain a resolvable description or wait for review",
@@ -1154,4 +1152,164 @@ test.fails("BUG: a copied image must retain its long description or wait for rev
     expect(editor.getHTML()).toBe(before);
     await screen.findByRole("dialog");
   }
+});
+
+test.for(["paste", "drop"] as const)(
+  "%s with a missing description target can cancel without uploading or changing the selection",
+  async (kind) => {
+    const { editor, onUpdate } = await setup("<p>Original</p>");
+    editor.commands.selectAll();
+    const before = editor.getHTML();
+    const selection = editor.state.selection.toJSON();
+    transfer(
+      editor,
+      kind,
+      '<img src="file:///chart.png" alt="Chart" aria-describedby="missing">',
+      [png("chart.png")],
+      4,
+    );
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("missing aria-describedby target: missing");
+    expect(dialog).toHaveTextContent("include the referenced descriptions or headers");
+    await expectAccessible();
+    expect(screen.queryByRole("button", { name: /simplified content/ })).toBeNull();
+    expect(editor.getHTML()).toBe(before);
+    expect(api.calls).toHaveLength(0);
+    await tool("Cancel");
+    expect(editor.state.selection.toJSON()).toEqual(selection);
+    expect(onUpdate).not.toHaveBeenCalled();
+  },
+);
+
+test("replacing an existing description cannot silently break an image outside the selected range", async () => {
+  const { editor, onUpdate } = await setup(
+    '<img src="/chart.png" alt="Chart" aria-describedby="details"><p id="details">Details</p>',
+  );
+  editor.commands.setNodeSelection(1);
+  const before = editor.getHTML();
+  pasteHtml(editor, "<p>Replacement</p>");
+  expect(await screen.findByRole("dialog")).toHaveTextContent("missing aria-describedby target: details");
+  expect(editor.getHTML()).toBe(before);
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test("replacing a description with the same ID keeps surviving references rather than renaming its target", async () => {
+  const { editor, dom } = await setup(
+    '<img src="/chart.png" alt="Chart" aria-describedby="details"><p id="details">Details</p>',
+  );
+  editor.commands.setNodeSelection(1);
+  pasteHtml(editor, '<p id="details">Updated details</p>');
+  expect(dom.querySelector("img")).toHaveAccessibleDescription("Updated details");
+  expect(dom.querySelectorAll('[id="details"]')).toHaveLength(1);
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+test("ambiguous source IDs require repair rather than being assigned invented associations", async () => {
+  const { editor, onUpdate } = await setup("<p>Original</p>");
+  editor.commands.selectAll();
+  pasteHtml(
+    editor,
+    '<p id="details">One</p><p id="details">Two</p><img src="/chart.png" alt="Chart" aria-describedby="details">',
+  );
+  expect(await screen.findByRole("dialog")).toHaveTextContent("duplicate ID: details");
+  expect(editor.getHTML()).toBe("<p>Original</p>");
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test("an upload remaps collisions against the current document rather than an earlier preview", async () => {
+  const upload = Promise.withResolvers<Response>();
+  const { editor, dom } = await setup('<p id="details">Existing description</p><p>Target</p>', {
+    "POST /api/uploads": () => upload.promise,
+  });
+  editor.commands.setTextSelection(textPosition(editor, "Target"));
+  pasteHtml(
+    editor,
+    '<img src="file:///chart.png" alt="Chart" aria-describedby="details"><p id="details">Transferred description</p>',
+    [png("chart.png")],
+  );
+  await waitFor(() => expect(api.calls).toHaveLength(1));
+  editor.commands.insertContentAt(0, {
+    type: "paragraph",
+    attrs: { id: "details-copy" },
+    content: [{ type: "text", text: "Reserved during upload" }],
+  });
+  const beforeInsertion = editor.getHTML();
+  upload.resolve(Response.json({ url: "/api/uploads/rehosted.webp" }));
+  await waitFor(() => expect(dom.querySelector("img")).toHaveAccessibleDescription("Transferred description"));
+  expect(dom.querySelector("img")).toHaveAttribute("aria-describedby", "details-copy-2");
+  expect(dom.querySelectorAll('[id="details"]')).toHaveLength(1);
+  expect(dom.querySelector("#details-copy")).toHaveTextContent("Reserved during upload");
+  editor.commands.undo();
+  expect(editor.getHTML()).toBe(beforeInsertion);
+});
+
+test("an upload whose external description target disappears waits for repair without inserting stale references", async () => {
+  const upload = Promise.withResolvers<Response>();
+  const { editor } = await setup('<p id="details">Existing description</p><p>Target</p>', {
+    "POST /api/uploads": () => upload.promise,
+  });
+  editor.commands.setTextSelection(textPosition(editor, "Target"));
+  pasteHtml(editor, '<img src="file:///chart.png" alt="Chart" aria-describedby="details">', [png("chart.png")]);
+  await waitFor(() => expect(api.calls).toHaveLength(1));
+  editor.commands.deleteRange({ from: 0, to: editor.state.doc.firstChild!.nodeSize });
+  const edited = editor.getHTML();
+  upload.resolve(Response.json({ url: "/api/uploads/rehosted.webp" }));
+  expect(await screen.findByRole("dialog")).toHaveTextContent("missing aria-describedby target: details");
+  expect(editor.getHTML()).toBe(edited);
+  expect(api.calls).toHaveLength(1);
+  await tool("Cancel");
+  expect(editor.getHTML()).toBe(edited);
+});
+
+test("an accepted structural simplification is rechecked if its description target was removed during review", async () => {
+  const { editor } = await setup('<p id="details">Existing description</p><p>Target</p>');
+  editor.commands.setTextSelection(textPosition(editor, "Target"));
+  pasteHtml(
+    editor,
+    '<figure><img src="/chart.png" alt="Chart" aria-describedby="details"><figcaption>Caption</figcaption></figure>',
+  );
+  await screen.findByRole("dialog");
+  editor.commands.deleteRange({ from: 0, to: editor.state.doc.firstChild!.nodeSize });
+  const edited = editor.getHTML();
+  await tool("Paste simplified content");
+  expect(await screen.findByRole("dialog")).toHaveTextContent("missing aria-describedby target: details");
+  expect(screen.queryByRole("button", { name: "Paste simplified content" })).toBeNull();
+  expect(editor.getHTML()).toBe(edited);
+});
+
+test("replacing a pre-existing broken image cannot hide a new image's missing description", async () => {
+  const { editor } = await setup('<img src="/old.png" alt="Old chart" aria-describedby="missing">');
+  editor.commands.selectAll();
+  pasteHtml(editor, '<img src="/new.png" alt="New chart" aria-describedby="missing">');
+  expect(editor.getHTML()).toContain('src="/old.png"');
+  expect(await screen.findByRole("dialog")).toHaveTextContent("missing aria-describedby target: missing");
+});
+
+test("undoing a remapped transfer leaves an immediately preceding paste intact", async () => {
+  const { editor } = await setup("<p>Original</p>");
+  editor.commands.selectAll();
+  pasteHtml(editor, '<p id="details">Existing description</p><p>Target</p>');
+  editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+  const beforeSecondPaste = editor.getHTML();
+  pasteHtml(
+    editor,
+    '<img src="/chart.png" alt="Chart" aria-describedby="details"><p id="details">Transferred description</p>',
+  );
+  expect(serialized(editor).querySelector("img")).toHaveAttribute("aria-describedby", "details-copy");
+  editor.commands.undo();
+  expect(editor.getHTML()).toBe(beforeSecondPaste);
+});
+
+test("an immediately following plain paste does not undo the remapped transfer with it", async () => {
+  const { editor } = await setup('<p id="details">Existing description</p><p>Target</p>');
+  editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+  pasteHtml(
+    editor,
+    '<img src="/chart.png" alt="Chart" aria-describedby="details"><p id="details">Transferred description</p>',
+  );
+  const beforePlainPaste = editor.getHTML();
+  pasteHtml(editor, "<p>More text</p>");
+  expect(editor.getHTML()).toContain("More text");
+  editor.commands.undo();
+  expect(editor.getHTML()).toBe(beforePlainPaste);
 });
