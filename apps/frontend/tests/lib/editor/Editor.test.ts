@@ -1,12 +1,15 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Content, Editor as TiptapEditor } from "@tiptap/core";
+import { TextSelection } from "@tiptap/pm/state";
+import { CellSelection, TableMap } from "@tiptap/pm/tables";
 import { tick } from "svelte";
 import { beforeEach, expect, test, vi } from "vitest";
 import Editor from "#lib/editor/Editor.svelte";
 import { EDIT_ALT_EVENT } from "#lib/editor/resizable-image.js";
 import { expectAccessible } from "../../accessibility";
 import { apiError, fakeFetch } from "../../fakeFetch";
+import { complexTableHtml, targetTableHtml } from "./transfer-fixtures";
 
 vi.mock(import("#lib/editor/image.js"), async (importOriginal) => ({
   ...(await importOriginal()),
@@ -68,6 +71,32 @@ function dropHtml(editor: TiptapEditor, html: string, files: File[] = [], pos = 
   });
   editor.view.dom.dispatchEvent(event);
   return event;
+}
+function textPosition(editor: TiptapEditor, text: string) {
+  let found: number | undefined;
+  editor.state.doc.descendants((node, pos) => {
+    if (node.isText && node.text === text) found = pos;
+  });
+  if (found === undefined) throw new Error(`Text not found: ${text}`);
+  return found;
+}
+function selectTargetCells(editor: TiptapEditor) {
+  const cells: number[] = [];
+  editor.state.doc.descendants((node, pos) => {
+    if (node.type.name === "tableCell") cells.push(pos);
+  });
+  expect(cells).toHaveLength(2);
+  editor.view.dispatch(editor.state.tr.setSelection(CellSelection.create(editor.state.doc, cells[0], cells[1])));
+  return editor.state.selection.toJSON();
+}
+function transfer(editor: TiptapEditor, kind: "paste" | "drop", html: string, files: File[] = [], pos?: number) {
+  if (kind === "paste") pasteHtml(editor, html, files);
+  else dropHtml(editor, html, files, pos);
+}
+function serialized(editor: TiptapEditor) {
+  const body = document.createElement("div");
+  body.innerHTML = editor.getHTML();
+  return body;
 }
 const status = () => document.body.textContent.match(/[\d,]+ characters?.*?(min read|words?)/)?.[0];
 
@@ -798,4 +827,331 @@ test("editing an alternative does not change an existing non-percentage image wi
   await fireEvent.input(await screen.findByLabelText("Alt text"), { target: { value: "A cat" } });
   await tool("Save");
   expect(editor.getJSON().content[0].attrs!.width).toBe("400");
+});
+
+test.for([false, true])(
+  "partial text replacement retains source block metadata and both destination remainders (backward: %s)",
+  async (backward) => {
+    const { editor, onUpdate } = await setup('<p lang="en">Before selected after</p>');
+    const before = editor.getHTML();
+    editor.view.dispatch(
+      editor.state.tr.setSelection(TextSelection.create(editor.state.doc, backward ? 16 : 8, backward ? 8 : 16)),
+    );
+    expect(editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to)).toBe("selected");
+    pasteHtml(editor, '<p lang="fr" dir="ltr">Bonjour <span lang="de">Welt</span></p>');
+    const body = serialized(editor);
+    expect(
+      [...body.children].map((element) => [element.tagName, element.getAttribute("lang"), element.textContent]),
+    ).toEqual([
+      ["P", "en", "Before "],
+      ["P", "fr", "Bonjour Welt"],
+      ["P", "en", " after"],
+    ]);
+    expect(body.querySelector('span[lang="de"]')).toHaveTextContent("Welt");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(onUpdate).toHaveBeenCalledTimes(1);
+    editor.commands.undo();
+    expect(editor.getHTML()).toBe(before);
+  },
+);
+
+test("partial inline paste keeps normal joining while retaining the selected passage's marks", async () => {
+  const { editor } = await setup("<p>Before selected after</p>");
+  editor.commands.setTextSelection({ from: 8, to: 16 });
+  pasteHtml(editor, '<p><span lang="fr" dir="ltr"><strong>Bonjour</strong></span></p>');
+  const body = serialized(editor);
+  expect(body.children).toHaveLength(1);
+  expect(body.firstChild?.textContent).toBe("Before Bonjour after");
+  expect(body.querySelector('span[lang="fr"][dir="ltr"] strong')).toHaveTextContent("Bonjour");
+  editor.commands.undo();
+  expect(editor.getHTML()).toBe("<p>Before selected after</p>");
+});
+
+test("cancelling loss review preserves a backward selection spanning two paragraphs", async () => {
+  const { editor, onUpdate } = await setup("<p>Before selected</p><p>selected after</p>");
+  editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, 25, 8)));
+  const selection = editor.state.selection.toJSON();
+  const before = editor.getHTML();
+  pasteHtml(editor, "<figure><figcaption>Caption</figcaption></figure>");
+  await screen.findByRole("dialog", { name: "Review pasted content" });
+  await tool("Cancel");
+  expect(editor.getHTML()).toBe(before);
+  expect(editor.state.selection.toJSON()).toEqual(selection);
+  expect(onUpdate).not.toHaveBeenCalled();
+  expect(api.calls).toHaveLength(0);
+});
+
+test("accepted loss review maps the original partial selection rather than a later cursor", async () => {
+  const { editor } = await setup("<p>Before selected after</p>");
+  editor.commands.setTextSelection({ from: 8, to: 16 });
+  pasteHtml(editor, "<figure><figcaption>Caption</figcaption></figure>");
+  await screen.findByRole("dialog", { name: "Review pasted content" });
+  editor.commands.insertContentAt(1, "New ");
+  editor.commands.setTextSelection(2);
+  const edited = editor.getHTML();
+  await tool("Paste simplified content");
+  expect(editor.state.doc.textContent).toBe("New Before Caption after");
+  editor.commands.undo();
+  expect(editor.getHTML()).toBe(edited);
+});
+
+test.for(["paste", "drop"] as const)(
+  "%s of supported passage metadata into a table cell preserves destination relationships",
+  async (kind) => {
+    const { editor, dom } = await setup(targetTableHtml);
+    const pos = textPosition(editor, "alpha") + 2;
+    if (kind === "paste") editor.commands.setTextSelection(pos);
+    else editor.commands.selectAll();
+    const before = editor.getHTML();
+    transfer(editor, kind, '<p lang="fr" dir="ltr">Bonjour</p>', [], pos);
+    const body = serialized(editor);
+    expect(body.querySelectorAll("table")).toHaveLength(1);
+    expect(body.querySelectorAll("tr")).toHaveLength(2);
+    expect(body.querySelector('[headers="target-left"]')).toHaveTextContent(
+      kind === "paste" ? "alBonjourpha" : "Bonjouralpha",
+    );
+    expect(body.querySelector('[headers="target-left"] p[lang="fr"]')).toHaveAttribute("dir", "ltr");
+    expect(body.querySelector('[headers="target-right"]')).toHaveTextContent("beta");
+    expect(dom.querySelector("table")).toHaveAccessibleName("Destination table");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    editor.commands.undo();
+    expect(editor.getHTML()).toBe(before);
+  },
+);
+
+test("loss-review cancellation preserves a rectangular cell selection, table caption and all cells", async () => {
+  const { editor, onUpdate } = await setup(targetTableHtml);
+  const selection = selectTargetCells(editor);
+  const before = editor.getHTML();
+  pasteHtml(editor, '<figure><img src="file:///chart.png" alt="Chart"><figcaption>Caption</figcaption></figure>', [
+    png("chart.png"),
+  ]);
+  await screen.findByRole("dialog", { name: "Review pasted content" });
+  await tool("Cancel");
+  expect(editor.state.selection).toBeInstanceOf(CellSelection);
+  expect(editor.state.selection.toJSON()).toEqual(selection);
+  expect(editor.getHTML()).toBe(before);
+  expect(onUpdate).not.toHaveBeenCalled();
+  expect(api.calls).toHaveLength(0);
+});
+
+test("accepting simplified content over selected cells preserves the destination grid and is undoable", async () => {
+  const { editor, dom } = await setup(targetTableHtml);
+  selectTargetCells(editor);
+  const before = editor.getHTML();
+  pasteHtml(editor, '<figure><p lang="fr">Replacement</p><figcaption>Caption</figcaption></figure>');
+  await fireEvent.click(await screen.findByRole("button", { name: "Paste simplified content" }));
+  const body = serialized(editor);
+  expect(body.querySelectorAll("table")).toHaveLength(1);
+  expect(body.querySelectorAll("td")).toHaveLength(2);
+  expect(body.querySelector('[headers="target-right"]')).toHaveTextContent("ReplacementCaption");
+  expect(body.querySelector('[headers="target-right"] p[lang="fr"]')).toHaveTextContent("Replacement");
+  expect(body.querySelector('[headers="target-left"]')?.textContent).toBe("");
+  expect(dom.querySelector("table")).toHaveAccessibleName("Destination table");
+  expect(TableMap.get(editor.state.doc.firstChild!).problems).toBeNull();
+  editor.commands.undo();
+  expect(editor.getHTML()).toBe(before);
+  expect(editor.state.selection).toBeInstanceOf(CellSelection);
+});
+
+test.for(["paste", "drop"] as const)(
+  "%s of a complex table preserves caption/header associations at a partial text target",
+  async (kind) => {
+    const { editor, dom } = await setup("<p>Before after</p>");
+    editor.commands.setTextSelection(8);
+    const before = editor.getHTML();
+    transfer(editor, kind, complexTableHtml, [], 8);
+    const body = serialized(editor);
+    if (kind === "paste") {
+      expect(body.firstChild?.textContent).toBe("Before ");
+      expect(body.lastChild?.textContent).toBe("after");
+    } else expect(body.firstChild?.textContent).toBe("Before after");
+    expect(body.querySelector("#region")).toHaveAttribute("rowspan", "2");
+    expect(body.querySelector("#totals")).toHaveAttribute("colspan", "2");
+    expect(body.querySelector('[headers="north count"]')).toHaveTextContent("20");
+    expect(body.querySelector("#sales-notes")).toHaveTextContent("Values exclude returns.");
+    expect(dom.querySelector("table")).toHaveAccessibleName("Sales by region");
+    expect(dom.querySelector("table")).toHaveAccessibleDescription("Values exclude returns.");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    editor.commands.undo();
+    expect(editor.getHTML()).toBe(before);
+  },
+);
+
+test.for(["paste", "drop"] as const)(
+  "%s of a rich caption requires review before changing the table target",
+  async (kind) => {
+    const { editor, onUpdate } = await setup(targetTableHtml);
+    const pos = textPosition(editor, "alpha");
+    editor.commands.setTextSelection(pos);
+    const before = editor.getHTML();
+    transfer(
+      editor,
+      kind,
+      '<table><caption>Sales <span lang="fr">annuelles</span></caption><tr><td>20</td></tr></table>',
+      [],
+      pos,
+    );
+    expect(
+      await screen.findByRole("dialog", {
+        name: kind === "paste" ? "Review pasted content" : "Review dropped content",
+      }),
+    ).toHaveTextContent("span lang: fr");
+    expect(editor.getHTML()).toBe(before);
+    await tool("Cancel");
+    expect(editor.getHTML()).toBe(before);
+    expect(onUpdate).not.toHaveBeenCalled();
+  },
+);
+
+test.for(["paste", "drop"] as const)(
+  "an asynchronous image %s maps its table-cell target and retains its long-description association",
+  async (kind) => {
+    const upload = Promise.withResolvers<Response>();
+    const { editor, dom } = await setup(targetTableHtml, { "POST /api/uploads": () => upload.promise });
+    const pos = textPosition(editor, "alpha") + 2;
+    if (kind === "paste") editor.commands.setTextSelection(pos);
+    else editor.commands.selectAll();
+    transfer(
+      editor,
+      kind,
+      '<img src="file:///chart.png" alt="Sales chart" lang="en" aria-describedby="chart-description"><p id="chart-description">Sales doubled.</p>',
+      [png("chart.png")],
+      pos,
+    );
+    await waitFor(() => expect(api.calls).toHaveLength(1));
+    editor.commands.insertContentAt(0, { type: "paragraph", content: [{ type: "text", text: "New opening" }] });
+    editor.commands.setTextSelection(2);
+    const beforeInsertion = editor.getHTML();
+    upload.resolve(Response.json({ url: "/api/uploads/rehosted.webp" }));
+    await waitFor(() => expect(editor.getHTML()).toContain("rehosted.webp"));
+    const body = serialized(editor);
+    const cell = body.querySelector('[headers="target-left"]')!;
+    expect(cell.querySelector("img")).toHaveAttribute("aria-describedby", "chart-description");
+    expect(cell.querySelector("#chart-description")).toHaveTextContent("Sales doubled.");
+    expect(cell.textContent).toBe(kind === "paste" ? "alSales doubled.pha" : "Sales doubled.alpha");
+    expect(body.querySelector('[headers="target-right"]')).toHaveTextContent("beta");
+    expect(dom.querySelector("img")).toHaveAccessibleDescription("Sales doubled.");
+    expect(body.firstChild).toHaveTextContent("New opening");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    editor.commands.undo();
+    expect(editor.getHTML()).toBe(beforeInsertion);
+  },
+);
+
+test.for(["paste", "drop"] as const)("failed image %s into a cell leaves the entire table unchanged", async (kind) => {
+  const { editor, onUpdate } = await setup(targetTableHtml, {
+    "POST /api/uploads": apiError(413, "Image too large"),
+  });
+  const pos = textPosition(editor, "alpha");
+  editor.commands.setTextSelection({ from: pos, to: pos + 5 });
+  const selected = editor.state.selection.toJSON();
+  const before = editor.getHTML();
+  transfer(editor, kind, '<img src="file:///chart.png" alt="Chart">', [png("chart.png")], pos);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Image too large");
+  expect(editor.getHTML()).toBe(before);
+  if (kind === "paste") expect(editor.state.selection.toJSON()).toEqual(selected);
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test.for(["paste", "drop"] as const)(
+  "HTML/file image-count mismatch is rejected before %s uploads or table edits",
+  async (kind) => {
+    const { editor, onUpdate } = await setup(targetTableHtml);
+    const pos = textPosition(editor, "alpha");
+    editor.commands.setTextSelection(pos);
+    const before = editor.getHTML();
+    transfer(
+      editor,
+      kind,
+      '<img src="file:///one.png" alt="First"><img src="file:///two.png" alt="Second">',
+      [png("one.png")],
+      pos,
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("could not be matched");
+    expect(editor.getHTML()).toBe(before);
+    expect(onUpdate).not.toHaveBeenCalled();
+    expect(api.calls).toHaveLength(0);
+  },
+);
+
+test.fails.for(["paste", "drop"] as const)(
+  "BUG: %s must preserve unique description IDs or hold the insertion for review",
+  async (kind) => {
+    const { editor } = await setup('<p id="details">Existing description</p><p>Target</p>');
+    const pos = textPosition(editor, "Target");
+    editor.commands.setTextSelection(pos);
+    const before = editor.getHTML();
+    transfer(
+      editor,
+      kind,
+      '<img src="/new.png" alt="New chart" aria-describedby="details"><p id="details">New description</p>',
+      [],
+      pos,
+    );
+    const result = serialized(editor);
+    // The pre-insertion inventory ignores collisions with IDs already in the destination.
+    expect(
+      result.querySelectorAll('[id="details"]').length,
+      "description IDs must stay unique or insertion must wait for review",
+    ).toBe(1);
+    if (result.querySelector("img")) {
+      expect(editor.view.dom.querySelector("img")).toHaveAccessibleDescription("New description");
+    } else {
+      expect(editor.getHTML()).toBe(before);
+      await screen.findByRole("dialog");
+    }
+  },
+);
+
+test("a copied table-cell fragment is held for review rather than silently inserting dangling headers", async () => {
+  const { editor } = await setup(complexTableHtml);
+  const table = editor.state.doc.firstChild!;
+  const map = TableMap.get(table);
+  const selection = CellSelection.create(editor.state.doc, 1 + map.map[7], 1 + map.map[8]);
+  const copied = editor.view.serializeForClipboard(selection.content()).dom.innerHTML;
+  editor.commands.setContent({
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text: "Destination" }] }],
+  });
+  editor.commands.selectAll();
+  const before = editor.getHTML();
+  pasteHtml(editor, copied);
+  const body = serialized(editor);
+  const dangling = [...body.querySelectorAll("[headers]")].flatMap((cell) =>
+    cell
+      .getAttribute("headers")!
+      .split(/\s+/)
+      .filter((id) => !body.querySelector(`[id="${id}"]`)),
+  );
+  expect(dangling, "header references must resolve or insertion must wait for review").toEqual([]);
+  expect(editor.getHTML()).toBe(before);
+  expect(await screen.findByRole("dialog")).toHaveTextContent("element: table");
+});
+
+test.fails("BUG: a copied image must retain its long description or wait for review", async () => {
+  const { editor } = await setup(
+    '<img src="/chart.png" alt="Chart" aria-describedby="details"><p id="details">Full description</p>',
+  );
+  editor.commands.setNodeSelection(0);
+  const copied = editor.view.serializeForClipboard(editor.state.selection.content()).dom.innerHTML;
+  editor.commands.setContent({
+    type: "doc",
+    content: [{ type: "paragraph", content: [{ type: "text", text: "Destination" }] }],
+  });
+  editor.commands.selectAll();
+  const before = editor.getHTML();
+  pasteHtml(editor, copied);
+  const body = serialized(editor);
+  // The inventory compares IDREF strings but does not require their targets in the destination.
+  expect(
+    body.querySelector('[aria-describedby="details"]') === null || body.querySelector("#details") !== null,
+    "the copied image must retain a resolvable description or wait for review",
+  ).toBe(true);
+  if (body.querySelector("img")) {
+    expect(editor.view.dom.querySelector("img")).toHaveAccessibleDescription("Full description");
+  } else {
+    expect(editor.getHTML()).toBe(before);
+    await screen.findByRole("dialog");
+  }
 });

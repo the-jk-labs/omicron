@@ -99,6 +99,12 @@ evaluation rather than silently treating the standards as interchangeable.
   without uploading another copy. Ambiguous associations, unsupported files, and
   unmatched file-plus-text payloads fail with repair instructions rather than
   silently discarding information.
+- Editor transfer edge cases use real ProseMirror text/cell selections and parsed
+  slices. Tests cover partial replacement, destination table cells, spans and
+  explicit headers, rich/nested-caption loss detection, mapped asynchronous image
+  uploads, long-description associations, cancellation, and undo. Two unresolved
+  association defects are pinned below; attribute retention alone is not proof
+  that references still resolve correctly.
 
 ### Limits of these checks
 
@@ -120,6 +126,12 @@ Native Chromium clipboard checks additionally cover cancel/accept/undo in both
 themes, image-file plus HTML rehosting, supported language/heading metadata, and
 explicit paste-as-plain-text. A live-table check covers caption visibility and name
 updates through the settings dialog. Other applications' clipboard formats still need testing.
+Additional native clipboard fixtures cover partial replacement, complex tables,
+table-cell insertion, image/long-description autosave, and rich-caption review
+with cancellation/acceptance/undo. A trusted HTML drop targets a data cell while
+the old selection covers the article; the helper asserts the event is trusted
+and includes HTML. Rectangular cell selections and backward selections are
+currently component-only checks, not complete browser selection coverage.
 Pointer-drag tests use a controlled HTML source and Chromium's trusted drag events
 for loss review in both themes and internal image movement. A document-navigation
 and native cut/paste check verifies a keyboard alternative to moving an image.
@@ -147,8 +159,9 @@ correct. The writing guide supplies manual review instructions alongside it.
   import/export, API/webhook publishing, and federation. Supported editor nodes
   preserve tested metadata; opening-import, clipboard, and external-drop warnings cover detected
   inventory losses, not all semantic changes or arbitrary allowed HTML/MathML.
-  Cross-application transfer formats, partial selections, table-cell drops, and
-  operating-system file-manager drags still need evaluation.
+  Cross-application transfer formats, arbitrary partial/cell selections,
+  contextual ID-reference integrity, and operating-system file-manager drags
+  still need evaluation beyond the controlled fixtures.
 - Evaluate the image-hiding mechanism in every reading/editing surface and
   assess flashing content. Hiding is not frame-level pause/resume and does not
   alter media sent to other instances.
@@ -256,6 +269,61 @@ Verification: `pnpm fmt`, then `pnpm check --strict` (2,618 unit tests, no
 type/lint warnings), and all 339 integration tests across 33 files pass. The
 nine signed-federation tests also pass with shuffled order (seed `20261101`).
 
+### Editor transfer edge-case follow-up — 2026-11-01
+
+This test-only follow-up adds 31 ordinary unit/component checks and three
+expected-failure cases. It changes no application implementation. The fixtures
+exercise forward/backward partial text selections, a backward cross-paragraph
+selection, rectangular cell selections, supported metadata at table-cell targets,
+rich-caption review, complex spans/headers/captions, and nested-image rehosting.
+Delayed uploads and open reviews retain mapped targets through intervening edits;
+cancellation, failed uploads, ambiguous image counts, and undo are checked.
+
+Two defects were first reproduced with normal failing tests, then pinned with
+`test.fails` rather than fixed on this branch:
+
+- **Colliding destination IDs (paste and drop):** inserting an image plus its
+  description into a document that already contains the same description ID
+  creates two `id="details"` elements without review. The image can consequently
+  reference the existing description instead of the transferred one. The
+  source-versus-slice inventory never compares IDs with the destination document.
+- **Description outside a copied image selection:** copying only the image from
+  a valid image/long-description pair and pasting it into a fresh document retains
+  `aria-describedby="details"` but omits its target without review. The inventory
+  retains the IDREF string without validating its resolution in the result.
+
+These are three expected-failure cases for two defects, not successful
+preservation checks. A copied rectangular table fragment currently triggers an
+inventory warning for its clipboard table wrapper; that test does not establish
+general detection of dangling header references.
+
+Six additional Chromium checks use native clipboard keyboard actions and a
+trusted HTML pointer drop at a table cell. They cover partial replacement,
+table-cell metadata, complex tables, image/long-description autosave, caption loss
+review, and undo. The autosave fixture only observes HTTP writes against the
+isolated loopback API; it does not persist to a database. The two association
+defect reproductions are component tests, not native-browser confirmations.
+
+Verification with Node 26.7.0 / pnpm 12.16.1:
+
+- `pnpm fmt`, then `pnpm check --strict`: 174 test files, 1,698 ordinary passes
+  and three expected failures; no type/lint warnings.
+- The three targeted editor suites pass with shuffled order (seed `20261101`):
+  114 ordinary passes and three expected failures.
+- `pnpm test:accessibility`: 47 named checks pass; jsdom prints its existing
+  unavailable-canvas diagnostics.
+- `pnpm test:browser`: all 38 Chromium checks pass on an unmodified full rerun.
+  The initial full run passed 37 checks but timed out in the existing `ready()`
+  helper opening the article navigation menu. Its trace suggests a startup
+  hydration race; that cause is not proven or fixed here. All six new scenarios
+  passed in both full runs and their targeted run. Chromium 156.0.8078.4 /
+  Playwright 1.64.1; the build retains its existing large-chunk advisory.
+- `git diff --check` passes.
+
+No production services, data, or native mobile files are changed. Manual
+accessibility evaluation remains skipped, and no criterion or WCAG/ATAG
+conformance claim is signed off.
+
 ## Transformation inventory and remaining preservation checks
 
 This is a source-path inventory, not proof that each transformation preserves
@@ -266,11 +334,11 @@ are relative to `apps/backend/src/`.
 
 | Path                                   | Implementation / available evidence                                                                                      | Still needed                                                                                           |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| Rich HTML/JSON editing                 | `editor/extensions.ts`, `content-accessibility.ts`; extension round-trip tests                                           | Arbitrary nesting, rich captions, complex tables, MathML; detection is inventory-based                 |
+| Rich HTML/JSON editing                 | `editor/extensions.ts`, `content-accessibility.ts`; round trips include caption metadata and complex table spans/headers | Arbitrary nesting/tables, rich captions, MathML; detection is inventory-based                           |
 | Open imported HTML                     | `editor/Editor.svelte`, `contentLoss.ts`; component and browser autosave regression                                      | Attribute relocation/meaning changes, all supported imported formats                                   |
-| Clipboard HTML and text                | `editor/content-transfer.ts`, `Editor.svelte`; parsed-slice review, cancellation/undo, native Chromium paste tests       | Cross-application formats, partial selections, complex tables and complete semantic loss detection     |
-| Clipboard image files                  | Single-file rehosting retains attributes/text; ambiguous associations fail without writes                                | Multi-image associations, other browsers, meaning after image optimization                             |
-| Drag/drop                              | Shared content-transfer review, mapped insertion positions, description-preserving rehosting; unit/pointer-browser tests | OS/application payloads, table-cell drops, complex selections, and full assistive-technology workflows |
+| Clipboard HTML and text                | Parsed-slice review, partial/cell selections, complex table fixture, cancellation/undo; native Chromium checks            | Cross-application formats, arbitrary selections/tables, destination-ID collisions and semantic loss    |
+| Clipboard image files                  | Single-file rehosting retains attributes/text and a bundled long description; ambiguous counts fail without writes     | Description targets outside selections, multi-image associations, other browsers, optimized meaning   |
+| Drag/drop                              | Shared review, mapped targets, rehosting; component and trusted-pointer table-cell fixtures                              | Destination-ID collisions, OS/application payloads, arbitrary selections and assistive technologies   |
 | Image optimization / crop              | `editor/image.ts`, `components/AvatarCropper.svelte`; image/crop tests                                                   | Meaning after crop/downscale, animation and embedded metadata evaluation                               |
 | Profile / instance Markdown            | Backend `lib/markdown.ts` then `lib/sanitize.ts`; Markdown/sanitizer tests                                               | Representative mixed languages, tables, MathML and preview/save equality                               |
 | API post create/update                 | Backend `services/posts.ts` then sanitizer; real-session HTTP/store/read/edit fixture in all publication states           | Other payloads, editor JSON consistency, browser-to-API workflows                                        |
