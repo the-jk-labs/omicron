@@ -2,6 +2,7 @@
 import { createServer } from "node:http";
 import type { InstanceInfo, Me } from "../../src/lib/types.ts";
 import { post } from "../fixtures.ts";
+import { targetTableHtml } from "../lib/editor/transfer-fixtures.ts";
 
 // A loopback-only API for the real frontend; never connects to a database.
 const instance: InstanceInfo = {
@@ -61,6 +62,7 @@ const imported = post({
   contentHtml:
     '<figure><img src="/api/uploads/chart.gif" alt="Sales chart"><figcaption lang="fr">Sales graph</figcaption></figure>',
 });
+const transferTableDraft = post({ id: "transfer-table", status: "draft", contentHtml: targetTableHtml });
 const emptyPage = { items: [], nextCursor: null };
 
 createServer((request, response) => {
@@ -92,6 +94,7 @@ createServer((request, response) => {
   if (path === `/api/posts/${draft.id}`) return send({ post: draft });
   if (path === "/api/posts/imported") return send({ post: imported });
   if (path === "/api/posts/table") return send({ post: tableDraft });
+  if (path === "/api/posts/transfer-table") return send({ post: transferTableDraft });
   if (path.endsWith("/comments")) return send(emptyPage);
   if (path.endsWith("/related")) return send({ items: [] });
   if (path === "/api/uploads/chart.gif") {

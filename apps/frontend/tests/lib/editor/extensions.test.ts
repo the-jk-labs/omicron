@@ -6,6 +6,7 @@
 import { Editor, generateJSON } from "@tiptap/core";
 import { afterEach, expect, test } from "vitest";
 import { extensions } from "#lib/editor/extensions.js";
+import { complexTableHtml } from "./transfer-fixtures";
 
 let editor: Editor | null = null;
 afterEach(() => {
@@ -81,4 +82,28 @@ test("a table caption keeps the language and ID used by its accessible name", ()
   ).getHTML();
   expect(html).toContain('aria-labelledby="sales"');
   expect(html).toContain('<caption id="sales" lang="fr">Sales</caption>');
+});
+
+test("complex table HTML and JSON survive repeated editor round trips with resolvable references", () => {
+  const first = edit(complexTableHtml);
+  const json = first.getJSON();
+  const html = first.getHTML();
+  first.commands.setContent(json);
+  expect(first.getHTML()).toBe(html);
+  first.commands.setContent(generateJSON(html, extensions));
+  expect(first.getJSON()).toEqual(json);
+  const body = document.createElement("div");
+  body.innerHTML = html;
+  expect(body.querySelector("caption")).toHaveAttribute("lang", "fr");
+  expect(body.querySelector("caption")).toHaveAttribute("dir", "ltr");
+  expect(body.querySelector("#region")).toHaveAttribute("rowspan", "2");
+  expect(body.querySelector("#totals")).toHaveAttribute("colspan", "2");
+  expect(body.querySelector("#totals")).toHaveAttribute("scope", "colgroup");
+  for (const element of body.querySelectorAll("[headers], [aria-labelledby], [aria-describedby]")) {
+    for (const name of ["headers", "aria-labelledby", "aria-describedby"]) {
+      for (const id of element.getAttribute(name)?.split(/\s+/) ?? []) {
+        expect(body.querySelectorAll(`[id="${id}"]`)).toHaveLength(1);
+      }
+    }
+  }
 });

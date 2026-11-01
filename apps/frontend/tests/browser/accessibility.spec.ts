@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import axe from "axe-core";
+import { complexTableHtml } from "../lib/editor/transfer-fixtures";
 
 const articlePath = "/@ada/hello-world";
 const composerPath = "/compose?id=9e962281-2222-3333-4444-555555555555";
@@ -81,6 +82,9 @@ async function dragContent(page: Page, target: Locator, sourceHtml: string) {
   expect(box).not.toBeNull();
   try {
     await handle.dragTo(target, { targetPosition: { x: 1, y: box!.height / 2 } });
+    const payload = JSON.parse((await handle.getAttribute("data-drop-payload")) ?? "null");
+    expect(payload?.trusted).toBe(true);
+    expect(payload?.types).toContain("text/html");
   } finally {
     await test.info().attach("native-drag-payload", {
       body: (await handle.getAttribute("data-drop-payload")) ?? "null",
@@ -557,4 +561,161 @@ test("document navigation and native cut/paste provide a keyboard alternative to
       }),
     )
     .toBe(true);
+});
+
+test("native clipboard partial replacement preserves block language and both unselected text remainders", async ({
+  page,
+}) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await writeClipboard(page, '<p lang="fr" dir="ltr">Bonjour <span lang="de">Welt</span></p>');
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+Home");
+  for (let index = 0; index < 6; index++) await page.keyboard.press("ArrowRight");
+  for (let index = 0; index < 3; index++) await page.keyboard.press("Shift+ArrowRight");
+  expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("bod");
+  await page.keyboard.press("ControlOrMeta+v");
+  await expect(body.locator('p[lang="fr"]')).toHaveText("Bonjour Welt");
+  await expect(body.locator('span[lang="de"]')).toHaveText("Welt");
+  await expect(body.locator("p").first()).toHaveText("Draft ");
+  await expect(body.locator("p").last()).toHaveText("y");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(body).toHaveText("Draft body");
+});
+
+test("native clipboard into a table cell retains destination headers, caption and undo", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, "/compose?id=transfer-table");
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  const cell = body.locator('td[headers="target-left"]');
+  await writeClipboard(page, '<p lang="fr" dir="ltr">Bonjour</p>');
+  await cell.locator("p").click();
+  await page.keyboard.press("Home");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ControlOrMeta+v");
+  await expect(cell.locator('p[lang="fr"]')).toHaveText("Bonjour");
+  await expect(cell.locator('p[lang="fr"]')).toHaveAttribute("dir", "ltr");
+  await expect(cell).toHaveText("alBonjourpha");
+  await expect(body.locator('td[headers="target-right"]')).toHaveText("beta");
+  await expect(body.getByRole("table", { name: "Destination table", exact: true })).toBeVisible();
+  await expect(body.locator("table")).toHaveCount(1);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(cell).toHaveText("alpha");
+});
+
+test("native clipboard image in a table cell retains its long description through autosave and undo", async ({
+  page,
+}) => {
+  await signedIn(page);
+  await ready(page, "/compose?id=transfer-table");
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  const cell = body.locator('td[headers="target-left"]');
+  await writeClipboard(
+    page,
+    '<img src="/api/uploads/chart.gif" alt="Sales chart" lang="en" aria-describedby="chart-description"><p id="chart-description">Sales doubled.</p>',
+    true,
+  );
+  await cell.locator("p").click();
+  await page.keyboard.press("Home");
+  const saved = page.waitForRequest(
+    (request) =>
+      request.method() === "PATCH" &&
+      request.url().endsWith("/api/posts/transfer-table") &&
+      request.postDataJSON().contentHtml.includes('id="chart-description"'),
+  );
+  const uploaded = page.waitForRequest(
+    (request) => request.method() === "POST" && request.url().endsWith("/api/uploads"),
+  );
+  await page.keyboard.press("ControlOrMeta+v");
+  await uploaded;
+  await expect(cell.locator("img")).toHaveAccessibleDescription("Sales doubled.");
+  await expect(cell.locator("img")).toHaveAttribute("alt", "Sales chart");
+  await expect(cell.locator("img")).toHaveAttribute("lang", "en");
+  await expect(cell.locator("#chart-description")).toHaveText("Sales doubled.");
+  await expect(body.locator('td[headers="target-right"]')).toHaveText("beta");
+  const html = (await saved).postDataJSON().contentHtml as string;
+  expect(html).toContain('aria-describedby="chart-description"');
+  expect(html).toContain('headers="target-left"');
+  expect(html).not.toContain('contenteditable="false"');
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(cell).toHaveText("alpha");
+  await expect(body.locator("img")).toHaveCount(0);
+  await expect(body.getByRole("table", { name: "Destination table", exact: true })).toBeVisible();
+});
+
+test("trusted HTML drop into a table cell preserves the grid instead of replacing the old selection", async ({
+  page,
+}) => {
+  await signedIn(page);
+  await ready(page, "/compose?id=transfer-table");
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  const cell = body.locator('td[headers="target-left"]');
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  await dragContent(page, cell.locator("p"), '<p lang="fr" dir="ltr">Bonjour</p>');
+  await expect(cell.locator('p[lang="fr"]')).toHaveText("Bonjour");
+  await expect(cell).toContainText("alpha");
+  await expect(body.locator('td[headers="target-right"]')).toHaveText("beta");
+  await expect(body.locator("tr")).toHaveCount(2);
+  await expect(body.getByRole("table", { name: "Destination table", exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(cell).toHaveText("alpha");
+});
+
+test("native clipboard complex tables retain spans, caption language and resolved header relationships", async ({
+  page,
+}) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await writeClipboard(page, complexTableHtml);
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+v");
+  const table = body.getByRole("table", { name: "Sales by region", exact: true });
+  await expect(table).toHaveAccessibleDescription("Values exclude returns.");
+  await expect(table.locator("caption")).toHaveAttribute("lang", "fr");
+  await expect(table.locator("caption")).toHaveAttribute("dir", "ltr");
+  await expect(table.locator("#region")).toHaveAttribute("rowspan", "2");
+  await expect(table.locator("#totals")).toHaveAttribute("colspan", "2");
+  await expect(table.locator("#totals")).toHaveAttribute("scope", "colgroup");
+  await expect(table.locator('[headers="north count"]')).toHaveText("20");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(body).toHaveText("Draft body");
+});
+
+test("native clipboard rich-caption review at a cell target can cancel, accept and undo", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, "/compose?id=transfer-table");
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  const cell = body.locator('td[headers="target-left"]');
+  await writeClipboard(
+    page,
+    '<table><caption>Sales <span lang="fr">annuelles</span></caption><tr><td>20</td></tr></table>',
+  );
+  await cell.locator("p").click();
+  await page.keyboard.press("Home");
+  const original = await body.innerHTML();
+  await page.keyboard.press("ControlOrMeta+v");
+  const dialog = page.getByRole("dialog", { name: "Review pasted content" });
+  await expect(dialog).toContainText("span lang: fr");
+  await page.keyboard.press("Escape");
+  await expect(body).toBeFocused();
+  expect(await body.innerHTML()).toBe(original);
+  await page.keyboard.press("ControlOrMeta+v");
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Enter");
+  await expect(dialog).toBeHidden();
+  await expect(body).toContainText("Sales annuelles");
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(body.locator("table")).toHaveCount(1);
+  await expect(cell).toHaveText("alpha");
+  await expect(body.getByRole("table", { name: "Destination table", exact: true })).toBeVisible();
 });
