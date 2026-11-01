@@ -49,6 +49,12 @@ const article = post({
     '<h2>Reading accessibly</h2><p>A short article with an informative image and <a href="https://example.test">further reading</a>.</p><img src="/api/uploads/chart.gif" alt="Sales increased from 10 to 20" width="100" height="100"><p lang="fr">Bonjour</p>',
 });
 const draft = post({ status: "draft", contentHtml: "<p>Draft body</p>" });
+const tableDraft = post({
+  id: "table",
+  status: "draft",
+  contentHtml:
+    '<table aria-labelledby="sales"><caption id="sales" lang="en">Sales table</caption><tr><th scope="col">Year</th></tr><tr><td>2026</td></tr></table>',
+});
 const imported = post({
   id: "imported",
   status: "draft",
@@ -85,6 +91,7 @@ createServer((request, response) => {
   if (path === "/api/posts/by/ada/hello-world") return send({ post: article });
   if (path === `/api/posts/${draft.id}`) return send({ post: draft });
   if (path === "/api/posts/imported") return send({ post: imported });
+  if (path === "/api/posts/table") return send({ post: tableDraft });
   if (path.endsWith("/comments")) return send(emptyPage);
   if (path.endsWith("/related")) return send({ items: [] });
   if (path === "/api/uploads/chart.gif") {

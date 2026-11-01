@@ -291,3 +291,20 @@ test("explicit paste-as-plain-text does not trigger an HTML loss warning", async
   await expect(body).toHaveText("Plain caption");
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+test("live authoring tables expose their caption and update their accessible name after editing", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, "/compose?id=table");
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  const table = body.getByRole("table", { name: "Sales table", exact: true });
+  await expect(table.locator("caption")).toBeVisible();
+  await expect(table.locator("caption")).toHaveAttribute("lang", "en");
+  await table.getByRole("columnheader", { name: "Year" }).click();
+  await page.getByRole("button", { name: "Edit table", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Table accessibility", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Table accessibility", exact: true });
+  await dialog.getByRole("textbox", { name: "Table caption", exact: true }).fill("Updated sales table");
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(body.getByRole("table", { name: "Updated sales table", exact: true })).toBeVisible();
+  await accessible(page);
+});

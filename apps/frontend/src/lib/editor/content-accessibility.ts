@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Extension, Mark, mergeAttributes } from "@tiptap/core";
-import { Table } from "@tiptap/extension-table";
+import { Table, TableView } from "@tiptap/extension-table";
+import type { Node } from "@tiptap/pm/model";
+import type { EditorView } from "@tiptap/pm/view";
 
 export const CONTENT_ATTRIBUTES = ["lang", "dir", "id", "aria-label", "aria-labelledby", "aria-describedby"];
 
@@ -46,7 +48,44 @@ export const TextLanguage = Mark.create({
   renderHTML: ({ HTMLAttributes }) => ["span", HTMLAttributes, 0],
 });
 
+class AccessibleTableView extends TableView {
+  constructor(node: Node, cellMinWidth: number, view?: EditorView, attributes: Record<string, unknown> = {}) {
+    super(node, cellMinWidth, view, attributes);
+    this.syncAccessibility(node);
+  }
+
+  override update(node: Node) {
+    if (!super.update(node)) return false;
+    this.syncAccessibility(node);
+    return true;
+  }
+
+  private syncAccessibility(node: Node) {
+    for (const name of CONTENT_ATTRIBUTES) {
+      if (typeof node.attrs[name] === "string") this.table.setAttribute(name, node.attrs[name]);
+      else this.table.removeAttribute(name);
+    }
+    if (!node.attrs.caption) {
+      this.table.caption?.remove();
+      return;
+    }
+    const caption = this.table.caption ?? this.table.createCaption();
+    // Captions are metadata, edited through Table accessibility rather than the row document.
+    caption.setAttribute("contenteditable", "false");
+    const text = String(node.attrs.caption);
+    if (caption.textContent !== text) caption.textContent = text;
+    for (const name of CONTENT_ATTRIBUTES) {
+      const value = node.attrs.captionAttributes?.[name];
+      if (typeof value === "string") caption.setAttribute(name, value);
+      else caption.removeAttribute(name);
+    }
+  }
+}
+
 export const AccessibleTable = Table.extend({
+  addOptions() {
+    return { ...this.parent!(), View: AccessibleTableView };
+  },
   addAttributes() {
     return {
       ...this.parent?.(),

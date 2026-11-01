@@ -493,6 +493,36 @@ test("table accessibility settings save a native caption and headers", async () 
   expect(editor.getHTML()).toContain("June");
 });
 
+test("the live editing view renders table captions with their names and language", async () => {
+  const { dom } = await setup(
+    '<table aria-labelledby="sales"><caption id="sales" lang="fr">Sales table</caption><tr><th scope="col">Year</th></tr></table>',
+  );
+  expect(dom.querySelector("caption")).toHaveTextContent("Sales table");
+  expect(dom.querySelector("caption")).toHaveAttribute("lang", "fr");
+  expect(dom.querySelector("table")).toHaveAccessibleName("Sales table");
+});
+
+test("live table caption edits, removals and undo stay in sync without changing serialized markup", async () => {
+  const { editor, dom } = await setup(
+    '<table aria-labelledby="sales"><caption id="sales" lang="fr">Sales table</caption><tr><th>Year</th></tr></table>',
+  );
+  editor.commands.setTextSelection(4);
+  editor.commands.updateAttributes("table", {
+    caption: "Updated table",
+    captionAttributes: { id: "updated", lang: "de" },
+    "aria-labelledby": "updated",
+  });
+  expect(dom.querySelector("table")).toHaveAccessibleName("Updated table");
+  expect(dom.querySelector("caption")).toHaveAttribute("id", "updated");
+  expect(dom.querySelector("caption")).toHaveAttribute("lang", "de");
+  expect(dom.querySelector("caption")).toHaveAttribute("contenteditable", "false");
+  expect(editor.getHTML()).not.toContain("contenteditable");
+  editor.commands.updateAttributes("table", { caption: null });
+  expect(dom.querySelector("caption")).toBeNull();
+  editor.commands.undo();
+  expect(dom.querySelector("caption")).toHaveTextContent("Sales table");
+});
+
 test("table header scope controls cannot add invalid scope attributes to data cells", async () => {
   const { editor } = await setup("<table><tr><td>Data</td></tr></table>");
   editor.commands.setTextSelection(4);
