@@ -63,6 +63,10 @@ createServer((request, response) => {
     response.writeHead(status, { "content-type": "application/json" });
     response.end(JSON.stringify(body));
   };
+  if (request.method === "POST" && path === "/api/uploads") {
+    request.resume();
+    return send({ url: "/api/uploads/chart.gif" });
+  }
   if (request.method === "PATCH" && path.startsWith("/api/posts/")) {
     // Echo only identifiers; browser tests inspect writes without persisting anything.
     request.resume();

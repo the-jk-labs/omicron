@@ -2,7 +2,8 @@
 <script lang="ts">
   import { type Content, Editor, generateJSON } from "@tiptap/core";
   import { Placeholder } from "@tiptap/extension-placeholder";
-  import type { Node as DocumentNode } from "@tiptap/pm/model";
+  import type { Node as DocumentNode, Slice } from "@tiptap/pm/model";
+  import type { SelectionBookmark } from "@tiptap/pm/state";
   import { Checkbox, Collapsible, Dialog, DropdownMenu, Label, Select, Toolbar } from "bits-ui";
   import { onDestroy, onMount, untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
@@ -14,6 +15,7 @@
   import { countWords, readTimeFromWords } from "#lib/format.js";
   import { proxyImageHtml } from "#lib/imageProxy.js";
   import { checkAccessibility, type AccessibilityIssue } from "./check-accessibility";
+  import { clipboardImageCount, clipboardLoss, preserveClipboardBoundaries, rehostClipboardImages } from "./clipboard";
   import { contentLoss } from "./contentLoss";
   import EditorNavigation from "./EditorNavigation.svelte";
   import { extensions } from "./extensions";
@@ -379,7 +381,8 @@
   // Image upload: the picked file is resized/compressed in the browser (see
   // image.ts), uploaded, then inserted at the cursor as an image node.
   let imageInput = $state<HTMLInputElement | null>(null);
-  let uploading = $state(false);
+  let uploadsInFlight = $state(0);
+  const uploading = $derived(uploadsInFlight > 0);
   let uploadError = $state("");
 
   // Uploads images and inserts them at `pos` (defaults to the current cursor).
@@ -391,7 +394,7 @@
       return;
     }
     uploadError = "";
-    uploading = true;
+    uploadsInFlight++;
     // Insertion walks forward as images land, so pasting several files keeps
     // their original order instead of stacking them in reverse.
     let at = pos;
@@ -417,7 +420,7 @@
     } catch (err) {
       uploadError = err instanceof ApiError ? err.message : "Failed to upload image.";
     } finally {
-      uploading = false;
+      uploadsInFlight--;
     }
   }
 
@@ -428,21 +431,84 @@
     if (files.length) void uploadImages(files);
   }
 
-  // Screenshots and copied images arrive as clipboard *files*, which ProseMirror
-  // drops on the floor by default — so paste never worked. Intercept them and run
-  // them through the normal upload path. Doing this even when the clipboard also
-  // carries HTML means an image copied off a web page is rehosted here rather
-  // than hotlinked from wherever it came from.
+  type ClipboardInsertion = { slice: Slice; bookmark: SelectionBookmark; files: File[]; losses: string[] };
+  let clipboardReview = $state.raw<ClipboardInsertion | null>(null);
+  const clipboardInsertions = new Set<ClipboardInsertion>();
+
+  function cancelClipboard() {
+    if (clipboardReview) clipboardInsertions.delete(clipboardReview);
+    clipboardReview = null;
+  }
+
+  async function insertClipboard(insertion: ClipboardInsertion) {
+    const hasFiles = insertion.files.length > 0;
+    if (hasFiles) uploadsInFlight++;
+    uploadError = "";
+    try {
+      const sources: string[] = [];
+      for (const file of insertion.files) {
+        const { blob, type } = await prepareImage(file);
+        if (!clipboardInsertions.has(insertion)) return;
+        const { url } = await endpoints().uploadImage(blob, type);
+        sources.push(url);
+      }
+      if (editor.isDestroyed || !clipboardInsertions.has(insertion)) return;
+      const slice = sources.length ? rehostClipboardImages(insertion.slice, sources) : insertion.slice;
+      const selection = insertion.bookmark.resolve(editor.state.doc);
+      editor.view.dispatch(editor.state.tr.setSelection(selection).replaceSelection(slice).scrollIntoView());
+      editor.view.focus();
+    } catch (error) {
+      uploadError =
+        error instanceof ApiError ? error.message : "Could not paste the content. Try again or paste plain text.";
+    } finally {
+      clipboardInsertions.delete(insertion);
+      if (hasFiles) uploadsInFlight--;
+    }
+  }
+
+  function acceptClipboard() {
+    const insertion = clipboardReview;
+    clipboardReview = null;
+    if (insertion) void insertClipboard(insertion);
+  }
+
   function imageFilesFrom(data: DataTransfer | null): File[] {
     if (!data) return [];
     return Array.from(data.files).filter((file) => file.type.startsWith("image/"));
   }
 
-  function handlePaste(_view: Editor["view"], event: ClipboardEvent): boolean {
+  function handlePaste(view: Editor["view"], event: ClipboardEvent, slice: Slice): boolean {
+    if (!editor.isEditable || clipboardReview) return true;
     const files = imageFilesFrom(event.clipboardData);
-    if (!files.length) return false;
+    const html = event.clipboardData?.getData("text/html") ?? "";
+    if (!html) {
+      if (!files.length) {
+        const preserved = preserveClipboardBoundaries(slice);
+        if (preserved === slice) return false;
+        const insertion = { slice: preserved, bookmark: view.state.selection.getBookmark(), files, losses: [] };
+        clipboardInsertions.add(insertion);
+        void insertClipboard(insertion);
+        return true;
+      }
+      event.preventDefault();
+      void uploadImages(files);
+      return true;
+    }
+    if (!files.length && editor.isActive("codeBlock")) return false;
+    // Multiple HTML images cannot be reliably associated with clipboard files by order.
+    if (files.length && (files.length !== 1 || clipboardImageCount(slice) !== 1 || !isAcceptedImage(files[0]))) {
+      uploadError =
+        "Clipboard images could not be matched to their descriptions. Paste one image at a time, or upload the files and add descriptions with Image settings.";
+      return true;
+    }
+    const losses = clipboardLoss(html, slice, view.state.schema);
+    const preserved = preserveClipboardBoundaries(slice);
+    if (!losses.length && !files.length && preserved === slice) return false;
     event.preventDefault();
-    void uploadImages(files);
+    const insertion = { slice: preserved, bookmark: view.state.selection.getBookmark(), files, losses };
+    clipboardInsertions.add(insertion);
+    if (losses.length) clipboardReview = insertion;
+    else void insertClipboard(insertion);
     return true;
   }
 
@@ -500,7 +566,10 @@
         onUpdate(ed.getHTML(), ed.getJSON());
         refreshStats(ed);
       },
-      onTransaction: ({ editor: ed }) => refreshActive(ed),
+      onTransaction: ({ editor: ed, transaction }) => {
+        for (const insertion of clipboardInsertions) insertion.bookmark = insertion.bookmark.map(transaction.mapping);
+        refreshActive(ed);
+      },
     });
     const originalHtml = typeof content === "string" ? content : previewHtml;
     if (originalHtml) {
@@ -518,6 +587,7 @@
   });
 
   onDestroy(() => {
+    clipboardInsertions.clear();
     editor?.view.dom.removeEventListener(EDIT_ALT_EVENT, openAltDialog);
     editor?.destroy();
   });
@@ -790,6 +860,39 @@
   </Collapsible.Root>
   <AccessibilityGuidance />
 </fieldset>
+
+<Dialog.Root
+  open={clipboardReview !== null}
+  onOpenChange={(open) => {
+    if (!open) cancelClipboard();
+  }}
+>
+  <Dialog.Portal>
+    <Dialog.Overlay
+      class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
+    />
+    <Dialog.Content
+      class="fixed top-1/2 left-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[480px]"
+    >
+      <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Review pasted content</Dialog.Title>
+      <Dialog.Description class="mt-2 text-sm text-muted-foreground"
+        >Rich editing will simplify this content and may remove structure or accessibility information. Cancel to keep
+        the article unchanged, or paste the simplified content and review its descriptions, languages, and
+        relationships.</Dialog.Description
+      >
+      <p class="mt-3 text-sm break-words text-muted-foreground">
+        Affected information: {clipboardReview?.losses.slice(0, 8).join(", ")}.
+      </p>
+      <div class="mt-5 flex flex-wrap justify-end gap-2">
+        <Dialog.Close
+          class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
+          >Cancel</Dialog.Close
+        >
+        <Button variant="solid" onclick={acceptClipboard}>Paste simplified content</Button>
+      </div>
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
 
 <Dialog.Root bind:open={codeOpen}>
   <Dialog.Portal>

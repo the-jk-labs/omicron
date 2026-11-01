@@ -18,6 +18,26 @@ async function ready(page: Page, path: string) {
   await page.keyboard.press("Escape");
 }
 
+async function writeClipboard(page: Page, html: string, withImage = false) {
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.evaluate(
+    async ({ sourceHtml, includeImage }) => {
+      const text = new DOMParser().parseFromString(sourceHtml, "text/html").body.textContent ?? "";
+      const data: Record<string, Blob> = {
+        "text/html": new Blob([sourceHtml], { type: "text/html" }),
+        "text/plain": new Blob([text], { type: "text/plain" }),
+      };
+      if (includeImage) {
+        const canvas = new OffscreenCanvas(2, 2);
+        canvas.getContext("2d")!.clearRect(0, 0, 2, 2);
+        data["image/png"] = await canvas.convertToBlob({ type: "image/png" });
+      }
+      await navigator.clipboard.write([new ClipboardItem(data)]);
+    },
+    { sourceHtml: html, includeImage: withImage },
+  );
+}
+
 async function accessible(page: Page) {
   await page.evaluate(axe.source);
   const results = await page.evaluate(async () => {
@@ -190,4 +210,84 @@ test("imported structure survives a title-only autosave until rich editing is ac
   expect((await saved).postDataJSON().contentHtml).toContain('<figcaption lang="fr">Sales graph</figcaption>');
   await page.getByRole("button", { name: "Edit simplified content" }).click();
   await expect(body).toHaveAttribute("contenteditable", "true");
+});
+
+for (const theme of ["light", "dark"] as const) {
+  test(`${theme}: native clipboard loss review can cancel, accept, and undo with the keyboard`, async ({ page }) => {
+    await signedIn(page);
+    await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
+    await ready(page, composerPath);
+    const body = page.getByRole("textbox", { name: "Article body", exact: true });
+    await writeClipboard(
+      page,
+      '<figure><img src="/api/uploads/chart.gif" alt="Sales chart"><figcaption lang="fr">Chart caption</figcaption></figure>',
+    );
+    await body.focus();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.press("ControlOrMeta+v");
+    const dialog = page.getByRole("dialog", { name: "Review pasted content" });
+    await expect(dialog).toBeVisible();
+    await expect(body).toHaveText("Draft body");
+    await accessible(page);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(body).toBeFocused();
+    await page.keyboard.press("ControlOrMeta+v");
+    await expect(dialog.getByRole("button", { name: "Cancel", exact: true })).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(dialog.getByRole("button", { name: "Paste simplified content" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(dialog).toBeHidden();
+    await expect(body).toBeFocused();
+    await expect(body.locator("img")).toHaveAttribute("alt", "Sales chart");
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(body).toHaveText("Draft body");
+  });
+}
+
+test("native clipboard image rehosting retains its description and adjacent text", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await writeClipboard(
+    page,
+    '<p>Before the image</p><img src="/api/uploads/chart.gif" alt="Sales chart" lang="en"><p>After the image</p>',
+    true,
+  );
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  const upload = page.waitForRequest(
+    (request) => request.method() === "POST" && request.url().endsWith("/api/uploads"),
+  );
+  await page.keyboard.press("ControlOrMeta+v");
+  await upload;
+  await expect(body.locator("img")).toHaveAttribute("alt", "Sales chart");
+  await expect(body.locator("img")).toHaveAttribute("lang", "en");
+  await expect(body).toContainText("Before the image");
+  await expect(body).toContainText("After the image");
+});
+
+test("native clipboard headings and passage metadata survive without a loss warning", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await writeClipboard(page, '<h2>New section</h2><p lang="fr" dir="ltr">Translated passage</p>');
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+v");
+  await expect(body.locator("h2")).toHaveText("New section");
+  await expect(body.locator('p[lang="fr"]')).toHaveAttribute("dir", "ltr");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("explicit paste-as-plain-text does not trigger an HTML loss warning", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await writeClipboard(page, "<figure><figcaption>Plain caption</figcaption></figure>");
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+Shift+v");
+  await expect(body).toHaveText("Plain caption");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });

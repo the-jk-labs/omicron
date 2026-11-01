@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Content, Editor as TiptapEditor } from "@tiptap/core";
+import { tick } from "svelte";
 import { beforeEach, expect, test, vi } from "vitest";
 import Editor from "#lib/editor/Editor.svelte";
 import { EDIT_ALT_EVENT } from "#lib/editor/resizable-image.js";
@@ -45,6 +46,13 @@ async function setup(content?: Content, routes: Parameters<typeof fakeFetch>[0] 
 }
 
 const tool = (label: string) => fireEvent.click(screen.getByRole("button", { name: label }));
+function pasteHtml(editor: TiptapEditor, html: string, files: File[] = []) {
+  const event = new Event("paste", { cancelable: true }) as ClipboardEvent;
+  Object.defineProperty(event, "clipboardData", {
+    value: { files, getData: (type: string) => (type === "text/html" ? html : "") },
+  });
+  editor.view.pasteHTML(html, event);
+}
 const status = () => document.body.textContent.match(/[\d,]+ characters?.*?(min read|words?)/)?.[0];
 
 function renderUnmounted(previewHtml?: string) {
@@ -93,6 +101,149 @@ test("upload failures are announced to assistive technology", async () => {
 test("stored HTML is parsed as HTML, not escaped as Markdown text", async () => {
   const { editor } = await setup("<p>alpha <strong>beta</strong></p>");
   expect(editor.getHTML()).toBe("<p>alpha <strong>beta</strong></p>");
+});
+
+test("unsupported clipboard HTML cannot silently replace the selection", async () => {
+  const { editor, onUpdate } = await setup("<p>Original</p>");
+  editor.commands.selectAll();
+  pasteHtml(editor, '<figure><img src="/a.png" alt="A graph"><figcaption lang="fr">Sales graph</figcaption></figure>');
+  expect(editor.getHTML()).toBe("<p>Original</p>");
+  expect(await screen.findByRole("dialog", { name: "Review pasted content" })).toHaveTextContent("simplify");
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test("pasted image files preserve HTML descriptions, passage language and surrounding text", async () => {
+  const { editor } = await setup("<p></p>");
+  pasteHtml(editor, '<p>Before</p><img src="file:///image.png" alt="A graph" lang="fr" dir="ltr"><p>After</p>', [
+    png("image.png"),
+  ]);
+  await waitFor(() => expect(editor.getHTML()).toContain('src="/api/uploads/img1.webp"'));
+  expect(editor.getHTML()).toContain('alt="A graph"');
+  expect(editor.getHTML()).toContain('lang="fr"');
+  expect(editor.getHTML()).toContain("Before");
+  expect(editor.getHTML()).toContain("After");
+});
+
+test("cancelling a lossy paste leaves the selection, original body and uploads untouched", async () => {
+  const { editor, onUpdate } = await setup("<p>Original</p>");
+  editor.commands.selectAll();
+  pasteHtml(editor, '<figure><img src="file:///image.png" alt="A graph"><figcaption>Caption</figcaption></figure>', [
+    png("image.png"),
+  ]);
+  await screen.findByRole("dialog", { name: "Review pasted content" });
+  await expectAccessible();
+  await tool("Cancel");
+  expect(editor.getHTML()).toBe("<p>Original</p>");
+  expect(onUpdate).not.toHaveBeenCalled();
+  expect(api.calls).toHaveLength(0);
+});
+
+test("an explicitly accepted simplified paste is one reversible content change", async () => {
+  const { editor, onUpdate } = await setup("<p>Original</p>");
+  editor.commands.selectAll();
+  pasteHtml(editor, '<figure><img src="/a.png" alt="A graph"><figcaption>Caption</figcaption></figure>');
+  await fireEvent.click(await screen.findByRole("button", { name: "Paste simplified content" }));
+  expect(editor.getHTML()).toContain('alt="A graph"');
+  expect(editor.getHTML()).toContain("Caption");
+  expect(editor.getHTML()).not.toContain("figure");
+  expect(onUpdate).toHaveBeenCalledTimes(1);
+  editor.commands.undo();
+  expect(editor.getHTML()).toBe("<p>Original</p>");
+});
+
+test("supported HTML clipboard metadata is retained without a review dialog", async () => {
+  const { editor } = await setup("<p></p>");
+  pasteHtml(
+    editor,
+    '<p lang="fr" dir="ltr">Bonjour</p><table aria-labelledby="caption"><caption id="caption" lang="de">Sales</caption><tr><th id="year" scope="col">Year</th><td headers="year">2026</td></tr></table>',
+  );
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(editor.getHTML()).toContain('<p lang="fr" dir="ltr">Bonjour</p>');
+  const body = new DOMParser().parseFromString(editor.getHTML(), "text/html");
+  expect(body.querySelector("caption")?.getAttribute("lang")).toBe("de");
+  expect(body.querySelector("caption")?.getAttribute("id")).toBe("caption");
+  expect(editor.getHTML()).toContain('headers="year"');
+  expect(editor.getHTML()).toContain('scope="col"');
+});
+
+test("plain-text Markdown keeps its existing clipboard parsing behavior", async () => {
+  const { editor } = await setup("<p></p>");
+  editor.view.pasteText("**Bold** text", new Event("paste") as ClipboardEvent);
+  expect(editor.getHTML()).toContain("<strong>Bold</strong>");
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+test("pasted HTML headings keep their structural level instead of joining the target paragraph", async () => {
+  const { editor } = await setup("<p>Opening</p>");
+  editor.commands.setTextSelection(4);
+  pasteHtml(editor, "<h2>New section</h2>");
+  expect(editor.getHTML()).toContain("<h2>New section</h2>");
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+test("a clipboard screenshot without HTML remains unreviewed rather than receiving invented alt text", async () => {
+  const { editor } = await setup("<p></p>");
+  pasteHtml(editor, "", [png("screenshot.png")]);
+  await waitFor(() => expect(editor.getHTML()).toContain('src="/api/uploads/img1.webp"'));
+  expect(editor.getJSON().content[0].attrs!.alt).toBeNull();
+  await screen.findByRole("button", { name: "Check accessibility (1)" });
+});
+
+test("decorative alternatives are preserved when clipboard images are rehosted", async () => {
+  const { editor } = await setup("<p></p>");
+  pasteHtml(editor, '<img src="file:///image.png" alt="">', [png("image.png")]);
+  await waitFor(() => expect(editor.getHTML()).toContain('src="/api/uploads/img1.webp"'));
+  expect(editor.getJSON().content[0].attrs!.alt).toBe("");
+});
+
+test("ambiguous clipboard image associations fail without discarding descriptions or uploading", async () => {
+  const { editor, onUpdate } = await setup("<p>Original</p>");
+  pasteHtml(editor, '<img src="file:///one.png" alt="One"><img src="file:///two.png" alt="Two">', [
+    png("one.png"),
+    png("two.png"),
+  ]);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Paste one image at a time");
+  expect(editor.getHTML()).toBe("<p>Original</p>");
+  expect(onUpdate).not.toHaveBeenCalled();
+  expect(api.calls).toHaveLength(0);
+});
+
+test("clipboard upload failures leave the original selection unchanged", async () => {
+  const { editor, onUpdate } = await setup("<p>Original</p>", {
+    "POST /api/uploads": apiError(413, "Image too large"),
+  });
+  editor.commands.selectAll();
+  pasteHtml(editor, '<img src="file:///image.png" alt="A graph">', [png("image.png")]);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Image too large");
+  expect(editor.getHTML()).toBe("<p>Original</p>");
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test("an asynchronous clipboard upload keeps its original insertion point through other edits", async () => {
+  const upload = Promise.withResolvers<Response>();
+  const { editor } = await setup("<p>Before</p><p>After</p>", { "POST /api/uploads": () => upload.promise });
+  editor.commands.setTextSelection(9);
+  pasteHtml(editor, '<img src="file:///image.png" alt="A graph">', [png("image.png")]);
+  await waitFor(() => expect(api.calls).toHaveLength(1));
+  editor.commands.insertContentAt(1, "New ");
+  editor.commands.setTextSelection(2);
+  upload.resolve(Response.json({ url: "/api/uploads/rehosted.webp" }));
+  await waitFor(() => expect(editor.getHTML()).toContain("rehosted.webp"));
+  const html = editor.getHTML();
+  expect(html.indexOf("New Before")).toBeLessThan(html.indexOf("rehosted.webp"));
+  expect(html.indexOf("rehosted.webp")).toBeLessThan(html.indexOf("After"));
+});
+
+test("pasting supported text cannot hide an image upload that is still running", async () => {
+  const upload = Promise.withResolvers<Response>();
+  const { editor } = await setup("<p></p>", { "POST /api/uploads": () => upload.promise });
+  pasteHtml(editor, '<img src="file:///image.png" alt="A graph">', [png("image.png")]);
+  await waitFor(() => expect(api.calls).toHaveLength(1));
+  pasteHtml(editor, '<p lang="fr">Translated passage</p>');
+  await tick();
+  expect(screen.getByRole("status")).toHaveTextContent("Uploading image");
+  upload.resolve(Response.json({ url: "/api/uploads/rehosted.webp" }));
+  await waitFor(() => expect(editor.getHTML()).toContain("rehosted.webp"));
 });
 
 test("unsupported imported structures cannot be silently rewritten by opening the editor", async () => {
