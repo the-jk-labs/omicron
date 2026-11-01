@@ -147,7 +147,7 @@ correct. The writing guide supplies manual review instructions alongside it.
   content, and manual-checking coverage assessments. The separate user-facing
   documentation site has not been changed by this implementation.
 
-## Local verification record
+## Verification record
 
 Verified on 2026-11-01 with Node 26.7.0 and pnpm 12.16.1:
 
@@ -159,11 +159,22 @@ Verified on 2026-11-01 with Node 26.7.0 and pnpm 12.16.1:
   Playwright's Ubuntu fallback browser package. Vite reports a large-chunk advisory.
 - `git diff --check` passes.
 
-Database integration tests, deployed-instance checks, and screen-reader
-evaluation were not run. The new GitHub CI job has not been executed from this
-local session. The separate accessibility test command can print jsdom canvas
-diagnostics; canvas measurement is unavailable in that environment and is not
-evidence of passing visual checks.
+Database integration tests were not run locally. The separate accessibility
+test command can print jsdom canvas diagnostics; canvas measurement is unavailable
+in that environment and is not evidence of passing visual checks.
+
+### GitHub CI
+
+[CI run 41282489989](https://github.com/the-jk-labs/omicron/actions/runs/41282489989)
+passed on 2026-11-01 for commit `82146e0`. All six jobs succeeded: backend,
+frontend, browser accessibility, container image builds, mobile checks, and
+React Doctor. The backend visibility integration step passed against CI's
+disposable PostgreSQL service; this does not verify the complete accessibility
+content pipeline against real storage or signed federation delivery.
+
+Manual accessibility validation is skipped for this PR. Deployed-instance checks
+and screen-reader evaluation have not been performed. Unverified criteria remain
+pending, and no WCAG or ATAG conformance claim is made.
 
 ### Deployment behavior
 
