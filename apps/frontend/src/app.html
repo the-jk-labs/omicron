@@ -21,6 +21,15 @@
           document.documentElement.dataset.themePref = fixed ? stored : "system";
         } catch (e) {}
       })();
+      (function () {
+        var saved;
+        try {
+          saved = localStorage.getItem("image-display");
+        } catch (e) {}
+        var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        document.documentElement.dataset.imageDisplay =
+          saved === "hide" || (saved !== "show" && reduced) ? "hide" : "show";
+      })();
     </script>
     %sveltekit.head%
   </head>

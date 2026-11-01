@@ -80,7 +80,7 @@
 <div class="mb-6">
   <p class="mb-1.5 text-xs font-medium text-muted-foreground">
     Banner. Shown at the top of the post and in link previews. Optional; the first image in your post is used when you
-    don't pick one.
+    don't pick one. Use banners decoratively; place informative images in the article body with descriptions.
   </p>
 
   <div class="rounded-card border border-border bg-background-alt p-3">
@@ -156,12 +156,14 @@
       {/if}
     </div>
 
-    {#if error}<p class="mt-2 text-sm text-destructive">{error}</p>{/if}
+    {#if error}<p role="alert" class="mt-2 text-sm text-destructive">{error}</p>{/if}
   </div>
 
   <input
     bind:this={fileInput}
     type="file"
+    hidden
+    aria-label="Upload banner"
     accept="image/png,image/jpeg,image/webp,image/gif"
     onchange={onFile}
     class="hidden"

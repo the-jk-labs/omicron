@@ -4,6 +4,12 @@ import { page } from "$app/state";
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { describe, expect, test, vi } from "vitest";
 import LoginPage from "../../../src/routes/login/+page.svelte";
+import { expectAccessible } from "../../accessibility";
+
+test("accessibility: login", async () => {
+  render(LoginPage);
+  await expectAccessible();
+});
 
 const auth = vi.hoisted(() => ({
   email: vi.fn<(a: unknown) => Promise<{ error?: { message?: string; code?: string } | null }>>(),

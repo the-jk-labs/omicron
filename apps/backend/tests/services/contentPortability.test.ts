@@ -2,6 +2,7 @@
 import { ContentArchive, ContentImportPreview, ContentImportResult } from "@omicron/contract";
 import { strToU8, unzipSync, zipSync } from "fflate";
 import { beforeEach, expect, test, vi } from "vitest";
+import { accessibilityContent, expectAccessibleContent } from "../accessibilityContent.ts";
 import { postRow, userRow } from "../fixtures.ts";
 
 vi.mock("node:fs/promises", () => ({
@@ -243,6 +244,27 @@ test("re-export preserves imported identity so migration chains stay idempotent"
   vi.mocked(repo.listOwn).mockResolvedValue([postRow({ externalId: key })]);
   const bytes = await exportContent(userRow());
   expect(parseArchive(bytes).posts[0].key).toBe(key);
+});
+
+test("native export, offline HTML, WordPress and re-import preserve accessibility metadata", async () => {
+  vi.mocked(repo.listOwn).mockResolvedValue([
+    postRow({ id: "accessible", contentHtml: accessibilityContent, language: "en" }),
+  ]);
+  const bytes = await exportContent(userRow());
+  const files = unzipSync(bytes);
+  const native = parseArchive(bytes);
+  expectAccessibleContent(native.posts[0].contentHtml, "media/chart.png");
+  expect(native.posts[0].language).toBe("en");
+  expectAccessibleContent(new TextDecoder().decode(files["posts/accessible.html"]), "../media/chart.png");
+  expectAccessibleContent(
+    parseArchive(files["wordpress.xml"]).posts[0].contentHtml,
+    "https://old.example/api/uploads/chart.png",
+  );
+  await importContent("destination", bytes, false);
+  const stored = vi.mocked(repo.insertPost).mock.calls[0][0];
+  expectAccessibleContent(stored.contentHtml, "/api/uploads/new.png");
+  expect(stored.language).toBe("en");
+  expect(stored.contentJson).toBeNull();
 });
 
 test("a private account export is protected and restores as drafts even with publication enabled", async () => {

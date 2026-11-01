@@ -6,6 +6,7 @@ import { expect, test, vi } from "vitest";
 import { confirmRequest } from "#lib/components/ui/confirm.js";
 import type { Post } from "#lib/types.js";
 import EditPage from "../../../../../src/routes/posts/[id]/edit/+page.svelte";
+import { expectAccessible } from "../../../../accessibility";
 import { apiError, fakeFetch } from "../../../../fakeFetch";
 import { post } from "../../../../fixtures";
 
@@ -28,6 +29,11 @@ function setup(p: Partial<Post> = {}, routes: Parameters<typeof fakeFetch>[0] = 
 }
 
 const title = () => screen.getByPlaceholderText("Title");
+
+test("accessibility: published-post editing controls", async () => {
+  setup();
+  await expectAccessible();
+});
 // BannerPicker loads the photo providers on mount; only the save matters here.
 const saves = () => api.calls.filter((c) => c.method === "PATCH");
 const save = () => fireEvent.click(screen.getByRole("button", { name: "Save" }));

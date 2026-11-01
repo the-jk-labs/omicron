@@ -10,6 +10,7 @@ import {
   readZip,
   rewriteImages,
 } from "@/lib/contentArchive.ts";
+import { accessibilityContent, expectAccessibleContent } from "../accessibilityContent.ts";
 
 export function archivedPost(overrides: Partial<ContentArchivePost> = {}): ContentArchivePost {
   return {
@@ -126,6 +127,28 @@ test("accepts ordinary RSS feeds with encoded HTML", () => {
   );
   expect(archive.format).toBe("rss");
   expect(archive.posts[0].contentHtml).toBe("<p>Hello</p>");
+});
+
+test.for(["medium", "substack", "rss"] as const)("%s imports retain the accessibility-rich body", (format) => {
+  const body = accessibilityContent.replaceAll("/api/uploads/", "https://media.example/uploads/");
+  const bytes =
+    format === "medium"
+      ? zipSync({
+          "posts/story.html": strToU8(
+            `<h1 class="p-name">Accessible story</h1><section class="e-content">${body}</section>`,
+          ),
+        })
+      : format === "substack"
+        ? zipSync({
+            "posts.csv": strToU8("post_id,title\n1.accessible,Accessible story\n"),
+            "posts/1.accessible.html": strToU8(body),
+          })
+        : strToU8(
+            `<rss xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><item><title>Accessible story</title><link>https://source.example/story</link><content:encoded><![CDATA[${body}]]></content:encoded></item></channel></rss>`,
+          );
+  const parsed = parseArchive(bytes);
+  expect(parsed.format).toBe(format);
+  expectAccessibleContent(parsed.posts[0].contentHtml, "https://media.example/uploads/chart.png");
 });
 
 test("resolves only bundled images, including wrapped archives, and rewrites parsed attributes", () => {

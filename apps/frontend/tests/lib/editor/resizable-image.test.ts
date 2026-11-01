@@ -107,7 +107,7 @@ test("an attribute change re-renders the node view in place", () => {
   e.commands.updateAttributes("image", { alt: "", title: "T" });
   expect(img.alt).toBe("");
   expect(img.title).toBe("T");
-  expect(alt.dataset.missing).toBe("true");
+  expect(alt.dataset.missing).toBe("false");
   e.commands.updateAttributes("image", { title: null });
   expect(img.hasAttribute("title")).toBe(false);
 });

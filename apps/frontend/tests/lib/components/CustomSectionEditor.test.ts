@@ -32,6 +32,11 @@ test("counts characters against the limit", () => {
   expect(screen.getByText("5/1,000")).toBeInTheDocument();
 });
 
+test("the Markdown source has a persistent accessible name", () => {
+  setup();
+  expect(screen.getByRole("textbox", { name: "Profile content (Markdown)" })).toBeInTheDocument();
+});
+
 test.for([
   ["Bold", "**bold text**"],
   ["Italic", "_italic text_"],

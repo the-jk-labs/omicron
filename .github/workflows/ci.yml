@@ -141,6 +141,47 @@ jobs:
               pnpm audit --prod || true
               pnpm audit --prod --audit-level high
 
+  frontend-browser:
+    name: Frontend (browser accessibility)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          package_json_file: apps/frontend/package.json
+          version: 12.x
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: |
+            apps/frontend/pnpm-lock.yaml
+            packages/contract/pnpm-lock.yaml
+      - parallel:
+          - name: Install
+            run: pnpm install --frozen-lockfile
+          - name: Install the API contract
+            working-directory: packages/contract
+            run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        run: pnpm playwright install --with-deps chromium
+      - name: Browser accessibility checks
+        run: pnpm test:browser
+      - name: Save browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-accessibility
+          path: |
+            apps/frontend/playwright-report/
+            apps/frontend/test-results/
+          retention-days: 14
+
   docker-build:
     name: Docker images build
     runs-on: ubuntu-latest

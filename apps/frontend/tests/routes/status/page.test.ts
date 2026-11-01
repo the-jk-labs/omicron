@@ -2,7 +2,13 @@
 import { render, screen } from "@testing-library/svelte";
 import { afterEach, expect, test, vi } from "vitest";
 import StatusPage from "../../../src/routes/status/+page.svelte";
+import { expectAccessible } from "../../accessibility";
 import { setPublicEnv } from "../../mocks/$app/env/public.js";
+
+test("accessibility: instance status", async () => {
+  render(StatusPage);
+  await expectAccessible();
+});
 
 const state = vi.hoisted(() => ({ instance: null as Record<string, unknown> | null }));
 vi.mock(

@@ -2,6 +2,13 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, expect, test, vi } from "vitest";
 import AvatarCropper from "#lib/components/AvatarCropper.svelte";
+import { expectAccessible } from "../../accessibility";
+
+test("accessibility: the photo zoom slider has an accessible name", async () => {
+  await setup(560, 280);
+  expect(screen.getByRole("slider", { name: "Photo zoom" })).toBeInTheDocument();
+  await expectAccessible();
+});
 
 const drawImage = vi.fn();
 beforeEach(() => {
@@ -94,4 +101,14 @@ test("arrow keys reposition the photo", async () => {
   surface.focus();
   await fireEvent.keyDown(surface, { key: "ArrowRight" });
   expect(translate(img)).not.toBe("translate(-140px,0px)");
+});
+
+test("direction buttons reposition without dragging and stay inside the crop bounds", async () => {
+  const { img } = await setup(560, 280);
+  await fireEvent.click(screen.getByRole("button", { name: "Move photo right" }));
+  expect(translate(img)).toBe("translate(-130px,0px)");
+  await fireEvent.click(screen.getByRole("button", { name: "Move photo left" }));
+  expect(translate(img)).toBe("translate(-140px,0px)");
+  await fireEvent.click(screen.getByRole("button", { name: "Move photo down" }));
+  expect(translate(img)).toBe("translate(-140px,0px)");
 });

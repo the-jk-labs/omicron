@@ -4,6 +4,7 @@ import { page } from "$app/state";
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, expect, test, vi } from "vitest";
 import SetupPage from "../../../src/routes/setup/+page.svelte";
+import { expectAccessible } from "../../accessibility";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 afterEach(() => {
@@ -22,6 +23,18 @@ const cont = () => screen.getByRole("button", { name: "Continue" });
 const input = (label: string, value: string) => fireEvent.input(screen.getByLabelText(label), { target: { value } });
 const setupBody = () => api.calls.find((c) => c.path === "/api/setup")?.body as Record<string, unknown> | undefined;
 const currentStep = () => document.querySelector("ol li span.text-foreground")?.textContent;
+
+test("accessibility: setup wizard steps", async () => {
+  setup();
+  await expectAccessible();
+  await toAdminStep();
+  await expectAccessible();
+  await input("Username", "Ada_1");
+  await input("Email", "ada@example.com");
+  await input("Password", "a-long-enough-password");
+  await fireEvent.click(cont());
+  await expectAccessible();
+});
 
 async function toAdminStep(name = "Starlog") {
   await input("Instance name", name);

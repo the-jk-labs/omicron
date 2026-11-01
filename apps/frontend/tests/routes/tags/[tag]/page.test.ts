@@ -3,8 +3,14 @@ import { fireEvent, render, screen } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
 import type { Post } from "#lib/types.js";
 import TagPage from "../../../../src/routes/tags/[tag]/+page.svelte";
+import { expectAccessible } from "../../../accessibility";
 import { apiError, fakeFetch } from "../../../fakeFetch";
 import { post } from "../../../fixtures";
+
+test("accessibility: tag feed", async () => {
+  setup();
+  await expectAccessible();
+});
 
 let api: ReturnType<typeof fakeFetch>;
 function setup(

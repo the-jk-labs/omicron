@@ -3,6 +3,7 @@
   import "../app.css";
   import { PUBLIC_APP_NAME } from "$app/env/public";
   import { page } from "$app/state";
+  import { onMount } from "svelte";
   import { noPageScroll } from "#lib/actions/noPageScroll.js";
   import { canonicalOrigin } from "#lib/canonical.js";
   import Discover from "#lib/components/Discover.svelte";
@@ -12,9 +13,11 @@
   import PasskeyPrompt from "#lib/components/PasskeyPrompt.svelte";
   import SideNav from "#lib/components/SideNav.svelte";
   import SiteStatistics from "#lib/components/SiteStatistics.svelte";
+  import Button from "#lib/components/ui/Button.svelte";
   import ConfirmDialog from "#lib/components/ui/ConfirmDialog.svelte";
   import { absoluteBanner, postCardUrl, profileCardUrl } from "#lib/cover.js";
   import { excerpt } from "#lib/format.js";
+  import { imageDisplay } from "#lib/imageDisplay.svelte.js";
   import { rememberLocale } from "#lib/locale.svelte.js";
   import { blogPostingLd, breadcrumbLd, profilePageLd, serializeJsonLd, webSiteLd } from "#lib/seo.js";
   import { rememberTimeZone } from "#lib/timezone.svelte.js";
@@ -22,6 +25,7 @@
   import type { LayoutData } from "./$types";
 
   let { data, children }: { data: LayoutData; children: import("svelte").Snippet } = $props();
+  onMount(() => imageDisplay.start(document.body));
 
   // A render-time throw (which SvelteKit's load-error handling misses) otherwise
   // unmounts the whole app to an empty <body>; the boundary below contains it.
@@ -403,6 +407,13 @@
 {/snippet}
 
 <div class="min-h-screen bg-background text-foreground">
+  <Button
+    href="#main-content"
+    variant="outline"
+    class="sr-only z-50 focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:bg-background"
+  >
+    Skip to content
+  </Button>
   <!-- The one thing a reader with JavaScript off can usefully be told. Every
        form in this app posts through fetch (the `submit` handlers on the auth
        pages, the search bar, the editor), so with scripting disabled those
@@ -429,6 +440,8 @@
          the nav so the content sits in the optical centre of the viewport. The
          wizard gets a wider column than the auth forms. -->
     <main
+      id="main-content"
+      tabindex="-1"
       class="mx-auto flex w-full flex-col justify-center px-4 py-12 sm:min-h-[calc(100vh-4rem)] sm:py-16 {isSetup
         ? 'max-w-xl'
         : 'max-w-sm'}"
@@ -456,7 +469,7 @@
       </aside>
 
       <!-- Center: page content -->
-      <main class="min-w-0">
+      <main id="main-content" tabindex="-1" class="min-w-0">
         <svelte:boundary onerror={reportRenderError} {failed}>
           {@render children()}
         </svelte:boundary>

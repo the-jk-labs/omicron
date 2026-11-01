@@ -3,6 +3,14 @@ import { refreshAll } from "$app/navigation";
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, expect, test, vi } from "vitest";
 import VerifyEmailPage from "../../../src/routes/verify-email/+page.svelte";
+import { expectAccessible } from "../../accessibility";
+
+test("accessibility: email verification", async () => {
+  auth.verifyEmail.mockResolvedValue({ error: null });
+  render(VerifyEmailPage);
+  await screen.findByText("Email confirmed");
+  await expectAccessible();
+});
 
 const state = vi.hoisted(() => ({
   href: "http://localhost/verify-email?token=tok",

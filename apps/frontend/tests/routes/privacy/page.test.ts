@@ -3,6 +3,12 @@ import { page } from "$app/state";
 import { render, screen } from "@testing-library/svelte";
 import { beforeEach, expect, test, vi } from "vitest";
 import PrivacyPage from "../../../src/routes/privacy/+page.svelte";
+import { expectAccessible } from "../../accessibility";
+
+test("accessibility: privacy policy", async () => {
+  render(PrivacyPage);
+  await expectAccessible();
+});
 
 vi.mock(
   import("$app/state"),

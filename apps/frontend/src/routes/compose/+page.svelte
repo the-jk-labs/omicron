@@ -324,7 +324,9 @@
 
 <ScheduleDialog bind:open={scheduleOpen} current={publishAt} onconfirm={(at) => persist("scheduled", at)} />
 
+<Label.Root for="article-title" class="sr-only">Title</Label.Root>
 <input
+  id="article-title"
   placeholder="Title"
   bind:value={title}
   oninput={change}

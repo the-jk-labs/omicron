@@ -55,3 +55,30 @@ test("raw HTML inside pasted Markdown is not trusted", () => {
   expect(e.getHTML()).not.toContain("<script>");
   expect(e.getHTML()).toContain("<strong>bold</strong>");
 });
+
+test("editing preserves passage languages and accessible names", () => {
+  const html = edit(
+    '<p lang="fr" dir="ltr">Hello <span lang="de">world</span> <a href="/more" aria-label="Read the full report">More</a></p>',
+  ).getHTML();
+  expect(html).toContain('<p lang="fr" dir="ltr">');
+  expect(html).toContain('<span lang="de">world</span>');
+  expect(html).toContain('aria-label="Read the full report"');
+});
+
+test("editing preserves table descriptions and explicit header relationships", () => {
+  const html = edit(
+    '<table><caption>Sales</caption><tr><th id="region" scope="col"><p>Region</p></th></tr><tr><td headers="region"><p>North</p></td></tr></table>',
+  ).getHTML();
+  expect(html).toContain("<caption>Sales</caption>");
+  expect(html).toContain('id="region"');
+  expect(html).toContain('scope="col"');
+  expect(html).toContain('headers="region"');
+});
+
+test("a table caption keeps the language and ID used by its accessible name", () => {
+  const html = edit(
+    '<table aria-labelledby="sales"><caption id="sales" lang="fr">Sales</caption><tr><th>Month</th></tr></table>',
+  ).getHTML();
+  expect(html).toContain('aria-labelledby="sales"');
+  expect(html).toContain('<caption id="sales" lang="fr">Sales</caption>');
+});

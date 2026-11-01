@@ -6,8 +6,18 @@ import { expect, test, vi } from "vitest";
 import { confirmRequest } from "#lib/components/ui/confirm.js";
 import type { OwnPostStatus, Post } from "#lib/types.js";
 import ManagePage from "../../../../src/routes/posts/manage/+page.svelte";
+import { expectAccessible } from "../../../accessibility";
 import { apiError, fakeFetch } from "../../../fakeFetch";
 import { post } from "../../../fixtures";
+
+test("accessibility: post management tabs", async () => {
+  setup(data("draft", [draft]));
+  await expectAccessible();
+  await openTab("Scheduled");
+  await expectAccessible();
+  await openTab("Published");
+  await expectAccessible();
+});
 
 type Counts = Record<OwnPostStatus, number>;
 const draft = post({ id: "d1", title: "A draft", status: "draft" });

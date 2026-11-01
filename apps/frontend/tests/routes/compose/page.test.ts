@@ -7,6 +7,7 @@ import { confirmRequest } from "#lib/components/ui/confirm.js";
 import { reading } from "#lib/prefs.svelte.js";
 import type { Post } from "#lib/types.js";
 import ComposePage from "../../../src/routes/compose/+page.svelte";
+import { expectAccessible } from "../../accessibility";
 import { apiError, fakeFetch } from "../../fakeFetch";
 import { post } from "../../fixtures";
 
@@ -36,6 +37,11 @@ function setup(
 }
 
 const writes = () => api.calls.filter((c) => c.method === "POST" || c.method === "PATCH");
+
+test("accessibility: compose controls", async () => {
+  setup();
+  await expectAccessible();
+});
 const title = () => screen.getByPlaceholderText("Title");
 const typeTitle = (v: string) => fireEvent.input(title(), { target: { value: v } });
 const typeBody = async (v: string) =>

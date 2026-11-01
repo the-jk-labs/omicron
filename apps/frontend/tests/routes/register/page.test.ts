@@ -5,6 +5,12 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type * as passwordHelpers from "#lib/password.js";
 import RegisterPage from "../../../src/routes/register/+page.svelte";
+import { expectAccessible } from "../../accessibility";
+
+it("accessibility: registration", async () => {
+  render(RegisterPage);
+  await expectAccessible();
+});
 
 const { signUp, passkey } = vi.hoisted(() => ({
   signUp: vi.fn(),
