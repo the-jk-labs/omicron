@@ -77,6 +77,14 @@ evaluation rather than silently treating the standards as interchangeable.
   language, and caption metadata in sync with edits and undo. Caption editing
   remains in Table accessibility; the live caption is read-only and does not
   introduce editor-only attributes into stored HTML.
+- External HTML drops use the same parsed-slice loss review as clipboard pastes.
+  Cancellation leaves the document unchanged. Supported descriptions and context
+  accompany a rehosted image; bare image files remain unreviewed. Drops retain
+  their mapped pointer position during asynchronous uploads and do not replace
+  the old text selection. Internal model moves/copies retain native behavior
+  without uploading another copy. Ambiguous associations, unsupported files, and
+  unmatched file-plus-text payloads fail with repair instructions rather than
+  silently discarding information.
 
 ### Limits of these checks
 
@@ -98,6 +106,14 @@ Native Chromium clipboard checks additionally cover cancel/accept/undo in both
 themes, image-file plus HTML rehosting, supported language/heading metadata, and
 explicit paste-as-plain-text. A live-table check covers caption visibility and name
 updates through the settings dialog. Other applications' clipboard formats still need testing.
+Pointer-drag tests use a controlled HTML source and Chromium's trusted drag events
+for loss review in both themes and internal image movement. A document-navigation
+and native cut/paste check verifies a keyboard alternative to moving an image.
+File cases use explicit DOM `DragEvent`s with file-bearing `DataTransfer` objects:
+in this setup, a native web-page drag converted the generated test file to
+`text/plain` and delivered no files. Both helpers retain payload reports. File tests cover
+metadata, unreviewed images, and upload failure/focus, not physical file-manager
+drags from operating systems or other applications.
 
 Browser axe reports retain raw violations and incomplete results. A narrowly
 reviewed exception handles numeric-only reaction labels when the exact visible
@@ -115,9 +131,10 @@ correct. The writing guide supplies manual review instructions alongside it.
 
 - Inventory and test every transformation: clipboard, rich editing, Markdown,
   import/export, API/webhook publishing, and federation. Supported editor nodes
-  preserve tested metadata; opening-import and clipboard warnings cover detected
+  preserve tested metadata; opening-import, clipboard, and external-drop warnings cover detected
   inventory losses, not all semantic changes or arbitrary allowed HTML/MathML.
-  Drag/drop still needs equivalent loss guarding and metadata-preservation coverage.
+  Cross-application transfer formats, partial selections, table-cell drops, and
+  operating-system file-manager drags still need evaluation.
 - Evaluate the image-hiding mechanism in every reading/editing surface and
   assess flashing content. Hiding is not frame-level pause/resume and does not
   alter media sent to other instances.
@@ -134,10 +151,10 @@ correct. The writing guide supplies manual review instructions alongside it.
 
 Verified on 2026-11-01 with Node 26.7.0 and pnpm 12.16.1:
 
-- Backend: `pnpm fmt`, then `pnpm check --strict`; 140 test files and 2,616 unit tests pass, with no type/lint warnings.
-- Frontend: `pnpm fmt`, then `pnpm check --strict`; 174 test files and 1,650 tests pass, with no type/lint warnings.
+- Backend (previous phase; unchanged here): `pnpm fmt`, then `pnpm check --strict`; 140 test files and 2,616 unit tests pass, with no type/lint warnings.
+- Frontend: `pnpm fmt`, then `pnpm check --strict`; 174 test files and 1,667 tests pass, with no type/lint warnings.
 - Frontend: `pnpm test:accessibility`; 47 named checks pass across 33 test files.
-- Frontend: `pnpm test:browser`; production build plus 25 Chromium tests pass.
+- Frontend: `pnpm test:browser`; production build plus 32 Chromium tests pass.
   Chromium 156.0.8078.4 / Playwright 1.64.1; the local Linux installation used
   Playwright's Ubuntu fallback browser package. Vite reports a large-chunk advisory.
 - `git diff --check` passes.
@@ -163,23 +180,23 @@ opening a rich editor, not a replacement for end-to-end pipeline tests.
 Frontend paths below are relative to `apps/frontend/src/lib/`; backend paths
 are relative to `apps/backend/src/`.
 
-| Path                                   | Implementation / available evidence                                                                                  | Still needed                                                                                       |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Rich HTML/JSON editing                 | `editor/extensions.ts`, `content-accessibility.ts`; extension round-trip tests                                       | Arbitrary nesting, rich captions, complex tables, MathML; detection is inventory-based             |
-| Open imported HTML                     | `editor/Editor.svelte`, `contentLoss.ts`; component and browser autosave regression                                  | Attribute relocation/meaning changes, all supported imported formats                               |
-| Clipboard HTML and text                | `editor/clipboard.ts`, `Editor.svelte`; parsed-slice review, cancellation/undo, native Chromium paste tests          | Cross-application formats, partial selections, complex tables and complete semantic loss detection |
-| Clipboard image files                  | Single-file rehosting retains attributes/text; ambiguous associations fail without writes                            | Multi-image associations, other browsers, meaning after image optimization                         |
-| Drag/drop                              | `Editor.svelte` upload path; equivalent clipboard protections are not yet implemented                                | Preserve/re-request source descriptions and guard lossy HTML; keyboard/error workflows             |
-| Image optimization / crop              | `editor/image.ts`, `components/AvatarCropper.svelte`; image/crop tests                                               | Meaning after crop/downscale, animation and embedded metadata evaluation                           |
-| Profile / instance Markdown            | Backend `lib/markdown.ts` then `lib/sanitize.ts`; Markdown/sanitizer tests                                           | Representative mixed languages, tables, MathML and preview/save equality                           |
-| API post create/update                 | Backend `services/posts.ts` then sanitizer; post service tests                                                       | Accessibility-rich payloads through complete HTTP/store/read cycle                                 |
-| Webhook publishing                     | Backend `services/webhooks.ts`, Markdown/sanitizer                                                                   | Metadata-rich webhook fixtures and scheduled publication                                           |
-| Import parsing                         | Backend `lib/contentArchive.ts`; native, Medium, Substack, WordPress and RSS accessibility-rich fixtures             | Format-specific article-language fields, other markup and sanitizer-loss assessment                |
-| Import persistence / export            | Backend `services/contentPortability.ts`; repository-mocked native/HTML/WordPress/re-import fixture                  | Real database/media storage, format-specific metadata beyond the fixture                           |
-| Federation outbound                    | Backend `federation/article.ts`, `lib/absoluteContentUrls.ts`; absolute body references and JSON-LD metadata fixture | Signed HTTP delivery, other receiving implementations, unsupported content                         |
-| Federation inbound                     | Backend `federation/mod.ts` and `remote.ts`; decoded Create/Update/outbox metadata fixtures                          | Signed inbox HTTP, database-backed storage/read cycles, arbitrary remote content                   |
-| Reader image proxy / code highlighting | Frontend `imageProxy.ts`, `bodyImages.ts`, `highlight.ts`; helper tests                                              | Combined rendered page, alternative-language/reference consistency                                 |
-| Personal image visibility              | `imageDisplay.svelte.ts`, `actions/imageDescriptions.ts`; component/browser tests                                    | All editor/preview variants and assistive technologies; saved content must remain unchanged        |
+| Path                                   | Implementation / available evidence                                                                                      | Still needed                                                                                           |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| Rich HTML/JSON editing                 | `editor/extensions.ts`, `content-accessibility.ts`; extension round-trip tests                                           | Arbitrary nesting, rich captions, complex tables, MathML; detection is inventory-based                 |
+| Open imported HTML                     | `editor/Editor.svelte`, `contentLoss.ts`; component and browser autosave regression                                      | Attribute relocation/meaning changes, all supported imported formats                                   |
+| Clipboard HTML and text                | `editor/content-transfer.ts`, `Editor.svelte`; parsed-slice review, cancellation/undo, native Chromium paste tests       | Cross-application formats, partial selections, complex tables and complete semantic loss detection     |
+| Clipboard image files                  | Single-file rehosting retains attributes/text; ambiguous associations fail without writes                                | Multi-image associations, other browsers, meaning after image optimization                             |
+| Drag/drop                              | Shared content-transfer review, mapped insertion positions, description-preserving rehosting; unit/pointer-browser tests | OS/application payloads, table-cell drops, complex selections, and full assistive-technology workflows |
+| Image optimization / crop              | `editor/image.ts`, `components/AvatarCropper.svelte`; image/crop tests                                                   | Meaning after crop/downscale, animation and embedded metadata evaluation                               |
+| Profile / instance Markdown            | Backend `lib/markdown.ts` then `lib/sanitize.ts`; Markdown/sanitizer tests                                               | Representative mixed languages, tables, MathML and preview/save equality                               |
+| API post create/update                 | Backend `services/posts.ts` then sanitizer; post service tests                                                           | Accessibility-rich payloads through complete HTTP/store/read cycle                                     |
+| Webhook publishing                     | Backend `services/webhooks.ts`, Markdown/sanitizer                                                                       | Metadata-rich webhook fixtures and scheduled publication                                               |
+| Import parsing                         | Backend `lib/contentArchive.ts`; native, Medium, Substack, WordPress and RSS accessibility-rich fixtures                 | Format-specific article-language fields, other markup and sanitizer-loss assessment                    |
+| Import persistence / export            | Backend `services/contentPortability.ts`; repository-mocked native/HTML/WordPress/re-import fixture                      | Real database/media storage, format-specific metadata beyond the fixture                               |
+| Federation outbound                    | Backend `federation/article.ts`, `lib/absoluteContentUrls.ts`; absolute body references and JSON-LD metadata fixture     | Signed HTTP delivery, other receiving implementations, unsupported content                             |
+| Federation inbound                     | Backend `federation/mod.ts` and `remote.ts`; decoded Create/Update/outbox metadata fixtures                              | Signed inbox HTTP, database-backed storage/read cycles, arbitrary remote content                       |
+| Reader image proxy / code highlighting | Frontend `imageProxy.ts`, `bodyImages.ts`, `highlight.ts`; helper tests                                                  | Combined rendered page, alternative-language/reference consistency                                     |
+| Personal image visibility              | `imageDisplay.svelte.ts`, `actions/imageDescriptions.ts`; component/browser tests                                        | All editor/preview variants and assistive technologies; saved content must remain unchanged            |
 
 ## WCAG 2.2 A/AA criterion register
 
