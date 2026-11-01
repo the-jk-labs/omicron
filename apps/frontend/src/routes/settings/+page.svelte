@@ -451,6 +451,8 @@
             <input
               bind:this={fileInput}
               type="file"
+              hidden
+              aria-label="Upload profile photo"
               accept="image/png,image/jpeg,image/webp,image/gif"
               class="hidden"
               onchange={onFileChange}
@@ -685,20 +687,18 @@
 
         <!-- One row per detail: what it is and its value on the left, the action on the right. -->
         <dl class="mt-4 divide-y divide-border text-sm">
-          <div class="flex items-center justify-between gap-4 py-4 first:pt-0">
-            <div class="min-w-0">
-              <dt class="font-medium text-foreground">Username</dt>
-              <dd class="mt-0.5 text-muted-foreground">
-                <span class="text-foreground">@{data.user.username}</span> · your fediverse address, permanent
-              </dd>
-            </div>
+          <div class="py-4 first:pt-0">
+            <dt class="font-medium text-foreground">Username</dt>
+            <dd class="mt-0.5 text-muted-foreground">
+              <span class="text-foreground">@{data.user.username}</span> · your fediverse address, permanent
+            </dd>
           </div>
 
           {#if data.user.email}
-            <div class="flex items-center justify-between gap-4 py-4">
-              <div class="min-w-0">
-                <dt class="font-medium text-foreground">Email</dt>
-                <dd class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
+            <div class="py-4">
+              <dt class="font-medium text-foreground">Email</dt>
+              <dd class="mt-0.5 flex flex-wrap items-center justify-between gap-2 text-muted-foreground">
+                <div class="flex min-w-0 flex-wrap items-center gap-2">
                   <span class="min-w-0 truncate text-foreground" title={data.user.email}>{data.user.email}</span>
                   {#if data.user.emailVerified}
                     <span
@@ -722,22 +722,22 @@
                       </ButtonPrimitive.Root>
                     {/if}
                   {/if}
-                </dd>
-              </div>
-              <Button variant="outline" size="sm" class="shrink-0" onclick={() => (emailOpen = true)}>
-                <Icon name="mail" size={15} /> Change email
-              </Button>
+                </div>
+                <Button variant="outline" size="sm" class="shrink-0" onclick={() => (emailOpen = true)}>
+                  <Icon name="mail" size={15} /> Change email
+                </Button>
+              </dd>
             </div>
           {/if}
 
-          <div class="flex items-center justify-between gap-4 py-4">
-            <div class="min-w-0">
-              <dt class="font-medium text-foreground">Password</dt>
-              <dd class="mt-0.5 text-muted-foreground">{pwSaved ? "Password updated." : "••••••••••"}</dd>
-            </div>
-            <Button variant="outline" size="sm" class="shrink-0" onclick={() => onPwOpenChange(true)}>
-              <Icon name="lock" size={15} /> Change password
-            </Button>
+          <div class="py-4">
+            <dt class="font-medium text-foreground">Password</dt>
+            <dd class="mt-0.5 flex flex-wrap items-center justify-between gap-2 text-muted-foreground">
+              <span>{pwSaved ? "Password updated." : "••••••••••"}</span>
+              <Button variant="outline" size="sm" class="shrink-0" onclick={() => onPwOpenChange(true)}>
+                <Icon name="lock" size={15} /> Change password
+              </Button>
+            </dd>
           </div>
         </dl>
 

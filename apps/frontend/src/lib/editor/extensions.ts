@@ -5,6 +5,7 @@ import { TableKit } from "@tiptap/extension-table";
 import { StarterKit } from "@tiptap/starter-kit";
 import { Markdown } from "tiptap-markdown";
 import { CodeBlockTitle } from "./code-block";
+import { AccessibleTable, ContentAccessibility, TextLanguage } from "./content-accessibility";
 import { ResizableImage } from "./resizable-image";
 
 // Editor extensions live here so the feature set is configured in one place.
@@ -14,6 +15,8 @@ import { ResizableImage } from "./resizable-image";
 // `>` working), so authors can write in plain Markdown and have it render fully
 // — both in the editor and the reader view.
 export const extensions: Extensions = [
+  ContentAccessibility,
+  TextLanguage,
   StarterKit.configure({
     heading: { levels: [1, 2, 3, 4, 5, 6] },
     // StarterKit v3 bundles Link, but we register our own below with custom
@@ -44,8 +47,9 @@ export const extensions: Extensions = [
   // tables out full-width and automatic — so a column dragged narrower here
   // would publish exactly as wide as before.
   TableKit.configure({
-    table: { resizable: false, renderWrapper: false },
+    table: false,
   }),
+  AccessibleTable.configure({ resizable: false, renderWrapper: false }),
   Markdown.configure({
     html: false, // don't trust raw HTML embedded in Markdown
     linkify: true, // turn bare URLs into links

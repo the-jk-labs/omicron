@@ -128,7 +128,9 @@
   </div>
 </div>
 
+<Label.Root for="article-title" class="sr-only">Title</Label.Root>
 <input
+  id="article-title"
   placeholder="Title"
   bind:value={title}
   class="mb-6 w-full border-none bg-transparent text-3xl font-bold tracking-tight text-foreground placeholder:text-muted-foreground focus:outline-hidden sm:text-4xl"
@@ -164,4 +166,4 @@
 
 <Editor {onUpdate} content={(post.contentJson as Content) ?? post.contentHtml} previewHtml={post.contentHtml} />
 
-{#if error}<p class="mt-4 text-sm text-destructive">{error}</p>{/if}
+{#if error}<p role="alert" class="mt-4 text-sm text-destructive">{error}</p>{/if}

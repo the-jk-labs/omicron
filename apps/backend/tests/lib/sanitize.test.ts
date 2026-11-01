@@ -96,3 +96,34 @@ test("sanitize: MathML is not a way in for script", () => {
   expect(/onmouseover|javascript:|maction|<script/i.test(out)).toBe(false);
   expect(out).toContain("<mtext>x</mtext>");
 });
+
+test("sanitize: preserves the language and direction of passages", () => {
+  expect(sanitizePostHtml('<p lang="fr" dir="ltr">Bonjour <span lang="ar" dir="rtl">Hello</span></p>')).toBe(
+    '<p lang="fr" dir="ltr">Bonjour <span lang="ar" dir="rtl">Hello</span></p>',
+  );
+});
+
+test("sanitize: preserves table header associations in a content-only ID namespace", () => {
+  const out = sanitizePostHtml(
+    '<table><caption>Sales</caption><tr><th id="region" scope="col">Region</th>' +
+      '<th id="sales" scope="col">Sales</th></tr><tr><th id="north" scope="row">North</th>' +
+      '<td headers="north sales">10</td></tr></table>',
+  );
+  expect(out).toContain('id="omicron-content-region" scope="col"');
+  expect(out).toContain('headers="omicron-content-north omicron-content-sales"');
+  expect(sanitizePostHtml(out)).toBe(out);
+});
+
+test("sanitize: preserves accessible names and fragment links without references into the app UI", () => {
+  const out = sanitizePostHtml(
+    '<figure aria-labelledby="caption" aria-describedby="detail"><img src="/x.png" alt="A graph">' +
+      '<figcaption id="caption">Sales graph</figcaption><p id="detail">Sales doubled.</p></figure>' +
+      '<a href="#detail" aria-label="Read the graph description">Details</a>',
+  );
+  expect(out).toContain('aria-labelledby="omicron-content-caption"');
+  expect(out).toContain('aria-describedby="omicron-content-detail"');
+  expect(out).toContain('id="omicron-content-detail"');
+  expect(out).toContain('href="#omicron-content-detail"');
+  expect(out).toContain('aria-label="Read the graph description"');
+  expect(sanitizePostHtml(out)).toBe(out);
+});

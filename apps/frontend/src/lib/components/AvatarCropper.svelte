@@ -102,6 +102,11 @@
     const step = NUDGE[e.key];
     if (!step) return;
     e.preventDefault();
+    nudge(e.key);
+  }
+
+  function nudge(key: string) {
+    const step = NUDGE[key];
     offset = clamp(offset.x + step[0], offset.y + step[1]);
   }
 
@@ -149,7 +154,8 @@
     >
       <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Adjust photo</Dialog.Title>
       <Dialog.Description class="mt-1.5 text-sm text-foreground-alt">
-        Drag (or use the arrow keys) to reposition and zoom to frame your picture.
+        Reposition with the direction buttons, drag, or arrow keys on the photo. Use the zoom slider to frame your
+        picture.
       </Dialog.Description>
 
       <div class="mt-5 flex flex-col items-center gap-5">
@@ -159,6 +165,9 @@
           aria-label="Reposition photo"
           tabindex="0"
           aria-valuenow={Math.round(offset.x)}
+          aria-valuemin={Math.min(0, Math.round(VIEWPORT - displayW))}
+          aria-valuemax={0}
+          aria-valuetext={`${Math.round(offset.x)} pixels horizontally, ${Math.round(offset.y)} pixels vertically`}
           class="relative cursor-grab touch-none overflow-hidden rounded-card bg-dark select-none active:cursor-grabbing"
           style={`width:${VIEWPORT}px;height:${VIEWPORT}px`}
           onkeydown={onKeyDown}
@@ -184,6 +193,18 @@
           ></div>
         </div>
 
+        <div class="flex flex-wrap justify-center gap-2" role="group" aria-label="Photo position">
+          {#each ["Left", "Right", "Up", "Down"] as direction (direction)}
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label={`Move photo ${direction.toLowerCase()}`}
+              disabled={busy || !img}
+              onclick={() => nudge(`Arrow${direction}`)}>{direction}</Button
+            >
+          {/each}
+        </div>
+
         <div class="flex w-full items-center gap-3">
           <Icon name="minus" size={16} class="shrink-0 text-muted-foreground" />
           <Slider.Root
@@ -198,6 +219,8 @@
               <Slider.Range class="absolute h-full bg-foreground" />
             </span>
             <Slider.Thumb
+              aria-label="Photo zoom"
+              aria-valuetext={`${Math.round(zoom * 100)} percent`}
               index={0}
               class="block size-5 cursor-pointer rounded-full border border-border-input bg-background shadow-mini transition-colors focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:outline-hidden active:scale-95"
             />

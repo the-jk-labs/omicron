@@ -25,7 +25,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const input = () => screen.getByRole("textbox");
+const input = () => screen.getByRole("combobox", { name: "Add tags" });
 const chips = () => screen.queryAllByRole("button", { name: /^Remove tag / }).map((b) => b.getAttribute("aria-label"));
 
 async function type(text: string) {
@@ -53,7 +53,7 @@ test("the limit hides the input", async () => {
   render(TagInput, { props: { tags: ["a"], max: 2 } });
   await type("b");
   await fireEvent.keyDown(input(), { key: "Enter" });
-  expect(screen.queryByRole("textbox")).toBe(null);
+  expect(screen.queryByRole("combobox")).toBe(null);
   expect(chips()).toHaveLength(2);
 });
 
@@ -74,7 +74,7 @@ test("suggestions are debounced, exclude the draft and chosen tags, and commit o
   expect(suggest.calls[0].path).toBe("/api/tags/suggest?q=perc");
   const options = screen.getAllByRole("option").map((o) => o.textContent);
   expect(options).toEqual([expect.stringContaining("#perseid")]);
-  await fireEvent.mouseDown(screen.getByRole("button", { name: /perseid/ }));
+  await fireEvent.pointerUp(screen.getByRole("option", { name: /perseid/ }));
   expect(chips()).toEqual(["Remove tag astronomy", "Remove tag perseid"]);
   expect(screen.queryByRole("listbox")).toBe(null);
 });
@@ -110,4 +110,17 @@ test("refocusing with a draft looks suggestions up again", async () => {
   await type("pe");
   await fireEvent.focus(input());
   await waitFor(() => expect(suggest.fetch).toHaveBeenCalledTimes(1));
+});
+
+test("suggestions can be selected with arrow keys and Enter without moving focus", async () => {
+  render(TagInput, { props: { tags: [] } });
+  input().focus();
+  await type("pe");
+  await vi.advanceTimersByTimeAsync(200);
+  await waitFor(() => screen.getByRole("listbox"));
+  await fireEvent.keyDown(input(), { key: "ArrowDown" });
+  expect(input()).toHaveAttribute("aria-activedescendant");
+  await fireEvent.keyDown(input(), { key: "Enter" });
+  expect(chips()).toContain("Remove tag astronomy");
+  expect(input()).toHaveFocus();
 });

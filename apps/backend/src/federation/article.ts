@@ -3,6 +3,7 @@ import type { Context } from "@fedify/fedify";
 import { Article, Hashtag, Image, LanguageString, PUBLIC_COLLECTION } from "@fedify/fedify/vocab";
 import type { TagSummary } from "@/db/repositories/tags.ts";
 import type { Post } from "@/db/schema.ts";
+import { absoluteContentUrls } from "@/lib/absoluteContentUrls.ts";
 import { absoluteBanner, bannerOf } from "@/lib/cover.ts";
 import { normalizeLanguage } from "@/lib/languages.ts";
 import { federationOrigin } from "@/services/federationState.ts";
@@ -97,6 +98,10 @@ export function buildArticle(
   tags: TagSummary[] = [],
   audience?: ArticleAudience,
 ): Article {
+  const content = absoluteContentUrls(
+    post.contentHtml,
+    new URL(`/@${identifier}/${post.slug ?? post.id.slice(0, 8)}`, federationOrigin()),
+  );
   const { to, cc } = audience ?? {
     to: PUBLIC_COLLECTION,
     cc: ctx.getFollowersUri(identifier),
@@ -117,7 +122,7 @@ export function buildArticle(
     image: coverImage(bannerOf(post)),
     // When the author declared a language, tag the content with it (rdf:langString)
     // so remote instances can language-filter it; otherwise send a plain string.
-    content: post.language ? new LanguageString(post.contentHtml, post.language) : post.contentHtml,
+    content: post.language ? new LanguageString(content, post.language) : content,
     to,
     cc,
     url: new URL(`/posts/${post.id}`, ctx.getActorUri(identifier)),

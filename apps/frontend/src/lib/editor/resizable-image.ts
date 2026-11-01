@@ -77,15 +77,23 @@ export const ResizableImage = Image.extend({
       function render() {
         img.src = imageUrl(current.attrs.src);
         img.alt = current.attrs.alt ?? "";
+        for (const name of ["lang", "dir", "id", "aria-label", "aria-labelledby", "aria-describedby"]) {
+          if (typeof current.attrs[name] === "string") img.setAttribute(name, current.attrs[name]);
+          else img.removeAttribute(name);
+        }
         if (current.attrs.title) img.title = current.attrs.title;
         else img.removeAttribute("title");
         frame.style.width = typeof current.attrs.width === "string" ? current.attrs.width : "100%";
 
         const alt = typeof current.attrs.alt === "string" ? current.attrs.alt.trim() : "";
         altButton.textContent = "Alt";
-        altButton.dataset.missing = alt ? "false" : "true";
-        altButton.title = alt ? `Alt text: ${alt}` : "Add alt text";
-        altButton.setAttribute("aria-label", alt ? `Edit alt text: ${alt}` : "Add alt text for this image");
+        const decorative = current.attrs.alt === "";
+        altButton.dataset.missing = alt || decorative ? "false" : "true";
+        altButton.title = alt ? `Alt text: ${alt}` : decorative ? "Decorative image" : "Add alt text";
+        altButton.setAttribute(
+          "aria-label",
+          alt ? `Edit alt text: ${alt}` : decorative ? "Edit decorative image" : "Add alt text for this image",
+        );
       }
       render();
 

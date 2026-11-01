@@ -4,6 +4,7 @@ import { createRawSnippet } from "svelte";
 import { beforeEach, expect, test, vi } from "vitest";
 import type { Post } from "#lib/types.js";
 import Layout from "../../src/routes/+layout.svelte";
+import { expectAccessible } from "../accessibility";
 import { apiError, fakeFetch } from "../fakeFetch";
 import { post } from "../fixtures";
 
@@ -52,6 +53,19 @@ function jsonLd() {
 }
 
 beforeEach(() => at("/", "/"));
+
+test("accessibility: application shell", async () => {
+  setup();
+  await expectAccessible();
+});
+
+test.for(["/", "/login", "/setup"])("%s provides a keyboard-focusable skip target", (path) => {
+  at(path, path);
+  setup();
+  expect(screen.getByRole("link", { name: "Skip to content" })).toHaveAttribute("href", "#main-content");
+  expect(screen.getByRole("main")).toHaveAttribute("id", "main-content");
+  expect(screen.getByRole("main")).toHaveAttribute("tabindex", "-1");
+});
 
 test("the home page describes the site under the instance's own name", () => {
   setup();

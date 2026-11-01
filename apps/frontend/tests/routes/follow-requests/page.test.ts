@@ -3,7 +3,13 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
 import type { FollowRequest } from "#lib/types.js";
 import FollowRequestsPage from "../../../src/routes/follow-requests/+page.svelte";
+import { expectAccessible } from "../../accessibility";
 import { apiError, fakeFetch } from "../../fakeFetch";
+
+test("accessibility: follow requests", async () => {
+  setup([req("r1", "bob")]);
+  await expectAccessible();
+});
 
 const req = (id: string, username: string): FollowRequest => ({
   requestId: id,

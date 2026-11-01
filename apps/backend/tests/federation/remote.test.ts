@@ -7,6 +7,7 @@ import {
   Create,
   Hashtag,
   Image,
+  LanguageString,
   Note,
   OrderedCollection,
   Person,
@@ -14,6 +15,8 @@ import {
 } from "@fedify/fedify/vocab";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { AI_ASSISTED_PROPERTY } from "@/federation/article.ts";
+import { absoluteContentUrls } from "@/lib/absoluteContentUrls.ts";
+import { accessibilityContent, expectAccessibleContent } from "../accessibilityContent.ts";
 import { remoteActorRow, userRow } from "../fixtures.ts";
 import { fakeContext } from "./fakeContext.ts";
 
@@ -183,6 +186,20 @@ describe("fetchOutboxPosts", () => {
     expect(calls[0]).toMatchObject({ remoteActorId: "actor-1", title: "Title", apType: "Article" });
     expect(calls[0].contentHtml).not.toContain("<script");
     expect(calls[0].createdAt).toEqual(new Date("2026-01-01T00:00:00Z"));
+  });
+
+  test("outbox crawling retains alternatives, passage languages, table relationships and MathML", async () => {
+    const html = absoluteContentUrls(accessibilityContent, new URL("https://remote.example/@bob/report"));
+    const received = await Article.fromJsonLd(
+      await article("https://remote.example/posts/accessible", {
+        content: new LanguageString(html, "en"),
+      }).toJsonLd(),
+    );
+    withOutbox([received]);
+    await fetchOutboxPosts("bob@remote.example", "actor-1");
+    const stored = vi.mocked(postsRepo.upsertRemotePost).mock.calls[0][0];
+    expectAccessibleContent(stored.contentHtml, "https://remote.example/api/uploads/chart.png");
+    expect(stored.language).toBe("en");
   });
 
   test("preserves the AI-assistance disclosure when crawling an outbox", async () => {

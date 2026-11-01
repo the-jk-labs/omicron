@@ -1,0 +1,560 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import { expect, test, type Locator, type Page } from "@playwright/test";
+import axe from "axe-core";
+
+const articlePath = "/@ada/hello-world";
+const composerPath = "/compose?id=9e962281-2222-3333-4444-555555555555";
+
+async function signedIn(page: Page) {
+  await page.context().addCookies([{ name: "a11y-user", value: "1", url: "http://127.0.0.1:4173" }]);
+}
+
+async function ready(page: Page, path: string) {
+  await page.goto(path);
+  await expect(page.getByRole("main")).toBeVisible();
+  // Opening a menu proves that hydration finished, not just server rendering.
+  await page.getByRole("button", { name: "Image display", exact: true }).click();
+  await expect(page.getByRole("menuitemradio", { name: "Hide images", exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+}
+
+async function writeClipboard(page: Page, html: string, withImage = false) {
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.evaluate(
+    async ({ sourceHtml, includeImage }) => {
+      const text = new DOMParser().parseFromString(sourceHtml, "text/html").body.textContent ?? "";
+      const data: Record<string, Blob> = {
+        "text/html": new Blob([sourceHtml], { type: "text/html" }),
+        "text/plain": new Blob([text], { type: "text/plain" }),
+      };
+      if (includeImage) {
+        const canvas = new OffscreenCanvas(2, 2);
+        canvas.getContext("2d")!.clearRect(0, 0, 2, 2);
+        data["image/png"] = await canvas.convertToBlob({ type: "image/png" });
+      }
+      await navigator.clipboard.write([new ClipboardItem(data)]);
+    },
+    { sourceHtml: html, includeImage: withImage },
+  );
+}
+
+async function dragContent(page: Page, target: Locator, sourceHtml: string) {
+  await page.evaluate(
+    ({ markup }) => {
+      const element = document.createElement("div");
+      element.id = "test-content-drag";
+      element.draggable = true;
+      element.textContent = "Drag test content";
+      element.className = "bg-background text-foreground";
+      Object.assign(element.style, {
+        position: "fixed",
+        bottom: "16px",
+        left: "16px",
+        width: "160px",
+        height: "32px",
+        zIndex: "40",
+      });
+      element.addEventListener("dragstart", (event) => {
+        const data = event.dataTransfer;
+        if (!data) return;
+        data.setData("text/html", markup);
+        data.setData("text/plain", new DOMParser().parseFromString(markup, "text/html").body.textContent ?? "");
+        data.effectAllowed = "copy";
+      });
+      document.addEventListener(
+        "drop",
+        (event) => {
+          element.dataset.dropPayload = JSON.stringify({
+            trusted: event.isTrusted,
+            types: event.dataTransfer?.types,
+            files: Array.from(event.dataTransfer?.files ?? []).map((item) => item.type),
+          });
+        },
+        { capture: true, once: true },
+      );
+      document.body.append(element);
+    },
+    { markup: sourceHtml },
+  );
+  const handle = page.locator("#test-content-drag");
+  const box = await target.boundingBox();
+  expect(box).not.toBeNull();
+  try {
+    await handle.dragTo(target, { targetPosition: { x: 1, y: box!.height / 2 } });
+  } finally {
+    await test.info().attach("native-drag-payload", {
+      body: (await handle.getAttribute("data-drop-payload")) ?? "null",
+      contentType: "application/json",
+    });
+    await handle.evaluate((element) => element.remove());
+  }
+}
+
+async function dropFileContent(target: Locator, sourceHtml = "", filesOnly = false) {
+  await target.scrollIntoViewIfNeeded();
+  const payload = await target.evaluate(
+    async (element, { markup, onlyFiles }) => {
+      const data = new DataTransfer();
+      if (!onlyFiles) {
+        data.setData("text/html", markup);
+        data.setData("text/plain", new DOMParser().parseFromString(markup, "text/html").body.textContent ?? "");
+      }
+      const canvas = new OffscreenCanvas(2, 2);
+      canvas.getContext("2d")!.clearRect(0, 0, 2, 2);
+      data.items.add(
+        new File([await canvas.convertToBlob({ type: "image/png" })], "dropped.png", { type: "image/png" }),
+      );
+      const box = element.getBoundingClientRect();
+      const event = new DragEvent("drop", {
+        bubbles: true,
+        cancelable: true,
+        clientX: box.left + 1,
+        clientY: box.top + box.height / 2,
+        dataTransfer: data,
+      });
+      element.dispatchEvent(event);
+      return {
+        trusted: event.isTrusted,
+        types: data.types,
+        files: Array.from(data.files).map((item) => item.type),
+        handled: event.defaultPrevented,
+      };
+    },
+    { markup: sourceHtml, onlyFiles: filesOnly },
+  );
+  await test
+    .info()
+    .attach("synthetic-file-drop-payload", { body: JSON.stringify(payload), contentType: "application/json" });
+  expect(payload.files).toEqual(["image/png"]);
+  expect(payload.handled).toBe(true);
+}
+
+async function accessible(page: Page) {
+  await page.evaluate(axe.source);
+  const results = await page.evaluate(async () => {
+    const engine = (window as typeof window & { axe: typeof axe }).axe;
+    const result = await engine.run(document, {
+      runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] },
+    });
+    const violations = result.violations
+      .map(({ id, nodes }) => ({
+        id,
+        nodes: nodes
+          .filter(({ target }) => {
+            if (id !== "label-content-name-mismatch" || typeof target[0] !== "string") return true;
+            const element = document.querySelector<HTMLElement>(target[0]);
+            const visible = element?.innerText.trim() ?? "";
+            const name = element?.getAttribute("aria-label") ?? "";
+            // Axe discards parentheticals, including our correctly named numeric counts.
+            return !(/^\d+$/.test(visible) && name.split(/[^\p{L}\p{N}]+/u).includes(visible));
+          })
+          .map(({ target, failureSummary }) => ({ target, failureSummary })),
+      }))
+      .filter(({ nodes }) => nodes.length);
+    return { violations, rawViolations: result.violations, incomplete: result.incomplete };
+  });
+  await test.info().attach("axe-results", { body: JSON.stringify(results, null, 2), contentType: "application/json" });
+  expect(results.violations).toEqual([]);
+}
+
+for (const theme of ["light", "dark"] as const) {
+  for (const path of ["/", "/login", articlePath, composerPath]) {
+    test(`${theme}: browser accessibility including contrast on ${path}`, async ({ page }) => {
+      if (path === composerPath) await signedIn(page);
+      await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
+      await ready(page, path);
+      if (theme === "dark") await expect(page.locator("html")).toHaveClass(/\bdark\b/);
+      else await expect(page.locator("html")).not.toHaveClass(/\bdark\b/);
+      if (path === composerPath)
+        await expect(page.getByRole("textbox", { name: "Article body", exact: true })).toHaveAttribute(
+          "contenteditable",
+          "true",
+        );
+      await accessible(page);
+    });
+  }
+}
+
+for (const path of ["/", "/login", articlePath, composerPath]) {
+  test(`320 CSS-pixel reflow and text spacing on ${path}`, async ({ page }) => {
+    if (path === composerPath) await signedIn(page);
+    await page.setViewportSize({ width: 320, height: 800 });
+    await ready(page, path);
+    await page.evaluate(() => {
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync(
+        "* { line-height: 1.5 !important; letter-spacing: .12em !important; word-spacing: .16em !important; } p { margin-bottom: 2em !important; }",
+      );
+      document.adoptedStyleSheets.push(sheet);
+    });
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(1);
+    await expect(page.getByRole("button", { name: "Image display", exact: true })).toBeInViewport();
+  });
+}
+
+test("skip navigation moves keyboard focus past the sticky header", async ({ page }) => {
+  await page.goto(articlePath);
+  await page.keyboard.press("Tab");
+  const skip = page.getByRole("link", { name: "Skip to content" });
+  await expect(skip).toBeFocused();
+  await expect(skip).toBeInViewport();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("main")).toBeFocused();
+  expect(
+    await page.getByRole("main").evaluate((element) => element.getBoundingClientRect().top),
+  ).toBeGreaterThanOrEqual(0);
+});
+
+test("a card excerpt remains clickable without becoming part of the title link label", async ({ page }) => {
+  await ready(page, "/");
+  const card = page.getByRole("main").locator("article").first();
+  const link = card.getByRole("link", { name: "Hello world", exact: true });
+  await expect(link).not.toContainText("A short article");
+  const excerpt = card.locator("p").first();
+  const box = await excerpt.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await expect(page).toHaveURL(articlePath);
+});
+
+test("reduced motion hides images and preferences survive reload", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await ready(page, articlePath);
+  const image = page.getByRole("img", { name: "Sales increased from 10 to 20" });
+  await expect(image).toHaveCSS("opacity", "0");
+  await expect(page.getByText("Image hidden: Sales increased from 10 to 20")).toBeVisible();
+  const trigger = page.getByRole("button", { name: "Image display", exact: true });
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  await page.getByRole("menuitemradio", { name: "Show images", exact: true }).press("Enter");
+  await expect(image).toHaveCSS("opacity", "1");
+  await expect(trigger).toBeFocused();
+  await page.reload();
+  await expect(image).toHaveCSS("opacity", "1");
+});
+
+test("keyboard authoring dialogs contain focus, dismiss, and return to their opener", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const opener = page.getByRole("button", { name: "Text language", exact: true });
+  await opener.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Text language", exact: true });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("textbox", { name: "Language tag" })).toBeFocused();
+  for (let index = 0; index < 6; index++) {
+    await page.keyboard.press("Tab");
+    expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(true);
+  }
+  await accessible(page);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(opener).toBeFocused();
+});
+
+test("keyboard focus remains visible in forced colours and the image menu meets minimum target size", async ({
+  page,
+}) => {
+  await page.emulateMedia({ forcedColors: "active" });
+  await ready(page, articlePath);
+  const trigger = page.getByRole("button", { name: "Image display", exact: true });
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Shift+Tab");
+  await expect(trigger).toBeFocused();
+  const outline = await trigger.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { style: style.outlineStyle, width: parseFloat(style.outlineWidth) };
+  });
+  expect(outline.style).not.toBe("none");
+  expect(outline.width).toBeGreaterThanOrEqual(2);
+  const targets = [trigger];
+  await page.keyboard.press("Enter");
+  targets.push(...(await page.getByRole("menuitemradio").all()));
+  for (const target of targets) {
+    const box = await target.boundingBox();
+    expect(box?.width).toBeGreaterThanOrEqual(24);
+    expect(box?.height).toBeGreaterThanOrEqual(24);
+  }
+});
+
+test("reduced motion also hides images with JavaScript disabled", async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false, reducedMotion: "reduce" });
+  const page = await context.newPage();
+  await page.goto(`http://127.0.0.1:4173${articlePath}`);
+  await expect(page.getByRole("img", { name: "Sales increased from 10 to 20" })).toHaveCSS("opacity", "0");
+  await context.close();
+});
+
+test("imported structure survives a title-only autosave until rich editing is accepted", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, "/compose?id=imported");
+  await expect(page.getByRole("alert")).toContainText("simplify imported content");
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await expect(body).toHaveAttribute("contenteditable", "false");
+  const saved = page.waitForRequest(
+    (request) => request.method() === "PATCH" && request.url().endsWith("/api/posts/imported"),
+  );
+  await page.getByPlaceholder("Title").fill("New title");
+  expect((await saved).postDataJSON().contentHtml).toContain('<figcaption lang="fr">Sales graph</figcaption>');
+  await page.getByRole("button", { name: "Edit simplified content" }).click();
+  await expect(body).toHaveAttribute("contenteditable", "true");
+});
+
+for (const theme of ["light", "dark"] as const) {
+  test(`${theme}: native clipboard loss review can cancel, accept, and undo with the keyboard`, async ({ page }) => {
+    await signedIn(page);
+    await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
+    await ready(page, composerPath);
+    const body = page.getByRole("textbox", { name: "Article body", exact: true });
+    await writeClipboard(
+      page,
+      '<figure><img src="/api/uploads/chart.gif" alt="Sales chart"><figcaption lang="fr">Chart caption</figcaption></figure>',
+    );
+    await body.focus();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.press("ControlOrMeta+v");
+    const dialog = page.getByRole("dialog", { name: "Review pasted content" });
+    await expect(dialog).toBeVisible();
+    await expect(body).toHaveText("Draft body");
+    await accessible(page);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(body).toBeFocused();
+    await page.keyboard.press("ControlOrMeta+v");
+    await expect(dialog.getByRole("button", { name: "Cancel", exact: true })).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(dialog.getByRole("button", { name: "Paste simplified content" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(dialog).toBeHidden();
+    await expect(body).toBeFocused();
+    await expect(body.locator("img")).toHaveAttribute("alt", "Sales chart");
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(body).toHaveText("Draft body");
+  });
+}
+
+test("native clipboard image rehosting retains its description and adjacent text", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await writeClipboard(
+    page,
+    '<p>Before the image</p><img src="/api/uploads/chart.gif" alt="Sales chart" lang="en"><p>After the image</p>',
+    true,
+  );
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  const upload = page.waitForRequest(
+    (request) => request.method() === "POST" && request.url().endsWith("/api/uploads"),
+  );
+  await page.keyboard.press("ControlOrMeta+v");
+  await upload;
+  await expect(body.locator("img")).toHaveAttribute("alt", "Sales chart");
+  await expect(body.locator("img")).toHaveAttribute("lang", "en");
+  await expect(body).toContainText("Before the image");
+  await expect(body).toContainText("After the image");
+});
+
+test("native clipboard headings and passage metadata survive without a loss warning", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await writeClipboard(page, '<h2>New section</h2><p lang="fr" dir="ltr">Translated passage</p>');
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+v");
+  await expect(body.locator("h2")).toHaveText("New section");
+  await expect(body.locator('p[lang="fr"]')).toHaveAttribute("dir", "ltr");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("explicit paste-as-plain-text does not trigger an HTML loss warning", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await writeClipboard(page, "<figure><figcaption>Plain caption</figcaption></figure>");
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+Shift+v");
+  await expect(body).toHaveText("Plain caption");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("live authoring tables expose their caption and update their accessible name after editing", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, "/compose?id=table");
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  const table = body.getByRole("table", { name: "Sales table", exact: true });
+  await expect(table.locator("caption")).toBeVisible();
+  await expect(table.locator("caption")).toHaveAttribute("lang", "en");
+  await table.getByRole("columnheader", { name: "Year" }).click();
+  await page.getByRole("button", { name: "Edit table", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Table accessibility", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Table accessibility", exact: true });
+  await dialog.getByRole("textbox", { name: "Table caption", exact: true }).fill("Updated sales table");
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(body.getByRole("table", { name: "Updated sales table", exact: true })).toBeVisible();
+  await accessible(page);
+});
+
+for (const theme of ["light", "dark"] as const) {
+  test(`${theme}: pointer-dropped HTML can be reviewed, cancelled, accepted and undone with the keyboard`, async ({
+    page,
+  }) => {
+    await signedIn(page);
+    await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
+    await ready(page, composerPath);
+    const body = page.getByRole("textbox", { name: "Article body", exact: true });
+    const html =
+      '<figure><img src="/api/uploads/chart.gif" alt="Sales chart"><figcaption lang="en">Chart caption</figcaption></figure>';
+    await body.focus();
+    await page.keyboard.press("ControlOrMeta+a");
+    await dragContent(page, body.locator("p").first(), html);
+    const dialog = page.getByRole("dialog", { name: "Review dropped content" });
+    await expect(dialog).toBeVisible();
+    await expect(body).toHaveText("Draft body");
+    await accessible(page);
+    await page.keyboard.press("Escape");
+    await expect(body).toBeFocused();
+    await expect(body).toHaveText("Draft body");
+    await dragContent(page, body.locator("p").first(), html);
+    await expect(dialog.getByRole("button", { name: "Cancel", exact: true })).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(dialog.getByRole("button", { name: "Insert simplified content" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(dialog).toBeHidden();
+    await expect(body).toBeFocused();
+    await expect(body.locator("img")).toHaveAttribute("alt", "Sales chart");
+    await expect(body).toContainText("Draft body");
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(body).toHaveText("Draft body");
+  });
+}
+
+test("file-bearing drop events retain image metadata and context", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  const upload = page.waitForRequest(
+    (request) => request.method() === "POST" && request.url().endsWith("/api/uploads"),
+  );
+  await dropFileContent(
+    body.locator("p").first(),
+    '<p>Image context</p><img src="/api/uploads/chart.gif" alt="Sales chart" lang="en"><p>Image details</p>',
+  );
+  await upload;
+  await expect(body.locator("img")).toHaveAttribute("alt", "Sales chart");
+  await expect(body.locator("img")).toHaveAttribute("lang", "en");
+  await expect(body).toContainText("Image context");
+  await expect(body).toContainText("Image details");
+  await expect(body).toContainText("Draft body");
+  await expect(body).toBeFocused();
+});
+
+test("file-only drop events request image review instead of inventing descriptions", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await dropFileContent(body.locator("p").first(), "", true);
+  await expect(body.locator("img")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Check accessibility (1)", exact: true })).toBeVisible();
+  await expect(body.getByRole("button", { name: "Add alt text for this image", exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("failed file-drop uploads retain the article and keyboard focus", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  await page.route("**/api/uploads", (route) =>
+    route.fulfill({ status: 413, contentType: "application/json", body: JSON.stringify({ error: "Image too large" }) }),
+  );
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await dropFileContent(body.locator("p").first(), '<img src="/api/uploads/chart.gif" alt="Sales chart">');
+  await expect(page.getByRole("alert")).toHaveText("Image too large");
+  await expect(body).toHaveText("Draft body");
+  await expect(body).toBeFocused();
+});
+
+test("internal pointer moves retain image metadata without uploading a second copy", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await writeClipboard(page, '<p>Before</p><img src="/api/uploads/chart.gif" alt="Sales chart" lang="en"><p>After</p>');
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+v");
+  const uploads: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && request.url().endsWith("/api/uploads")) uploads.push(request.url());
+  });
+  await body.locator("img").dragTo(body.locator("p").last());
+  await expect
+    .poll(() =>
+      body.evaluate((element) => {
+        const image = element.querySelector("img");
+        const paragraph = [...element.querySelectorAll("p")].find((node) => node.textContent === "After");
+        return !!(image && paragraph && paragraph.compareDocumentPosition(image) & Node.DOCUMENT_POSITION_FOLLOWING);
+      }),
+    )
+    .toBe(true);
+  await expect(body.locator("img")).toHaveCount(1);
+  await expect(body.locator("img")).toHaveAttribute("alt", "Sales chart");
+  await expect(body.locator("img")).toHaveAttribute("lang", "en");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(uploads).toEqual([]);
+});
+
+test("document navigation and native cut/paste provide a keyboard alternative to moving an image", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await writeClipboard(page, '<p>Before</p><img src="/api/uploads/chart.gif" alt="Sales chart" lang="en"><p>After</p>');
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+v");
+  await page.getByRole("button", { name: "Find and navigate", exact: true }).press("Enter");
+  await page.getByRole("button", { name: "Go to document element", exact: true }).press("Enter");
+  await page.keyboard.press("i");
+  await expect(page.getByRole("option", { name: "image: Sales chart", exact: true })).toHaveAttribute(
+    "data-highlighted",
+    "",
+  );
+  await page.keyboard.press("Enter");
+  await expect(body).toBeFocused();
+  await expect(body.locator(".img-resizer.is-selected")).toHaveCount(1);
+  await page.keyboard.press("ControlOrMeta+x");
+  await expect(body.locator("img")).toHaveCount(0);
+  await page.keyboard.press("ControlOrMeta+End");
+  await expect
+    .poll(() =>
+      body.evaluate((element) => {
+        const selection = window.getSelection();
+        const last = element.querySelector("p:last-child");
+        return !!(
+          last &&
+          selection &&
+          last.contains(selection.focusNode) &&
+          selection.focusOffset === last.textContent?.length
+        );
+      }),
+    )
+    .toBe(true);
+  await page.keyboard.press("ControlOrMeta+v");
+  await expect(body.locator("img")).toHaveCount(1);
+  await expect(body.locator("img")).toHaveAttribute("alt", "Sales chart");
+  await expect(body.locator("img")).toHaveAttribute("lang", "en");
+  await expect
+    .poll(() =>
+      body.evaluate((element) => {
+        const image = element.querySelector("img");
+        const paragraph = [...element.querySelectorAll("p")].find((node) => node.textContent === "After");
+        return !!(image && paragraph && paragraph.compareDocumentPosition(image) & Node.DOCUMENT_POSITION_FOLLOWING);
+      }),
+    )
+    .toBe(true);
+});

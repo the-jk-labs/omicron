@@ -7,6 +7,7 @@ import { reading } from "#lib/prefs.svelte.js";
 import { theme } from "#lib/theme.svelte.js";
 import type { Me } from "#lib/types.js";
 import SettingsPage from "../../../src/routes/settings/+page.svelte";
+import { expectAccessible } from "../../accessibility";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 vi.mock(import("#lib/components/AvatarCropper.svelte"), async () => ({
@@ -83,6 +84,15 @@ async function openTab(name: string) {
 }
 
 const patchBody = () => api.calls.find((c) => c.method === "PATCH" && c.path === "/api/users/me")?.body;
+
+test.for(["Profile", "Account", "Preferences", "Privacy", "Content", "Integrations"])(
+  "accessibility: settings %s",
+  async (name) => {
+    setup();
+    await openTab(name);
+    await expectAccessible();
+  },
+);
 
 async function pickPhoto(file = new File([new Uint8Array(10)], "me.png", { type: "image/png" })) {
   const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;

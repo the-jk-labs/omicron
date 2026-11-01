@@ -2,6 +2,12 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { beforeEach, expect, test, vi } from "vitest";
 import ResetPasswordPage from "../../../src/routes/reset-password/+page.svelte";
+import { expectAccessible } from "../../accessibility";
+
+test("accessibility: password reset", async () => {
+  render(ResetPasswordPage);
+  await expectAccessible();
+});
 
 const state = vi.hoisted(() => ({ href: "http://localhost/reset-password?token=tok", pwned: false as boolean | null }));
 vi.mock(
