@@ -70,6 +70,13 @@ evaluation rather than silently treating the standards as interchangeable.
   table headers, and MathML through the supported import parsers, native export,
   offline HTML, WordPress output, re-import, and ActivityPub JSON-LD.
   Repository-mocked Create/Update handlers and outbox crawling retain that fixture.
+- `apps/backend/tests/integration/accessibilityPersistence.test.ts` exercises
+  real session cookies, the assembled HTTP application, PostgreSQL, and temporary
+  media files. It checks the fixture through post creation/read/edit in all three
+  publication states, native/offline HTML/WordPress export, all supported import
+  parsers, and two native import/export hops. Image bytes, ownership, references,
+  duplicate retries, concurrent imports, publication policy, and failure cleanup
+  are checked. Background delivery is stubbed; signed federation is not covered.
 - Outbound Article body image/link references are resolved against the publishing
   post, preserving their URL context outside the instance. This fixes relative
   body-image URLs on the wire; alternatives and content ID references remain intact.
@@ -159,7 +166,8 @@ Verified on 2026-11-01 with Node 26.7.0 and pnpm 12.16.1:
   Playwright's Ubuntu fallback browser package. Vite reports a large-chunk advisory.
 - `git diff --check` passes.
 
-Database integration tests were not run locally. The separate accessibility
+Database integration tests were not run locally during that implementation phase;
+the storage follow-up below records the subsequent run. The separate accessibility
 test command can print jsdom canvas diagnostics; canvas measurement is unavailable
 in that environment and is not evidence of passing visual checks.
 
@@ -183,6 +191,34 @@ Article, including a later update to a post. It does not rewrite stored HTML,
 run a migration, or automatically resend existing remote copies. No production
 deployment or data changes were performed during this verification.
 
+### Database/storage follow-up — 2026-11-01
+
+The persistence suite uses a freshly created, loopback-only PostgreSQL 16
+container and per-test temporary upload directories. An empty database dump was
+created and its archive listing validated before applying migrations. No non-test
+database, production service, or existing upload directory was changed.
+
+The new suite contains 24 passing checks and one expected-failure bug pin. The
+pin was first run as a normal test and failed at the quota assertion: an import
+whose upload-directory creation fails leaves no post, but retains the first
+image's reserved bytes. `services/media.ts` reserves quota before `mkdir`, which
+is outside its compensating `try`/`catch`. This test-only change does not fix it.
+A separate real file-write failure test confirms the existing write-error
+cleanup and subsequent retry work.
+
+Verification: `pnpm fmt`, then `pnpm check --strict` (2,616 unit tests; no
+type/lint warnings), and the complete `pnpm test:integration` suite (32 files,
+329 passing tests and one expected failure). The persistence suite contributes
+24 passing tests and that single bug pin. Node 26.7.0 / pnpm 12.16.1 were used.
+
+The fixtures prove preservation of the tested attributes, relationships, and
+image bytes, not equivalent visual meaning or appropriate descriptions. Native
+archives carry bundled bytes; WordPress/RSS external images remain linked and
+are not downloaded. Standalone offline HTML is inspected, not re-imported as a
+native archive. Browser editing, image optimization, signed federation delivery,
+and assistive-technology behavior remain outside this suite. Manual validation
+remains skipped and every unsigned criterion remains pending.
+
 ## Transformation inventory and remaining preservation checks
 
 This is a source-path inventory, not proof that each transformation preserves
@@ -200,10 +236,10 @@ are relative to `apps/backend/src/`.
 | Drag/drop                              | Shared content-transfer review, mapped insertion positions, description-preserving rehosting; unit/pointer-browser tests | OS/application payloads, table-cell drops, complex selections, and full assistive-technology workflows |
 | Image optimization / crop              | `editor/image.ts`, `components/AvatarCropper.svelte`; image/crop tests                                                   | Meaning after crop/downscale, animation and embedded metadata evaluation                               |
 | Profile / instance Markdown            | Backend `lib/markdown.ts` then `lib/sanitize.ts`; Markdown/sanitizer tests                                               | Representative mixed languages, tables, MathML and preview/save equality                               |
-| API post create/update                 | Backend `services/posts.ts` then sanitizer; post service tests                                                           | Accessibility-rich payloads through complete HTTP/store/read cycle                                     |
+| API post create/update                 | Backend `services/posts.ts` then sanitizer; real-session HTTP/store/read/edit fixture in all publication states           | Other payloads, editor JSON consistency, browser-to-API workflows                                        |
 | Webhook publishing                     | Backend `services/webhooks.ts`, Markdown/sanitizer                                                                       | Metadata-rich webhook fixtures and scheduled publication                                               |
-| Import parsing                         | Backend `lib/contentArchive.ts`; native, Medium, Substack, WordPress and RSS accessibility-rich fixtures                 | Format-specific article-language fields, other markup and sanitizer-loss assessment                    |
-| Import persistence / export            | Backend `services/contentPortability.ts`; repository-mocked native/HTML/WordPress/re-import fixture                      | Real database/media storage, format-specific metadata beyond the fixture                               |
+| Import parsing                         | Backend `lib/contentArchive.ts`; native, Medium, Substack, WordPress and RSS fixtures through real HTTP/storage            | Format-specific article-language fields, other markup and sanitizer-loss assessment                    |
+| Import persistence / export            | Real SQL/files, byte/metadata checks, native multi-hop and WordPress re-import, offline HTML, retries and failure paths   | Pinned mkdir quota leak; format-specific metadata beyond the fixture, rendered meaning                  |
 | Federation outbound                    | Backend `federation/article.ts`, `lib/absoluteContentUrls.ts`; absolute body references and JSON-LD metadata fixture     | Signed HTTP delivery, other receiving implementations, unsupported content                             |
 | Federation inbound                     | Backend `federation/mod.ts` and `remote.ts`; decoded Create/Update/outbox metadata fixtures                              | Signed inbox HTTP, database-backed storage/read cycles, arbitrary remote content                       |
 | Reader image proxy / code highlighting | Frontend `imageProxy.ts`, `bodyImages.ts`, `highlight.ts`; helper tests                                                  | Combined rendered page, alternative-language/reference consistency                                     |
