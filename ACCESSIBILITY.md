@@ -198,11 +198,11 @@ container and per-test temporary upload directories. An empty database dump was
 created and its archive listing validated before applying migrations. No non-test
 database, production service, or existing upload directory was changed.
 
-The new suite contains 24 passing checks and one expected-failure bug pin. The
+The initial suite contained 24 passing checks and one expected-failure bug pin. The
 pin was first run as a normal test and failed at the quota assertion: an import
 whose upload-directory creation fails leaves no post, but retains the first
 image's reserved bytes. `services/media.ts` reserves quota before `mkdir`, which
-is outside its compensating `try`/`catch`. This test-only change does not fix it.
+was outside its compensating `try`/`catch`. The original test-only change did not fix it.
 A separate real file-write failure test confirms the existing write-error
 cleanup and subsequent retry work.
 
@@ -210,6 +210,14 @@ Verification: `pnpm fmt`, then `pnpm check --strict` (2,616 unit tests; no
 type/lint warnings), and the complete `pnpm test:integration` suite (32 files,
 329 passing tests and one expected failure). The persistence suite contributes
 24 passing tests and that single bug pin. Node 26.7.0 / pnpm 12.16.1 were used.
+
+The quota-leak follow-up moves directory creation inside that compensating block.
+The same reproduction is now a normal passing test, including a successful
+archive retry after storage is repaired. Unit tests also verify that a failed
+cleanup does not mask the original directory error. This releases new failed
+reservations; it does not repair historical orphan records or change quota limits.
+The follow-up passes `pnpm fmt`, `pnpm check --strict` (2,618 unit tests), and
+all 330 integration tests; the persistence suite now has 25 ordinary passes.
 
 The fixtures prove preservation of the tested attributes, relationships, and
 image bytes, not equivalent visual meaning or appropriate descriptions. Native
@@ -239,7 +247,7 @@ are relative to `apps/backend/src/`.
 | API post create/update                 | Backend `services/posts.ts` then sanitizer; real-session HTTP/store/read/edit fixture in all publication states           | Other payloads, editor JSON consistency, browser-to-API workflows                                        |
 | Webhook publishing                     | Backend `services/webhooks.ts`, Markdown/sanitizer                                                                       | Metadata-rich webhook fixtures and scheduled publication                                               |
 | Import parsing                         | Backend `lib/contentArchive.ts`; native, Medium, Substack, WordPress and RSS fixtures through real HTTP/storage            | Format-specific article-language fields, other markup and sanitizer-loss assessment                    |
-| Import persistence / export            | Real SQL/files, byte/metadata checks, native multi-hop and WordPress re-import, offline HTML, retries and failure paths   | Pinned mkdir quota leak; format-specific metadata beyond the fixture, rendered meaning                  |
+| Import persistence / export            | Real SQL/files, byte/metadata checks, native multi-hop and WordPress re-import, offline HTML, retries and failure paths   | Format-specific metadata beyond the fixture, rendered meaning                                         |
 | Federation outbound                    | Backend `federation/article.ts`, `lib/absoluteContentUrls.ts`; absolute body references and JSON-LD metadata fixture     | Signed HTTP delivery, other receiving implementations, unsupported content                             |
 | Federation inbound                     | Backend `federation/mod.ts` and `remote.ts`; decoded Create/Update/outbox metadata fixtures                              | Signed inbox HTTP, database-backed storage/read cycles, arbitrary remote content                       |
 | Reader image proxy / code highlighting | Frontend `imageProxy.ts`, `bodyImages.ts`, `highlight.ts`; helper tests                                                  | Combined rendered page, alternative-language/reference consistency                                     |

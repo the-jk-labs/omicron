@@ -589,13 +589,13 @@ test("a real file-write failure releases reserved quota and permits a retry", as
   expect(await uploadsRepo.sumBytesForUser(owner.user.id)).toBe(chart.bytes.length);
 });
 
-// mkdir runs after quota reservation but outside saveImage's compensating catch.
-test.fails("BUG: a storage-directory failure should release reserved upload quota", async () => {
+test("a storage-directory failure releases reserved upload quota and allows import retry", async () => {
   const owner = await actor("writer");
   await create(owner);
   const { bytes } = await exported(owner.cookie);
   const destination = await actor("destination");
-  const blocker = join(config.UPLOADS_DIR, "not-a-directory");
+  const directory = config.UPLOADS_DIR;
+  const blocker = join(directory, "not-a-directory");
   await writeFile(blocker, "blocked");
   config.UPLOADS_DIR = blocker;
   expect(await imported(destination.cookie, bytes)).toMatchObject({
@@ -606,4 +606,9 @@ test.fails("BUG: a storage-directory failure should release reserved upload quot
   expect(await ownPosts(destination.user.id)).toEqual([]);
   expect(await uploadsRepo.sumBytesForUser(destination.user.id)).toBe(0);
   expect(await ownUploads(destination.user.id)).toEqual([]);
+  config.UPLOADS_DIR = directory;
+  await unlink(blocker);
+  expect(await imported(destination.cookie, bytes)).toEqual({ imported: 1, skipped: 0, failed: [] });
+  const [post] = await ownPosts(destination.user.id);
+  await expectStoredImages(destination, post.contentHtml);
 });

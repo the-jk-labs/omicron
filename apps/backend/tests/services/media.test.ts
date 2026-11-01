@@ -166,6 +166,19 @@ describe("saveImage", () => {
     expect(uploadsRepo.removeByFilename).toHaveBeenCalledWith(filename);
   });
 
+  test.for([false, true])(
+    "a directory-creation failure attempts quota cleanup without masking its error: %s",
+    async (releaseFails) => {
+      await writeFile(config.UPLOADS_DIR, "not a directory");
+      vi.mocked(writeFile).mockClear();
+      if (releaseFails) vi.mocked(uploadsRepo.removeByFilename).mockRejectedValueOnce(new Error("db down"));
+      await expect(saveImage("me", PNG, "image/png")).rejects.toMatchObject({ code: "EEXIST" });
+      const filename = vi.mocked(uploadsRepo.createWithinQuota).mock.calls[0][1];
+      expect(uploadsRepo.removeByFilename).toHaveBeenCalledExactlyOnceWith(filename);
+      expect(writeFile).not.toHaveBeenCalled();
+    },
+  );
+
   test("a failed release does not mask the write error", async () => {
     vi.mocked(writeFile).mockRejectedValueOnce(new Error("ENOSPC"));
     vi.mocked(uploadsRepo.removeByFilename).mockRejectedValue(new Error("db down"));
