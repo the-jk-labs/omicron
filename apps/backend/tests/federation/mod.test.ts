@@ -13,6 +13,7 @@ import {
   Delete,
   Follow,
   Hashtag,
+  LanguageString,
   Note,
   OrderedCollection,
   Person,
@@ -23,6 +24,8 @@ import {
 import { beforeEach, describe, expect, it, test, vi } from "vitest";
 import { AI_ASSISTED_PROPERTY } from "@/federation/article.ts";
 import type * as remote from "@/federation/remote.ts";
+import { absoluteContentUrls } from "@/lib/absoluteContentUrls.ts";
+import { accessibilityContent, expectAccessibleContent } from "../accessibilityContent.ts";
 import { postRow, postWithAuthor, remoteActorRow, userRow } from "../fixtures.ts";
 import { fakeContext } from "./fakeContext.ts";
 
@@ -309,6 +312,27 @@ describe("inbox: Create / Update / Delete", () => {
     );
     expect(vi.mocked(postsRepo.upsertRemotePost).mock.calls[0][0].contentHtml).not.toContain("<script");
     expect(tagsRepo.setPostTags).toHaveBeenCalledWith("cached-post", ["deno"]);
+  });
+
+  it.for(["Create", "Update"] as const)("%s preserves accessibility metadata after JSON-LD decoding", async (kind) => {
+    const html = absoluteContentUrls(accessibilityContent, new URL("https://remote.example/@bob/report"));
+    const received = await Article.fromJsonLd(
+      await article(undefined, { content: new LanguageString(html, "en") }).toJsonLd(),
+    );
+    if (kind === "Update") {
+      vi.mocked(postsRepo.findByApId).mockResolvedValue(
+        postRow({ id: "cached-post", remoteActorId: "actor-bob" }) as never,
+      );
+      await on(Update)(new Update({ actor: new URL(BOB), object: received }));
+    } else {
+      await on(Create)(new Create({ actor: new URL(BOB), object: received }));
+    }
+    const stored =
+      kind === "Create"
+        ? vi.mocked(postsRepo.upsertRemotePost).mock.calls[0][0]
+        : vi.mocked(postsRepo.update).mock.calls[0][1];
+    expectAccessibleContent(stored.contentHtml!, "https://remote.example/api/uploads/chart.png");
+    expect(stored.language).toBe("en");
   });
 
   it("stores an inbound Omicron AI-assistance disclosure", async () => {
