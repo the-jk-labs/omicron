@@ -15,6 +15,7 @@ import {
   isPubliclyAddressed,
 } from "@/federation/article.ts";
 import { seedFederationOrigin } from "@/services/federationState.ts";
+import { accessibilityContent, expectAccessibleContent } from "../accessibilityContent.ts";
 import { postRow } from "../fixtures.ts";
 import { fakeContext } from "./fakeContext.ts";
 
@@ -111,6 +112,16 @@ describe("buildArticle", () => {
     const tags: Hashtag[] = [];
     for await (const t of a.getTags()) if (t instanceof Hashtag) tags.push(t);
     expect(tags.map((t) => [t.name?.toString(), t.href?.href])).toEqual([["#Deno", `${ORIGIN}/tags/deno`]]);
+  });
+
+  it("federated body images resolve to the publishing instance without losing accessibility metadata", async () => {
+    const article = build({ contentHtml: accessibilityContent, language: "en", slug: "accessible" });
+    const received = await Article.fromJsonLd(await article.toJsonLd());
+    expect(received.content).toBeInstanceOf(LanguageString);
+    expect(received.content?.toString()).toContain(
+      `href="${ORIGIN}/@ada/accessible#omicron-content-graph-description"`,
+    );
+    expectAccessibleContent(received.content!.toString(), `${ORIGIN}/api/uploads/chart.png`);
   });
 
   it("an untitled post has no name", () => {
