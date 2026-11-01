@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import axe from "axe-core";
 
 const articlePath = "/@ada/hello-world";
@@ -36,6 +36,97 @@ async function writeClipboard(page: Page, html: string, withImage = false) {
     },
     { sourceHtml: html, includeImage: withImage },
   );
+}
+
+async function dragContent(page: Page, target: Locator, sourceHtml: string) {
+  await page.evaluate(
+    ({ markup }) => {
+      const element = document.createElement("div");
+      element.id = "test-content-drag";
+      element.draggable = true;
+      element.textContent = "Drag test content";
+      element.className = "bg-background text-foreground";
+      Object.assign(element.style, {
+        position: "fixed",
+        bottom: "16px",
+        left: "16px",
+        width: "160px",
+        height: "32px",
+        zIndex: "40",
+      });
+      element.addEventListener("dragstart", (event) => {
+        const data = event.dataTransfer;
+        if (!data) return;
+        data.setData("text/html", markup);
+        data.setData("text/plain", new DOMParser().parseFromString(markup, "text/html").body.textContent ?? "");
+        data.effectAllowed = "copy";
+      });
+      document.addEventListener(
+        "drop",
+        (event) => {
+          element.dataset.dropPayload = JSON.stringify({
+            trusted: event.isTrusted,
+            types: event.dataTransfer?.types,
+            files: Array.from(event.dataTransfer?.files ?? []).map((item) => item.type),
+          });
+        },
+        { capture: true, once: true },
+      );
+      document.body.append(element);
+    },
+    { markup: sourceHtml },
+  );
+  const handle = page.locator("#test-content-drag");
+  const box = await target.boundingBox();
+  expect(box).not.toBeNull();
+  try {
+    await handle.dragTo(target, { targetPosition: { x: 1, y: box!.height / 2 } });
+  } finally {
+    await test.info().attach("native-drag-payload", {
+      body: (await handle.getAttribute("data-drop-payload")) ?? "null",
+      contentType: "application/json",
+    });
+    await handle.evaluate((element) => element.remove());
+  }
+}
+
+async function dropFileContent(target: Locator, sourceHtml = "", filesOnly = false) {
+  await target.scrollIntoViewIfNeeded();
+  const payload = await target.evaluate(
+    async (element, { markup, onlyFiles }) => {
+      const data = new DataTransfer();
+      if (!onlyFiles) {
+        data.setData("text/html", markup);
+        data.setData("text/plain", new DOMParser().parseFromString(markup, "text/html").body.textContent ?? "");
+      }
+      const canvas = new OffscreenCanvas(2, 2);
+      canvas.getContext("2d")!.clearRect(0, 0, 2, 2);
+      data.items.add(
+        new File([await canvas.convertToBlob({ type: "image/png" })], "dropped.png", { type: "image/png" }),
+      );
+      const box = element.getBoundingClientRect();
+      const event = new DragEvent("drop", {
+        bubbles: true,
+        cancelable: true,
+        clientX: box.left + 1,
+        clientY: box.top + box.height / 2,
+        dataTransfer: data,
+      });
+      element.dispatchEvent(event);
+      return {
+        trusted: event.isTrusted,
+        types: data.types,
+        files: Array.from(data.files).map((item) => item.type),
+        handled: event.defaultPrevented,
+      };
+    },
+    { markup: sourceHtml, onlyFiles: filesOnly },
+  );
+  await test
+    .info()
+    .attach("synthetic-file-drop-payload", { body: JSON.stringify(payload), contentType: "application/json" });
+  expect(payload.files).toEqual(["image/png"]);
+  expect(payload.handled).toBe(true);
 }
 
 async function accessible(page: Page) {
@@ -307,4 +398,163 @@ test("live authoring tables expose their caption and update their accessible nam
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(body.getByRole("table", { name: "Updated sales table", exact: true })).toBeVisible();
   await accessible(page);
+});
+
+for (const theme of ["light", "dark"] as const) {
+  test(`${theme}: pointer-dropped HTML can be reviewed, cancelled, accepted and undone with the keyboard`, async ({
+    page,
+  }) => {
+    await signedIn(page);
+    await page.addInitScript((value) => localStorage.setItem("theme", value), theme);
+    await ready(page, composerPath);
+    const body = page.getByRole("textbox", { name: "Article body", exact: true });
+    const html =
+      '<figure><img src="/api/uploads/chart.gif" alt="Sales chart"><figcaption lang="en">Chart caption</figcaption></figure>';
+    await body.focus();
+    await page.keyboard.press("ControlOrMeta+a");
+    await dragContent(page, body.locator("p").first(), html);
+    const dialog = page.getByRole("dialog", { name: "Review dropped content" });
+    await expect(dialog).toBeVisible();
+    await expect(body).toHaveText("Draft body");
+    await accessible(page);
+    await page.keyboard.press("Escape");
+    await expect(body).toBeFocused();
+    await expect(body).toHaveText("Draft body");
+    await dragContent(page, body.locator("p").first(), html);
+    await expect(dialog.getByRole("button", { name: "Cancel", exact: true })).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(dialog.getByRole("button", { name: "Insert simplified content" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(dialog).toBeHidden();
+    await expect(body).toBeFocused();
+    await expect(body.locator("img")).toHaveAttribute("alt", "Sales chart");
+    await expect(body).toContainText("Draft body");
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(body).toHaveText("Draft body");
+  });
+}
+
+test("file-bearing drop events retain image metadata and context", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  const upload = page.waitForRequest(
+    (request) => request.method() === "POST" && request.url().endsWith("/api/uploads"),
+  );
+  await dropFileContent(
+    body.locator("p").first(),
+    '<p>Image context</p><img src="/api/uploads/chart.gif" alt="Sales chart" lang="en"><p>Image details</p>',
+  );
+  await upload;
+  await expect(body.locator("img")).toHaveAttribute("alt", "Sales chart");
+  await expect(body.locator("img")).toHaveAttribute("lang", "en");
+  await expect(body).toContainText("Image context");
+  await expect(body).toContainText("Image details");
+  await expect(body).toContainText("Draft body");
+  await expect(body).toBeFocused();
+});
+
+test("file-only drop events request image review instead of inventing descriptions", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await dropFileContent(body.locator("p").first(), "", true);
+  await expect(body.locator("img")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Check accessibility (1)", exact: true })).toBeVisible();
+  await expect(body.getByRole("button", { name: "Add alt text for this image", exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("failed file-drop uploads retain the article and keyboard focus", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  await page.route("**/api/uploads", (route) =>
+    route.fulfill({ status: 413, contentType: "application/json", body: JSON.stringify({ error: "Image too large" }) }),
+  );
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await dropFileContent(body.locator("p").first(), '<img src="/api/uploads/chart.gif" alt="Sales chart">');
+  await expect(page.getByRole("alert")).toHaveText("Image too large");
+  await expect(body).toHaveText("Draft body");
+  await expect(body).toBeFocused();
+});
+
+test("internal pointer moves retain image metadata without uploading a second copy", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await writeClipboard(page, '<p>Before</p><img src="/api/uploads/chart.gif" alt="Sales chart" lang="en"><p>After</p>');
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+v");
+  const uploads: string[] = [];
+  page.on("request", (request) => {
+    if (request.method() === "POST" && request.url().endsWith("/api/uploads")) uploads.push(request.url());
+  });
+  await body.locator("img").dragTo(body.locator("p").last());
+  await expect
+    .poll(() =>
+      body.evaluate((element) => {
+        const image = element.querySelector("img");
+        const paragraph = [...element.querySelectorAll("p")].find((node) => node.textContent === "After");
+        return !!(image && paragraph && paragraph.compareDocumentPosition(image) & Node.DOCUMENT_POSITION_FOLLOWING);
+      }),
+    )
+    .toBe(true);
+  await expect(body.locator("img")).toHaveCount(1);
+  await expect(body.locator("img")).toHaveAttribute("alt", "Sales chart");
+  await expect(body.locator("img")).toHaveAttribute("lang", "en");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(uploads).toEqual([]);
+});
+
+test("document navigation and native cut/paste provide a keyboard alternative to moving an image", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await writeClipboard(page, '<p>Before</p><img src="/api/uploads/chart.gif" alt="Sales chart" lang="en"><p>After</p>');
+  await body.focus();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.press("ControlOrMeta+v");
+  await page.getByRole("button", { name: "Find and navigate", exact: true }).press("Enter");
+  await page.getByRole("button", { name: "Go to document element", exact: true }).press("Enter");
+  await page.keyboard.press("i");
+  await expect(page.getByRole("option", { name: "image: Sales chart", exact: true })).toHaveAttribute(
+    "data-highlighted",
+    "",
+  );
+  await page.keyboard.press("Enter");
+  await expect(body).toBeFocused();
+  await expect(body.locator(".img-resizer.is-selected")).toHaveCount(1);
+  await page.keyboard.press("ControlOrMeta+x");
+  await expect(body.locator("img")).toHaveCount(0);
+  await page.keyboard.press("ControlOrMeta+End");
+  await expect
+    .poll(() =>
+      body.evaluate((element) => {
+        const selection = window.getSelection();
+        const last = element.querySelector("p:last-child");
+        return !!(
+          last &&
+          selection &&
+          last.contains(selection.focusNode) &&
+          selection.focusOffset === last.textContent?.length
+        );
+      }),
+    )
+    .toBe(true);
+  await page.keyboard.press("ControlOrMeta+v");
+  await expect(body.locator("img")).toHaveCount(1);
+  await expect(body.locator("img")).toHaveAttribute("alt", "Sales chart");
+  await expect(body.locator("img")).toHaveAttribute("lang", "en");
+  await expect
+    .poll(() =>
+      body.evaluate((element) => {
+        const image = element.querySelector("img");
+        const paragraph = [...element.querySelectorAll("p")].find((node) => node.textContent === "After");
+        return !!(image && paragraph && paragraph.compareDocumentPosition(image) & Node.DOCUMENT_POSITION_FOLLOWING);
+      }),
+    )
+    .toBe(true);
 });
