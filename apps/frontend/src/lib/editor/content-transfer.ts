@@ -3,7 +3,7 @@ import { DOMSerializer, Fragment, Slice, type Node, type Schema } from "@tiptap/
 import { CONTENT_ATTRIBUTES } from "./content-accessibility";
 import { contentLoss } from "./contentLoss";
 
-export function preserveClipboardBoundaries(slice: Slice): Slice {
+export function preserveTransferBoundaries(slice: Slice): Slice {
   if (!slice.openStart && !slice.openEnd) return slice;
   let hasMetadata = false;
   slice.content.descendants((node) => {
@@ -17,13 +17,13 @@ export function preserveClipboardBoundaries(slice: Slice): Slice {
   return hasMetadata || structuredBoundary ? new Slice(slice.content, 0, 0) : slice;
 }
 
-export function clipboardLoss(html: string, slice: Slice, schema: Schema): string[] {
+export function transferLoss(html: string, slice: Slice, schema: Schema): string[] {
   const container = document.createElement("div");
   container.append(DOMSerializer.fromSchema(schema).serializeFragment(slice.content));
   return contentLoss(html, container.innerHTML);
 }
 
-export function clipboardImageCount(slice: Slice): number {
+export function transferImageCount(slice: Slice): number {
   let count = 0;
   slice.content.descendants((node) => {
     if (node.type.name === "image") count++;
@@ -31,9 +31,15 @@ export function clipboardImageCount(slice: Slice): number {
   return count;
 }
 
-export function rehostClipboardImages(slice: Slice, sources: string[]): Slice {
-  if (clipboardImageCount(slice) !== sources.length)
-    throw new Error("Clipboard image count does not match uploaded files.");
+export function fileTransferSlice(schema: Schema, count: number): Slice {
+  const nodes: Node[] = [];
+  for (let index = 0; index < count; index++) nodes.push(schema.nodes.image.create(), schema.nodes.paragraph.create());
+  return new Slice(Fragment.fromArray(nodes), 0, 0);
+}
+
+export function rehostTransferImages(slice: Slice, sources: string[]): Slice {
+  if (transferImageCount(slice) !== sources.length)
+    throw new Error("Transferred image count does not match uploaded files.");
   let index = 0;
   function rewrite(fragment: Fragment): Fragment {
     const nodes: Node[] = [];

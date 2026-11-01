@@ -53,6 +53,22 @@ function pasteHtml(editor: TiptapEditor, html: string, files: File[] = []) {
   });
   editor.view.pasteHTML(html, event);
 }
+function dropHtml(editor: TiptapEditor, html: string, files: File[] = [], pos = 8, text = "", copy = false) {
+  vi.spyOn(editor.view, "posAtCoords").mockReturnValue({ pos, inside: -1 });
+  const event = new MouseEvent("drop", {
+    bubbles: true,
+    cancelable: true,
+    clientX: 10,
+    clientY: 10,
+    ctrlKey: copy,
+    altKey: copy,
+  }) as DragEvent;
+  Object.defineProperty(event, "dataTransfer", {
+    value: { files, getData: (type: string) => (type === "text/html" ? html : type === "text/plain" ? text : "") },
+  });
+  editor.view.dom.dispatchEvent(event);
+  return event;
+}
 const status = () => document.body.textContent.match(/[\d,]+ characters?.*?(min read|words?)/)?.[0];
 
 function renderUnmounted(previewHtml?: string) {
@@ -244,6 +260,195 @@ test("pasting supported text cannot hide an image upload that is still running",
   expect(screen.getByRole("status")).toHaveTextContent("Uploading image");
   upload.resolve(Response.json({ url: "/api/uploads/rehosted.webp" }));
   await waitFor(() => expect(editor.getHTML()).toContain("rehosted.webp"));
+});
+
+test("unsupported dropped HTML cannot silently simplify or mutate the article", async () => {
+  const { editor, onUpdate } = await setup("<p>Before</p><p>After</p>");
+  dropHtml(editor, '<figure><img src="/a.png" alt="A graph"><figcaption lang="fr">Sales graph</figcaption></figure>');
+  expect(editor.getHTML()).toBe("<p>Before</p><p>After</p>");
+  expect(await screen.findByRole("dialog", { name: "Review dropped content" })).toHaveTextContent("simplify");
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test("dropped image files retain HTML descriptions and text at the drop point instead of the old selection", async () => {
+  const { editor } = await setup("<p>Before</p><p>After</p>");
+  editor.commands.selectAll();
+  dropHtml(
+    editor,
+    '<p>Image context</p><img src="file:///image.png" alt="A graph" lang="en" dir="ltr"><p>Image details</p>',
+    [png("image.png")],
+  );
+  await waitFor(() => expect(editor.getHTML()).toContain('src="/api/uploads/img1.webp"'));
+  const html = editor.getHTML();
+  expect(html).toContain('alt="A graph"');
+  expect(html).toContain('lang="en"');
+  expect(html).toContain("Image context");
+  expect(html).toContain("Image details");
+  expect(html.indexOf("Before")).toBeLessThan(html.indexOf("img1.webp"));
+  expect(html.indexOf("img1.webp")).toBeLessThan(html.indexOf("After"));
+});
+
+test("cancelling a lossy drop leaves the article, selection and upload storage untouched", async () => {
+  const { editor, onUpdate } = await setup("<p>Before</p><p>After</p>");
+  editor.commands.selectAll();
+  const selected = editor.state.selection.toJSON();
+  dropHtml(editor, '<figure><img src="file:///image.png" alt="A graph"><figcaption>Caption</figcaption></figure>', [
+    png("image.png"),
+  ]);
+  await screen.findByRole("dialog", { name: "Review dropped content" });
+  await expectAccessible();
+  await tool("Cancel");
+  expect(editor.getHTML()).toBe("<p>Before</p><p>After</p>");
+  expect(editor.state.selection.toJSON()).toEqual(selected);
+  expect(onUpdate).not.toHaveBeenCalled();
+  expect(api.calls).toHaveLength(0);
+});
+
+test("accepting a simplified drop inserts at the mapped pointer location as one undoable change", async () => {
+  const { editor } = await setup("<p>Before</p><p>After</p>");
+  editor.commands.selectAll();
+  dropHtml(editor, '<figure><img src="/a.png" alt="A graph"><figcaption>Caption</figcaption></figure>');
+  editor.commands.insertContentAt(1, "New ");
+  await fireEvent.click(await screen.findByRole("button", { name: "Insert simplified content" }));
+  const html = editor.getHTML();
+  expect(html).not.toContain("<figure");
+  expect(html).toContain("Caption");
+  expect(html.indexOf("New Before")).toBeLessThan(html.indexOf('alt="A graph"'));
+  expect(html.indexOf('alt="A graph"')).toBeLessThan(html.indexOf("After"));
+  editor.commands.undo();
+  expect(editor.getHTML()).toBe("<p>New Before</p><p>After</p>");
+});
+
+test("supported drop metadata and table relationships survive without replacing a selection", async () => {
+  const { editor } = await setup("<p>Before</p><p>After</p>");
+  editor.commands.selectAll();
+  dropHtml(
+    editor,
+    '<h2>Section</h2><p lang="fr" dir="ltr">Translated passage</p><table aria-labelledby="caption"><caption id="caption">Sales</caption><tr><th id="year" scope="col">Year</th><td headers="year">2026</td></tr></table>',
+  );
+  expect(editor.getHTML()).toContain("<h2>Section</h2>");
+  expect(editor.getHTML()).toContain('<p lang="fr" dir="ltr">Translated passage</p>');
+  expect(editor.getHTML()).toContain('headers="year"');
+  expect(editor.getHTML()).toContain("Before");
+  expect(editor.getHTML()).toContain("After");
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+test("multiple file-only drops retain their mapped location and remain unreviewed", async () => {
+  const first = Promise.withResolvers<Response>();
+  let count = 0;
+  const { editor } = await setup("<p>Before</p><p>After</p>", {
+    "POST /api/uploads": () => (++count === 1 ? first.promise : Response.json({ url: "/api/uploads/two.webp" })),
+  });
+  editor.commands.selectAll();
+  dropHtml(editor, "", [png("one.png"), png("two.png")]);
+  await waitFor(() => expect(api.calls).toHaveLength(1));
+  editor.commands.insertContentAt(1, "New ");
+  editor.commands.setTextSelection(2);
+  first.resolve(Response.json({ url: "/api/uploads/one.webp" }));
+  await waitFor(() => expect(editor.getHTML()).toContain("two.webp"));
+  const html = editor.getHTML();
+  expect(html.indexOf("New Before")).toBeLessThan(html.indexOf("one.webp"));
+  expect(html.indexOf("one.webp")).toBeLessThan(html.indexOf("two.webp"));
+  expect(html.indexOf("two.webp")).toBeLessThan(html.indexOf("After"));
+  expect(
+    editor
+      .getJSON()
+      .content.filter((node) => node.type === "image")
+      .map((node) => node.attrs!.alt),
+  ).toEqual([null, null]);
+  await screen.findByRole("button", { name: "Check accessibility (2)" });
+});
+
+test("dropped image upload failures leave the original article unchanged", async () => {
+  const { editor, onUpdate } = await setup("<p>Before</p><p>After</p>", {
+    "POST /api/uploads": apiError(413, "Image too large"),
+  });
+  dropHtml(editor, '<img src="file:///image.png" alt="A graph">', [png("image.png")]);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Image too large");
+  expect(editor.getHTML()).toBe("<p>Before</p><p>After</p>");
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test("ambiguous dropped image associations are rejected before uploads or document changes", async () => {
+  const { editor, onUpdate } = await setup("<p>Before</p><p>After</p>");
+  dropHtml(editor, '<img src="file:///one.png" alt="One"><img src="file:///two.png" alt="Two">', [
+    png("one.png"),
+    png("two.png"),
+  ]);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Drop one image at a time");
+  expect(api.calls).toHaveLength(0);
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test("unsupported files cannot be silently left out of a mixed drop", async () => {
+  const { editor, onUpdate } = await setup("<p>Before</p><p>After</p>");
+  dropHtml(editor, "", [png("one.png"), new File(["document"], "notes.pdf", { type: "application/pdf" })]);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Unsupported image type");
+  expect(api.calls).toHaveLength(0);
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test("unmatched plain text with files is rejected instead of being discarded or invented as alt text", async () => {
+  const { editor, onUpdate } = await setup("<p>Before</p><p>After</p>");
+  dropHtml(editor, "", [png("one.png")], 8, "A description with no HTML association");
+  expect(await screen.findByRole("alert")).toHaveTextContent("Insert the text separately");
+  expect(api.calls).toHaveLength(0);
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test("a dropped decorative image retains its explicitly empty alternative", async () => {
+  const { editor } = await setup("<p>Before</p><p>After</p>");
+  dropHtml(editor, '<img src="file:///image.png" alt="">', [png("image.png")]);
+  await waitFor(() => expect(editor.getHTML()).toContain("img1.webp"));
+  expect(editor.getJSON().content.find((node) => node.type === "image")?.attrs!.alt).toBe("");
+});
+
+test.for([false, true])("internal model drags preserve descriptions without rehosting (copy: %s)", async (copy) => {
+  const { editor } = await setup('<p>Before</p><img src="/a.png" alt="A graph" lang="en"><p>After</p>');
+  editor.commands.setNodeSelection(8);
+  editor.view.dragging = { slice: editor.state.selection.content(), move: !copy };
+  dropHtml(
+    editor,
+    '<img src="/a.png" alt="A graph" lang="en">',
+    [png("image.png")],
+    editor.state.doc.content.size,
+    "",
+    copy,
+  );
+  const images = editor.getJSON().content.filter((node) => node.type === "image");
+  expect(images).toHaveLength(copy ? 2 : 1);
+  expect(images.every((node) => node.attrs!.alt === "A graph" && node.attrs!.lang === "en")).toBe(true);
+  expect(api.calls).toHaveLength(0);
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+test("loss review uses the drop target rather than a previous code-block selection", async () => {
+  const { editor } = await setup("<pre><code>code</code></pre><p>After</p>");
+  editor.commands.setTextSelection(2);
+  dropHtml(editor, "<figure><figcaption>Caption</figcaption></figure>", [], 7, "Caption");
+  await screen.findByRole("dialog", { name: "Review dropped content" });
+  expect(editor.getHTML()).not.toContain("Caption");
+});
+
+test("dropping text into a code block retains deliberate plain-text insertion", async () => {
+  const { editor } = await setup("<p>Before</p><pre><code>code</code></pre><p>After</p>");
+  editor.commands.setTextSelection(2);
+  dropHtml(editor, "<figure><figcaption>Caption</figcaption></figure>", [], 11, "Caption");
+  expect(editor.getHTML()).toContain("coCaptionde");
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+test("an unresolved drop position never falls back to replacing the current selection", async () => {
+  const { editor, onUpdate } = await setup("<p>Before</p><p>After</p>");
+  editor.commands.selectAll();
+  vi.spyOn(editor.view, "posAtCoords").mockReturnValue(null);
+  const event = new MouseEvent("drop", { cancelable: true }) as DragEvent;
+  Object.defineProperty(event, "dataTransfer", { value: { files: [png("image.png")], getData: () => "" } });
+  editor.view.someProp("handleDrop", (handler) => handler(editor.view, event, editor.state.selection.content(), false));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Could not find a drop position");
+  expect(onUpdate).not.toHaveBeenCalled();
+  expect(api.calls).toHaveLength(0);
 });
 
 test("unsupported imported structures cannot be silently rewritten by opening the editor", async () => {

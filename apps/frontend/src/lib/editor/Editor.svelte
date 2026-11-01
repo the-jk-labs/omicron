@@ -3,7 +3,8 @@
   import { type Content, Editor, generateJSON } from "@tiptap/core";
   import { Placeholder } from "@tiptap/extension-placeholder";
   import type { Node as DocumentNode, Slice } from "@tiptap/pm/model";
-  import type { SelectionBookmark } from "@tiptap/pm/state";
+  import { Selection, type SelectionBookmark } from "@tiptap/pm/state";
+  import { dropPoint } from "@tiptap/pm/transform";
   import { Checkbox, Collapsible, Dialog, DropdownMenu, Label, Select, Toolbar } from "bits-ui";
   import { onDestroy, onMount, untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
@@ -15,7 +16,13 @@
   import { countWords, readTimeFromWords } from "#lib/format.js";
   import { proxyImageHtml } from "#lib/imageProxy.js";
   import { checkAccessibility, type AccessibilityIssue } from "./check-accessibility";
-  import { clipboardImageCount, clipboardLoss, preserveClipboardBoundaries, rehostClipboardImages } from "./clipboard";
+  import {
+    fileTransferSlice,
+    preserveTransferBoundaries,
+    rehostTransferImages,
+    transferImageCount,
+    transferLoss,
+  } from "./content-transfer";
   import { contentLoss } from "./contentLoss";
   import EditorNavigation from "./EditorNavigation.svelte";
   import { extensions } from "./extensions";
@@ -385,9 +392,8 @@
   const uploading = $derived(uploadsInFlight > 0);
   let uploadError = $state("");
 
-  // Uploads images and inserts them at `pos` (defaults to the current cursor).
-  // Shared by the toolbar picker, clipboard paste, and drag-and-drop.
-  async function uploadImages(files: File[], pos?: number) {
+  // Picker uploads use the cursor; content transfers keep their own mapped target.
+  async function uploadImages(files: File[]) {
     const images = files.filter(isAcceptedImage);
     if (!images.length) {
       uploadError = "Unsupported image type. Use PNG, JPEG, WebP, or GIF.";
@@ -395,9 +401,8 @@
     }
     uploadError = "";
     uploadsInFlight++;
-    // Insertion walks forward as images land, so pasting several files keeps
+    // Insertion walks forward as images land, so picking several files keeps
     // their original order instead of stacking them in reverse.
-    let at = pos;
     try {
       for (const file of images) {
         const { blob, type } = await prepareImage(file);
@@ -405,17 +410,7 @@
         // Insert the image together with a trailing paragraph so the author can
         // keep writing immediately — just like a normal editor.
         const nodes = [{ type: "image", attrs: { src: url } }, { type: "paragraph" }];
-        const chain = editor.chain();
-        // At the cursor, which insertContent leaves after what it inserted, so the
-        // next image follows this one rather than jumping to the end.
-        if (at === undefined) chain.focus().insertContent(nodes);
-        else {
-          // The image node is 1 wide and the empty paragraph 2, so the caret
-          // lands at `at + 2` and the next image goes after both.
-          chain.insertContentAt(at, nodes).focus(at + 2);
-          at += 3;
-        }
-        chain.scrollIntoView().run();
+        editor.chain().focus().insertContent(nodes).scrollIntoView().run();
       }
     } catch (err) {
       uploadError = err instanceof ApiError ? err.message : "Failed to upload image.";
@@ -431,16 +426,23 @@
     if (files.length) void uploadImages(files);
   }
 
-  type ClipboardInsertion = { slice: Slice; bookmark: SelectionBookmark; files: File[]; losses: string[] };
-  let clipboardReview = $state.raw<ClipboardInsertion | null>(null);
-  const clipboardInsertions = new Set<ClipboardInsertion>();
+  type InsertionTarget = { kind: "paste"; bookmark: SelectionBookmark } | { kind: "drop"; pos: number };
+  type ContentInsertion = InsertionTarget & { slice: Slice; files: File[]; losses: string[] };
+  let transferReview = $state.raw<ContentInsertion | null>(null);
+  let reviewKind = $state<"paste" | "drop">("paste");
+  const contentInsertions = new Set<ContentInsertion>();
 
-  function cancelClipboard() {
-    if (clipboardReview) clipboardInsertions.delete(clipboardReview);
-    clipboardReview = null;
+  function cancelTransfer() {
+    if (transferReview) contentInsertions.delete(transferReview);
+    transferReview = null;
   }
 
-  async function insertClipboard(insertion: ClipboardInsertion) {
+  async function insertTransfer(insertion: ContentInsertion) {
+    if (editor.isDestroyed || !contentInsertions.has(insertion)) return;
+    if (insertion.kind === "drop") {
+      editor.view.dispatch(editor.state.tr.setSelection(Selection.near(editor.state.doc.resolve(insertion.pos))));
+      editor.view.focus();
+    }
     const hasFiles = insertion.files.length > 0;
     if (hasFiles) uploadsInFlight++;
     uploadError = "";
@@ -448,79 +450,97 @@
       const sources: string[] = [];
       for (const file of insertion.files) {
         const { blob, type } = await prepareImage(file);
-        if (!clipboardInsertions.has(insertion)) return;
+        if (!contentInsertions.has(insertion)) return;
         const { url } = await endpoints().uploadImage(blob, type);
         sources.push(url);
       }
-      if (editor.isDestroyed || !clipboardInsertions.has(insertion)) return;
-      const slice = sources.length ? rehostClipboardImages(insertion.slice, sources) : insertion.slice;
-      const selection = insertion.bookmark.resolve(editor.state.doc);
-      editor.view.dispatch(editor.state.tr.setSelection(selection).replaceSelection(slice).scrollIntoView());
+      if (editor.isDestroyed || !contentInsertions.has(insertion)) return;
+      const slice = sources.length ? rehostTransferImages(insertion.slice, sources) : insertion.slice;
+      const transaction = editor.state.tr;
+      if (insertion.kind === "paste") {
+        transaction
+          .setSelection(insertion.bookmark.resolve(editor.state.doc))
+          .replaceSelection(slice)
+          .setMeta("paste", true);
+      } else {
+        transaction.replaceRange(insertion.pos, insertion.pos, slice);
+        transaction.setSelection(Selection.near(transaction.doc.resolve(transaction.mapping.map(insertion.pos))));
+      }
+      editor.view.dispatch(transaction.scrollIntoView().setMeta("uiEvent", insertion.kind));
       editor.view.focus();
     } catch (error) {
       uploadError =
-        error instanceof ApiError ? error.message : "Could not paste the content. Try again or paste plain text.";
+        error instanceof ApiError ? error.message : "Could not insert the content. Try again or paste plain text.";
     } finally {
-      clipboardInsertions.delete(insertion);
+      contentInsertions.delete(insertion);
       if (hasFiles) uploadsInFlight--;
     }
   }
 
-  function acceptClipboard() {
-    const insertion = clipboardReview;
-    clipboardReview = null;
-    if (insertion) void insertClipboard(insertion);
+  function acceptTransfer() {
+    const insertion = transferReview;
+    transferReview = null;
+    if (insertion) void insertTransfer(insertion);
   }
 
-  function imageFilesFrom(data: DataTransfer | null): File[] {
-    if (!data) return [];
-    return Array.from(data.files).filter((file) => file.type.startsWith("image/"));
+  function receiveTransfer(
+    view: Editor["view"],
+    event: Event,
+    data: DataTransfer | null,
+    slice: Slice,
+    target: InsertionTarget,
+  ): boolean {
+    if (!editor.isEditable || transferReview) return true;
+    const files = Array.from(data?.files ?? []);
+    const html = data?.getData("text/html") ?? "";
+    if (files.some((file) => !isAcceptedImage(file))) {
+      uploadError = "Unsupported image type. Use PNG, JPEG, WebP, or GIF.";
+      return true;
+    }
+    const context = target.kind === "paste" ? view.state.selection.$from : view.state.doc.resolve(target.pos);
+    if (!files.length && context.parent.type.spec.code) return false;
+    const origin = target.kind === "paste" ? "Clipboard" : "Dropped";
+    const action = target.kind === "paste" ? "Paste" : "Drop";
+    if (html && files.length && (files.length !== 1 || transferImageCount(slice) !== 1)) {
+      uploadError = `${origin} images could not be matched to their descriptions. ${action} one image at a time, or upload the files and add descriptions with Image settings.`;
+      return true;
+    }
+    if (!html && files.length && (data?.getData("text/plain") || data?.getData("Text"))?.trim()) {
+      uploadError =
+        "Text could not be reliably associated with these files. Insert the text separately, then upload the images and add descriptions with Image settings.";
+      return true;
+    }
+    const losses = html ? transferLoss(html, slice, view.state.schema) : [];
+    const preserved =
+      !html && files.length ? fileTransferSlice(view.state.schema, files.length) : preserveTransferBoundaries(slice);
+    if (!losses.length && !files.length && preserved === slice) return false;
+    event.preventDefault();
+    const insertion = { ...target, slice: preserved, files, losses };
+    if (insertion.kind === "drop") insertion.pos = dropPoint(view.state.doc, insertion.pos, preserved) ?? insertion.pos;
+    contentInsertions.add(insertion);
+    if (losses.length) {
+      reviewKind = insertion.kind;
+      transferReview = insertion;
+    } else void insertTransfer(insertion);
+    return true;
   }
 
   function handlePaste(view: Editor["view"], event: ClipboardEvent, slice: Slice): boolean {
-    if (!editor.isEditable || clipboardReview) return true;
-    const files = imageFilesFrom(event.clipboardData);
-    const html = event.clipboardData?.getData("text/html") ?? "";
-    if (!html) {
-      if (!files.length) {
-        const preserved = preserveClipboardBoundaries(slice);
-        if (preserved === slice) return false;
-        const insertion = { slice: preserved, bookmark: view.state.selection.getBookmark(), files, losses: [] };
-        clipboardInsertions.add(insertion);
-        void insertClipboard(insertion);
-        return true;
-      }
-      event.preventDefault();
-      void uploadImages(files);
-      return true;
-    }
-    if (!files.length && editor.isActive("codeBlock")) return false;
-    // Multiple HTML images cannot be reliably associated with clipboard files by order.
-    if (files.length && (files.length !== 1 || clipboardImageCount(slice) !== 1 || !isAcceptedImage(files[0]))) {
-      uploadError =
-        "Clipboard images could not be matched to their descriptions. Paste one image at a time, or upload the files and add descriptions with Image settings.";
-      return true;
-    }
-    const losses = clipboardLoss(html, slice, view.state.schema);
-    const preserved = preserveClipboardBoundaries(slice);
-    if (!losses.length && !files.length && preserved === slice) return false;
-    event.preventDefault();
-    const insertion = { slice: preserved, bookmark: view.state.selection.getBookmark(), files, losses };
-    clipboardInsertions.add(insertion);
-    if (losses.length) clipboardReview = insertion;
-    else void insertClipboard(insertion);
-    return true;
+    return receiveTransfer(view, event, event.clipboardData, slice, {
+      kind: "paste",
+      bookmark: view.state.selection.getBookmark(),
+    });
   }
 
-  function handleDrop(view: Editor["view"], event: DragEvent, _slice: unknown, moved: boolean): boolean {
-    if (moved) return false; // an internal node drag, not an external file
-    const files = imageFilesFrom(event.dataTransfer);
-    if (!files.length) return false;
-    event.preventDefault();
-    // Drop where the pointer is, not where the cursor happens to be.
+  function handleDrop(view: Editor["view"], event: DragEvent, slice: Slice, moved: boolean): boolean {
+    if (!editor.isEditable || transferReview) return true;
+    if (moved || view.dragging) return false;
     const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
-    void uploadImages(files, pos);
-    return true;
+    if (pos === undefined) {
+      uploadError = "Could not find a drop position. Try again, or paste the content at the text cursor.";
+      return true;
+    }
+    return receiveTransfer(view, event, event.dataTransfer, slice, { kind: "drop", pos });
   }
 
   // A post's body is stored as HTML, and only posts written here also have the
@@ -567,7 +587,10 @@
         refreshStats(ed);
       },
       onTransaction: ({ editor: ed, transaction }) => {
-        for (const insertion of clipboardInsertions) insertion.bookmark = insertion.bookmark.map(transaction.mapping);
+        for (const insertion of contentInsertions) {
+          if (insertion.kind === "paste") insertion.bookmark = insertion.bookmark.map(transaction.mapping);
+          else insertion.pos = transaction.mapping.map(insertion.pos);
+        }
         refreshActive(ed);
       },
     });
@@ -587,7 +610,7 @@
   });
 
   onDestroy(() => {
-    clipboardInsertions.clear();
+    contentInsertions.clear();
     editor?.view.dom.removeEventListener(EDIT_ALT_EVENT, openAltDialog);
     editor?.destroy();
   });
@@ -862,9 +885,9 @@
 </fieldset>
 
 <Dialog.Root
-  open={clipboardReview !== null}
+  open={transferReview !== null}
   onOpenChange={(open) => {
-    if (!open) cancelClipboard();
+    if (!open) cancelTransfer();
   }}
 >
   <Dialog.Portal>
@@ -872,23 +895,31 @@
       class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50"
     />
     <Dialog.Content
+      onCloseAutoFocus={(event) => {
+        event.preventDefault();
+        if (editor && !editor.isDestroyed) editor.view.focus();
+      }}
       class="fixed top-1/2 left-1/2 z-50 w-full max-w-[94%] -translate-x-1/2 -translate-y-1/2 rounded-card border border-border bg-background p-6 shadow-popover sm:max-w-[480px]"
     >
-      <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground">Review pasted content</Dialog.Title>
+      <Dialog.Title class="text-lg font-semibold tracking-tight text-foreground"
+        >Review {reviewKind === "drop" ? "dropped" : "pasted"} content</Dialog.Title
+      >
       <Dialog.Description class="mt-2 text-sm text-muted-foreground"
         >Rich editing will simplify this content and may remove structure or accessibility information. Cancel to keep
-        the article unchanged, or paste the simplified content and review its descriptions, languages, and
-        relationships.</Dialog.Description
+        the article unchanged, or {reviewKind === "drop" ? "insert" : "paste"} the simplified content and review its descriptions,
+        languages, and relationships.</Dialog.Description
       >
       <p class="mt-3 text-sm break-words text-muted-foreground">
-        Affected information: {clipboardReview?.losses.slice(0, 8).join(", ")}.
+        Affected information: {transferReview?.losses.slice(0, 8).join(", ")}.
       </p>
       <div class="mt-5 flex flex-wrap justify-end gap-2">
         <Dialog.Close
           class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
           >Cancel</Dialog.Close
         >
-        <Button variant="solid" onclick={acceptClipboard}>Paste simplified content</Button>
+        <Button variant="solid" onclick={acceptTransfer}
+          >{reviewKind === "drop" ? "Insert" : "Paste"} simplified content</Button
+        >
       </div>
     </Dialog.Content>
   </Dialog.Portal>

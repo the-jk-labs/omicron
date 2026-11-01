@@ -44,9 +44,10 @@
         while reading or editing. It follows reduced-motion preferences by default and never changes the saved article.
       </li>
       <li>
-        <strong class="text-foreground">Copy and paste:</strong> the article editor asks before simplifying unsupported HTML.
-        Cancel to keep the article unchanged. A copied image can retain a provided description; screenshots still need a description
-        in Image settings. Paste one image at a time when the clipboard cannot reliably match images with their descriptions.
+        <strong class="text-foreground">Paste and drop:</strong> the article editor asks before simplifying unsupported HTML.
+        Cancel to keep the article unchanged. Copied or dropped images can retain provided descriptions; file-only images
+        still need review in Image settings. Insert one image at a time when descriptions cannot be matched reliably. Paste
+        or use the image upload button as a keyboard alternative to dragging. Insert unmatched text separately.
       </li>
       <li>
         <strong class="text-foreground">Final review:</strong> use Preview where available, check links with the keyboard,
