@@ -2,6 +2,7 @@
 <script lang="ts">
   import { type Content, Editor, generateJSON } from "@tiptap/core";
   import { Placeholder } from "@tiptap/extension-placeholder";
+  import { closeHistory } from "@tiptap/pm/history";
   import type { Node as DocumentNode, Slice } from "@tiptap/pm/model";
   import { Selection, type SelectionBookmark } from "@tiptap/pm/state";
   import { dropPoint } from "@tiptap/pm/transform";
@@ -16,6 +17,7 @@
   import { countWords, readTimeFromWords } from "#lib/format.js";
   import { proxyImageHtml } from "#lib/imageProxy.js";
   import { checkAccessibility, type AccessibilityIssue } from "./check-accessibility";
+  import { remapTransferIds, transferReferenceProblems } from "./content-references";
   import {
     fileTransferSlice,
     preserveTransferBoundaries,
@@ -427,7 +429,12 @@
   }
 
   type InsertionTarget = { kind: "paste"; bookmark: SelectionBookmark } | { kind: "drop"; pos: number };
-  type ContentInsertion = InsertionTarget & { slice: Slice; files: File[]; losses: string[] };
+  type ContentInsertion = InsertionTarget & {
+    slice: Slice;
+    files: File[];
+    losses: string[];
+    referenceProblems: string[];
+  };
   let transferReview = $state.raw<ContentInsertion | null>(null);
   let reviewKind = $state<"paste" | "drop">("paste");
   const contentInsertions = new Set<ContentInsertion>();
@@ -437,16 +444,45 @@
     transferReview = null;
   }
 
+  function planTransfer(insertion: ContentInsertion, transferred = insertion.slice) {
+    const transaction = editor.state.tr;
+    if (insertion.kind === "paste") transaction.setSelection(insertion.bookmark.resolve(editor.state.doc));
+    const destination =
+      insertion.kind === "paste"
+        ? editor.state.tr.setSelection(transaction.selection).deleteSelection().doc
+        : transaction.doc;
+    const slice = remapTransferIds(transferred, destination);
+    if (insertion.kind === "paste") transaction.replaceSelection(slice).setMeta("paste", true);
+    else {
+      transaction.replaceRange(insertion.pos, insertion.pos, slice);
+      transaction.setSelection(Selection.near(transaction.doc.resolve(transaction.mapping.map(insertion.pos))));
+    }
+    return { transaction, slice, problems: transferReferenceProblems(editor.state.doc, transaction.doc, slice) };
+  }
+
+  function reviewTransfer(insertion: ContentInsertion) {
+    reviewKind = insertion.kind;
+    transferReview = insertion;
+  }
+
   async function insertTransfer(insertion: ContentInsertion) {
     if (editor.isDestroyed || !contentInsertions.has(insertion)) return;
-    if (insertion.kind === "drop") {
-      editor.view.dispatch(editor.state.tr.setSelection(Selection.near(editor.state.doc.resolve(insertion.pos))));
-      editor.view.focus();
-    }
-    const hasFiles = insertion.files.length > 0;
-    if (hasFiles) uploadsInFlight++;
-    uploadError = "";
+    let uploadStarted = false;
     try {
+      uploadError = "";
+      insertion.referenceProblems = planTransfer(insertion).problems;
+      if (insertion.referenceProblems.length) {
+        reviewTransfer(insertion);
+        return;
+      }
+      if (insertion.kind === "drop") {
+        editor.view.dispatch(editor.state.tr.setSelection(Selection.near(editor.state.doc.resolve(insertion.pos))));
+        editor.view.focus();
+      }
+      if (insertion.files.length) {
+        uploadsInFlight++;
+        uploadStarted = true;
+      }
       const sources: string[] = [];
       for (const file of insertion.files) {
         const { blob, type } = await prepareImage(file);
@@ -456,24 +492,22 @@
       }
       if (editor.isDestroyed || !contentInsertions.has(insertion)) return;
       const slice = sources.length ? rehostTransferImages(insertion.slice, sources) : insertion.slice;
-      const transaction = editor.state.tr;
-      if (insertion.kind === "paste") {
-        transaction
-          .setSelection(insertion.bookmark.resolve(editor.state.doc))
-          .replaceSelection(slice)
-          .setMeta("paste", true);
-      } else {
-        transaction.replaceRange(insertion.pos, insertion.pos, slice);
-        transaction.setSelection(Selection.near(transaction.doc.resolve(transaction.mapping.map(insertion.pos))));
+      const { transaction, problems } = planTransfer(insertion, slice);
+      if (problems.length) {
+        insertion.referenceProblems = problems;
+        reviewTransfer(insertion);
+        return;
       }
-      editor.view.dispatch(transaction.scrollIntoView().setMeta("uiEvent", insertion.kind));
+      editor.view.dispatch(closeHistory(transaction).scrollIntoView().setMeta("uiEvent", insertion.kind));
+      // Do not group the transfer with a subsequent native paste or typed edit either.
+      editor.view.dispatch(closeHistory(editor.state.tr));
       editor.view.focus();
     } catch (error) {
       uploadError =
         error instanceof ApiError ? error.message : "Could not insert the content. Try again or paste plain text.";
     } finally {
-      contentInsertions.delete(insertion);
-      if (hasFiles) uploadsInFlight--;
+      if (transferReview !== insertion) contentInsertions.delete(insertion);
+      if (uploadStarted) uploadsInFlight--;
     }
   }
 
@@ -513,15 +547,21 @@
     const losses = html ? transferLoss(html, slice, view.state.schema) : [];
     const preserved =
       !html && files.length ? fileTransferSlice(view.state.schema, files.length) : preserveTransferBoundaries(slice);
-    if (!losses.length && !files.length && preserved === slice) return false;
-    event.preventDefault();
-    const insertion = { ...target, slice: preserved, files, losses };
+    const insertion: ContentInsertion = { ...target, slice: preserved, files, losses, referenceProblems: [] };
     if (insertion.kind === "drop") insertion.pos = dropPoint(view.state.doc, insertion.pos, preserved) ?? insertion.pos;
+    let planned: ReturnType<typeof planTransfer>;
+    try {
+      planned = planTransfer(insertion);
+    } catch {
+      uploadError = "Could not insert the content. Try again or paste plain text.";
+      return true;
+    }
+    insertion.referenceProblems = planned.problems;
+    if (!losses.length && !files.length && !planned.problems.length && planned.slice === slice) return false;
+    event.preventDefault();
     contentInsertions.add(insertion);
-    if (losses.length) {
-      reviewKind = insertion.kind;
-      transferReview = insertion;
-    } else void insertTransfer(insertion);
+    if (losses.length || insertion.referenceProblems.length) reviewTransfer(insertion);
+    else void insertTransfer(insertion);
     return true;
   }
 
@@ -905,21 +945,28 @@
         >Review {reviewKind === "drop" ? "dropped" : "pasted"} content</Dialog.Title
       >
       <Dialog.Description class="mt-2 text-sm text-muted-foreground"
-        >Rich editing will simplify this content and may remove structure or accessibility information. Cancel to keep
-        the article unchanged, or {reviewKind === "drop" ? "insert" : "paste"} the simplified content and review its descriptions,
-        languages, and relationships.</Dialog.Description
+        >{#if transferReview?.referenceProblems.length}
+          Some references have missing or ambiguous targets. The content has not been inserted. Cancel and include the
+          referenced descriptions or headers, resolve duplicate IDs, or paste as plain text.
+        {:else}Rich editing will simplify this content and may remove structure or accessibility information. Cancel to
+          keep the article unchanged, or {reviewKind === "drop" ? "insert" : "paste"} the simplified content and review its
+          descriptions, languages, and relationships.{/if}</Dialog.Description
       >
       <p class="mt-3 text-sm break-words text-muted-foreground">
-        Affected information: {transferReview?.losses.slice(0, 8).join(", ")}.
+        Affected information: {[...(transferReview?.referenceProblems ?? []), ...(transferReview?.losses ?? [])]
+          .slice(0, 8)
+          .join(", ")}.
       </p>
       <div class="mt-5 flex flex-wrap justify-end gap-2">
         <Dialog.Close
           class="inline-flex h-10 items-center justify-center rounded-input px-4 text-sm font-medium text-foreground hover:bg-muted active:scale-[0.98]"
           >Cancel</Dialog.Close
         >
-        <Button variant="solid" onclick={acceptTransfer}
-          >{reviewKind === "drop" ? "Insert" : "Paste"} simplified content</Button
-        >
+        {#if !transferReview?.referenceProblems.length}
+          <Button variant="solid" onclick={acceptTransfer}
+            >{reviewKind === "drop" ? "Insert" : "Paste"} simplified content</Button
+          >
+        {/if}
       </div>
     </Dialog.Content>
   </Dialog.Portal>
