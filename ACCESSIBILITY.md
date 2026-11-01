@@ -77,6 +77,13 @@ evaluation rather than silently treating the standards as interchangeable.
   parsers, and two native import/export hops. Image bytes, ownership, references,
   duplicate retries, concurrent imports, publication policy, and failure cleanup
   are checked. Background delivery is stubbed; signed federation is not covered.
+- `apps/backend/tests/integration/signedFederation.test.ts` runs two isolated
+  Omicron processes with separate databases, keys, queues, and temporary files.
+  Real signed Create/Update deliveries preserve the fixture through receiver SQL
+  and the reader API in both directions. Tests cover duplicate delivery, Cavage
+  and RFC 9421 signatures, unsigned/wrong-signer/modified/stale rejection, and
+  restricted-content exclusion. The test transport permits loopback, not remote
+  networking; signature verification remains enabled.
 - Outbound Article body image/link references are resolved against the publishing
   post, preserving their URL context outside the instance. This fixes relative
   body-image URLs on the wire; alternatives and content ID references remain intact.
@@ -227,6 +234,28 @@ native archive. Browser editing, image optimization, signed federation delivery,
 and assistive-technology behavior remain outside this suite. Manual validation
 remains skipped and every unsigned criterion remains pending.
 
+### Signed federation follow-up — 2026-11-01
+
+The new suite uses two independent Omicron processes, generated PostgreSQL
+databases, real actor documents/key retrieval, actual HTTP delivery, and the
+in-process queue backend. The metadata-rich body is checked after signed Create
+and Update, with publisher-context image and long-description URLs, distinct
+sender/receiver keys, receiver database reads, and anonymous reader API responses.
+The source image bytes remain available and source HTML remains unchanged by
+outgoing URL conversion. Nine checks cover the primary flow and rejection paths.
+
+Only the test factory's private-address policy is adapted for loopback peers;
+the test also blocks non-loopback fetches. Signatures and timestamps are verified
+by the real Fedify implementation. Follower edges are seeded, so this is not a
+Follow/Accept handshake test. It does not evaluate public DNS/TLS/proxies,
+other implementations, Redis durability/retry recovery, arbitrary remote content,
+or browser/assistive-technology behavior. See the fixture's README for its
+`CREATEDB` requirement and teardown. Production remains untouched and manual
+validation remains skipped; no criterion is signed off by these tests.
+Verification: `pnpm fmt`, then `pnpm check --strict` (2,618 unit tests, no
+type/lint warnings), and all 339 integration tests across 33 files pass. The
+nine signed-federation tests also pass with shuffled order (seed `20261101`).
+
 ## Transformation inventory and remaining preservation checks
 
 This is a source-path inventory, not proof that each transformation preserves
@@ -248,8 +277,8 @@ are relative to `apps/backend/src/`.
 | Webhook publishing                     | Backend `services/webhooks.ts`, Markdown/sanitizer                                                                       | Metadata-rich webhook fixtures and scheduled publication                                               |
 | Import parsing                         | Backend `lib/contentArchive.ts`; native, Medium, Substack, WordPress and RSS fixtures through real HTTP/storage            | Format-specific article-language fields, other markup and sanitizer-loss assessment                    |
 | Import persistence / export            | Real SQL/files, byte/metadata checks, native multi-hop and WordPress re-import, offline HTML, retries and failure paths   | Format-specific metadata beyond the fixture, rendered meaning                                         |
-| Federation outbound                    | Backend `federation/article.ts`, `lib/absoluteContentUrls.ts`; absolute body references and JSON-LD metadata fixture     | Signed HTTP delivery, other receiving implementations, unsupported content                             |
-| Federation inbound                     | Backend `federation/mod.ts` and `remote.ts`; decoded Create/Update/outbox metadata fixtures                              | Signed inbox HTTP, database-backed storage/read cycles, arbitrary remote content                       |
+| Federation outbound                    | Real queued Create/Update HTTP delivery between isolated processes; publisher-context URLs, signatures and metadata    | Public DNS/TLS/proxies, other receivers, Redis retry durability, unsupported content                    |
+| Federation inbound                     | Signed inbox receipt, real SQL and reader API fixture; unsigned/wrong-signer/modified/stale and restricted rejection    | Other implementations, Follow/Accept handshake, arbitrary remote content                               |
 | Reader image proxy / code highlighting | Frontend `imageProxy.ts`, `bodyImages.ts`, `highlight.ts`; helper tests                                                  | Combined rendered page, alternative-language/reference consistency                                     |
 | Personal image visibility              | `imageDisplay.svelte.ts`, `actions/imageDescriptions.ts`; component/browser tests                                        | All editor/preview variants and assistive technologies; saved content must remain unchanged            |
 
