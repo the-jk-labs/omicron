@@ -13,10 +13,20 @@ async function signedIn(page: Page) {
 async function ready(page: Page, path: string) {
   await page.goto(path);
   await expect(page.getByRole("main")).toBeVisible();
-  // Opening a menu proves that hydration finished, not just server rendering.
-  await page.getByRole("button", { name: "Image display", exact: true }).click();
-  await expect(page.getByRole("menuitemradio", { name: "Hide images", exact: true })).toBeVisible();
+  const trigger = page.getByRole("button", { name: "Image display", exact: true });
+  const menu = page.getByRole("menuitemradio", { name: "Hide images", exact: true });
+  // SSR buttons are actionable before hydration; retry only this readiness probe.
+  await expect
+    .poll(
+      async () => {
+        if (!(await menu.isVisible())) await trigger.click();
+        return menu.isVisible();
+      },
+      { message: "Image display menu did not become interactive" },
+    )
+    .toBe(true);
   await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
 }
 
 async function writeClipboard(page: Page, html: string, withImage = false) {
@@ -160,6 +170,30 @@ async function accessible(page: Page) {
   await test.info().attach("axe-results", { body: JSON.stringify(results, null, 2), contentType: "application/json" });
   expect(results.violations).toEqual([]);
 }
+
+for (const path of ["/", "/login", articlePath, composerPath]) {
+  test(`readiness waits for delayed hydration on ${path}`, async ({ page }) => {
+    if (path === composerPath) await signedIn(page);
+    let scriptsReady: Promise<void> | undefined;
+    await page.route("**/_app/immutable/**/*.js", async (route) => {
+      // Hold only the first wave; later imports share the same release point.
+      scriptsReady ??= new Promise((resolve) => setTimeout(resolve, 2_000));
+      await scriptsReady;
+      await route.continue();
+    });
+    await ready(page, path);
+    await expect(page.getByRole("menuitemradio", { name: "Hide images", exact: true })).toBeHidden();
+    await expect(page.getByRole("button", { name: "Image display", exact: true })).toBeFocused();
+  });
+}
+
+test("readiness rejects a visible page when client scripts fail", async ({ page }) => {
+  await page.route("**/_app/immutable/**/*.js", (route) => route.abort());
+  await expect(ready(page, articlePath)).rejects.toThrow("Image display menu did not become interactive");
+  await expect(page.getByRole("main")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Image display", exact: true })).toBeVisible();
+  await expect(page.getByRole("menuitemradio", { name: "Hide images", exact: true })).toBeHidden();
+});
 
 for (const theme of ["light", "dark"] as const) {
   for (const path of ["/", "/login", articlePath, composerPath]) {
