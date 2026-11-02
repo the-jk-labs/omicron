@@ -1025,7 +1025,7 @@ test("find supports forward and backward results, alternatives, and no-match fee
 test("document navigation moves editing focus to the chosen element", async () => {
   const { editor, dom } = await setup("<p>Opening</p><h2>Section</h2><p>Body</p>");
   await tool("Find and navigate");
-  await fireEvent.keyDown(await screen.findByRole("button", { name: "Go to document element" }), { key: "Enter" });
+  await fireEvent.keyDown(await screen.findByRole("combobox", { name: "Go to document element" }), { key: "Enter" });
   await fireEvent.pointerUp(await screen.findByRole("option", { name: "Heading 2: Section" }));
   await waitFor(() => expect(editor.isActive("heading", { level: 2 })).toBe(true));
   await waitFor(() => expect(dom).toHaveFocus());
@@ -1036,7 +1036,7 @@ test("passages can have an independent language and direction", async () => {
   editor.commands.setTextSelection({ from: 1, to: 6 });
   await tool("Text language");
   await fireEvent.input(await screen.findByLabelText("Language tag"), { target: { value: "fr" } });
-  await fireEvent.keyDown(screen.getByRole("button", { name: "Text direction: Inherit" }), { key: "Enter" });
+  await fireEvent.keyDown(screen.getByRole("combobox", { name: "Text direction: Inherit" }), { key: "Enter" });
   await fireEvent.pointerUp(await screen.findByRole("option", { name: "Right to left" }));
   await expectAccessible();
   await tool("Save");

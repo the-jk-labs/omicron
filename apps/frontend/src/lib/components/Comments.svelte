@@ -8,6 +8,7 @@
   import type { CommentActions, CommentUiState } from "#lib/components/comments.js";
   import EmojiTrigger from "#lib/components/EmojiTrigger.svelte";
   import LoadMoreButton from "#lib/components/LoadMoreButton.svelte";
+  import MentionPicker from "#lib/components/MentionPicker.svelte";
   import Avatar from "#lib/components/ui/Avatar.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
@@ -66,6 +67,14 @@
   // Total comments = top-level comments + every reply.
   const total = $derived(comments.reduce((n, c) => n + 1 + c.replies.length, 0));
 
+  // Everyone who has spoken here: the first people suggested for an @mention.
+  const participants = $derived.by(() => {
+    const people = new Map<string, Comment["author"]>();
+    for (const thread of comments)
+      for (const c of [thread, ...thread.replies]) if (c.author.id !== user?.id) people.set(c.author.id, c.author);
+    return [...people.values()];
+  });
+
   async function submit(e: SubmitEvent) {
     e.preventDefault();
     if (!draft.trim()) return;
@@ -84,7 +93,7 @@
   }
 
   // `target` is the comment being replied to; `thread` is its top-level root.
-  // Replying to a reply pre-fills an @mention, just like YouTube.
+  // Every reply starts with an @mention of who it answers, as on Instagram and X.
   function openReply(target: Comment, thread: Comment) {
     if (!user) {
       goto("/login");
@@ -95,7 +104,7 @@
       return;
     }
     ui.replyingTo = target.id;
-    ui.replyDraft = target.id === thread.id ? "" : `@${target.author.displayName} `;
+    ui.replyDraft = `@${target.author.username} `;
     ui.replyError = "";
     ui.expanded.add(thread.id);
     ui.expanded = new Set(ui.expanded);
@@ -262,6 +271,7 @@
             placeholder="What are your thoughts?"
             class={`${field} pr-11`}></textarea>
           <EmojiTrigger onPick={insertDraftEmoji} align="end" class={`${emojiOverlayBtn} right-1.5 bottom-2`} />
+          <MentionPicker textarea={draftEl} value={draft} onPick={(text) => (draft = text)} {participants} />
         </div>
         {#if error}<p class="mt-1.5 text-sm text-destructive">{error}</p>{/if}
         <div class="mt-2 flex justify-end">
@@ -282,7 +292,7 @@
   {:else}
     <ul class="flex flex-col gap-6">
       {#each comments as comment (comment.id)}
-        <CommentNode {comment} thread={comment} {user} {ui} {actions} {field} />
+        <CommentNode {comment} thread={comment} {user} {ui} {actions} {field} {participants} />
       {/each}
     </ul>
 

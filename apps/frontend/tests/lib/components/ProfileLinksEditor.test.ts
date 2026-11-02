@@ -43,7 +43,7 @@ test("a handle platform shows its base as a prefix; a custom link asks for a lab
   expect(screen.getByText("github.com/")).toBeInTheDocument();
   expect(screen.getByPlaceholderText("username")).toHaveValue("ada");
   expect(screen.getByPlaceholderText("Label (e.g. My portfolio)")).toHaveValue("Portfolio");
-  expect(screen.getAllByRole("button", { name: "Link type" })).toHaveLength(2);
+  expect(screen.getAllByRole("combobox", { name: "Link type" })).toHaveLength(2);
 });
 
 // 1Password ignores autocomplete="off", so a handle field (github.com/<user>)

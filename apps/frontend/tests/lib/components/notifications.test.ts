@@ -16,6 +16,7 @@ const TYPES: Notification["type"][] = [
   "comment",
   "reply",
   "comment_like",
+  "mention",
   "recommend",
   "post_published",
 ];
@@ -38,6 +39,8 @@ test("every type has its own wording and an icon", () => {
   for (const t of TYPES) expect(notificationIcon(t)).toBeTruthy();
   expect(notificationIcon("follow_request")).toBe("lock");
   expect(notificationIcon("comment_like")).toBe("heart");
+  expect(notificationAction("mention")).toBe("mentioned you in a comment");
+  expect(notificationIcon("mention")).toBe("at");
 });
 
 test("the subject is the actor, 'Someone' without one, and the post for a scheduled publish", () => {

@@ -7,6 +7,7 @@ import * as relationsRepo from "@/db/repositories/relations.ts";
 import { badRequest, forbidden, notFound } from "@/lib/http.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE, encodeCursor } from "@/lib/pagination.ts";
 import { queue } from "@/queue/queue.ts";
+import { notifyMentions } from "@/services/mentions.ts";
 import * as notifications from "@/services/notifications.ts";
 import { assertVisible } from "@/services/posts.ts";
 
@@ -82,6 +83,13 @@ export async function create(authorId: string, postId: string, content: string, 
       commentId: comment.id,
     });
   }
+  await notifyMentions({
+    text,
+    post,
+    commentId: comment.id,
+    actorId: authorId,
+    skip: [post.post.authorId, replyToAuthorId],
+  });
 
   // Federate the response out as a Note (no-op unless the post is public and
   // someone remote follows the thread — see deliverComment).
@@ -104,6 +112,9 @@ export async function edit(userId: string, commentId: string, content: string) {
   if (comment.authorId !== userId) throw forbidden("You can only edit your own comments.");
 
   const updated = await commentsRepo.update(commentId, text);
+  // Someone named for the first time in the edit hears about it; the rest are deduped by the notifications table.
+  const post = await postsRepo.findById(comment.postId);
+  if (post) await notifyMentions({ text, post, commentId, actorId: userId, skip: [post.post.authorId] });
   queue.add("federate_comment", { commentId, action: "update" });
   return updated;
 }

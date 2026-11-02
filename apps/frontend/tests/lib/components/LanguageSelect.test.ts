@@ -5,26 +5,26 @@ import LanguageSelect from "#lib/components/LanguageSelect.svelte";
 
 test("the trigger names the chosen language, or prompts for one", () => {
   const { unmount } = render(LanguageSelect, { props: { value: "az" } });
-  expect(screen.getByRole("button", { name: "Article language" })).toHaveTextContent("Azerbaijani");
+  expect(screen.getByRole("combobox", { name: "Article language" })).toHaveTextContent("Azerbaijani");
   unmount();
   render(LanguageSelect, { props: { value: null } });
-  expect(screen.getByRole("button", { name: "Article language" })).toHaveTextContent("Language");
+  expect(screen.getByRole("combobox", { name: "Article language" })).toHaveTextContent("Language");
 });
 
 test("an unlisted federated code still shows as its code", () => {
   render(LanguageSelect, { props: { value: "tlh" } });
-  expect(screen.getByRole("button", { name: "Article language" })).toHaveTextContent("TLH");
+  expect(screen.getByRole("combobox", { name: "Article language" })).toHaveTextContent("TLH");
 });
 
 async function choose(name: RegExp) {
-  await fireEvent.keyDown(screen.getByRole("button", { name: "Article language" }), { key: "Enter" });
+  await fireEvent.keyDown(screen.getByRole("combobox", { name: "Article language" }), { key: "Enter" });
   const option = await screen.findByRole("option", { name });
   // bits-ui Select picks on pointer-up, not click.
   await fireEvent.pointerDown(option, { pointerType: "mouse", button: 0 });
   await fireEvent.pointerUp(option, { pointerType: "mouse", button: 0 });
 }
 
-const trigger = () => screen.getByRole("button", { name: "Article language" });
+const trigger = () => screen.getByRole("combobox", { name: "Article language" });
 
 test("choosing a language sets it; No language clears it", async () => {
   render(LanguageSelect, { props: { value: null } });

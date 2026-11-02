@@ -334,6 +334,7 @@ export const NotificationType = z.enum([
   "comment",
   "reply",
   "comment_like",
+  "mention",
   "recommend",
   /** The reader's own scheduled post went live: the only type with no actor. */
   "post_published",

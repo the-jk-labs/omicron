@@ -709,7 +709,7 @@ test("document navigation and native cut/paste provide a keyboard alternative to
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.press("ControlOrMeta+v");
   await page.getByRole("button", { name: "Find and navigate", exact: true }).press("Enter");
-  await page.getByRole("button", { name: "Go to document element", exact: true }).press("Enter");
+  await page.getByRole("combobox", { name: "Go to document element", exact: true }).press("Enter");
   await page.keyboard.press("i");
   await expect(page.getByRole("option", { name: "image: Sales chart", exact: true })).toHaveAttribute(
     "data-highlighted",

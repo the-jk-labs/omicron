@@ -16,6 +16,8 @@ export type NotificationType =
   | "comment"
   | "reply"
   | "comment_like"
+  // Named with an @mention in a comment.
+  | "mention"
   | "recommend"
   // The instance published a scheduled post. The only type with no actor —
   // nobody did this, a timer did — which is why the reader renders it as a

@@ -45,6 +45,8 @@ describe("notifications", () => {
   test("wording and targets match the web", () => {
     expect(`${notificationSubject(base)} ${notificationAction(base.type)}`).toBe("Ada liked your post");
     expect(notificationHref(base)).toBe("/posts/p1");
+    expect(`${notificationSubject(base)} ${notificationAction("mention")}`).toBe("Ada mentioned you in a comment");
+    expect(notificationHref({ ...base, type: "mention" })).toBe("/posts/p1");
     expect(notificationHref({ ...base, type: "follow" })).toBe("/@ada");
     expect(notificationHref({ ...base, type: "follow_request" })).toBe("/follow-requests");
   });

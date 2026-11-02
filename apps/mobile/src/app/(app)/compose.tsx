@@ -4,15 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams, usePreventRemove } from "expo-router";
 import { useRef, useState } from "react";
 import { TextInput, View } from "react-native";
-import { KeyboardAvoidingView, useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
-import Animated, { useAnimatedStyle } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useEditorCss } from "@/components/composer/editor-css";
 import { PublishSheet } from "@/components/composer/publish-sheet";
 import { SettingsSheet } from "@/components/composer/settings-sheet";
 import { ComposerToolbar } from "@/components/composer/toolbar";
 import { useComposer } from "@/components/composer/use-composer";
 import { useApi, useInstance } from "@/components/instance-provider";
+import { BottomInset } from "@/components/layout/bottom-inset";
 import { Screen } from "@/components/layout/screen";
 import { Button, IconButton } from "@/components/ui/button";
 import { Field, inputClass, SheetInput } from "@/components/ui/input";
@@ -59,14 +58,6 @@ function SaveStatus({ state, published }: { state: string; published: boolean })
 /** The editor page with the theme's background from its first paint, before the bridge's CSS arrives. */
 const editorPage = (background: string) =>
   editorHtml.replace("<head>", `<head><style>html,body{background:${background}}</style>`);
-
-/** Fills the navigation bar's height below the toolbar, and gives it up as the keyboard rises over it. */
-function BottomInset() {
-  const insets = useSafeAreaInsets();
-  const { progress } = useReanimatedKeyboardAnimation();
-  const style = useAnimatedStyle(() => ({ height: insets.bottom * (1 - progress.get()) }));
-  return <Animated.View style={style} className="bg-background" />;
-}
 
 function Composer({ post }: { post: Post | undefined }) {
   const api = useApi();

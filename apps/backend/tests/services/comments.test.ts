@@ -137,6 +137,27 @@ describe("create", () => {
     expect(commentsRepo.create).not.toHaveBeenCalled();
   });
 
+  test("a mention notifies the named account once, after the reply notification", async () => {
+    vi.mocked(usersRepo.findActiveByUsernames).mockResolvedValue([
+      { id: "carol", username: "carol" },
+      { id: "erin", username: "erin" },
+    ]);
+    vi.mocked(commentsRepo.findById).mockResolvedValue(commentRow({ id: "top", postId: "p1", authorId: "carol" }));
+    await create("viewer", "p1", "@carol @erin look", "top");
+    expect(usersRepo.findActiveByUsernames).toHaveBeenCalledWith(["carol", "erin"]);
+    expect(notifiedTypes()).toEqual([
+      ["comment", "author"],
+      ["reply", "carol"],
+      ["mention", "erin"],
+    ]);
+  });
+
+  test("mentioning the post author adds nothing to their comment notification", async () => {
+    vi.mocked(usersRepo.findActiveByUsernames).mockResolvedValue([{ id: "author", username: "ada" }]);
+    await create("viewer", "p1", "@ada hi");
+    expect(notifiedTypes()).toEqual([["comment", "author"]]);
+  });
+
   // Commenting also notifies the author, so it follows the reader's visibility rules.
   test("refuses to comment on someone else's draft", async () => {
     vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ id: "p1", status: "draft" }, { id: "author" }));
@@ -157,6 +178,14 @@ describe("edit", () => {
     expect(commentsRepo.update).toHaveBeenCalledWith("c1", "new text");
     expect(updated).toMatchObject({ content: "new text" });
     expect(queue.add).toHaveBeenCalledWith("federate_comment", { commentId: "c1", action: "update" });
+  });
+
+  test("notifies accounts the edit mentions", async () => {
+    vi.mocked(commentsRepo.findById).mockResolvedValue(commentRow({ id: "c1", postId: "p1", authorId: "me" }));
+    vi.mocked(usersRepo.findActiveByUsernames).mockResolvedValue([{ id: "erin", username: "erin" }]);
+    await edit("me", "c1", "now with @erin");
+    expect(notifiedTypes()).toEqual([["mention", "erin"]]);
+    expect(notificationsRepo.create).toHaveBeenCalledWith(expect.objectContaining({ commentId: "c1", postId: "p1" }));
   });
 
   test("refuses anyone else, moderators included", async () => {

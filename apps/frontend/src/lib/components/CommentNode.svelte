@@ -10,8 +10,10 @@
   // oxlint-disable-next-line import/no-self-import -- a recursive component renders itself
   import Self from "#lib/components/CommentNode.svelte";
   import type { CommentActions, CommentUiState } from "#lib/components/comments.js";
+  import CommentText from "#lib/components/CommentText.svelte";
   import EmojiTrigger from "#lib/components/EmojiTrigger.svelte";
   import Icon from "#lib/components/Icon.svelte";
+  import MentionPicker from "#lib/components/MentionPicker.svelte";
   import Time from "#lib/components/Time.svelte";
   import Avatar from "#lib/components/ui/Avatar.svelte";
   import Button from "#lib/components/ui/Button.svelte";
@@ -26,6 +28,7 @@
     ui,
     actions,
     field,
+    participants,
   }: {
     comment: Comment;
     thread: Comment;
@@ -33,6 +36,7 @@
     ui: CommentUiState;
     actions: CommentActions;
     field: string;
+    participants: Comment["author"][];
   } = $props();
 
   const isReply = $derived(comment.id !== thread.id);
@@ -48,6 +52,13 @@
     insertEmojiIntoField(editEl, ui.editDraft, 2000, emoji, (v) => (ui.editDraft = v));
   const insertReplyEmoji = (emoji: string) =>
     insertEmojiIntoField(replyEl, ui.replyDraft, 2000, emoji, (v) => (ui.replyDraft = v));
+
+  // A reply box opens ready to type after its @mention.
+  $effect(() => {
+    if (!replyEl) return;
+    replyEl.focus();
+    replyEl.setSelectionRange(replyEl.value.length, replyEl.value.length);
+  });
 </script>
 
 <li class="flex gap-3">
@@ -71,6 +82,12 @@
             placeholder="Edit your comment…"
             class={`${field} pr-11`}></textarea>
           <EmojiTrigger onPick={insertEditEmoji} align="end" class={`${emojiOverlayBtn} right-1.5 bottom-2`} />
+          <MentionPicker
+            textarea={editEl}
+            value={ui.editDraft}
+            onPick={(text) => (ui.editDraft = text)}
+            {participants}
+          />
         </div>
         {#if ui.editError}<p class="mt-1.5 text-sm text-destructive">{ui.editError}</p>{/if}
         <div class="mt-2 flex justify-end gap-2">
@@ -81,7 +98,7 @@
         </div>
       </form>
     {:else}
-      <p class="mt-1 text-sm wrap-break-word whitespace-pre-wrap text-foreground-alt">{comment.content}</p>
+      <CommentText content={comment.content} />
     {/if}
 
     <!-- Actions (negative margin offsets the buttons' padding so the heart
@@ -152,6 +169,12 @@
               placeholder={`Reply to ${comment.author.displayName}…`}
               class={`${field} pr-11`}></textarea>
             <EmojiTrigger onPick={insertReplyEmoji} align="end" class={`${emojiOverlayBtn} right-1.5 bottom-2`} />
+            <MentionPicker
+              textarea={replyEl}
+              value={ui.replyDraft}
+              onPick={(text) => (ui.replyDraft = text)}
+              {participants}
+            />
           </div>
           {#if ui.replyError}<p class="mt-1.5 text-sm text-destructive">{ui.replyError}</p>{/if}
           <div class="mt-2 flex justify-end gap-2">
@@ -183,7 +206,7 @@
       {#if ui.expanded.has(comment.id)}
         <ul class="mt-4 flex flex-col gap-4 border-l border-border pl-4">
           {#each comment.replies as reply (reply.id)}
-            <Self comment={reply} thread={comment} {user} {ui} {actions} {field} />
+            <Self comment={reply} thread={comment} {user} {ui} {actions} {field} {participants} />
           {/each}
         </ul>
       {/if}
