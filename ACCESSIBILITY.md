@@ -607,6 +607,47 @@ behavior remain unverified. Manual evaluation remains skipped, native mobile
 accessibility is excluded, and no WCAG/ATAG conformance claim is made. No API,
 schema, backend, dependency, or production change is included.
 
+### Paste-review keyboard readiness — 2026-11-02
+
+Post-merge CI `41498645234` had 63 browser passes and one failure in the existing
+rich-caption table-cell review workflow. After Tab/Enter closed the dialog, the
+expected caption was absent and the destination table was unchanged. The trace
+did not record the activated control, and 50 local diagnostic replays passed;
+those passes did not justify dismissing the CI failure or deploying the image.
+
+A controlled animation-frame ordering now reproduces that exact symptom before
+the test fix: the visible dialog has not yet received initial focus, Tab runs in
+the editor, and the deferred focus callback runs before Enter. Read-only event
+capture confirms Enter targets **Cancel**, not **Paste simplified content**.
+The installed Bits UI focus scope schedules initial focus in an animation-frame
+callback; visibility alone is therefore not a keyboard-readiness condition.
+The original CI activation target remains unobserved, but this proves the test's
+focus assumption can produce the reported failure without an insertion defect.
+
+The test now waits for Cancel to be focused, uses native Tab, verifies the
+acceptance button is focused, and presses Enter once. It retains the original
+cancellation, caption, table, and undo assertions and records the Enter target.
+Normal and controlled-delayed-frame variants run without scenario retries.
+The delay fixture controls callback delivery only; it does not force focus,
+click a button, repeat paste/acceptance, or replace readiness with a fixed sleep.
+No application source, dependency, backend, API, or production service changes.
+
+Verification with Node 26.7.0 / pnpm 12.16.1:
+
+- `pnpm fmt`, then `pnpm check --strict`: 175 files and 1,758 tests pass,
+  with no type/lint warnings.
+- Both review variants pass `--repeat-each=30 --workers=4 --retries=0`:
+  60 first attempts, with no failures/flaky/skipped cases. All 60 retained event
+  records show exactly one trusted Enter targeting the acceptance button.
+- `pnpm test:browser --retries=0`: all 65 Chromium scenarios pass; report
+  inspection confirms 65 single attempts, no failures/flaky/skipped cases, and
+  the expected acceptance target in both review variants.
+- `git diff --check` passes. The build retains its existing large-chunk advisory.
+
+This is a browser-test readiness correction, not a new accessibility feature or
+conformance result. Manual and cross-browser/assistive-technology evaluation
+remain incomplete, and native mobile accessibility remains out of scope.
+
 ## Transformation inventory and remaining preservation checks
 
 This is a source-path inventory, not proof that each transformation preserves
