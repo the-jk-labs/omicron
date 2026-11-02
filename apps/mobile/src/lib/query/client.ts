@@ -36,7 +36,15 @@ export function shouldPersistQuery(query: Query) {
 }
 
 // Only worth having fresh; everything else (every post, profile and list opened) is kept.
-const SKIP_PERSIST = new Set(["search", "tag-suggest", "admin-reports", "admin-users", "admin-user", "sessions"]);
+const SKIP_PERSIST = new Set([
+  "search",
+  "tag-suggest",
+  "mention-suggest",
+  "admin-reports",
+  "admin-users",
+  "admin-user",
+  "sessions",
+]);
 // A list reopens at its top, and further pages load as it scrolls.
 const PERSISTED_PAGES = 2;
 

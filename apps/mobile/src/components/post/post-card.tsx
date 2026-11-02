@@ -11,7 +11,7 @@ import { PressableScale } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { excerpt, formatDate, readTime, shortAgo } from "@/lib/format";
 import { parseWhenIdle } from "@/lib/html/parse-cache";
-import { postPath, profilePath } from "@/lib/links";
+import { commentsPath, postPath, profilePath } from "@/lib/links";
 import { LikeButton, RecommendButton, CommentsButton, ShareButton } from "./action-buttons";
 import { AiAssistedBadge, UserAvatar } from "./post-bits";
 import { PostMenuButton } from "./post-menu";
@@ -113,10 +113,7 @@ export const PostCard = memo(function PostCard({ post }: { post: Post }) {
           draws the row in from the card's edges, so the icons sit closer together. */}
       <View className="mt-2 flex-row items-center px-4">
         <View className={SLOT}>
-          <CommentsButton
-            count={post.commentCount}
-            onPress={() => router.push({ pathname: postPath(post), params: { focus: "comments" } })}
-          />
+          <CommentsButton count={post.commentCount} onPress={() => router.push(commentsPath(post.id))} />
         </View>
         <View className={SLOT}>
           <RecommendButton post={post} />

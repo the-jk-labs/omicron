@@ -40,6 +40,8 @@ export default function AppLayout() {
           {/* Writing and signing in are tasks laid over the app: they rise from the bottom. */}
           <Stack.Screen name="compose" options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
           <Stack.Screen name="(auth)" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
+          {/* Comments rise over the post, as in Instagram, with their composer above the keyboard. */}
+          <Stack.Screen name="comments/[postId]" options={{ presentation: "modal", animation: "slide_from_bottom" }} />
           {/* Search opens in place over the current screen, as in X. */}
           <Stack.Screen name="search" options={{ animation: "fade", animationDuration: 180 }} />
           {/* Only forwards to the post canonical address, so it should not animate at all. */}

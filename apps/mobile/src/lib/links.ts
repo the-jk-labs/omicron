@@ -10,6 +10,12 @@ export function postPath(post: Pick<Post, "id" | "slug"> & { author: { username:
 /** `/@ada`, or `/@ada@remote.example` for a federated account. */
 export const profilePath = (username: string) => `/@${username}`;
 
+/** A post's comments; `focus` opens the keyboard at once. */
+export const commentsPath = (postId: string, focus = false) => ({
+  pathname: "/comments/[postId]" as const,
+  params: focus ? { postId, focus: "1" } : { postId },
+});
+
 export const tagPath = (slug: string) => `/tags/${encodeURIComponent(slug)}`;
 
 export const listPath = (list: Pick<ReadingList, "id">) => `/lists/${list.id}`;

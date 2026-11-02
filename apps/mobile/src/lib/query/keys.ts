@@ -28,6 +28,7 @@ export const queryKeys = {
   tagSuggestions: (q: string) => ["tag-suggest", q] as const,
 
   search: (q: string) => ["search", q] as const,
+  mentionSuggestions: (q: string) => ["mention-suggest", q] as const,
 
   notifications: ["notifications"] as const,
   unreadCount: ["notifications", "unread"] as const,

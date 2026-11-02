@@ -1,12 +1,12 @@
 import type { Post } from "@omicron/contract";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
-import { Link, useLocalSearchParams } from "expo-router";
+import { Link, router, useLocalSearchParams } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useRef, useState, type ComponentRef } from "react";
+import { useState } from "react";
 import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Comments } from "@/components/comments/comments";
+import { CommentsPreview } from "@/components/comments/comments";
 import { useApi, useInstance } from "@/components/instance-provider";
 import { Screen, ScreenHeader } from "@/components/layout/screen";
 import { SaveToListButton } from "@/components/lists/save-to-list";
@@ -21,7 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/states";
 import { Text } from "@/components/ui/text";
 import { formatDate, readTime } from "@/lib/format";
-import { profilePath, usernameFromHandle } from "@/lib/links";
+import { commentsPath, profilePath, usernameFromHandle } from "@/lib/links";
 import { findCachedPost } from "@/lib/query/cache";
 import { queryKeys } from "@/lib/query/keys";
 
@@ -104,8 +104,7 @@ function ReaderHeader({ post }: { post: Post }) {
 }
 
 export default function Reader() {
-  // `focus=comments`: opened from a card's comment button, so it lands on the comments.
-  const { handle, slug, focus } = useLocalSearchParams<{ handle: string; slug: string; focus?: string }>();
+  const { handle, slug } = useLocalSearchParams<{ handle: string; slug: string }>();
   const api = useApi();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
@@ -125,15 +124,6 @@ export default function Reader() {
     queryFn: async () => (await api.relatedPosts(post!.id)).items,
     enabled: Boolean(post),
   });
-  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
-  const bodyRef = useRef<ComponentRef<typeof View>>(null);
-  const commentsRef = useRef<ComponentRef<typeof View>>(null);
-  const jumpToComments = useRef(focus === "comments");
-  // Measured on demand: images and late blocks above keep moving the comments down after their first layout.
-  const scrollToComments = (animated: boolean) => {
-    if (!bodyRef.current) return;
-    commentsRef.current?.measureLayout(bodyRef.current, (_x, y) => scrollRef.current?.scrollTo({ y, animated }));
-  };
 
   if (!post) {
     return (
@@ -157,25 +147,15 @@ export default function Reader() {
   return (
     <Screen>
       <ScreenHeader right={<PostMenuButton post={post} inReader />} className="border-b-0" />
-      <ScrollView
-        ref={scrollRef}
-        contentContainerClassName="pb-24"
-        onScrollBeginDrag={() => {
-          jumpToComments.current = false;
-        }}
-        // Followed while the body above still grows, until the reader scrolls.
-        onContentSizeChange={() => {
-          if (jumpToComments.current) scrollToComments(false);
-        }}
-      >
-        <View ref={bodyRef} className="gap-5 px-5 pt-2">
+      <ScrollView contentContainerClassName="pb-24">
+        <View className="gap-5 px-5 pt-2">
           <ReaderHeader post={post} />
 
           <HtmlContent html={post.contentHtml} />
           <TagList tags={post.tags} />
 
-          <View ref={commentsRef} className="border-t border-border pt-6">
-            <Comments postId={post.id} />
+          <View className="border-t border-border pt-6">
+            <CommentsPreview post={post} />
           </View>
         </View>
 
@@ -197,7 +177,7 @@ export default function Reader() {
         style={{ paddingBottom: insets.bottom }}
       >
         <LikeButton post={post} />
-        <CommentsButton count={post.commentCount} onPress={() => scrollToComments(true)} />
+        <CommentsButton count={post.commentCount} onPress={() => router.push(commentsPath(post.id))} />
         <RecommendButton post={post} />
         <View className="ml-auto flex-row items-center">
           <SaveToListButton post={post} fetch />
