@@ -2,32 +2,10 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import axe from "axe-core";
 import { complexTableHtml } from "../lib/editor/transfer-fixtures";
+import { ready, signedIn } from "./helpers";
 
 const articlePath = "/@ada/hello-world";
 const composerPath = "/compose?id=9e962281-2222-3333-4444-555555555555";
-
-async function signedIn(page: Page) {
-  await page.context().addCookies([{ name: "a11y-user", value: "1", url: "http://127.0.0.1:4173" }]);
-}
-
-async function ready(page: Page, path: string) {
-  await page.goto(path);
-  await expect(page.getByRole("main")).toBeVisible();
-  const trigger = page.getByRole("button", { name: "Image display", exact: true });
-  const menu = page.getByRole("menuitemradio", { name: "Hide images", exact: true });
-  // SSR buttons are actionable before hydration; retry only this readiness probe.
-  await expect
-    .poll(
-      async () => {
-        if (!(await menu.isVisible())) await trigger.click();
-        return menu.isVisible();
-      },
-      { message: "Image display menu did not become interactive" },
-    )
-    .toBe(true);
-  await page.keyboard.press("Escape");
-  await expect(menu).toBeHidden();
-}
 
 async function writeClipboard(page: Page, html: string, withImage = false) {
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
