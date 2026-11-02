@@ -58,6 +58,9 @@ evaluation rather than silently treating the standards as interchangeable.
 - `apps/frontend/tests/browser/accessibility.spec.ts` exercises production-built
   SvelteKit pages in Chromium, using an isolated loopback API with no database.
   `pnpm test:browser` runs it locally; the browser CI job is configured to retain reports/traces.
+- `apps/frontend/tests/browser/autosave.spec.ts` checks controlled save failures,
+  retry, a simulated expired session, and keyboard/native-browser leave guards.
+  These fixtures do not exercise real authentication or database persistence.
 - Clipboard HTML is compared with the actual parsed editor slice before it can
   replace a selection. Detected loss opens a cancellable review dialog; accepted
   pastes remain undoable. Supported block metadata is retained rather than lost
@@ -413,6 +416,100 @@ Verification with Node 26.7.0 / pnpm 12.16.1:
 Only the browser tests and this evidence register change. No application,
 API/schema/dependency, production, or native mobile changes are included. Manual
 accessibility evaluation remains skipped; WCAG/ATAG conformance is unestablished.
+
+### Autosave/session recovery browser coverage — 2026-11-02
+
+Seven additional Chromium scenarios exercise the production-built composer with
+browser-intercepted writes against the loopback fixture. HTTP 503, an aborted
+network request, and HTTP 401 preserve the title and body without redirecting or
+moving focus. A subsequent keyboard edit saves the latest HTML/JSON and clears
+the failure indicator. Updates must not send publication status or schedule fields.
+The 401 case removes and restores only the dummy fixture session cookie, not a
+real account's session or an interactive sign-in flow.
+
+An unchanged failed payload retries after the existing 15-second retry delay.
+A fresh draft stays without an ID after a rejected create; after acknowledgement,
+its next edit updates the returned ID rather than creating again. This does not
+prove duplicate prevention when a server commits a write but its response is lost.
+
+Keyboard in-app navigation after a failed save checks modal focus, forward/backward
+focus wrapping, **Stay**, focus return, and retained text. Cancelling a real browser
+reload prompt also retains the unsaved draft. Shared sign-in/readiness helpers are
+extracted unchanged for both browser suites.
+
+No application defect is established by test-harness failures: the initial draft
+tests assumed whitespace-free status text, initial focus on **Stay** rather than
+the Bits UI dialog container, and completion of a cancelled reload's load event.
+The assertions now follow the rendered text and actual dialog/navigation behavior.
+
+Initial CI run `41443737665` passed all jobs, but its browser artifact reported
+53 first-attempt passes and one autosave case that passed only on retry. That
+attempt inserted setup text at the beginning rather than the intended end; it
+did not lose the existing draft text. The append helper now verifies editability
+and an end-caret after the focus/selection frame before typing once, retrying only
+the positioning key. The cause of the unexpected caret is not established as an
+application defect. The new autosave suite disables scenario retries so this kind
+of failure cannot produce a green result through a second attempt.
+
+Verification with Node 26.7.0 / pnpm 12.16.1:
+
+- `pnpm fmt`, then `pnpm check --strict`: 175 files and 1,725 passing tests,
+  with no type/lint warnings.
+- The targeted autosave/composer unit suites pass all 34 checks.
+- `pnpm test:browser --retries=0`: all 54 Chromium checks pass without scenario retries,
+  including the seven new scenarios. No application code changes or expected-failure
+  pins are included. The build retains its large-chunk advisory.
+- The three failure/recovery cases pass with `--repeat-each=5 --retries=0`: all
+  15 runs pass after the caret precondition was added.
+- `git diff --check` passes.
+
+The fixture observes HTTP payloads and UI state, not committed storage or real
+reauthentication. Recovery after a completed reload, browser crash, or lost create
+acknowledgement, other browsers, and assistive-technology announcements remain
+unverified. Only tests and this evidence register change; no production or native
+mobile operations are included. Manual evaluation remains skipped and no WCAG/ATAG
+conformance claim is made.
+
+### Clipboard selection preconditions — 2026-11-02
+
+CI run `41444905360` passed all six jobs, but its browser artifact contained 52
+first-attempt passes and two retry-only passes in the existing partial-replacement
+and table-cell clipboard checks. All seven new autosave scenarios passed without
+retries. The table-cell failure reproduced twice in 30 unmodified local runs.
+
+Read-only capture at the native paste event reproduced another table-cell failure:
+the DOM caret was at position 25 (`al|pha`), while ProseMirror's model selection
+was still at 23 (`|alpha`). The trusted paste carried the expected HTML but inserted
+before `alpha`. The event probe changes no document or selection. This establishes
+a selection mismatch in that automated attempt, not a confirmed cause for every
+historical failure. The partial-replacement CI failure has not been reproduced
+independently in the local diagnostic runs.
+
+The two preservation tests now require an editable, focused editor and agreement
+between the DOM and model on the exact intended range/cell. Native positioning
+keys advance through rendering frames; only selection setup can be retried. The
+native paste runs once, and all original text, metadata, table, and undo assertions
+remain unchanged. Paste-event snapshots are retained as test attachments. The
+accessibility suite now disables scenario retries, like the autosave suite.
+
+After adding the preconditions, the two cases pass with
+`--repeat-each=20 --workers=4 --retries=0`: 40 first-attempt passes. Inspection of
+all 40 event attachments confirms one trusted paste per case with aligned DOM
+and model selections at the paste event.
+
+Final local verification with Node 26.7.0 / pnpm 12.16.1:
+
+- `pnpm fmt`, then `pnpm check --strict`: 175 files and 1,725 tests pass, with
+  no type/lint warnings.
+- `pnpm test:browser --retries=0`: all 54 Chromium checks pass. The build retains
+  its existing large-chunk advisory.
+- `git diff --check` passes.
+
+These are tests of preservation after a settled selection. They do not fix or
+validate rapid-input selection synchronization in the application itself, nor
+establish cross-browser or assistive-technology behavior. No application source,
+dependency, production, or native mobile change is included. Manual evaluation
+remains skipped; no WCAG/ATAG conformance claim is made.
 
 ## Transformation inventory and remaining preservation checks
 

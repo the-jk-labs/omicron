@@ -2,32 +2,22 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import axe from "axe-core";
 import { complexTableHtml } from "../lib/editor/transfer-fixtures";
+import { observePasteSelection, ready, selectEditorText, signedIn } from "./helpers";
+
+// Preservation checks must not turn green only because a scenario retry passed.
+test.describe.configure({ retries: 0 });
+
+test.afterEach(async ({ page }, info) => {
+  if (!/native clipboard partial replacement|native clipboard into a table cell retains/.test(info.title)) return;
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  const samples = await body.evaluate((element) =>
+    JSON.stringify((element as HTMLElement & { pasteSelections?: unknown[] }).pasteSelections),
+  );
+  await info.attach("paste-selection-at-event", { body: samples ?? "null", contentType: "application/json" });
+});
 
 const articlePath = "/@ada/hello-world";
 const composerPath = "/compose?id=9e962281-2222-3333-4444-555555555555";
-
-async function signedIn(page: Page) {
-  await page.context().addCookies([{ name: "a11y-user", value: "1", url: "http://127.0.0.1:4173" }]);
-}
-
-async function ready(page: Page, path: string) {
-  await page.goto(path);
-  await expect(page.getByRole("main")).toBeVisible();
-  const trigger = page.getByRole("button", { name: "Image display", exact: true });
-  const menu = page.getByRole("menuitemradio", { name: "Hide images", exact: true });
-  // SSR buttons are actionable before hydration; retry only this readiness probe.
-  await expect
-    .poll(
-      async () => {
-        if (!(await menu.isVisible())) await trigger.click();
-        return menu.isVisible();
-      },
-      { message: "Image display menu did not become interactive" },
-    )
-    .toBe(true);
-  await page.keyboard.press("Escape");
-  await expect(menu).toBeHidden();
-}
 
 async function writeClipboard(page: Page, html: string, withImage = false) {
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
@@ -603,11 +593,14 @@ test("native clipboard partial replacement preserves block language and both uns
   await signedIn(page);
   await ready(page, composerPath);
   const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await observePasteSelection(body);
   await writeClipboard(page, '<p lang="fr" dir="ltr">Bonjour <span lang="de">Welt</span></p>');
-  await body.focus();
-  await page.keyboard.press("ControlOrMeta+Home");
-  for (let index = 0; index < 6; index++) await page.keyboard.press("ArrowRight");
-  for (let index = 0; index < 3; index++) await page.keyboard.press("Shift+ArrowRight");
+  await selectEditorText(
+    page,
+    body,
+    ["ControlOrMeta+Home", ...Array<string>(6).fill("ArrowRight"), ...Array<string>(3).fill("Shift+ArrowRight")],
+    { text: "bod", anchorText: "Draft body", headText: "Draft body", anchorOffset: 6, headOffset: 9, cell: null },
+  );
   expect(await page.evaluate(() => window.getSelection()?.toString())).toBe("bod");
   await page.keyboard.press("ControlOrMeta+v");
   await expect(body.locator('p[lang="fr"]')).toHaveText("Bonjour Welt");
@@ -623,12 +616,16 @@ test("native clipboard into a table cell retains destination headers, caption an
   await signedIn(page);
   await ready(page, "/compose?id=transfer-table");
   const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await observePasteSelection(body);
   const cell = body.locator('td[headers="target-left"]');
   await writeClipboard(page, '<p lang="fr" dir="ltr">Bonjour</p>');
-  await cell.locator("p").click();
-  await page.keyboard.press("Home");
-  await page.keyboard.press("ArrowRight");
-  await page.keyboard.press("ArrowRight");
+  await selectEditorText(
+    page,
+    body,
+    ["Home", "ArrowRight", "ArrowRight"],
+    { text: "", anchorText: "alpha", headText: "alpha", anchorOffset: 2, headOffset: 2, cell: "target-left" },
+    cell.locator("p"),
+  );
   await page.keyboard.press("ControlOrMeta+v");
   await expect(cell.locator('p[lang="fr"]')).toHaveText("Bonjour");
   await expect(cell.locator('p[lang="fr"]')).toHaveAttribute("dir", "ltr");
