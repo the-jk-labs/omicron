@@ -2,7 +2,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import axe from "axe-core";
 import { complexTableHtml } from "../lib/editor/transfer-fixtures";
-import { observePasteSelection, ready, selectEditorText, signedIn } from "./helpers";
+import { editorSelection, observePasteSelection, ready, selectEditorText, signedIn } from "./helpers";
 
 // Preservation checks must not turn green only because a scenario retry passed.
 test.describe.configure({ retries: 0 });
@@ -18,6 +18,19 @@ test.afterEach(async ({ page }, info) => {
 
 const articlePath = "/@ada/hello-world";
 const composerPath = "/compose?id=9e962281-2222-3333-4444-555555555555";
+
+async function selectDraftPassage(page: Page) {
+  const body = page.getByRole("textbox", { name: "Article body", exact: true });
+  await selectEditorText(page, body, ["ControlOrMeta+Home", ...Array<string>(5).fill("Shift+ArrowRight")], {
+    text: "Draft",
+    anchorText: "Draft body",
+    headText: "Draft body",
+    anchorOffset: 0,
+    headOffset: 5,
+    cell: null,
+  });
+  return body;
+}
 
 async function writeClipboard(page: Page, html: string, withImage = false) {
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
@@ -264,6 +277,126 @@ test("reduced motion hides images and preferences survive reload", async ({ page
   await expect(image).toHaveCSS("opacity", "1");
 });
 
+test("Alt+F10 reaches the formatting toolbar and Escape restores the selected passage", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = await selectDraftPassage(page);
+  await page.keyboard.press("Alt+F10");
+  await expect(page.getByRole("button", { name: "Text style", exact: true })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(body).toBeFocused();
+  await expect.poll(() => editorSelection(body)).toMatchObject({ text: "Draft", aligned: true });
+  await expect(body).toHaveText("Draft body");
+  await expect(body).toHaveAccessibleDescription(/Alt\+F10/);
+  await page.keyboard.press("Alt+F10");
+  await page.keyboard.press("Alt+F10");
+  await expect(body).toBeFocused();
+  await expect.poll(() => editorSelection(body)).toMatchObject({ text: "Draft", aligned: true });
+});
+
+test("toolbar arrow navigation reaches dropdowns and applies bold only to the selected passage", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = await selectDraftPassage(page);
+  const style = page.getByRole("button", { name: "Text style", exact: true });
+  await page.keyboard.press("Alt+F10");
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("button", { name: "Bold", exact: true })).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(style).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("menuitem", { name: "Heading 1", exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(style).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("Enter");
+  await expect(body.locator("strong")).toHaveText("Draft");
+  await expect(body).toHaveText("Draft body");
+  await expect(body).toBeFocused();
+});
+
+test("toolbar dialogs and popovers close before Escape returns to the article body", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = await selectDraftPassage(page);
+  await page.keyboard.press("Alt+F10");
+  await page.keyboard.press("End");
+  const emoji = page.getByRole("button", { name: "Emoji", exact: true });
+  await expect(emoji).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("emoji-picker")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(emoji).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  const language = page.getByRole("button", { name: "Text language", exact: true });
+  await expect(language).toBeFocused();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Text language", exact: true });
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Alt+F10");
+  await expect(dialog.getByRole("textbox", { name: "Language tag", exact: true })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(language).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(body).toBeFocused();
+  await expect.poll(() => editorSelection(body)).toMatchObject({ text: "Draft", aligned: true });
+});
+
+test("formatting shortcuts retain bold, italic, underline and all six heading levels", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = await selectDraftPassage(page);
+  for (const [key, tag] of [
+    ["b", "strong"],
+    ["i", "em"],
+    ["u", "u"],
+  ]) {
+    await page.keyboard.press(`ControlOrMeta+${key}`);
+    await expect(body.locator(tag)).toHaveText("Draft");
+    await page.keyboard.press(`ControlOrMeta+${key}`);
+    await expect(body.locator(tag)).toHaveCount(0);
+  }
+  for (let level = 1; level <= 6; level++) {
+    await page.keyboard.press(`ControlOrMeta+Alt+${level}`);
+    await expect(body.locator(`h${level}`)).toHaveText("Draft body");
+  }
+});
+
+test("toolbar shortcuts do not intercept the post title or ordinary Tab navigation", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const title = page.getByRole("textbox", { name: "Title", exact: true });
+  await title.focus();
+  await page.keyboard.press("Alt+F10");
+  await expect(title).toBeFocused();
+  const body = await selectDraftPassage(page);
+  await page.keyboard.press("Alt+F10");
+  await page.keyboard.press("Tab");
+  await expect(body).toBeFocused();
+});
+
+test("toolbar arrow navigation includes contextual table actions", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = await selectDraftPassage(page);
+  await page.getByRole("button", { name: "Table", exact: true }).click();
+  await expect(body.locator("table")).toHaveCount(1);
+  await page.keyboard.press("Alt+F10");
+  await page.keyboard.press("End");
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.getByRole("button", { name: "Text language", exact: true })).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  const table = page.getByRole("button", { name: "Edit table", exact: true });
+  await expect(table).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("menuitem", { name: "Row below", exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(table).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(body).toBeFocused();
+  await expect.poll(() => editorSelection(body)).toMatchObject({ aligned: true });
+});
+
 test("keyboard authoring dialogs contain focus, dismiss, and return to their opener", async ({ page }) => {
   await signedIn(page);
   await ready(page, composerPath);
@@ -281,6 +414,30 @@ test("keyboard authoring dialogs contain focus, dismiss, and return to their ope
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await expect(opener).toBeFocused();
+});
+
+test("the link keyboard shortcut opens the authoring dialog for the selected passage", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, composerPath);
+  const body = await selectDraftPassage(page);
+  await page.keyboard.press("ControlOrMeta+k");
+  const dialog = page.getByRole("dialog", { name: "Add link", exact: true });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("textbox", { name: "URL", exact: true })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(body).toBeFocused();
+  await expect.poll(() => editorSelection(body)).toMatchObject({ text: "Draft", aligned: true });
+  await expect(body.locator("a")).toHaveCount(0);
+  await page.keyboard.press("ControlOrMeta+k");
+  await dialog.getByRole("textbox", { name: "URL", exact: true }).fill("https://example.org/reference");
+  await page.keyboard.press("Enter");
+  await expect(dialog).toBeHidden();
+  await expect(body.locator("a")).toHaveText("Draft");
+  await expect(body.locator("a")).toHaveAttribute("href", "https://example.org/reference");
+  await expect(body).toBeFocused();
+  await page.keyboard.press("ControlOrMeta+k");
+  await expect(body.locator("a")).toHaveCount(0);
+  await expect(body).toHaveText("Draft body");
 });
 
 test("keyboard focus remains visible in forced colours and the image menu meets minimum target size", async ({

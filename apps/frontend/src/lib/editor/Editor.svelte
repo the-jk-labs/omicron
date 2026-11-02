@@ -61,6 +61,34 @@
 
   let element = $state<HTMLDivElement | null>(null);
   let editor = $state.raw<Editor>(undefined!);
+  let toolbar = $state<HTMLDivElement | null>(null);
+  const id = $props.id();
+  const keyboardHelpId = `${id}-keyboard-help`;
+
+  function isToolbarShortcut(event: KeyboardEvent) {
+    return event.key === "F10" && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;
+  }
+
+  function editorKeydown(_view: Editor["view"], event: KeyboardEvent) {
+    if (event.defaultPrevented || !editor.isEditable || event.isComposing) return false;
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "k") {
+      toggleLink();
+      return true;
+    }
+    if (!isToolbarShortcut(event)) return false;
+    const first = toolbar?.querySelector<HTMLButtonElement>("[data-toolbar-item]:not(:disabled)");
+    if (!first) return false;
+    first.focus();
+    return true;
+  }
+
+  function toolbarKeydown(event: KeyboardEvent) {
+    if (event.defaultPrevented || event.isComposing || !editor?.isEditable) return;
+    const escape = event.key === "Escape" && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;
+    if (!escape && !isToolbarShortcut(event)) return;
+    event.preventDefault();
+    editor.view.focus();
+  }
 
   // The status line every desktop editor has: how much is there, and how long
   // it will take to read. Recomputed from the document itself rather than from
@@ -617,7 +645,10 @@
           "aria-label": "Article body",
           "aria-multiline": "true",
           "aria-readonly": String(editor?.isEditable === false),
+          "aria-describedby": keyboardHelpId,
+          "aria-keyshortcuts": "Alt+F10 Control+k Meta+k",
         }),
+        handleKeyDown: editorKeydown,
         handlePaste,
         handleDrop,
       },
@@ -732,7 +763,11 @@
 <fieldset disabled={importBlocked} class="min-w-0">
   <legend class="sr-only">Article editor</legend>
   <Toolbar.Root
+    bind:ref={toolbar}
     aria-label="Article formatting"
+    aria-describedby={keyboardHelpId}
+    aria-keyshortcuts="Escape Alt+F10"
+    onkeydown={toolbarKeydown}
     class="no-scrollbar mb-4 flex w-full items-center justify-start gap-0.5 overflow-x-auto rounded-10px border border-border bg-background-alt px-2 py-1 shadow-mini sm:justify-between sm:gap-0"
   >
     <!-- Text style: a single dropdown for normal text + Heading 1–6. -->
@@ -742,8 +777,12 @@
         aria-label="Text style"
         title="Text style"
       >
-        <Icon name={headingLevel ? (`h${headingLevel}` as IconName) : "heading"} size={18} />
-        <Icon name="chevronDown" size={14} />
+        {#snippet child({ props })}
+          <Toolbar.Button {...props}>
+            <Icon name={headingLevel ? (`h${headingLevel}` as IconName) : "heading"} size={18} />
+            <Icon name="chevronDown" size={14} />
+          </Toolbar.Button>
+        {/snippet}
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
@@ -802,9 +841,13 @@
           aria-label="Edit table"
           title="Edit table"
         >
-          <Icon name="table" size={16} class="shrink-0" />
-          <span>Table</span>
-          <Icon name="chevronDown" size={14} />
+          {#snippet child({ props })}
+            <Toolbar.Button {...props}>
+              <Icon name="table" size={16} class="shrink-0" />
+              <span>Table</span>
+              <Icon name="chevronDown" size={14} />
+            </Toolbar.Button>
+          {/snippet}
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
           <DropdownMenu.Content
@@ -839,8 +882,13 @@
     <!-- Emoji picker. The web component is lazy-loaded on first open (see
          EmojiPicker.svelte), so it stays out of the editor's initial work. -->
     {#if mounted}<PassageLanguage {editor} />{/if}
-    <EmojiTrigger onPick={insertEmoji} class={`${btn} text-foreground/60`} />
+    <EmojiTrigger inToolbar onPick={insertEmoji} class={`${btn} text-foreground/60`} />
   </Toolbar.Root>
+
+  <p id={keyboardHelpId} class="mb-4 text-sm text-muted-foreground">
+    Keyboard: Alt+F10 moves from the body to the formatting toolbar. Use arrow keys to choose a tool; Escape or Alt+F10
+    returns to the body. Close an open menu or dialog with Escape first.
+  </p>
 
   <input
     bind:this={imageInput}
@@ -918,6 +966,10 @@
       <p class="text-muted-foreground">
         Keyboard: Tab moves between controls; arrow keys navigate the formatting toolbar. Use Image settings for
         resizing without dragging. Standard undo and redo shortcuts work in the body.
+      </p>
+      <p class="text-muted-foreground">
+        In the body, use Ctrl (Command on macOS) with B for bold, I for italic, U for underline, or K to add or remove a
+        link. Ctrl+Alt+1 through Ctrl+Alt+6 (Command+Option+1 through Command+Option+6 on macOS) toggle heading levels.
       </p>
     </Collapsible.Content>
   </Collapsible.Root>
