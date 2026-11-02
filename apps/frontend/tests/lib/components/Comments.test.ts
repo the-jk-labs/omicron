@@ -94,7 +94,7 @@ test("a thread folds its replies; replying to a reply mentions its author", asyn
     items: [comment("c1", undefined, { replies: [reply] })],
     routes: {
       "POST /api/posts/p1/comments": {
-        comment: comment("r2", author("u-ada", "Ada"), { content: "@Cy yes", parentId: "c1" }),
+        comment: comment("r2", author("u-ada", "Ada"), { content: "@cy yes", parentId: "c1" }),
       },
     },
   });
@@ -105,13 +105,63 @@ test("a thread folds its replies; replying to a reply mentions its author", asyn
   const replyButtons = screen.getAllByRole("button", { name: /^Reply$/ });
   await fireEvent.click(replyButtons[1]);
   const box = screen.getByPlaceholderText("Reply to Cy…");
-  expect(box).toHaveValue("@Cy ");
-  await fireEvent.input(box, { target: { value: "@Cy yes" } });
+  expect(box).toHaveValue("@cy ");
+  expect(box).toHaveFocus();
+  await fireEvent.input(box, { target: { value: "@cy yes" } });
   await fireEvent.submit(box.closest("form")!);
-  await waitFor(() => screen.getByText("@Cy yes"));
-  expect(calls[0].body).toEqual({ content: "@Cy yes", parentId: "r1" });
+  // The mention links to the profile it names.
+  await waitFor(() => expect(screen.getByRole("link", { name: "@cy" })).toHaveAttribute("href", "/@cy"));
+  expect(calls[0].body).toEqual({ content: "@cy yes", parentId: "r1" });
   expect(onCountChange).toHaveBeenCalledWith(1);
   expect(screen.getByRole("button", { name: "Hide" })).toBeInTheDocument();
+});
+
+test("replying to a top-level comment starts with its author's @username", async () => {
+  setup({ items: [comment("c1")] });
+  await fireEvent.click(screen.getByRole("button", { name: /^Reply$/ }));
+  expect(screen.getByPlaceholderText("Reply to Bob…")).toHaveValue("@bob ");
+});
+
+test("typing @ suggests thread participants and searched people; picking one fills the handle", async () => {
+  const { calls } = setup({
+    items: [comment("c1", author("u-cy", "Cy")), comment("c2", author("u-carl", "Carl"))],
+    routes: {
+      "GET /api/search?q=c&scope=people": {
+        posts: [],
+        people: [{ ...author("u-cleo", "Cleo"), remote: false }],
+        tags: [],
+      },
+    },
+  });
+  const box = screen.getByPlaceholderText("What are your thoughts?") as HTMLTextAreaElement;
+  box.focus();
+  box.value = "hi @c";
+  box.setSelectionRange(5, 5);
+  await fireEvent.input(box);
+  // Participants show at once; the search adds to them.
+  const list = screen.getByRole("listbox", { name: "People to mention" });
+  expect(list).toHaveTextContent("@cy");
+  await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(3));
+  expect(calls.map((c) => c.path)).toContain("/api/search?q=c&scope=people");
+
+  await fireEvent.keyDown(box, { key: "ArrowDown" });
+  expect(screen.getAllByRole("option")[1]).toHaveAttribute("aria-selected", "true");
+  await fireEvent.keyDown(box, { key: "Enter" });
+  await waitFor(() => expect(box).toHaveValue("hi @carl "));
+  expect(screen.queryByRole("listbox")).toBe(null);
+});
+
+test("Escape closes the suggestions without changing the text", async () => {
+  setup({ items: [comment("c1", author("u-cy", "Cy"))] });
+  const box = screen.getByPlaceholderText("What are your thoughts?") as HTMLTextAreaElement;
+  box.focus();
+  box.value = "@";
+  box.setSelectionRange(1, 1);
+  await fireEvent.input(box);
+  expect(screen.getByRole("option")).toHaveTextContent("Cy");
+  await fireEvent.keyDown(box, { key: "Escape" });
+  expect(screen.queryByRole("listbox")).toBe(null);
+  expect(box).toHaveValue("@");
 });
 
 test("liking is optimistic and settles on the server's numbers; a failure reverts", async () => {

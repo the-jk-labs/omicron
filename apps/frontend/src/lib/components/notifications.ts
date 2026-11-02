@@ -34,6 +34,8 @@ export function notificationAction(type: Notification["type"]): string {
       return "replied to your comment";
     case "comment_like":
       return "liked your comment";
+    case "mention":
+      return "mentioned you in a comment";
     case "recommend":
       return "recommended your post";
     case "post_published":
@@ -60,6 +62,8 @@ export function notificationIcon(type: Notification["type"]): IconName {
       return "comment";
     case "reply":
       return "reply";
+    case "mention":
+      return "at";
     case "recommend":
       return "recommend";
     case "post_published":
