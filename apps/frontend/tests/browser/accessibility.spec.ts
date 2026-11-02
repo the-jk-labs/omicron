@@ -8,6 +8,12 @@ import { editorSelection, observePasteSelection, ready, selectEditorText, signed
 test.describe.configure({ retries: 0 });
 
 test.afterEach(async ({ page }, info) => {
+  if (/native clipboard rich-caption review/.test(info.title)) {
+    const actions = await page.evaluate(() =>
+      JSON.stringify((window as typeof window & { reviewActions?: unknown[] }).reviewActions),
+    );
+    await info.attach("review-dialog-actions", { body: actions ?? "null", contentType: "application/json" });
+  }
   if (!/native clipboard partial replacement|native clipboard into a table cell retains/.test(info.title)) return;
   const body = page.getByRole("textbox", { name: "Article body", exact: true });
   const samples = await body.evaluate((element) =>
@@ -878,35 +884,99 @@ test("native clipboard complex tables retain spans, caption language and resolve
   await expect(body).toHaveText("Draft body");
 });
 
-test("native clipboard rich-caption review at a cell target can cancel, accept and undo", async ({ page }) => {
-  await signedIn(page);
-  await ready(page, "/compose?id=transfer-table");
-  const body = page.getByRole("textbox", { name: "Article body", exact: true });
-  const cell = body.locator('td[headers="target-left"]');
-  await writeClipboard(
+for (const focusTiming of ["normal", "delayed animation frame"]) {
+  test(`native clipboard rich-caption review at a cell target can cancel, accept and undo: ${focusTiming}`, async ({
     page,
-    '<table><caption>Sales <span lang="fr">annuelles</span></caption><tr><td>20</td></tr></table>',
-  );
-  await cell.locator("p").click();
-  await page.keyboard.press("Home");
-  const original = await body.innerHTML();
-  await page.keyboard.press("ControlOrMeta+v");
-  const dialog = page.getByRole("dialog", { name: "Review pasted content" });
-  await expect(dialog).toContainText("span lang: fr");
-  await page.keyboard.press("Escape");
-  await expect(body).toBeFocused();
-  expect(await body.innerHTML()).toBe(original);
-  await page.keyboard.press("ControlOrMeta+v");
-  await expect(dialog).toBeVisible();
-  await page.keyboard.press("Tab");
-  await page.keyboard.press("Enter");
-  await expect(dialog).toBeHidden();
-  await expect(body).toContainText("Sales annuelles");
-  await page.keyboard.press("ControlOrMeta+z");
-  await expect(body.locator("table")).toHaveCount(1);
-  await expect(cell).toHaveText("alpha");
-  await expect(body.getByRole("table", { name: "Destination table", exact: true })).toBeVisible();
-});
+  }) => {
+    await signedIn(page);
+    await ready(page, "/compose?id=transfer-table");
+    const body = page.getByRole("textbox", { name: "Article body", exact: true });
+    const cell = body.locator('td[headers="target-left"]');
+    await page.evaluate(() => {
+      const host = window as typeof window & { reviewActions: unknown[] };
+      host.reviewActions = [];
+      for (const type of ["keydown", "click"]) {
+        document.addEventListener(
+          type,
+          (event) => {
+            const target = event.target as HTMLElement;
+            host.reviewActions.push({
+              type,
+              key: (event as KeyboardEvent).key,
+              trusted: event.isTrusted,
+              tag: target.tagName,
+              text: target.textContent?.slice(0, 80),
+              inDialog: !!target.closest('[role="dialog"]'),
+            });
+          },
+          { capture: true },
+        );
+      }
+    });
+    await writeClipboard(
+      page,
+      '<table><caption>Sales <span lang="fr">annuelles</span></caption><tr><td>20</td></tr></table>',
+    );
+    await cell.locator("p").click();
+    await page.keyboard.press("Home");
+    const original = await body.innerHTML();
+    await page.keyboard.press("ControlOrMeta+v");
+    const dialog = page.getByRole("dialog", { name: "Review pasted content" });
+    await expect(dialog).toContainText("span lang: fr");
+    await page.keyboard.press("Escape");
+    await expect(body).toBeFocused();
+    expect(await body.innerHTML()).toBe(original);
+    if (focusTiming === "delayed animation frame") {
+      await page.evaluate(() => {
+        const request = window.requestAnimationFrame.bind(window);
+        const cancel = window.cancelAnimationFrame.bind(window);
+        const pending = new Map<number, FrameRequestCallback>();
+        let id = 0;
+        // Hold initial focus until Tab completes, or release it later for a sequence that waits for focus.
+        window.requestAnimationFrame = (callback) => {
+          pending.set(--id, callback);
+          return id;
+        };
+        window.cancelAnimationFrame = (handle) => {
+          if (handle < 0) pending.delete(handle);
+          else cancel(handle);
+        };
+        const release = (event?: KeyboardEvent) => {
+          if (event && event.key !== "Tab") return;
+          document.removeEventListener("keyup", release, true);
+          window.clearTimeout(timer);
+          window.requestAnimationFrame = request;
+          window.cancelAnimationFrame = cancel;
+          const callbacks = [...pending.values()];
+          pending.clear();
+          for (const callback of callbacks) callback(performance.now());
+        };
+        const timer = window.setTimeout(() => release(), 250);
+        document.addEventListener("keyup", release, true);
+      });
+    }
+    await page.keyboard.press("ControlOrMeta+v");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Cancel", exact: true })).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(dialog.getByRole("button", { name: "Paste simplified content", exact: true })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(dialog).toBeHidden();
+    await expect(body).toContainText("Sales annuelles");
+    const activations = await page.evaluate(() =>
+      (window as typeof window & { reviewActions: { type: string; key?: string }[] }).reviewActions.filter(
+        (action) => action.type === "keydown" && action.key === "Enter",
+      ),
+    );
+    expect(activations).toMatchObject([
+      { trusted: true, tag: "BUTTON", text: "Paste simplified content", inDialog: true },
+    ]);
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(body.locator("table")).toHaveCount(1);
+    await expect(cell).toHaveText("alpha");
+    await expect(body.getByRole("table", { name: "Destination table", exact: true })).toBeVisible();
+  });
+}
 
 for (const kind of ["paste", "drop"] as const) {
   test(`native ${kind} remaps colliding description IDs without changing either image's association`, async ({
