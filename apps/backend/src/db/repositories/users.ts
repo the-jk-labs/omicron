@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, desc, eq, gt, gte, ilike, lt, ne, or, type SQL, sql } from "drizzle-orm";
+import { and, desc, eq, gt, gte, ilike, inArray, lt, ne, or, type SQL, sql } from "drizzle-orm";
 import { asc as ascCol } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db/client.ts";
@@ -78,6 +78,15 @@ export function suggested(viewerId: string | null, limit = 5) {
 
 export function findByUsername(username: string) {
   return db.query.users.findFirst({ where: eq(users.username, username) });
+}
+
+// Live (not suspended or deleted) accounts among `usernames`, for @mentions.
+export async function findActiveByUsernames(usernames: string[]): Promise<{ id: string; username: string }[]> {
+  if (usernames.length === 0) return [];
+  return db
+    .select({ id: users.id, username: users.username })
+    .from(users)
+    .where(and(inArray(users.username, usernames), sql`${users.suspendedAt} is null`, sql`${users.deletedAt} is null`));
 }
 
 export function findByEmail(email: string) {

@@ -188,6 +188,15 @@ describe("ingestNote", () => {
     ]);
   });
 
+  test("a reply that mentions a local account notifies them", async () => {
+    vi.mocked(usersRepo.findActiveByUsernames).mockResolvedValue([{ id: "erin", username: "erin" }]);
+    await ingestNote(ctx as never, note({ content: '<p>cc <span class="h-card">@erin@blog.example</span></p>' }));
+    expect(usersRepo.findActiveByUsernames).toHaveBeenCalledWith(["erin"]);
+    expect(notificationsRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ recipientId: "erin", type: "mention", actorId: null, remoteActorId: "actor-bob" }),
+    );
+  });
+
   test("keeps the remote publish time", async () => {
     await ingestNote(ctx as never, note({ published: Temporal.Instant.from("2026-01-02T03:04:05Z") }));
     expect(vi.mocked(commentsRepo.createRemote).mock.calls[0][0].createdAt).toEqual(new Date("2026-01-02T03:04:05Z"));

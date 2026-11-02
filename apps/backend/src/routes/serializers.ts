@@ -369,6 +369,7 @@ export function notificationView(row: NotificationRow) {
       | "comment"
       | "reply"
       | "comment_like"
+      | "mention"
       | "recommend"
       | "post_published",
     actor,

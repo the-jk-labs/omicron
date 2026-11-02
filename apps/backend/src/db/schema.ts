@@ -1001,7 +1001,7 @@ export const notifications = pgTable(
     recipientId: uuid("recipient_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    // "follow" | "like" | "comment" | "reply" | "comment_like"
+    // "follow" | "like" | "comment" | "reply" | "comment_like" | "mention" | …
     type: text("type").notNull(),
     actorId: uuid("actor_id").references(() => users.id, { onDelete: "cascade" }),
     remoteActorId: uuid("remote_actor_id").references(() => remoteActors.id, { onDelete: "cascade" }),

@@ -13,6 +13,7 @@ import { cacheActor } from "@/federation/remote.ts";
 import { sameOrigin } from "@/lib/domain.ts";
 import { htmlToText, textToNoteHtml } from "@/lib/html.ts";
 import { federationOrigin } from "@/services/federationState.ts";
+import { notifyMentions } from "@/services/mentions.ts";
 import * as notifications from "@/services/notifications.ts";
 
 // Federated replies: local Responses ↔ ActivityPub Notes.
@@ -304,8 +305,10 @@ export async function ingestNote(ctx: Context<unknown>, note: Note): Promise<Com
       commentId: comment.id,
     });
   }
+  let parentAuthorId: string | null = null;
   if (parentId) {
     const parent = await commentsRepo.findById(parentId);
+    parentAuthorId = parent?.authorId ?? null;
     if (parent?.authorId && parent.authorId !== post.post.authorId) {
       await notifications.notify({
         recipientId: parent.authorId,
@@ -316,6 +319,13 @@ export async function ingestNote(ctx: Context<unknown>, note: Note): Promise<Com
       });
     }
   }
+  await notifyMentions({
+    text: content,
+    post,
+    commentId: comment.id,
+    remoteActorId: actor.id,
+    skip: [post.post.authorId, parentAuthorId],
+  });
 
   return comment;
 }
