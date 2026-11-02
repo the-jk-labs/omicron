@@ -72,10 +72,18 @@ jobs:
         working-directory: packages/contract
         run: pnpm install --frozen-lockfile
 
-      # Independent of each other once installed; one failing still fails the job.
+      # Independent of each other once installed; one failing still fails the job. greenly runs its checks one
+      # after another, so each runs here as its own step by its id (`pnpm check nope` lists them). A check added
+      # to greenly.config.ts must be added here too.
       - parallel:
-          - name: Run Checks
-            run: pnpm check
+          - name: Type check
+            run: pnpm check type-check --no-hints
+
+          - name: Format and lint
+            run: pnpm check oxfmt oxlint --no-hints
+
+          - name: Unit tests
+            run: pnpm check vitest --no-hints
 
           # Runs the committed migrations against the service container above, then
           # asserts on who can see what. Every case is a leak that shipped.
@@ -129,9 +137,22 @@ jobs:
             working-directory: packages/contract
             run: pnpm install --frozen-lockfile
 
+      # Writes .svelte-kit/, which tsconfig extends: without it oxlint's type-aware rules read the wrong types.
+      # svelte-check syncs too, but in parallel nothing makes it go first.
+      - name: Generate SvelteKit types
+        run: pnpm svelte-kit sync
+
+      # greenly runs its checks one after another, so each runs here as its own step by its id
+      # (`pnpm check nope` lists them). A check added to greenly.config.ts must be added here too.
       - parallel:
-          - name: Run Checks
-            run: pnpm check
+          - name: Svelte check
+            run: pnpm check svelte-check --no-hints
+
+          - name: Format and lint
+            run: pnpm check oxfmt oxlint --no-hints
+
+          - name: Tests
+            run: pnpm check vitest --no-hints
 
           - name: Audit dependencies
             # Same policy as the backend: print all advisories, fail only on
@@ -222,28 +243,47 @@ jobs:
             apps/frontend/pnpm-lock.yaml
             packages/contract/pnpm-lock.yaml
 
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
-      # The API contract (packages/contract), linked into this app; its own install brings zod.
-      - name: Install the API contract
-        working-directory: packages/contract
-        run: pnpm install --frozen-lockfile
-
-      # The composer bundle (editor-web) is the web's own Tiptap editor, imported from apps/frontend, so its
-      # type check resolves Tiptap from the web app's dependencies.
-      - name: Install the web app (for the composer's editor)
-        working-directory: apps/frontend
-        run: pnpm install --frozen-lockfile
-
+      # Three separate lockfiles, so the installs don't depend on each other.
       - parallel:
-          # TypeScript, oxfmt, oxlint, Vitest and the asset check (greenly.config.ts).
-          - name: Run Checks
-            run: pnpm check
+          - name: Install
+            run: pnpm install --frozen-lockfile
 
-          # Native modules must match the Expo SDK, or a dev build breaks in ways
-          # no unit test sees.
+          # The API contract (packages/contract), linked into this app; its own install brings zod.
+          - name: Install the API contract
+            working-directory: packages/contract
+            run: pnpm install --frozen-lockfile
+
+          # The composer bundle (editor-web) is the web's own Tiptap editor, imported from apps/frontend, so its
+          # type check resolves Tiptap from the web app's dependencies.
+          - name: Install the web app (for the composer's editor)
+            working-directory: apps/frontend
+            run: pnpm install --frozen-lockfile
+
+      # greenly runs its checks one after another, so each runs here as its own step by its id
+      # (`pnpm check nope` lists them). A check added to greenly.config.ts must be added here too.
+      - parallel:
+          - name: TypeScript
+            run: pnpm check typescript --no-hints
+
+          - name: Editor bundle types
+            run: pnpm check editor-bundle-types --no-hints
+
+          - name: Format and lint
+            run: pnpm check oxfmt oxlint --no-hints
+
+          - name: Tests
+            run: pnpm check tests --no-hints
+
+          - name: Assets
+            run: pnpm check assets --no-hints
+
+          # Native modules must match the Expo SDK, or a dev build breaks in ways no unit test sees. Offline, it
+          # checks against the version map of the installed `expo` (expo/bundledNativeModules.json): whether what we
+          # have is compatible. Online it would compare with the newest patches Expo has published since, failing
+          # on every release until we upgrade. ("unreliable in offline-mode" in the log refers to exactly that.)
           - name: Expo dependency check
+            env:
+              EXPO_OFFLINE: "1"
             run: pnpm expo install --check
 
           - name: Audit dependencies
