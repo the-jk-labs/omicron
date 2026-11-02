@@ -56,6 +56,18 @@ function pasteHtml(editor: TiptapEditor, html: string, files: File[] = []) {
   });
   editor.view.pasteHTML(html, event);
 }
+
+// Unlike view.pasteHTML, DOM dispatch exercises the pre-parse paste hook.
+function nativePaste(dom: HTMLElement, html: string, plain = "Bonjour") {
+  const event = new Event("paste", { bubbles: true, cancelable: true });
+  Object.defineProperty(event, "clipboardData", {
+    value: {
+      files: [],
+      getData: (type: string) => (type === "text/html" ? html : type === "text/plain" ? plain : ""),
+    },
+  });
+  dom.dispatchEvent(event);
+}
 function dropHtml(editor: TiptapEditor, html: string, files: File[] = [], pos = 8, text = "", copy = false) {
   vi.spyOn(editor.view, "posAtCoords").mockReturnValue({ pos, inside: -1 });
   const event = new MouseEvent("drop", {
@@ -257,6 +269,119 @@ test("stored HTML is parsed as HTML, not escaped as Markdown text", async () => 
   const { editor } = await setup("<p>alpha <strong>beta</strong></p>");
   expect(editor.getHTML()).toBe("<p>alpha <strong>beta</strong></p>");
 });
+
+test.each(["forward", "backward", "caret"])(
+  "native paste uses the %s DOM range before its selectionchange notification arrives",
+  async (direction) => {
+    const { editor, dom } = await setup("<p>Draft body</p>");
+    editor.commands.setTextSelection({ from: 7, to: 8 });
+    editor.view.focus();
+    const text = dom.querySelector("p")!.firstChild!;
+    const anchor = direction === "backward" ? 9 : 6;
+    const head = direction === "forward" ? 9 : 6;
+    window.getSelection()!.setBaseAndExtent(text, anchor, text, head);
+    expect(editor.state.selection.to).toBe(8);
+    expect(window.getSelection()!.toString()).toBe(direction === "caret" ? "" : "bod");
+    nativePaste(dom, '<p lang="fr" dir="ltr">Bonjour</p>');
+    expect(dom.querySelector("p[lang=fr]")?.textContent).toBe("Bonjour");
+    expect(dom.querySelector("p:first-child")?.textContent).toBe("Draft ");
+    expect(dom.querySelector("p:last-child")?.textContent).toBe(direction === "caret" ? "body" : "y");
+    expect(editor.commands.undo()).toBe(true);
+    expect(dom.textContent).toBe("Draft body");
+  },
+);
+
+test("native paste parses plain text in the pending DOM code-block context", async () => {
+  const { editor, dom } = await setup("<p>Before</p><pre><code>alpha</code></pre>");
+  editor.commands.setTextSelection(1);
+  editor.view.focus();
+  const text = dom.querySelector("code")!.firstChild!;
+  window.getSelection()!.setBaseAndExtent(text, 2, text, 2);
+  nativePaste(dom, "<strong>Bonjour</strong>");
+  expect(dom.querySelector("p")?.textContent).toBe("Before");
+  expect(dom.querySelector("code")?.textContent).toBe("alBonjourpha");
+  expect(dom.querySelector("strong")).toBeNull();
+  expect(editor.commands.undo()).toBe(true);
+  expect(dom.querySelector("code")?.textContent).toBe("alpha");
+});
+
+test("native paste uses a pending table caret without changing the grid or header relationships", async () => {
+  const { editor, dom } = await setup(targetTableHtml);
+  const start = textPosition(editor, "alpha");
+  editor.commands.setTextSelection(start);
+  editor.view.focus();
+  const cell = dom.querySelector('td[headers="target-left"]')!;
+  const text = cell.querySelector("p")!.firstChild!;
+  window.getSelection()!.setBaseAndExtent(text, 2, text, 2);
+  nativePaste(dom, '<p lang="fr" dir="ltr">Bonjour</p>');
+  expect(cell.textContent).toBe("alBonjourpha");
+  expect(cell.querySelector("p[lang=fr]")?.getAttribute("dir")).toBe("ltr");
+  expect(dom.querySelector('td[headers="target-right"]')?.textContent).toBe("beta");
+  expect(dom.querySelector("caption")?.textContent).toBe("Destination table");
+  expect(dom.querySelectorAll("table")).toHaveLength(1);
+  expect(editor.commands.undo()).toBe(true);
+  expect(dom.querySelector('td[headers="target-left"]')?.textContent).toBe("alpha");
+});
+
+test("cancelling native paste loss review restores the pending backward DOM selection", async () => {
+  const { editor, dom } = await setup("<p>Draft body</p>");
+  editor.commands.setTextSelection({ from: 7, to: 8 });
+  editor.view.focus();
+  const text = dom.querySelector("p")!.firstChild!;
+  window.getSelection()!.setBaseAndExtent(text, 9, text, 6);
+  nativePaste(dom, "<figure><figcaption>Caption</figcaption></figure>", "Caption");
+  await screen.findByRole("dialog", { name: "Review pasted content" });
+  await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(editor.state.selection.anchor).toBe(10);
+  expect(editor.state.selection.head).toBe(7);
+  expect(dom.textContent).toBe("Draft body");
+  expect(api.calls).toHaveLength(0);
+});
+
+test.each(["image", "cells"])("native paste selection synchronization preserves a %s selection", async (kind) => {
+  const { editor, dom } = await setup(
+    kind === "image" ? '<p>Before</p><img src="/a.png" alt="Graph"><p>After</p>' : targetTableHtml,
+  );
+  if (kind === "image") editor.commands.setNodeSelection(8);
+  else selectTargetCells(editor);
+  editor.view.focus();
+  const selection = editor.state.selection.toJSON();
+  nativePaste(dom, "<figure><figcaption>Caption</figcaption></figure>", "Caption");
+  expect(editor.state.selection.toJSON()).toEqual(selection);
+  await screen.findByRole("dialog", { name: "Review pasted content" });
+  await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(editor.state.selection.toJSON()).toEqual(selection);
+  expect(editor.state.selection).toBeInstanceOf(kind === "image" ? NodeSelection : CellSelection);
+});
+
+test.each(["readonly", "composing", "unfocused", "prevented", "review"])(
+  "native paste does not synchronize a pending range when %s",
+  async (guard) => {
+    const { editor, dom } = await setup("<p>Draft body</p>");
+    editor.commands.setTextSelection({ from: 7, to: 8 });
+    editor.view.focus();
+    if (guard === "readonly") editor.setEditable(false);
+    if (guard === "composing") vi.spyOn(editor.view, "composing", "get").mockReturnValue(true);
+    if (guard === "unfocused") screen.getByRole("button", { name: "Bold" }).focus();
+    if (guard === "prevented")
+      dom.addEventListener("paste", (event) => event.preventDefault(), { capture: true, once: true });
+    if (guard === "review") {
+      pasteHtml(editor, "<figure><figcaption>Caption</figcaption></figure>");
+      await screen.findByRole("dialog", { name: "Review pasted content" });
+      editor.view.focus();
+    }
+    const text = dom.querySelector("p")!.firstChild!;
+    window.getSelection()!.setBaseAndExtent(text, 6, text, 9);
+    const dispatch = vi.spyOn(document, "dispatchEvent");
+    const before = editor.state.selection.toJSON();
+    // Exercise the pre-parse hook directly, without letting fallback paste change the selection.
+    if (guard === "prevented") nativePaste(dom, "<p>Bonjour</p>");
+    else editor.view.someProp("handleDOMEvents")!.paste!(editor.view, new Event("paste") as ClipboardEvent);
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(editor.state.selection.toJSON()).toEqual(before);
+    expect(dom.textContent).toBe("Draft body");
+  },
+);
 
 test("unsupported clipboard HTML cannot silently replace the selection", async () => {
   const { editor, onUpdate } = await setup("<p>Original</p>");

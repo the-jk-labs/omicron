@@ -649,6 +649,14 @@
           "aria-keyshortcuts": "Alt+F10 Control+k Meta+k",
         }),
         handleKeyDown: editorKeydown,
+        handleDOMEvents: {
+          paste(view) {
+            if (!view.editable || view.composing || !view.hasFocus() || transferReview) return false;
+            // Let the native selection observer catch up before clipboard parsing captures its context.
+            view.dom.ownerDocument.dispatchEvent(new Event("selectionchange"));
+            return false;
+          },
+        },
         handlePaste,
         handleDrop,
       },
