@@ -470,6 +470,47 @@ unverified. Only tests and this evidence register change; no production or nativ
 mobile operations are included. Manual evaluation remains skipped and no WCAG/ATAG
 conformance claim is made.
 
+### Clipboard selection preconditions — 2026-11-02
+
+CI run `41444905360` passed all six jobs, but its browser artifact contained 52
+first-attempt passes and two retry-only passes in the existing partial-replacement
+and table-cell clipboard checks. All seven new autosave scenarios passed without
+retries. The table-cell failure reproduced twice in 30 unmodified local runs.
+
+Read-only capture at the native paste event reproduced another table-cell failure:
+the DOM caret was at position 25 (`al|pha`), while ProseMirror's model selection
+was still at 23 (`|alpha`). The trusted paste carried the expected HTML but inserted
+before `alpha`. The event probe changes no document or selection. This establishes
+a selection mismatch in that automated attempt, not a confirmed cause for every
+historical failure. The partial-replacement CI failure has not been reproduced
+independently in the local diagnostic runs.
+
+The two preservation tests now require an editable, focused editor and agreement
+between the DOM and model on the exact intended range/cell. Native positioning
+keys advance through rendering frames; only selection setup can be retried. The
+native paste runs once, and all original text, metadata, table, and undo assertions
+remain unchanged. Paste-event snapshots are retained as test attachments. The
+accessibility suite now disables scenario retries, like the autosave suite.
+
+After adding the preconditions, the two cases pass with
+`--repeat-each=20 --workers=4 --retries=0`: 40 first-attempt passes. Inspection of
+all 40 event attachments confirms one trusted paste per case with aligned DOM
+and model selections at the paste event.
+
+Final local verification with Node 26.7.0 / pnpm 12.16.1:
+
+- `pnpm fmt`, then `pnpm check --strict`: 175 files and 1,725 tests pass, with
+  no type/lint warnings.
+- `pnpm test:browser --retries=0`: all 54 Chromium checks pass. The build retains
+  its existing large-chunk advisory.
+- `git diff --check` passes.
+
+These are tests of preservation after a settled selection. They do not fix or
+validate rapid-input selection synchronization in the application itself, nor
+establish cross-browser or assistive-technology behavior. No application source,
+dependency, production, or native mobile change is included. Manual evaluation
+remains skipped; no WCAG/ATAG conformance claim is made.
+
 ## Transformation inventory and remaining preservation checks
 
 This is a source-path inventory, not proof that each transformation preserves
