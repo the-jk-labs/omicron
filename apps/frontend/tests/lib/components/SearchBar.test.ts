@@ -9,7 +9,7 @@ afterEach(() => {
   page.url = new URL("http://localhost/");
 });
 
-const field = () => screen.getByRole("searchbox", { name: "Search articles and people" }) as HTMLInputElement;
+const field = () => screen.getByRole<HTMLInputElement>("searchbox", { name: "Search articles and people" });
 
 async function typeAndSubmit(value: string) {
   field().focus();

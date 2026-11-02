@@ -24,7 +24,7 @@ const pressed = () => screen.getAllByRole("button", { pressed: true }).map((b) =
 test("with no languages chosen only the picker is offered", () => {
   render(FeedLanguageFilter);
   expect(screen.queryByRole("button", { name: /^Remove / })).toBe(null);
-  expect(screen.getByRole("button", { name: "Add a language" })).toBeInTheDocument();
+  expect(screen.getByRole("combobox", { name: "Add a language" })).toBeInTheDocument();
   expect(pressed()).toEqual(["Show only these"]);
 });
 
@@ -45,7 +45,7 @@ test("chosen languages are listed and can be removed", async () => {
 
 test("adding a language from the picker, which then no longer offers it", async () => {
   render(FeedLanguageFilter);
-  const trigger = screen.getByRole("button", { name: "Add a language" });
+  const trigger = screen.getByRole("combobox", { name: "Add a language" });
   await fireEvent.keyDown(trigger, { key: "Enter" });
   // bits-ui Select picks on pointer-up, not click.
   const german = await screen.findByRole("option", { name: /German/ });
@@ -53,7 +53,7 @@ test("adding a language from the picker, which then no longer offers it", async 
   await fireEvent.pointerUp(german, { pointerType: "mouse", button: 0 });
   expect(reading.feedLangs).toEqual(["de"]);
   await screen.findByRole("button", { name: "Remove German" });
-  await fireEvent.keyDown(screen.getByRole("button", { name: "Add a language" }), { key: "Enter" });
+  await fireEvent.keyDown(screen.getByRole("combobox", { name: "Add a language" }), { key: "Enter" });
   await screen.findAllByRole("option");
   expect(screen.queryByRole("option", { name: /German/ })).toBe(null);
 });

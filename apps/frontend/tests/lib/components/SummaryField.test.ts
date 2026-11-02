@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { fireEvent, render, screen } from "@testing-library/svelte";
+import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { expect, test, vi } from "vitest";
 import SummaryField from "#lib/components/SummaryField.svelte";
 
@@ -26,6 +26,7 @@ test("removing the description clears and collapses it", async () => {
   render(SummaryField, { props: { summary: "Hello", onChange } });
   await fireEvent.click(screen.getByRole("button", { name: "Remove the description" }));
   expect(onChange).toHaveBeenCalled();
-  expect(screen.queryByRole("textbox")).toBe(null);
+  // Bits UI unmounts closed content a frame later, once its exit animation has run.
+  await waitFor(() => expect(screen.queryByRole("textbox")).toBe(null));
   expect(screen.getByRole("button", { name: /Add a description/ })).toBeInTheDocument();
 });

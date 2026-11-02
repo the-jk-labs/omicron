@@ -76,6 +76,8 @@ test("suggestions are debounced, exclude the draft and chosen tags, and commit o
   expect(options).toEqual([expect.stringContaining("#perseid")]);
   await fireEvent.pointerUp(screen.getByRole("option", { name: /perseid/ }));
   expect(chips()).toEqual(["Remove tag astronomy", "Remove tag perseid"]);
+  // Bits UI unmounts the closed list after its exit animation, a couple of (fake) frames later.
+  await vi.advanceTimersByTimeAsync(50);
   expect(screen.queryByRole("listbox")).toBe(null);
 });
 
@@ -89,6 +91,8 @@ test("no lookup for a one-character draft; Escape closes the list; a failed look
   await vi.advanceTimersByTimeAsync(200);
   await waitFor(() => screen.getByRole("listbox"));
   await fireEvent.keyDown(input(), { key: "Escape" });
+  // Bits UI unmounts the closed list after its exit animation, a couple of (fake) frames later.
+  await vi.advanceTimersByTimeAsync(50);
   expect(screen.queryByRole("listbox")).toBe(null);
 
   suggest.fetch.mockRejectedValueOnce(new TypeError("offline"));
