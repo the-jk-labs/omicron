@@ -13,7 +13,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { pendingLink } from "@/lib/instance/app-links";
 import { hostOf, normalizeOrigin, PRIMARY_INSTANCE } from "@/lib/instance/origin";
-import { saveInstance } from "@/lib/instance/store";
+import { chooseInstance } from "@/lib/instance/store";
 import { InstanceError, validateInstance } from "@/lib/instance/validate";
 import { useStore } from "@/lib/store";
 import logoDark from "../../assets/images/splash-dark.png";
@@ -40,7 +40,7 @@ export default function Welcome() {
     setConnectError(null);
     const failure = await validateInstance(origin).then(
       // Saving re-renders the root layout, which swaps this screen for the app.
-      (info) => saveInstance({ origin, name: info.name }),
+      (info) => chooseInstance({ origin, name: info.name }),
       (error: unknown) => (error instanceof InstanceError ? error.message : "Something went wrong."),
     );
     if (failure === undefined) return;

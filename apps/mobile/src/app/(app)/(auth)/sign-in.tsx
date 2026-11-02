@@ -1,4 +1,4 @@
-import { Link, router } from "expo-router";
+import { Link, router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import { AuthShell, FormError } from "@/components/auth/auth-shell";
@@ -11,6 +11,7 @@ import { useAutofillFields } from "@/hooks/use-autofill-fields";
 import type { InstanceAuthClient } from "@/lib/auth/auth-client";
 import { isUnverifiedError, parseLoginId } from "@/lib/auth/login";
 import { useSessionChanged } from "@/lib/auth/session";
+import { goBack } from "@/lib/navigation";
 
 type SignInFailure = { message: string; unverified: boolean };
 
@@ -43,6 +44,8 @@ async function signIn(
 }
 
 export default function SignIn() {
+  // `welcome`: opened by the app right after the instance was chosen, rather than by the person.
+  const { welcome } = useLocalSearchParams<{ welcome?: string }>();
   const { auth, name } = useInstance();
   const sessionChanged = useSessionChanged();
   const autofill = useAutofillFields();
@@ -86,7 +89,10 @@ export default function SignIn() {
   };
 
   return (
-    <AuthShell title={`Sign in to ${name}`}>
+    <AuthShell
+      title={`Sign in to ${name}`}
+      subtitle="Follow writers, join the conversation and save stories for later."
+    >
       <View className="gap-4">
         <Field label="Username or email">
           <Input
@@ -141,6 +147,12 @@ export default function SignIn() {
           Create an account
         </Link>
       </View>
+
+      {welcome === "1" && (
+        <Button variant="ghost" onPress={goBack}>
+          Maybe later
+        </Button>
+      )}
     </AuthShell>
   );
 }

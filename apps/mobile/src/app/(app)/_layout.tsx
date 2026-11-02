@@ -1,6 +1,7 @@
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { router, Stack } from "expo-router";
 import { useEffect } from "react";
+import { SignInPrompt } from "@/components/auth/sign-in-prompt";
 import { InstanceProvider } from "@/components/instance-provider";
 import { ConnectivityBanner } from "@/components/layout/connectivity-banner";
 import { ScreenError } from "@/components/layout/screen-error";
@@ -51,6 +52,7 @@ export default function AppLayout() {
         </Stack>
         <UpdateBanner />
         <ConnectivityBanner />
+        <SignInPrompt />
         <SaveToListHost />
         <PostMenuHost />
         <ConfirmHost />
