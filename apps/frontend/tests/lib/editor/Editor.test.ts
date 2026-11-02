@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { Content, Editor as TiptapEditor } from "@tiptap/core";
-import { TextSelection } from "@tiptap/pm/state";
+import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import { CellSelection, TableMap } from "@tiptap/pm/tables";
 import { tick } from "svelte";
 import { beforeEach, expect, test, vi } from "vitest";
@@ -135,6 +135,116 @@ test("the editable body has a persistent accessible name and multiline textbox s
   expect(screen.getByRole("textbox", { name: "Article body" })).toBe(dom);
   expect(dom).toHaveAttribute("aria-multiline", "true");
   await expectAccessible(document.body);
+});
+
+test.each(["Escape", "F10"])("toolbar %s returns to a backward selection without changing content", async (key) => {
+  const { editor, dom, onUpdate } = await setup("<p>Draft body</p>");
+  editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, 6, 1)));
+  editor.view.focus();
+  const selection = editor.state.selection.toJSON();
+  const doc = editor.state.doc;
+  await fireEvent.keyDown(dom, { key: "F10", altKey: true });
+  const style = screen.getByRole("button", { name: "Text style" });
+  expect(style).toHaveFocus();
+  await fireEvent.keyDown(style, { key, altKey: key === "F10" });
+  expect(dom).toHaveFocus();
+  expect(editor.state.selection.toJSON()).toEqual(selection);
+  expect(editor.state.doc).toBe(doc);
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test.each(["image", "cells"])("toolbar round trip preserves a %s selection", async (kind) => {
+  const { editor, dom, onUpdate } = await setup(
+    kind === "image" ? '<p>Before</p><img src="/a.png" alt="A graph"><p>After</p>' : targetTableHtml,
+  );
+  if (kind === "cells") selectTargetCells(editor);
+  else {
+    let pos = 0;
+    editor.state.doc.descendants((node, position) => {
+      if (node.type.name === "image") pos = position;
+    });
+    editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, pos)));
+  }
+  editor.view.focus();
+  const selection = editor.state.selection.toJSON();
+  await fireEvent.keyDown(dom, { key: "F10", altKey: true });
+  const style = screen.getByRole("button", { name: "Text style" });
+  expect(style).toHaveFocus();
+  await fireEvent.keyDown(style, { key: "Escape" });
+  expect(dom).toHaveFocus();
+  expect(editor.state.selection.toJSON()).toEqual(selection);
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test.each([
+  { key: "F10" },
+  { key: "F10", altKey: true, shiftKey: true },
+  { key: "F10", altKey: true, ctrlKey: true },
+  { key: "F10", altKey: true, metaKey: true },
+  { key: "F10", altKey: true, isComposing: true },
+  { key: "k", ctrlKey: true, isComposing: true },
+  { key: "k", ctrlKey: true, altKey: true },
+  { key: "k", ctrlKey: true, shiftKey: true },
+])("editor shortcuts ignore unrelated modifiers and composition: %j", async (keys) => {
+  const { editor, dom, onUpdate } = await setup("<p>Draft body</p>");
+  editor.view.focus();
+  await fireEvent.keyDown(dom, keys);
+  expect(dom).toHaveFocus();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test("toolbar return respects an already handled Escape", async () => {
+  const { editor, dom } = await setup("<p>Draft body</p>");
+  editor.view.focus();
+  await fireEvent.keyDown(dom, { key: "F10", altKey: true });
+  const style = screen.getByRole("button", { name: "Text style" });
+  const event = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+  event.preventDefault();
+  style.dispatchEvent(event);
+  expect(style).toHaveFocus();
+});
+
+test("editor navigation respects an already handled shortcut", async () => {
+  const { editor, dom } = await setup("<p>Draft body</p>");
+  editor.view.focus();
+  const event = new KeyboardEvent("keydown", { key: "F10", altKey: true, bubbles: true, cancelable: true });
+  event.preventDefault();
+  dom.dispatchEvent(event);
+  expect(dom).toHaveFocus();
+});
+
+test.each([
+  { key: "Escape", isComposing: true },
+  { key: "Escape", shiftKey: true },
+  { key: "F10", altKey: true, ctrlKey: true },
+])("toolbar return ignores composition and unrelated modifiers: %j", async (keys) => {
+  const { editor, dom } = await setup("<p>Draft body</p>");
+  editor.view.focus();
+  await fireEvent.keyDown(dom, { key: "F10", altKey: true });
+  const style = screen.getByRole("button", { name: "Text style" });
+  await fireEvent.keyDown(style, keys);
+  expect(style).toHaveFocus();
+});
+
+test("blocked imports cannot use shortcuts to activate disabled authoring controls", async () => {
+  const { editor, dom, onUpdate } = await setup("<figure><p>Original</p><figcaption>Caption</figcaption></figure>");
+  editor.view.focus();
+  await fireEvent.keyDown(dom, { key: "F10", altKey: true });
+  await fireEvent.keyDown(dom, { key: "k", ctrlKey: true });
+  expect(screen.getByRole("button", { name: "Text style" })).not.toHaveFocus();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(dom).toHaveAttribute("contenteditable", "false");
+  expect(onUpdate).not.toHaveBeenCalled();
+});
+
+test.each(["ctrlKey", "metaKey"])("%s+K opens the existing link dialog", async (modifier) => {
+  const { editor, dom } = await setup("<p>Draft body</p>");
+  editor.commands.setTextSelection({ from: 1, to: 6 });
+  editor.view.focus();
+  await fireEvent.keyDown(dom, { key: "k", [modifier]: true });
+  expect(await screen.findByRole("dialog", { name: "Add link" })).toBeInTheDocument();
+  expect(editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to)).toBe("Draft");
 });
 
 test("upload failures are announced to assistive technology", async () => {

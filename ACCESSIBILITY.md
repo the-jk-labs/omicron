@@ -511,6 +511,53 @@ establish cross-browser or assistive-technology behavior. No application source,
 dependency, production, or native mobile change is included. Manual evaluation
 remains skipped; no WCAG/ATAG conformance claim is made.
 
+### Editor toolbar keyboard access — issue #285 — 2026-11-02
+
+The browser regression reproduced the report: with a selected passage in the
+article body, Alt+F10 left the Text style control unfocused. A separate regression
+also reproduced Ctrl+K not opening the existing Add link dialog. These are
+application gaps, unlike the settled-selection test prerequisites above.
+
+Alt+F10 now focuses Text style from the editable body. Escape or Alt+F10 on the
+toolbar returns focus through ProseMirror's public view API, retaining its current
+selection without editing the document. Dropdown and emoji triggers compose Bits
+UI Toolbar.Button so arrow/Home/End navigation includes them. Portalled menus,
+popovers, and dialogs keep their own Escape handling before returning to the
+toolbar; shortcuts do not apply to unrelated fields or blocked imports.
+
+Ctrl/Command+K uses the existing Link action: it opens Add link for unlinked text
+or removes an active link. Existing Tiptap bold, italic, underline, and heading
+shortcuts are unchanged. Visible navigation help is associated with the toolbar
+and body; the accessibility guidance lists formatting shortcuts as well.
+
+Browser coverage checks text-range restoration, toolbar activation on the selected
+passage, dropdown/dialog/popover dismissal, contextual table controls, ordinary
+Tab navigation, unrelated title focus, link cancellation/insertion/removal, and
+existing formatting/heading shortcuts. Component coverage also checks backward,
+image-node, and multi-cell selections, composition/modifier guards, already-handled
+Escape, blocked imports, and both Control and Meta link modifiers.
+
+Verification with Node 26.7.0 / pnpm 12.16.1:
+
+- `pnpm fmt`, then `pnpm check --strict`: 175 files and 1,745 tests pass,
+  with no type/lint warnings.
+- The seven new browser scenarios pass with
+  `--repeat-each=10 --workers=4 --retries=0`: 70 first-attempt passes.
+- `pnpm test:browser --retries=0`: all 61 Chromium scenarios pass. Artifact
+  inspection confirms one result per test, no failures/flaky/skipped cases, and
+  aligned selections in both existing native clipboard probes. The build retains
+  its existing large-chunk advisory.
+- The first expanded browser run had 60 passes and one test locator error
+  (`Add row below` instead of the existing `Row below`). Only that selector
+  changed for this failure; no application behavior was changed to fit the test.
+- `git diff --check` passes.
+
+This does not resolve the rapid selection/paste mismatch or establish screen-reader
+behavior or cross-browser/platform shortcut availability. Manual evaluation remains
+skipped, native mobile accessibility remains out of scope, and no WCAG/ATAG
+conformance claim is made. No dependencies, API contracts, schemas, or production
+services change.
+
 ## Transformation inventory and remaining preservation checks
 
 This is a source-path inventory, not proof that each transformation preserves
