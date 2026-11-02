@@ -31,7 +31,7 @@ function NotificationAvatar({ item }: { item: Notification }) {
 
   if (!item.actor) {
     return (
-      <View className="size-10 items-center justify-center rounded-full bg-muted">
+      <View className="size-11 items-center justify-center rounded-full bg-muted">
         <Icon name={notificationIcon(item.type)} size={18} className="text-foreground-alt" />
       </View>
     );
@@ -39,7 +39,7 @@ function NotificationAvatar({ item }: { item: Notification }) {
   return (
     <Link href={profilePath(item.actor.username)} asChild>
       <PressableScale accessibilityRole="link" accessibilityLabel={item.actor.displayName} pressedScale={0.94}>
-        <UserAvatar name={item.actor.displayName} url={item.actor.avatarUrl} size={40} />
+        <UserAvatar name={item.actor.displayName} url={item.actor.avatarUrl} size={44} />
         {badge}
       </PressableScale>
     </Link>
@@ -54,10 +54,10 @@ const NotificationRow = memo(function NotificationRow({ item }: { item: Notifica
       disabled={!href}
       accessibilityRole={href ? "button" : undefined}
       onPress={() => href && router.push(href)}
-      className={cn("flex-row gap-3 border-b border-border px-4 py-3", !item.read && "bg-dark-04")}
+      className={cn("flex-row gap-3.5 border-b border-border px-4 py-4", !item.read && "bg-dark-04")}
     >
       <NotificationAvatar item={item} />
-      <View className="flex-1 gap-0.5">
+      <View className="flex-1 gap-1 pt-0.5">
         <View className="flex-row items-start gap-2">
           <Text size="sm" numberOfLines={2} className="flex-1 leading-5">
             <Text size="sm" weight="semibold">
@@ -77,7 +77,7 @@ const NotificationRow = memo(function NotificationRow({ item }: { item: Notifica
           </Text>
         ) : null}
         {item.commentSnippet ? (
-          <Text size="sm" numberOfLines={2} className="mt-0.5 leading-5">
+          <Text size="sm" numberOfLines={2} className="mt-1 leading-5">
             {item.commentSnippet}
           </Text>
         ) : null}
@@ -107,7 +107,7 @@ export default function Notifications() {
         data={query.items}
         renderItem={renderNotification}
         keyExtractor={keyOf}
-        estimatedItemSize={72}
+        estimatedItemSize={88}
         recycleItems
         onEndReached={query.loadMore}
         ListEmptyComponent={
