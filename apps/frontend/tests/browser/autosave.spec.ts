@@ -2,6 +2,9 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { ready, signedIn } from "./helpers";
 
+// These save-safety checks must not turn green only because a retry passed.
+test.describe.configure({ retries: 0 });
+
 const id = "9e962281-2222-3333-4444-555555555555";
 const composerPath = `/compose?id=${id}`;
 const savePath = `**/api/posts/${id}`;
@@ -17,8 +20,30 @@ async function acknowledge(route: Route) {
 }
 
 async function append(page: Page, text: string) {
+  await expect(editor(page)).toHaveAttribute("contenteditable", "true");
   await editor(page).focus();
-  await page.keyboard.press("ControlOrMeta+End");
+  // Confirm the caret after the focus/selection frame before inserting text once.
+  await expect
+    .poll(async () => {
+      await page.keyboard.press("ControlOrMeta+End");
+      return editor(page).evaluate(
+        (element) =>
+          new Promise<boolean>((resolve) =>
+            requestAnimationFrame(() => {
+              const selection = window.getSelection();
+              if (!selection?.isCollapsed || !selection.anchorNode || !element.contains(selection.anchorNode)) {
+                resolve(false);
+                return;
+              }
+              const remainder = document.createRange();
+              remainder.selectNodeContents(element);
+              remainder.setStart(selection.anchorNode, selection.anchorOffset);
+              resolve(remainder.toString() === "");
+            }),
+          ),
+      );
+    })
+    .toBe(true);
   await page.keyboard.insertText(text);
 }
 

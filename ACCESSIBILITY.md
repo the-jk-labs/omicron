@@ -442,14 +442,25 @@ tests assumed whitespace-free status text, initial focus on **Stay** rather than
 the Bits UI dialog container, and completion of a cancelled reload's load event.
 The assertions now follow the rendered text and actual dialog/navigation behavior.
 
+Initial CI run `41443737665` passed all jobs, but its browser artifact reported
+53 first-attempt passes and one autosave case that passed only on retry. That
+attempt inserted setup text at the beginning rather than the intended end; it
+did not lose the existing draft text. The append helper now verifies editability
+and an end-caret after the focus/selection frame before typing once, retrying only
+the positioning key. The cause of the unexpected caret is not established as an
+application defect. The new autosave suite disables scenario retries so this kind
+of failure cannot produce a green result through a second attempt.
+
 Verification with Node 26.7.0 / pnpm 12.16.1:
 
 - `pnpm fmt`, then `pnpm check --strict`: 175 files and 1,725 passing tests,
   with no type/lint warnings.
 - The targeted autosave/composer unit suites pass all 34 checks.
-- `pnpm test:browser`: all 54 Chromium checks pass without scenario retries,
-  including the seven new scenarios. No application defect or expected-failure
-  pin remains in this coverage change. The build retains its large-chunk advisory.
+- `pnpm test:browser --retries=0`: all 54 Chromium checks pass without scenario retries,
+  including the seven new scenarios. No application code changes or expected-failure
+  pins are included. The build retains its large-chunk advisory.
+- The three failure/recovery cases pass with `--repeat-each=5 --retries=0`: all
+  15 runs pass after the caret precondition was added.
 - `git diff --check` passes.
 
 The fixture observes HTTP payloads and UI state, not committed storage or real
