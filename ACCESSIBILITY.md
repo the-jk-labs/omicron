@@ -558,6 +558,55 @@ skipped, native mobile accessibility remains out of scope, and no WCAG/ATAG
 conformance claim is made. No dependencies, API contracts, schemas, or production
 services change.
 
+### Rapid selection/paste synchronization — 2026-11-02
+
+An independent Chromium regression omitted the settled-selection prerequisites
+from the existing preservation checks. In 60 no-retry attempts it produced two
+failures. One pinned an insertion defect: the trusted paste saw DOM range 7–10
+(`bod`) but model range 7–8 (`b`), and left `ody` instead of `y`. The other also
+had an unexpected DOM range (`od`, not `bod`); that positioning discrepancy is
+not evidence that the same insertion fix resolves every rapid navigation issue.
+
+A deterministic component regression reproduced the `ody` result before the
+fix, then passed unchanged afterward. The editor now dispatches a standard
+`selectionchange` notification from its pre-parse paste hook, allowing the
+existing ProseMirror selection observer to read pending DOM selection/mutations
+before clipboard parsing chooses its context and insertion captures a bookmark.
+It does not reconstruct selections, access private observer APIs, replace the
+paste parser, or change dependencies. It skips read-only/composing/unfocused
+editors, already-handled events, and events received while a review is open.
+
+Component checks cover forward/backward ranges, a collapsed caret, destination
+table metadata and undo, a pending code-block context, loss-review cancellation,
+image-node and rectangular-cell selections, and the notification guards. These
+use synthetic DOM paste events in jsdom, not trusted browser clipboard events.
+
+`tests/browser/rapid-paste.spec.ts` isolates the timing-sensitive final move:
+only its starting range settles, then one native arrow/selection-extension key
+is immediately followed by native paste, with no intervening frame wait,
+selection read, setup retry, or assertion. It covers forward/backward replacement
+and a table caret, retains metadata/table/undo assertions, and disables scenario
+retries. All 90 attempts passed with `--repeat-each=30 --workers=4 --retries=0`.
+Read-only capture before the new hook found 21 DOM/model mismatches in those
+passing attempts; each contained exactly one trusted paste. Thus the checks
+exercise pending selections rather than merely waiting for the race to vanish.
+
+Verification with Node 26.7.0 / pnpm 12.16.1:
+
+- `pnpm fmt`, then `pnpm check --strict`: 175 files and 1,758 tests pass,
+  with no type/lint warnings (13 new component regressions).
+- `pnpm test:browser --retries=0`: all 64 Chromium scenarios pass. Report
+  inspection confirms 64 single attempts, with no failures/flaky/skipped cases.
+- The repeated rapid-paste run has 90 single attempts and no failures/flaky/skipped
+  cases. Its 21 pre-handler mismatches include forward, backward, and table targets.
+- `git diff --check` passes. The build retains its existing large-chunk advisory.
+
+This addresses the reproduced stale-model paste defect, not every browser
+selection/navigation discrepancy. Cross-browser/platform and assistive-technology
+behavior remain unverified. Manual evaluation remains skipped, native mobile
+accessibility is excluded, and no WCAG/ATAG conformance claim is made. No API,
+schema, backend, dependency, or production change is included.
+
 ## Transformation inventory and remaining preservation checks
 
 This is a source-path inventory, not proof that each transformation preserves
