@@ -383,6 +383,37 @@ or cross-application equivalence. Internal model drags/copies and stored-content
 opening are not covered by this new external-transfer reference guard. Manual
 evaluation remains skipped; WCAG/ATAG conformance remains unestablished.
 
+### Browser readiness follow-up — 2026-11-02
+
+Four production-built Chromium regressions hold the first client-script wave for
+two seconds on the home, sign-in, article, and composer routes. With the original
+`ready()` helper, all four fail at the same missing image-menu item recorded above.
+The reproduction traces show clicks completing 1.8–1.9 seconds before the client
+scripts are released: visible server-rendered controls are actionable before their
+event handlers exist. This reproduces the suspected race; it does not establish
+that every historical startup timeout had the same cause.
+
+The helper now polls a real menu interaction within Playwright's existing default
+five-second assertion timeout. It retries only this setup probe, avoids toggling
+an already visible menu, and waits for dismissal before returning. It does not
+raise suite timeouts, retry complete scenarios, or add production readiness hooks.
+The delayed-script checks also require menu closure and focus return. A separate
+aborted-script case requires a visible but unhydrated page to fail readiness.
+
+Verification with Node 26.7.0 / pnpm 12.16.1:
+
+- `pnpm fmt`, then `pnpm check --strict`: 175 files and 1,725 passing tests,
+  with no type/lint warnings.
+- `pnpm test:browser`: 47 Chromium checks pass without scenario retries, including
+  the four delayed-script regressions and the aborted-script failure guard. The
+  production build retains its existing large-chunk advisory.
+- The four delayed-hydration checks pass with `--repeat-each=5`: 20 successful runs.
+- `git diff --check` passes.
+
+Only the browser tests and this evidence register change. No application,
+API/schema/dependency, production, or native mobile changes are included. Manual
+accessibility evaluation remains skipped; WCAG/ATAG conformance is unestablished.
+
 ## Transformation inventory and remaining preservation checks
 
 This is a source-path inventory, not proof that each transformation preserves
