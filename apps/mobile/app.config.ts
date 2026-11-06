@@ -62,6 +62,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
   },
   plugins: [
+    "@react-native-vector-icons/lucide",
     expoStatusBar(),
     expoNavigationBar({ enforceContrast: false }),
     expoRouter(),
@@ -71,7 +72,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     expoFont({ fonts: FONT_FILES.map((file) => `./node_modules/${file}`) }),
     expoLocalization(),
     expoImage(),
-    "@react-native-vector-icons/lucide",
     expoBuildProperties({
       android: {
         enableMinifyInReleaseBuilds: true,
