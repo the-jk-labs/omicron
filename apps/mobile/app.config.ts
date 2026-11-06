@@ -27,12 +27,13 @@ const LINK_PATHS = [
   { path: "/about" },
   { path: "/privacy" },
 ];
-const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID;
+const EAS_PROJECT_ID = "7479723a-0622-467c-8823-b70ef8d0a402";
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: IS_DEV ? "Omicron (Dev)" : "Omicron",
-  slug: "omicron",
+  slug: "omicron-app",
+  owner: "omicronhq-team",
   version: APP_VERSION,
   orientation: "portrait",
   icon: "./assets/images/icon.png",
@@ -95,11 +96,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   extra: {
     router: {},
-    ...(EAS_PROJECT_ID && { eas: { projectId: EAS_PROJECT_ID } }),
+    eas: { projectId: EAS_PROJECT_ID },
   },
   runtimeVersion: { policy: "appVersion" },
   updates: {
-    enabled: Boolean(EAS_PROJECT_ID),
-    ...(EAS_PROJECT_ID && { url: `https://u.expo.dev/${EAS_PROJECT_ID}` }),
+    enabled: true,
+    url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
   },
 });

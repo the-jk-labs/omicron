@@ -1,0 +1,49 @@
+# What EAS leaves out of a mobile build's upload. It replaces every .gitignore for EAS, so keep their rules here too.
+
+# Not part of the app: mobile only needs itself and packages/contract.
+/apps/backend/
+/apps/frontend/
+
+# Generated native projects: the build server makes its own from app.config.ts.
+/apps/mobile/android/
+/apps/mobile/ios/
+/apps/mobile/.idea/
+
+# Dependencies and caches
+node_modules/
+coverage/
+coverage-int/
+.expo/
+.kotlin/
+.metro-health-check*
+.vitest/
+.state/
+*.tsbuildinfo
+*.log
+npm-debug.*
+
+# Build output
+dist/
+web-build/
+expo-env.d.ts
+*.orig.*
+/apps/mobile/editor-web/build/index.html
+
+# Secrets: Expo stores the signing keys itself
+.env
+.env.*
+credentials.json
+credentials/
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# Editors and OS
+.DS_Store
+.vscode
+.claude
+.agents
