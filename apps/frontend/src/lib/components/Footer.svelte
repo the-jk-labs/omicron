@@ -34,36 +34,57 @@
     <!-- Instance line — like mastodon.social: keep each · attached to the preceding
          link (whitespace-nowrap group) so wrapping never leaves a bare dot at the
          start of a line, and the dot stays at the end of the previous line. -->
-    <p class="flex flex-wrap gap-x-1 gap-y-0.5">
+    <p class="flex flex-wrap items-center gap-x-1">
       <span class="font-semibold text-foreground">{domainLabel}:</span>
       <span class="inline-flex items-center gap-1 whitespace-nowrap">
-        <a href="/about" class="hover:text-foreground hover:underline hover:underline-offset-2">About</a>
+        <a
+          href="/about"
+          class="inline-flex min-h-6 items-center hover:text-foreground hover:underline hover:underline-offset-2"
+          >About</a
+        >
         <span aria-hidden="true" class="opacity-60">·</span>
       </span>
       <span class="inline-flex items-center gap-1 whitespace-nowrap">
-        <a href={statusUrl} class="hover:text-foreground hover:underline hover:underline-offset-2">Status</a>
+        <a
+          href={statusUrl}
+          class="inline-flex min-h-6 items-center hover:text-foreground hover:underline hover:underline-offset-2"
+          >Status</a
+        >
         <span aria-hidden="true" class="opacity-60">·</span>
       </span>
       <span class="inline-flex items-center gap-1 whitespace-nowrap">
-        <a href="/about#rules" class="hover:text-foreground hover:underline hover:underline-offset-2">Instance rules</a>
+        <a
+          href="/about#rules"
+          class="inline-flex min-h-6 items-center hover:text-foreground hover:underline hover:underline-offset-2"
+          >Instance rules</a
+        >
         <span aria-hidden="true" class="opacity-60">·</span>
       </span>
       <span class="inline-flex items-center gap-1 whitespace-nowrap">
-        <a href="/privacy" class="hover:text-foreground hover:underline hover:underline-offset-2">Privacy</a>
+        <a
+          href="/privacy"
+          class="inline-flex min-h-6 items-center hover:text-foreground hover:underline hover:underline-offset-2"
+          >Privacy</a
+        >
         <span aria-hidden="true" class="opacity-60">·</span>
       </span>
-      <a href={contactHref} class="hover:text-foreground hover:underline hover:underline-offset-2">Contact</a>
+      <a
+        href={contactHref}
+        class="inline-flex min-h-6 items-center hover:text-foreground hover:underline hover:underline-offset-2"
+        >Contact</a
+      >
     </p>
 
     <!-- Project line — like Mastodon: same wrapping fix -->
-    <p class="flex flex-wrap gap-x-1 gap-y-0.5">
+    <p class="flex flex-wrap items-center gap-x-1">
       <span class="font-semibold text-foreground">{appName}:</span>
       <span class="inline-flex items-center gap-1 whitespace-nowrap">
         <a
           href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          class="hover:text-foreground hover:underline hover:underline-offset-2">Source</a
+          class="inline-flex min-h-6 items-center hover:text-foreground hover:underline hover:underline-offset-2"
+          >Source</a
         >
         <span aria-hidden="true" class="opacity-60">·</span>
       </span>
@@ -72,7 +93,8 @@
           href={fediverseUrl}
           target={fediverseUrl.startsWith("http") ? "_blank" : undefined}
           rel={fediverseUrl.startsWith("http") ? "me noopener noreferrer" : "me"}
-          class="hover:text-foreground hover:underline hover:underline-offset-2">{fediverseLabel}</a
+          class="inline-flex min-h-6 items-center hover:text-foreground hover:underline hover:underline-offset-2"
+          >{fediverseLabel}</a
         >
         <span aria-hidden="true" class="opacity-60">·</span>
       </span>

@@ -262,7 +262,7 @@
 </header>
 
 <Tabs.Root value="articles" class="w-full">
-  <Tabs.List class="mb-2 flex items-center gap-6 text-sm font-medium">
+  <Tabs.List class="mb-2 flex flex-wrap items-center gap-x-6 text-sm font-medium">
     <Tabs.Trigger
       value="articles"
       class="-mb-px inline-flex items-center border-b border-transparent py-3 text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground"

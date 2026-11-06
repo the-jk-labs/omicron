@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { accessibilityContent, expectAccessibleContent } from "../accessibilityContent.ts";
 import { postRow, userRow } from "../fixtures.ts";
 
 vi.mock(import("@/db/repositories/posts.ts"));
@@ -149,6 +150,13 @@ describe("authenticate", () => {
 });
 
 describe("ingestContent (create)", () => {
+  test("keeps the accessibility metadata of raw HTML in a Markdown body", async () => {
+    await ingestContent({ slug: "a11y", title: "Accessible", body: accessibilityContent }, author);
+    const stored = vi.mocked(postsRepo.upsertByExternalId).mock.lastCall?.[0];
+    expect(stored?.contentHtml).toContain("<math");
+    expectAccessibleContent(String(stored?.contentHtml), "/api/uploads/chart.png");
+  });
+
   test("renders, sanitizes and publishes a new post, federating a Create", async () => {
     const out = await ingestContent(
       { slug: "doc-42", title: "Hello", body: "# Hi\n\nSome **text**.\n\n<script>alert(1)</script>" },

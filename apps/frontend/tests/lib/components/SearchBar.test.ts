@@ -51,28 +51,25 @@ test("an unfocused box forgets a stale query once the reader has left the search
   expect(field()).toHaveValue("");
 });
 
-test("'/' and Ctrl/Cmd+K focus the box on a wide screen, but not while typing elsewhere", async () => {
+test("Ctrl/Cmd+K focuses the box on a wide screen", async () => {
+  vi.spyOn(window, "innerWidth", "get").mockReturnValue(1200);
+  render(SearchBar);
+  await fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+  expect(field()).toHaveFocus();
+});
+
+// WCAG 2.1.4: speech input can fire a lone character, and nothing could turn this one off.
+test("a lone '/' does nothing", async () => {
   vi.spyOn(window, "innerWidth", "get").mockReturnValue(1200);
   render(SearchBar);
   await fireEvent.keyDown(window, { key: "/" });
-  expect(field()).toHaveFocus();
-  field().blur();
-  await fireEvent.keyDown(window, { key: "k", ctrlKey: true });
-  expect(field()).toHaveFocus();
-
-  const other = document.createElement("textarea");
-  document.body.append(other);
-  other.focus();
-  await fireEvent.keyDown(other, { key: "/" });
-  expect(other).toHaveFocus();
+  expect(field()).not.toHaveFocus();
   expect(goto).not.toHaveBeenCalled();
 });
 
-test("on a phone the shortcuts open the search page instead", async () => {
+test("on a phone the shortcut opens the search page instead", async () => {
   vi.spyOn(window, "innerWidth", "get").mockReturnValue(375);
   render(SearchBar);
-  await fireEvent.keyDown(window, { key: "/" });
   await fireEvent.keyDown(window, { key: "K", metaKey: true });
-  expect(goto).toHaveBeenCalledTimes(2);
-  expect(goto).toHaveBeenCalledWith("/search");
+  expect(goto).toHaveBeenCalledExactlyOnceWith("/search");
 });

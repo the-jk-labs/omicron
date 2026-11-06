@@ -1,12 +1,35 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from "vitest";
 import { renderMarkdown } from "@/lib/markdown.ts";
+import { accessibilityContent, expectAccessibleContent } from "../accessibilityContent.ts";
 
 // `renderMarkdown` feeds author-written Markdown (the profile's custom section)
 // into storage, and its output is rendered with {@html}. The security tests here
 // matter as much as the ones in sanitize.test.ts: raw HTML is deliberately
 // *parsed* rather than escaped, so the sanitizer is the only thing standing
 // between an author's input and every reader's browser.
+
+test("markdown: raw HTML keeps languages, alternatives, table headers and MathML", () => {
+  const out = renderMarkdown(accessibilityContent);
+  expect(out).toContain("<math");
+  expectAccessibleContent(out, "/api/uploads/chart.png");
+});
+
+test("markdown: a passage's language survives beside ordinary Markdown", () => {
+  const out = renderMarkdown('# Title\n\n<p lang="ar" dir="rtl">مرحبا</p>\n\n**bold**\n');
+  expect(out).toContain('<p lang="ar" dir="rtl">مرحبا</p>');
+  expect(out).toContain("<strong>bold</strong>");
+});
+
+test("markdown: a Markdown table renders as a real table with header cells", () => {
+  const out = renderMarkdown("| Year | Sales |\n| --- | --- |\n| 2026 | 20 |\n");
+  expect(out).toContain("<th>Year</th>");
+  expect(out).toContain("<td>2026</td>");
+});
+
+test("markdown: rendering is stable, so a preview shows what saving will store", () => {
+  expect(renderMarkdown(accessibilityContent)).toBe(renderMarkdown(accessibilityContent));
+});
 
 test("markdown: renders the common block elements", () => {
   const out = renderMarkdown("# Title\n\n**bold** _em_ ~~gone~~\n\n- one\n- two\n\n> quote\n\n---\n");

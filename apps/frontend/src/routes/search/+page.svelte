@@ -231,7 +231,7 @@
 
   {#key `${data.query}-${(data as { tag?: string }).tag ?? ""}-${(data as { author?: string }).author ?? ""}`}
     <Tabs.Root value={defaultTab} class="w-full">
-      <Tabs.List class="mb-2 flex items-center gap-6 text-sm font-medium">
+      <Tabs.List class="mb-2 flex flex-wrap items-center gap-x-6 text-sm font-medium">
         <Tabs.Trigger
           value="articles"
           class="-mb-px inline-flex items-center gap-1.5 border-b border-transparent py-3 text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground"

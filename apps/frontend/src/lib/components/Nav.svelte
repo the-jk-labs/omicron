@@ -244,7 +244,7 @@
           variant="icon"
           class="border-0! shadow-none! sm:hidden"
           aria-label="Search"
-          title="Search (press /)"
+          title="Search"
         >
           <Icon name="search" size={18} />
         </Button>
