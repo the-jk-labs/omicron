@@ -29,6 +29,7 @@
   "dependencies": {
     "@10play/tentap-editor": "1.1.0",
     "@better-auth/expo": "1.7.17",
+    "@better-auth/passkey": "1.7.17",
     "@expo-google-fonts/inter": "0.4.2",
     "@expo-google-fonts/source-sans-3": "0.4.2",
     "@expo/ui": "~58.0.27",
@@ -43,6 +44,7 @@
     "date-fns": "4.4.0",
     "expo": "~58.0.23",
     "expo-application": "58.1.2",
+    "expo-better-auth-passkey": "1.6.2",
     "expo-build-properties": "58.0.12",
     "expo-clipboard": "58.0.4",
     "expo-constants": "~58.0.15",

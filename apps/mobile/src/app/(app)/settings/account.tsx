@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import * as WebBrowser from "expo-web-browser";
 import { View } from "react-native";
 import { useInstance } from "@/components/instance-provider";
 import { FormScreen } from "@/components/settings/form-screen";
@@ -117,7 +116,7 @@ const REFRESH = [queryKeys.me, queryKeys.sessions];
 
 export default function AccountSettings() {
   useRefreshOnFocus(REFRESH);
-  const { auth, origin } = useInstance();
+  const { auth } = useInstance();
   const { user } = useViewer();
   if (!user) return null;
 
@@ -153,8 +152,8 @@ export default function AccountSettings() {
         <SettingsRow
           icon="fingerprint"
           label="Passkeys"
-          detail="Add or remove passkeys on the web"
-          onPress={() => void WebBrowser.openBrowserAsync(`${origin}/settings?tab=account`)}
+          detail="Sign in with your fingerprint, face, or screen lock"
+          onPress={() => router.push("/settings/passkeys")}
         />
       </SettingsSection>
 

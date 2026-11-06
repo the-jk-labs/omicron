@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import { useUniwind } from "uniwind";
+import { PasskeyPrompt } from "@/components/auth/passkey-prompt";
 import { useApi, useInstance } from "@/components/instance-provider";
 import { Screen } from "@/components/layout/screen";
 import { PostList } from "@/components/post/post-list";
@@ -85,6 +86,7 @@ export default function Home() {
             : { title: "No posts yet", description: "Nothing has been published here yet." }
         }
       />
+      {signedIn && <PasskeyPrompt />}
     </Screen>
   );
 }

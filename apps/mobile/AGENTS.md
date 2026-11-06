@@ -74,8 +74,10 @@ tests/              mirrors src/ (vitest, Node; react-native is stubbed in tests
 - **Credential fields** (anything with a username, email, password or one-time-code `autoComplete`) spread
   `useAutofillFields()` onto the input. Without it, password managers stay silent on any pushed screen
   (`src/hooks/use-autofill-fields.ts` says why).
-- **Sign-in is email/username + password** (Better Auth Expo, cookie in SecureStore). Passkeys are managed on the
-  web for now (Settings → Account opens the instance's settings).
+- **Sign-in is email/username + password or a passkey** (Better Auth Expo, cookie in SecureStore). Passkeys use
+  `expoPasskeyClient()` (`expo-better-auth-passkey`), which keeps Better Auth's client API. Android only, and only
+  where the instance's `assetlinks.json` names the app (`usePasskeysAvailable`); elsewhere nothing offers one, and
+  Settings → Passkeys still lists them and links to the web for adding one.
 - **React Compiler:** no `try/finally` in components (it skips the whole component); reset busy flags on both
   paths instead. A `try/catch` in a component can't hold `?:`, `&&`, `??` or `?.` either: use `.then(ok, fail)` or
   move the work into a plain helper outside the component. Reanimated shared values use `.get()`/`.set()`, never `.value =` in component code.

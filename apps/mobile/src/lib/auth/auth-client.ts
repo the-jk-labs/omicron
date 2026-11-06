@@ -1,8 +1,10 @@
 import { expoClient } from "@better-auth/expo/client";
 import { emailOTPClient, usernameClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
+import { expoPasskeyClient } from "expo-better-auth-passkey";
 import * as SecureStore from "expo-secure-store";
 import { appFetch } from "@/lib/user-agent";
+import { changesSession, resetPasskeyPrompt } from "./passkey-prompt";
 
 /** FNV-1a, so each instance gets its own SecureStore keys (which allow only [A-Za-z0-9._-]). */
 export function storageKeyFor(origin: string) {
@@ -18,8 +20,14 @@ export function storageKeyFor(origin: string) {
 export function createInstanceAuthClient(origin: string) {
   return createAuthClient({
     baseURL: `${origin}/api/auth`,
-    fetchOptions: { customFetchImpl: appFetch },
+    fetchOptions: {
+      customFetchImpl: appFetch,
+      onSuccess: ({ request }) => {
+        if (changesSession(request.url)) resetPasskeyPrompt(origin);
+      },
+    },
     plugins: [
+      expoPasskeyClient(),
       expoClient({
         storage: SecureStore,
         storagePrefix: storageKeyFor(origin),

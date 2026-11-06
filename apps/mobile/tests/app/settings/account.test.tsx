@@ -12,7 +12,6 @@ const listSessions = vi.fn<() => Promise<AuthResult>>();
 const getSession = vi.fn<() => Promise<AuthResult>>();
 
 vi.mock("expo-router", () => ({ router: { push: (href: unknown) => push(href) } }));
-vi.mock("expo-web-browser", () => ({ openBrowserAsync: vi.fn<() => void>() }));
 vi.mock("@/hooks/use-refresh-on-focus", () => ({ useRefreshOnFocus: () => undefined }));
 vi.mock("@/components/instance-provider", () => ({
   useInstance: () => ({ origin: "https://omicron.test", auth: { listSessions, getSession } }),

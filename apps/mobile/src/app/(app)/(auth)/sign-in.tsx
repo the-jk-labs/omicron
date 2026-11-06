@@ -10,6 +10,7 @@ import { Text } from "@/components/ui/text";
 import { useAutofillFields } from "@/hooks/use-autofill-fields";
 import type { InstanceAuthClient } from "@/lib/auth/auth-client";
 import { isUnverifiedError, parseLoginId } from "@/lib/auth/login";
+import { signInWithPasskey, usePasskeysAvailable } from "@/lib/auth/passkeys";
 import { useSessionChanged } from "@/lib/auth/session";
 import { goBack } from "@/lib/navigation";
 
@@ -52,6 +53,8 @@ export default function SignIn() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const passkeysAvailable = usePasskeysAvailable();
   const [error, setError] = useState<string | null>(null);
   const [needsVerification, setNeedsVerification] = useState(false);
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
@@ -69,6 +72,19 @@ export default function SignIn() {
     setNeedsVerification(failure.unverified);
     setError(failure.message);
     setBusy(false);
+  };
+
+  const submitPasskey = async () => {
+    setError(null);
+    setNeedsVerification(false);
+    setPasskeyBusy(true);
+    const result = await signInWithPasskey(auth, sessionChanged);
+    if (result === "signed-in") {
+      router.dismissTo("/");
+      return;
+    }
+    if (result) setError(result.message);
+    setPasskeyBusy(false);
   };
 
   const resend = async () => {
@@ -138,6 +154,21 @@ export default function SignIn() {
           Sign in
         </Button>
       </View>
+
+      {passkeysAvailable && (
+        <View className="gap-4">
+          <View className="flex-row items-center gap-3">
+            <View className="h-px flex-1 bg-border" />
+            <Text size="xs" tone="muted">
+              or
+            </Text>
+            <View className="h-px flex-1 bg-border" />
+          </View>
+          <Button variant="outline" icon="key-round" loading={passkeyBusy} onPress={() => void submitPasskey()}>
+            {passkeyBusy ? "Waiting for your passkey…" : "Sign in with a passkey"}
+          </Button>
+        </View>
+      )}
 
       <View className="flex-row justify-center gap-1">
         <Text size="sm" tone="muted">
