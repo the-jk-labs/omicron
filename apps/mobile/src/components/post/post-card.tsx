@@ -9,8 +9,9 @@ import { SaveToListButton } from "@/components/lists/save-to-list";
 import { Icon } from "@/components/ui/icon";
 import { PressableScale } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
-import { excerpt, formatDate, readTime, shortAgo } from "@/lib/format";
+import { formatDate, shortAgo } from "@/lib/format";
 import { parseWhenIdle } from "@/lib/html/parse-cache";
+import { postExcerpt, postReadTime } from "@/lib/html/post-text";
 import { commentsPath, postPath, profilePath } from "@/lib/links";
 import { LikeButton, RecommendButton, CommentsButton, ShareButton } from "./action-buttons";
 import { AiAssistedBadge, UserAvatar } from "./post-bits";
@@ -24,10 +25,10 @@ export const PostCard = memo(function PostCard({ post }: { post: Post }) {
   const { media } = useInstance();
   const [coverFailed, setCoverFailed] = useState(false);
   // An ingested post carries its own preview; anything written in the editor is clipped from the body.
-  const summary = post.summary?.trim() || excerpt(post.contentHtml);
+  const summary = post.summary?.trim() || postExcerpt(post.contentHtml);
   const originInstance = post.remote ? post.author.username.split("@")[1] : undefined;
   const banner = coverFailed ? undefined : media(post.bannerUrl);
-  const minutes = readTime(post.contentHtml);
+  const minutes = postReadTime(post.contentHtml);
   // Parsed ahead while idle, so tapping the card opens the full body at once.
   useEffect(() => parseWhenIdle(post.contentHtml), [post.contentHtml]);
   // The age follows the name as on X; the full date stays available to screen readers.

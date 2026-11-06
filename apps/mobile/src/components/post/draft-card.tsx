@@ -9,7 +9,8 @@ import { IconButton } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { PressableScale } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
-import { excerpt, formatScheduleLong, shortAgo } from "@/lib/format";
+import { formatScheduleLong, shortAgo } from "@/lib/format";
+import { postExcerpt } from "@/lib/html/post-text";
 
 const StyledImage = withUniwind(Image);
 
@@ -26,7 +27,7 @@ export const DraftCard = memo(function DraftCard({
   const { media } = useInstance();
   const [coverFailed, setCoverFailed] = useState(false);
   const banner = coverFailed ? undefined : media(post.bannerUrl);
-  const summary = excerpt(post.contentHtml);
+  const summary = postExcerpt(post.contentHtml);
   const goesOut = scheduled && post.publishAt ? formatScheduleLong(post.publishAt) : null;
 
   return (

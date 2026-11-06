@@ -20,7 +20,8 @@ import { PressableScale } from "@/components/ui/pressable";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/states";
 import { Text } from "@/components/ui/text";
-import { formatDate, readTime } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import { postReadTime } from "@/lib/html/post-text";
 import { commentsPath, profilePath, usernameFromHandle } from "@/lib/links";
 import { findCachedPost } from "@/lib/query/cache";
 import { queryKeys } from "@/lib/query/keys";
@@ -47,7 +48,7 @@ function ReaderHeader({ post }: { post: Post }) {
               {post.author.displayName}
             </Text>
             <Text size="sm" tone="muted" numberOfLines={1}>
-              {readTime(post.contentHtml)} min read · {formatDate(post.createdAt)}
+              {postReadTime(post.contentHtml)} min read · {formatDate(post.createdAt)}
             </Text>
           </View>
         </PressableScale>
