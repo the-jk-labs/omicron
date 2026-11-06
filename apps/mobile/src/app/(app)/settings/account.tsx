@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { useRefreshOnFocus } from "@/hooks/use-refresh-on-focus";
-import { describeUserAgent } from "@/lib/auth/account";
+import { describeUserAgent, loadSessions } from "@/lib/auth/account";
 import { useViewer } from "@/lib/auth/session";
 import { confirm } from "@/lib/dialogs/confirm";
 import { toast } from "@/lib/dialogs/toast";
@@ -23,13 +23,10 @@ function Sessions() {
   const queryClient = useQueryClient();
   const sessions = useQuery({
     queryKey: queryKeys.sessions,
-    queryFn: async () => {
-      const [list, current] = await Promise.all([auth.listSessions(), auth.getSession()]);
-      if (list.error) throw new Error(list.error.message ?? "Couldn't load sessions.");
-      return { items: list.data ?? [], current: current.data?.session.token ?? null };
-    },
+    queryFn: () => loadSessions(auth),
     meta: { persist: false },
   });
+  const devices = sessions.data && !sessions.data.locked ? sessions.data : null;
   const revoke = useMutation({
     mutationFn: async (token: string | null) => {
       const res = token === null ? await auth.revokeOtherSessions() : await auth.revokeSession({ token });
@@ -45,9 +42,23 @@ function Sessions() {
         <View className="py-6">
           <Spinner />
         </View>
+      ) : sessions.data?.locked ? (
+        <SettingsRow
+          icon="lock"
+          label="Confirm it's you"
+          detail="For your security, enter your password to see where you're signed in."
+          onPress={() => router.push("/settings/confirm-password")}
+        />
+      ) : sessions.isError && !devices ? (
+        <SettingsRow
+          icon="triangle-alert"
+          label={errorMessage(sessions.error)}
+          detail="Tap to try again."
+          onPress={() => void sessions.refetch()}
+        />
       ) : (
-        sessions.data?.items.map((session) => {
-          const current = session.token === sessions.data.current;
+        devices?.items.map((session) => {
+          const current = session.token === devices.current;
           return (
             <SettingsRow
               key={session.id}
@@ -79,7 +90,7 @@ function Sessions() {
           );
         })
       )}
-      {(sessions.data?.items.length ?? 0) > 1 && (
+      {(devices?.items.length ?? 0) > 1 && (
         <SettingsRow
           icon="log-out"
           label="Sign out all other devices"
