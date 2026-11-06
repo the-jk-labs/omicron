@@ -2,6 +2,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import Icon from "#lib/components/Icon.svelte";
+  import InstanceLogo from "#lib/components/InstanceLogo.svelte";
   import PageTitle from "#lib/components/PageTitle.svelte";
   import Button from "#lib/components/ui/Button.svelte";
 
@@ -24,13 +25,17 @@
 <section class="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-16 text-center">
   <!-- The mascot — a rabbit down a rabbit hole — keeps the page recognisably
        ours even when there's nothing here. -->
-  <img
-    src="/favicon.svg"
-    alt="Omicron rabbit mascot peering out of its hole"
-    width="96"
-    height="96"
-    class="mb-6 size-24"
-  />
+  {#if (page.data as { instance?: { logoUrl?: string | null } | null }).instance?.logoUrl}
+    <InstanceLogo width={96} height={96} class="mb-6 size-24 object-contain" />
+  {:else}
+    <img
+      src="/favicon.svg"
+      alt="Omicron rabbit mascot peering out of its hole"
+      width="96"
+      height="96"
+      class="mb-6 size-24"
+    />
+  {/if}
 
   <p class="text-sm font-semibold tracking-widest text-muted-foreground">
     ERROR {status}

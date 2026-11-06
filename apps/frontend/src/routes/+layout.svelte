@@ -18,6 +18,7 @@
   import { absoluteBanner, postCardUrl, profileCardUrl } from "#lib/cover.js";
   import { excerpt } from "#lib/format.js";
   import { imageDisplay } from "#lib/imageDisplay.svelte.js";
+  import { imageUrl } from "#lib/imageProxy.js";
   import { rememberLocale } from "#lib/locale.svelte.js";
   import { blogPostingLd, breadcrumbLd, profilePageLd, serializeJsonLd, webSiteLd } from "#lib/seo.js";
   import { rememberTimeZone } from "#lib/timezone.svelte.js";
@@ -61,6 +62,14 @@
   // name comes from the instance settings (wizard/admin), falling back to the
   // build-time env and then the default.
   const appName = $derived(data.instance?.name || PUBLIC_APP_NAME || "Omicron");
+
+  // app.html always lists the built-in icons, and browsers disagree on which to prefer.
+  $effect(() => {
+    if (!data.instance?.faviconUrl) return;
+    for (const link of document.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"]')) {
+      if (!link.hasAttribute("data-instance-icon")) link.remove();
+    }
+  });
   const homeTitle = $derived(`${appName}: an independent blogging platform on the fediverse`);
   // 152 chars for `Omicron` (adjusts with instance name): hits the 150–160 target
   // search engines show without truncation and matches the hero.
@@ -312,6 +321,10 @@
 </script>
 
 <svelte:head>
+  {#if data.instance?.faviconUrl}
+    <link rel="icon" data-instance-icon href={imageUrl(data.instance.faviconUrl)} />
+    <link rel="apple-touch-icon" data-instance-icon href={imageUrl(data.instance.faviconUrl)} />
+  {/if}
   <!-- Omitted on a federated copy: a canonical tag is this page asserting it is
        the original, which for someone else's article is simply false. The
        `noindex` below is the instruction that matters, and Google treats a

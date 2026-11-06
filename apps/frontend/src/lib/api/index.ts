@@ -149,6 +149,9 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     uploadInstanceBanner: (blob: Blob, contentType: string) =>
       api.postRaw<AdminInstance>("/admin/instance/banner", blob, contentType),
     removeInstanceBanner: () => api.del<AdminInstance>("/admin/instance/banner"),
+    uploadBrandImage: (kind: "logo" | "favicon", blob: Blob, contentType: string) =>
+      api.postRaw<AdminInstance>(`/admin/instance/${kind}`, blob, contentType),
+    removeBrandImage: (kind: "logo" | "favicon") => api.del<AdminInstance>(`/admin/instance/${kind}`),
 
     // admin security: the AI-scraper shield (Anubis), toggled live via Caddy.
     adminSecurity: () => api.get<SecuritySettings>("/admin/security"),

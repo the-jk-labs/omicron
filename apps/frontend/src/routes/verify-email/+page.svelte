@@ -4,9 +4,9 @@
   import { page } from "$app/state";
   import { Label } from "bits-ui";
   import { onMount } from "svelte";
-  import logo from "#lib/assets/omicron.svg";
   import { authClient } from "#lib/auth-client.js";
   import Icon from "#lib/components/Icon.svelte";
+  import InstanceLogo from "#lib/components/InstanceLogo.svelte";
   import PageTitle from "#lib/components/PageTitle.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import type { InstanceInfo } from "#lib/types.js";
@@ -124,7 +124,7 @@
   </div>
 {:else}
   <div class="mb-8 text-center">
-    <div class="mb-4 flex justify-center"><img src={logo} alt="" class="h-12 w-auto" /></div>
+    <div class="mb-4 flex justify-center"><InstanceLogo class="h-12 w-auto" /></div>
     <h1 class="text-2xl font-bold tracking-tight text-foreground">Verify your email</h1>
     <p class="mt-1.5 text-sm text-muted-foreground">Enter your email and we'll send you a new confirmation link.</p>
   </div>

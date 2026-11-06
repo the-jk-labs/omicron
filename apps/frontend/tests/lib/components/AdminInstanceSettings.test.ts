@@ -14,6 +14,8 @@ const instance = {
   sessionSecretManaged: true,
   bannerText: null,
   bannerImageUrl: null,
+  logoUrl: null,
+  faviconUrl: null,
   about: "",
   rules: "",
   privacyPolicy: "",

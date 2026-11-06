@@ -71,6 +71,14 @@ const rows: Row[] = [
     "img",
   ],
   ["removeInstanceBanner", (e) => e.removeInstanceBanner(), "DELETE", "/api/admin/instance/banner"],
+  [
+    "uploadBrandImage",
+    (e) => e.uploadBrandImage("favicon", bytes as never, "image/webp"),
+    "POST",
+    "/api/admin/instance/favicon",
+    "img",
+  ],
+  ["removeBrandImage", (e) => e.removeBrandImage("logo"), "DELETE", "/api/admin/instance/logo"],
   ["adminSecurity", (e) => e.adminSecurity(), "GET", "/api/admin/security"],
   ["accessRules", (e) => e.accessRules(), "GET", "/api/admin/security/access-rules"],
   [

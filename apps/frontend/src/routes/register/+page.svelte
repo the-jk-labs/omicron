@@ -5,9 +5,9 @@
   import { page } from "$app/state";
   import { Checkbox, Label } from "bits-ui";
   import { onMount } from "svelte";
-  import logo from "#lib/assets/omicron.svg";
   import { authClient } from "#lib/auth-client.js";
   import Icon from "#lib/components/Icon.svelte";
+  import InstanceLogo from "#lib/components/InstanceLogo.svelte";
   import PageTitle from "#lib/components/PageTitle.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { passkeyAutofill } from "#lib/passkeys.js";
@@ -242,7 +242,7 @@
   </div>
 {:else if needsInvite}
   <div class="text-center">
-    <div class="mb-4 flex justify-center"><img src={logo} alt="" class="h-12 w-auto" /></div>
+    <div class="mb-4 flex justify-center"><InstanceLogo class="h-12 w-auto" /></div>
     <h1 class="text-2xl font-bold tracking-tight text-foreground">{appName} is invite-only</h1>
     <p class="mt-1.5 text-sm text-muted-foreground">
       New accounts need an invite link from this instance's admin. You can still read and follow writers from another
@@ -252,7 +252,7 @@
   </div>
 {:else}
   <div class="mb-8 text-center">
-    <div class="mb-4 flex justify-center"><img src={logo} alt="" class="h-12 w-auto" /></div>
+    <div class="mb-4 flex justify-center"><InstanceLogo class="h-12 w-auto" /></div>
     <h1 class="text-2xl font-bold tracking-tight text-foreground">Create your account</h1>
     <p class="mt-1.5 text-sm text-muted-foreground">
       {#if instance?.federationEnabled}

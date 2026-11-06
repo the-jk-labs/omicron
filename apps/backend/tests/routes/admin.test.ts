@@ -56,6 +56,10 @@ const routes: Route[] = [
   ["PUT", "/instance", { appName: "X" }, "admin"],
   ["POST", "/instance/banner", "raw", "admin"],
   ["DELETE", "/instance/banner", undefined, "admin"],
+  ["POST", "/instance/logo", "raw", "admin"],
+  ["DELETE", "/instance/logo", undefined, "admin"],
+  ["POST", "/instance/favicon", "raw", "admin"],
+  ["DELETE", "/instance/favicon", undefined, "admin"],
   ["GET", "/email", undefined, "admin"],
   ["PUT", "/email", { mode: "console" }, "admin"],
   ["POST", "/email/dkim", { domain: "mail.example" }, "admin"],
@@ -288,6 +292,20 @@ describe("admin endpoints", () => {
       statusUrl: "https://status.blog.example",
     });
     expect((await api.json("/api/admin/instance", "PUT", { statusUrl: "javascript:alert(1)" })).status).toBe(400);
+  });
+
+  test.each(["logo", "favicon"] as const)("%s upload stores the image, and reset clears it", async (kind) => {
+    vi.mocked(mediaService.saveImage).mockResolvedValue("/api/uploads/brand.webp");
+    const res = await api.request(`/api/admin/instance/${kind}`, {
+      method: "POST",
+      headers: { "content-type": "image/webp" },
+      body: new Uint8Array([1, 2]),
+    });
+    expect(res.status).toBe(201);
+    expect(setup.setBrandImageUrl).toHaveBeenCalledWith(kind, "/api/uploads/brand.webp");
+    const reset = await api.request(`/api/admin/instance/${kind}`, { method: "DELETE" });
+    expect(reset.status).toBe(200);
+    expect(setup.setBrandImageUrl).toHaveBeenCalledWith(kind, null);
   });
 
   test("banner upload stores the image and the URL", async () => {

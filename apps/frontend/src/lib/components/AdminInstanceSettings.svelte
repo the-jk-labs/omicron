@@ -4,6 +4,7 @@
   import { untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
   import AccessibilityGuidance from "#lib/components/AccessibilityGuidance.svelte";
+  import AdminBrandImage from "#lib/components/AdminBrandImage.svelte";
   import Icon from "#lib/components/Icon.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
@@ -31,6 +32,8 @@
   let sessionSecretManaged = $state(false);
   let bannerText = $state("");
   let bannerImageUrl = $state<string | null>(null);
+  let logoUrl = $state<string | null>(null);
+  let faviconUrl = $state<string | null>(null);
   let about = $state("");
   let rules = $state("");
   let privacyPolicy = $state("");
@@ -73,6 +76,8 @@
     sessionSecretManaged = s.sessionSecretManaged;
     bannerText = s.bannerText ?? "";
     bannerImageUrl = s.bannerImageUrl;
+    logoUrl = s.logoUrl;
+    faviconUrl = s.faviconUrl;
     about = s.about;
     rules = s.rules;
     privacyPolicy = s.privacyPolicy;
@@ -283,6 +288,22 @@
         class="hidden"
       />
     </div>
+  </div>
+
+  <div class="flex flex-col gap-4 rounded-card border border-border bg-background-alt p-3.5">
+    <span class={labelClass}>Logo and favicon</span>
+    <AdminBrandImage
+      kind="logo"
+      label="Logo"
+      hint="Shown in the header and on sign-in pages, on the website and in the app."
+      bind:url={logoUrl}
+    />
+    <AdminBrandImage
+      kind="favicon"
+      label="Favicon"
+      hint="The small icon in browser tabs. Square images work best."
+      bind:url={faviconUrl}
+    />
   </div>
 
   <div class="flex flex-col gap-4 rounded-card border border-border bg-background-alt p-3.5">

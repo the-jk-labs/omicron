@@ -5,10 +5,10 @@
   import { page } from "$app/state";
   import { DropdownMenu } from "bits-ui";
   import { ApiError, endpoints } from "#lib/api/index.js";
-  import logo from "#lib/assets/omicron.svg";
   import { authClient } from "#lib/auth-client.js";
   import Icon from "#lib/components/Icon.svelte";
   import ImageDisplay from "#lib/components/ImageDisplay.svelte";
+  import InstanceLogo from "#lib/components/InstanceLogo.svelte";
   import {
     notificationAction,
     notificationHref,
@@ -221,7 +221,7 @@
          Without them the name refuses to give up width and the right-hand
          controls ride over it instead. -->
     <Button href="/" variant="plain" class="flex min-w-0 items-center gap-2 text-foreground hover:opacity-80">
-      <img src={logo} alt="" width="28" height="28" class="h-7 w-auto shrink-0" />
+      <InstanceLogo width={28} height={28} class="h-7 w-auto shrink-0" />
       <span class="truncate text-xl font-bold tracking-tight">{appName}</span>
     </Button>
 

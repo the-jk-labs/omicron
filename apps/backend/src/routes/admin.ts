@@ -259,6 +259,8 @@ async function instanceSnapshot() {
     sessionSecretManaged: sessionSecretManaged(),
     bannerText: await setup.getBannerText(),
     bannerImageUrl: await setup.getBannerImageUrl(),
+    logoUrl: await setup.getBrandImageUrl("logo"),
+    faviconUrl: await setup.getBrandImageUrl("favicon"),
     ...(await setup.getInstancePublicSettings()),
   };
 }
@@ -334,6 +336,23 @@ adminRoutes.delete("/instance/banner", async (c) => {
   await setup.setBannerImageUrl(null);
   return c.json((await instanceSnapshot()) satisfies Reply<"AdminInstance">);
 });
+
+// The instance's own logo and favicon, stored and validated like the banner.
+for (const kind of ["logo", "favicon"] as const) {
+  adminRoutes.post(`/instance/${kind}`, async (c) => {
+    const viewer = requireAdmin(c);
+    const contentType = (c.req.header("content-type") ?? "").split(";")[0].trim();
+    const bytes = await readUpload(c, mediaService.MAX_IMAGE_BYTES, "Image too large (max 5 MB).");
+    await setup.setBrandImageUrl(kind, await mediaService.saveImage(viewer.id, bytes, contentType));
+    return c.json((await instanceSnapshot()) satisfies Reply<"AdminInstance">, 201);
+  });
+
+  adminRoutes.delete(`/instance/${kind}`, async (c) => {
+    requireAdmin(c);
+    await setup.setBrandImageUrl(kind, null);
+    return c.json((await instanceSnapshot()) satisfies Reply<"AdminInstance">);
+  });
+}
 
 // Rotate the auto-managed session secret. Restart-applied and signs everyone out
 // then, so it's a deliberate, separate action (not part of the settings save).
