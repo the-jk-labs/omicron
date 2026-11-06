@@ -42,6 +42,31 @@ test("errors are shown", async () => {
   await waitFor(() => screen.getByText("Too many requests"));
 });
 
+test("accessibility: the no-email page with its recovery note", async () => {
+  Object.assign(page.data, { instance: { emailEnabled: false } });
+  render(ForgotPasswordPage);
+  await expectAccessible();
+});
+
+test("with no email, whoever runs the server is given the recovery command", () => {
+  Object.assign(page.data, { instance: { emailEnabled: false } });
+  render(ForgotPasswordPage);
+  expect(screen.getByRole("heading", { name: "Do you run this server?" })).toBeInTheDocument();
+  expect(screen.getByText(/shell\s+access/)).toBeInTheDocument();
+  expect(screen.getByText("docker compose exec backend deno task reset-admin-password <username>")).toBeInTheDocument();
+});
+
+test("with email working, the recovery command stays out of sight", () => {
+  Object.assign(page.data, { instance: { emailEnabled: true } });
+  render(ForgotPasswordPage);
+  expect(screen.queryByText(/reset-admin-password/)).toBe(null);
+});
+
+test("an instance that hasn't said whether it has email doesn't show the command", () => {
+  render(ForgotPasswordPage);
+  expect(screen.queryByText(/reset-admin-password/)).toBe(null);
+});
+
 test("an instance that can't send email says so instead of offering the form", () => {
   Object.assign(page.data, { instance: { emailEnabled: false } });
   render(ForgotPasswordPage);

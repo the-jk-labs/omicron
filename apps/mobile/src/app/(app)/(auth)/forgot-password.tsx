@@ -30,6 +30,18 @@ export default function ForgotPassword() {
             {instance.contactEmail}
           </Text>
         )}
+        <View className="gap-2 rounded-card border border-border-card bg-background-alt p-4">
+          <Text size="sm" weight="semibold" accessibilityRole="header">
+            Do you run this server?
+          </Text>
+          <Text size="sm" tone="muted">
+            If you&apos;re locked out of an admin account, run this on the server to get a one-time reset link. It needs
+            shell access, so it won&apos;t work for anyone else.
+          </Text>
+          <Text size="xs" selectable>
+            docker compose exec backend deno task reset-admin-password &lt;username&gt;
+          </Text>
+        </View>
       </AuthShell>
     );
   }
