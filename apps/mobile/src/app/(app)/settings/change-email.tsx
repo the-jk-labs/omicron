@@ -2,14 +2,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { View } from "react-native";
 import { FormError } from "@/components/auth/auth-shell";
-import { PasswordInput } from "@/components/auth/password-input";
 import { useInstance } from "@/components/instance-provider";
+import { ConfirmPasswordForm } from "@/components/settings/confirm-password-form";
 import { FormScreen } from "@/components/settings/form-screen";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { useAutofillFields } from "@/hooks/use-autofill-fields";
-import { confirmPassword, emailChangeError, needsPassword } from "@/lib/auth/account";
+import { emailChangeError, needsPassword } from "@/lib/auth/account";
 import { useViewer } from "@/lib/auth/session";
 import { goBack } from "@/lib/navigation";
 import { queryKeys } from "@/lib/query/keys";
@@ -34,38 +34,6 @@ function useStepAction() {
     setError(problem);
   };
   return { busy, error, run };
-}
-
-function PasswordStep({ notice, onConfirmed }: { notice?: string; onConfirmed: () => void }) {
-  const { auth } = useInstance();
-  const { user } = useViewer();
-  const [password, setPassword] = useState("");
-  const autofill = useAutofillFields();
-  const { busy, error, run } = useStepAction();
-  const submit = () =>
-    run(async () => {
-      const failed = await confirmPassword(auth, user?.username ?? "", password);
-      if (!failed) onConfirmed();
-      return failed;
-    });
-  return (
-    <>
-      <Field label="Current password" hint={`Signing in as @${user?.username}.`}>
-        <PasswordInput
-          {...autofill("password")}
-          value={password}
-          onChangeText={setPassword}
-          autoFocus
-          autoComplete="current-password"
-          textContentType="password"
-        />
-      </Field>
-      <FormError message={error ?? notice ?? null} />
-      <Button variant="solid" loading={busy} disabled={!password} onPress={() => void submit()}>
-        Continue
-      </Button>
-    </>
-  );
 }
 
 /** Asks for a code at `to`; resolves to the error to show, or null once sent. */
@@ -178,7 +146,9 @@ export default function ChangeEmail() {
 
   return (
     <FormScreen title="Change email">
-      {step.name === "password" && <PasswordStep notice={step.notice} onConfirmed={() => setStep({ name: "email" })} />}
+      {step.name === "password" && (
+        <ConfirmPasswordForm notice={step.notice} onConfirmed={() => setStep({ name: "email" })} />
+      )}
       {step.name === "email" && (
         <EmailStep onSent={(to) => setStep({ name: "code", sentTo: to })} onStalePassword={backToPassword} />
       )}
