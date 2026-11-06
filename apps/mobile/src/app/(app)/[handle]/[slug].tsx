@@ -109,6 +109,7 @@ export default function Reader() {
   const api = useApi();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
+  const [bodyShown, setBodyShown] = useState(false);
   const username = usernameFromHandle(handle);
   const {
     data: post,
@@ -152,15 +153,20 @@ export default function Reader() {
         <View className="gap-5 px-5 pt-2">
           <ReaderHeader post={post} />
 
-          <HtmlContent html={post.contentHtml} />
-          <TagList tags={post.tags} />
+          <HtmlContent html={post.contentHtml} onComplete={() => setBodyShown(true)} />
+          {/* After the body: nothing below it should hold up the screen opening. */}
+          {bodyShown && (
+            <>
+              <TagList tags={post.tags} />
 
-          <View className="border-t border-border pt-6">
-            <CommentsPreview post={post} />
-          </View>
+              <View className="border-t border-border pt-6">
+                <CommentsPreview post={post} />
+              </View>
+            </>
+          )}
         </View>
 
-        {(related.data?.length ?? 0) > 0 && (
+        {bodyShown && (related.data?.length ?? 0) > 0 && (
           <View className="mt-10 border-t border-border pt-6">
             <Text size="lg" weight="bold" className="px-5">
               Read next
