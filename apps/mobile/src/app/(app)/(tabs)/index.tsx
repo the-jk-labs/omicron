@@ -13,6 +13,7 @@ import { IconButton } from "@/components/ui/button";
 import { SwipePages } from "@/components/ui/swipe-pages";
 import { UnderlineTabs, type TabItem } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
+import { useFocusedBack } from "@/hooks/use-focused-back";
 import type { FeedTab } from "@/lib/api/endpoints";
 import { useViewer } from "@/lib/auth/session";
 import { homeFeed, useDefaultFeed, useFeedLangFilter } from "@/lib/prefs";
@@ -65,6 +66,8 @@ export default function Home() {
   const feeds = signedIn ? MEMBER_FEEDS : GUEST_FEEDS;
   const [chosen, setChosen] = useState<FeedTab | null>(null);
   const tab = homeFeed(chosen ?? defaultFeed, signedIn);
+  // Back from another feed returns to the default one first; only then does it leave the app.
+  useFocusedBack(tab !== homeFeed(defaultFeed, signedIn), () => setChosen(null));
   const pagerProgress = useSharedValue(
     Math.max(
       feeds.findIndex((feed) => feed.value === tab),
