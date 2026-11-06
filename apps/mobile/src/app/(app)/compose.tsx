@@ -2,7 +2,7 @@ import { CoreBridge, RichText, useBridgeState, useEditorBridge } from "@10play/t
 import type { Post } from "@omicron/contract";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams, usePreventRemove } from "expo-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TextInput, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useEditorCss } from "@/components/composer/editor-css";
@@ -21,6 +21,7 @@ import { Text } from "@/components/ui/text";
 import { useThemeColor } from "@/hooks/use-theme-colors";
 import { confirm } from "@/lib/dialogs/confirm";
 import { toast } from "@/lib/dialogs/toast";
+import { useComposerMounted } from "@/lib/editor/composer-preload";
 import { commandsOf, isOmicronState } from "@/lib/editor/editor-commands";
 import { editorHtml } from "@/lib/editor/editor-html";
 import { OmicronBridge } from "@/lib/editor/omicron-bridge";
@@ -82,6 +83,8 @@ function Composer({ post }: { post: Post | undefined }) {
     webviewBaseURL: `${origin}/`,
     onChange: () => composer.changed(),
   });
+  // The page's styles are set when it boots, and a preloaded editor can wait through a theme change.
+  useEffect(() => editor.injectCSS(css, "coreBridge"), [editor, css]);
   const bridgeState = useBridgeState(editor);
   const editorState = isOmicronState(bridgeState) ? bridgeState : undefined;
 
@@ -251,6 +254,7 @@ function Composer({ post }: { post: Post | undefined }) {
 
 /** New story (`/compose`), a draft or scheduled post (`?id=`), or a published post being edited. */
 export default function Compose() {
+  useComposerMounted();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const api = useApi();
   const {

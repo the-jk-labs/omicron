@@ -21,13 +21,19 @@ export function parseCached(html: string): Block[] {
 
 export const isParsed = (html: string) => parsed.has(html);
 
+// A parse can't be interrupted, so a very long body would stall the thread for a post that may never be opened.
+const LONG_BODY = 50_000;
+// Cards scrolled past fall off the front, so a fast fling doesn't leave a backlog of posts no longer on screen.
+const MAX_WAITING = 8;
+
 const queue: string[] = [];
 let scheduled = false;
 
 /** Parses `html` when the JS thread is idle, one body per idle slot, so opening the post skips the parse. */
 export function parseWhenIdle(html: string) {
-  if (!html || isParsed(html) || queue.includes(html)) return;
+  if (!html || html.length > LONG_BODY || isParsed(html) || queue.includes(html)) return;
   queue.push(html);
+  if (queue.length > MAX_WAITING) queue.shift();
   if (scheduled) return;
   scheduled = true;
   const step = () => {

@@ -264,9 +264,8 @@ const schema = z.object({
     .transform((v) => v.toLowerCase() !== "false")
     .default(true),
 
-  // Android App Links: lets the Omicron app open this instance's links. Only an
-  // instance the app is built for (omicron.blog) sets these; unset, the
-  // assetlinks.json route answers 404.
+  // Lets the Omicron Android app use this instance's passkeys, and open its links
+  // if the app is built for this domain. Unset, assetlinks.json answers 404.
   ANDROID_APP_ID: z.string().min(1).default("blog.omicron.app"),
   ANDROID_APP_CERT_FINGERPRINTS: z
     .string()

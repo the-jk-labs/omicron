@@ -2,7 +2,7 @@ import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { createContext, memo, use, useMemo, useState, type ReactNode } from "react";
+import { createContext, memo, use, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Platform, Pressable, ScrollView, Text as RNText, View } from "react-native";
 import Animated, { FadeIn, useAnimatedStyle, withTiming } from "react-native-reanimated";
 import { cn } from "tailwind-variants";
@@ -16,6 +16,7 @@ import { codeLanguageLabel } from "@/lib/html/code-languages";
 import { highlightCode, type TokenTone } from "@/lib/html/highlight";
 import { type Block, type Inline, type Marks } from "@/lib/html/parse";
 import { parseCached } from "@/lib/html/parse-cache";
+import { revealSteps } from "@/lib/html/reveal";
 import { MathView } from "./math-view";
 
 const MONO = Platform.select({ ios: "Menlo", default: "monospace" });
@@ -281,8 +282,39 @@ function Blocks({ blocks, compact }: { blocks: Block[]; compact?: boolean }) {
   );
 }
 
-/** A post body rendered natively from its sanitized HTML, styled like the web's `.prose-omicron`. */
-export const HtmlContent = memo(function HtmlContent({ html }: { html: string }) {
+// Longer than the slide-in, so the rest of the post never mounts in the middle of it.
+const FIRST_STEP_MS = 350;
+
+/** Shows the blocks a step at a time: the first at once, the rest in idle time once the screen has slid in. */
+function RevealedBlocks({ blocks, onComplete }: { blocks: Block[]; onComplete?: () => void }) {
+  const steps = useMemo(() => revealSteps(blocks), [blocks]);
+  const [step, setStep] = useState(0);
+  const last = steps.length - 1;
+  const done = step > last;
+
+  useEffect(() => {
+    if (done) return undefined;
+    const next = () => setStep((current) => current + 1);
+    if (step === 0) {
+      const timer = setTimeout(next, FIRST_STEP_MS);
+      return () => clearTimeout(timer);
+    }
+    const idle = requestIdleCallback(next);
+    return () => cancelIdleCallback(idle);
+  }, [step, done]);
+
+  useEffect(() => {
+    if (done) onComplete?.();
+  }, [done, onComplete]);
+
+  return <Blocks blocks={blocks.slice(0, steps[Math.min(step, last)])} />;
+}
+
+/**
+ * A post body rendered natively from its sanitized HTML, styled like the web's `.prose-omicron`. `onComplete` runs once
+ * all of it is showing, for whatever sits below it.
+ */
+export const HtmlContent = memo(function HtmlContent({ html, onComplete }: { html: string; onComplete?: () => void }) {
   const blocks = useMemo(() => parseCached(html), [html]);
-  return <Blocks blocks={blocks} />;
+  return <RevealedBlocks key={html} blocks={blocks} onComplete={onComplete} />;
 });

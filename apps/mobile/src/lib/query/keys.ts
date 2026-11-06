@@ -47,6 +47,8 @@ export const queryKeys = {
   blocked: ["blocked"] as const,
   webhookTokens: ["webhook-tokens"] as const,
   sessions: ["sessions"] as const,
+  passkeys: ["passkeys"] as const,
+  passkeysAvailable: ["passkeys-available"] as const,
 
   adminReports: (status: "open" | "resolved") => ["admin-reports", status] as const,
   adminUsers: (q: string, filter: string) => ["admin-users", q, filter] as const,

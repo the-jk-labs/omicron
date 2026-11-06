@@ -1,8 +1,9 @@
 import * as Haptics from "expo-haptics";
 import { useState } from "react";
 import { Pressable, ScrollView, View, type LayoutChangeEvent } from "react-native";
-import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, withTiming, type SharedValue } from "react-native-reanimated";
 import { cn } from "tailwind-variants";
+import { markerAt } from "@/lib/swipe-pages";
 import { Icon, type IconName } from "./icon";
 import { Text } from "./text";
 
@@ -30,8 +31,15 @@ function TabCount({ count, selected }: { count: number; selected: boolean }) {
   );
 }
 
-/** Measures each tab so the active marker can slide to it on the UI thread. `inset` shortens it to the middle. */
-function useActiveLayout(value: string, inset = 0) {
+/**
+ * Measures each tab so the active marker can slide to it on the UI thread. `inset` shortens it to the middle. With
+ * `follow`, it tracks a pager's position instead, moving with the finger.
+ */
+function useActiveLayout(
+  value: string,
+  inset = 0,
+  follow?: { order: readonly string[]; progress: SharedValue<number> },
+) {
   const [layouts, setLayouts] = useState<Record<string, Layout>>({});
   const onLayout = (key: string) => (event: LayoutChangeEvent) => {
     const { x, width } = event.nativeEvent.layout;
@@ -40,15 +48,22 @@ function useActiveLayout(value: string, inset = 0) {
     );
   };
   const active = layouts[value];
-  const markerStyle = useAnimatedStyle(() =>
-    active
+  const measured = follow?.order.flatMap((key) => layouts[key] ?? []);
+  const followed = measured?.length === follow?.order.length ? measured : undefined;
+  const progress = follow?.progress;
+  const markerStyle = useAnimatedStyle(() => {
+    if (followed && followed.length > 0 && progress) {
+      const marker = markerAt(progress.get(), followed, inset);
+      return { opacity: 1, width: marker.width, transform: [{ translateX: marker.x }] };
+    }
+    return active
       ? {
           opacity: 1,
           width: withTiming(active.width * (1 - 2 * inset), TIMING),
           transform: [{ translateX: withTiming(active.x + active.width * inset, TIMING) }],
         }
-      : { opacity: 0 },
-  );
+      : { opacity: 0 };
+  });
   return { onLayout, markerStyle };
 }
 
@@ -96,8 +111,18 @@ export function PillTabs<T extends string>({ tabs, value, onChange, className }:
  * Full-width underlined tabs splitting a screen's content (feeds, profile sections), as native apps do. Pills
  * stay for choosing a setting.
  */
-export function UnderlineTabs<T extends string>({ tabs, value, onChange, className }: TabsProps<T>) {
-  const { onLayout, markerStyle } = useActiveLayout(value, 0.2);
+export function UnderlineTabs<T extends string>({
+  tabs,
+  value,
+  onChange,
+  className,
+  progress,
+}: TabsProps<T> & { progress?: SharedValue<number> }) {
+  const { onLayout, markerStyle } = useActiveLayout(
+    value,
+    0.2,
+    progress && { order: tabs.map((tab) => tab.value), progress },
+  );
 
   return (
     <View accessibilityRole="tablist" className={cn("flex-row border-b border-border", className)}>
@@ -128,7 +153,7 @@ export function UnderlineTabs<T extends string>({ tabs, value, onChange, classNa
           </Pressable>
         );
       })}
-      <Animated.View className="absolute -bottom-px left-0 h-[3px] rounded-full bg-foreground" style={markerStyle} />
+      <Animated.View className="absolute -bottom-px left-0 h-0.75 rounded-full bg-foreground" style={markerStyle} />
     </View>
   );
 }

@@ -48,3 +48,8 @@ coverage/
 
 # editor bundle: only the generated module is committed
 editor-web/build/index.html
+
+# signing keys downloaded from EAS
+credentials.json
+credentials/
+*.keystore

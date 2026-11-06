@@ -57,6 +57,25 @@ describe("parseWhenIdle", () => {
     expect(parseHtml).toHaveBeenCalledTimes(2);
   });
 
+  test("leaves a very long body for when it's opened", async () => {
+    const { parseCached, parseWhenIdle, isParsed } = await load();
+    const long = `<p>${"a".repeat(50_000)}</p>`;
+    parseWhenIdle(long);
+    expect(idle).toHaveLength(0);
+    expect(isParsed(long)).toBe(false);
+    expect(parseCached(long)).toHaveLength(1);
+  });
+
+  test("a fast scroll keeps the latest cards and drops those scrolled past", async () => {
+    const { parseWhenIdle, isParsed } = await load();
+    for (let i = 0; i < 12; i++) parseWhenIdle(`<p>${i}</p>`);
+    runIdle();
+    expect(parseHtml).toHaveBeenCalledTimes(8);
+    expect(isParsed("<p>3</p>")).toBe(false);
+    expect(isParsed("<p>4</p>")).toBe(true);
+    expect(isParsed("<p>11</p>")).toBe(true);
+  });
+
   test("ignores an empty body and one already parsed", async () => {
     const { parseCached, parseWhenIdle } = await load();
     parseCached("<p>a</p>");

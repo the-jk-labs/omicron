@@ -1,9 +1,11 @@
 import { router, Tabs } from "expo-router";
 import { TabBar, TabBarVisibilityProvider, type TabSpec } from "@/components/layout/tab-bar";
 import { useViewer } from "@/lib/auth/session";
+import { useComposerPreload } from "@/lib/editor/composer-preload";
 
 export default function TabsLayout() {
   const { user } = useViewer();
+  useComposerPreload(Boolean(user));
 
   // The web's MobileNav for members, with Stats where X keeps its own tools. Guests get Home, Search and Sign in.
   const tabs: TabSpec[] = user

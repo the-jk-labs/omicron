@@ -6,6 +6,7 @@ import { autoGrow } from "#lib/actions/autoGrow.svelte.js";
 let resized: (() => void) | null;
 let disconnected: boolean;
 beforeEach(() => {
+  document.body.replaceChildren();
   resized = null;
   disconnected = false;
   vi.stubGlobal(
@@ -27,6 +28,8 @@ function textarea(scrollHeight: () => number) {
   el.style.borderTopWidth = "1px";
   el.style.borderBottomWidth = "1px";
   el.style.borderStyle = "solid";
+  // In the document, as a mounted action's node is: a detached element has no computed styles.
+  document.body.append(el);
   vi.spyOn(el, "offsetHeight", "get").mockReturnValue(40);
   vi.spyOn(el, "scrollHeight", "get").mockImplementation(scrollHeight);
   return el;

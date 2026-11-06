@@ -29,7 +29,11 @@ async function setup(w: number, h: number, onCrop = vi.fn<(f: File) => void | Pr
   return { img, onCrop, surface: screen.getByRole("slider", { name: "Reposition photo" }) };
 }
 
-const translate = (img: HTMLImageElement) => img.style.transform;
+// Both offsets, always: the DOM may shorten `translate(-140px,0px)` to the equivalent `translate(-140px)`.
+const translate = (img: HTMLImageElement) => {
+  const [, x, y = "0px"] = /^translate\(([^,)]+)(?:,\s*([^)]+))?\)$/.exec(img.style.transform) ?? [];
+  return `translate(${x},${y})`;
+};
 
 test("a wide photo is scaled to cover the circle and centred", async () => {
   const { img } = await setup(560, 280);

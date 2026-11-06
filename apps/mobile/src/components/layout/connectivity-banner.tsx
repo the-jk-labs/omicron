@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-import { View } from "react-native";
 import Animated, { FadeInUp, FadeOutUp } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useInstance } from "@/components/instance-provider";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { PressableScale } from "@/components/ui/pressable";
@@ -43,27 +41,29 @@ function useBannerStatus(): Status {
 /** A slim pill under the status bar while requests are paused. */
 export function ConnectivityBanner() {
   const { name, origin } = useInstance();
-  const insets = useSafeAreaInsets();
   const status = useBannerStatus();
   if (!status) return null;
   const content = CONTENT[status];
 
   return (
-    <View pointerEvents="box-none" className="absolute inset-x-0 items-center" style={{ top: insets.top + 6 }}>
-      <Animated.View key={status} entering={FadeInUp.duration(200)} exiting={FadeOutUp.duration(160)}>
-        <PressableScale
-          accessibilityRole={status === "down" ? "button" : undefined}
-          accessibilityLiveRegion="polite"
-          disabled={status !== "down"}
-          onPress={() => void confirmInstance(origin)}
-          className="flex-row items-center gap-2 rounded-full bg-dark px-4 py-2 shadow-popover"
-        >
-          <Icon name={content.icon} size={14} className="text-background" />
-          <Text size="xs" weight="semibold" tone="inverse">
-            {content.text(name)}
-          </Text>
-        </PressableScale>
-      </Animated.View>
-    </View>
+    <Animated.View
+      key={status}
+      entering={FadeInUp.duration(200)}
+      exiting={FadeOutUp.duration(160)}
+      className="self-center"
+    >
+      <PressableScale
+        accessibilityRole={status === "down" ? "button" : undefined}
+        accessibilityLiveRegion="polite"
+        disabled={status !== "down"}
+        onPress={() => void confirmInstance(origin)}
+        className="flex-row items-center gap-2 rounded-full bg-dark px-4 py-2 shadow-popover"
+      >
+        <Icon name={content.icon} size={14} className="text-background" />
+        <Text size="xs" weight="semibold" tone="inverse">
+          {content.text(name)}
+        </Text>
+      </PressableScale>
+    </Animated.View>
   );
 }

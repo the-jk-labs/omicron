@@ -9,6 +9,7 @@ import { cn } from "tailwind-variants";
 import { useApi } from "@/components/instance-provider";
 import { Screen, ScreenHeader } from "@/components/layout/screen";
 import { UserAvatar } from "@/components/post/post-bits";
+import { LikeHeart } from "@/components/ui/fillable-icon";
 import { Icon } from "@/components/ui/icon";
 import { PressableScale } from "@/components/ui/pressable";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -24,8 +25,8 @@ import { usePagedQuery } from "@/lib/query/paged";
 function NotificationAvatar({ item }: { item: Notification }) {
   const liked = item.type === "like" || item.type === "comment_like";
   const badge = (
-    <View className="absolute -right-1 -bottom-1 size-5 items-center justify-center rounded-full border-2 border-background bg-background">
-      <Icon name={notificationIcon(item.type)} size={12} className={liked ? "text-destructive" : "text-foreground"} />
+    <View className="absolute -right-1 -bottom-1 size-6 items-center justify-center rounded-full border-2 border-background bg-background">
+      {liked ? <LikeHeart size={14} liked /> : <Icon name={notificationIcon(item.type)} size={14} />}
     </View>
   );
 
@@ -38,7 +39,13 @@ function NotificationAvatar({ item }: { item: Notification }) {
   }
   return (
     <Link href={profilePath(item.actor.username)} asChild>
-      <PressableScale accessibilityRole="link" accessibilityLabel={item.actor.displayName} pressedScale={0.94}>
+      {/* self-start: a row's children stretch to its height, and the badge is pinned to this one's bottom. */}
+      <PressableScale
+        accessibilityRole="link"
+        accessibilityLabel={item.actor.displayName}
+        pressedScale={0.94}
+        className="self-start"
+      >
         <UserAvatar name={item.actor.displayName} url={item.actor.avatarUrl} size={44} />
         {badge}
       </PressableScale>

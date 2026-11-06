@@ -1,6 +1,6 @@
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { parseHtml } from "@/lib/html/parse";
-import { typesetMath } from "@/lib/math/typeset";
+import { typesetMath, typesetResult, typesetWhenIdle } from "@/lib/math/typeset";
 
 // As the backend sends it: KaTeX's MathML with the TeX source as an annotation.
 const INLINE =
@@ -17,6 +17,70 @@ function formulaOf(html: string) {
   }
   throw new Error("no formula");
 }
+
+// The cache lasts the whole file, so each test uses formulas of its own.
+const mathOf = (id: string) => `<math xmlns="http://www.w3.org/1998/Math/MathML"><mi>${id}</mi></math>`;
+
+describe("typesetWhenIdle", () => {
+  const idle: (() => void)[] = [];
+  const runIdle = () => {
+    while (idle.length) idle.shift()!();
+  };
+  beforeEach(() => {
+    idle.length = 0;
+    vi.stubGlobal("requestIdleCallback", (callback: () => void) => idle.push(callback));
+  });
+
+  test("does nothing until idle, then one formula per idle slot in order", () => {
+    const [a, b] = [mathOf("a"), mathOf("b")];
+    const done: string[] = [];
+    typesetWhenIdle(a, false, () => done.push("a"));
+    typesetWhenIdle(b, false, () => done.push("b"));
+    expect(typesetResult(a, false)).toBeUndefined();
+    expect(idle).toHaveLength(1);
+
+    idle.shift()!();
+    expect(done).toEqual(["a"]);
+    expect(typesetResult(a, false)).toMatchObject({ svg: expect.any(String) });
+    expect(typesetResult(b, false)).toBeUndefined();
+
+    runIdle();
+    expect(done).toEqual(["a", "b"]);
+  });
+
+  test("a formula no longer on screen is never typeset", () => {
+    const [c, d] = [mathOf("c"), mathOf("d")];
+    const done = vi.fn<() => void>();
+    const cancel = typesetWhenIdle(c, false, done);
+    typesetWhenIdle(d, false, () => undefined);
+    cancel();
+    runIdle();
+    expect(done).not.toHaveBeenCalled();
+    expect(typesetResult(c, false)).toBeUndefined();
+    expect(typesetResult(d, false)).toBeDefined();
+  });
+
+  test("cancelling the last one leaves the queue able to start again", () => {
+    const [e, f] = [mathOf("e"), mathOf("f")];
+    typesetWhenIdle(e, false, () => undefined)();
+    runIdle();
+    typesetWhenIdle(f, false, () => undefined);
+    runIdle();
+    expect(typesetResult(f, false)).toBeDefined();
+  });
+
+  test("markup that can't be typeset still finishes, with null", () => {
+    const done = vi.fn<() => void>();
+    typesetWhenIdle("<div>not maths</div>", false, done);
+    runIdle();
+    expect(done).toHaveBeenCalledOnce();
+    expect(typesetResult("<div>not maths</div>", false)).toBeNull();
+  });
+
+  test("an empty formula has nothing to wait for", () => {
+    expect(typesetResult(" ", true)).toBeNull();
+  });
+});
 
 describe("typesetMath", () => {
   test("an inline formula becomes an SVG sized in em, with depth below the baseline", () => {

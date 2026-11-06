@@ -43,6 +43,14 @@ export async function confirmPassword(
   return null;
 }
 
+/** The signed-in devices. Better Auth only lists them to a sign-in from the last day, so an older one comes back locked. */
+export async function loadSessions(auth: InstanceAuthClient) {
+  const [list, current] = await Promise.all([auth.listSessions(), auth.getSession()]);
+  if (needsPassword(list.error)) return { locked: true as const };
+  if (list.error) throw new Error(list.error.message ?? "Couldn't load your devices.");
+  return { locked: false as const, items: list.data ?? [], current: current.data?.session.token ?? null };
+}
+
 /** A short, readable device name from a session's user agent ("Firefox on Android"). */
 export function describeUserAgent(userAgent: string | null | undefined): string {
   if (!userAgent) return "Unknown device";

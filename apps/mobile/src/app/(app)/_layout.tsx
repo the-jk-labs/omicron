@@ -3,10 +3,9 @@ import { router, Stack } from "expo-router";
 import { useEffect } from "react";
 import { SignInPrompt } from "@/components/auth/sign-in-prompt";
 import { InstanceProvider } from "@/components/instance-provider";
-import { ConnectivityBanner } from "@/components/layout/connectivity-banner";
 import { ScreenError } from "@/components/layout/screen-error";
 import { useStackOptions } from "@/components/layout/stack-options";
-import { UpdateBanner } from "@/components/layout/update-banner";
+import { TopBanners } from "@/components/layout/top-banners";
 import { SaveToListHost } from "@/components/lists/save-to-list";
 import { PostMenuHost } from "@/components/post/post-menu";
 import { ConfirmHost } from "@/components/ui/confirm";
@@ -50,8 +49,7 @@ export default function AppLayout() {
           {/* Alerts open from Home's header, over the tabs. */}
           <Stack.Screen name="notifications" />
         </Stack>
-        <UpdateBanner />
-        <ConnectivityBanner />
+        <TopBanners />
         <SignInPrompt />
         <SaveToListHost />
         <PostMenuHost />

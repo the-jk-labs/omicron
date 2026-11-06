@@ -8,6 +8,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { useApi } from "@/components/instance-provider";
 import { UserAvatar } from "@/components/post/post-bits";
 import { Button } from "@/components/ui/button";
+import { LikeHeart } from "@/components/ui/fillable-icon";
 import { Icon } from "@/components/ui/icon";
 import { PressableScale } from "@/components/ui/pressable";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
@@ -107,7 +108,7 @@ const CommentRow = memo(function CommentRow({ comment, thread }: { comment: Comm
             className="flex-row items-center gap-1"
             onPress={() => requireSignIn(() => like.mutate({ id: comment.id, on: !comment.liked }))}
           >
-            <Icon name="heart" size={15} className={comment.liked ? "text-destructive" : "text-muted-foreground"} />
+            <LikeHeart size={15} liked={comment.liked} />
             {comment.likeCount > 0 && (
               <Text size="xs" tone="muted">
                 {comment.likeCount}
