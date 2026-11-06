@@ -2,6 +2,7 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
+import { useSharedValue } from "react-native-reanimated";
 import { useUniwind } from "uniwind";
 import { PasskeyPrompt } from "@/components/auth/passkey-prompt";
 import { useApi, useInstance } from "@/components/instance-provider";
@@ -9,6 +10,7 @@ import { Screen } from "@/components/layout/screen";
 import { PostList } from "@/components/post/post-list";
 import { CountBadge } from "@/components/ui/badge";
 import { IconButton } from "@/components/ui/button";
+import { SwipePages } from "@/components/ui/swipe-pages";
 import { UnderlineTabs, type TabItem } from "@/components/ui/tabs";
 import { Text } from "@/components/ui/text";
 import type { FeedTab } from "@/lib/api/endpoints";
@@ -27,18 +29,10 @@ const MEMBER_FEEDS: TabItem<FeedTab>[] = [
 ];
 const GUEST_FEEDS = MEMBER_FEEDS.slice(1);
 
-export default function Home() {
+/** One feed's list. Each keeps its own query and scroll position while the others are in view. */
+function FeedPage({ tab }: { tab: FeedTab }) {
   const api = useApi();
-  const { name } = useInstance();
-  const { theme } = useUniwind();
-  const { signedIn } = useViewer();
-  const [defaultFeed] = useDefaultFeed();
   const [langFilter] = useFeedLangFilter();
-  const unread = useUnreadCount(signedIn);
-  const feeds = signedIn ? MEMBER_FEEDS : GUEST_FEEDS;
-  const [chosen, setChosen] = useState<FeedTab | null>(null);
-  const tab = homeFeed(chosen ?? defaultFeed, signedIn);
-
   // The language filter applies to the public timelines only; For you is already the reader's own choice.
   const langs = tab === "for-you" ? null : langFilter;
   const query = usePagedQuery(queryKeys.feed(tab, langs), (cursor) =>
@@ -47,6 +41,35 @@ export default function Home() {
       : tab === "local"
         ? api.localTimeline(cursor, langs)
         : api.globalTimeline(cursor, langs),
+  );
+  return (
+    <PostList
+      query={query}
+      empty={
+        tab === "for-you"
+          ? { title: "Your feed is empty", description: "Follow writers and tags to fill it." }
+          : { title: "No posts yet", description: "Nothing has been published here yet." }
+      }
+    />
+  );
+}
+
+const renderFeed = (tab: FeedTab) => <FeedPage tab={tab} />;
+
+export default function Home() {
+  const { name } = useInstance();
+  const { theme } = useUniwind();
+  const { signedIn } = useViewer();
+  const [defaultFeed] = useDefaultFeed();
+  const unread = useUnreadCount(signedIn);
+  const feeds = signedIn ? MEMBER_FEEDS : GUEST_FEEDS;
+  const [chosen, setChosen] = useState<FeedTab | null>(null);
+  const tab = homeFeed(chosen ?? defaultFeed, signedIn);
+  const pagerProgress = useSharedValue(
+    Math.max(
+      feeds.findIndex((feed) => feed.value === tab),
+      0,
+    ),
   );
 
   return (
@@ -76,15 +99,15 @@ export default function Home() {
           <IconButton icon="search" label="Search" onPress={() => router.push("/search")} />
         </View>
       </View>
-      <UnderlineTabs tabs={feeds} value={tab} onChange={setChosen} />
-      <PostList
-        key={tab}
-        query={query}
-        empty={
-          tab === "for-you"
-            ? { title: "Your feed is empty", description: "Follow writers and tags to fill it." }
-            : { title: "No posts yet", description: "Nothing has been published here yet." }
-        }
+      <UnderlineTabs tabs={feeds} value={tab} onChange={setChosen} progress={pagerProgress} />
+      {/* Remounted when signing in or out changes which feeds exist, so the pager starts on the right one. */}
+      <SwipePages
+        key={feeds.length}
+        pages={feeds.map((feed) => feed.value)}
+        value={tab}
+        onChange={setChosen}
+        renderPage={renderFeed}
+        progress={pagerProgress}
       />
       {signedIn && <PasskeyPrompt />}
     </Screen>
