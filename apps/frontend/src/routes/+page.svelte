@@ -231,7 +231,7 @@
 {/if}
 
 <Tabs.Root bind:value={activeTab} onValueChange={selectTab} class="w-full">
-  <Tabs.List class="mb-2 flex items-center gap-6 text-sm font-medium">
+  <Tabs.List class="mb-2 flex flex-wrap items-center gap-x-6 text-sm font-medium">
     {#each feeds as feed (feed.value)}
       <Tabs.Trigger
         value={feed.value}

@@ -56,7 +56,7 @@
         <p class="text-xs text-muted-foreground">Filter the languages in your Local and Global feeds.</p>
       </div>
       <div
-        class="inline-flex shrink-0 items-center gap-1 self-start rounded-input border border-input bg-background-alt p-1 shadow-btn sm:self-center"
+        class="inline-flex max-w-full shrink-0 flex-wrap items-center gap-1 self-start rounded-input border border-input bg-background-alt p-1 shadow-btn sm:self-center"
       >
         {#each langModeOptions as opt (opt.value)}
           <ButtonPrimitive.Root

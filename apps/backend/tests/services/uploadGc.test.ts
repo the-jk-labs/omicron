@@ -17,12 +17,14 @@ vi.mock(import("@/db/repositories/instanceSettings.ts"));
 import { config } from "@/config.ts";
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
 import * as uploadsRepo from "@/db/repositories/uploads.ts";
+import { SETUP_KEYS } from "@/services/instanceSetup.ts";
 import { cachePath } from "@/services/shareImage.ts";
 import { startUploadGcSweeper, sweep } from "@/services/uploadGc.ts";
 
 const NOW = new Date("2026-06-01T00:00:00.000Z");
 const A = "0b0e7c4e-5d2a-4e0f-9f53-5f5a4f0d3a11";
 const B = "1c1f8d5f-6e3b-4f10-8a64-6a6b5a1e4b22";
+const C = "2d209e60-7f4c-4a21-9b75-7b7c6b2f5c33";
 
 let tmp: string;
 const originalUploads = config.UPLOADS_DIR;
@@ -54,6 +56,17 @@ test("refreshes references including the instance banner", async () => {
   vi.mocked(settingsRepo.get).mockResolvedValue(`/api/uploads/${B}.jpg` as never);
   await sweep();
   expect(vi.mocked(uploadsRepo.refreshReferenced).mock.calls[0][0].toSorted()).toEqual([`${A}.png`, `${B}.jpg`]);
+});
+
+test("an instance's logo and favicon are never reaped as unreferenced", async () => {
+  const stored: Record<string, string> = {
+    [SETUP_KEYS.logoUrl]: `/api/uploads/${B}.jpg`,
+    [SETUP_KEYS.faviconUrl]: `/api/uploads/${C}.png`,
+  };
+  vi.mocked(settingsRepo.get).mockImplementation(async (key) => stored[key]);
+  await sweep();
+  const referenced = vi.mocked(uploadsRepo.refreshReferenced).mock.lastCall?.[0];
+  expect(referenced).toEqual(expect.arrayContaining([`${A}.png`, `${B}.jpg`, `${C}.png`]));
 });
 
 test("a banner that is not an upload adds nothing", async () => {

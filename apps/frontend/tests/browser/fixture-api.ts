@@ -15,6 +15,8 @@ const instance: InstanceInfo = {
   inviteOnly: false,
   bannerText: null,
   bannerImageUrl: null,
+  logoUrl: null,
+  faviconUrl: null,
   aboutHtml: null,
   rulesHtml: null,
   privacyPolicyHtml: null,
@@ -66,6 +68,153 @@ const imported = post({
 const transferTableDraft = post({ id: "transfer-table", status: "draft", contentHtml: targetTableHtml });
 const emptyPage = { items: [], nextCursor: null };
 
+// Populated data for the route sweep, so its checks see real rows rather than empty states.
+const TIME = "2026-01-01T12:00:00.000Z";
+const adminUser: Me = { ...user, isAdmin: true };
+const tag = { id: "tag-1", slug: "design", name: "Design" };
+const actor = { id: "author-2", username: "bob", displayName: "Bob", avatarUrl: null, remote: false };
+const list = {
+  id: "list-1",
+  title: "Reading list",
+  description: "Articles worth keeping",
+  visibility: "public",
+  isReadLater: false,
+  itemCount: 1,
+  createdAt: TIME,
+};
+const member = {
+  id: "author-2",
+  username: "bob",
+  displayName: "Bob",
+  bio: "",
+  publicEmail: "",
+  customSection: "",
+  avatarUrl: null,
+  isAdmin: false,
+  isModerator: false,
+  email: "bob@example.test",
+  emailVerified: false,
+  suspended: false,
+  createdAt: TIME,
+};
+const report = {
+  id: "report-1",
+  subjectType: "post",
+  reason: "Spam",
+  status: "open",
+  resolution: "",
+  createdAt: TIME,
+  resolvedAt: null,
+  reporter: { username: "bob", displayName: "Bob" },
+  postId: article.id,
+  postTitle: article.title,
+  postAuthor: "ada",
+  userId: "author-1",
+  userUsername: "ada",
+  userDisplayName: "Ada",
+};
+const totals = { views: 12, likes: 3, comments: 1, followers: 2 };
+const fixtures: Record<string, unknown> = {
+  "/api/users/ada": {
+    user,
+    counts: { followers: 2, following: 1, posts: 1 },
+    followState: "none",
+    isFollowing: false,
+    isMuted: false,
+    isBlocked: false,
+    locked: false,
+  },
+  "/api/users/ada/posts": { items: [article], nextCursor: null },
+  "/api/users/ada/recommendations": emptyPage,
+  "/api/lists/user/ada": { lists: [list] },
+  "/api/lists": { lists: [list] },
+  "/api/lists/read-later": { list: { ...list, id: "read-later", title: "Read later", isReadLater: true } },
+  "/api/lists/list-1": { list, isOwner: true, owner: { username: "ada", displayName: "Ada" } },
+  "/api/lists/list-1/items": { items: [article], nextCursor: null },
+  "/api/tags/design": { tag, postCount: 1, followerCount: 2, isFollowing: false },
+  "/api/tags/design/posts": { items: [article], nextCursor: null },
+  "/api/tags/following": { tags: [{ ...tag, postCount: 1 }] },
+  "/api/search": { posts: [article], people: [actor], tags: [{ ...tag, postCount: 1 }] },
+  "/api/notifications": {
+    items: [
+      {
+        id: "n1",
+        type: "like",
+        actor,
+        postId: article.id,
+        postTitle: article.title,
+        commentSnippet: null,
+        read: false,
+        createdAt: TIME,
+      },
+    ],
+    nextCursor: null,
+  },
+  "/api/dashboard": {
+    onInstanceViews: true,
+    totals,
+    period: { days: 30, ...totals },
+    series: [{ date: "2026-01-01", ...totals }],
+    posts: [],
+  },
+  "/api/posts/mine": { items: [draft], nextCursor: null },
+  "/api/posts/mine/counts": { draft: 1, scheduled: 0, published: 1 },
+  "/api/users/me/follow-requests": { items: [{ requestId: "r1", actor, createdAt: TIME }] },
+  "/api/users/me/muted": { items: [actor] },
+  "/api/users/me/blocked": { items: [] },
+  "/api/webhooks/tokens": { tokens: [{ id: "t1", label: "Build hook", lastUsedAt: null, createdAt: TIME }] },
+  // Having one keeps the passkey prompt from opening mid-test; the sweep opens it on purpose.
+  "/api/auth/passkey/list-user-passkeys": [
+    { id: "pk1", name: "Laptop", credentialID: "pk1", backedUp: true, deviceType: "multiDevice", createdAt: TIME },
+  ],
+  "/api/auth/list-sessions": [],
+  "/api/admin/reports": { reports: [report], openCount: 1 },
+  "/api/admin/users": { users: [member], nextCursor: null, total: 1, filteredTotal: 1 },
+  "/api/admin/users/deleted": { users: [], nextCursor: null, total: 0, filteredTotal: 0 },
+  "/api/admin/domains": { domains: [{ domain: "spam.example", reason: "Spam", createdAt: TIME }] },
+  "/api/admin/email": {
+    mode: "console",
+    from: "",
+    smtp: { port: 587, tls: true, hasPassword: false },
+    relay: { provider: "resend", hasApiKey: false },
+    dkim: { selector: "omicron", hasKey: false },
+  },
+  "/api/admin/security": { anubisProtection: false, anubisManaged: false },
+  "/api/admin/security/access-rules": { rules: [] },
+  "/api/admin/seo": { indexingEnabled: true, verification: {}, indexNowKey: null },
+  "/api/admin/unsplash": { configured: false },
+  "/api/admin/umami": { enabled: false, websiteId: "" },
+  "/api/admin/settings": { onInstanceViews: true },
+  "/api/admin/signups": {
+    inviteOnly: true,
+    invites: [
+      { id: "i1", expiresAt: "2030-01-08T00:00:00.000Z", usedAt: null, usedByUsername: null, createdAt: TIME },
+      { id: "i2", expiresAt: "2030-01-08T00:00:00.000Z", usedAt: TIME, usedByUsername: "bob", createdAt: TIME },
+    ],
+  },
+  "/api/admin/instance": {
+    appName: "Omicron",
+    appDomain: "blog.example",
+    federationEnabled: false,
+    federationRunning: false,
+    sessionSecretManaged: false,
+    bannerText: null,
+    bannerImageUrl: null,
+    logoUrl: null,
+    faviconUrl: null,
+    about: "",
+    rules: "",
+    privacyPolicy: "",
+    contactEmail: "",
+    contactUrl: "",
+    abuseEmail: "",
+    statusUrl: "",
+  },
+  "/api/admin/tags/aliases": { aliases: [] },
+  "/api/photos/providers": { providers: [] },
+  "/api/oauth/connections": { connections: [] },
+};
+
 createServer((request, response) => {
   const path = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
   const send = (body: unknown, status = 200) => {
@@ -81,9 +230,28 @@ createServer((request, response) => {
     request.resume();
     return send({ post: { id: draft.id, slug: draft.slug } });
   }
+  if (request.method === "POST" && path === "/api/notifications/read") return send({ ok: true });
+  if (path === "/api/auth/passkey/generate-authenticate-options") {
+    // Conditional sign-in asks on load; a browser with no passkey simply never answers.
+    request.resume();
+    return send({ challenge: "AAAA", rpId: "127.0.0.1", allowCredentials: [], userVerification: "preferred" });
+  }
   if (request.method !== "GET") return send({ error: "Unexpected fixture write" }, 501);
-  if (path === "/api/instance") return send(instance);
-  if (path === "/api/me") return send({ user: request.headers.cookie?.includes("a11y-user=1") ? user : null });
+  const cookie = request.headers.cookie ?? "";
+  if (path === "/api/instance")
+    return send({
+      ...instance,
+      inviteOnly: cookie.includes("a11y-invite-only=1"),
+      ...(cookie.includes("a11y-branded=1") && {
+        logoUrl: "/api/uploads/chart.gif",
+        faviconUrl: "/api/uploads/chart.gif",
+      }),
+    });
+  if (path === "/api/me") {
+    if (cookie.includes("a11y-admin=1")) return send({ user: adminUser });
+    return send({ user: cookie.includes("a11y-user=1") ? user : null });
+  }
+  if (path in fixtures) return send(fixtures[path]);
   if (path === "/api/seo") return send({ indexingEnabled: true, verification: {} });
   if (path === "/api/site") return send({ websiteId: null });
   if (path === "/api/auth/get-session") return send(null);

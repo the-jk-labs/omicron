@@ -220,7 +220,7 @@
 {#if error}<p class="mb-4 text-sm text-destructive">{error}</p>{/if}
 
 <Tabs.Root value={active} onValueChange={ensureLoaded} class="w-full">
-  <Tabs.List class="mb-2 flex items-center gap-6 border-b border-border text-sm font-medium">
+  <Tabs.List class="mb-2 flex flex-wrap items-center gap-x-6 border-b border-border text-sm font-medium">
     {#each tabs as tab (tab.value)}
       <Tabs.Trigger
         value={tab.value}

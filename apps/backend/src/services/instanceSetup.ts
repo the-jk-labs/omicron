@@ -23,6 +23,8 @@ export const SETUP_KEYS = {
   federationEnabled: "instance.federationEnabled",
   bannerText: "instance.bannerText",
   bannerImageUrl: "instance.bannerImageUrl",
+  logoUrl: "instance.logoUrl",
+  faviconUrl: "instance.faviconUrl",
   about: "instance.about",
   aboutHtml: "instance.aboutHtml",
   rules: "instance.rules",
@@ -228,6 +230,19 @@ export async function setBannerImageUrl(url: string | null): Promise<void> {
   await settingsRepo.set(SETUP_KEYS.bannerImageUrl, url ?? "");
 }
 
+export type BrandImage = "logo" | "favicon";
+const BRAND_KEYS = { logo: SETUP_KEYS.logoUrl, favicon: SETUP_KEYS.faviconUrl } as const;
+
+// The admin's own logo or favicon, or null for the built-in one.
+export async function getBrandImageUrl(kind: BrandImage): Promise<string | null> {
+  return (await settingsRepo.get<string>(BRAND_KEYS[kind]))?.trim() || null;
+}
+
+// Like the banner, clearing leaves the file for the upload GC to reap.
+export async function setBrandImageUrl(kind: BrandImage, url: string | null): Promise<void> {
+  await settingsRepo.set(BRAND_KEYS[kind], url ?? "");
+}
+
 // A public snapshot of the instance's identity, safe to expose unauthenticated.
 //
 // `emailEnabled` is here rather than behind the admin API because the pages
@@ -250,6 +265,8 @@ export async function publicInfo(): Promise<{
   inviteOnly: boolean;
   bannerText: string | null;
   bannerImageUrl: string | null;
+  logoUrl: string | null;
+  faviconUrl: string | null;
   aboutHtml: string | null;
   rulesHtml: string | null;
   privacyPolicyHtml: string | null;
@@ -268,6 +285,8 @@ export async function publicInfo(): Promise<{
     inviteOnly,
     bannerText,
     bannerImageUrl,
+    logoUrl,
+    faviconUrl,
     aboutHtml,
     rulesHtml,
     privacyPolicyHtml,
@@ -283,6 +302,8 @@ export async function publicInfo(): Promise<{
     inviteOnlyEnabled(),
     getBannerText(),
     getBannerImageUrl(),
+    getBrandImageUrl("logo"),
+    getBrandImageUrl("favicon"),
     settingsRepo.get<string>(SETUP_KEYS.aboutHtml),
     settingsRepo.get<string>(SETUP_KEYS.rulesHtml),
     settingsRepo.get<string>(SETUP_KEYS.privacyPolicyHtml),
@@ -301,6 +322,8 @@ export async function publicInfo(): Promise<{
     inviteOnly,
     bannerText,
     bannerImageUrl,
+    logoUrl,
+    faviconUrl,
     aboutHtml: aboutHtml?.trim() || null,
     rulesHtml: rulesHtml?.trim() || null,
     privacyPolicyHtml: privacyPolicyHtml?.trim() || null,

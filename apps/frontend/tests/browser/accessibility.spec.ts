@@ -238,7 +238,9 @@ for (const path of ["/", "/login", articlePath, composerPath]) {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(1);
-    await expect(page.getByRole("button", { name: "Image display", exact: true })).toBeInViewport();
+    await expect(
+      page.getByRole("button", { name: path === "/login" ? "Image display" : "Menu", exact: true }),
+    ).toBeInViewport();
   });
 }
 

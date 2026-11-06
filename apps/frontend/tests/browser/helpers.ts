@@ -100,7 +100,10 @@ export async function signedIn(page: Page) {
 export async function ready(page: Page, path: string) {
   await page.goto(path);
   await expect(page.getByRole("main")).toBeVisible();
-  const trigger = page.getByRole("button", { name: "Image display", exact: true });
+  // Below `sm` the image setting lives in the header's menu, except in the minimal auth header.
+  const menuButton = page.getByRole("button", { name: "Menu", exact: true });
+  const phoneMenu = (page.viewportSize()?.width ?? 1280) < 640 && (await menuButton.count()) > 0;
+  const trigger = phoneMenu ? menuButton : page.getByRole("button", { name: "Image display", exact: true });
   const menu = page.getByRole("menuitemradio", { name: "Hide images", exact: true });
   // SSR buttons are actionable before hydration; retry only this readiness probe.
   await expect

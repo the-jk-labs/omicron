@@ -4,8 +4,8 @@
   import { page } from "$app/state";
   import { Checkbox, Label, RadioGroup } from "bits-ui";
   import { endpoints, ApiError } from "#lib/api/index.js";
-  import logo from "#lib/assets/omicron.svg";
   import Icon from "#lib/components/Icon.svelte";
+  import InstanceLogo from "#lib/components/InstanceLogo.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import type { EmailInput, InstanceInfo } from "#lib/types.js";
 
@@ -146,7 +146,7 @@
 <svelte:head><title>Set up your instance</title></svelte:head>
 
 <div class="mb-8 text-center">
-  <div class="mb-4 flex justify-center"><img src={logo} alt="" class="h-12 w-auto" /></div>
+  <div class="mb-4 flex justify-center"><InstanceLogo class="h-12 w-auto" /></div>
   <h1 class="text-2xl font-bold tracking-tight text-foreground">Welcome, let's set up</h1>
   <p class="mt-1.5 text-sm text-muted-foreground">A few details and your instance is live. Nothing to edit on disk.</p>
 </div>
@@ -187,7 +187,13 @@
   {:else if step === 1}
     <div class="flex flex-col gap-1.5">
       <Label.Root for="displayName" class={labelClass}>Display name</Label.Root>
-      <input id="displayName" bind:value={displayName} maxlength={MAX_DISPLAY_NAME_LEN} class={field} />
+      <input
+        id="displayName"
+        bind:value={displayName}
+        autocomplete="name"
+        maxlength={MAX_DISPLAY_NAME_LEN}
+        class={field}
+      />
       <p class="text-xs text-muted-foreground">
         {displayName.length}/{MAX_DISPLAY_NAME_LEN}. Truncated with ellipsis in the feed; full name shows on hover.
       </p>

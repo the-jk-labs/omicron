@@ -1,11 +1,10 @@
-import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import { useSharedValue } from "react-native-reanimated";
-import { useUniwind } from "uniwind";
 import { PasskeyPrompt } from "@/components/auth/passkey-prompt";
 import { useApi, useInstance } from "@/components/instance-provider";
+import { InstanceLogo } from "@/components/layout/instance-logo";
 import { Screen } from "@/components/layout/screen";
 import { PostList } from "@/components/post/post-list";
 import { CountBadge } from "@/components/ui/badge";
@@ -20,8 +19,6 @@ import { homeFeed, useDefaultFeed, useFeedLangFilter } from "@/lib/prefs";
 import { queryKeys } from "@/lib/query/keys";
 import { useUnreadCount } from "@/lib/query/notifications";
 import { usePagedQuery } from "@/lib/query/paged";
-import logoDark from "../../../../assets/images/splash-dark.png";
-import logoLight from "../../../../assets/images/splash-light.png";
 
 const MEMBER_FEEDS: TabItem<FeedTab>[] = [
   { value: "for-you", label: "For you", icon: "sparkles" },
@@ -59,7 +56,6 @@ const renderFeed = (tab: FeedTab) => <FeedPage tab={tab} />;
 
 export default function Home() {
   const { name } = useInstance();
-  const { theme } = useUniwind();
   const { signedIn } = useViewer();
   const [defaultFeed] = useDefaultFeed();
   const unread = useUnreadCount(signedIn);
@@ -81,7 +77,9 @@ export default function Home() {
           width so the name stays centred. */}
       <View className="h-14 flex-row items-center px-2">
         <View className="w-24 items-start">
-          <Image source={theme === "dark" ? logoDark : logoLight} style={{ width: 32, height: 32, marginLeft: 6 }} />
+          <View style={{ marginLeft: 6 }}>
+            <InstanceLogo size={32} />
+          </View>
         </View>
         <Text size="lg" weight="bold" numberOfLines={1} className="flex-1 text-center">
           {name}

@@ -96,7 +96,7 @@
 </script>
 
 <Tabs.Root value="muted" onValueChange={ensureLoaded} class="w-full">
-  <Tabs.List class="mb-2 flex items-center gap-6 text-sm font-medium">
+  <Tabs.List class="mb-2 flex flex-wrap items-center gap-x-6 text-sm font-medium">
     {#each panels as p (p.value)}
       <Tabs.Trigger
         value={p.value}

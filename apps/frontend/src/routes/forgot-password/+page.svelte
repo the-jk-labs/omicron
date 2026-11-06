@@ -2,9 +2,9 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { Label } from "bits-ui";
-  import logo from "#lib/assets/omicron.svg";
   import { authClient } from "#lib/auth-client.js";
   import Icon from "#lib/components/Icon.svelte";
+  import InstanceLogo from "#lib/components/InstanceLogo.svelte";
   import PageTitle from "#lib/components/PageTitle.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import type { InstanceInfo } from "#lib/types.js";
@@ -61,6 +61,16 @@
       <span class="font-medium text-foreground">{instance?.domain ?? "this instance"}</span> to reset your password or to
       configure email.
     </p>
+    <div class="mt-6 w-full rounded-card border border-border bg-background-alt p-4 text-left">
+      <h2 class="text-sm font-semibold text-foreground">Do you run this server?</h2>
+      <p class="mt-1 text-sm leading-relaxed text-muted-foreground">
+        If you're locked out of an admin account, run this on the server to get a one-time reset link. It needs shell
+        access, so it won't work for anyone else.
+      </p>
+      <code class="mt-2 block rounded-input bg-muted px-3 py-2 text-xs break-all text-foreground">
+        docker compose exec backend deno task reset-admin-password &lt;username&gt;
+      </code>
+    </div>
     <Button href="/login" variant="outline" class="mt-6 h-11 w-full">Back to sign in</Button>
   </div>
 {:else if sent}
@@ -77,7 +87,7 @@
   </div>
 {:else}
   <div class="mb-8 text-center">
-    <div class="mb-4 flex justify-center"><img src={logo} alt="" class="h-12 w-auto" /></div>
+    <div class="mb-4 flex justify-center"><InstanceLogo class="h-12 w-auto" /></div>
     <h1 class="text-2xl font-bold tracking-tight text-foreground">Forgot your password?</h1>
     <p class="mt-1.5 text-sm text-muted-foreground">Enter your email and we'll send you a reset link.</p>
   </div>

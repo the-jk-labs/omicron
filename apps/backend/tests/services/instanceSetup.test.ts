@@ -18,6 +18,7 @@ import {
   getAppDomain,
   getAppName,
   getBannerImageUrl,
+  getBrandImageUrl,
   getBannerText,
   getFederationEnabled,
   getInstancePublicSettings,
@@ -27,6 +28,7 @@ import {
   publicInfo,
   SETUP_KEYS,
   setBannerImageUrl,
+  setBrandImageUrl,
   setFederationEnabled,
   setInstanceIdentity,
 } from "@/services/instanceSetup.ts";
@@ -235,6 +237,15 @@ describe("banner", () => {
 });
 
 describe("publicInfo", () => {
+  test.each(["logo", "favicon"] as const)("a %s can be set and reset to the built-in one", async (kind) => {
+    expect(await getBrandImageUrl(kind)).toBe(null);
+    await setBrandImageUrl(kind, "/api/uploads/x.webp");
+    expect(await getBrandImageUrl(kind)).toBe("/api/uploads/x.webp");
+    expect((await publicInfo())[kind === "logo" ? "logoUrl" : "faviconUrl"]).toBe("/api/uploads/x.webp");
+    await setBrandImageUrl(kind, null);
+    expect(await getBrandImageUrl(kind)).toBe(null);
+  });
+
   test("is a safe snapshot of the instance", async () => {
     settings[SETUP_KEYS.appName] = "My Blog";
     settings[SETUP_KEYS.appDomain] = "blog.example";
@@ -251,6 +262,8 @@ describe("publicInfo", () => {
       inviteOnly: false,
       bannerText: null,
       bannerImageUrl: null,
+      logoUrl: null,
+      faviconUrl: null,
       aboutHtml: null,
       rulesHtml: null,
       privacyPolicyHtml: null,

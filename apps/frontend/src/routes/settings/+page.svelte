@@ -466,6 +466,7 @@
             <div class="relative">
               <input
                 id="displayName"
+                autocomplete="name"
                 bind:this={nameEl}
                 bind:value={displayName}
                 maxlength={60}

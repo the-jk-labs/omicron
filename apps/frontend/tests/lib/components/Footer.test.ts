@@ -18,6 +18,8 @@ describe("Footer", () => {
           inviteOnly: false,
           bannerText: null,
           bannerImageUrl: null,
+          logoUrl: null,
+          faviconUrl: null,
           aboutHtml: null,
           rulesHtml: null,
           privacyPolicyHtml: null,

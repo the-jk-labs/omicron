@@ -447,6 +447,9 @@ export const InstanceInfo = z.object({
   /** The signed-out visitor card; null means the built-in default. */
   bannerText: z.nullable(z.string()),
   bannerImageUrl: z.nullable(z.string()),
+  /** The admin's own logo and favicon; null means the built-in ones. */
+  logoUrl: z.nullable(z.string()),
+  faviconUrl: z.nullable(z.string()),
   aboutHtml: z.nullable(z.string()),
   rulesHtml: z.nullable(z.string()),
   privacyPolicyHtml: z.nullable(z.string()),
@@ -618,6 +621,8 @@ export const AdminInstance = z.object({
   sessionSecretManaged: z.boolean(),
   bannerText: z.nullable(z.string()),
   bannerImageUrl: z.nullable(z.string()),
+  logoUrl: z.nullable(z.string()),
+  faviconUrl: z.nullable(z.string()),
   about: z.string(),
   rules: z.string(),
   privacyPolicy: z.string(),

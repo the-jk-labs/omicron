@@ -104,15 +104,19 @@ export async function sweep(): Promise<number> {
 }
 
 // Everything that currently points at an upload: the persistent reference scan
-// (profile avatars, post covers and body images) plus the instance banner,
-// which lives in the settings key/value store rather than a column.
+// (profile avatars, post covers and body images) plus the instance's banner, logo
+// and favicon, which live in the settings key/value store rather than a column.
 async function collectReferenced(): Promise<string[]> {
-  const [fromContent, bannerUrl] = await Promise.all([
+  const [fromContent, ...instanceImages] = await Promise.all([
     uploadsRepo.referencedFilenames(),
     instanceSettingsRepo.get<string>(SETUP_KEYS.bannerImageUrl),
+    instanceSettingsRepo.get<string>(SETUP_KEYS.logoUrl),
+    instanceSettingsRepo.get<string>(SETUP_KEYS.faviconUrl),
   ]);
   const filenames = new Set(fromContent);
-  const banner = uploadFilenameFromUrl(bannerUrl);
-  if (banner) filenames.add(banner);
+  for (const url of instanceImages) {
+    const filename = uploadFilenameFromUrl(url);
+    if (filename) filenames.add(filename);
+  }
   return [...filenames];
 }

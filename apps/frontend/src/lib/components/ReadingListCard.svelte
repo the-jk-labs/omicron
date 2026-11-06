@@ -8,18 +8,11 @@
   let { list }: { list: ReadingList } = $props();
 
   const count = $derived(list.itemCount === 1 ? "1 post" : `${list.itemCount} posts`);
-
-  // As on a post card: the whole card is one link, so without this its
-  // accessible name is every scrap of text in it — "Private <title>
-  // <description> 3 posts". The title is what distinguishes one card from
-  // another; the rest is visible beside it either way.
-  const titleId = $props.id();
 </script>
 
-<a
-  href={listPath(list)}
-  aria-labelledby={titleId}
-  class="group flex flex-col gap-2 rounded-card border border-border bg-background-alt p-4 transition-colors hover:bg-muted focus-visible:outline-hidden"
+<!-- As on a post card: the title is the link, stretched over the card, so the link's name is its visible text. -->
+<div
+  class="group relative flex flex-col gap-2 rounded-card border border-border bg-background-alt p-4 transition-colors hover:bg-muted"
 >
   <div class="flex items-start justify-between gap-2">
     <span class="flex size-9 shrink-0 items-center justify-center rounded-card bg-muted text-muted-foreground">
@@ -34,11 +27,11 @@
       </span>
     {/if}
   </div>
-  <h3 id={titleId} class="truncate font-semibold text-foreground group-hover:text-foreground-alt">
-    {list.title}
+  <h3 class="truncate font-semibold text-foreground group-hover:text-foreground-alt">
+    <a href={listPath(list)} class="after:absolute after:inset-0">{list.title}</a>
   </h3>
   {#if list.description}
     <p class="line-clamp-2 text-sm text-muted-foreground">{list.description}</p>
   {/if}
   <p class="mt-auto pt-1 text-xs text-muted-foreground">{count}</p>
-</a>
+</div>

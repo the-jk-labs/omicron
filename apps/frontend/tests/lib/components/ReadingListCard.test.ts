@@ -17,16 +17,17 @@ const list = (over: Partial<ReadingList>): ReadingList => ({
 
 test("links to the list's canonical path, named by its title, with a post count", () => {
   render(ReadingListCard, { props: { list: list({ description: "Long reads" }) } });
-  const card = screen.getByRole("link", { name: "Weekend reads" });
-  expect(card).toHaveAttribute("href", "/lists/weekend-reads-66635376");
-  expect(card).toHaveTextContent("2 posts");
-  expect(card).toHaveTextContent("Long reads");
-  expect(card).not.toHaveTextContent("Private");
+  const link = screen.getByRole("link", { name: "Weekend reads" });
+  expect(link).toHaveAttribute("href", "/lists/weekend-reads-66635376");
+  // WCAG 2.5.3: the link's name is exactly its visible text; the rest sits beside it.
+  expect(link).toHaveTextContent(/^Weekend reads$/);
+  expect(screen.getByText("2 posts")).toBeInTheDocument();
+  expect(screen.getByText("Long reads")).toBeInTheDocument();
+  expect(screen.queryByText("Private")).toBe(null);
 });
 
 test("one post is singular; a private list is marked", () => {
   render(ReadingListCard, { props: { list: list({ itemCount: 1, visibility: "private" }) } });
-  const card = screen.getByRole("link");
-  expect(card).toHaveTextContent("1 post");
-  expect(card).toHaveTextContent("Private");
+  expect(screen.getByText("1 post")).toBeInTheDocument();
+  expect(screen.getByText("Private")).toBeInTheDocument();
 });

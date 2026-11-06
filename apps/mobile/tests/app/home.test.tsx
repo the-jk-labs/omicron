@@ -10,7 +10,7 @@ let focused = true;
 let signedIn = true;
 let defaultFeed: string | null = null;
 
-vi.mock("expo-image", () => ({ Image: () => null }));
+vi.mock("@/components/layout/instance-logo", () => ({ InstanceLogo: () => null }));
 vi.mock("expo-router", () => ({
   router: { push: vi.fn<() => void>() },
   // Runs only while the screen is focused, and cleans up when it isn't, as the real one does.
@@ -19,7 +19,6 @@ vi.mock("expo-router", () => ({
   },
 }));
 vi.mock("react-native-reanimated", () => ({ useSharedValue: (value: number) => ({ value }) }));
-vi.mock("uniwind", () => ({ useUniwind: () => ({ theme: "dark" }) }));
 vi.mock("@/components/auth/passkey-prompt", () => ({ PasskeyPrompt: () => null }));
 vi.mock("@/components/instance-provider", () => ({ useApi: () => ({}), useInstance: () => ({ name: "Omicron" }) }));
 vi.mock("@/components/layout/screen", () => ({

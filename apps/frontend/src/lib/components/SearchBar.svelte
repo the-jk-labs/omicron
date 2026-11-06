@@ -3,7 +3,7 @@
   Inline search pill for the top nav (`sm+`). Submitting navigates to
   `/search?q=…` — the page owns the actual results. The below-`sm` icon-only
   fallback lives in Nav.svelte so it can sit in the right-hand cluster.
-  Keyboard: `/` or `Ctrl/⌘ K` focuses it (desktop); on narrow screens the
+  Keyboard: `Ctrl/⌘ K` focuses it (desktop); on narrow screens the
   shortcut jumps to `/search` where the field is visible.
 -->
 <script lang="ts">
@@ -38,16 +38,6 @@
   }
 
   function onKeyDown(e: KeyboardEvent) {
-    const target = e.target as HTMLElement | null;
-    const isTyping =
-      !!target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
-    // "/" — like GitHub / Mastodon. Only when not already typing.
-    if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey && !isTyping) {
-      e.preventDefault();
-      if (window.innerWidth < 640) goto("/search");
-      else inputEl?.focus();
-      return;
-    }
     // Ctrl+K / Cmd+K — like Slack / Linear.
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
       e.preventDefault();
@@ -76,13 +66,13 @@
       type="search"
       placeholder="Search"
       aria-label="Search articles and people"
-      aria-keyshortcuts="/ Control+K Meta+K"
+      aria-keyshortcuts="Control+K Meta+K"
       class="w-40 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground md:w-48 lg:w-64"
     />
     <kbd
       class="ml-auto hidden items-center self-center text-sm leading-none font-semibold tracking-wide text-muted-foreground md:inline-flex"
       aria-hidden="true"
-      title="Press ⌘K or / to search"
+      title="Press ⌘K to search"
     >
       ⌘K
     </kbd>

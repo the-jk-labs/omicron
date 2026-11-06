@@ -108,6 +108,7 @@ test("Save is disabled until something changes, then sends the whole profile", a
   setup();
   const save = screen.getByRole("button", { name: "Save changes" });
   expect(save).toBeDisabled();
+  expect(screen.getByLabelText("Display name")).toHaveAttribute("autocomplete", "name");
   await fireEvent.input(screen.getByLabelText("Display name"), { target: { value: "Ada L." } });
   expect(save).toBeEnabled();
   await fireEvent.click(save);
@@ -155,6 +156,7 @@ test("an invalid link names the platform and saves nothing", async () => {
 
 test("a server refusal is shown", async () => {
   setup(me(), { "PATCH /api/users/me": apiError(400, "Display name taken") });
+  expect(screen.getByLabelText("Display name")).toHaveAttribute("autocomplete", "name");
   await fireEvent.input(screen.getByLabelText("Display name"), { target: { value: "Bob" } });
   await fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await screen.findByText("Display name taken");
@@ -162,6 +164,7 @@ test("a server refusal is shown", async () => {
 
 test("after a save the refreshed data clears the dirty state and says Saved", async () => {
   const { rerender } = setup();
+  expect(screen.getByLabelText("Display name")).toHaveAttribute("autocomplete", "name");
   await fireEvent.input(screen.getByLabelText("Display name"), { target: { value: "Ada L." } });
   await fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() => expect(refreshAll).toHaveBeenCalled());

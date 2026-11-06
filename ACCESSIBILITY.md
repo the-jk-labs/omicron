@@ -123,8 +123,9 @@ reflow, focus visibility/occlusion, text-spacing resilience, or screen-reader
 usability. Hidden states, dialogs, failures, and populated data require further
 coverage beyond the included fixtures. A clean axe result is not a WCAG pass.
 
-The Chromium suite checks four representative routes (home, sign-in, article,
-composer) in both themes, including axe contrast analysis. It checks page-width
+The route sweep (2026-11-06 follow-up below) runs axe, reflow and keyboard checks
+across most routes on small fixtures. The rest of the Chromium suite checks four
+representative routes (home, sign-in, article, composer) in both themes, including axe contrast analysis. It checks page-width
 overflow under 320 CSS-pixel/text-spacing conditions, skip focus, image settings,
 authoring-dialog focus containment/return, forced-colour focus styling, image-menu
 target sizes, and import autosave. These are limited fixtures, not all pages,
@@ -177,8 +178,9 @@ correct. The writing guide supplies manual review instructions alongside it.
 - Evaluate the image-hiding mechanism in every reading/editing surface and
   assess flashing content. Hiding is not frame-level pause/resume and does not
   alter media sent to other instances.
-- Complete real-browser checks of both themes, narrow screens, browser zoom,
-  text spacing, forced colours, and all controls' non-text contrast/target size.
+- Extend the Chromium route sweep to other browsers, real browser zoom, more
+  open states and longer content, and assess non-text contrast, which axe doesn't
+  check. See the 2026-11-06 follow-up for what it covers today.
 - Evaluate whole keyboard and screen-reader workflows, including modal focus
   return, authentication/recovery, autosave/session expiry, publishing,
   scheduling, import, moderation, and third-party bot protection.
@@ -648,6 +650,78 @@ This is a browser-test readiness correction, not a new accessibility feature or
 conformance result. Manual and cross-browser/assistive-technology evaluation
 remain incomplete, and native mobile accessibility remains out of scope.
 
+### Route sweep and remaining automated work — 2026-11-06
+
+`apps/frontend/tests/browser/route-sweep.spec.ts` extends the Chromium suite from
+four representative routes to 35 route/role combinations: signed-out pages,
+signed-in pages, and all eight admin tabs, on the expanded loopback fixture. Each
+gets axe with contrast and target-size rules in both themes, 320 CSS-pixel reflow
+with text spacing, a 667×375 landscape overflow check, and root font size at 200%
+at 1280 CSS pixels. Each also gets a keyboard pass of up to 80 Tab stops, normally
+and in forced colours, recording missing focus styling, a focused element covered
+at its centre and corners, and focus stuck on one element. Open states cover the
+phone header menu (signed in and guest), account and notification menus, an
+expanded admin user row, the passkey prompt, an invite-only register page, and
+custom branding.
+
+Defects it found, each now fixed:
+
+- **2.5.8:** footer links were under the 24 CSS-pixel target on every page with a footer.
+- **1.4.10 / 1.4.12:** tab strips on profiles, Your posts, Home, search and
+  connections pushed the page wider at 320 CSS pixels with text spacing. They now
+  wrap, as does the feed-language mode control.
+- **2.5.3:** reading-list cards were one link named only by their title. The title
+  is now the link, stretched over the card, matching post cards.
+
+Inventories without a browser found two more:
+
+- **2.1.4:** the global `/` search shortcut was a single-character shortcut with no
+  way to turn it off or remap it. It is removed; Ctrl/Cmd+K remains. Other
+  character keys (tag entry, mention picker, editor) act only while their field has focus.
+- **1.3.5:** display-name fields in setup and settings now have `autocomplete="name"`.
+  The public profile email keeps `autocomplete="off"`: it is an optional public
+  contact, not necessarily the person's own address. That decision needs review.
+
+The webhook and Markdown fixtures now keep the accessibility-rich body through
+`renderMarkdown` and `ingestContent`. A webhook has no schedule path: both statuses
+a CMS can send clear `publishAt`.
+
+Applicability notes for a future evaluator, not determinations: the sanitizer drops
+`video`, `audio`, `iframe`, `object` and `embed`, and the frontend renders none, so
+1.2.x and 1.4.2 appear not to apply to stored or federated post bodies. External
+links to media remain outside this. No templates are offered to authors, which
+bears on B.2.4.x. Stock-photo selection (B.2.5.x) is not assessed.
+
+Things automation surfaced that need a person:
+
+- The passkey prompt opens by itself shortly after Home loads and takes focus. Escape dismisses it and axe finds nothing, but whether this is acceptable
+  for keyboard and screen-reader users needs manual judgement.
+- A custom logo is treated as decorative (`alt=""`) because the instance name is
+  beside or below it. The error page is the exception: it shows the logo without
+  the name beside it, so its heading alone identifies the page.
+- An admin's logo or favicon can fail contrast or be an animated GIF; nothing checks this.
+
+Verification with Node 26.13.0 / pnpm 12.18.0, Chromium via Playwright 1.65.0 on Windows:
+
+- `pnpm fmt`, then `pnpm check --strict`: backend 142 files and 2,671 passing tests
+  (one skipped), frontend 179 files and 1,824 tests, mobile 61 files and 462 tests;
+  no type or lint warnings. One backend auth test timed out once in an earlier full
+  run under load; it passed alone and in the final runs.
+- `pnpm test:accessibility`: 48 named checks pass.
+- Full Playwright suite with `--retries=0`: 291 scenarios pass on a production build.
+  The signed-in keyboard passes also pass with `--repeat-each=5` (110 runs). An
+  earlier 1-in-24 failure there was the passkey prompt opening during the pass; the
+  fixture account now has a passkey and the prompt has its own test.
+
+Limits: `/setup` and `/oauth/authorize` are not in the sweep, since the fixture
+reports a completed setup and no consent payload. Root font size stands in for
+browser text enlargement and only affects rem-sized text; it is not browser zoom.
+The obscured-focus check samples three points. Reflow is only page-width overflow,
+not clipped text or lost function. Fixture data is small and short; long names and
+translated text are untested. Only Chromium ran, and no assistive technology did.
+Manual evaluation remains undone, native mobile accessibility remains out of scope,
+every criterion below stays pending, and no WCAG/ATAG conformance claim is made.
+
 ## Transformation inventory and remaining preservation checks
 
 This is a source-path inventory, not proof that each transformation preserves
@@ -664,9 +738,9 @@ are relative to `apps/backend/src/`.
 | Clipboard image files                  | Rehosting retains attributes/text and bundled long descriptions; missing targets wait for repair before insertion       | Multi-image associations, other browsers, optimized meaning, storage rollback after a late guard      |
 | Drag/drop                              | Shared review, mapped targets, ID remapping/rehosting; component and trusted-pointer table-cell fixtures                  | Internal-copy ID collisions, OS/application payloads, arbitrary selections and assistive technologies |
 | Image optimization / crop              | `editor/image.ts`, `components/AvatarCropper.svelte`; image/crop tests                                                   | Meaning after crop/downscale, animation and embedded metadata evaluation                               |
-| Profile / instance Markdown            | Backend `lib/markdown.ts` then `lib/sanitize.ts`; Markdown/sanitizer tests                                               | Representative mixed languages, tables, MathML and preview/save equality                               |
+| Profile / instance Markdown            | Backend `lib/markdown.ts` then `lib/sanitize.ts`; metadata-rich fixture, mixed language and table tests                  | Browser preview against the saved result, more mixed-direction content                                 |
 | API post create/update                 | Backend `services/posts.ts` then sanitizer; real-session HTTP/store/read/edit fixture in all publication states           | Other payloads, editor JSON consistency, browser-to-API workflows                                        |
-| Webhook publishing                     | Backend `services/webhooks.ts`, Markdown/sanitizer                                                                       | Metadata-rich webhook fixtures and scheduled publication                                               |
+| Webhook publishing                     | Backend `services/webhooks.ts`, Markdown/sanitizer; metadata-rich fixture through ingest (mocked repository)             | Real HTTP and storage run; no schedule path exists                                                     |
 | Import parsing                         | Backend `lib/contentArchive.ts`; native, Medium, Substack, WordPress and RSS fixtures through real HTTP/storage            | Format-specific article-language fields, other markup and sanitizer-loss assessment                    |
 | Import persistence / export            | Real SQL/files, byte/metadata checks, native multi-hop and WordPress re-import, offline HTML, retries and failure paths   | Format-specific metadata beyond the fixture, rendered meaning                                         |
 | Federation outbound                    | Real queued Create/Update HTTP delivery between isolated processes; publisher-context URLs, signatures and metadata    | Public DNS/TLS/proxies, other receivers, Redis retry durability, unsupported content                    |
