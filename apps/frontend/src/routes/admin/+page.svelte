@@ -10,6 +10,7 @@
   import AdminReports from "#lib/components/AdminReports.svelte";
   import AdminSecurity from "#lib/components/AdminSecurity.svelte";
   import AdminSeo from "#lib/components/AdminSeo.svelte";
+  import AdminSignups from "#lib/components/AdminSignups.svelte";
   import AdminUmami from "#lib/components/AdminUmami.svelte";
   import AdminUnsplash from "#lib/components/AdminUnsplash.svelte";
   import AdminUsers from "#lib/components/AdminUsers.svelte";
@@ -178,6 +179,14 @@
         <p class="mt-1 text-sm text-muted-foreground">The public name and domain for this server.</p>
         <div class="mt-5">
           <AdminInstanceSettings initial={initial.instance?.identity} />
+        </div>
+      </section>
+
+      <section class="mt-6 rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Who can join</h2>
+        <p class="mt-1 text-sm text-muted-foreground">Keep sign-up open to anyone, or only to people you invite.</p>
+        <div class="mt-5">
+          <AdminSignups />
         </div>
       </section>
 

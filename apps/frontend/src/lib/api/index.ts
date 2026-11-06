@@ -22,7 +22,9 @@ import type {
   EmailSettings,
   FollowRequest,
   InstanceInfo,
+  CreatedInvite,
   InstanceSettings,
+  SignupSettings,
   Me,
   Notification,
   OwnPostStatus,
@@ -116,6 +118,10 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // writer dashboard (own analytics) + moderator instance settings
     dashboard: (days?: number) => api.get<DashboardSummary>(`/dashboard${days ? `?days=${days}` : ""}`),
     adminSettings: () => api.get<InstanceSettings>("/admin/settings"),
+    signupSettings: () => api.get<SignupSettings>("/admin/signups"),
+    setInviteOnly: (inviteOnly: boolean) => api.put<{ ok: true }>("/admin/signups", { inviteOnly }),
+    createInvite: () => api.post<CreatedInvite>("/admin/invites", {}),
+    revokeInvite: (id: string) => api.del<{ ok: true }>(`/admin/invites/${id}`),
     setAnalytics: (onInstanceViews: boolean) =>
       api.put<InstanceSettings>("/admin/settings/analytics", { onInstanceViews }),
     siteStatistics: () => api.get<{ websiteId: string | null }>("/site"),
@@ -233,6 +239,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     removeUserAvatarAsAdmin: (id: string) => api.del<{ user: AdminUser }>(`/admin/users/${id}/avatar`),
     // Resend the verification email, or manually mark the address verified.
     resendVerification: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/verification-email`, {}),
+    sendPasswordReset: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/password-reset`, {}),
     verifyEmail: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/verify`, {}),
     // Grant or revoke the admin role. The acting admin's own password travels
     // with the request — the server re-verifies it. `notify` mails the account.

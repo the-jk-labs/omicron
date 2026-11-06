@@ -453,6 +453,19 @@
     }
   }
 
+  async function sendPasswordReset(u: AdminUser) {
+    verifyBusyId = u.id;
+    clearDetailMsg(u.id);
+    try {
+      await endpoints().sendPasswordReset(u.id);
+      setDetailNotice(u.id, "Password reset email sent.");
+    } catch (e) {
+      setDetailError(u.id, e instanceof ApiError ? e.message : "Sending failed.");
+    } finally {
+      verifyBusyId = null;
+    }
+  }
+
   async function markVerified(u: AdminUser) {
     const { ok } = await confirm({
       title: `Mark @${u.username}'s email verified?`,
@@ -1134,6 +1147,17 @@
                       >
                         <Icon name="check" size={13} />
                         Mark verified
+                      </Button>
+                    {/if}
+                    {#if u.id !== selfId && canModerateRow(u)}
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        disabled={verifyBusyId === u.id}
+                        onclick={() => sendPasswordReset(u)}
+                      >
+                        <Icon name="mail" size={13} />
+                        Send password reset
                       </Button>
                     {/if}
                   </span>

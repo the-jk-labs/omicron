@@ -193,7 +193,9 @@
       own feed.
     </p>
     <div class="mt-6 flex gap-2">
-      <Button href="/register" variant="solid">Start writing</Button>
+      {#if !(data as { instance?: { inviteOnly?: boolean } | null }).instance?.inviteOnly}
+        <Button href="/register" variant="solid">Start writing</Button>
+      {/if}
       <Button href="/login" variant="outline">Sign in</Button>
     </div>
   </section>

@@ -21,7 +21,8 @@
     "backfill:sanitize": "deno run -A scripts/backfill_sanitize.ts",
     "backfill:math": "deno run -A scripts/backfill_math.ts",
     "backfill:unescape": "deno run -A scripts/backfill_unescape.ts",
-    "backfill:email-lowercase": "deno run -A scripts/backfill_email_lowercase.ts"
+    "backfill:email-lowercase": "deno run -A scripts/backfill_email_lowercase.ts",
+    "reset-admin-password": "deno run -A scripts/reset_admin_password.ts"
   },
   "dependencies": {
     "@better-auth/expo": "1.7.18",

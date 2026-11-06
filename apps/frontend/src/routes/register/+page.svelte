@@ -19,6 +19,8 @@
   // Fail closed on stale data: an instance that does not advertise the flag
   // is treated as requiring confirmation (the backend default).
   const verificationRequired = $derived(instance?.emailVerificationRequired !== false);
+  const inviteToken = $derived(page.url.searchParams.get("invite") ?? "");
+  const needsInvite = $derived(instance?.inviteOnly === true && !inviteToken);
 
   const MAX_DISPLAY_NAME_LEN = 60;
 
@@ -170,6 +172,7 @@
         password,
         name: displayName.trim() || username,
         username,
+        ...(inviteToken && { inviteToken }),
       });
       if (res.error) {
         if (res.error.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") {
@@ -236,6 +239,16 @@
       {resending ? "Sending…" : "Resend confirmation link"}
     </Button>
     <Button href="/login" variant="solid" class="mt-2 h-11 w-full">Back to sign in</Button>
+  </div>
+{:else if needsInvite}
+  <div class="text-center">
+    <div class="mb-4 flex justify-center"><img src={logo} alt="" class="h-12 w-auto" /></div>
+    <h1 class="text-2xl font-bold tracking-tight text-foreground">{appName} is invite-only</h1>
+    <p class="mt-1.5 text-sm text-muted-foreground">
+      New accounts need an invite link from this instance's admin. You can still read and follow writers from another
+      fediverse account.
+    </p>
+    <Button href="/login" variant="solid" class="mt-6">Sign in</Button>
   </div>
 {:else}
   <div class="mb-8 text-center">

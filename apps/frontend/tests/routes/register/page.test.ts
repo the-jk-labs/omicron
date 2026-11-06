@@ -94,6 +94,54 @@ describe("registration", () => {
   });
 });
 
+describe("invite-only instances", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.assign(page.data, { instance: { emailVerificationRequired: true, inviteOnly: true } });
+    return () => {
+      page.url = new URL("http://localhost/");
+      Object.assign(page.data, { instance: { emailVerificationRequired: true } });
+    };
+  });
+
+  it("without an invite explains why, and shows no form", () => {
+    page.url = new URL("http://localhost/register");
+    render(RegisterPage);
+    expect(screen.getByRole("heading", { name: /is invite-only/ })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Username")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
+  });
+
+  it("an invite link opens the form and goes along with the sign-up", async () => {
+    page.url = new URL("http://localhost/register?invite=tok123");
+    signUp.mockResolvedValue({ data: { token: null }, error: null });
+    render(RegisterPage);
+    await fillRegistration();
+    await waitFor(() => expect(signUp).toHaveBeenCalledOnce());
+    expect(signUp.mock.calls[0]?.[0]).toMatchObject({ inviteToken: "tok123" });
+  });
+
+  it("a used invite shows the server's reason", async () => {
+    page.url = new URL("http://localhost/register?invite=old");
+    signUp.mockResolvedValue({ error: { code: "INVITE_REQUIRED", message: "That invite has been used." } });
+    render(RegisterPage);
+    await fillRegistration();
+    expect(await screen.findByRole("alert")).toHaveTextContent("That invite has been used.");
+  });
+});
+
+describe("open instances", () => {
+  it("send no invite with the sign-up", async () => {
+    vi.clearAllMocks();
+    Object.assign(page.data, { instance: { emailVerificationRequired: true } });
+    signUp.mockResolvedValue({ data: { token: null }, error: null });
+    render(RegisterPage);
+    await fillRegistration();
+    await waitFor(() => expect(signUp).toHaveBeenCalledOnce());
+    expect(signUp.mock.calls[0]?.[0]).not.toHaveProperty("inviteToken");
+  });
+});
+
 describe("passkey autofill", () => {
   it("lets someone who already has an account sign in from the username field", async () => {
     vi.stubGlobal(

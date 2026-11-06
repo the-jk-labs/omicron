@@ -1,4 +1,4 @@
-import { Link, router } from "expo-router";
+import { Link, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { AuthShell, FormError } from "@/components/auth/auth-shell";
@@ -13,7 +13,7 @@ import { Text } from "@/components/ui/text";
 import { useAutofillFields } from "@/hooks/use-autofill-fields";
 import type { InstanceAuthClient } from "@/lib/auth/auth-client";
 import { isPwnedPassword, MIN_PASSWORD_LEN } from "@/lib/auth/password";
-import { validateRegisterForm, type RegisterForm } from "@/lib/auth/register-form";
+import { inviteTokenFrom, validateRegisterForm, type RegisterForm } from "@/lib/auth/register-form";
 import { useSessionChanged } from "@/lib/auth/session";
 import { useInstanceInfo } from "@/lib/query/instance";
 
@@ -31,6 +31,7 @@ type SignUp = {
   username: string;
   password: string;
   name: string;
+  inviteToken: string;
   verificationRequired: boolean;
   onSignedIn: () => Promise<void>;
 };
@@ -45,8 +46,8 @@ type SignUpOutcome =
 async function createAccount(auth: InstanceAuthClient, signUp: SignUp): Promise<SignUpOutcome> {
   try {
     if ((await isPwnedPassword(signUp.password)) === true) return { kind: "pwned" };
-    const { email, password, name, username } = signUp;
-    const res = await auth.signUp.email({ email, password, name, username });
+    const { email, password, name, username, inviteToken } = signUp;
+    const res = await auth.signUp.email({ email, password, name, username, ...(inviteToken && { inviteToken }) });
     if (res.error) {
       if (res.error.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") return { kind: "taken" };
       return { kind: "error", message: res.error.message ?? "Something went wrong." };
@@ -65,6 +66,8 @@ export default function Register() {
   const { data: instance } = useInstanceInfo();
   const sessionChanged = useSessionChanged();
   const autofill = useAutofillFields();
+  const params = useLocalSearchParams<{ invite?: string }>();
+  const [invite, setInvite] = useState(params.invite ?? "");
   const [form, setForm] = useState(EMPTY);
   const [touched, setTouched] = useState<Partial<Record<keyof RegisterForm, boolean>>>({});
   // The verdict is kept with the password it was for, so an edit invalidates it without an effect.
@@ -100,6 +103,11 @@ export default function Register() {
   const submit = async () => {
     setTouched({ username: true, email: true, password: true, confirmPassword: true, acceptTerms: true });
     if (Object.keys(errors).length > 0) return;
+    const inviteToken = inviteTokenFrom(invite);
+    if (instance?.inviteOnly && !inviteToken) {
+      setError("Enter the invite link or code you were sent.");
+      return;
+    }
     setError(null);
     setBusy(true);
     const email = form.email.trim().toLowerCase();
@@ -109,6 +117,7 @@ export default function Register() {
       username,
       password: form.password,
       name: form.displayName.trim() || username,
+      inviteToken,
       verificationRequired,
       onSignedIn: sessionChanged,
     });
@@ -173,6 +182,17 @@ export default function Register() {
       }
     >
       <View className="gap-4">
+        {instance?.inviteOnly && (
+          <Field label="Invite" hint={`${name} is invite-only. Paste the link or code you were sent.`}>
+            <Input
+              value={invite}
+              onChangeText={setInvite}
+              placeholder="Invite link or code"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </Field>
+        )}
         <Field label="Username" hint="Permanent: it's your address on the fediverse." error={shown("username")}>
           <Input
             {...autofill("username")}

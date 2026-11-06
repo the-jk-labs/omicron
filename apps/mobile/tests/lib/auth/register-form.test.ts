@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { describeUserAgent, emailChangeError, needsPassword } from "@/lib/auth/account";
 import { isUnverifiedError, parseLoginId } from "@/lib/auth/login";
-import { validateRegisterForm, type RegisterForm } from "@/lib/auth/register-form";
+import { inviteTokenFrom, validateRegisterForm, type RegisterForm } from "@/lib/auth/register-form";
 
 const VALID: RegisterForm = {
   username: "ada",
@@ -11,6 +11,18 @@ const VALID: RegisterForm = {
   confirmPassword: "Unique-test-password-123!",
   acceptTerms: true,
 };
+
+describe("inviteTokenFrom", () => {
+  test.each([
+    ["a bare code", "abc123", "abc123"],
+    ["the admin's whole link", "https://blog.test/register?invite=abc123", "abc123"],
+    ["a link with more after it", "https://blog.test/register?x=1&invite=abc123&y=2", "abc123"],
+    ["stray spaces from pasting", "  abc123\n", "abc123"],
+    ["nothing at all", "   ", ""],
+  ])("reads %s", (_, text, token) => {
+    expect(inviteTokenFrom(text)).toBe(token);
+  });
+});
 
 describe("validateRegisterForm", () => {
   test("a valid form has no errors", () => {

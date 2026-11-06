@@ -122,20 +122,22 @@ function UserSummary({ detail }: { detail: Detail }) {
   );
 }
 
-const DONE: Record<"suspend" | "unsuspend" | "resend" | "verify", string> = {
+const DONE: Record<"suspend" | "unsuspend" | "resend" | "verify" | "reset", string> = {
+  reset: "Password reset email sent",
   suspend: "Suspended",
   unsuspend: "Unsuspended",
   resend: "Verification email sent",
   verify: "Email marked verified",
 };
 
-function ModerationActions({ detail }: { detail: Detail }) {
+function ModerationActions({ detail, canSendReset }: { detail: Detail; canSendReset: boolean }) {
   const api = useApi();
   const queryClient = useQueryClient();
   const { id, suspended, emailVerified, username } = detail.user;
   const act = useMutation({
     mutationFn: async (action: keyof typeof DONE) => {
       if (action === "resend") return api.resendVerification(id);
+      if (action === "reset") return api.sendPasswordReset(id);
       if (action === "verify") return api.verifyEmail(id);
       const suspend = action === "suspend";
       const { confirmed, notify } = await confirmDialog({
@@ -164,6 +166,7 @@ function ModerationActions({ detail }: { detail: Detail }) {
         destructive={!suspended}
         onPress={() => act.mutate(suspended ? "unsuspend" : "suspend")}
       />
+      {canSendReset && <SettingsRow icon="key-round" label="Send password reset" onPress={() => act.mutate("reset")} />}
       {!emailVerified && (
         <>
           <SettingsRow icon="send" label="Resend verification email" onPress={() => act.mutate("resend")} />
@@ -272,7 +275,12 @@ export default function AdminUser() {
       <ScreenHeader title={`@${detail.user.username}`} />
       <ScrollView contentContainerClassName="gap-6 p-4" contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
         <UserSummary detail={detail} />
-        <ModerationActions detail={detail} />
+        <ModerationActions
+          detail={detail}
+          canSendReset={
+            viewer?.id !== detail.user.id && (viewer?.isAdmin || (!detail.user.isAdmin && !detail.user.isModerator))
+          }
+        />
         {viewer?.isAdmin && viewer.id !== detail.user.id && <RoleActions detail={detail} />}
         <RecentActivity detail={detail} />
       </ScrollView>

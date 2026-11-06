@@ -14,7 +14,7 @@ import * as usersRepo from "@/db/repositories/users.ts";
 import type { AdminCursor, AdminUserFilter, AdminUserSort } from "@/db/repositories/users.ts";
 import type { BlockedDomain } from "@/db/schema.ts";
 import { hostMatchesDomain, normalizeDomain } from "@/lib/domain.ts";
-import { badRequest, forbidden, notFound, unauthorized } from "@/lib/http.ts";
+import { badRequest, conflict, forbidden, notFound, unauthorized } from "@/lib/http.ts";
 import { type Cursor, encodeCursor } from "@/lib/pagination.ts";
 import { queue } from "@/queue/queue.ts";
 import {
@@ -29,6 +29,7 @@ import {
   notifySuspended,
   notifyVerified,
 } from "@/services/accountNotices.ts";
+import { getEmailMode } from "@/services/emailSettings.ts";
 import { federationRunning } from "@/services/federationState.ts";
 import { getAppDomain } from "@/services/instanceSetup.ts";
 import * as postsService from "@/services/posts.ts";
@@ -446,6 +447,21 @@ export async function resendVerification(actorId: string, targetId: string): Pro
   } catch (err) {
     throw badRequest(err instanceof Error ? err.message : "Could not send the verification email.");
   }
+}
+
+// Mails an account the usual reset link. The link only ever goes to the owner's
+// inbox and nobody here sees it, so this can't take an account over, which is
+// why an admin may also prompt another admin. Moderators stay within their usual
+// bounds, so they can't pester the people who appointed them.
+export async function sendPasswordReset(actorId: string, targetId: string): Promise<void> {
+  const [actor, target] = await Promise.all([usersRepo.findById(actorId), usersRepo.findById(targetId)]);
+  if (!target || target.deletedAt) throw notFound("Account not found.");
+  if (!actor) throw forbidden("Moderator access required.");
+  if (target.id === actorId) throw forbidden("Change your own password in Settings, or use Forgot password.");
+  if (!actor.isAdmin) assertCanModerateAccount(actor, target);
+  if ((await getEmailMode()) === "console") throw conflict("This instance can't send email yet. Set up Email first.");
+  const { auth } = await import("@/auth/auth.ts");
+  await auth.api.requestPasswordReset({ body: { email: target.email, redirectTo: "/reset-password" } });
 }
 
 // ── User details (admin edit) ────────────────────────────────────────────

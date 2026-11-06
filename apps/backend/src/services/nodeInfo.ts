@@ -4,6 +4,7 @@ import * as commentsRepo from "@/db/repositories/comments.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { getAppName } from "@/services/instanceSetup.ts";
+import { inviteOnlyEnabled } from "@/services/settings.ts";
 import { APP_VERSION } from "@/version.ts";
 
 // What this instance tells the fediverse about itself.
@@ -52,11 +53,7 @@ export async function nodeInfo(): Promise<NodeInfo> {
       inbound: [],
       outbound: ["rss2.0"],
     },
-    // Registration is open on every Omicron instance: /api/auth/register takes
-    // anyone, rate-limited but ungated. Revisit this the day an invite or
-    // approval mode lands, or the document will be advertising a door that is
-    // no longer open.
-    openRegistrations: true,
+    openRegistrations: !(await inviteOnlyEnabled()),
     usage: {
       users: { total, activeMonth, activeHalfyear },
       localPosts,

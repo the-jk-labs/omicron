@@ -1069,6 +1069,19 @@ export type NewRemoteActor = typeof remoteActors.$inferInsert;
 export type Follow = typeof follows.$inferSelect;
 export type Mute = typeof mutes.$inferSelect;
 export type Block = typeof blocks.$inferSelect;
+// One-use sign-up links for an invite-only instance. Only the token's hash is
+// stored, so a database dump can't be turned into working invites.
+export const invites = pgTable("invites", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tokenHash: text("token_hash").notNull().unique(),
+  createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  usedByUsername: text("used_by_username"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type Invite = typeof invites.$inferSelect;
 export type Like = typeof likes.$inferSelect;
 export type Recommendation = typeof recommendations.$inferSelect;
 export type Comment = typeof comments.$inferSelect;

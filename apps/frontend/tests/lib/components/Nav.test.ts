@@ -4,6 +4,7 @@ import { page } from "$app/state";
 import { fireEvent, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, expect, test, vi } from "vitest";
 import Nav from "#lib/components/Nav.svelte";
+import { imageDisplay } from "#lib/imageDisplay.svelte.js";
 import { notifications } from "#lib/notifications.svelte.js";
 import { reading } from "#lib/prefs.svelte.js";
 import { theme } from "#lib/theme.svelte.js";
@@ -79,11 +80,58 @@ test("a guest gets sign-in and get-started, plus search", () => {
   expect(screen.queryByRole("button", { name: "Notifications" })).toBe(null);
 });
 
+test("an invite-only instance doesn't offer sign-up", () => {
+  page.data = { user: null, instance: { inviteOnly: true } };
+  setup(null);
+  expect(screen.queryByRole("link", { name: "Get started" })).toBe(null);
+  expect(screen.getByRole("link", { name: "Sign in" })).toBeInTheDocument();
+});
+
+test("the phone menu holds the account, the dice, the theme and image settings", async () => {
+  setup();
+  await openMenu("Menu");
+  expect(items()).toEqual(expect.arrayContaining(["Profile", "Settings", "Sign out", "Random post"]));
+  expect(screen.getByRole("menuitemradio", { name: "Hide images" })).toBeInTheDocument();
+});
+
+test("the phone menu's theme item toggles the theme", async () => {
+  const toggle = vi.spyOn(theme, "toggle").mockImplementation(() => undefined);
+  setup();
+  await openMenu("Menu");
+  await fireEvent.click(screen.getByRole("menuitem", { name: /Dark theme/ }));
+  expect(toggle).toHaveBeenCalledOnce();
+});
+
+test("the phone menu's images choice is saved", async () => {
+  setup();
+  await openMenu("Menu");
+  await fireEvent.click(screen.getByRole("menuitemradio", { name: "Hide images" }));
+  expect(imageDisplay.preference).toBe("hide");
+  imageDisplay.set("system");
+});
+
+test("a guest's phone menu offers sign-in instead of the account", async () => {
+  setup(null);
+  await openMenu("Menu");
+  expect(items()).toContain("Sign in");
+  expect(items()).not.toContain("Sign out");
+  await fireEvent.click(screen.getByRole("menuitem", { name: "Sign in" }));
+  expect(goto).toHaveBeenCalledWith("/login");
+});
+
+test("the phone menu's dice open a random post", async () => {
+  setup(me, {}, [], { "GET /api/posts/random": { post: post() } });
+  await openMenu("Menu");
+  await fireEvent.click(screen.getByRole("menuitem", { name: "Random post" }));
+  await waitFor(() => expect(goto).toHaveBeenCalled());
+});
+
 test("the minimal nav is just the logo and the theme toggle", () => {
   setup(me, { minimal: true });
   expect(screen.queryByRole("link", { name: "Search" })).toBe(null);
   expect(screen.queryByRole("button", { name: "Account menu" })).toBe(null);
   expect(screen.queryByRole("button", { name: "Random post" })).toBe(null);
+  expect(screen.queryByRole("button", { name: "Menu" })).toBe(null);
   expect(screen.getByRole("button", { name: "Toggle dark mode" })).toBeInTheDocument();
 });
 

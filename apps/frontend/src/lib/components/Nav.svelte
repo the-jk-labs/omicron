@@ -19,6 +19,7 @@
   import Avatar from "#lib/components/ui/Avatar.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { timeAgo } from "#lib/format.js";
+  import { IMAGE_DISPLAY_OPTIONS, imageDisplay, type ImageDisplayPreference } from "#lib/imageDisplay.svelte.js";
   import { postPath } from "#lib/links.js";
   import { notifications } from "#lib/notifications.svelte.js";
   import { type FeedTab, feedTab, reading } from "#lib/prefs.svelte.js";
@@ -38,6 +39,10 @@
     minimal?: boolean;
     appName?: string;
   } = $props();
+
+  const inviteOnly = $derived(
+    (page.data as { instance?: { inviteOnly?: boolean } | null }).instance?.inviteOnly === true,
+  );
 
   async function logout() {
     await authClient.signOut();
@@ -114,6 +119,101 @@
   });
 </script>
 
+{#snippet accountItems(user: User)}
+  <div class="px-3 py-2">
+    <p class="truncate text-sm font-semibold text-foreground">{user.displayName}</p>
+    <p class="truncate text-xs text-muted-foreground">@{user.username}</p>
+  </div>
+  <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-muted" />
+  <DropdownMenu.Item onSelect={() => goto(`/@${user.username}`)} class={itemClass}>
+    <Icon name="user" size={18} /> Profile
+  </DropdownMenu.Item>
+  {#if user.isPrivate}
+    <DropdownMenu.Item onSelect={() => goto("/follow-requests")} class={itemClass}>
+      <Icon name="lock" size={18} /> Follow requests
+    </DropdownMenu.Item>
+  {/if}
+  <DropdownMenu.Item onSelect={() => goto("/compose")} class={itemClass}>
+    <Icon name="compose" size={18} /> Write an article
+  </DropdownMenu.Item>
+  <DropdownMenu.Item onSelect={() => goto("/posts/manage")} class={itemClass}>
+    <Icon name="posts" size={18} /> Your posts
+  </DropdownMenu.Item>
+  <DropdownMenu.Item onSelect={() => goto("/lists")} class={itemClass}>
+    <Icon name="library" size={18} /> Lists
+  </DropdownMenu.Item>
+  <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-muted" />
+  <DropdownMenu.Item onSelect={() => goto("/dashboard")} class={itemClass}>
+    <Icon name="chart" size={18} /> Stats
+  </DropdownMenu.Item>
+  {#if user.isAdmin || user.isModerator}
+    <DropdownMenu.Item onSelect={() => goto("/admin")} class={itemClass}>
+      <Icon name="gavel" size={18} />
+      {user.isAdmin ? "Admin" : "Moderation"}
+    </DropdownMenu.Item>
+  {/if}
+  <DropdownMenu.Item onSelect={() => goto("/settings")} class={itemClass}>
+    <Icon name="settings" size={18} /> Settings
+  </DropdownMenu.Item>
+  <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-muted" />
+  <DropdownMenu.Item onSelect={logout} class={itemClass}>
+    <Icon name="logout" size={18} /> Sign out
+  </DropdownMenu.Item>
+{/snippet}
+
+{#snippet compactMenu(user: User | null)}
+  <DropdownMenu.Root>
+    <DropdownMenu.Trigger
+      class="inline-flex size-9 items-center justify-center rounded-full text-foreground select-none hover:bg-muted focus-visible:outline-hidden active:scale-[0.98] sm:hidden"
+      aria-label="Menu"
+    >
+      <Icon name="menu" size={20} />
+    </DropdownMenu.Trigger>
+    <DropdownMenu.Portal>
+      <DropdownMenu.Content
+        sideOffset={8}
+        align="end"
+        class="z-30 max-h-[calc(100dvh-5rem)] w-72 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-hidden"
+      >
+        {#if user}
+          {@render accountItems(user)}
+          <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-muted" />
+          <DropdownMenu.Item onSelect={openRandomPost} class={itemClass}>
+            <Icon name="dices" size={18} /> Random post
+          </DropdownMenu.Item>
+        {:else}
+          <DropdownMenu.Item onSelect={() => goto("/login")} class={itemClass}>
+            <Icon name="user" size={18} /> Sign in
+          </DropdownMenu.Item>
+        {/if}
+        <DropdownMenu.Item onSelect={() => theme.toggle()} class={itemClass}>
+          <span class="inline-flex items-center gap-2.5 dark:hidden"><Icon name="moon" size={18} /> Dark theme</span>
+          <span class="hidden items-center gap-2.5 dark:inline-flex"><Icon name="sun" size={18} /> Light theme</span>
+        </DropdownMenu.Item>
+        <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-muted" />
+        <DropdownMenu.Group>
+          <DropdownMenu.GroupHeading class="px-3 py-1.5 text-xs font-medium text-muted-foreground">
+            Images
+          </DropdownMenu.GroupHeading>
+          <DropdownMenu.RadioGroup
+            value={imageDisplay.preference}
+            onValueChange={(value) => imageDisplay.set(value as ImageDisplayPreference)}
+          >
+            {#each IMAGE_DISPLAY_OPTIONS as option (option.value)}
+              <DropdownMenu.RadioItem value={option.value} class={itemClass}>
+                {#snippet children({ checked })}
+                  {option.label}
+                  {#if checked}<Icon name="check" size={16} class="ml-auto" />{/if}
+                {/snippet}
+              </DropdownMenu.RadioItem>
+            {/each}
+          </DropdownMenu.RadioGroup>
+        </DropdownMenu.Group>
+      </DropdownMenu.Content>
+    </DropdownMenu.Portal>
+  </DropdownMenu.Root>
+{/snippet}
+
 <header class="sticky top-0 z-20 bg-background/80 backdrop-blur-sm">
   <nav class="relative mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
     <!-- `min-w-0` + `truncate`: the instance name is operator-chosen and can be
@@ -133,7 +233,10 @@
     {/if}
 
     <div class="flex shrink-0 items-center gap-1.5">
-      <ImageDisplay />
+      <!-- Below sm only search, the bell and a sign-up button stay in the row; the rest moves into the menu. -->
+      <div class={minimal ? "flex items-center gap-1.5" : "hidden items-center gap-1.5 sm:flex"}>
+        <ImageDisplay />
+      </div>
       {#if !minimal}
         <!-- Icon-only search fallback (below sm) — the pill is hidden here -->
         <Button
@@ -147,18 +250,20 @@
         </Button>
       {/if}
 
-      <Button
-        onclick={() => theme.toggle()}
-        variant="icon"
-        class="border-0! shadow-none!"
-        aria-label="Toggle dark mode"
-        title="Toggle theme"
-      >
-        <!-- Both icons render; the `dark` class app.html sets before first paint picks
-             one, since the server can't know the theme and the icon would flip. -->
-        <span class="inline-flex dark:hidden"><Icon name="moon" size={18} /></span>
-        <span class="hidden dark:inline-flex"><Icon name="sun" size={18} /></span>
-      </Button>
+      <div class={minimal ? "flex" : "hidden sm:flex"}>
+        <Button
+          onclick={() => theme.toggle()}
+          variant="icon"
+          class="border-0! shadow-none!"
+          aria-label="Toggle dark mode"
+          title="Toggle theme"
+        >
+          <!-- Both icons render; the `dark` class app.html sets before first paint picks
+               one, since the server can't know the theme and the icon would flip. -->
+          <span class="inline-flex dark:hidden"><Icon name="moon" size={18} /></span>
+          <span class="hidden dark:inline-flex"><Icon name="sun" size={18} /></span>
+        </Button>
+      </div>
 
       {#if minimal}
         <!-- nothing else: auth pages own their own sign-in / register actions -->
@@ -244,21 +349,23 @@
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
 
-        <Button
-          onclick={openRandomPost}
-          variant="icon"
-          class="border-0! shadow-none!"
-          aria-label="Random post"
-          title="Random post"
-          aria-busy={randomLoading}
-          disabled={randomLoading}
-        >
-          <Icon name="dices" size={18} />
-        </Button>
+        <div class="hidden sm:flex">
+          <Button
+            onclick={openRandomPost}
+            variant="icon"
+            class="border-0! shadow-none!"
+            aria-label="Random post"
+            title="Random post"
+            aria-busy={randomLoading}
+            disabled={randomLoading}
+          >
+            <Icon name="dices" size={18} />
+          </Button>
+        </div>
 
         <DropdownMenu.Root>
           <DropdownMenu.Trigger
-            class="inline-flex items-center justify-center rounded-full select-none active:scale-[0.98]"
+            class="hidden items-center justify-center rounded-full select-none active:scale-[0.98] sm:inline-flex"
             aria-label="Account menu"
           >
             <Avatar name={user.displayName} src={user.avatarUrl ?? undefined} size={34} />
@@ -269,51 +376,17 @@
               align="end"
               class="z-30 w-[229px] rounded-xl border border-muted bg-background px-1 py-1.5 shadow-popover focus-visible:outline-hidden"
             >
-              <div class="px-3 py-2">
-                <p class="truncate text-sm font-semibold text-foreground">{user.displayName}</p>
-                <p class="truncate text-xs text-muted-foreground">@{user.username}</p>
-              </div>
-              <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-muted" />
-              <DropdownMenu.Item onSelect={() => goto(`/@${user.username}`)} class={itemClass}>
-                <Icon name="user" size={18} /> Profile
-              </DropdownMenu.Item>
-              {#if user.isPrivate}
-                <DropdownMenu.Item onSelect={() => goto("/follow-requests")} class={itemClass}>
-                  <Icon name="lock" size={18} /> Follow requests
-                </DropdownMenu.Item>
-              {/if}
-              <DropdownMenu.Item onSelect={() => goto("/compose")} class={itemClass}>
-                <Icon name="compose" size={18} /> Write an article
-              </DropdownMenu.Item>
-              <DropdownMenu.Item onSelect={() => goto("/posts/manage")} class={itemClass}>
-                <Icon name="posts" size={18} /> Your posts
-              </DropdownMenu.Item>
-              <DropdownMenu.Item onSelect={() => goto("/lists")} class={itemClass}>
-                <Icon name="library" size={18} /> Lists
-              </DropdownMenu.Item>
-              <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-muted" />
-              <DropdownMenu.Item onSelect={() => goto("/dashboard")} class={itemClass}>
-                <Icon name="chart" size={18} /> Stats
-              </DropdownMenu.Item>
-              {#if user.isAdmin || user.isModerator}
-                <DropdownMenu.Item onSelect={() => goto("/admin")} class={itemClass}>
-                  <Icon name="gavel" size={18} />
-                  {user.isAdmin ? "Admin" : "Moderation"}
-                </DropdownMenu.Item>
-              {/if}
-              <DropdownMenu.Item onSelect={() => goto("/settings")} class={itemClass}>
-                <Icon name="settings" size={18} /> Settings
-              </DropdownMenu.Item>
-              <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-muted" />
-              <DropdownMenu.Item onSelect={logout} class={itemClass}>
-                <Icon name="logout" size={18} /> Sign out
-              </DropdownMenu.Item>
+              {@render accountItems(user)}
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
         </DropdownMenu.Root>
+        {@render compactMenu(user)}
       {:else}
         <Button href="/login" variant="ghost" class="hidden text-muted-foreground sm:inline-flex">Sign in</Button>
-        <Button href="/register" variant="solid">Get started</Button>
+        {#if !inviteOnly}
+          <Button href="/register" variant="solid">Get started</Button>
+        {/if}
+        {@render compactMenu(null)}
       {/if}
     </div>
   </nav>

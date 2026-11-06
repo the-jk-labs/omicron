@@ -423,6 +423,42 @@ test("marking verified under the Unverified filter drops the row", async () => {
   await screen.findByText("No accounts match.");
 });
 
+test("a moderator can send a regular account a password reset", async () => {
+  const { calls } = setup(
+    { "GET /api/admin/users/u-bob": detail(bob), "POST /api/admin/users/u-bob/password-reset": { ok: true } },
+    { isViewerAdmin: false },
+  );
+  await fireEvent.click(await screen.findByRole("button", { name: "Show detail for @bob" }));
+  await fireEvent.click(await screen.findByRole("button", { name: "Send password reset" }));
+  await screen.findByText("Password reset email sent.");
+  expect(calls.some((c) => c.path.endsWith("/password-reset"))).toBe(true);
+});
+
+test("a moderator isn't offered a password reset for an admin", async () => {
+  const boss = user({ username: "bob", isAdmin: true });
+  setup({ "GET /api/admin/users": page([boss]), "GET /api/admin/users/u-bob": detail(boss) }, { isViewerAdmin: false });
+  await fireEvent.click(await screen.findByRole("button", { name: "Show detail for @bob" }));
+  await screen.findByText("followers");
+  expect(screen.queryByRole("button", { name: "Send password reset" })).toBe(null);
+});
+
+test("nobody is offered a password reset for themselves", async () => {
+  setup({ "GET /api/admin/users/u-bob": detail(bob) }, { isViewerAdmin: true, selfId: bob.id });
+  await fireEvent.click(await screen.findByRole("button", { name: "Show detail for @bob" }));
+  await screen.findByText("followers");
+  expect(screen.queryByRole("button", { name: "Send password reset" })).toBe(null);
+});
+
+test("a password reset that can't be sent says why", async () => {
+  setup({
+    "GET /api/admin/users/u-bob": detail(bob),
+    "POST /api/admin/users/u-bob/password-reset": apiError(409, "This instance can't send email yet."),
+  });
+  await fireEvent.click(await screen.findByRole("button", { name: "Show detail for @bob" }));
+  await fireEvent.click(await screen.findByRole("button", { name: "Send password reset" }));
+  await screen.findByText("This instance can't send email yet.");
+});
+
 test("verification failures show in the row's detail", async () => {
   const unverified = user({ username: "bob", emailVerified: false });
   setup({

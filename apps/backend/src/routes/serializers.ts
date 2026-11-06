@@ -3,7 +3,15 @@ import type { NotificationRow } from "@/db/repositories/notifications.ts";
 import type { PostWithAuthor } from "@/db/repositories/posts.ts";
 import type { ReportRow } from "@/db/repositories/reports.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Post, ProfileLink, ReadingList as ReadingListRow, RemoteActor, User, WebhookToken } from "@/db/schema.ts";
+import type {
+  Invite,
+  Post,
+  ProfileLink,
+  ReadingList as ReadingListRow,
+  RemoteActor,
+  User,
+  WebhookToken,
+} from "@/db/schema.ts";
 import { bannerOf } from "@/lib/cover.ts";
 import { htmlToText } from "@/lib/html.ts";
 
@@ -384,6 +392,16 @@ export function notificationView(row: NotificationRow) {
 // Webhook-token payload for the owner's Settings page. The stored value is a
 // SHA-256 hash and must never leave the server — not even to its owner, who saw
 // the plaintext once at mint time and cannot be shown it again.
+export function inviteView(i: Invite) {
+  return {
+    id: i.id,
+    expiresAt: i.expiresAt,
+    usedAt: i.usedAt,
+    usedByUsername: i.usedByUsername,
+    createdAt: i.createdAt,
+  };
+}
+
 export function webhookTokenView(t: WebhookToken) {
   return {
     id: t.id,
