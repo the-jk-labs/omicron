@@ -12,6 +12,7 @@ import { db } from "@/db/client.ts";
 import * as passkeysRepo from "@/db/repositories/passkeys.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { accounts, jwks, type Passkey, passkeys, sessions, users, verifications } from "@/db/schema.ts";
+import { androidOrigins } from "@/lib/androidApp.ts";
 import { queue } from "@/queue/queue.ts";
 import {
   notifyEmailChangeCode,
@@ -214,11 +215,15 @@ export const auth = betterAuth({
     }),
   },
   // Trust the real public origin (a wizard-set domain ≠ APP_DOMAIN) from forwarded headers,
-  // plus the native clients' schemes.
+  // plus the native clients' schemes and the origin Android reports for a passkey made in the app.
   trustedOrigins: (request) => {
     const proto = request?.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
     const host = request?.headers.get("x-forwarded-host") ?? request?.headers.get("host");
-    return [...APP_ORIGINS, ...(host ? [`${proto || "https"}://${host}`] : [])];
+    return [
+      ...APP_ORIGINS,
+      ...androidOrigins(config.ANDROID_APP_CERT_FINGERPRINTS),
+      ...(host ? [`${proto || "https"}://${host}`] : []),
+    ];
   },
   session: {
     expiresIn: SESSION_TTL_S,

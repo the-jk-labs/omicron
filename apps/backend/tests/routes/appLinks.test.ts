@@ -28,7 +28,7 @@ test("serves the Digital Asset Links statement for the configured app and keys",
   expect(res.headers.get("content-type")).toMatch(/^application\/json/);
   expect(await res.json()).toEqual([
     {
-      relation: ["delegate_permission/common.handle_all_urls"],
+      relation: ["delegate_permission/common.handle_all_urls", "delegate_permission/common.get_login_creds"],
       target: { namespace: "android_app", package_name: "blog.omicron.app", sha256_cert_fingerprints: [FINGERPRINT] },
     },
   ]);
