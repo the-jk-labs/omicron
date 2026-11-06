@@ -2,13 +2,7 @@
 <script lang="ts">
   import { DropdownMenu } from "bits-ui";
   import Icon from "#lib/components/Icon.svelte";
-  import { imageDisplay, type ImageDisplayPreference } from "#lib/imageDisplay.svelte.js";
-
-  const options: { value: ImageDisplayPreference; label: string }[] = [
-    { value: "system", label: "Follow reduced-motion setting" },
-    { value: "show", label: "Show images" },
-    { value: "hide", label: "Hide images" },
-  ];
+  import { IMAGE_DISPLAY_OPTIONS, imageDisplay, type ImageDisplayPreference } from "#lib/imageDisplay.svelte.js";
 </script>
 
 <DropdownMenu.Root>
@@ -30,7 +24,7 @@
         onValueChange={(value) => imageDisplay.set(value as ImageDisplayPreference)}
         aria-label="Image display preference"
       >
-        {#each options as option (option.value)}
+        {#each IMAGE_DISPLAY_OPTIONS as option (option.value)}
           <DropdownMenu.RadioItem
             value={option.value}
             class="flex h-10 items-center rounded-button py-3 pr-1.5 pl-3 text-sm font-medium ring-0! ring-transparent! select-none focus-visible:outline-hidden data-highlighted:bg-muted"

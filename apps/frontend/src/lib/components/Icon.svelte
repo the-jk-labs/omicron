@@ -57,6 +57,7 @@
   import LogIn from "@lucide/svelte/icons/log-in";
   import LogOut from "@lucide/svelte/icons/log-out";
   import Mail from "@lucide/svelte/icons/mail";
+  import MenuIcon from "@lucide/svelte/icons/menu";
   import MessageCircle from "@lucide/svelte/icons/message-circle";
   import Minus from "@lucide/svelte/icons/minus";
   import Monitor from "@lucide/svelte/icons/monitor";
@@ -100,6 +101,7 @@
     logout: LogOut,
     compose: PenLine,
     dices: Dices,
+    menu: MenuIcon,
     user: UserIcon,
     follow: UserPlus,
     unfollow: UserMinus,

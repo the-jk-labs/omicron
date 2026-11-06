@@ -4,6 +4,11 @@ import { imageDescriptions } from "#lib/actions/imageDescriptions.js";
 import { readStorage, writeStorage } from "#lib/storage.js";
 
 export type ImageDisplayPreference = "system" | "show" | "hide";
+export const IMAGE_DISPLAY_OPTIONS: { value: ImageDisplayPreference; label: string }[] = [
+  { value: "system", label: "Follow reduced-motion setting" },
+  { value: "show", label: "Show images" },
+  { value: "hide", label: "Hide images" },
+];
 const STORAGE_KEY = "image-display";
 const query = () => window.matchMedia("(prefers-reduced-motion: reduce)");
 
