@@ -100,11 +100,26 @@ function tokensFromHtml(html: string): CodeToken[] {
   return out;
 }
 
+// Detection runs every grammar, and a block is rendered again each time its post is opened.
+const KEEP_HIGHLIGHTED = 100;
+const highlighted = new Map<string, CodeToken[]>();
+
+/** `highlight`, remembered for recent blocks. Never throws: a highlighter bug falls back to plain text. */
+export function highlightCode(source: string, declared?: string | null): CodeToken[] {
+  const key = `${declared ?? ""}\0${source}`;
+  const hit = highlighted.get(key);
+  if (hit) return hit;
+  const tokens = highlight(source, declared);
+  if (highlighted.size >= KEEP_HIGHLIGHTED) highlighted.delete(highlighted.keys().next().value!);
+  highlighted.set(key, tokens);
+  return tokens;
+}
+
 /**
  * Highlights a code block. The declared language wins; otherwise detection is used only when it is
- * confident, so prose in a fence stays plain. Never throws: a highlighter bug falls back to plain text.
+ * confident, so prose in a fence stays plain.
  */
-export function highlightCode(source: string, declared?: string | null): CodeToken[] {
+function highlight(source: string, declared?: string | null): CodeToken[] {
   if (!source.trim()) return [{ text: source }];
   try {
     if (declared && hljs.getLanguage(declared)) {
