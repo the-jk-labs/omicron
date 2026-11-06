@@ -1,4 +1,5 @@
 import "../global.css";
+import { Observe, ObserveRoot } from "expo-observe";
 import { Stack, type ErrorBoundaryProps } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -11,12 +12,14 @@ import { useStackOptions } from "@/components/layout/stack-options";
 import { EmptyState } from "@/components/ui/states";
 import { useSavedInstance } from "@/lib/instance/store";
 import { useDeviceNetwork } from "@/lib/network/use-device-network";
+import { configureObserve } from "@/lib/observe";
 import { installQueryAppState } from "@/lib/query/app-state";
 import { applySavedTheme } from "@/lib/theme/theme";
 
 // Before the first render, so the saved theme is already in place when the splash screen lifts.
 applySavedTheme();
 installQueryAppState();
+configureObserve();
 void SplashScreen.preventAutoHideAsync();
 
 /** Last resort when the app shell itself throws; screens have their own boundary (`ScreenError`). */
@@ -33,7 +36,7 @@ export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const instance = useSavedInstance();
   useDeviceNetwork();
   const stackOptions = useStackOptions();
@@ -47,6 +50,8 @@ export default function RootLayout() {
   // Everything the first screen needs (theme, instance, persisted cache) is read synchronously.
   useEffect(() => {
     SplashScreen.hide();
+    // The global call: `useObserve()` needs a screen, and here it would record nothing.
+    Observe.markInteractive();
   }, []);
 
   return (
@@ -66,3 +71,5 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+export default ObserveRoot.wrap(RootLayout);

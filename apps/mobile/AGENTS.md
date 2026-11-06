@@ -78,6 +78,9 @@ tests/              mirrors src/ (vitest, Node; react-native is stubbed in tests
   `expoPasskeyClient()` (`expo-better-auth-passkey`), which keeps Better Auth's client API. Android only, and only
   where the instance's `assetlinks.json` names the app (`usePasskeysAvailable`); elsewhere nothing offers one, and
   Settings → Passkeys still lists them and links to the web for adding one.
+- **EAS Observe** sends startup and per-route timings to Expo (`src/lib/observe.ts`). A route or query param that names
+  a person, post, list or tag must be in `HIDDEN_ROUTE_PARAMS`, so what someone reads never leaves the device. It's on
+  by default; Settings → Preferences turns it off, saved on the device only, never on the account.
 - **React Compiler:** no `try/finally` in components (it skips the whole component); reset busy flags on both
   paths instead. A `try/catch` in a component can't hold `?:`, `&&`, `??` or `?.` either: use `.then(ok, fail)` or
   move the work into a plain helper outside the component. Reanimated shared values use `.get()`/`.set()`, never `.value =` in component code.

@@ -4,6 +4,7 @@ import { Pressable, View } from "react-native";
 import { cn } from "tailwind-variants";
 import { useUniwind } from "uniwind";
 import { useApi } from "@/components/instance-provider";
+import { DiagnosticsSetting } from "@/components/settings/diagnostics-setting";
 import { FormScreen } from "@/components/settings/form-screen";
 import { SettingsRow, SettingsSection } from "@/components/settings/settings-row";
 import { Button } from "@/components/ui/button";
@@ -261,6 +262,7 @@ export default function Preferences() {
         </SettingsSection>
       )}
       {user && <FollowedTags />}
+      <DiagnosticsSetting />
     </FormScreen>
   );
 }
