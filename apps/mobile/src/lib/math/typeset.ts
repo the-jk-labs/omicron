@@ -32,10 +32,48 @@ function getEngine(): Engine {
 
 const cache = new Map<string, TypesetMath | null>();
 
+const cacheKey = (mathml: string, display: boolean) => `${display ? "D" : "I"}${mathml}`;
+
+/** The finished formula, null if it can't be typeset, or undefined while it hasn't been. Never does the work. */
+export function typesetResult(mathml: string, display: boolean): TypesetMath | null | undefined {
+  return mathml.trim() ? cache.get(cacheKey(mathml, display)) : null;
+}
+
+type Waiting = { mathml: string; display: boolean; done: () => void };
+const waiting: Waiting[] = [];
+let scheduled = false;
+
+function typesetNext() {
+  const next = waiting.shift();
+  if (next) {
+    typesetMath(next.mathml, next.display);
+    next.done();
+  }
+  if (waiting.length) requestIdleCallback(typesetNext);
+  else scheduled = false;
+}
+
+/**
+ * Typesets a formula when the JS thread is idle, one per idle slot in the order asked, so a post full of them opens
+ * at once and stays responsive. Returns what cancels it, for a formula no longer on screen.
+ */
+export function typesetWhenIdle(mathml: string, display: boolean, done: () => void) {
+  const entry = { mathml, display, done };
+  waiting.push(entry);
+  if (!scheduled) {
+    scheduled = true;
+    requestIdleCallback(typesetNext);
+  }
+  return () => {
+    const index = waiting.indexOf(entry);
+    if (index !== -1) waiting.splice(index, 1);
+  };
+}
+
 /** MathML to SVG, or null when it can't be typeset. Results are cached, so a re-render costs nothing. */
 export function typesetMath(mathml: string, display: boolean): TypesetMath | null {
   if (!mathml.trim()) return null;
-  const key = `${display ? "D" : "I"}${mathml}`;
+  const key = cacheKey(mathml, display);
   const cached = cache.get(key);
   if (cached !== undefined) return cached;
   let result: TypesetMath | null = null;
