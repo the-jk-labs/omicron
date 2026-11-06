@@ -8,6 +8,7 @@
 import * as contract from "@omicron/contract";
 import { describe, expect, test } from "vitest";
 import * as z from "zod/mini";
+import type { inviteView } from "@/routes/serializers.ts";
 import {
   adminUserView,
   barePost,
@@ -88,6 +89,7 @@ type _Post = Assert<Fits<Out<typeof postWithAuthor>, typeof contract.Post>>;
 type _BarePost = Assert<Fits<Out<typeof barePost>, typeof contract.BarePost>>;
 type _Comment = Assert<Fits<Out<typeof commentView>, typeof contract.Comment>>;
 type _Notification = Assert<Fits<Out<typeof notificationView>, typeof contract.Notification>>;
+type _Invite = Assert<Fits<Out<typeof inviteView>, typeof contract.Invite>>;
 type _WebhookToken = Assert<Fits<Out<typeof webhookTokenView>, typeof contract.WebhookToken>>;
 type _ReadingList = Assert<Fits<Out<typeof readingListView>, typeof contract.ReadingList>>;
 type _ReadingListForPost = Assert<Fits<Out<typeof readingListForPostView>, typeof contract.ReadingListForPost>>;

@@ -15,6 +15,7 @@ describe("Footer", () => {
           setupComplete: true,
           emailEnabled: false,
           emailVerificationRequired: true,
+          inviteOnly: false,
           bannerText: null,
           bannerImageUrl: null,
           aboutHtml: null,

@@ -248,6 +248,7 @@ describe("publicInfo", () => {
       setupComplete: true,
       emailEnabled: true,
       emailVerificationRequired: config.EMAIL_VERIFICATION_REQUIRED,
+      inviteOnly: false,
       bannerText: null,
       bannerImageUrl: null,
       aboutHtml: null,

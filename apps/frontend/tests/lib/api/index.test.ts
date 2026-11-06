@@ -47,6 +47,10 @@ const rows: Row[] = [
   ["adminRemovePostAiAssisted", (e) => e.adminRemovePostAiAssisted(ID), "DELETE", `/api/admin/posts/${ID}/ai-assisted`],
   ["adminSettings", (e) => e.adminSettings(), "GET", "/api/admin/settings"],
   ["setAnalytics", (e) => e.setAnalytics(true), "PUT", "/api/admin/settings/analytics", { onInstanceViews: true }],
+  ["signupSettings", (e) => e.signupSettings(), "GET", "/api/admin/signups"],
+  ["setInviteOnly", (e) => e.setInviteOnly(true), "PUT", "/api/admin/signups", { inviteOnly: true }],
+  ["createInvite", (e) => e.createInvite(), "POST", "/api/admin/invites", {}],
+  ["revokeInvite", (e) => e.revokeInvite(ID), "DELETE", `/api/admin/invites/${ID}`],
   ["siteStatistics", (e) => e.siteStatistics(), "GET", "/api/site"],
   ["adminUmami", (e) => e.adminUmami(), "GET", "/api/admin/umami"],
   [
@@ -160,6 +164,7 @@ const rows: Row[] = [
   ],
   ["removeUserAvatarAsAdmin", (e) => e.removeUserAvatarAsAdmin(ID), "DELETE", `/api/admin/users/${ID}/avatar`],
   ["resendVerification", (e) => e.resendVerification(ID), "POST", `/api/admin/users/${ID}/verification-email`, {}],
+  ["sendPasswordReset", (e) => e.sendPasswordReset(ID), "POST", `/api/admin/users/${ID}/password-reset`, {}],
   ["verifyEmail", (e) => e.verifyEmail(ID), "POST", `/api/admin/users/${ID}/verify`, {}],
   [
     "setUserRole",

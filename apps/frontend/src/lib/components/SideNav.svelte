@@ -92,7 +92,9 @@
         </div>
 
         <div class="flex flex-col gap-1.5">
-          <UIButton href="/register" variant="solid" size="xs">Create account</UIButton>
+          {#if !instance?.inviteOnly}
+            <UIButton href="/register" variant="solid" size="xs">Create account</UIButton>
+          {/if}
           <UIButton href="/login" variant="outline" size="xs">Sign in</UIButton>
         </div>
 

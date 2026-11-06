@@ -6,7 +6,17 @@ import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
 
 export const SETTING_KEYS = {
   analyticsOnInstanceViews: "analytics.onInstanceViews",
+  inviteOnly: "signups.inviteOnly",
 } as const;
+
+// Whether joining this instance takes an invite. Off by default: sign-up is open.
+export async function inviteOnlyEnabled(): Promise<boolean> {
+  return (await settingsRepo.get<boolean>(SETTING_KEYS.inviteOnly)) === true;
+}
+
+export function setInviteOnly(enabled: boolean): Promise<void> {
+  return settingsRepo.set(SETTING_KEYS.inviteOnly, enabled);
+}
 
 // Whether this instance counts on-instance page views at all. Opt-OUT: on by
 // default, switched off by a moderator. When false, no view counters are ever

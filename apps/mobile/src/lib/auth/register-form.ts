@@ -3,6 +3,12 @@ import { MAX_PASSWORD_LEN, MIN_PASSWORD_LEN } from "./password";
 
 export const MAX_DISPLAY_NAME_LEN = 60;
 
+/** What's left of a pasted invite: the whole link from the admin, or just its code. */
+export function inviteTokenFrom(text: string): string {
+  const trimmed = text.trim();
+  return trimmed.match(/[?&]invite=([^&#\s]+)/)?.[1] ?? trimmed;
+}
+
 export type RegisterForm = {
   username: string;
   email: string;

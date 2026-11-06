@@ -10,10 +10,11 @@ import {
 } from "@/db/repositories/users.ts";
 import { badRequest } from "@/lib/http.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
+import { rateLimit } from "@/lib/rateLimit.ts";
 import type { Reply } from "@/lib/reply.ts";
 import { jsonBody } from "@/lib/validate.ts";
 import { readUpload, requireAdmin, requireModerator } from "@/routes/middleware.ts";
-import { adminUserDetailView, adminUserView, deletedUserView } from "@/routes/serializers.ts";
+import { adminUserDetailView, adminUserView, deletedUserView, inviteView } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import * as anubis from "@/services/anubisProtection.ts";
 import { dnsRecords } from "@/services/dkim.ts";
@@ -22,6 +23,7 @@ import { checkOutboundPort25, verifyRecords } from "@/services/emailDns.ts";
 import * as emailSettings from "@/services/emailSettings.ts";
 import { federationRunning } from "@/services/federationState.ts";
 import * as setup from "@/services/instanceSetup.ts";
+import * as invites from "@/services/invites.ts";
 import * as jwtKeys from "@/services/jwtKeys.ts";
 import * as mediaService from "@/services/media.ts";
 import * as moderation from "@/services/moderation.ts";
@@ -41,6 +43,37 @@ adminRoutes.get("/settings", async (c) => {
 });
 
 const analyticsSchema = z.object({ onInstanceViews: z.boolean() });
+
+// Who can join, and the invites currently out (admin-only).
+adminRoutes.get("/signups", async (c) => {
+  requireAdmin(c);
+  const [inviteOnly, rows] = await Promise.all([settings.inviteOnlyEnabled(), invites.list()]);
+  return c.json({ inviteOnly, invites: rows.map(inviteView) } satisfies Reply<"SignupSettings">);
+});
+
+adminRoutes.put(
+  "/signups",
+  jsonBody(z.object({ inviteOnly: z.boolean() }), "Expected { inviteOnly: boolean }."),
+  async (c) => {
+    requireAdmin(c);
+    const { inviteOnly } = c.req.valid("json");
+    await settings.setInviteOnly(inviteOnly);
+    return c.json({ ok: true } satisfies Reply<"Ok">);
+  },
+);
+
+// The link is in this response and nowhere else: only its hash is stored.
+adminRoutes.post("/invites", async (c) => {
+  const admin = requireAdmin(c);
+  const { invite, url } = await invites.create(admin.id);
+  return c.json({ invite: inviteView(invite), url } satisfies Reply<"CreatedInvite">, 201);
+});
+
+adminRoutes.delete("/invites/:id", async (c) => {
+  requireAdmin(c);
+  await invites.revoke(c.req.param("id"));
+  return c.json({ ok: true } satisfies Reply<"Ok">);
+});
 
 // Toggle the on-instance view-counting opt-out (see ANALYTICS.md). When turned
 // off, no view counters are incremented and the writer dashboard hides the
@@ -612,6 +645,17 @@ adminRoutes.post("/users/:id/verification-email", async (c) => {
   await moderation.resendVerification(viewer.id, c.req.param("id"));
   return c.json({ ok: true } satisfies Reply<"Ok">);
 });
+
+// Mail an account a password reset link. Rate-limited because each call sends real mail.
+adminRoutes.post(
+  "/users/:id/password-reset",
+  rateLimit({ name: "admin-password-reset", windowMs: 3_600_000, max: 20 }),
+  async (c) => {
+    const viewer = requireModerator(c);
+    await moderation.sendPasswordReset(viewer.id, c.req.param("id"));
+    return c.json({ ok: true } satisfies Reply<"Ok">);
+  },
+);
 
 // Manually mark an account's email verified — the escape hatch for when
 // instance mail was misconfigured and the link can never arrive.

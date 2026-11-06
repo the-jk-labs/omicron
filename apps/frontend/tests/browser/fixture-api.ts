@@ -12,6 +12,7 @@ const instance: InstanceInfo = {
   federationEnabled: false,
   emailEnabled: false,
   emailVerificationRequired: false,
+  inviteOnly: false,
   bannerText: null,
   bannerImageUrl: null,
   aboutHtml: null,

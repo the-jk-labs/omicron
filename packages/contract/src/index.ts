@@ -442,6 +442,8 @@ export const InstanceInfo = z.object({
   emailEnabled: z.boolean(),
   /** Sign-in waits for the confirmation link. */
   emailVerificationRequired: z.boolean(),
+  /** Joining takes an invite link; with none out, the instance is simply closed. */
+  inviteOnly: z.boolean(),
   /** The signed-out visitor card; null means the built-in default. */
   bannerText: z.nullable(z.string()),
   bannerImageUrl: z.nullable(z.string()),
@@ -716,6 +718,19 @@ function accountPage<T extends z.ZodMiniType>(item: T) {
 
 // ── responses ──
 // Each endpoint's whole body, so a client parses exactly what arrives.
+
+export const Invite = z.object({
+  id: z.string(),
+  expiresAt: z.string(),
+  usedAt: z.nullable(z.string()),
+  usedByUsername: z.nullable(z.string()),
+  createdAt: z.string(),
+});
+export type Invite = z.infer<typeof Invite>;
+export const SignupSettings = z.object({ inviteOnly: z.boolean(), invites: z.array(Invite) });
+export type SignupSettings = z.infer<typeof SignupSettings>;
+export const CreatedInvite = z.object({ invite: Invite, url: z.string() });
+export type CreatedInvite = z.infer<typeof CreatedInvite>;
 
 export const Ok = z.object({ ok: z.literal(true) });
 export const PostPage = page(Post);

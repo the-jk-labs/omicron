@@ -51,6 +51,7 @@ export function createEndpoints(api: ApiClient) {
       const qs = params.toString();
       return api.get(`/admin/users${qs ? `?${qs}` : ""}`, c.AdminUsers);
     },
+    sendPasswordReset: (id: string) => api.post(`/admin/users/${id}/password-reset`, c.Ok, {}),
     suspendUser: (id: string, suspend: boolean, notify = false) =>
       api.post(`/admin/users/${id}/suspend`, c.Ok, { suspend, notify }),
     // Delete a local account. GitHub-style: the exact username plus the acting

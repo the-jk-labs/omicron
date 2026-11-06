@@ -228,7 +228,9 @@
   {/if}
 </Button>
 
-<p class="mt-8 text-center text-sm text-muted-foreground">
-  No account?
-  <Button href="/register" variant="link">Create one</Button>
-</p>
+{#if (page.data.instance as InstanceInfo | null)?.inviteOnly !== true}
+  <p class="mt-8 text-center text-sm text-muted-foreground">
+    No account?
+    <Button href="/register" variant="link">Create one</Button>
+  </p>
+{/if}

@@ -23,7 +23,14 @@ import {
 } from "@/services/accountNotices.ts";
 import { createUndoLink } from "@/services/emailChange.ts";
 import { getAppName, getOrigin } from "@/services/instanceSetup.ts";
+import * as invites from "@/services/invites.ts";
 import { completeRollover } from "@/services/jwtKeys.ts";
+
+const inviteRequired = (status: "FORBIDDEN" | "CONFLICT" = "FORBIDDEN") =>
+  new APIError(status, {
+    code: "INVITE_REQUIRED",
+    message: "This instance is invite-only, and that invite isn't valid or has been used.",
+  });
 
 const BCRYPT_COST = 12;
 const SESSION_TTL_S = 60 * 60 * 24 * 30;
@@ -180,6 +187,7 @@ export const auth = betterAuth({
         return undefined;
       }
       if (ctx.path !== "/sign-up/email" || typeof ctx.body?.email !== "string") return undefined;
+      if (!(await invites.mayAttemptSignUp(ctx.body?.inviteToken))) throw inviteRequired();
       // Better Auth otherwise returns a synthetic success for duplicate emails
       // when verification is required, although no account or email is created.
       if (await usersRepo.findByEmail(ctx.body.email.toLowerCase())) {
@@ -239,6 +247,8 @@ export const auth = betterAuth({
     // is Mastodon parity: register → "check your inbox" → click → sign in.
     autoSignIn: true,
     requireEmailVerification: config.EMAIL_VERIFICATION_REQUIRED,
+    // A reset is how a compromised account is recovered, so it also ends whatever sessions the intruder holds.
+    revokeSessionsOnPasswordReset: true,
     password: {
       hash: (password) => bcrypt.hash(password, BCRYPT_COST),
       verify: ({ hash, password }) => bcrypt.compare(password, hash),
@@ -292,7 +302,10 @@ export const auth = betterAuth({
     user: {
       create: {
         // First account becomes admin, trusted as verified.
-        before: async (user) => {
+        before: async (user, ctx) => {
+          const { username: handle } = user as { username?: string };
+          // Not a 403: Better Auth answers one from this hook with a fake success, as if an account had been made.
+          if (!(await invites.claimForSignUp(ctx?.body?.inviteToken, handle ?? ""))) throw inviteRequired("CONFLICT");
           const isFirst = (await usersRepo.countUsers()) === 0;
           return isFirst ? { data: { ...user, isAdmin: true, emailVerified: true } } : { data: user };
         },
