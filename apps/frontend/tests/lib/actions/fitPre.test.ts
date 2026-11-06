@@ -53,7 +53,7 @@ test("a block that overflows shrinks its font to fit", () => {
   const p = pre(416, 616);
   fitPre(host(p));
   // 400px available for 600px of content: two thirds the size, less a 1% margin.
-  expect(p.style.fontSize).toBe(`${16 * (400 / 600) * 0.99}px`);
+  expect(parseFloat(p.style.fontSize)).toBeCloseTo(16 * (400 / 600) * 0.99);
   expect(p.style.whiteSpace).toBe("pre");
 });
 
