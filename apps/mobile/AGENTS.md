@@ -91,6 +91,11 @@ the app and the bundle (keep it free of native imports); native-only helpers go 
 changing the bridge, the web extensions, or upgrading `@10play/tentap-editor` or Tiptap, run `pnpm editor:build`
 and commit `editor-web/build/editorHtml.js`.
 
+Booting that page is slow, so for signed-in people on Android a composer waits hidden behind the app
+(`src/lib/editor/composer-preload.ts`, `router.prefetch`). A `/compose` screen can therefore be mounted before anyone
+opens it: it must not autofocus, save or show anything until the author acts. Never prefetch while one exists, because
+a second prefetch replaces it and boots the editor again.
+
 ## Tests
 
 We do test-driven development:
