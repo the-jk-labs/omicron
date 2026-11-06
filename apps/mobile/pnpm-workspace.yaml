@@ -57,3 +57,4 @@ minimumReleaseAgeExclude:
   - nitro-core@0.37.2
   - react-native-nitro-fetch@1.10.0
   - react-native-nitro-modules@0.37.2
+  - expo-better-auth-passkey@1.7.0
