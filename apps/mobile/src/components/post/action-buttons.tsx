@@ -1,28 +1,18 @@
 import type { Post } from "@omicron/contract";
 import { Share } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from "react-native-reanimated";
-import Svg, { Path } from "react-native-svg";
 import { useInstance } from "@/components/instance-provider";
+import { FillableIcon } from "@/components/ui/fillable-icon";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { PressableScale } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFillable } from "@/lib/fillable-icons";
 import { postPath } from "@/lib/links";
 import { useRequireSignIn, useToggleLike, useToggleRecommend } from "@/lib/query/engagement";
 
 // One size for every post action, in feeds and the reader alike, as X does.
 export const ACTION_ICON_SIZE = 19;
-
-// Lucide's own outlines, drawn as SVG so the active state can fill them: the icon font has outlines only.
-const FILLABLE = {
-  heart:
-    "M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5",
-  bookmark:
-    "M17 3a2 2 0 0 1 2 2v15a1 1 0 0 1-1.496.868l-4.512-2.578a2 2 0 0 0-1.984 0l-4.512 2.578A1 1 0 0 1 5 20V5a2 2 0 0 1 2-2z",
-};
-
-type Fillable = keyof typeof FILLABLE;
-const isFillable = (name: string): name is Fillable => name in FILLABLE;
 
 type Tone = "like" | "repost" | "saved" | "none";
 const TONE_TOKEN: Record<Tone, string> = {
@@ -37,21 +27,6 @@ const TONE_CLASS: Record<Tone, string> = {
   saved: "text-saved",
   none: "text-muted-foreground",
 };
-
-function FillableIcon({ name, size, color, filled }: { name: Fillable; size: number; color: string; filled: boolean }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path
-        d={FILLABLE[name]}
-        stroke={color}
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill={filled ? color : "none"}
-      />
-    </Svg>
-  );
-}
 
 /** Icon + count button. On, it takes its tone (and a fillable icon fills); `pops` pops it once when tapped on. */
 export function ToggleButton({
