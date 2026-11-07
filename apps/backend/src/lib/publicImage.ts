@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Buffer } from "node:buffer";
-import { lookup } from "node:dns";
 import { request } from "node:https";
-import { isIP, type LookupFunction } from "node:net";
-import { isPrivateIPv4Number, isPrivateIPv6, parseIPv4ToNumber } from "@/federation/ssrf.ts";
+import { isIP } from "node:net";
 import { sniffMatches } from "@/lib/imageSignature.ts";
+import {
+  isPublicAddress as isPublicImageAddress,
+  publicAddressLookup as publicImageLookup,
+} from "@/lib/publicAddress.ts";
+
+export { isPublicImageAddress, publicImageLookup };
 
 export const MAX_PROXY_IMAGE_BYTES = 5 * 1024 * 1024;
 const TYPES: Record<string, string> = {
@@ -27,20 +31,6 @@ export function isSelfContainedSvg(bytes: Uint8Array): boolean {
   return SVG_ROOT.test(text) && !SVG_ACTIVE.test(text) && !SVG_EXTERNAL.test(text);
 }
 
-export function isPublicImageAddress(address: string): boolean {
-  if (isIP(address) === 4) return !isPrivateIPv4Number(parseIPv4ToNumber(address)!);
-  if (isIP(address) !== 6) return false;
-  const [first, second] = address.toLowerCase().split(":");
-  const subnet = parseInt(second || "0", 16);
-  // Only global unicast IPv6, excluding documentation and transition ranges.
-  return (
-    /^[23]/.test(first) &&
-    !(first === "2001" && (subnet < 0x200 || subnet === 0xdb8)) &&
-    first !== "3fff" &&
-    !isPrivateIPv6(address)
-  );
-}
-
 export function imageTarget(input: string): URL {
   if (input.length > 4096) throw new Error("Invalid image URL.");
   const url = new URL(input);
@@ -60,19 +50,6 @@ export function imageTarget(input: string): URL {
   url.hash = "";
   return url;
 }
-
-// The validated address is handed straight to the socket, with no second lookup.
-export const publicImageLookup: LookupFunction = (host, options, callback) => {
-  lookup(host, { all: true }, (error, records) => {
-    if (error || !records.length || records.some((record) => !isPublicImageAddress(record.address))) {
-      callback(new Error("Non-public image host."), "", 0);
-    } else if (options.all) {
-      callback(null, records);
-    } else {
-      callback(null, records[0].address, records[0].family);
-    }
-  });
-};
 
 type ImageHop = { location: string } | { bytes: Uint8Array; contentType: string };
 
