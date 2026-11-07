@@ -213,6 +213,23 @@ const fixtures: Record<string, unknown> = {
   "/api/admin/tags/aliases": { aliases: [] },
   "/api/photos/providers": { providers: [] },
   "/api/oauth/connections": { connections: [] },
+  "/api/oauth/apps": {
+    apps: [
+      {
+        id: "fixture-client-id",
+        name: "Fixture application",
+        website: null,
+        redirectUris: ["https://app.example/oauth/callback"],
+        scopes: ["read:accounts", "webhooks:posts"],
+        publicClient: false,
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    ],
+    availableScopes: [
+      { scope: "read:accounts", description: "Verify your public identity only." },
+      { scope: "webhooks:posts", description: "Be notified when your public posts change." },
+    ],
+  },
 };
 
 createServer((request, response) => {
