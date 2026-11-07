@@ -52,6 +52,28 @@ test("full client consent shows approved permissions and renewable access withou
   expect(screen.getByText(/90 days/)).toBeVisible();
   expect(screen.queryByText(/cannot read your email/)).toBeNull();
   expect(screen.getByRole("button", { name: "Authorize application" })).toHaveAttribute("value", "allow");
+  expect(screen.queryByText(/until you revoke access/)).toBeNull();
+});
+
+test("a webhook permission is disclosed as lasting until revoked, not just 90 days", () => {
+  render(Page, {
+    data: {
+      consent: {
+        ticket: "ticket",
+        name: "Community site",
+        callbackOrigin: "https://app.example",
+        username: "ada",
+        scope: "read:accounts webhooks:posts",
+        renewable: true,
+        permissions: [
+          { scope: "read:accounts", description: "Verify your public identity only." },
+          { scope: "webhooks:posts", description: "Be notified when your public posts change." },
+        ],
+      },
+    } as never,
+    form: null,
+  });
+  expect(screen.getByText(/Post notifications don't expire: they continue until you revoke access\./)).toBeVisible();
 });
 
 test("authorization failures are accessible and untrusted application names stay text", () => {
