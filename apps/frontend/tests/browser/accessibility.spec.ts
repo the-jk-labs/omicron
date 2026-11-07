@@ -1091,3 +1091,32 @@ test("the OAuth application form is labelled, operable by keyboard, and passes a
   await expect(permission).toBeChecked();
   await accessible(page);
 });
+
+for (const [button, decision] of [
+  ["Authorize application", "allow"],
+  ["Deny", "deny"],
+]) {
+  test(`choosing "${button}" on the consent page returns to the application`, async ({ page }) => {
+    await page.route("https://client.example/**", (route) =>
+      route.fulfill({ contentType: "text/html", body: "<title>Back at the application</title>" }),
+    );
+    await signedIn(page);
+    await ready(page, "/oauth/authorize?client_id=fixture&state=s");
+    const submitted = page.waitForRequest((request) => request.method() === "POST");
+    await page.getByRole("button", { name: button, exact: true }).click();
+    expect((await submitted).postData()).toContain(decision);
+    await page.waitForURL("https://client.example/callback?code=fixture-code&state=s");
+    await expect(page).toHaveTitle("Back at the application");
+  });
+}
+
+test("the consent card uses the room a large screen gives it, and still fits a phone", async ({ page }) => {
+  await signedIn(page);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await ready(page, "/oauth/authorize?client_id=fixture&state=s");
+  const card = page.getByRole("main").locator("section");
+  expect((await card.boundingBox())?.width).toBeGreaterThan(600);
+
+  await page.setViewportSize({ width: 320, height: 700 });
+  expect((await card.boundingBox())?.width).toBeLessThanOrEqual(320);
+});

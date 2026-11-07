@@ -39,6 +39,7 @@ const PAGES: [path: string, role: Role][] = [
   ["/notifications", "user"],
   ["/follow-requests", "user"],
   ["/settings", "user"],
+  ["/oauth/authorize?client_id=fixture&state=s", "user"],
   ...ADMIN_TABS.map(({ value }): [string, Role] => [`/admin?tab=${value}`, "admin"]),
 ];
 

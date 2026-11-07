@@ -4,7 +4,7 @@ import type { IdentityConsent } from "#lib/oauth.js";
 import type { Actions, PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async ({ fetch, url, setHeaders }) => {
-  setHeaders({ "cache-control": "no-store", "referrer-policy": "no-referrer" });
+  setHeaders({ "cache-control": "no-store", "referrer-policy": "same-origin" });
   const response = await fetch(`/api/oauth/authorize${url.search}`);
   if (response.status === 401) redirect(303, `/login?returnTo=${encodeURIComponent(url.pathname + url.search)}`);
   if (!response.ok) {

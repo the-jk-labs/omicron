@@ -451,13 +451,16 @@
   {#if standalone}
     <!-- Auth / setup: single centered column, no rails. Fills the space under
          the nav so the content sits in the optical centre of the viewport. The
-         wizard gets a wider column than the auth forms. -->
+         wizard and the OAuth consent screen get a wider column than the auth forms. -->
     <main
       id="main-content"
       tabindex="-1"
-      class="mx-auto flex w-full flex-col justify-center px-4 py-12 sm:min-h-[calc(100vh-4rem)] sm:py-16 {isSetup
-        ? 'max-w-xl'
-        : 'max-w-sm'}"
+      class="mx-auto flex w-full flex-col justify-center px-4 py-12 sm:min-h-[calc(100vh-4rem)] sm:py-16 {page.route
+        .id === '/oauth/authorize'
+        ? 'max-w-2xl'
+        : isSetup
+          ? 'max-w-xl'
+          : 'max-w-sm'}"
     >
       <svelte:boundary onerror={reportRenderError} {failed}>
         {@render children()}

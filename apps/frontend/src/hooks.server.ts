@@ -182,11 +182,11 @@ export const handle: Handle = async ({ event, resolve }) => {
   response.headers.set("X-Frame-Options", "DENY");
   // Don't leak full URLs (which can carry handles/slugs) to third-party origins.
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  if (
-    event.url.pathname === "/oauth/authorize" ||
-    (event.url.pathname === "/login" && event.url.searchParams.has("returnTo"))
-  ) {
-    response.headers.set("Referrer-Policy", "no-referrer");
+  const oauthConsent = event.url.pathname === "/oauth/authorize";
+  if (oauthConsent || (event.url.pathname === "/login" && event.url.searchParams.has("returnTo"))) {
+    // Never to another site. The consent form posts to itself, and with no-referrer a browser sends that as
+    // `Origin: null`, which fails the same-origin checks that protect the decision.
+    response.headers.set("Referrer-Policy", oauthConsent ? "same-origin" : "no-referrer");
     response.headers.set("Cache-Control", "no-store");
   }
   // Switch off the powerful browser APIs a blogging platform never uses, so an

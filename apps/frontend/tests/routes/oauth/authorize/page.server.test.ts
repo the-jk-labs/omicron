@@ -23,7 +23,7 @@ test("loads fresh consent with no caching or referrer leakage", async () => {
   const { event, calls, setHeaders } = loadEvent();
   expect(await load(event)).toEqual({ consent });
   expect(calls[0].path).toBe("/api/oauth/authorize?client_id=c&state=x");
-  expect(setHeaders).toHaveBeenCalledWith({ "cache-control": "no-store", "referrer-policy": "no-referrer" });
+  expect(setHeaders).toHaveBeenCalledWith({ "cache-control": "no-store", "referrer-policy": "same-origin" });
 });
 test("signed-out users resume this request after login", async () => {
   const { event } = loadEvent(Response.json({ error: "Sign in" }, { status: 401 }));
