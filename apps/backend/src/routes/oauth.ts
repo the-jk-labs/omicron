@@ -37,7 +37,6 @@ async function body(c: Context): Promise<Record<string, unknown>> {
 // Isolated from the normal API's JWT/session middleware and its write permissions.
 export const oauthRoutes = new Hono<AppEnv>();
 for (const path of [
-  "/api/v1/apps",
   "/api/v1/apps/verify_credentials",
   "/api/v1/accounts/verify_credentials",
   "/api/oauth/*",
@@ -88,9 +87,6 @@ const decodeCredential = (value: string) => decodeURIComponent(value.replace(/\+
 
 oauthRoutes.get("/.well-known/oauth-authorization-server", async (c) => c.json(await oauth.metadata()));
 
-oauthRoutes.post("/api/v1/apps", limited("oauth-register", 10, 3600_000), async (c) =>
-  c.json(await oauth.register(await body(c)), 200),
-);
 oauthRoutes.get("/api/v1/apps/verify_credentials", limited("oauth-app", 120), async (c) =>
   c.json(await oauth.verifyApp(c.req.raw.headers)),
 );
@@ -113,6 +109,26 @@ oauthRoutes.post("/oauth/revoke", limited("oauth-revoke", 60), async (c) => {
 oauthRoutes.get("/api/v1/accounts/verify_credentials", limited("oauth-identity", 120), async (c) =>
   c.json(await oauth.verify(c.req.raw.headers)),
 );
+// Registering and managing applications takes a signed-in browser session, like
+// the connections below: an OAuth token can never create another application.
+oauthRoutes.get("/api/oauth/apps", limited("oauth-apps", 60), async (c) =>
+  c.json((await oauth.listApps(c.req.raw.headers)) satisfies Reply<"OAuthApps">),
+);
+oauthRoutes.post("/api/oauth/apps", limited("oauth-app-create", 10, 3600_000), async (c) =>
+  c.json((await oauth.createApp(await body(c), c.req.raw.headers)) satisfies Reply<"CreatedOAuthApp">, 201),
+);
+oauthRoutes.patch("/api/oauth/apps/:id", limited("oauth-app-write", 30), async (c) =>
+  c.json(
+    (await oauth.updateApp(c.req.param("id"), await body(c), c.req.raw.headers)) satisfies Reply<"OAuthAppResponse">,
+  ),
+);
+oauthRoutes.post("/api/oauth/apps/:id/secret", limited("oauth-app-write", 30), async (c) =>
+  c.json((await oauth.rotateAppSecret(c.req.param("id"), c.req.raw.headers)) satisfies Reply<"OAuthAppSecret">),
+);
+oauthRoutes.delete("/api/oauth/apps/:id", limited("oauth-app-write", 30), async (c) => {
+  await oauth.deleteApp(c.req.param("id"), c.req.raw.headers);
+  return c.json({ ok: true } satisfies Reply<"Ok">);
+});
 oauthRoutes.get("/api/oauth/connections", limited("oauth-connections", 60), async (c) =>
   c.json({ connections: await oauth.connections(c.req.raw.headers) } satisfies Reply<"ConnectedApps">),
 );

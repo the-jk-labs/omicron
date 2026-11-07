@@ -55,13 +55,14 @@ async function post(path: string, body: Record<string, unknown>, sessionCookie =
 }
 
 async function client() {
-  const response = await post("/api/v1/apps", {
+  const response = await post("/api/oauth/apps", {
     client_name: "Directory",
     redirect_uris: callback,
     scopes: "read:accounts",
   });
-  expect(response.status).toBe(200);
-  return (await response.json()) as { client_id: string; client_secret: string };
+  expect(response.status).toBe(201);
+  const { app: created, clientSecret } = await response.json();
+  return { client_id: created.id as string, client_secret: clientSecret as string };
 }
 
 async function consent(c: { client_id: string }, extra: Record<string, string> = {}) {
@@ -234,13 +235,9 @@ test("suspension and deletion immediately stop identity verification", async () 
   expect((await verify(token)).status).toBe(401);
 });
 
-test("cleanup forgets only unused old registrations, preserving previously approved clients", async () => {
-  const c = await client();
+test("cleanup never removes a registered application, however long it goes unused", async () => {
   const unused = await client();
-  await grant(c);
-  await db.update(oauthApps).set({ createdAt: new Date(Date.now() - 31 * 86400_000) });
-  await db.delete(oauthCodes);
+  await db.update(oauthApps).set({ createdAt: new Date(Date.now() - 365 * 86400_000) });
   await repo.cleanup();
-  expect(await repo.findApp(c.client_id)).toBeDefined();
-  expect(await repo.findApp(unused.client_id)).toBeUndefined();
+  expect(await repo.findApp(unused.client_id)).toBeDefined();
 });

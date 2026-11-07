@@ -15,6 +15,43 @@ export async function createApp(values: typeof oauthApps.$inferInsert) {
   return row;
 }
 
+export function listAppsByOwner(ownerId: string) {
+  return db.select().from(oauthApps).where(eq(oauthApps.ownerId, ownerId)).orderBy(desc(oauthApps.createdAt));
+}
+
+export async function countAppsByOwner(ownerId: string): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(oauthApps)
+    .where(eq(oauthApps.ownerId, ownerId));
+  return row?.n ?? 0;
+}
+
+export function findOwnedApp(id: string, ownerId: string) {
+  return db.query.oauthApps.findFirst({ where: and(eq(oauthApps.id, id), eq(oauthApps.ownerId, ownerId)) });
+}
+
+export async function updateOwnedApp(
+  id: string,
+  ownerId: string,
+  values: Partial<Pick<typeof oauthApps.$inferInsert, "name" | "website" | "redirectUris" | "scopes" | "secretHash">>,
+) {
+  const [row] = await db
+    .update(oauthApps)
+    .set(values)
+    .where(and(eq(oauthApps.id, id), eq(oauthApps.ownerId, ownerId)))
+    .returning();
+  return row;
+}
+
+export async function deleteOwnedApp(id: string, ownerId: string): Promise<boolean> {
+  const rows = await db
+    .delete(oauthApps)
+    .where(and(eq(oauthApps.id, id), eq(oauthApps.ownerId, ownerId)))
+    .returning({ id: oauthApps.id });
+  return rows.length > 0;
+}
+
 export function findApp(id: string) {
   return db.query.oauthApps.findFirst({ where: eq(oauthApps.id, id) });
 }
@@ -208,20 +245,6 @@ export async function cleanup() {
         lt(oauthTokens.expiresAt, now),
         or(isNull(oauthTokens.refreshExpiresAt), lt(oauthTokens.refreshExpiresAt, now)),
         not(hasWebhook),
-      ),
-    );
-  // Client API registrations stay stable; only unused legacy identity registrations expire.
-  await db
-    .delete(oauthApps)
-    .where(
-      and(
-        isNull(oauthApps.authorizedAt),
-        eq(oauthApps.scopes, "read:accounts"),
-        eq(oauthApps.publicClient, false),
-        lt(oauthApps.createdAt, new Date(Date.now() - 30 * 86400_000)),
-        sql`not exists (select 1 from ${oauthTokens} where ${oauthTokens.clientId} = ${oauthApps.id})`,
-        sql`not exists (select 1 from ${oauthCodes} where ${oauthCodes.clientId} = ${oauthApps.id})`,
-        sql`not exists (select 1 from ${oauthRequests} where ${oauthRequests.clientId} = ${oauthApps.id})`,
       ),
     );
 }

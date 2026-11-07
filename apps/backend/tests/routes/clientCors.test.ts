@@ -5,8 +5,8 @@ import { clientCors } from "@/routes/clientCors.ts";
 import type { AppEnv } from "@/routes/types.ts";
 
 const app = new Hono<AppEnv>().use("*", clientCors).all("*", (c) => c.json({ ok: true }));
-test("credentialless browser clients can register, exchange, revoke and use every API verb", async () => {
-  for (const path of ["/api/v1/apps", "/oauth/token", "/oauth/revoke", "/api/posts/p", "/api/client"]) {
+test("credentialless browser clients can exchange, revoke and use every API verb", async () => {
+  for (const path of ["/oauth/token", "/oauth/revoke", "/api/posts/p", "/api/client"]) {
     const res = await app.request(path, {
       method: "OPTIONS",
       headers: {

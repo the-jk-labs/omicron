@@ -707,6 +707,9 @@ export const sessions = pgTable(
 // ── OAuth applications and delegated API grants ─────────────────────────
 export const oauthApps = pgTable("oauth_apps", {
   id: text("id").primaryKey(),
+  ownerId: uuid("owner_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   secretHash: text("secret_hash").notNull(),
   name: text("name").notNull(),
   redirectUris: jsonb("redirect_uris").$type<string[]>().notNull(),

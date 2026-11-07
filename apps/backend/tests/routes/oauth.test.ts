@@ -5,7 +5,7 @@ vi.mock(import("@/services/oauth.ts"), async (original) => {
   const actual = await original();
   return {
     ...actual,
-    register: vi.fn<typeof actual.register>(),
+    createApp: vi.fn<typeof actual.createApp>(),
     exchange: vi.fn<typeof actual.exchange>(),
     revoke: vi.fn<typeof actual.revoke>(),
     prepare: vi.fn<typeof actual.prepare>(),
@@ -31,46 +31,50 @@ const json = (path: string, value: unknown, headers: Record<string, string> = {}
   });
 
 beforeEach(() => {
-  vi.mocked(oauth.register).mockResolvedValue({
-    id: "c",
-    name: "Directory",
-    website: null,
-    redirect_uri: "https://client.example/cb",
-    redirect_uris: ["https://client.example/cb"],
-    scopes: ["read:accounts"],
-    token_endpoint_auth_method: "client_secret_basic",
-    client_id: "c",
-    client_secret: "s",
-    vapid_key: "",
+  vi.mocked(oauth.createApp).mockResolvedValue({
+    app: {
+      id: "c",
+      name: "Directory",
+      website: null,
+      redirectUris: ["https://client.example/cb"],
+      scopes: ["read:accounts"],
+      publicClient: false,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    },
+    clientSecret: "s",
   });
 });
 
-test("registration accepts JSON and form bodies", async () => {
-  expect((await json("/api/v1/apps", { client_name: "Directory" })).status).toBe(200);
-  await app.request("/api/v1/apps", {
+test("creating an application accepts JSON and form bodies", async () => {
+  expect((await json("/api/oauth/apps", { client_name: "Directory" })).status).toBe(201);
+  await app.request("/api/oauth/apps", {
     method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
+    headers: { "content-type": "application/x-www-form-urlencoded", "x-forwarded-for": "192.0.2.240" },
     body: "client_name=Directory&scopes=read%3Aaccounts",
   });
-  expect(oauth.register).toHaveBeenLastCalledWith({ client_name: "Directory", scopes: "read:accounts" });
+  expect(vi.mocked(oauth.createApp).mock.lastCall?.[0]).toEqual({ client_name: "Directory", scopes: "read:accounts" });
+});
+test("the old open registration endpoint is gone", async () => {
+  expect((await json("/api/v1/apps", { client_name: "Directory" })).status).toBe(404);
+  expect(oauth.createApp).not.toHaveBeenCalled();
 });
 test("duplicate parameters are refused, not silently selected", async () => {
-  const response = await app.request("/api/v1/apps", {
+  const response = await app.request("/api/oauth/apps", {
     method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
+    headers: { "content-type": "application/x-www-form-urlencoded", "x-forwarded-for": "192.0.2.241" },
     body: "client_name=first&client_name=second",
   });
   expect(response.status).toBe(400);
-  expect(oauth.register).not.toHaveBeenCalled();
+  expect(oauth.createApp).not.toHaveBeenCalled();
   expect((await app.request("/api/oauth/authorize?client_id=one&client_id=two")).status).toBe(400);
   expect(oauth.prepare).not.toHaveBeenCalled();
 });
 test.for([null, [], 42, "text"])("rejects JSON that is not an object: %o", async (value) => {
-  expect((await json("/api/v1/apps", value)).status).toBe(400);
+  expect((await json("/api/oauth/apps", value)).status).toBe(400);
 });
 test("caps streaming bodies without trusting Content-Length", async () => {
-  expect((await json("/api/v1/apps", { client_name: "x".repeat(16_384) })).status).toBe(413);
-  expect(oauth.register).not.toHaveBeenCalled();
+  expect((await json("/api/oauth/apps", { client_name: "x".repeat(16_384) })).status).toBe(413);
+  expect(oauth.createApp).not.toHaveBeenCalled();
 });
 test("supports HTTP Basic client authentication and form bodies", async () => {
   const response = await app.request("/oauth/token", {
@@ -108,10 +112,10 @@ test("the OAuth router never changes cache policy on unrelated API paths", async
   expect(response.headers.get("cache-control")).toBe("public, max-age=3600");
   expect(response.headers.has("pragma")).toBe(false);
 });
-test("registration is rate-limited per address", async () => {
+test("creating applications is rate-limited per address", async () => {
   const headers = { "x-forwarded-for": "192.0.2.250" };
-  for (let i = 0; i < 10; i++) expect((await json("/api/v1/apps", {}, headers)).status).toBe(200);
-  const response = await json("/api/v1/apps", {}, headers);
+  for (let i = 0; i < 10; i++) expect((await json("/api/oauth/apps", {}, headers)).status).toBe(201);
+  const response = await json("/api/oauth/apps", {}, headers);
   expect(response.status).toBe(429);
   expect(response.headers.has("retry-after")).toBe(true);
 });

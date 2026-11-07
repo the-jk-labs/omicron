@@ -47,14 +47,22 @@ async function post(path: string, body: unknown, browser = false) {
   });
 }
 async function register(scopes = "read write", redirect = callback, publicClient = true) {
-  const res = await post("/api/v1/apps", {
-    client_name: "Third-party Reader",
-    redirect_uris: [redirect],
-    scopes,
-    token_endpoint_auth_method: publicClient ? "none" : "client_secret_basic",
-  });
-  expect(res.status).toBe(200);
-  return (await res.json()) as { client_id: string; client_secret?: string };
+  const res = await post(
+    "/api/oauth/apps",
+    {
+      client_name: "Third-party Reader",
+      redirect_uris: [redirect],
+      scopes,
+      token_endpoint_auth_method: publicClient ? "none" : "client_secret_basic",
+    },
+    true,
+  );
+  expect(res.status).toBe(201);
+  const { app: created, clientSecret } = await res.json();
+  return {
+    client_id: created.id as string,
+    ...(clientSecret ? { client_secret: clientSecret as string } : {}),
+  };
 }
 async function authorize(
   client: { client_id: string; client_secret?: string },

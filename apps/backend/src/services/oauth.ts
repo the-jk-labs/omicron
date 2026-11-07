@@ -20,6 +20,7 @@ import {
 export { IDENTITY_SCOPE, OAuthError };
 export const TOKEN_TTL_SECONDS = 3600;
 export const REFRESH_TTL_SECONDS = 90 * 86400;
+const MAX_APPS_PER_USER = 10;
 const opaque = () => randomBytes(32).toString("base64url");
 
 type Input = Record<string, unknown>;
@@ -33,7 +34,6 @@ export async function metadata() {
     authorization_endpoint: `${origin}/oauth/authorize`,
     token_endpoint: `${origin}/oauth/token`,
     revocation_endpoint: `${origin}/oauth/revoke`,
-    registration_endpoint: `${origin}/api/v1/apps`,
     scopes_supported: Object.keys(OAUTH_SCOPES),
     response_types_supported: ["code"],
     grant_types_supported: ["authorization_code", "refresh_token"],
@@ -83,15 +83,12 @@ export function callbackDestination(raw: string) {
   return url.origin === "null" ? `${url.protocol}${url.host ? `//${url.host}` : ""}${url.pathname}` : url.origin;
 }
 
-export async function register(input: Input) {
+// Registering takes a signed-in account, and each holds a limited number, so an
+// application always has someone answerable for it.
+function appFields(input: Input) {
   const name = text(input, "client_name", 100).trim();
   if (!name) throw new OAuthError("invalid_request", "Invalid client_name.");
-  // Mastodon calls this field `scopes` at registration and `scope` at authorization.
   const scopes = parseScopes(input.scopes ?? IDENTITY_SCOPE);
-  const method = text(input, "token_endpoint_auth_method", 100, false);
-  if (method && !["none", "client_secret_basic", "client_secret_post"].includes(method))
-    throw new OAuthError("invalid_request", "Unsupported token_endpoint_auth_method.");
-  const publicClient = method === "none";
   const rawRedirects = input.redirect_uris;
   const redirects = text(
     {
@@ -117,29 +114,74 @@ export async function register(input: Input) {
   }
   const website = text(input, "website", 2048, false);
   if (website) webUrl(website);
-  const clientId = opaque();
-  const clientSecret = opaque();
-  await oauthRepo.createApp({
-    id: clientId,
-    secretHash: await hashToken(clientSecret),
-    name,
-    redirectUris: [...new Set(redirects)],
-    scopes,
-    publicClient,
-    website: website || null,
-  });
+  return { name, scopes, redirectUris: [...new Set(redirects)], website: website || null };
+}
+
+function appView(app: NonNullable<Awaited<ReturnType<typeof oauthRepo.findApp>>>) {
   return {
-    id: clientId,
-    name,
-    website: website || null,
-    redirect_uri: redirects.join("\n"),
-    redirect_uris: [...new Set(redirects)],
-    scopes: scopes.split(" "),
-    client_id: clientId,
-    ...(publicClient ? {} : { client_secret: clientSecret, client_secret_expires_at: 0 }),
-    token_endpoint_auth_method: publicClient ? "none" : "client_secret_basic",
-    vapid_key: "",
+    id: app.id,
+    name: app.name,
+    website: app.website,
+    redirectUris: app.redirectUris,
+    scopes: app.scopes.split(" "),
+    publicClient: app.publicClient,
+    createdAt: app.createdAt.toISOString(),
   };
+}
+
+const appNotFound = () => new OAuthError("invalid_request", "Application not found.", 404);
+
+export async function listApps(headers: Headers) {
+  const { user } = await browserIdentity(headers);
+  const apps = await oauthRepo.listAppsByOwner(user.id);
+  return { apps: apps.map(appView), availableScopes: permissions(Object.keys(OAUTH_SCOPES).join(" ")) };
+}
+
+export async function createApp(input: Input, headers: Headers) {
+  await requireSameOrigin(headers);
+  const { user } = await browserIdentity(headers);
+  const fields = appFields(input);
+  const method = text(input, "token_endpoint_auth_method", 100, false);
+  if (method && !["none", "client_secret_basic", "client_secret_post"].includes(method))
+    throw new OAuthError("invalid_request", "Unsupported token_endpoint_auth_method.");
+  if ((await oauthRepo.countAppsByOwner(user.id)) >= MAX_APPS_PER_USER)
+    throw new OAuthError("invalid_request", `An account can have at most ${MAX_APPS_PER_USER} applications.`, 409);
+  const publicClient = method === "none";
+  const clientSecret = opaque();
+  const app = await oauthRepo.createApp({
+    ...fields,
+    id: opaque(),
+    ownerId: user.id,
+    secretHash: await hashToken(clientSecret),
+    publicClient,
+  });
+  return { app: appView(app), clientSecret: publicClient ? null : clientSecret };
+}
+
+export async function updateApp(id: string, input: Input, headers: Headers) {
+  await requireSameOrigin(headers);
+  const { user } = await browserIdentity(headers);
+  const app = await oauthRepo.updateOwnedApp(id, user.id, appFields(input));
+  if (!app) throw appNotFound();
+  return { app: appView(app) };
+}
+
+export async function rotateAppSecret(id: string, headers: Headers) {
+  await requireSameOrigin(headers);
+  const { user } = await browserIdentity(headers);
+  const app = await oauthRepo.findOwnedApp(id, user.id);
+  if (!app) throw appNotFound();
+  if (app.publicClient) throw new OAuthError("invalid_request", "A public client has no secret to rotate.");
+  const clientSecret = opaque();
+  await oauthRepo.updateOwnedApp(id, user.id, { secretHash: await hashToken(clientSecret) });
+  return { clientSecret };
+}
+
+// Takes every grant with it, so people who connected this app are disconnected.
+export async function deleteApp(id: string, headers: Headers) {
+  await requireSameOrigin(headers);
+  const { user } = await browserIdentity(headers);
+  if (!(await oauthRepo.deleteOwnedApp(id, user.id))) throw appNotFound();
 }
 
 // Browser consent never accepts JWTs or an identity token in place of a live cookie session.
@@ -180,6 +222,10 @@ export async function prepare(input: Input, headers: Headers) {
   )
     throw new OAuthError("invalid_request", "S256 PKCE is required for client API access and public applications.");
   const { user, sessionId } = await browserIdentity(headers);
+  // A suspended owner's application can't keep collecting new approvals.
+  const owner = await usersRepo.findById(app.ownerId);
+  if (!owner || owner.suspendedAt || owner.deletedAt)
+    throw new OAuthError("invalid_request", "This application is unavailable.");
   const ticket = opaque();
   await oauthRepo.createRequest({
     tokenHash: await hashToken(ticket),
