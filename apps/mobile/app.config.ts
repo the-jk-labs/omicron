@@ -102,5 +102,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   updates: {
     enabled: true,
     url: `https://u.expo.dev/${EAS_PROJECT_ID}`,
+    requestHeaders: { "expo-channel-name": IS_DEV ? "development" : "production" },
   },
 });

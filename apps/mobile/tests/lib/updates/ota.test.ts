@@ -1,5 +1,7 @@
 // @vitest-environment happy-dom
 // oxlint-disable typescript/no-unsafe-type-assertion, typescript/unbound-method -- deliberately partial test doubles
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { act, renderHook } from "@testing-library/react";
 import * as Updates from "expo-updates";
 import { AppState } from "react-native";
@@ -35,6 +37,13 @@ function comeBack() {
   const listener = listen.mock.calls.at(-1)?.[1];
   listener?.("active");
 }
+
+// Only EAS Build adds a channel on its own; without one the update server answers every check with a 400.
+test("builds made outside EAS still ask for an update channel", () => {
+  expect(readFileSync(resolve("app.config.ts"), "utf8")).toContain(
+    'requestHeaders: { "expo-channel-name": IS_DEV ? "development" : "production" }',
+  );
+});
 
 beforeEach(() => {
   vi.clearAllMocks();
