@@ -6,6 +6,7 @@
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
   const identityOnly = $derived(data.consent.scope === "read:accounts");
+  const notifiesUntilRevoked = $derived(data.consent.scope.split(" ").includes("webhooks:posts"));
 </script>
 
 <PageTitle text="Authorize application" />
@@ -48,6 +49,9 @@
       Access tokens expire after one hour. The application can renew access for up to 90 days without asking again.
     {:else}
       Access expires after one hour.
+    {/if}
+    {#if notifiesUntilRevoked}
+      Post notifications don't expire: they continue until you revoke access.
     {/if}
     You can revoke access at any time in Settings → Integrations → Connected applications.
   </p>

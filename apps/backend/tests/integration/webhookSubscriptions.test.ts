@@ -56,13 +56,14 @@ const post = (path: string, body: unknown, headers: Record<string, string> = {})
   });
 
 async function register(requested = scopes) {
-  const registered = await post("/api/v1/apps", {
-    client_name: "Community site",
-    redirect_uris: [callback],
-    scopes: requested,
-  });
-  expect(registered.status).toBe(200);
-  return (await registered.json()) as { client_id: string; client_secret: string };
+  const registered = await post(
+    "/api/oauth/apps",
+    { client_name: "Community site", redirect_uris: [callback], scopes: requested },
+    { cookie, origin },
+  );
+  expect(registered.status).toBe(201);
+  const { app: created, clientSecret } = await registered.json();
+  return { client_id: created.id as string, client_secret: clientSecret as string };
 }
 
 async function connect(requested = scopes, client?: { client_id: string; client_secret: string }) {

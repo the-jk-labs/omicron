@@ -330,6 +330,13 @@
       "when": 1794048979145,
       "tag": "0046_careless_betty_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1794053674707,
+      "tag": "0047_tired_crusher_hogan",
+      "breakpoints": true
     }
   ]
 }

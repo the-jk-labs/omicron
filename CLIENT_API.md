@@ -39,32 +39,23 @@ instance's `/api/client` is authoritative for delegated scopes.
 
 ## Register an application
 
-Send JSON or `application/x-www-form-urlencoded` to `POST /api/v1/apps`:
+Sign in on the instance and open **Settings → Integrations → OAuth applications**.
+Every application belongs to the account that created it, an account can have ten,
+and they can't be registered through the API. Set a name, the callback URLs and the
+permissions it may request. The page shows the client ID, and for a confidential
+application a client secret, once. It can rotate the secret, change the settings,
+or delete the application, which disconnects everyone who approved it.
 
-```json
-{
-  "client_name": "Example Omicron Reader",
-  "redirect_uris": ["org.example.reader:/oauth/callback"],
-  "scopes": "read write",
-  "token_endpoint_auth_method": "none",
-  "website": "https://example.org/reader"
-}
-```
+Registrations are per instance and don't expire. Keep the client ID with that
+instance's origin. A suspended owner's application can't collect new approvals.
 
-The response includes `client_id`, `scopes`, and `redirect_uris`. Registrations
-are per instance. Keep the client ID with that instance's origin. Public and
-client-API registrations do not expire through inactivity. Unapproved legacy
-identity-only confidential registrations are cleaned up after 30 days.
-
-- Native and browser applications are **public clients**: explicitly request
-  `token_endpoint_auth_method: "none"`. They receive no client secret and must
+- Native and browser applications are **public clients**: tick "Public client"
+  when creating one. They receive no client secret and must
   use S256 PKCE. Do not embed a confidential secret in a distributable app.
-- A server-side confidential application can omit that field. It receives a
-  `client_secret` once and can authenticate at token/revocation endpoints using
+- A server-side application stays confidential. It receives a client secret once and can authenticate at token/revocation endpoints using
   HTTP Basic or body `client_id`/`client_secret`, but never both. Keep the secret
-  on your server. `client_secret_expires_at: 0` means no scheduled expiration.
-- Redirect URIs can be an array or a whitespace-separated string, with at most
-  ten exact callbacks. HTTPS callbacks, loopback HTTP callbacks for desktop or
+  on your server. It has no scheduled expiration.
+- Enter at most ten exact callbacks. HTTPS callbacks, loopback HTTP callbacks for desktop or
   local development, and reverse-domain native schemes such as the example
   above are supported. Match redirect URIs exactly, including ports and query
   strings. Register a chosen loopback port before authorization.

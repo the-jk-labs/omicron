@@ -41,6 +41,8 @@ export type {
   Me,
   Notification,
   NotificationType,
+  OAuthApp,
+  OAuthAppPermission,
   OwnPostCounts,
   OwnPostStatus,
   Page,

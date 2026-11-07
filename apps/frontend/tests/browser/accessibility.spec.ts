@@ -1076,3 +1076,18 @@ test("repeated native table paste remaps caption, description and header IDs as 
   await expect(tables).toHaveCount(1);
   await expect(tables.first()).toHaveAccessibleDescription("Values exclude returns.");
 });
+
+test("the OAuth application form is labelled, operable by keyboard, and passes axe", async ({ page }) => {
+  await signedIn(page);
+  await ready(page, "/settings?tab=integrations");
+  await page.getByRole("button", { name: "New application", exact: true }).click();
+
+  await expect(page.getByRole("textbox", { name: "Name", exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "Callback URLs, one per line" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Permissions it may request" })).toBeVisible();
+  const permission = page.getByRole("checkbox", { name: /webhooks:posts/ });
+  await permission.focus();
+  await page.keyboard.press("Space");
+  await expect(permission).toBeChecked();
+  await accessible(page);
+});

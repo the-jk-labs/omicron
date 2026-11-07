@@ -44,6 +44,7 @@ const exchange = () => ({
 });
 const app = async () => ({
   id: client,
+  ownerId: "owner-1",
   name: "Directory",
   secretHash: await hashToken(secret),
   redirectUris: [callback],
@@ -70,26 +71,38 @@ beforeEach(async () => {
   getSession.mockResolvedValue({ user: { id: "user-1" }, session: { id: "session-1" } });
   vi.mocked(repo.findCode).mockResolvedValue(code());
   vi.mocked(repo.exchange).mockResolvedValue(true);
+  vi.mocked(repo.countAppsByOwner).mockResolvedValue(0);
+  vi.mocked(repo.createApp).mockImplementation(async (values) => ({
+    website: null,
+    authorizedAt: null,
+    publicClient: false,
+    scopes: "read:accounts",
+    ...values,
+    createdAt: new Date(),
+  }));
 });
 
 describe("registration", () => {
   const registration = () => ({ client_name: "Directory", redirect_uris: callback, scopes: "read:accounts" });
   test("returns independent opaque credentials, storing only a hash", async () => {
-    const result = await oauth.register(registration());
-    expect(result.client_id).toMatch(/^[\w-]{43}$/);
-    expect(result.client_secret).toMatch(/^[\w-]{43}$/);
-    expect(result.client_id).not.toBe(result.client_secret);
+    const result = await oauth.createApp(registration(), headers());
+    expect(result.app.id).toMatch(/^[\w-]{43}$/);
+    expect(result.clientSecret).toMatch(/^[\w-]{43}$/);
+    expect(result.app.id).not.toBe(result.clientSecret);
     expect(repo.createApp).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: result.client_id,
-        secretHash: await hashToken(result.client_secret!),
+        id: result.app.id,
+        ownerId: "user-1",
+        secretHash: await hashToken(result.clientSecret!),
         redirectUris: [callback],
       }),
     );
-    expect(JSON.stringify(vi.mocked(repo.createApp).mock.calls)).not.toContain(result.client_secret);
+    expect(JSON.stringify(vi.mocked(repo.createApp).mock.calls)).not.toContain(result.clientSecret);
   });
   test.for(["", "push", "unknown", "read:accounts read:accounts"])("rejects unsupported scopes %o", async (scopes) => {
-    await expect(oauth.register({ ...registration(), scopes })).rejects.toMatchObject({ error: "invalid_scope" });
+    await expect(oauth.createApp({ ...registration(), scopes }, headers())).rejects.toMatchObject({
+      error: "invalid_scope",
+    });
     expect(repo.createApp).not.toHaveBeenCalled();
   });
   test.for([
@@ -103,32 +116,80 @@ describe("registration", () => {
     "https://client.example/cb?state=x",
     "urn:ietf:wg:oauth:2.0:oob",
   ])("rejects unsafe callback %s", async (redirect_uris) => {
-    await expect(oauth.register({ ...registration(), redirect_uris })).rejects.toMatchObject({
+    await expect(oauth.createApp({ ...registration(), redirect_uris }, headers())).rejects.toMatchObject({
       error: "invalid_request",
     });
   });
   test.for(["http://localhost:1234/cb", "http://127.0.0.1:1234/cb", "http://[::1]:1234/cb"])(
     "allows loopback development %s",
     async (redirect_uris) => {
-      await expect(oauth.register({ ...registration(), redirect_uris })).resolves.toBeDefined();
+      await expect(oauth.createApp({ ...registration(), redirect_uris }, headers())).resolves.toBeDefined();
     },
   );
   test("supports multiple exact callbacks and deduplicates them", async () => {
-    await oauth.register({
-      ...registration(),
-      redirect_uris: `${callback}\nhttps://client.example/other\n${callback}`,
-    });
+    await oauth.createApp(
+      { ...registration(), redirect_uris: `${callback}\nhttps://client.example/other\n${callback}` },
+      headers(),
+    );
     expect(repo.createApp).toHaveBeenCalledWith(
       expect.objectContaining({ redirectUris: [callback, "https://client.example/other"] }),
     );
   });
   test("rejects overlong names and too many callbacks", async () => {
-    await expect(oauth.register({ ...registration(), client_name: "x".repeat(101) })).rejects.toMatchObject({
-      error: "invalid_request",
-    });
+    await expect(oauth.createApp({ ...registration(), client_name: "x".repeat(101) }, headers())).rejects.toMatchObject(
+      {
+        error: "invalid_request",
+      },
+    );
     await expect(
-      oauth.register({ ...registration(), redirect_uris: Array(11).fill(callback).join(" ") }),
+      oauth.createApp({ ...registration(), redirect_uris: Array(11).fill(callback).join(" ") }, headers()),
     ).rejects.toMatchObject({ error: "invalid_request" });
+  });
+});
+
+describe("application ownership", () => {
+  const registration = () => ({ client_name: "Directory", redirect_uris: callback });
+
+  test("an account's limit is enforced before anything is created", async () => {
+    vi.mocked(repo.countAppsByOwner).mockResolvedValue(10);
+    await expect(oauth.createApp(registration(), headers())).rejects.toMatchObject({ status: 409 });
+    expect(repo.createApp).not.toHaveBeenCalled();
+  });
+  test("writes need a same-origin browser request and a live session", async () => {
+    const crossSite = new Headers({ cookie: "session=fixture", origin: "https://evil.example" });
+    for (const call of [
+      () => oauth.createApp(registration(), crossSite),
+      () => oauth.updateApp("a", registration(), crossSite),
+      () => oauth.rotateAppSecret("a", crossSite),
+      () => oauth.deleteApp("a", crossSite),
+    ]) {
+      await expect(call()).rejects.toMatchObject({ status: 403 });
+    }
+    getSession.mockResolvedValue(null);
+    await expect(oauth.createApp(registration(), headers())).rejects.toMatchObject({ status: 401 });
+    await expect(oauth.listApps(headers())).rejects.toMatchObject({ status: 401 });
+    expect(repo.createApp).not.toHaveBeenCalled();
+  });
+  test("a public client has no secret to show or rotate", async () => {
+    const result = await oauth.createApp({ ...registration(), token_endpoint_auth_method: "none" }, headers());
+    expect(result.clientSecret).toBeNull();
+    vi.mocked(repo.findOwnedApp).mockResolvedValue({ ...(await app()), publicClient: true });
+    await expect(oauth.rotateAppSecret("a", headers())).rejects.toMatchObject({ error: "invalid_request" });
+    expect(repo.updateOwnedApp).not.toHaveBeenCalled();
+  });
+  test("an unknown auth method is refused", async () => {
+    await expect(
+      oauth.createApp({ ...registration(), token_endpoint_auth_method: "magic" }, headers()),
+    ).rejects.toMatchObject({ error: "invalid_request" });
+  });
+  test.each(["suspendedAt", "deletedAt"])("an owner with %s can't collect new approvals", async (field) => {
+    // The first lookup is the signed-in viewer, the second the owner.
+    vi.mocked(users.findById).mockResolvedValueOnce(userRow());
+    vi.mocked(users.findById).mockResolvedValueOnce(userRow({ [field]: new Date() }));
+    await expect(oauth.prepare(request(), headers())).rejects.toMatchObject({
+      error: "invalid_request",
+      message: "This application is unavailable.",
+    });
   });
 });
 
@@ -359,18 +420,21 @@ describe("identity and revocation", () => {
 
 describe("third-party applications", () => {
   test("registers public native clients with URI arrays and no reusable secret", async () => {
-    const result = await oauth.register({
-      client_name: "Reader",
-      redirect_uris: ["org.example.reader:/oauth/callback"],
-      scopes: "read write",
-      token_endpoint_auth_method: "none",
-    });
-    expect(result).toMatchObject({
-      token_endpoint_auth_method: "none",
+    const result = await oauth.createApp(
+      {
+        client_name: "Reader",
+        redirect_uris: ["org.example.reader:/oauth/callback"],
+        scopes: "read write",
+        token_endpoint_auth_method: "none",
+      },
+      headers(),
+    );
+    expect(result.app).toMatchObject({
+      publicClient: true,
       scopes: ["read", "write"],
-      redirect_uris: ["org.example.reader:/oauth/callback"],
+      redirectUris: ["org.example.reader:/oauth/callback"],
     });
-    expect(result).not.toHaveProperty("client_secret");
+    expect(result.clientSecret).toBeNull();
     expect(repo.createApp).toHaveBeenCalledWith(expect.objectContaining({ publicClient: true, scopes: "read write" }));
   });
   test("API access requires PKCE and cannot exceed the registered scopes", async () => {

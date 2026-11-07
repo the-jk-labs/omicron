@@ -379,6 +379,21 @@ export const ConnectedApp = z.object({
 });
 export type ConnectedApp = z.infer<typeof ConnectedApp>;
 
+/** An OAuth application the account registered. `id` is its client ID. */
+export const OAuthApp = z.object({
+  id: z.string(),
+  name: z.string(),
+  website: z.nullable(z.string()),
+  redirectUris: z.array(z.string()),
+  scopes: z.array(z.string()),
+  publicClient: z.boolean(),
+  createdAt: z.string(),
+});
+export type OAuthApp = z.infer<typeof OAuthApp>;
+
+export const OAuthAppPermission = z.object({ scope: z.string(), description: z.string() });
+export type OAuthAppPermission = z.infer<typeof OAuthAppPermission>;
+
 /** A new webhook subscription. `secret` is in this response and nowhere else, ever. */
 export const WebhookSubscription = z.object({ id: z.string(), url: z.string(), secret: z.string() });
 export type WebhookSubscription = z.infer<typeof WebhookSubscription>;
@@ -767,6 +782,11 @@ export const ReadingListsForPost = z.object({ lists: z.array(ReadingListForPost)
 export const ReadingListResponse = z.object({ list: ReadingList });
 export const UnreadCount = z.object({ count: z.number() });
 export const WebhookTokens = z.object({ tokens: z.array(WebhookToken) });
+export const OAuthApps = z.object({ apps: z.array(OAuthApp), availableScopes: z.array(OAuthAppPermission) });
+export const OAuthAppResponse = z.object({ app: OAuthApp });
+/** `clientSecret` is here and nowhere else, ever; null for a public client, which has none. */
+export const CreatedOAuthApp = z.object({ app: OAuthApp, clientSecret: z.nullable(z.string()) });
+export const OAuthAppSecret = z.object({ clientSecret: z.string() });
 export const MintedWebhookToken = z.object({ token: z.string(), tokenInfo: WebhookToken });
 export const ConnectedApps = z.object({ connections: z.array(ConnectedApp) });
 export const UploadedImage = z.object({ url: z.string() });
