@@ -1,18 +1,22 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { enhance } from "$app/forms";
   import PageTitle from "#lib/components/PageTitle.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import type { PageData, ActionData } from "./$types";
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
+  const scopes = $derived(data.consent.scope.split(" "));
   const identityOnly = $derived(data.consent.scope === "read:accounts");
-  const notifiesUntilRevoked = $derived(data.consent.scope.split(" ").includes("webhooks:posts"));
+  const notifiesUntilRevoked = $derived(scopes.includes("webhooks:posts"));
+  const administers = $derived(scopes.some((scope) => scope.startsWith("admin:")));
+  let deciding = $state(false);
 </script>
 
 <PageTitle text="Authorize application" />
 <svelte:head><meta name="robots" content="noindex, nofollow" /></svelte:head>
 
-<section class="mx-auto max-w-lg rounded-card border border-border bg-background p-6 shadow-card">
+<section class="w-full rounded-card border border-border bg-background p-6 shadow-card sm:p-8">
   <h1 class="text-2xl font-bold tracking-tight text-foreground">
     {identityOnly ? "Sign in with Omicron" : "Authorize application"}
   </h1>
@@ -22,44 +26,49 @@
   </p>
   {#if identityOnly}
     <p class="mt-3 text-sm text-muted-foreground">
-      This shares only your account ID, username, display name, and public profile URLs. It cannot read your email,
-      private data, or posts, publish anything, or manage your account.
+      This shares only your account ID, username, display name, and public profile URLs. It cannot read your email or
+      private data, publish anything, or manage your account.
     </p>
   {:else}
-    <p class="mt-3 text-sm text-muted-foreground">Allow this application to:</p>
-    <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-foreground">
+    <ul class="mt-4 list-disc space-y-2 pl-5 text-sm text-foreground">
       {#each data.consent.permissions ?? [] as permission (permission.scope)}
-        <li>{permission.description} <span class="text-muted-foreground">({permission.scope})</span></li>
+        <li>{permission.description}</li>
       {/each}
     </ul>
-    <p class="mt-3 text-sm text-muted-foreground">
-      This does not share your password or let the application manage your password, passkeys, or login sessions.
-      Administration permissions never grant a role you do not already have.
-    </p>
+    {#if administers}
+      <p class="mt-3 text-sm text-muted-foreground">
+        Administration permissions never grant a role you do not already have.
+      </p>
+    {/if}
   {/if}
-  <div class="mt-4 rounded-input border border-border bg-muted p-3 text-sm text-foreground">
-    <p>Return to <strong class="break-all">{data.consent.callbackOrigin}</strong></p>
-    <p class="mt-2 text-muted-foreground">
-      Application names are supplied by their developers and are not verified. Continue only if you trust this
-      destination.
+  <div class="mt-5 flex flex-col gap-2 border-t border-border pt-4 text-sm text-muted-foreground">
+    <p>
+      You'll return to <strong class="break-all text-foreground">{data.consent.callbackOrigin}</strong>. Application
+      names aren't verified, so continue only if you trust this address.
+    </p>
+    <p>
+      {data.consent.renewable ? "Access can renew for up to 90 days." : "Access expires after one hour."}
+      {#if notifiesUntilRevoked}Post notifications continue until you revoke access.{/if}
+      Revoke anytime in Settings → Integrations.
     </p>
   </div>
-  <p class="mt-4 text-sm text-muted-foreground">
-    {#if data.consent.renewable}
-      Access tokens expire after one hour. The application can renew access for up to 90 days without asking again.
-    {:else}
-      Access expires after one hour.
-    {/if}
-    {#if notifiesUntilRevoked}
-      Post notifications don't expire: they continue until you revoke access.
-    {/if}
-    You can revoke access at any time in Settings → Integrations → Connected applications.
-  </p>
   {#if form?.error}<p role="alert" class="mt-4 text-sm text-destructive">{form.error}</p>{/if}
-  <form method="POST" class="mt-6 flex gap-3">
+  <!-- The CSP's form-action also covers a form's redirects, so a native submit could never reach the application. -->
+  <form
+    method="POST"
+    class="mt-6 flex justify-end gap-3"
+    use:enhance={() => {
+      deciding = true;
+      return async ({ result, update }) => {
+        if (result.type === "redirect") return window.location.assign(result.location);
+        deciding = false;
+        await update();
+      };
+    }}
+  >
     <input type="hidden" name="ticket" value={data.consent.ticket} />
-    <Button type="submit" name="decision" value="deny" variant="outline">Deny</Button>
-    <Button type="submit" name="decision" value="allow" variant="solid">
+    <Button type="submit" name="decision" value="deny" variant="outline" disabled={deciding}>Deny</Button>
+    <Button type="submit" name="decision" value="allow" variant="solid" disabled={deciding}>
       {identityOnly ? "Allow identity verification" : "Authorize application"}
     </Button>
   </form>

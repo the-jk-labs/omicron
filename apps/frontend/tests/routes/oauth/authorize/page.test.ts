@@ -73,7 +73,23 @@ test("a webhook permission is disclosed as lasting until revoked, not just 90 da
     } as never,
     form: null,
   });
-  expect(screen.getByText(/Post notifications don't expire: they continue until you revoke access\./)).toBeVisible();
+  expect(screen.getByText(/Post notifications continue until you revoke access\./)).toBeVisible();
+});
+
+test("the administration note only appears when administration is requested", () => {
+  const consent = {
+    ticket: "t",
+    name: "Tool",
+    callbackOrigin: "https://app.example",
+    username: "ada",
+    renewable: true,
+    permissions: [],
+  };
+  const { unmount } = render(Page, { data: { consent: { ...consent, scope: "read" } } as never, form: null });
+  expect(screen.queryByText(/never grant a role/)).toBeNull();
+  unmount();
+  render(Page, { data: { consent: { ...consent, scope: "read admin:write" } } as never, form: null });
+  expect(screen.getByText(/never grant a role/)).toBeVisible();
 });
 
 test("authorization failures are accessible and untrusted application names stay text", () => {

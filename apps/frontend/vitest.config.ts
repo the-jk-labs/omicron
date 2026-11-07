@@ -55,6 +55,7 @@ export default defineConfig({
       // that read `page`/`goto`/`browser` can be rendered directly.
       "$app/state": fileURLToPath(new URL("./tests/mocks/$app/state.ts", import.meta.url)),
       "$app/navigation": fileURLToPath(new URL("./tests/mocks/$app/navigation.ts", import.meta.url)),
+      "$app/forms": fileURLToPath(new URL("./tests/mocks/$app/forms.ts", import.meta.url)),
       // Before `$app/env`, which would otherwise match these as `$app/env/…` prefixes.
       "$app/env/public": fileURLToPath(new URL("./tests/mocks/$app/env/public.ts", import.meta.url)),
       "$app/env/private": fileURLToPath(new URL("./tests/mocks/$app/env/private.ts", import.meta.url)),

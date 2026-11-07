@@ -213,6 +213,18 @@ const fixtures: Record<string, unknown> = {
   "/api/admin/tags/aliases": { aliases: [] },
   "/api/photos/providers": { providers: [] },
   "/api/oauth/connections": { connections: [] },
+  "/api/oauth/authorize": {
+    ticket: "fixture-ticket",
+    name: "Fixture application",
+    callbackOrigin: "https://client.example",
+    username: "ada",
+    scope: "read:accounts webhooks:posts",
+    renewable: true,
+    permissions: [
+      { scope: "read:accounts", description: "Verify your public identity only." },
+      { scope: "webhooks:posts", description: "Be notified when your public posts change." },
+    ],
+  },
   "/api/oauth/apps": {
     apps: [
       {
@@ -252,6 +264,13 @@ createServer((request, response) => {
     // Conditional sign-in asks on load; a browser with no passkey simply never answers.
     request.resume();
     return send({ challenge: "AAAA", rpId: "127.0.0.1", allowCredentials: [], userVerification: "preferred" });
+  }
+  if (request.method === "POST" && path === "/api/oauth/authorize") {
+    request.resume();
+    // The real backend refuses a decision unless it comes from this origin.
+    if (request.headers.origin !== "http://127.0.0.1:4173")
+      return send({ error: "A same-origin request is required." }, 403);
+    return send({ redirect: "https://client.example/callback?code=fixture-code&state=s" });
   }
   if (request.method !== "GET") return send({ error: "Unexpected fixture write" }, 501);
   const cookie = request.headers.cookie ?? "";
