@@ -6,5 +6,6 @@ export type AppEnv = {
   Variables: {
     user: User | null;
     oauthScopes?: string;
+    oauthGrant?: { id: string; clientId: string };
   };
 };

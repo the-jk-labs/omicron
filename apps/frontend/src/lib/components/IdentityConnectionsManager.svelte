@@ -58,7 +58,11 @@
           <p class="text-sm font-medium break-words text-foreground">{item.name}</p>
           <p class="text-xs break-all text-muted-foreground">{item.callbackOrigin}</p>
           <p class="text-xs break-words text-muted-foreground">Permissions: {item.scope ?? "read:accounts"}</p>
-          <p class="text-xs text-muted-foreground">Expires <Time iso={item.expiresAt} kind="datetime" /></p>
+          {#if item.webhookActive}
+            <p class="text-xs text-muted-foreground">Active until you revoke it</p>
+          {:else}
+            <p class="text-xs text-muted-foreground">Expires <Time iso={item.expiresAt} kind="datetime" /></p>
+          {/if}
         </div>
         <Button variant="outline" size="sm" disabled={busy !== null} onclick={() => revoke(item.id)}>
           {busy === item.id ? "Revoking…" : "Revoke"}

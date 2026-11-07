@@ -23,6 +23,18 @@ test("lists connections and revokes them immediately", async () => {
   await screen.findByText("No connected applications.");
   expect(calls[1].method).toBe("DELETE");
 });
+test("a connection with webhooks shows it lasts until revoked, not a stale expiry", async () => {
+  const { fetch } = fakeFetch({
+    "GET /api/oauth/connections": {
+      connections: [connection, { ...connection, id: "webhook-id", name: "Community", webhookActive: true }],
+    },
+  });
+  vi.stubGlobal("fetch", fetch);
+  render(Manager);
+  await screen.findByText("Community");
+  expect(screen.getByText("Active until you revoke it")).toBeVisible();
+  expect(screen.getAllByText(/^Expires/)).toHaveLength(1);
+});
 test("a failed revoke keeps the connection visible and reports the failure", async () => {
   const { fetch } = fakeFetch({
     "GET /api/oauth/connections": { connections: [connection] },

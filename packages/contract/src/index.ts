@@ -374,8 +374,14 @@ export const ConnectedApp = z.object({
   expiresAt: z.string(),
   scope: z.string(),
   permissions: z.array(z.object({ scope: z.string(), description: z.string() })),
+  /** It receives post-event webhooks, so the connection lasts until revoked; `expiresAt` no longer applies. */
+  webhookActive: z.boolean(),
 });
 export type ConnectedApp = z.infer<typeof ConnectedApp>;
+
+/** A new webhook subscription. `secret` is in this response and nowhere else, ever. */
+export const WebhookSubscription = z.object({ id: z.string(), url: z.string(), secret: z.string() });
+export type WebhookSubscription = z.infer<typeof WebhookSubscription>;
 
 /** Per-post stats. `views` counts one reader a day, and is 0 when the instance doesn't count views. */
 export const PostStat = z.object({

@@ -29,6 +29,8 @@ export const OAUTH_SCOPES = {
   "write:reports": "Report posts and accounts.",
   "read:integrations": "List your publishing integrations.",
   "write:integrations": "Create and revoke publishing tokens that can outlive this application's access.",
+  // Not `read:`-prefixed, so no existing broad `read` grant implies it.
+  "webhooks:posts": "Be notified when your public posts are created, edited or deleted, until you revoke this access.",
   "admin:read": "Read moderation and instance administration data, if your role permits it.",
   "admin:write": "Perform moderation and change instance administration settings, if your role permits it.",
 } as const;

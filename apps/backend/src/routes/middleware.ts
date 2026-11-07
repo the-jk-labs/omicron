@@ -44,6 +44,7 @@ export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
     }
     c.set("user", user);
     c.set("oauthScopes", grant.scopes);
+    c.set("oauthGrant", { id: grant.id, clientId: grant.clientId });
     c.header("Cache-Control", "no-store");
     await next();
     return;

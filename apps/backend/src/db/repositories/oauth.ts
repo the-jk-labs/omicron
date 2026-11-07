@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lt, not, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { oauthApps, oauthCodes, oauthRefreshTokens, oauthRequests, oauthTokens } from "@/db/schema.ts";
+import {
+  oauthApps,
+  oauthCodes,
+  oauthRefreshTokens,
+  oauthRequests,
+  oauthTokens,
+  webhookSubscriptions,
+} from "@/db/schema.ts";
 
 export async function createApp(values: typeof oauthApps.$inferInsert) {
   const [row] = await db.insert(oauthApps).values(values).returning();
@@ -158,6 +165,10 @@ export function refresh(
   });
 }
 
+// A subscription keeps its grant past token expiry: the owner approved events
+// until they revoke. The tokens still expire, so the grant gives no API access.
+const hasWebhook = sql<boolean>`exists (select 1 from ${webhookSubscriptions} where ${webhookSubscriptions.grantId} = ${oauthTokens.id})`;
+
 export function listConnections(userId: string) {
   return db
     .select({
@@ -169,13 +180,14 @@ export function listConnections(userId: string) {
         oauthTokens.expiresAt,
       ),
       scopes: oauthTokens.scopes,
+      webhookActive: hasWebhook.mapWith(Boolean),
     })
     .from(oauthTokens)
     .innerJoin(oauthApps, eq(oauthTokens.clientId, oauthApps.id))
     .where(
       and(
         eq(oauthTokens.userId, userId),
-        or(gt(oauthTokens.expiresAt, new Date()), gt(oauthTokens.refreshExpiresAt, new Date())),
+        or(gt(oauthTokens.expiresAt, new Date()), gt(oauthTokens.refreshExpiresAt, new Date()), hasWebhook),
       ),
     )
     .orderBy(desc(oauthTokens.createdAt));
@@ -195,6 +207,7 @@ export async function cleanup() {
       and(
         lt(oauthTokens.expiresAt, now),
         or(isNull(oauthTokens.refreshExpiresAt), lt(oauthTokens.refreshExpiresAt, now)),
+        not(hasWebhook),
       ),
     );
   // Client API registrations stay stable; only unused legacy identity registrations expire.

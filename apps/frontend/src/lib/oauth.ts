@@ -17,6 +17,7 @@ export type IdentityConnection = {
   expiresAt: string;
   scope?: string;
   permissions?: { scope: string; description: string }[];
+  webhookActive?: boolean;
 };
 
 // Login only resumes this local flow, never an arbitrary return URL.

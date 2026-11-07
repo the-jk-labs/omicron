@@ -91,6 +91,7 @@ allow("write:reports", "POST", "/reports");
 allow("read:integrations", "GET", "/webhooks/tokens");
 allow("write:integrations", "POST", "/webhooks/tokens");
 allow("write:integrations", "DELETE", "/webhooks/tokens/:id");
+allow("webhooks:posts", "POST", "/webhook-subscriptions");
 allow(
   "admin:read",
   "GET",

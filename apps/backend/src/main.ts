@@ -14,6 +14,7 @@ import { backfillSlugs } from "@/services/postSlugs.ts";
 import { startRemoteCacheGcSweeper } from "@/services/remoteCacheGc.ts";
 import { startScheduleSweeper } from "@/services/scheduledPosts.ts";
 import { startUploadGcSweeper } from "@/services/uploadGc.ts";
+import { startWebhookSweeper } from "@/services/webhookSubscriptions.ts";
 import { APP_VERSION } from "@/version.ts";
 
 // Entry point: migrate → build app → serve. Stateless; all data in Postgres.
@@ -45,6 +46,9 @@ async function main() {
   // run on every node — see services/scheduledPosts.ts. Started after the
   // worker so its first sweep has somewhere to enqueue federation.
   startScheduleSweeper();
+
+  // Send post-event webhooks to OAuth applications; see services/webhookSubscriptions.ts.
+  startWebhookSweeper();
 
   // Reap uploaded files nothing references anymore, once they have been
   // unreferenced for a full grace period (long enough for federated copies
