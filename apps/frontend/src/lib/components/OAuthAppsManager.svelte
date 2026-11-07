@@ -6,6 +6,7 @@
   import { Checkbox, Label } from "bits-ui";
   import { onMount } from "svelte";
   import Icon from "#lib/components/Icon.svelte";
+  import Time from "#lib/components/Time.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
   import type { OAuthApp, OAuthAppPermission } from "#lib/types.js";
@@ -277,27 +278,66 @@
 {:else if apps.length === 0 && !formOpen}
   <p class="py-6 text-center text-sm text-muted-foreground">No applications yet.</p>
 {:else}
-  <ul class="mt-3 divide-y divide-border">
+  <ul class="mt-2 divide-y divide-border">
     {#each apps as app (app.id)}
-      <li class="py-3">
-        <p class="text-sm font-medium break-words text-foreground">{app.name}</p>
-        <div class="mt-1 flex items-center gap-2">
-          <code class="min-w-0 truncate font-mono text-xs text-muted-foreground">{app.id}</code>
-          <Button variant="ghost" size="sm" aria-label={`Copy client ID of ${app.name}`} onclick={() => copy(app.id)}>
-            <Icon name={copied === app.id ? "check" : "copy"} size={14} />
-          </Button>
+      <li class="py-4">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <span class="flex min-w-0 items-center gap-3">
+            <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground-alt">
+              <Icon name="plug" size={18} />
+            </span>
+            <span class="min-w-0">
+              <span class="block truncate text-sm font-medium text-foreground">{app.name}</span>
+              <span class="block truncate text-xs text-muted-foreground">
+                {app.publicClient ? "Public client" : "Confidential"} · Created <Time iso={app.createdAt} kind="date" />
+              </span>
+            </span>
+          </span>
+          <span class="flex shrink-0 flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" disabled={busy} onclick={() => openForm(app)}>Edit</Button>
+            {#if !app.publicClient}
+              <Button variant="outline" size="sm" disabled={busy} onclick={() => rotate(app)}>New secret</Button>
+            {/if}
+            <Button variant="outline" size="sm" disabled={busy} onclick={() => remove(app)}>Delete</Button>
+          </span>
         </div>
-        <p class="mt-1 text-xs break-all text-muted-foreground">{app.redirectUris.join(", ")}</p>
-        <p class="text-xs break-words text-muted-foreground">
-          {app.publicClient ? "Public client" : "Confidential"} · {app.scopes.join(", ")}
-        </p>
-        <div class="mt-2 flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" disabled={busy} onclick={() => openForm(app)}>Edit</Button>
-          {#if !app.publicClient}
-            <Button variant="outline" size="sm" disabled={busy} onclick={() => rotate(app)}>New secret</Button>
-          {/if}
-          <Button variant="outline" size="sm" disabled={busy} onclick={() => remove(app)}>Delete</Button>
-        </div>
+        <dl class="mt-3 flex flex-col gap-3 rounded-card border border-border bg-background-alt p-3 text-xs">
+          <div class="flex flex-col gap-1.5">
+            <dt class="font-medium text-muted-foreground">Client ID</dt>
+            <dd class="flex items-center gap-2">
+              <code
+                class="min-w-0 flex-1 overflow-x-auto rounded-input border border-input bg-background px-3 py-2 font-mono text-foreground"
+                >{app.id}</code
+              >
+              <Button
+                variant="outline"
+                size="sm"
+                onclick={() => copy(app.id)}
+                aria-label={`Copy client ID of ${app.name}`}
+              >
+                <Icon name={copied === app.id ? "check" : "copy"} size={15} />
+              </Button>
+            </dd>
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <dt class="font-medium text-muted-foreground">
+              {app.redirectUris.length > 1 ? "Callback URLs" : "Callback URL"}
+            </dt>
+            {#each app.redirectUris as uri (uri)}
+              <dd class="font-mono break-all text-foreground">{uri}</dd>
+            {/each}
+          </div>
+          <div class="flex flex-col gap-1.5">
+            <dt class="font-medium text-muted-foreground">Permissions</dt>
+            <dd class="flex flex-wrap gap-1.5">
+              {#each app.scopes as scope (scope)}
+                <span class="rounded-full border border-border bg-background px-2 py-0.5 font-mono text-foreground"
+                  >{scope}</span
+                >
+              {/each}
+            </dd>
+          </div>
+        </dl>
       </li>
     {/each}
   </ul>

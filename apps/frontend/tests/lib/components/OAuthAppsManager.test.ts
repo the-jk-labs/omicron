@@ -45,6 +45,9 @@ test("lists this account's applications with their client ID", async () => {
   expect(await screen.findByText("Community site")).toBeVisible();
   expect(screen.getByText("client-1")).toBeVisible();
   expect(screen.getByText(/Confidential/)).toBeVisible();
+  expect(screen.getByText("https://app.example/cb")).toBeVisible();
+  expect(screen.getByText("read:accounts")).toBeVisible();
+  expect(screen.getByRole("button", { name: "Copy client ID of Community site" })).toBeVisible();
 });
 
 test("says so when there are none", async () => {
