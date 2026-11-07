@@ -46,6 +46,7 @@ import type { search as stockPhotos } from "@/services/stockPhotos.ts";
 import type { getTag, listAliases, trending } from "@/services/tags.ts";
 import type { getSettings as umamiSettings } from "@/services/umami.ts";
 import type { suggestedFollows } from "@/services/users.ts";
+import type { subscribe } from "@/services/webhookSubscriptions.ts";
 import {
   commentWithAuthor,
   postRow,
@@ -114,6 +115,7 @@ type _TagAliases = Assert<Fits<{ aliases: Out<typeof listAliases> }, typeof cont
 type _Report = Assert<Fits<Item<typeof listReports>, typeof contract.Report>>;
 type _BlockedDomain = Assert<Fits<Item<typeof listBlockedDomains>, typeof contract.BlockedDomain>>;
 type _ConnectedApp = Assert<Fits<Item<typeof connections>, typeof contract.ConnectedApp>>;
+type _WebhookSubscription = Assert<Fits<Out<typeof subscribe>, typeof contract.WebhookSubscription>>;
 type _StockPhoto = Assert<Fits<Item<typeof stockPhotos>, typeof contract.StockPhoto>>;
 type _AccessRule = Assert<Fits<AccessRule, typeof contract.AccessRule>>;
 type _AccessRuleTest = Assert<Fits<Out<typeof testAccessRules>, typeof contract.AccessRuleTest>>;

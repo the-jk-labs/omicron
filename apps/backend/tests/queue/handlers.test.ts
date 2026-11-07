@@ -8,6 +8,7 @@ vi.mock(import("@/federation/outbound.ts"));
 vi.mock(import("@/federation/lists.ts"));
 vi.mock(import("@/services/email.ts"));
 vi.mock(import("@/services/indexNow.ts"));
+vi.mock(import("@/services/webhookSubscriptions.ts"));
 
 import * as deliver from "@/federation/deliver.ts";
 import * as lists from "@/federation/lists.ts";
@@ -17,6 +18,7 @@ import { type JobName, type JobPayloads, queue } from "@/queue/queue.ts";
 import * as email from "@/services/email.ts";
 import { seedFederationRunning } from "@/services/federationState.ts";
 import * as indexNow from "@/services/indexNow.ts";
+import * as webhookSubscriptions from "@/services/webhookSubscriptions.ts";
 
 beforeAll(() => {
   registerJobHandlers();
@@ -32,6 +34,29 @@ async function run<N extends JobName>(name: N, payload: JobPayloads[N]) {
   await vi.waitFor(() => {});
   await new Promise((r) => setTimeout(r, 0));
 }
+
+describe("post events for webhooks", () => {
+  test("are recorded with federation off, and don't start federation", async () => {
+    seedFederationRunning(false);
+    await run("federate_post", { postId: "p" });
+    await run("federate_post", { postId: "p", action: "update" });
+    await run("federate_post_delete", { postId: "p", authorId: "a" });
+    expect(webhookSubscriptions.emitPublished).toHaveBeenCalledWith("p", "create");
+    expect(webhookSubscriptions.emitPublished).toHaveBeenCalledWith("p", "update");
+    expect(webhookSubscriptions.emitDeleted).toHaveBeenCalledWith("p", "a");
+    expect(deliver.deliverPost).not.toHaveBeenCalled();
+    expect(deliver.deliverPostDelete).not.toHaveBeenCalled();
+  });
+
+  test("a failure to record one doesn't stop federation", async () => {
+    seedFederationRunning(true);
+    vi.mocked(webhookSubscriptions.emitPublished).mockRejectedValueOnce(new Error("db down"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    await run("federate_post", { postId: "p" });
+    expect(error).toHaveBeenCalled();
+    expect(deliver.deliverPost).toHaveBeenCalledWith("p", "create");
+  });
+});
 
 const vars = { to: "a@x.test", username: "ada", appName: "Blog", origin: "https://blog.example" };
 

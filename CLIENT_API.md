@@ -156,7 +156,36 @@ remain **public-identity-only** and cannot access `/api/me`, drafts, or writes.
 | Images and stock-photo picker | Raw uploads, photo providers/search/use | `write:media` |
 | Reports | `POST /api/reports` | `write:reports` |
 | Publishing integrations | Webhook-token listing/mutations | `read:integrations`, `write:integrations` |
+| Post-event webhooks | `POST /api/webhook-subscriptions` | `webhooks:posts` |
 | Moderation and instance administration | `/api/admin/*` | `admin:read`, `admin:write` plus the current account role |
+
+### Post-event webhooks
+
+With an access token holding `webhooks:posts`, an app subscribes once:
+`POST /api/webhook-subscriptions` with `{ "url": "https://app.example/hook" }`.
+The URL must be HTTPS and share an origin with one of the app's redirect URIs.
+The response carries a signing `secret`, shown only once. The subscription lasts
+until the account owner revokes the connection, even after the app's tokens
+expire, so the app doesn't need to keep them. Subscribing again with the same
+app, account and URL replaces the old subscription and its grant.
+
+Omicron then POSTs JSON for the account's public posts:
+
+```json
+{ "id": "…", "event": "post.updated", "postId": "…", "username": "ada", "occurredAt": "…" }
+```
+
+`event` is `post.created`, `post.updated`, `post.deleted` (also sent when a post
+is unpublished) or `connection.revoked` (`postId` is null; nothing follows it).
+The body names the post but doesn't carry it: fetch it from the public API. Treat
+delivery as at-least-once and possibly out of order. Going private, suspension
+and account deletion send no event, so reconcile periodically if that matters.
+
+Verify `X-Omicron-Signature: t=<unix seconds>,v1=<hex>`: an HMAC-SHA256 of
+`<t>.<raw body>` with the secret. Reject stale timestamps, and find the secret by
+the `X-Omicron-Subscription` header. Answer 2xx to accept. 410 ends the
+connection. Anything else, including a redirect or a 10-second timeout, is
+retried after 1 minute, 5 minutes, 30 minutes, 2 hours and 6 hours, then dropped.
 
 Scope grants never bypass ownership, private-account visibility, moderation
 roles, federation availability, validation, or rate limits. Usernames are

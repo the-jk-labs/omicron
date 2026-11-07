@@ -23,11 +23,23 @@ import {
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { federationRunning } from "@/services/federationState.ts";
 
+// A failed event must not cost the post its federation, which runs next.
+async function webhookEvent(run: (events: typeof import("@/services/webhookSubscriptions.ts")) => Promise<void>) {
+  try {
+    await run(await import("@/services/webhookSubscriptions.ts"));
+  } catch (err) {
+    console.error("webhooks: could not record a post event:", err);
+  }
+}
+
 // Registers all job handlers. Federation modules are imported dynamically so
 // Fedify is only loaded when FEDERATION_ENABLED=true; otherwise jobs no-op.
 
 export function registerJobHandlers() {
+  // Every post change already passes through these two jobs, so webhooks hook in
+  // here, ahead of the federation check: an instance can run with federation off.
   registerHandler("federate_post", async ({ postId, action }) => {
+    await webhookEvent(({ emitPublished }) => emitPublished(postId, action ?? "create"));
     if (!federationRunning()) return;
     const { deliverPost } = await import("@/federation/deliver.ts");
     await deliverPost(postId, action ?? "create");
@@ -44,6 +56,7 @@ export function registerJobHandlers() {
   // A local post was deleted; tombstone it on remote followers' instances. The
   // row is already gone, so the payload carries the former author id.
   registerHandler("federate_post_delete", async ({ postId, authorId }) => {
+    await webhookEvent(({ emitDeleted }) => emitDeleted(postId, authorId));
     if (!federationRunning()) return;
     const { deliverPostDelete } = await import("@/federation/deliver.ts");
     await deliverPostDelete(postId, authorId);

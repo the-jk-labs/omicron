@@ -91,6 +91,13 @@ test("read-only and narrow grants cannot write or disclose other private resourc
   expect((await request("/posts")).status).toBe(403);
 });
 
+test("webhook subscriptions need their own scope: broad read and write grants don't imply it", async () => {
+  expect((await request("/webhook-subscriptions", "POST")).status).toBe(403);
+  identity("webhooks:posts");
+  expect((await request("/webhook-subscriptions", "POST")).status).toBe(200);
+  expect((await request("/posts/mine")).status).toBe(403);
+});
+
 test("admin scopes require the current role and personal writes do not inherit moderation powers", async () => {
   identity("admin:read");
   expect((await request("/admin/settings")).status).toBe(403);

@@ -24,6 +24,7 @@ import { tagRoutes } from "@/routes/tags.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import { userRoutes } from "@/routes/users.ts";
 import { webhookRoutes } from "@/routes/webhooks.ts";
+import { webhookSubscriptionRoutes } from "@/routes/webhookSubscriptions.ts";
 
 // Mounts the JSON API under /api.
 export const apiRoutes = new Hono<AppEnv>();
@@ -51,4 +52,5 @@ apiRoutes.route("/seo", seoRoutes);
 apiRoutes.route("/site", siteRoutes);
 apiRoutes.route("/photos", photoRoutes);
 apiRoutes.route("/webhooks", webhookRoutes);
+apiRoutes.route("/webhook-subscriptions", webhookSubscriptionRoutes);
 apiRoutes.route("/email-change", emailChangeRoutes);

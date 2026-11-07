@@ -790,6 +790,57 @@ export const oauthRefreshTokens = pgTable(
   (t) => [index("oauth_refresh_tokens_grant_idx").on(t.grantId)],
 );
 
+// ── outbound post-event webhooks ─────────────────────────────────────────
+// `userId`, `username` and `clientId` are copies with no FK, so a subscription
+// outlives its grant or owner long enough to send `connection.revoked`.
+export const webhookSubscriptions = pgTable(
+  "webhook_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    grantId: uuid("grant_id")
+      .unique()
+      .references(() => oauthTokens.id, { onDelete: "set null" }),
+    userId: uuid("user_id").notNull(),
+    username: text("username").notNull(),
+    clientId: text("client_id").notNull(),
+    url: text("url").notNull(),
+    // Readable by design: signing needs the original value, so it can't be hashed.
+    secret: text("secret").notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("webhook_subscriptions_user_idx").on(t.userId),
+    index("webhook_subscriptions_orphan_idx")
+      .on(t.createdAt)
+      .where(sql`${t.grantId} is null and ${t.revokedAt} is null`),
+  ],
+);
+
+export const webhookDeliveries = pgTable(
+  "webhook_deliveries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    subscriptionId: uuid("subscription_id")
+      .notNull()
+      .references(() => webhookSubscriptions.id, { onDelete: "cascade" }),
+    event: text("event").$type<WebhookEvent>().notNull(),
+    // No FK: `post.deleted` names a post that no longer exists.
+    postId: uuid("post_id"),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("webhook_deliveries_due_idx").on(t.nextAttemptAt),
+    index("webhook_deliveries_subscription_idx").on(t.subscriptionId),
+  ],
+);
+
+export type WebhookEvent = "post.created" | "post.updated" | "post.deleted" | "connection.revoked";
+export type WebhookSubscription = typeof webhookSubscriptions.$inferSelect;
+export type WebhookDelivery = typeof webhookDeliveries.$inferSelect;
+
 // ── accounts (Better Auth) ───────────────────────────────────────────────
 // One auth method per row. Email+password is providerId "credential" with the
 // bcrypt hash in `password` (migrated from users.password_hash). OAuth columns
