@@ -49,7 +49,7 @@
     "@sveltejs/adapter-node": "6.0.1",
     "@sveltejs/kit": "3.1.1",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
-    "@tailwindcss/vite": "4.3.4",
+    "@tailwindcss/vite": "4.3.5",
     "@testing-library/dom": "10.4.2",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/svelte": "5.4.2",
@@ -63,7 +63,7 @@
     "oxlint-tsgolint": "7.0.2006",
     "svelte": "5.57.3",
     "svelte-check": "4.7.8",
-    "tailwindcss": "4.3.4",
+    "tailwindcss": "4.3.5",
     "typescript": "6.0.3",
     "vite": "8.3.6",
     "vitest": "5.1.0"
