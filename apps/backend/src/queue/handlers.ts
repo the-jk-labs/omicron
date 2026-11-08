@@ -22,9 +22,10 @@ import {
 } from "@/services/email.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { federationRunning } from "@/services/federationState.ts";
+import type * as WebhookSubscriptions from "@/services/webhookSubscriptions.ts";
 
 // A failed event must not cost the post its federation, which runs next.
-async function webhookEvent(run: (events: typeof import("@/services/webhookSubscriptions.ts")) => Promise<void>) {
+async function webhookEvent(run: (events: typeof WebhookSubscriptions) => Promise<void>) {
   try {
     await run(await import("@/services/webhookSubscriptions.ts"));
   } catch (err) {
