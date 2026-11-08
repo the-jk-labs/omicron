@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { View } from "react-native";
 import Animated, { FadeInDown, FadeOutDown, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,7 +7,8 @@ import { useStore } from "@/lib/store";
 import { Icon } from "./icon";
 import { Text } from "./text";
 
-export function ToastHost() {
+/** Toasts above the bottom bar; `children` (lasting notices) sit below them, nearest the bar. */
+export function ToastHost({ children }: { children?: ReactNode }) {
   const items = useStore(toasts);
   const insets = useSafeAreaInsets();
   useEffect(() => () => toasts.set([]), []);
@@ -29,6 +30,7 @@ export function ToastHost() {
           </Text>
         </Animated.View>
       ))}
+      {children}
     </View>
   );
 }

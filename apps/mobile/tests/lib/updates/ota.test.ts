@@ -70,20 +70,20 @@ describe("isCheckDue", () => {
 });
 
 describe("shouldDismissSwipe", () => {
-  test("a long enough upward drag dismisses", () => {
-    expect(shouldDismissSwipe(-40, 0)).toBe(true);
+  test("a long enough downward drag dismisses", () => {
+    expect(shouldDismissSwipe(40, 0)).toBe(true);
   });
 
-  test("a short upward flick dismisses", () => {
-    expect(shouldDismissSwipe(-10, -600)).toBe(true);
+  test("a short downward flick dismisses", () => {
+    expect(shouldDismissSwipe(10, 600)).toBe(true);
   });
 
   test("a short slow drag springs back", () => {
-    expect(shouldDismissSwipe(-39, -100)).toBe(false);
+    expect(shouldDismissSwipe(39, 100)).toBe(false);
   });
 
-  test("flicking back down after dragging up doesn't count as a flick up", () => {
-    expect(shouldDismissSwipe(-20, 800)).toBe(false);
+  test("flicking back up after dragging down doesn't count as a flick down", () => {
+    expect(shouldDismissSwipe(20, -800)).toBe(false);
   });
 });
 

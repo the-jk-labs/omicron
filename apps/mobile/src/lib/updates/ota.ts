@@ -12,10 +12,10 @@ export function isCheckDue(lastCheck: Date | undefined, now: number) {
   return !lastCheck || now - lastCheck.getTime() >= RECHECK_MS;
 }
 
-/** An upward swipe that went far enough, or was flicked fast enough, dismisses. */
+/** A downward swipe that went far enough, or was flicked fast enough, dismisses. */
 export function shouldDismissSwipe(translationY: number, velocityY: number) {
   "worklet";
-  return translationY <= -SWIPE_DISTANCE || velocityY <= -SWIPE_VELOCITY;
+  return translationY >= SWIPE_DISTANCE || velocityY >= SWIPE_VELOCITY;
 }
 
 export async function downloadLatestUpdate() {
