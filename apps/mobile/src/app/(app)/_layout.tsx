@@ -3,6 +3,7 @@ import { router, Stack } from "expo-router";
 import { useEffect } from "react";
 import { SignInPrompt } from "@/components/auth/sign-in-prompt";
 import { InstanceProvider } from "@/components/instance-provider";
+import { OtaToast } from "@/components/layout/ota-toast";
 import { ScreenError } from "@/components/layout/screen-error";
 import { useStackOptions } from "@/components/layout/stack-options";
 import { TopBanners } from "@/components/layout/top-banners";
@@ -54,7 +55,9 @@ export default function AppLayout() {
         <SaveToListHost />
         <PostMenuHost />
         <ConfirmHost />
-        <ToastHost />
+        <ToastHost>
+          <OtaToast />
+        </ToastHost>
       </BottomSheetModalProvider>
     </InstanceProvider>
   );

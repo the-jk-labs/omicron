@@ -188,8 +188,8 @@ importers:
         specifier: 5.2.14
         version: 5.2.14(50dd6323713420dc6cb45b2c91b9913e)
       '@legendapp/list':
-        specifier: 3.7.1
-        version: 3.7.1(react-dom@19.3.0(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)
+        specifier: 3.7.2
+        version: 3.7.2(react-dom@19.3.0(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)
       '@omicron/contract':
         specifier: link:../../packages/contract
         version: link:../../packages/contract
@@ -197,14 +197,14 @@ importers:
         specifier: 14.0.0
         version: 14.0.0(expo-font@58.0.11(expo@58.0.23)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0))(expo@58.0.23)(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)
       '@tanstack/query-async-storage-persister':
-        specifier: 5.106.1
-        version: 5.106.1
+        specifier: 5.107.1
+        version: 5.107.1
       '@tanstack/react-query':
-        specifier: 5.106.1
-        version: 5.106.1(@types/react@19.3.0)(react@19.3.0)
+        specifier: 5.107.1
+        version: 5.107.1(@types/react@19.3.0)(react@19.3.0)
       '@tanstack/react-query-persist-client':
-        specifier: 5.106.1
-        version: 5.106.1(@tanstack/react-query@5.106.1(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(react@19.3.0)
+        specifier: 5.107.1
+        version: 5.107.1(@tanstack/react-query@5.107.1(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(react@19.3.0)
       better-auth:
         specifier: 1.7.18
         version: 1.7.18(@opentelemetry/api@1.9.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vitest@5.1.0)
@@ -1345,8 +1345,8 @@ packages:
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
 
-  '@legendapp/list@3.7.1':
-    resolution: {integrity: sha512-zgIy84yG2JP93+kib61rZBTcYGZ6fULrkCQz/MF7WrjVJeJQa/rR4z+rXfM5oveirO5mYkro4IDGytARIjJe9w==}
+  '@legendapp/list@3.7.2':
+    resolution: {integrity: sha512-StFy5qjOHHuxHKjenwLq500S/z+zuF43hj8iqXhX9EMtzeOagPfsnMRWphvBG4CYBvMTX6VzgLjN5BzzwY1jDA==}
     peerDependencies:
       react: '*'
       react-dom: '*'
@@ -2767,27 +2767,27 @@ packages:
     resolution: {integrity: sha512-krXjAikiaFSPaK/FkAQT5UTx3VormQaiZ5hBFlJZ9UFQGB/rwg1MZIhHAG9smMQRTdyJxP6Qt5MwMtdyU5FWrA==}
     engines: {node: '>= 20'}
 
-  '@tanstack/query-async-storage-persister@5.106.1':
-    resolution: {integrity: sha512-fOyeC5sUa3kHS2QhahKjvuD/nq8TmlAIV+Aa5H7JWaAAW9xLrPQEnFQSsrK4ZlHokV3BJiqRVuTenp/Xbe51NQ==}
+  '@tanstack/query-async-storage-persister@5.107.1':
+    resolution: {integrity: sha512-yBUPWoe3mclko1NcjIXXeXyoO3oLwzgQaCppxK5KS73gTDA+bJtRJ1hIRHc5tKwMdD0ZDi9TzWqOCWnLsbrNDQ==}
 
-  '@tanstack/query-core@5.106.1':
-    resolution: {integrity: sha512-erYv/UACddcdgjOL2ixmFdK6tO/AVBeUcTCOtX2N51yZpDQ2U7KJ+xgB/bCNfsF3uoCDTqGHEEbDiFsIO9YUmQ==}
+  '@tanstack/query-core@5.107.1':
+    resolution: {integrity: sha512-PSyAik11oQBEVOiVy5hjZWHmoUqOXqK1WYy4v55mcxozEfKaQgpUMsgnXhWjuESzSht8JfzqMS1m6M/9CpNgvg==}
 
-  '@tanstack/query-persist-client-core@5.106.1':
-    resolution: {integrity: sha512-UprIWmgSMdzj4aW0Erv4BbM89lwmkmsnPuVwsUbEFHg5XUVBIlrOjVTVW837GnqI/AKZykpS0TBiXREpSrh1MQ==}
+  '@tanstack/query-persist-client-core@5.107.1':
+    resolution: {integrity: sha512-/qDxEcKh44xViKKFlf8MUoeITritIn58XcT3YkCOQ0Ovj4Wa2EgZtqvHSlw+tnQQGhtq9+gLVZSeUtSfkIL9Kg==}
 
-  '@tanstack/react-query-persist-client@5.106.1':
-    resolution: {integrity: sha512-sigG1TAR+AlfK/yKTzw9vtmmCdjLmaOCYHwpKRi/YOC2oDBmz7o3dwedTS2ibJjNtxhzffw3E97UiVvqMtN1Cg==}
+  '@tanstack/react-query-persist-client@5.107.1':
+    resolution: {integrity: sha512-kZMaDZ9PU4FXi/3Ci25OC2Dj7gEh5XWMmxw0aiXe8KqFmZ5gHOOWZn/vl8U8k0I+1uWARzjBZDzu2jRHjk1+SQ==}
     peerDependencies:
-      '@tanstack/react-query': ^5.106.1
+      '@tanstack/react-query': ^5.107.1
       '@types/react': ^18 || ^19
       react: ^18 || ^19
     peerDependenciesMeta:
       '@types/react':
         optional: true
 
-  '@tanstack/react-query@5.106.1':
-    resolution: {integrity: sha512-ORDvJG/DSfmlFL9lQ8GDkE0VjtQbLeRDY7BL8xjKkQFGLfjFGfNWNuteWgPqA2gPJgLLuWfQ7IX0FlsHCJriyg==}
+  '@tanstack/react-query@5.107.1':
+    resolution: {integrity: sha512-udCOOLp3ZAheUrIHLCe+ZZge6nr2ZUrGMSWcCuXsjY1Bf2JeeE09oxst97PILiCY6N8xo/7bIo3Hvz13zh06FA==}
     peerDependencies:
       '@types/react': ^18 || ^19
       react: ^18 || ^19
@@ -7334,7 +7334,7 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@legendapp/list@3.7.1(react-dom@19.3.0(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)':
+  '@legendapp/list@3.7.2(react-dom@19.3.0(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)':
     dependencies:
       react: 19.3.0
       use-sync-external-store: 1.7.0(react@19.3.0)
@@ -8370,28 +8370,28 @@ snapshots:
       '@tailwindcss/oxide-win32-arm64-msvc': 4.3.3
       '@tailwindcss/oxide-win32-x64-msvc': 4.3.3
 
-  '@tanstack/query-async-storage-persister@5.106.1':
+  '@tanstack/query-async-storage-persister@5.107.1':
     dependencies:
-      '@tanstack/query-core': 5.106.1
-      '@tanstack/query-persist-client-core': 5.106.1
+      '@tanstack/query-core': 5.107.1
+      '@tanstack/query-persist-client-core': 5.107.1
 
-  '@tanstack/query-core@5.106.1': {}
+  '@tanstack/query-core@5.107.1': {}
 
-  '@tanstack/query-persist-client-core@5.106.1':
+  '@tanstack/query-persist-client-core@5.107.1':
     dependencies:
-      '@tanstack/query-core': 5.106.1
+      '@tanstack/query-core': 5.107.1
 
-  '@tanstack/react-query-persist-client@5.106.1(@tanstack/react-query@5.106.1(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(react@19.3.0)':
+  '@tanstack/react-query-persist-client@5.107.1(@tanstack/react-query@5.107.1(@types/react@19.3.0)(react@19.3.0))(@types/react@19.3.0)(react@19.3.0)':
     dependencies:
-      '@tanstack/query-persist-client-core': 5.106.1
-      '@tanstack/react-query': 5.106.1(@types/react@19.3.0)(react@19.3.0)
+      '@tanstack/query-persist-client-core': 5.107.1
+      '@tanstack/react-query': 5.107.1(@types/react@19.3.0)(react@19.3.0)
       react: 19.3.0
     optionalDependencies:
       '@types/react': 19.3.0
 
-  '@tanstack/react-query@5.106.1(@types/react@19.3.0)(react@19.3.0)':
+  '@tanstack/react-query@5.107.1(@types/react@19.3.0)(react@19.3.0)':
     dependencies:
-      '@tanstack/query-core': 5.106.1
+      '@tanstack/query-core': 5.107.1
       react: 19.3.0
     optionalDependencies:
       '@types/react': 19.3.0
