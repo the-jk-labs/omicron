@@ -18,7 +18,7 @@ services:
   # Each is 32 random bytes as 64 hex characters — which is also exactly the
   # Ed25519 seed length Anubis wants for anubis_ed25519_key.
   init-secrets:
-    image: alpine:3.24.3
+    image: alpine:3.24.4
     command:
       - sh
       - -c
@@ -41,7 +41,7 @@ services:
       - secrets:/secrets
 
   postgres:
-    image: postgres:16.15-alpine3.24
+    image: postgres:16.16-alpine3.24
     restart: unless-stopped
     depends_on:
       init-secrets:
@@ -299,7 +299,7 @@ services:
   # (gated by the backend), so going public needs only a DNS record — no certs
   # to request, no config files to edit. See Caddyfile for the routing.
   caddy:
-    image: caddy:2.11.7-alpine
+    image: caddy:2.11.9-alpine
     restart: unless-stopped
     depends_on:
       - frontend
