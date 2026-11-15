@@ -4,7 +4,7 @@
 # The image keeps the repository's layout, which the app's `link:../../packages/contract` dependency relies on.
 
 # --- deps: resolve node_modules from the lockfiles ---------------------------
-FROM node:24.22.2-alpine3.24 AS deps
+FROM node:24.22.3-alpine3.24 AS deps
 # Corepack pins pnpm to the version in package.json's "packageManager" field.
 RUN corepack enable
 WORKDIR /app/packages/contract
