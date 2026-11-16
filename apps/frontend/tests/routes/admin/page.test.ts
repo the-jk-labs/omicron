@@ -50,7 +50,7 @@ test("an admin gets the full dashboard, opening on Reports", () => {
 });
 
 test.for([
-  ["Federation", "Defederation"],
+  ["Federation", "Federation network"],
   ["Email", "Email delivery"],
   ["Security", "Security"],
   ["Discoverability", "Discoverability"],
@@ -107,7 +107,22 @@ test("the open tab renders the server's data instead of loading it again", () =>
 const listed = { users: [], nextCursor: null, total: 0, filteredTotal: 0 };
 test.for([
   ["users", "/api/admin/users", { users: { users: listed, deleted: listed } }],
-  ["federation", "/api/admin/domains", { domains: { domains: [] } }],
+  [
+    "federation",
+    "/api/admin/federation",
+    {
+      federation: {
+        network: {
+          running: true,
+          settings: { autoCache: true, fedidbDiscovery: true, syncIntervalHours: 6, authorsPerInstance: 20 },
+          discovery: null,
+          instances: [],
+        },
+        domains: { domains: [] },
+        actors: { actors: [] },
+      },
+    },
+  ],
   [
     "email",
     "/api/admin/email",

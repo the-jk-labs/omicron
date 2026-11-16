@@ -871,6 +871,7 @@ export const FederationOverview = z.object({
   discovery: z.nullable(FederationDiscoveryRun),
   instances: z.array(FederatedInstance),
 });
+export type FederationOverview = z.infer<typeof FederationOverview>;
 export const FederatedInstanceResponse = z.object({ instance: FederatedInstance });
 export const TagAliases = z.object({
   aliases: z.array(z.object({ aliasSlug: z.string(), slug: z.string(), name: z.string() })),

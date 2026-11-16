@@ -9,7 +9,13 @@ import type {
   AdminSeoSettings,
   AdminUser,
   AdminUserDetail,
+  BlockedActor,
   BlockedDomain,
+  DomainBlockSeverity,
+  FederatedInstance,
+  FederationDiscoveryRun,
+  FederationOverview,
+  FederationSettings,
   Comment,
   ContentImportPreview,
   ContentImportResult,
@@ -276,9 +282,29 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     resolveReport: (id: string, resolution?: string) =>
       api.post<{ ok: true }>(`/admin/reports/${id}/resolve`, { resolution }),
     blockedDomains: () => api.get<{ domains: BlockedDomain[] }>("/admin/domains"),
-    blockDomain: (domain: string, reason?: string) =>
-      api.post<{ domain: string; purged: number }>("/admin/domains", { domain, reason }),
+    blockDomain: (domain: string, reason?: string, severity?: DomainBlockSeverity) =>
+      api.post<{ domain: string; purged: number }>("/admin/domains", { domain, reason, severity }),
     unblockDomain: (domain: string) => api.del<{ ok: true }>(`/admin/domains/${encodeURIComponent(domain)}`),
+    blockedActors: () => api.get<{ actors: BlockedActor[] }>("/admin/blocked-actors"),
+    blockActor: (account: string, reason?: string) =>
+      api.post<{ actor: BlockedActor }>("/admin/blocked-actors", { account, reason }),
+    unblockActor: (apId: string) => api.del<{ ok: true }>(`/admin/blocked-actors?apId=${encodeURIComponent(apId)}`),
+
+    // auto-cache network (admin)
+    federation: () => api.get<FederationOverview>("/admin/federation"),
+    setFederationSettings: (patch: Partial<FederationSettings>) =>
+      api.patch<FederationSettings>("/admin/federation/settings", patch),
+    discoverInstances: () => api.post<FederationDiscoveryRun>("/admin/federation/discover"),
+    addInstance: (domain: string) =>
+      api.post<{ instance: FederatedInstance }>("/admin/federation/instances", { domain }),
+    setInstanceAutoCache: (domain: string, autoCache: boolean) =>
+      api.patch<{ instance: FederatedInstance }>(`/admin/federation/instances/${encodeURIComponent(domain)}`, {
+        autoCache,
+      }),
+    removeInstance: (domain: string) =>
+      api.del<{ ok: true }>(`/admin/federation/instances/${encodeURIComponent(domain)}`),
+    syncInstance: (domain: string) =>
+      api.post<{ instance: FederatedInstance }>(`/admin/federation/instances/${encodeURIComponent(domain)}/sync`),
 
     // user-facing report (flag a post or account)
     report: (subjectType: "post" | "user", subjectId: string, reason?: string) =>
