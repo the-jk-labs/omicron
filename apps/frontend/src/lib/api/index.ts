@@ -197,13 +197,14 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // admin moderation
     adminUsers: (
       q?: string,
-      filters?: { suspended?: boolean; admin?: boolean; verified?: boolean },
+      filters?: { suspended?: boolean; frozen?: boolean; admin?: boolean; verified?: boolean },
       page?: { cursor?: string | null; limit?: number },
       sort?: "newest" | "oldest" | "username",
     ) => {
       const params = new URLSearchParams();
       if (q) params.set("q", q);
       if (filters?.suspended !== undefined) params.set("suspended", String(filters.suspended));
+      if (filters?.frozen !== undefined) params.set("frozen", String(filters.frozen));
       if (filters?.admin !== undefined) params.set("admin", String(filters.admin));
       if (filters?.verified !== undefined) params.set("verified", String(filters.verified));
       if (sort && sort !== "newest") params.set("sort", sort);

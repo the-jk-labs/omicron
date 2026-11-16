@@ -262,7 +262,16 @@ test("freezing confirms first, then marks the row Frozen and offers Unfreeze", a
   await confirmWith({ ok: true, notify: true });
   await screen.findByRole("button", { name: "Unfreeze" });
   expect(calls.find((c) => c.path.endsWith("/freeze"))?.body).toEqual({ freeze: true, notify: true });
-  expect(screen.getByText("Frozen")).toBeInTheDocument();
+  expect(screen.getByText("Frozen", { selector: "span" })).toBeInTheDocument();
+});
+
+test("the Freeze filter sends frozen=true and drops a row that stops matching", async () => {
+  const { calls } = setup({
+    "POST /api/admin/users/u-bob/freeze": { ok: true },
+  });
+  await screen.findByText("2 accounts total");
+  await fireEvent.click(screen.getByRole("radio", { name: "Freeze: Frozen" }));
+  await waitFor(() => expect(listCalls(calls).at(-1)).toContain("frozen=true"));
 });
 
 test("a frozen account can be unfrozen, which clears the badge", async () => {
@@ -270,11 +279,11 @@ test("a frozen account can be unfrozen, which clears the badge", async () => {
     "GET /api/admin/users": page([user({ username: "bob", frozen: true })]),
     "POST /api/admin/users/u-bob/freeze": { ok: true },
   });
-  await screen.findByText("Frozen");
+  await screen.findByText("Frozen", { selector: "span" });
   await fireEvent.click(screen.getByRole("button", { name: "Unfreeze" }));
   expect(get(confirmRequest)?.title).toBe("Unfreeze @bob?");
   await confirmWith({ ok: true });
-  await waitFor(() => expect(screen.queryByText("Frozen")).toBe(null));
+  await waitFor(() => expect(screen.queryByText("Frozen", { selector: "span" })).toBe(null));
   expect(calls.find((c) => c.path.endsWith("/freeze"))?.body).toEqual({ freeze: false, notify: false });
 });
 
@@ -284,7 +293,7 @@ test("a failed freeze is shown and leaves the account unfrozen", async () => {
   await fireEvent.click(screen.getAllByRole("button", { name: "Freeze" })[1]);
   await confirmWith({ ok: true });
   await screen.findByText("Not allowed");
-  expect(screen.queryByText("Frozen")).toBe(null);
+  expect(screen.queryByText("Frozen", { selector: "span" })).toBe(null);
 });
 
 test("deleting needs the typed username and a password, then moves the account to Recently deleted", async () => {

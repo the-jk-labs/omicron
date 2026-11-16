@@ -168,6 +168,7 @@ export async function setShowAiAssistedPosts(id: string, showAiAssistedPosts: bo
 // only matching accounts, false only the rest, undefined leaves it unfiltered.
 export type AdminUserFilter = {
   suspended?: boolean;
+  frozen?: boolean;
   admin?: boolean;
   verified?: boolean;
 };
@@ -230,6 +231,9 @@ function adminConditions(query = "", filter: AdminUserFilter = {}): (SQL | undef
   }
   if (filter.suspended !== undefined) {
     conditions.push(filter.suspended ? sql`${users.suspendedAt} is not null` : sql`${users.suspendedAt} is null`);
+  }
+  if (filter.frozen !== undefined) {
+    conditions.push(filter.frozen ? sql`${users.frozenAt} is not null` : sql`${users.frozenAt} is null`);
   }
   if (filter.admin !== undefined) conditions.push(eq(users.isAdmin, filter.admin));
   if (filter.verified !== undefined) conditions.push(eq(users.emailVerified, filter.verified));

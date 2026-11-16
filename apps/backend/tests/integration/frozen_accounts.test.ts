@@ -111,3 +111,19 @@ describe("a frozen account's profile shows as deactivated, and its relations are
     expect(await followsService.followingOf("frozen", reader.id)).toHaveLength(1);
   });
 });
+
+describe("the admin user table can filter by freeze", () => {
+  beforeAll(async () => {
+    await resetDb();
+    await mkUser("frozen", { frozen: true });
+    await mkUser("active");
+  });
+
+  test("frozen=true lists only frozen accounts, and frozen=false the rest", async () => {
+    const frozenOnly = await usersRepo.listForAdmin("", { frozen: true }, null, 10, "newest");
+    expect(frozenOnly.map((u) => u.username)).toEqual(["frozen"]);
+    const rest = await usersRepo.listForAdmin("", { frozen: false }, null, 10, "newest");
+    expect(rest.map((u) => u.username)).toEqual(["active"]);
+    expect(await usersRepo.countFiltered("", { frozen: true })).toBe(1);
+  });
+});

@@ -64,6 +64,7 @@
   type TriFilter = boolean | undefined;
   type TriOption = { value: string; label: string; filter: TriFilter };
   let fSuspended = $state<TriFilter>(undefined);
+  let fFrozen = $state<TriFilter>(undefined);
   let fAdmins = $state<TriFilter>(undefined);
   let fVerified = $state<TriFilter>(undefined);
 
@@ -123,7 +124,7 @@
   // dropped via `loadSeq`, and the detail cache is kept — mutations update it
   // in place, so an expansion survives a reload.
   function filterParams() {
-    return { suspended: fSuspended, admin: fAdmins, verified: fVerified };
+    return { suspended: fSuspended, frozen: fFrozen, admin: fAdmins, verified: fVerified };
   }
 
   async function load(reset = true) {
@@ -251,7 +252,14 @@
     busyId = u.id;
     try {
       await endpoints().freezeUser(u.id, freeze, notify);
-      users = users.map((x) => (x.id === u.id ? { ...x, frozen: freeze } : x));
+      // Same rule as suspend: the row leaves the table once it stops matching an active Freeze filter.
+      if ((fFrozen === true && !freeze) || (fFrozen === false && freeze)) {
+        users = users.filter((x) => x.id !== u.id);
+        filteredTotal = Math.max(0, filteredTotal - 1);
+        if (expandedId === u.id) expandedId = null;
+      } else {
+        users = users.map((x) => (x.id === u.id ? { ...x, frozen: freeze } : x));
+      }
     } catch (e) {
       error = e instanceof ApiError ? e.message : "Action failed.";
     } finally {
@@ -894,7 +902,11 @@
   const destructiveItemClass = menuItemClass.replace("text-foreground", "text-destructive");
 
   const isFiltering = $derived(
-    query.trim() !== "" || fSuspended !== undefined || fAdmins !== undefined || fVerified !== undefined,
+    query.trim() !== "" ||
+      fSuspended !== undefined ||
+      fFrozen !== undefined ||
+      fAdmins !== undefined ||
+      fVerified !== undefined,
   );
 
   // Tri-state filter segments, rendered from one config so the dimensions
@@ -914,6 +926,16 @@
         { value: "all", label: "All", filter: undefined },
         { value: "active", label: "Active", filter: false },
         { value: "suspended", label: "Suspended", filter: true },
+      ],
+    },
+    {
+      label: "Freeze",
+      value: fFrozen === undefined ? "all" : fFrozen ? "frozen" : "not-frozen",
+      set: (v: TriFilter) => (fFrozen = v),
+      options: [
+        { value: "all", label: "All", filter: undefined },
+        { value: "frozen", label: "Frozen", filter: true },
+        { value: "not-frozen", label: "Not frozen", filter: false },
       ],
     },
     {
@@ -1080,7 +1102,9 @@
               </p>
             </div>
             {#if u.id !== selfId && canModerateRow(u)}
-              <div class="col-span-2 col-start-2 flex min-w-0 items-center gap-2 sm:col-auto sm:ml-auto sm:shrink-0">
+              <div
+                class="col-span-2 col-start-2 flex min-w-0 flex-wrap items-center gap-2 sm:col-auto sm:ml-auto sm:shrink-0"
+              >
                 {#if !u.isAdmin}
                   <Button
                     variant="outline"

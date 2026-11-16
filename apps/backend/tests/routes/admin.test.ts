@@ -425,6 +425,20 @@ describe("moderator endpoints", () => {
     api.signIn({ id: "mod", isModerator: true });
   });
 
+  test("the frozen triage filter reaches the list and the count", async () => {
+    vi.mocked(moderation.countUsers).mockResolvedValue(10);
+    vi.mocked(moderation.countFilteredUsers).mockResolvedValue(1);
+    await api.request("/api/admin/users?frozen=true");
+    expect(moderation.listUsers).toHaveBeenCalledWith(
+      "",
+      expect.objectContaining({ frozen: true }),
+      null,
+      50,
+      "newest",
+    );
+    expect(moderation.countFilteredUsers).toHaveBeenCalledWith("", expect.objectContaining({ frozen: true }));
+  });
+
   test("the user table parses filters, sort, cursor and limit", async () => {
     vi.mocked(moderation.countUsers).mockResolvedValue(10);
     vi.mocked(moderation.countFilteredUsers).mockResolvedValue(3);
