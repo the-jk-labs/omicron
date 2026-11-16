@@ -155,7 +155,7 @@ services:
       - secrets:/run/secrets:ro
       # Read-only view of the real Caddyfile: the scraper-shield toggle reads it,
       # swaps one upstream line, and reloads it through Caddy's admin API.
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
       - caddy_admin:/run/caddy-admin:ro
     ports:
       # Loopback only: Caddy reaches the backend over the compose network and is
@@ -244,8 +244,8 @@ services:
       - uploads:/data/uploads
       - state:/data/state
       - secrets:/run/secrets:ro
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./botPolicy.yaml:/data/cfg/botPolicy.yaml:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
+      - ./botPolicy.yaml:/data/cfg/botPolicy.yaml:ro,z
     healthcheck:
       test: ["CMD-SHELL", "pidof crond"]
       interval: 60s
@@ -311,7 +311,7 @@ services:
       OG_PASSTHROUGH: "true"
       OG_EXPIRY_TIME: "24h"
     volumes:
-      - ./botPolicy.yaml:/data/cfg/botPolicy.yaml:ro
+      - ./botPolicy.yaml:/data/cfg/botPolicy.yaml:ro,z
       - secrets:/run/secrets:ro
 
   # Public entrypoint: terminates TLS and reverse-proxies to frontend/backend.
@@ -328,13 +328,13 @@ services:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
       # Omicron's skin for the Anubis challenge screen, served by Caddy at the
       # path Anubis links its own stylesheet from. See anubis-theme.css and the
       # @anubis_theme handler in the Caddyfile.
-      - ./anubis-theme.css:/srv/anubis-theme.css:ro
+      - ./anubis-theme.css:/srv/anubis-theme.css:ro,z
       # Original Omicron artwork for Anubis's challenge, success and denial states.
-      - ./assets/anubis:/srv/anubis-images:ro
+      - ./assets/anubis:/srv/anubis-images:ro,z
       - caddy_data:/data
       - caddy_config:/config
       - caddy_admin:/run/caddy-admin
