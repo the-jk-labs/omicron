@@ -48,6 +48,12 @@ export async function removeRemoteFollower(followeeId: string, remoteActor: stri
   await db.delete(follows).where(and(eq(follows.followeeId, followeeId), eq(follows.remoteActor, remoteActor)));
 }
 
+// Drops every inbound edge (approved or pending) from a remote actor that was
+// deleted. These rows hold its URI, not a foreign key, so nothing cascades.
+export async function removeRemoteFollowerEverywhere(remoteActor: string) {
+  await db.delete(follows).where(eq(follows.remoteActor, remoteActor));
+}
+
 // True only for an *approved* follow edge — a pending request is not following.
 export async function isFollowing(followerId: string, followeeId: string): Promise<boolean> {
   const row = await db.query.follows.findFirst({

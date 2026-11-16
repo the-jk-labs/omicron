@@ -61,6 +61,13 @@ vi.mock(import("@fedify/fedify"), async (importOriginal) => {
           register(type, handler);
           return setters;
         };
+        const s = setters as unknown as Record<string, (h: never) => unknown>;
+        const onUnverified = s.onUnverifiedActivity.bind(setters);
+        s.onUnverifiedActivity = (handler) => {
+          captured.dispatchers.set("unverified", handler);
+          onUnverified(handler);
+          return setters;
+        };
         return setters;
       };
       return fed;
@@ -411,9 +418,10 @@ describe("inbox: Create / Update / Delete", () => {
     expect(ingestNoteUpdate).toHaveBeenCalled();
   });
 
-  it("Delete(actor) purges the cached actor", async () => {
+  it("Delete(actor) purges the cached actor and its follow edges", async () => {
     await on(Delete)(new Delete({ actor: new URL(BOB), object: new URL(BOB) }));
     expect(remoteActorsRepo.removeByApId).toHaveBeenCalledWith(BOB);
+    expect(followsRepo.removeRemoteFollowerEverywhere).toHaveBeenCalledWith(BOB);
   });
 
   it("Delete(post) only by its author", async () => {
@@ -555,4 +563,46 @@ test("every inbox activity type the module handles has a listener", () => {
   for (const type of [Follow, Undo, Block, Accept, Create, Announce, Update, Delete]) {
     expect(captured.listeners.has(type)).toBe(true);
   }
+});
+
+// A deleted remote account's key is gone too, so its own Delete(actor) can't be
+// verified. We accept it only when the actor document itself answered 410 Gone.
+describe("inbox: unverified Delete(actor)", () => {
+  const unverified = (activity: unknown, reason: unknown) =>
+    (captured.dispatchers.get("unverified") as (...a: unknown[]) => Promise<unknown>)(ctx, activity, reason);
+  const gone = (keyId: string, status = 410) => ({
+    type: "keyFetchError",
+    keyId: new URL(keyId),
+    result: { status, response: new Response(null, { status }) },
+  });
+  const selfDelete = () => new Delete({ actor: new URL(BOB), object: new URL(BOB) });
+
+  it("purges the actor when its key document is Gone", async () => {
+    const res = await unverified(selfDelete(), gone(`${BOB}#main-key`));
+    expect(remoteActorsRepo.removeByApId).toHaveBeenCalledWith(BOB);
+    expect(followsRepo.removeRemoteFollowerEverywhere).toHaveBeenCalledWith(BOB);
+    expect((res as Response).status).toBe(202);
+  });
+
+  it.for([
+    ["a 404 rather than a 410", selfDelete(), gone(`${BOB}#main-key`, 404)],
+    ["a key that is not the actor's own document", selfDelete(), gone("https://remote.example/keys/bob")],
+    ["a key on another host", selfDelete(), gone("https://evil.example/users/bob#main-key")],
+    ["a bad signature", selfDelete(), { type: "invalidSignature" }],
+    [
+      "a Delete of something other than the actor",
+      new Delete({ actor: new URL(BOB), object: new URL("https://remote.example/posts/1") }),
+      gone(`${BOB}#main-key`),
+    ],
+  ] as const)("ignores %s", async ([, activity, reason]) => {
+    expect(await unverified(activity, reason)).toBeUndefined();
+    expect(remoteActorsRepo.removeByApId).not.toHaveBeenCalled();
+    expect(followsRepo.removeRemoteFollowerEverywhere).not.toHaveBeenCalled();
+  });
+
+  it("ignores an actor from a blocked domain", async () => {
+    vi.mocked(blockedDomainsRepo.isBlocked).mockResolvedValue(true);
+    expect(await unverified(selfDelete(), gone(`${BOB}#main-key`))).toBeUndefined();
+    expect(remoteActorsRepo.removeByApId).not.toHaveBeenCalled();
+  });
 });

@@ -142,3 +142,14 @@ test("followersSince counts approved followers from a moment on", async () => {
   expect(await followsRepo.followersSince(ada.id, hourAgo)).toBe(2);
   expect(await followsRepo.followersSince(ada.id, new Date(Date.now() + 3_600_000))).toBe(0);
 });
+
+test("removeRemoteFollowerEverywhere drops a remote actor's inbound edges to every local user", async () => {
+  const [ada, bob] = [await mkUser("ada"), await mkUser("bob")];
+  await followsRepo.createRemoteFollower(ada.id, EVE);
+  await followsRepo.createRemoteFollower(bob.id, EVE, false);
+  await followsRepo.createRemoteFollower(ada.id, "https://remote.example/users/zed");
+  await followsRepo.removeRemoteFollowerEverywhere(EVE);
+  expect(await followsRepo.counts(ada.id)).toEqual({ followers: 1, following: 0 });
+  expect(await followsRepo.remoteFollowerActors(ada.id)).toEqual(["https://remote.example/users/zed"]);
+  expect(await followsRepo.listRemoteFollowRequests(bob.id)).toEqual([]);
+});
