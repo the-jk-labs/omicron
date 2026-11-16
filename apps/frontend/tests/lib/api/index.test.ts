@@ -154,6 +154,13 @@ const rows: Row[] = [
     { suspend: true, notify: false },
   ],
   [
+    "freezeUser",
+    (e) => e.freezeUser(ID, true),
+    "POST",
+    `/api/admin/users/${ID}/freeze`,
+    { freeze: true, notify: false },
+  ],
+  [
     "deleteUser",
     (e) => e.deleteUser(ID, { username: "u", password: "p" }),
     "POST",

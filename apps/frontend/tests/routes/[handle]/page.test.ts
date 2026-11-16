@@ -136,6 +136,15 @@ test("a private profile you can't see shows counts but hides posts and lists", (
   expect(screen.getByText("3").closest("button")).toBe(null);
 });
 
+test("a frozen profile reads as deactivated: no follow, no articles, no member lists", () => {
+  setup(data({ user: viewer }, { locked: true, frozen: true }));
+  expect(screen.getByText("This account is deactivated")).toBeInTheDocument();
+  expect(screen.queryByText("This account is private")).toBe(null);
+  expect(screen.queryByText("Hello world")).toBe(null);
+  expect(screen.queryByRole("button", { name: /^Follow/ })).toBe(null);
+  expect(tabNames()).toEqual(["Articles", "About"]);
+});
+
 test("an empty profile says it has no articles", () => {
   setup(data({ page: page([]) }));
   expect(screen.getByText("No articles yet.")).toBeInTheDocument();

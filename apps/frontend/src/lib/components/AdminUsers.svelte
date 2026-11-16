@@ -236,6 +236,29 @@
     loadDeleted(true);
   }
 
+  async function toggleFreeze(u: AdminUser) {
+    const freeze = !u.frozen;
+    const { ok, notify } = await confirm({
+      title: freeze ? `Freeze @${u.username}?` : `Unfreeze @${u.username}?`,
+      description: freeze
+        ? "Their profile shows as deactivated and their posts are hidden. They cannot sign in until unfrozen."
+        : "Their profile and posts are shown again, and they can sign in.",
+      confirmText: freeze ? "Freeze" : "Unfreeze",
+      destructive: freeze,
+      notify: { label: `Notify @${u.username} by email.` },
+    });
+    if (!ok) return;
+    busyId = u.id;
+    try {
+      await endpoints().freezeUser(u.id, freeze, notify);
+      users = users.map((x) => (x.id === u.id ? { ...x, frozen: freeze } : x));
+    } catch (e) {
+      error = e instanceof ApiError ? e.message : "Action failed.";
+    } finally {
+      busyId = null;
+    }
+  }
+
   async function toggleSuspend(u: AdminUser) {
     const suspend = !u.suspended;
     const { ok, notify } = await confirm({
@@ -1046,6 +1069,11 @@
                     Suspended
                   </span>
                 {/if}
+                {#if u.frozen}
+                  <span class="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    Frozen
+                  </span>
+                {/if}
               </div>
               <p class="truncate text-xs text-muted-foreground">
                 @{u.username} · {u.email} · joined <Time iso={u.createdAt} kind="date" />
@@ -1054,6 +1082,16 @@
             {#if u.id !== selfId && canModerateRow(u)}
               <div class="col-span-2 col-start-2 flex min-w-0 items-center gap-2 sm:col-auto sm:ml-auto sm:shrink-0">
                 {#if !u.isAdmin}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    class="flex-1 sm:flex-none"
+                    disabled={busyId === u.id}
+                    onclick={() => toggleFreeze(u)}
+                  >
+                    <Icon name={u.frozen ? "check" : "lock"} size={15} />
+                    {u.frozen ? "Unfreeze" : "Freeze"}
+                  </Button>
                   <Button
                     variant={u.suspended ? "outline" : "destructive"}
                     size="sm"

@@ -22,6 +22,7 @@ function user(o: Partial<AdminUser> = {}): AdminUser {
     email: `${username}@example.com`,
     emailVerified: true,
     suspended: false,
+    frozen: false,
     createdAt: "2026-01-01T00:00:00Z",
     ...o,
   };
@@ -246,6 +247,44 @@ test("a failed suspend is shown", async () => {
   await fireEvent.click(screen.getAllByRole("button", { name: "Suspend" })[1]);
   await confirmWith({ ok: true });
   await screen.findByText("Not allowed");
+});
+
+test("freezing confirms first, then marks the row Frozen and offers Unfreeze", async () => {
+  const { calls } = setup({ "POST /api/admin/users/u-bob/freeze": { ok: true } });
+  await screen.findByText("2 accounts total");
+  const [, bobFreeze] = screen.getAllByRole("button", { name: "Freeze" });
+  await fireEvent.click(bobFreeze);
+  expect(get(confirmRequest)?.title).toBe("Freeze @bob?");
+  await confirmWith({ ok: false });
+  expect(calls.some((c) => c.path.endsWith("/freeze"))).toBe(false);
+
+  await fireEvent.click(bobFreeze);
+  await confirmWith({ ok: true, notify: true });
+  await screen.findByRole("button", { name: "Unfreeze" });
+  expect(calls.find((c) => c.path.endsWith("/freeze"))?.body).toEqual({ freeze: true, notify: true });
+  expect(screen.getByText("Frozen")).toBeInTheDocument();
+});
+
+test("a frozen account can be unfrozen, which clears the badge", async () => {
+  const { calls } = setup({
+    "GET /api/admin/users": page([user({ username: "bob", frozen: true })]),
+    "POST /api/admin/users/u-bob/freeze": { ok: true },
+  });
+  await screen.findByText("Frozen");
+  await fireEvent.click(screen.getByRole("button", { name: "Unfreeze" }));
+  expect(get(confirmRequest)?.title).toBe("Unfreeze @bob?");
+  await confirmWith({ ok: true });
+  await waitFor(() => expect(screen.queryByText("Frozen")).toBe(null));
+  expect(calls.find((c) => c.path.endsWith("/freeze"))?.body).toEqual({ freeze: false, notify: false });
+});
+
+test("a failed freeze is shown and leaves the account unfrozen", async () => {
+  setup({ "POST /api/admin/users/u-bob/freeze": apiError(403, "Not allowed") });
+  await screen.findByText("2 accounts total");
+  await fireEvent.click(screen.getAllByRole("button", { name: "Freeze" })[1]);
+  await confirmWith({ ok: true });
+  await screen.findByText("Not allowed");
+  expect(screen.queryByText("Frozen")).toBe(null);
 });
 
 test("deleting needs the typed username and a password, then moves the account to Recently deleted", async () => {

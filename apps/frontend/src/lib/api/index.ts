@@ -216,6 +216,8 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     },
     suspendUser: (id: string, suspend: boolean, notify = false) =>
       api.post<{ ok: true }>(`/admin/users/${id}/suspend`, { suspend, notify }),
+    freezeUser: (id: string, freeze: boolean, notify = false) =>
+      api.post<{ ok: true }>(`/admin/users/${id}/freeze`, { freeze, notify }),
     // Delete a local account. GitHub-style: the exact username plus the acting
     // admin's own password travel with the request — the server re-verifies both.
     // `notify` mails the account; silence is the default.
