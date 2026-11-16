@@ -3,6 +3,7 @@ import { and, desc, eq, gt, gte, ilike, inArray, lt, ne, or, type SQL, sql } fro
 import { asc as ascCol } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db/client.ts";
+import { notDeletedUser } from "@/db/repositories/liveUsers.ts";
 import { type ActorKeyPair, follows, type NewUser, sessions, users } from "@/db/schema.ts";
 import type { Cursor } from "@/lib/pagination.ts";
 
@@ -60,6 +61,7 @@ export function suggested(viewerId: string | null, limit = 5) {
       )`,
       )
     : notSuspended;
+  // Followers whose account was deleted no longer count.
   return db
     .select({
       id: users.id,
@@ -69,7 +71,7 @@ export function suggested(viewerId: string | null, limit = 5) {
       followerCount,
     })
     .from(users)
-    .leftJoin(follows, eq(follows.followeeId, users.id))
+    .leftJoin(follows, and(eq(follows.followeeId, users.id), notDeletedUser(follows.followerId)))
     .where(exclude)
     .groupBy(users.id)
     .orderBy(desc(followerCount), desc(users.createdAt))

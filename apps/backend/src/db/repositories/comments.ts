@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, asc, desc, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
+import { deletedUserIds, notDeletedUser } from "@/db/repositories/liveUsers.ts";
 import { comments, type NewComment, remoteActors, users } from "@/db/schema.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
 
@@ -26,6 +27,14 @@ const remoteAuthorColumns = {
   avatarUrl: remoteActors.avatarUrl,
   apId: remoteActors.apId,
 };
+
+// A soft-deleted account's comments are hidden until it is restored or purged,
+// along with the replies under them, which the purge cascades away too.
+const liveAuthor = and(
+  notDeletedUser(comments.authorId),
+  sql`not exists (select 1 from ${comments} parent_comment
+    where parent_comment.id = ${comments.parentId} and parent_comment.author_id in ${deletedUserIds})`,
+);
 
 export type CommentWithAuthor = Awaited<ReturnType<typeof listByPost>>[number];
 
@@ -127,7 +136,15 @@ function withAuthors() {
 // Top-level comments only (parentId is null), newest first.
 export function listByPost(postId: string, cursor: Cursor | null, viewerId: string | null, limit = DEFAULT_PAGE_SIZE) {
   return withAuthors()
-    .where(and(eq(comments.postId, postId), isNull(comments.parentId), notBlocked(viewerId), beforeCursor(cursor)))
+    .where(
+      and(
+        eq(comments.postId, postId),
+        isNull(comments.parentId),
+        liveAuthor,
+        notBlocked(viewerId),
+        beforeCursor(cursor),
+      ),
+    )
     .orderBy(desc(comments.createdAt), desc(comments.id))
     .limit(limit + 1);
 }
@@ -136,7 +153,7 @@ export function listByPost(postId: string, cursor: Cursor | null, viewerId: stri
 export function listReplies(parentIds: string[], viewerId: string | null) {
   if (parentIds.length === 0) return Promise.resolve([] as CommentWithAuthor[]);
   return withAuthors()
-    .where(and(inArray(comments.parentId, parentIds), notBlocked(viewerId)))
+    .where(and(inArray(comments.parentId, parentIds), liveAuthor, notBlocked(viewerId)))
     .orderBy(asc(comments.createdAt), asc(comments.id));
 }
 
@@ -144,7 +161,7 @@ export function listReplies(parentIds: string[], viewerId: string | null) {
 // Local and remote alike: both are Responses, and both federate back out.
 export function listForReplies(postId: string, limit = 20) {
   return withAuthors()
-    .where(and(eq(comments.postId, postId), isNull(comments.parentId)))
+    .where(and(eq(comments.postId, postId), isNull(comments.parentId), liveAuthor))
     .orderBy(asc(comments.createdAt), asc(comments.id))
     .limit(limit);
 }
@@ -155,7 +172,7 @@ export async function countTopLevel(postId: string): Promise<number> {
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(comments)
-    .where(and(eq(comments.postId, postId), isNull(comments.parentId)));
+    .where(and(eq(comments.postId, postId), isNull(comments.parentId), liveAuthor));
   return row?.n ?? 0;
 }
 
@@ -174,7 +191,7 @@ export async function countsFor(postIds: string[]): Promise<Map<string, number>>
   const rows = await db
     .select({ postId: comments.postId, count: sql<number>`count(*)::int` })
     .from(comments)
-    .where(inArray(comments.postId, postIds))
+    .where(and(inArray(comments.postId, postIds), liveAuthor))
     .groupBy(comments.postId);
 
   for (const r of rows as { postId: string; count: number }[]) map.set(r.postId, r.count);
@@ -187,6 +204,6 @@ export async function countSince(postIds: string[], since: Date): Promise<number
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(comments)
-    .where(and(inArray(comments.postId, postIds), gte(comments.createdAt, since)));
+    .where(and(inArray(comments.postId, postIds), gte(comments.createdAt, since), liveAuthor));
   return row?.count ?? 0;
 }

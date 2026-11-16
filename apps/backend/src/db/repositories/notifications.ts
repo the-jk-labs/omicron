@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { aliasedTable, and, type Column, desc, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
+import { notDeletedUser } from "@/db/repositories/liveUsers.ts";
 import { comments, type NewNotification, notifications, posts, remoteActors, users } from "@/db/schema.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
 
@@ -55,7 +56,7 @@ function beforeCursor(cursor: Cursor | null) {
 // service can derive the next cursor without a second query).
 export function listFor(recipientId: string, cursor: Cursor | null, limit = DEFAULT_PAGE_SIZE) {
   return selectNotifications()
-    .where(and(eq(notifications.recipientId, recipientId), beforeCursor(cursor)))
+    .where(and(eq(notifications.recipientId, recipientId), notDeletedUser(notifications.actorId), beforeCursor(cursor)))
     .orderBy(desc(notifications.createdAt), desc(notifications.id))
     .limit(limit + 1);
 }
@@ -98,7 +99,13 @@ export async function unreadCount(recipientId: string): Promise<number> {
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(notifications)
-    .where(and(eq(notifications.recipientId, recipientId), isNull(notifications.readAt)));
+    .where(
+      and(
+        eq(notifications.recipientId, recipientId),
+        isNull(notifications.readAt),
+        notDeletedUser(notifications.actorId),
+      ),
+    );
   return row?.n ?? 0;
 }
 

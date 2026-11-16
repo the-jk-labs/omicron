@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { blocks, mutes, remoteActors, users } from "@/db/schema.ts";
 
@@ -81,7 +81,7 @@ export function listLocalTargets(kind: RelationKind, userId: string) {
     })
     .from(t)
     .innerJoin(users, eq(t.targetUserId, users.id))
-    .where(eq(t.userId, userId))
+    .where(and(eq(t.userId, userId), isNull(users.deletedAt)))
     .orderBy(t.createdAt);
 }
 
