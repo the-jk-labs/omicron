@@ -473,7 +473,7 @@ function flag(v: string | undefined): boolean | undefined {
 }
 
 // The admin user table, with an optional handle / name / email filter (?q=),
-// triage filters (?suspended=&admin=&verified=true|false) and a sort order
+// triage filters (?suspended=&frozen=&admin=&verified=true|false) and a sort order
 // (?sort=newest|oldest|username, default newest). Keyset-paginated in that
 // order: `?cursor=` continues from the previous page's `nextCursor` (minted
 // for the same sort — a cursor from another sort restarts at page one),
@@ -485,6 +485,7 @@ adminRoutes.get("/users", async (c) => {
   const q = c.req.query("q") ?? "";
   const filter = {
     suspended: flag(c.req.query("suspended")),
+    frozen: flag(c.req.query("frozen")),
     admin: flag(c.req.query("admin")),
     verified: flag(c.req.query("verified")),
   };
@@ -509,6 +510,17 @@ adminRoutes.post("/users/:id/suspend", jsonBody(suspendSchema, "Expected { suspe
   const viewer = requireModerator(c);
   const { suspend, notify } = c.req.valid("json");
   await moderation.setSuspended(viewer.id, c.req.param("id"), suspend, { notify });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
+});
+
+const freezeSchema = z.object({ freeze: z.boolean(), notify: z.boolean().optional() });
+
+// Freeze or unfreeze a local account: a reversible hold that hides the account's content and shows its
+// profile as deactivated. The account is mailed only when the moderator opts in with `notify`.
+adminRoutes.post("/users/:id/freeze", jsonBody(freezeSchema, "Expected { freeze: boolean }."), async (c) => {
+  const viewer = requireModerator(c);
+  const { freeze, notify } = c.req.valid("json");
+  await moderation.setFrozen(viewer.id, c.req.param("id"), freeze, { notify });
   return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 

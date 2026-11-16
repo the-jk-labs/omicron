@@ -635,3 +635,17 @@ describe("native clients (Better Auth Expo plugin)", () => {
     expect(origins).toEqual(["omicron://", "omicron-dev://", "https://blog.example"]);
   });
 });
+
+describe("sign-in for frozen accounts", () => {
+  it("refuses a new session for a frozen account and allows an active one", async () => {
+    store.user.push({ id: "frozen-user", frozenAt: new Date() }, { id: "active-user", frozenAt: null });
+    const { auth } = await import("@/auth/auth.ts");
+    const before = auth.options.databaseHooks?.session?.create?.before as unknown as
+      | ((session: { userId: string }) => Promise<{ data: { userId: string } }>)
+      | undefined;
+    expect(before).toBeTypeOf("function");
+
+    await expect(before!({ userId: "frozen-user" })).rejects.toThrow("This account is frozen.");
+    await expect(before!({ userId: "active-user" })).resolves.toMatchObject({ data: { userId: "active-user" } });
+  });
+});

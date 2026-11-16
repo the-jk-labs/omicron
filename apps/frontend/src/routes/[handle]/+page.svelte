@@ -34,6 +34,8 @@
   // but posts, reading lists and the follower/following member lists are hidden
   // behind a "This account is private" notice (Instagram-style).
   const locked = $derived(!data.remote && data.profile.locked);
+  // A frozen account reads as deactivated: no follow, no articles, no detail. Remote profiles are never frozen.
+  const frozen = $derived(!data.remote && data.profile.frozen);
   // Followers removed live from the "Remove follower" dialog, so the count on
   // the page reflects the change without a reload. Reset when the profile
   // changes (navigation to another handle).
@@ -160,11 +162,13 @@
           <Icon name="edit" size={15} /> Edit profile
         </Button>
       {:else if data.user}
-        <FollowButton
-          username={data.profile.user.username}
-          following={data.profile.isFollowing}
-          followState={data.profile.followState}
-        />
+        {#if !frozen}
+          <FollowButton
+            username={data.profile.user.username}
+            following={data.profile.isFollowing}
+            followState={data.profile.followState}
+          />
+        {/if}
         <ProfileMenu
           username={data.profile.user.username}
           muted={data.profile.isMuted}
@@ -290,7 +294,17 @@
   </Tabs.List>
 
   <Tabs.Content value="articles" class="pt-3 select-none">
-    {#if locked}
+    {#if frozen}
+      <div class="rounded-card border border-border bg-background-alt px-6 py-12 text-center">
+        <div class="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <Icon name="lock" size={22} />
+        </div>
+        <p class="font-semibold text-foreground">This account is deactivated</p>
+        <p class="mt-1 text-sm break-words text-muted-foreground">
+          Its articles and profile details are hidden for now.
+        </p>
+      </div>
+    {:else if locked}
       <div class="rounded-card border border-border bg-background-alt px-6 py-12 text-center">
         <div class="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
           <Icon name="lock" size={22} />

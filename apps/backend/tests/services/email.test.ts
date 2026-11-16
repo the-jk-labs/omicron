@@ -218,6 +218,8 @@ describe("templates", () => {
     ["accountPasswordChangedEmail", "Your My Blog password was changed", "https://blog.example/forgot-password"],
     ["accountErasedEmail", "Your My Blog account has been permanently deleted", "https://blog.example"],
     ["accountSuspendedEmail", "Your My Blog account has been suspended", "https://blog.example"],
+    ["accountFrozenEmail", "Your My Blog account has been frozen", "https://blog.example"],
+    ["accountUnfrozenEmail", "Your My Blog account has been unfrozen", "https://blog.example/login"],
     ["accountReinstatedEmail", "Your My Blog account has been reinstated", "https://blog.example/login"],
     ["accountRestoredEmail", "Your My Blog account has been restored", "https://blog.example/login"],
     ["accountAdminGrantedEmail", "You are now an admin on My Blog", "https://blog.example/admin"],

@@ -340,6 +340,7 @@ export const auth = betterAuth({
           const user = await usersRepo.findById(session.userId);
           if (user?.deletedAt) throw new APIError("FORBIDDEN", { message: "This account no longer exists." });
           if (user?.suspendedAt) throw new APIError("FORBIDDEN", { message: "This account has been suspended." });
+          if (user?.frozenAt) throw new APIError("FORBIDDEN", { message: "This account is frozen." });
           return { data: session };
         },
       },

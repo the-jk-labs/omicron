@@ -88,6 +88,7 @@ const routes: Route[] = [
   ["POST", "/tags/merge", { from: "a", to: "b" }, "admin"],
   ["GET", "/users", undefined, "moderator"],
   ["POST", `/users/${UUID}/suspend`, { suspend: true }, "moderator"],
+  ["POST", `/users/${UUID}/freeze`, { freeze: true }, "moderator"],
   ["POST", `/users/${UUID}/delete`, { username: "ada", password: "p" }, "moderator"],
   ["POST", `/users/${UUID}/restore`, {}, "moderator"],
   ["GET", "/users/deleted", undefined, "moderator"],
@@ -424,6 +425,20 @@ describe("moderator endpoints", () => {
     api.signIn({ id: "mod", isModerator: true });
   });
 
+  test("the frozen triage filter reaches the list and the count", async () => {
+    vi.mocked(moderation.countUsers).mockResolvedValue(10);
+    vi.mocked(moderation.countFilteredUsers).mockResolvedValue(1);
+    await api.request("/api/admin/users?frozen=true");
+    expect(moderation.listUsers).toHaveBeenCalledWith(
+      "",
+      expect.objectContaining({ frozen: true }),
+      null,
+      50,
+      "newest",
+    );
+    expect(moderation.countFilteredUsers).toHaveBeenCalledWith("", expect.objectContaining({ frozen: true }));
+  });
+
   test("the user table parses filters, sort, cursor and limit", async () => {
     vi.mocked(moderation.countUsers).mockResolvedValue(10);
     vi.mocked(moderation.countFilteredUsers).mockResolvedValue(3);
@@ -459,6 +474,12 @@ describe("moderator endpoints", () => {
     await api.json(`/api/admin/users/${UUID}/suspend`, "POST", { suspend: true, notify: true });
     expect(moderation.setSuspended).toHaveBeenCalledWith("mod", UUID, true, { notify: true });
     expect((await api.json(`/api/admin/users/${UUID}/suspend`, "POST", {})).status).toBe(400);
+  });
+
+  test("freeze validates and passes notify", async () => {
+    await api.json(`/api/admin/users/${UUID}/freeze`, "POST", { freeze: false, notify: true });
+    expect(moderation.setFrozen).toHaveBeenCalledWith("mod", UUID, false, { notify: true });
+    expect((await api.json(`/api/admin/users/${UUID}/freeze`, "POST", {})).status).toBe(400);
   });
 
   test("delete requires the typed username and a password", async () => {

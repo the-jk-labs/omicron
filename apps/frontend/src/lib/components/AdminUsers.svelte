@@ -64,6 +64,7 @@
   type TriFilter = boolean | undefined;
   type TriOption = { value: string; label: string; filter: TriFilter };
   let fSuspended = $state<TriFilter>(undefined);
+  let fFrozen = $state<TriFilter>(undefined);
   let fAdmins = $state<TriFilter>(undefined);
   let fVerified = $state<TriFilter>(undefined);
 
@@ -123,7 +124,7 @@
   // dropped via `loadSeq`, and the detail cache is kept — mutations update it
   // in place, so an expansion survives a reload.
   function filterParams() {
-    return { suspended: fSuspended, admin: fAdmins, verified: fVerified };
+    return { suspended: fSuspended, frozen: fFrozen, admin: fAdmins, verified: fVerified };
   }
 
   async function load(reset = true) {
@@ -234,6 +235,36 @@
     clearTimeout(deletedSearchTimer);
     deletedQuery = "";
     loadDeleted(true);
+  }
+
+  async function toggleFreeze(u: AdminUser) {
+    const freeze = !u.frozen;
+    const { ok, notify } = await confirm({
+      title: freeze ? `Freeze @${u.username}?` : `Unfreeze @${u.username}?`,
+      description: freeze
+        ? "Their profile shows as deactivated and their posts are hidden. They cannot sign in until unfrozen."
+        : "Their profile and posts are shown again, and they can sign in.",
+      confirmText: freeze ? "Freeze" : "Unfreeze",
+      destructive: freeze,
+      notify: { label: `Notify @${u.username} by email.` },
+    });
+    if (!ok) return;
+    busyId = u.id;
+    try {
+      await endpoints().freezeUser(u.id, freeze, notify);
+      // Same rule as suspend: the row leaves the table once it stops matching an active Freeze filter.
+      if ((fFrozen === true && !freeze) || (fFrozen === false && freeze)) {
+        users = users.filter((x) => x.id !== u.id);
+        filteredTotal = Math.max(0, filteredTotal - 1);
+        if (expandedId === u.id) expandedId = null;
+      } else {
+        users = users.map((x) => (x.id === u.id ? { ...x, frozen: freeze } : x));
+      }
+    } catch (e) {
+      error = e instanceof ApiError ? e.message : "Action failed.";
+    } finally {
+      busyId = null;
+    }
   }
 
   async function toggleSuspend(u: AdminUser) {
@@ -871,7 +902,11 @@
   const destructiveItemClass = menuItemClass.replace("text-foreground", "text-destructive");
 
   const isFiltering = $derived(
-    query.trim() !== "" || fSuspended !== undefined || fAdmins !== undefined || fVerified !== undefined,
+    query.trim() !== "" ||
+      fSuspended !== undefined ||
+      fFrozen !== undefined ||
+      fAdmins !== undefined ||
+      fVerified !== undefined,
   );
 
   // Tri-state filter segments, rendered from one config so the dimensions
@@ -891,6 +926,16 @@
         { value: "all", label: "All", filter: undefined },
         { value: "active", label: "Active", filter: false },
         { value: "suspended", label: "Suspended", filter: true },
+      ],
+    },
+    {
+      label: "Freeze",
+      value: fFrozen === undefined ? "all" : fFrozen ? "frozen" : "not-frozen",
+      set: (v: TriFilter) => (fFrozen = v),
+      options: [
+        { value: "all", label: "All", filter: undefined },
+        { value: "frozen", label: "Frozen", filter: true },
+        { value: "not-frozen", label: "Not frozen", filter: false },
       ],
     },
     {
@@ -1046,14 +1091,31 @@
                     Suspended
                   </span>
                 {/if}
+                {#if u.frozen}
+                  <span class="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    Frozen
+                  </span>
+                {/if}
               </div>
               <p class="truncate text-xs text-muted-foreground">
                 @{u.username} · {u.email} · joined <Time iso={u.createdAt} kind="date" />
               </p>
             </div>
             {#if u.id !== selfId && canModerateRow(u)}
-              <div class="col-span-2 col-start-2 flex min-w-0 items-center gap-2 sm:col-auto sm:ml-auto sm:shrink-0">
+              <div
+                class="col-span-2 col-start-2 flex min-w-0 flex-wrap items-center gap-2 sm:col-auto sm:ml-auto sm:shrink-0"
+              >
                 {#if !u.isAdmin}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    class="flex-1 sm:flex-none"
+                    disabled={busyId === u.id}
+                    onclick={() => toggleFreeze(u)}
+                  >
+                    <Icon name={u.frozen ? "check" : "lock"} size={15} />
+                    {u.frozen ? "Unfreeze" : "Freeze"}
+                  </Button>
                   <Button
                     variant={u.suspended ? "outline" : "destructive"}
                     size="sm"

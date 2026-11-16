@@ -139,6 +139,7 @@ allow(
   "/admin/email/dkim",
   "/admin/email/test",
   "/admin/users/:id/suspend",
+  "/admin/users/:id/freeze",
   "/admin/users/:id/delete",
   "/admin/users/:id/restore",
   "/admin/users/:id/role",

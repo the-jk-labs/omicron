@@ -90,6 +90,8 @@ export const Profile = z.object({
   isBlocked: z.boolean(),
   /** A private profile the viewer can't see into: header and counts only, no posts or follower lists. */
   locked: z.boolean(),
+  /** A frozen account: shown as deactivated, name and handle only. Implies `locked`. */
+  frozen: z.boolean(),
 });
 export type Profile = z.infer<typeof Profile>;
 
@@ -670,6 +672,8 @@ export const AdminUser = z.object({
   email: z.string(),
   emailVerified: z.boolean(),
   suspended: z.boolean(),
+  /** Frozen by a moderator: a reversible hold, shown as deactivated. */
+  frozen: z.boolean(),
   createdAt: z.string(),
 });
 export type AdminUser = z.infer<typeof AdminUser>;

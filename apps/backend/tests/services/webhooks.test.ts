@@ -98,6 +98,8 @@ describe("authenticate", () => {
     await expect(authenticate(headers({ "x-webhook-secret": SECRET }))).rejects.toMatchObject({ status: 503 });
     vi.mocked(usersRepo.firstUser).mockResolvedValue(userRow({ deletedAt: new Date() }));
     await expect(authenticate(headers({ "x-webhook-secret": SECRET }))).rejects.toMatchObject({ status: 503 });
+    vi.mocked(usersRepo.firstUser).mockResolvedValue(userRow({ frozenAt: new Date() }));
+    await expect(authenticate(headers({ "x-webhook-secret": SECRET }))).rejects.toMatchObject({ status: 503 });
   });
 
   describe("per-user tokens", () => {

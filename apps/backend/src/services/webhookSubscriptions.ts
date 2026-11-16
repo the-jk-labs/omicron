@@ -37,7 +37,7 @@ export async function subscribe(grant: { id: string; clientId: string }, user: U
 
 // A private author's posts aren't public, so they never produce an event.
 const isPublicAuthor = (author: User | undefined | null) =>
-  Boolean(author && !author.isPrivate && !author.suspendedAt && !author.deletedAt);
+  Boolean(author && !author.isPrivate && !author.suspendedAt && !author.frozenAt && !author.deletedAt);
 
 export async function emitPublished(postId: string, action: "create" | "update"): Promise<void> {
   const row = await postsRepo.findById(postId);

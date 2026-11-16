@@ -33,6 +33,7 @@ import {
   deliverActorUpdate,
   deliverComment,
   deliverCommentDelete,
+  deliverFreezeChange,
   deliverPost,
   deliverPostDelete,
 } from "@/federation/deliver.ts";
@@ -246,5 +247,75 @@ describe("deliverCommentDelete", () => {
     vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ id: POST_ID, status: "draft" }, { id: "ada-id" }));
     await deliverCommentDelete("c1", "author-id", POST_ID);
     expect(f.sent).toEqual([]);
+  });
+});
+
+describe("a frozen account's federation", () => {
+  const frozenAda = () => userRow({ id: "ada-id", username: "ada", frozenAt: new Date() });
+  beforeEach(() => {
+    vi.mocked(commentsRepo.localIdsByAuthor).mockReturnValue(Promise.resolve([]) as never);
+  });
+
+  test("a freeze also retracts the author's comments, and an unfreeze sends them again", async () => {
+    vi.mocked(commentsRepo.localIdsByAuthor).mockReturnValue(Promise.resolve([{ id: "c1", postId: POST_ID }]) as never);
+    vi.mocked(usersRepo.findById).mockResolvedValue(frozenAda());
+    vi.mocked(postsRepo.publishedLocalIdsByAuthor).mockResolvedValue([]);
+    await deliverFreezeChange("ada-id", true);
+    const deleted = f.sent.at(-1)?.activity as Delete;
+    expect(deleted).toBeInstanceOf(Delete);
+    expect(((await deleted.getObject()) as Tombstone).id?.href).toBe(`${ORIGIN}/users/ada/comments/c1`);
+  });
+
+  test("a frozen author's new post or edit is never sent", async () => {
+    vi.mocked(usersRepo.findById).mockResolvedValue(frozenAda());
+    await deliverPost(POST_ID);
+    await deliverPost(POST_ID, "update");
+    expect(f.sent).toEqual([]);
+  });
+
+  test("a frozen author's comment is never sent", async () => {
+    vi.mocked(usersRepo.findById).mockResolvedValue(frozenAda());
+    vi.mocked(commentsRepo.findById).mockResolvedValue(
+      commentRow({ id: "c1", postId: POST_ID, authorId: "ada-id", content: "hi", apId: null }),
+    );
+    await deliverComment("c1");
+    expect(f.sent).toEqual([]);
+  });
+
+  test("a freeze sends the placeholder profile, then a Tombstone for every published post", async () => {
+    vi.mocked(usersRepo.findById).mockResolvedValue(frozenAda());
+    vi.mocked(postsRepo.publishedLocalIdsByAuthor).mockResolvedValue([POST_ID, "other-post"]);
+
+    await deliverFreezeChange("ada-id", true);
+
+    const [profile, first, second] = f.sent.map((s) => s.activity);
+    expect(profile).toBeInstanceOf(Update);
+    const person = (await profile.getObject()) as Person;
+    expect(person.summary).toBeFalsy();
+    expect(first).toBeInstanceOf(Delete);
+    expect(((await first.getObject()) as Tombstone).id?.href).toBe(`${ORIGIN}/posts/${POST_ID}`);
+    expect(((await second.getObject()) as Tombstone).id?.href).toBe(`${ORIGIN}/posts/other-post`);
+    expect(f.sent).toHaveLength(3);
+  });
+
+  test("an unfreeze restores the profile, then re-sends each post's Create under its original id", async () => {
+    vi.mocked(usersRepo.findById).mockResolvedValue(userRow({ id: "ada-id", username: "ada", bio: "Hello" }));
+    vi.mocked(postsRepo.publishedLocalIdsByAuthor).mockResolvedValue([POST_ID]);
+
+    await deliverFreezeChange("ada-id", false);
+
+    const [profile, create] = f.sent.map((s) => s.activity);
+    expect(profile).toBeInstanceOf(Update);
+    const person = (await profile.getObject()) as Person;
+    expect(person.summary?.toString()).toBeTruthy();
+    expect(create).toBeInstanceOf(Create);
+    expect(create.id?.href).toBe(`${ORIGIN}/posts/${POST_ID}/activity`);
+  });
+
+  test("a freeze with no published posts still updates the profile", async () => {
+    vi.mocked(usersRepo.findById).mockResolvedValue(frozenAda());
+    vi.mocked(postsRepo.publishedLocalIdsByAuthor).mockResolvedValue([]);
+    await deliverFreezeChange("ada-id", true);
+    expect(f.sent.map((s) => s.activity)).toHaveLength(1);
   });
 });

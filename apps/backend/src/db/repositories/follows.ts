@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, desc, eq, gte, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { notDeletedUser } from "@/db/repositories/liveUsers.ts";
+import { notHiddenUser } from "@/db/repositories/liveUsers.ts";
 import { follows, remoteActors, users } from "@/db/schema.ts";
 
 // Follow-edge DB access. Supports local↔local and remote↔local rows.
@@ -128,8 +128,8 @@ export async function counts(userId: string) {
     .where(
       and(
         or(eq(follows.followeeId, userId), eq(follows.followerId, userId)),
-        notDeletedUser(follows.followerId),
-        notDeletedUser(follows.followeeId),
+        notHiddenUser(follows.followerId),
+        notHiddenUser(follows.followeeId),
       ),
     );
   return { followers: row?.followers ?? 0, following: row?.following ?? 0 };
@@ -321,7 +321,7 @@ export async function followersSince(userId: string, since: Date): Promise<numbe
         eq(follows.followeeId, userId),
         eq(follows.approved, true),
         gte(follows.createdAt, since),
-        notDeletedUser(follows.followerId),
+        notHiddenUser(follows.followerId),
       ),
     );
   return row?.count ?? 0;

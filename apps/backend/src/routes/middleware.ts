@@ -28,7 +28,7 @@ async function userFromJwt(headers: Headers) {
 
 // Resolves the Better Auth session → full user row on every request (null if
 // none). Loading the row (not just the session's user) keeps the whole `User`
-// shape — isAdmin, isModerator, isPrivate, suspendedAt, deletedAt, actorKeyPair — available downstream.
+// shape — isAdmin, isModerator, isPrivate, suspendedAt, frozenAt, deletedAt, actorKeyPair — available downstream.
 export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   if (/^Bearer\s+omi_(?:id|at|rt)_/i.test(c.req.header("authorization") ?? "")) {
     const { user, grant } = await accessIdentity(c.req.raw.headers);
@@ -63,7 +63,7 @@ export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   const user = jwtUser === undefined ? (session ? await usersRepo.findById(session.user.id) : null) : jwtUser;
   // A suspended or deleted account is treated as signed out at once, regardless
   // of the session cookie cache (its sign-in is also blocked in auth/auth.ts).
-  c.set("user", user && !user.suspendedAt && !user.deletedAt ? user : null);
+  c.set("user", user && !user.suspendedAt && !user.frozenAt && !user.deletedAt ? user : null);
   // Cookie writes retain their CSRF boundary when Caddy bypasses SvelteKit.
   if (session && c.get("user") && !READ_METHODS.has(c.req.method)) {
     await requireSameOrigin(c.req.raw.headers);

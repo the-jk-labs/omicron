@@ -78,6 +78,10 @@ export const users = pgTable(
     // blocked from signing in and treated as signed out (see auth/auth.ts and
     // routes/middleware.ts).
     suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+    // When a moderator froze this account (null = not frozen). Frozen is a reversible hold, lighter than a
+    // suspension in one way: the profile stays visible as a "deactivated" placeholder, and remote instances
+    // are told. Like a suspended account it cannot sign in or act, and its posts, comments and lists are hidden.
+    frozenAt: timestamp("frozen_at", { withTimezone: true }),
     // When an admin deleted this account (null = live). A deleted account is a
     // suspended account taken further: it cannot sign in, is treated as signed
     // out, and vanishes from every listing, profile, feed and federated actor

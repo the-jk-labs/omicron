@@ -10,6 +10,7 @@
 import { newRedis, redisEnabled } from "@/lib/redis.ts";
 
 export type JobName =
+  | "federate_freeze"
   | "federate_post"
   | "indexnow_submit"
   | "federate_post_delete"
@@ -31,6 +32,8 @@ export type JobName =
   | "send_password_changed"
   | "send_account_erased"
   | "send_account_suspended"
+  | "send_account_frozen"
+  | "send_account_unfrozen"
   | "send_account_reinstated"
   | "send_account_restored"
   | "send_admin_granted"
@@ -52,6 +55,7 @@ export type JobPayloads = {
   federate_comment: { commentId: string; action?: "create" | "update" };
   federate_comment_delete: { commentId: string; authorId: string; postId: string };
   federate_actor_update: { userId: string };
+  federate_freeze: { userId: string; frozen: boolean };
   federate_list_item: { listId: string; postId: string; action: "add" | "remove" };
   send_follow: { followerId: string; targetActor: string };
   send_unfollow: { followerId: string; targetActor: string };
@@ -70,6 +74,8 @@ export type JobPayloads = {
   send_password_changed: { to: string; username: string; appName: string; origin: string };
   send_account_erased: { to: string; username: string; appName: string; origin: string };
   send_account_suspended: { to: string; username: string; appName: string; origin: string };
+  send_account_frozen: { to: string; username: string; appName: string; origin: string };
+  send_account_unfrozen: { to: string; username: string; appName: string; origin: string };
   send_account_reinstated: { to: string; username: string; appName: string; origin: string };
   send_account_restored: { to: string; username: string; appName: string; origin: string };
   send_admin_granted: { to: string; username: string; appName: string; origin: string };

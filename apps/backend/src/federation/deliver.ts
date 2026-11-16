@@ -29,6 +29,8 @@ export async function deliverComment(commentId: string, action: "create" | "upda
 
   const author = await usersRepo.findById(comment.authorId);
   if (!author) return;
+  // A frozen account sends nothing new; its existing posts are retracted by deliverFreezeChange.
+  if (author.frozenAt) return;
 
   const nctx = await noteContext(origin, author.username, comment.id);
   if (!nctx) return;
@@ -173,6 +175,7 @@ export async function deliverPost(postId: string, action: "create" | "update" = 
 
   const author = await usersRepo.findById(row.post.authorId);
   if (!author) return;
+  if (author.frozenAt) return;
 
   const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
   const recipients = await remoteRecipients(ctx, author.id);
@@ -240,6 +243,24 @@ export async function deliverActorUpdate(userId: string): Promise<void> {
       tos: [PUBLIC_COLLECTION],
     }),
   );
+}
+
+// A freeze retracts the account's published posts and comments from remote instances: one Delete(Tombstone) per post, the
+// same one a delete sends, so their cached copies go. An unfreeze re-sends each post's Create under its original
+// id. The actor Update goes first so the deactivated profile is in place before the posts disappear.
+export async function deliverFreezeChange(userId: string, frozen: boolean): Promise<void> {
+  await deliverActorUpdate(userId);
+  const postIds = await postsRepo.publishedLocalIdsByAuthor(userId);
+  for (const postId of postIds) {
+    if (frozen) await deliverPostDelete(postId, userId);
+    else await deliverPost(postId, "create");
+  }
+  // Their comments travel with them: retracted with the posts, sent again on unfreeze.
+  const commentRows = await commentsRepo.localIdsByAuthor(userId);
+  for (const { id, postId } of commentRows) {
+    if (frozen) await deliverCommentDelete(id, userId, postId);
+    else await deliverComment(id, "create");
+  }
 }
 
 // Sends a Delete for a local post that has already been removed from the DB.

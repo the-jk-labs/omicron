@@ -23,12 +23,14 @@ import {
   notifyAdminGranted,
   notifyAdminRevoked,
   notifyEmailChanged,
+  notifyFrozen,
   notifyModeratorDeleted,
   notifyModeratorGranted,
   notifyModeratorRevoked,
   notifyReinstated,
   notifyRestored,
   notifySuspended,
+  notifyUnfrozen,
   notifyVerified,
 } from "@/services/accountNotices.ts";
 import { getEmailMode } from "@/services/emailSettings.ts";
@@ -187,6 +189,37 @@ export async function setSuspended(
     await notifySuspended(target.email, target.username);
   } else {
     await notifyReinstated(target.email, target.username);
+  }
+}
+
+// Freezes or unfreezes a local account: a reversible hold. Frozen accounts are
+// signed out, hidden (posts, comments, lists) and shown as deactivated, and
+// remote instances retract or restore its posts. Same guards as suspension;
+// freezing a suspended account is allowed.
+export async function setFrozen(
+  actorId: string,
+  targetId: string,
+  freeze: boolean,
+  opts: NotifyOpt = {},
+): Promise<void> {
+  const [actor, target] = await Promise.all([usersRepo.findById(actorId), usersRepo.findById(targetId)]);
+  if (!target || target.deletedAt) throw notFound("Account not found.");
+  if (!actor || (!actor.isAdmin && !actor.isModerator)) throw forbidden("Moderator access required.");
+  if (target.id === actorId) throw forbidden("You can't freeze your own account.");
+  assertCanModerateAccount(actor, target);
+  if (Boolean(target.frozenAt) === freeze) return;
+
+  await usersRepo.setFrozen(targetId, freeze ? new Date() : null);
+  if (freeze) {
+    await sessionsRepo.removeAllForUser(targetId);
+  }
+  // Remote copies follow the account's state: retract its posts on freeze, restore them on unfreeze.
+  queue.add("federate_freeze", { userId: targetId, frozen: freeze });
+  if (!opts.notify) return;
+  if (freeze) {
+    await notifyFrozen(target.email, target.username);
+  } else {
+    await notifyUnfrozen(target.email, target.username);
   }
 }
 

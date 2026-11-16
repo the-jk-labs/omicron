@@ -72,6 +72,7 @@ const federationJobs: [JobName, unknown, () => unknown, unknown[]][] = [
     ["c", "a", "p"],
   ],
   ["federate_actor_update", { userId: "u" }, () => deliver.deliverActorUpdate, ["u"]],
+  ["federate_freeze", { userId: "u", frozen: true }, () => deliver.deliverFreezeChange, ["u", true]],
   ["federate_list_item", { listId: "l", postId: "p", action: "add" }, () => lists.deliverListItem, ["l", "p", "add"]],
   ["send_follow", { followerId: "u", targetActor: "t" }, () => outbound.sendFollow, ["u", "t"]],
   ["send_unfollow", { followerId: "u", targetActor: "t" }, () => outbound.sendUnfollow, ["u", "t"]],
@@ -113,6 +114,18 @@ const mailJobs: [JobName, unknown, () => unknown, unknown[]][] = [
     "send_account_suspended",
     vars,
     () => email.sendAccountSuspended,
+    ["a@x.test", expect.objectContaining({ username: "ada" })],
+  ],
+  [
+    "send_account_frozen",
+    vars,
+    () => email.sendAccountFrozen,
+    ["a@x.test", expect.objectContaining({ username: "ada" })],
+  ],
+  [
+    "send_account_unfrozen",
+    vars,
+    () => email.sendAccountUnfrozen,
     ["a@x.test", expect.objectContaining({ username: "ada" })],
   ],
   [
@@ -238,7 +251,7 @@ test("every job name has a handler (none is silently dropped)", async () => {
   await new Promise((r) => setTimeout(r, 0));
   expect(warn).not.toHaveBeenCalled();
   // Every member of JobName is exercised above.
-  expect(new Set(all.map(([n]) => n)).size).toBe(34);
+  expect(new Set(all.map(([n]) => n)).size).toBe(37);
 });
 
 test("a failing handler is logged, never thrown into the caller", async () => {

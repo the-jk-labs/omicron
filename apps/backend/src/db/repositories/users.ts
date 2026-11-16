@@ -3,7 +3,7 @@ import { and, desc, eq, gt, gte, ilike, inArray, lt, ne, or, type SQL, sql } fro
 import { asc as ascCol } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db/client.ts";
-import { notDeletedUser } from "@/db/repositories/liveUsers.ts";
+import { notHiddenUser } from "@/db/repositories/liveUsers.ts";
 import { type ActorKeyPair, follows, type NewUser, sessions, users } from "@/db/schema.ts";
 import type { Cursor } from "@/lib/pagination.ts";
 
@@ -29,6 +29,7 @@ export function search(query: string, limit = 10) {
     .where(
       and(
         sql`${users.suspendedAt} is null`,
+        sql`${users.frozenAt} is null`,
         sql`${users.deletedAt} is null`,
         or(ilike(users.username, term), ilike(users.displayName, term)),
       ),
@@ -42,8 +43,8 @@ export function search(query: string, limit = 10) {
 // stay actionable; for a signed-out viewer it's just the most-followed accounts.
 export function suggested(viewerId: string | null, limit = 5) {
   const followerCount = sql<number>`count(${follows.followerId})::int`;
-  // Suspended and deleted accounts are never suggested (they can't be followed meaningfully).
-  const notSuspended = sql`${users.suspendedAt} is null and ${users.deletedAt} is null`;
+  // Suspended, frozen and deleted accounts are never suggested (they can't be followed meaningfully).
+  const notSuspended = sql`${users.suspendedAt} is null and ${users.frozenAt} is null and ${users.deletedAt} is null`;
   const exclude = viewerId
     ? and(
         notSuspended,
@@ -71,7 +72,7 @@ export function suggested(viewerId: string | null, limit = 5) {
       followerCount,
     })
     .from(users)
-    .leftJoin(follows, and(eq(follows.followeeId, users.id), notDeletedUser(follows.followerId)))
+    .leftJoin(follows, and(eq(follows.followeeId, users.id), notHiddenUser(follows.followerId)))
     .where(exclude)
     .groupBy(users.id)
     .orderBy(desc(followerCount), desc(users.createdAt))
@@ -88,7 +89,14 @@ export async function findActiveByUsernames(usernames: string[]): Promise<{ id: 
   return db
     .select({ id: users.id, username: users.username })
     .from(users)
-    .where(and(inArray(users.username, usernames), sql`${users.suspendedAt} is null`, sql`${users.deletedAt} is null`));
+    .where(
+      and(
+        inArray(users.username, usernames),
+        sql`${users.suspendedAt} is null`,
+        sql`${users.frozenAt} is null`,
+        sql`${users.deletedAt} is null`,
+      ),
+    );
 }
 
 export function findByEmail(email: string) {
@@ -160,6 +168,7 @@ export async function setShowAiAssistedPosts(id: string, showAiAssistedPosts: bo
 // only matching accounts, false only the rest, undefined leaves it unfiltered.
 export type AdminUserFilter = {
   suspended?: boolean;
+  frozen?: boolean;
   admin?: boolean;
   verified?: boolean;
 };
@@ -222,6 +231,9 @@ function adminConditions(query = "", filter: AdminUserFilter = {}): (SQL | undef
   }
   if (filter.suspended !== undefined) {
     conditions.push(filter.suspended ? sql`${users.suspendedAt} is not null` : sql`${users.suspendedAt} is null`);
+  }
+  if (filter.frozen !== undefined) {
+    conditions.push(filter.frozen ? sql`${users.frozenAt} is not null` : sql`${users.frozenAt} is null`);
   }
   if (filter.admin !== undefined) conditions.push(eq(users.isAdmin, filter.admin));
   if (filter.verified !== undefined) conditions.push(eq(users.emailVerified, filter.verified));
@@ -360,6 +372,12 @@ export async function hardRemove(id: string) {
 // Sets (a Date) or clears (null) the suspension marker. Returns the updated row.
 export async function setSuspended(id: string, at: Date | null) {
   const [row] = await db.update(users).set({ suspendedAt: at }).where(eq(users.id, id)).returning();
+  return row;
+}
+
+// Freezes (a Date) or unfreezes (null) the account. Returns the updated row.
+export async function setFrozen(id: string, at: Date | null) {
+  const [row] = await db.update(users).set({ frozenAt: at }).where(eq(users.id, id)).returning();
   return row;
 }
 

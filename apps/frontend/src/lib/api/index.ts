@@ -197,13 +197,14 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     // admin moderation
     adminUsers: (
       q?: string,
-      filters?: { suspended?: boolean; admin?: boolean; verified?: boolean },
+      filters?: { suspended?: boolean; frozen?: boolean; admin?: boolean; verified?: boolean },
       page?: { cursor?: string | null; limit?: number },
       sort?: "newest" | "oldest" | "username",
     ) => {
       const params = new URLSearchParams();
       if (q) params.set("q", q);
       if (filters?.suspended !== undefined) params.set("suspended", String(filters.suspended));
+      if (filters?.frozen !== undefined) params.set("frozen", String(filters.frozen));
       if (filters?.admin !== undefined) params.set("admin", String(filters.admin));
       if (filters?.verified !== undefined) params.set("verified", String(filters.verified));
       if (sort && sort !== "newest") params.set("sort", sort);
@@ -216,6 +217,8 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     },
     suspendUser: (id: string, suspend: boolean, notify = false) =>
       api.post<{ ok: true }>(`/admin/users/${id}/suspend`, { suspend, notify }),
+    freezeUser: (id: string, freeze: boolean, notify = false) =>
+      api.post<{ ok: true }>(`/admin/users/${id}/freeze`, { freeze, notify }),
     // Delete a local account. GitHub-style: the exact username plus the acting
     // admin's own password travel with the request — the server re-verifies both.
     // `notify` mails the account; silence is the default.

@@ -748,3 +748,64 @@ describe("remote account blocks", () => {
     await expect(mod.unblockRemoteActor("https://x.example/u")).resolves.toBeUndefined();
   });
 });
+
+describe("setFrozen", () => {
+  test("freezes, signs the account out, queues the federation retraction and notifies on opt-in", async () => {
+    await mod.setFrozen("mod", "user", true, { notify: true });
+    expect(vi.mocked(usersRepo.setFrozen).mock.calls[0][1]).toBeInstanceOf(Date);
+    expect(sessionsRepo.removeAllForUser).toHaveBeenCalledWith("user");
+    expect(queue.add).toHaveBeenCalledWith("federate_freeze", { userId: "user", frozen: true });
+    expect(notices.notifyFrozen).toHaveBeenCalledWith("ada@x.test", "ada");
+  });
+
+  test("unfreezing clears the timestamp, keeps sessions and queues the restore", async () => {
+    accounts(admin, admin2, moderator, moderator2, { ...regular, frozenAt: new Date() }, deleted);
+    await mod.setFrozen("mod", "user", false, { notify: true });
+    expect(usersRepo.setFrozen).toHaveBeenCalledWith("user", null);
+    expect(sessionsRepo.removeAllForUser).not.toHaveBeenCalled();
+    expect(queue.add).toHaveBeenCalledWith("federate_freeze", { userId: "user", frozen: false });
+    expect(notices.notifyUnfrozen).toHaveBeenCalledWith("ada@x.test", "ada");
+  });
+
+  test("is silent without opt-in", async () => {
+    await mod.setFrozen("mod", "user", true);
+    expect(notices.notifyFrozen).not.toHaveBeenCalled();
+  });
+
+  test("freezing an already frozen account changes and federates nothing", async () => {
+    accounts(admin, admin2, moderator, moderator2, { ...regular, frozenAt: new Date() }, deleted);
+    await mod.setFrozen("mod", "user", true, { notify: true });
+    expect(usersRepo.setFrozen).not.toHaveBeenCalled();
+    expect(queue.add).not.toHaveBeenCalled();
+    expect(notices.notifyFrozen).not.toHaveBeenCalled();
+  });
+
+  test("freezing a suspended account is allowed", async () => {
+    accounts(admin, admin2, moderator, moderator2, { ...regular, suspendedAt: new Date() }, deleted);
+    await mod.setFrozen("mod", "user", true);
+    expect(usersRepo.setFrozen).toHaveBeenCalledWith("user", expect.any(Date));
+  });
+
+  test.for([
+    ["admin", "admin", "You can't freeze your own account."],
+    ["admin", "admin2", "You can't moderate another admin."],
+    ["mod", "admin", "You can't moderate another admin."],
+    ["mod", "mod2", "Only admins can moderate another moderator."],
+    ["user", "mod", "Moderator access required."],
+  ])("%s may not freeze %s", async ([actor, target, message]) => {
+    await expect(mod.setFrozen(actor, target, true)).rejects.toMatchObject({ status: 403, message });
+    expect(usersRepo.setFrozen).not.toHaveBeenCalled();
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  test("an admin may freeze a moderator", async () => {
+    await mod.setFrozen("admin", "mod", true);
+    expect(usersRepo.setFrozen).toHaveBeenCalledWith("mod", expect.any(Date));
+  });
+
+  test("an unknown or deleted target is 404", async () => {
+    await expect(mod.setFrozen("admin", "nobody", true)).rejects.toMatchObject({ status: 404 });
+    await expect(mod.setFrozen("admin", "gone", true)).rejects.toMatchObject({ status: 404 });
+    expect(usersRepo.setFrozen).not.toHaveBeenCalled();
+  });
+});

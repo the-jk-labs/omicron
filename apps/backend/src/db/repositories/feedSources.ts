@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { eq, or, sql } from "drizzle-orm";
-import { deletedUserIds } from "@/db/repositories/liveUsers.ts";
+import { hiddenUserIds } from "@/db/repositories/liveUsers.ts";
 import { posts, recommendations } from "@/db/schema.ts";
 
 // A deleted account the viewer still has an edge to is no longer followed.
 function followedLocal(userId: string) {
   return sql`(select followee_id from follows
     where follower_id = ${userId} and followee_id is not null and approved = true
-      and followee_id not in ${deletedUserIds})`;
+      and followee_id not in ${hiddenUserIds})`;
 }
 
 function followedRemote(userId: string) {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { notDeletedUser } from "@/db/repositories/liveUsers.ts";
+import { notHiddenUser } from "@/db/repositories/liveUsers.ts";
 import { likes } from "@/db/schema.ts";
 
 // Like-edge DB access. Liking is idempotent via the unique (post, user) index.
@@ -28,7 +28,7 @@ export async function statsFor(postIds: string[], viewerId: string | null): Prom
       liked: viewerId ? sql<boolean>`bool_or(${likes.userId} = ${viewerId})` : sql<boolean>`false`,
     })
     .from(likes)
-    .where(and(inArray(likes.postId, postIds), notDeletedUser(likes.userId)))
+    .where(and(inArray(likes.postId, postIds), notHiddenUser(likes.userId)))
     .groupBy(likes.postId);
 
   for (const r of rows as { postId: string; count: number; liked: boolean }[]) {
@@ -43,6 +43,6 @@ export async function countSince(postIds: string[], since: Date): Promise<number
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(likes)
-    .where(and(inArray(likes.postId, postIds), gte(likes.createdAt, since), notDeletedUser(likes.userId)));
+    .where(and(inArray(likes.postId, postIds), gte(likes.createdAt, since), notHiddenUser(likes.userId)));
   return row?.count ?? 0;
 }

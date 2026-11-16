@@ -57,20 +57,21 @@ export function publicUser(
   u: User,
   tags: TagSummary[] = [],
   links: LinkSummary[] = [],
-  { locked = false }: { locked?: boolean } = {},
+  { locked = false, frozen = false }: { locked?: boolean; frozen?: boolean } = {},
 ) {
+  // A frozen account keeps only its name and handle on show; everything else waits for the unfreeze.
   return {
     id: u.id,
     username: u.username,
     displayName: u.displayName,
-    bio: u.bio,
-    publicEmail: u.publicEmail,
+    bio: frozen ? "" : u.bio,
+    publicEmail: frozen ? "" : u.publicEmail,
     // Rendered + sanitized on write (see services/users.ts); the reader drops it
     // straight into the About tab. `customSection` is the Markdown source, sent
     // so the owner's editor can reload exactly what they typed.
     customSection: locked ? "" : u.customSection,
     customSectionHtml: locked ? "" : u.customSectionHtml,
-    avatarUrl: u.avatarUrl,
+    avatarUrl: frozen ? null : u.avatarUrl,
     isAdmin: u.isAdmin,
     isModerator: u.isModerator,
     isPrivate: u.isPrivate,
@@ -114,6 +115,7 @@ export function adminUserView(u: User) {
     email: u.email,
     emailVerified: u.emailVerified,
     suspended: u.suspendedAt !== null,
+    frozen: u.frozenAt !== null,
     createdAt: u.createdAt,
   };
 }

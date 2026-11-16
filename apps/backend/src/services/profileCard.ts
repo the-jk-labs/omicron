@@ -59,7 +59,7 @@ async function sha256Hex(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
  */
 export async function profileCard(username: string): Promise<Uint8Array<ArrayBuffer> | null> {
   const user = await usersRepo.findByUsername(username);
-  if (!user || user.suspendedAt || user.deletedAt) throw notFound("User not found.");
+  if (!user || user.suspendedAt || user.frozenAt || user.deletedAt) throw notFound("User not found.");
 
   const [counts, postCounts, site] = await Promise.all([
     followsRepo.counts(user.id),

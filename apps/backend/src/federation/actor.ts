@@ -20,6 +20,22 @@ export async function buildPerson(
   tags: TagSummary[],
   keys: FedifyActorKeyPair[],
 ): Promise<Person> {
+  // A frozen account is a deactivated placeholder to remote instances: name and handle only. Its keys stay, so
+  // signatures keep verifying and unfreezing needs no re-follow.
+  if (user.frozenAt) {
+    return new Person({
+      id: ctx.getActorUri(identifier),
+      preferredUsername: identifier,
+      name: user.displayName,
+      inbox: ctx.getInboxUri(identifier),
+      outbox: ctx.getOutboxUri(identifier),
+      followers: ctx.getFollowersUri(identifier),
+      url: new URL(`/@${identifier}`, federationOrigin()),
+      endpoints: new Endpoints({ sharedInbox: ctx.getInboxUri() }),
+      publicKey: keys[0]?.cryptographicKey,
+      assertionMethods: keys.map((k) => k.multikey),
+    });
+  }
   const publicLists = await listsRepo.listForUser(user.id, true);
   // Profile metadata fields, rendered by Mastodon et al. as the actor's
   // PropertyValue table. Each link's value carries `rel="me"` so that, when

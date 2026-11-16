@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "frozen_at" timestamp with time zone;

@@ -150,6 +150,12 @@ describe("ingestNote", () => {
     ).toBe(undefined);
   });
 
+  test("a reply to a frozen author's post stays out", async () => {
+    vi.mocked(usersRepo.findById).mockResolvedValue(userRow({ id: "author", frozenAt: new Date() }));
+    expect(await ingestNote(ctx as never, note())).toBe(undefined);
+    expect(commentsRepo.createRemote).not.toHaveBeenCalled();
+  });
+
   test("a reply on a private author's or unpublished post stays out", async () => {
     vi.mocked(usersRepo.findById).mockResolvedValue(userRow({ id: "author", isPrivate: true }));
     expect(await ingestNote(ctx as never, note())).toBe(undefined);

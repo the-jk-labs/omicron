@@ -46,6 +46,16 @@ test("publicUser: withholds the custom section on a locked profile", () => {
   expect(out.displayName).toBe("Ada");
 });
 
+test("publicUser: a frozen profile keeps only the name and handle", () => {
+  const out = publicUser(user, [], [], { locked: true, frozen: true });
+  expect(out.displayName).toBe("Ada");
+  expect(out.username).toBe("ada");
+  expect(out.bio).toBe("");
+  expect(out.publicEmail).toBe("");
+  expect(out.avatarUrl).toBe(null);
+  expect(out.customSection).toBe("");
+});
+
 test("publicUser: serves the custom section when not locked", () => {
   const out = publicUser(user);
   expect(out.customSection).toBe("# Secret plans");

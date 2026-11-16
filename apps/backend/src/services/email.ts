@@ -412,6 +412,60 @@ export function sendAccountSuspended(to: string, vars: AccountNoticeVars): Promi
   return sendMail({ to, ...accountSuspendedEmail(vars) });
 }
 
+/** Freeze notice: signed out, profile shown as deactivated, posts hidden, with an appeal prompt. */
+export function accountFrozenEmail(vars: AccountNoticeVars): Omit<EmailMessage, "to"> {
+  return {
+    subject: `Your ${vars.appName} account has been frozen`,
+    text: [
+      `Your account (@${vars.username}) on ${vars.appName} has been frozen by the instance moderation team.`,
+      "",
+      "What this means:",
+      "- You cannot sign in or post until the freeze is lifted.",
+      "- Your profile shows as deactivated, and your posts, comments and lists are hidden.",
+      "",
+      "If you believe this is a mistake, contact the instance administrator.",
+      "",
+      `The ${vars.appName} team`,
+      vars.origin,
+    ].join("\n"),
+    html: layout(
+      "Your account has been frozen",
+      `Your account (@${vars.username}) on ${vars.appName} has been frozen by the instance moderation team. You cannot sign in or post until the freeze is lifted, your profile shows as deactivated, and your posts, comments and lists are hidden. If you believe this is a mistake, contact the instance administrator.`,
+      { label: `Open ${vars.appName}`, url: vars.origin },
+    ),
+  };
+}
+
+/** Freeze notice. Queued off the request path (see queue/handlers.ts). */
+export function sendAccountFrozen(to: string, vars: AccountNoticeVars): Promise<void> {
+  return sendMail({ to, ...accountFrozenEmail(vars) });
+}
+
+/** Unfreeze notice: the freeze was lifted and the account is shown again. */
+export function accountUnfrozenEmail(vars: AccountNoticeVars): Omit<EmailMessage, "to"> {
+  return {
+    subject: `Your ${vars.appName} account has been unfrozen`,
+    text: [
+      `Good news: your account (@${vars.username}) on ${vars.appName} has been unfrozen.`,
+      "",
+      "You can sign in again, and your profile, posts and lists are shown as before.",
+      "",
+      `The ${vars.appName} team`,
+      `${vars.origin}/login`,
+    ].join("\n"),
+    html: layout(
+      "Your account has been unfrozen",
+      `Good news: your account (@${vars.username}) on ${vars.appName} has been unfrozen. You can sign in again, and your profile, posts and lists are shown as before.`,
+      { label: `Sign in to ${vars.appName}`, url: `${vars.origin}/login` },
+    ),
+  };
+}
+
+/** Unfreeze notice. Queued off the request path (see queue/handlers.ts). */
+export function sendAccountUnfrozen(to: string, vars: AccountNoticeVars): Promise<void> {
+  return sendMail({ to, ...accountUnfrozenEmail(vars) });
+}
+
 /** Reinstatement notice: the suspension was lifted. */
 export function accountReinstatedEmail(vars: AccountNoticeVars): Omit<EmailMessage, "to"> {
   return {

@@ -3,9 +3,11 @@ import {
   sendAccountDeleted,
   sendAccountEmailChanged,
   sendAccountErased,
+  sendAccountFrozen,
   sendAccountReinstated,
   sendAccountRestored,
   sendAccountSuspended,
+  sendAccountUnfrozen,
   sendAccountVerified,
   sendAdminGranted,
   sendAdminRevoked,
@@ -85,6 +87,13 @@ export function registerJobHandlers() {
     if (!federationRunning()) return;
     const { deliverActorUpdate } = await import("@/federation/deliver.ts");
     await deliverActorUpdate(userId);
+  });
+
+  // A freeze or unfreeze retracts or restores the account's posts and profile on remote instances.
+  registerHandler("federate_freeze", async ({ userId, frozen }) => {
+    if (!federationRunning()) return;
+    const { deliverFreezeChange } = await import("@/federation/deliver.ts");
+    await deliverFreezeChange(userId, frozen);
   });
 
   registerHandler("federate_list_item", async ({ listId, postId, action }) => {
@@ -172,6 +181,12 @@ export function registerJobHandlers() {
   );
   registerHandler("send_account_suspended", ({ to, username, appName, origin }) =>
     sendAccountSuspended(to, { username, appName, origin }),
+  );
+  registerHandler("send_account_frozen", ({ to, username, appName, origin }) =>
+    sendAccountFrozen(to, { username, appName, origin }),
+  );
+  registerHandler("send_account_unfrozen", ({ to, username, appName, origin }) =>
+    sendAccountUnfrozen(to, { username, appName, origin }),
   );
   registerHandler("send_account_reinstated", ({ to, username, appName, origin }) =>
     sendAccountReinstated(to, { username, appName, origin }),

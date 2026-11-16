@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { notDeletedUser } from "@/db/repositories/liveUsers.ts";
+import { notHiddenUser } from "@/db/repositories/liveUsers.ts";
 import { commentLikes } from "@/db/schema.ts";
 
 // Comment like-edge DB access. Mirrors `likes` for posts; liking is idempotent
@@ -29,7 +29,7 @@ export async function statsFor(commentIds: string[], viewerId: string | null): P
       liked: viewerId ? sql<boolean>`bool_or(${commentLikes.userId} = ${viewerId})` : sql<boolean>`false`,
     })
     .from(commentLikes)
-    .where(and(inArray(commentLikes.commentId, commentIds), notDeletedUser(commentLikes.userId)))
+    .where(and(inArray(commentLikes.commentId, commentIds), notHiddenUser(commentLikes.userId)))
     .groupBy(commentLikes.commentId);
 
   for (const r of rows as { commentId: string; count: number; liked: boolean }[]) {

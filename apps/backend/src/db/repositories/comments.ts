@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { and, asc, desc, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { deletedUserIds, notDeletedUser } from "@/db/repositories/liveUsers.ts";
+import { hiddenUserIds, notHiddenUser } from "@/db/repositories/liveUsers.ts";
 import { comments, type NewComment, remoteActors, users } from "@/db/schema.ts";
 import { type Cursor, DEFAULT_PAGE_SIZE } from "@/lib/pagination.ts";
 
@@ -31,9 +31,9 @@ const remoteAuthorColumns = {
 // A soft-deleted account's comments are hidden until it is restored or purged,
 // along with the replies under them, which the purge cascades away too.
 const liveAuthor = and(
-  notDeletedUser(comments.authorId),
+  notHiddenUser(comments.authorId),
   sql`not exists (select 1 from ${comments} parent_comment
-    where parent_comment.id = ${comments.parentId} and parent_comment.author_id in ${deletedUserIds})`,
+    where parent_comment.id = ${comments.parentId} and parent_comment.author_id in ${hiddenUserIds})`,
 );
 
 export type CommentWithAuthor = Awaited<ReturnType<typeof listByPost>>[number];
@@ -49,6 +49,11 @@ export async function createRemote(data: Omit<NewComment, "authorId"> & { remote
   const [row] = await db.insert(comments).values(data).onConflictDoNothing({ target: comments.apId }).returning();
   if (row) return row;
   return findByApId(data.apId);
+}
+
+// A local author's comments (id and post), for federating a freeze: retracted on freeze, sent again on unfreeze.
+export function localIdsByAuthor(authorId: string) {
+  return db.select({ id: comments.id, postId: comments.postId }).from(comments).where(eq(comments.authorId, authorId));
 }
 
 export function findById(id: string) {

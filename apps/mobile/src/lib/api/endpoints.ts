@@ -54,6 +54,8 @@ export function createEndpoints(api: ApiClient) {
     sendPasswordReset: (id: string) => api.post(`/admin/users/${id}/password-reset`, c.Ok, {}),
     suspendUser: (id: string, suspend: boolean, notify = false) =>
       api.post(`/admin/users/${id}/suspend`, c.Ok, { suspend, notify }),
+    freezeUser: (id: string, freeze: boolean, notify = false) =>
+      api.post(`/admin/users/${id}/freeze`, c.Ok, { freeze, notify }),
     // Delete a local account. GitHub-style: the exact username plus the acting
     // admin's own password travel with the request — the server re-verifies both.
     // `notify` mails the account; silence is the default.
