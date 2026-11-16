@@ -56,13 +56,18 @@ jobs:
       - uses: actions/checkout@v7
 
       # Labels only here (source, revision, version): install.sh reads the
-      # revision label to fetch the deployment files that match the image.
+      # revision label to fetch the deployment files that match the image. The
+      # tag rules only set the version label: 2.1.0 for v2.1.0, edge on main.
       - id: meta
         uses: docker/metadata-action@v6
         with:
           images: |
             ${{ env.GHCR_NAMESPACE }}/omicron-${{ matrix.image }}
             ${{ env.DOCKERHUB_NAMESPACE }}/omicron-${{ matrix.image }}
+          flavor: latest=false
+          tags: |
+            type=raw,value=edge,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
 
       - uses: docker/setup-buildx-action@v4
 
