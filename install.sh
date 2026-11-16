@@ -140,7 +140,11 @@ if $existing; then
       exit 1
     fi
   fi
-  backend_container="$($COMPOSE ps -q backend 2>/dev/null | head -n 1 || true)"
+  # The engine's own labels, not `compose ps`: podman-compose's ps can't filter by service.
+  project="${COMPOSE_PROJECT_NAME:-$(env_get COMPOSE_PROJECT_NAME)}"
+  project="${project:-$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')}"
+  backend_container="$("$ENGINE" ps -aq --filter "label=com.docker.compose.project=$project" \
+    --filter label=com.docker.compose.service=backend 2>/dev/null | head -n 1 || true)"
   [ -n "$backend_container" ] && old_rev="$(label_of "$backend_container")"
   if [ -z "$old_rev" ] && $source_checkout; then old_rev="$(git rev-parse HEAD)"; fi
 fi
