@@ -18,7 +18,9 @@
 #                     the Docker Hub mirror is docker.io/omicronhq). Saved too.
 #   OMICRON_DIR       install directory (default: ./omicron, or . inside one)
 #   OMICRON_SKIP_BACKUP=1      update without the pre-update backup
-#   OMICRON_ALLOW_DOWNGRADE=1  move to an older version (needs a restore after)
+#   OMICRON_ALLOW_DOWNGRADE=1  move to an older version (needs a restore after),
+#                              or go on when GitHub can't say whether it is older
+#   GITHUB_TOKEN               raises GitHub's limit for the version check
 #   HTTP_PORT / HTTPS_PORT     host ports (default 80/443; e.g. 8080/8443 for rootless Podman)
 
 set -eu
@@ -51,6 +53,16 @@ detect_compose() {
 
 fetch() { # url dest
   if have curl; then curl -fsSL "$1" -o "$2"; else wget -qO "$2" "$1"; fi
+}
+
+github_api() { # path dest; GITHUB_TOKEN, when set, raises GitHub's limit for anonymous calls
+  url="https://api.github.com/$1"
+  if [ -n "${GITHUB_TOKEN:-}" ]; then
+    if have curl; then curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" "$url" -o "$2"
+    else wget -qO "$2" --header "Authorization: Bearer $GITHUB_TOKEN" "$url"; fi
+  else
+    fetch "$url" "$2"
+  fi
 }
 
 env_get() { # key → its value in .env (last one wins, quotes stripped), or nothing
@@ -99,6 +111,15 @@ fi
 mkdir -p "$OMICRON_DIR"
 cd "$OMICRON_DIR"
 
+# Docker Compose reads these from .env; podman-compose only from the environment.
+# Pass them on, so every engine loads the same files and project.
+for var in COMPOSE_FILE COMPOSE_PROJECT_NAME; do
+  value="$(env_get "$var")"
+  if [ -n "$value" ] && [ -z "$(printenv "$var" || true)" ]; then
+    export "$var=$value"
+  fi
+done
+
 existing=false
 [ -f docker-compose.yml ] && existing=true
 source_checkout=false
@@ -133,23 +154,11 @@ esac
 registry="${OMICRON_REGISTRY:-$(env_get OMICRON_REGISTRY)}"
 registry="${registry:-$DEFAULT_REGISTRY}"
 
-# ── Back up before touching an existing install ────────────────────────────
+# ── What runs now ──────────────────────────────────────────────────────────
 old_rev=""
 if $existing; then
-  if [ "${OMICRON_SKIP_BACKUP:-}" = 1 ]; then
-    warn "Skipping the pre-update backup (OMICRON_SKIP_BACKUP=1)."
-  else
-    log "Backing up before the update…"
-    if ! $COMPOSE exec -T backup backup-now; then
-      err "The pre-update backup failed, so nothing was changed."
-      err "Is the stack running? Start it with '$COMPOSE up -d' and re-run, or re-run with"
-      err "OMICRON_SKIP_BACKUP=1 if you have another, recent backup."
-      exit 1
-    fi
-  fi
   # The engine's own labels, not `compose ps`: podman-compose's ps can't filter by service.
-  project="${COMPOSE_PROJECT_NAME:-$(env_get COMPOSE_PROJECT_NAME)}"
-  project="${project:-$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')}"
+  project="${COMPOSE_PROJECT_NAME:-$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9_-')}"
   backend_container="$("$ENGINE" ps -aq --filter "label=com.docker.compose.project=$project" \
     --filter label=com.docker.compose.service=backend 2>/dev/null | head -n 1 || true)"
   [ -n "$backend_container" ] && old_rev="$(label_of "$backend_container")"
@@ -165,27 +174,52 @@ if [ -z "$rev" ]; then
   exit 1
 fi
 
-# Migrations only go forward: an older backend can't read a newer database.
+# Migrations only go forward: an older backend can't read a newer database. If
+# GitHub can't tell us, stop: an unchecked downgrade is the one thing a backup
+# taken now couldn't undo cleanly.
 if [ -n "$old_rev" ] && [ "$old_rev" != "$rev" ]; then
   compare="$(mktemp)"
-  if fetch "https://api.github.com/repos/$REPO_SLUG/compare/$rev...$old_rev?per_page=1" "$compare" 2>/dev/null; then
+  ahead=""
+  if github_api "repos/$REPO_SLUG/compare/$rev...$old_rev?per_page=1" "$compare" 2>/dev/null; then
     # ahead_by: commits the running version has that the new one lacks.
     ahead="$(grep -o '"ahead_by": *[0-9]*' "$compare" | head -n 1 | grep -o '[0-9]*$' || true)"
-    if [ "${ahead:-0}" -gt 0 ]; then
-      if [ "${OMICRON_ALLOW_DOWNGRADE:-}" = 1 ]; then
-        warn "Moving to an older version ($version). Restore a backup from before the newer one ran."
-      else
-        rm -f "$compare"
-        err "$version is older than what this instance runs ($(printf '%s' "$old_rev" | cut -c1-7)), and"
-        err "migrations only go forward, so it may not read your database. Nothing was changed."
-        err "Wait for a newer $version, or set OMICRON_ALLOW_DOWNGRADE=1 and restore a backup after."
-        exit 1
-      fi
-    fi
-  else
-    warn "Couldn't ask GitHub whether $version is older than what runs now; continuing."
   fi
   rm -f "$compare"
+  running="$(printf '%s' "$old_rev" | cut -c1-7)"
+  if [ -z "$ahead" ]; then
+    if [ "${OMICRON_ALLOW_DOWNGRADE:-}" = 1 ]; then
+      warn "Couldn't check whether $version is older than what runs now ($running); continuing (OMICRON_ALLOW_DOWNGRADE=1)."
+    else
+      err "Couldn't ask GitHub whether $version is older than what runs now ($running). Nothing was changed."
+      err "GitHub allows 60 such checks an hour per address; re-run later, or set GITHUB_TOKEN to raise it."
+      err "If you're sure $version isn't older, re-run with OMICRON_ALLOW_DOWNGRADE=1."
+      exit 1
+    fi
+  elif [ "$ahead" -gt 0 ]; then
+    if [ "${OMICRON_ALLOW_DOWNGRADE:-}" = 1 ]; then
+      warn "Moving to an older version ($version). Restore a backup from before the newer one ran."
+    else
+      err "$version is older than what this instance runs ($running), and"
+      err "migrations only go forward, so it may not read your database. Nothing was changed."
+      err "Wait for a newer $version, or set OMICRON_ALLOW_DOWNGRADE=1 and restore a backup after."
+      exit 1
+    fi
+  fi
+fi
+
+# ── Back up before touching an existing install ────────────────────────────
+if $existing; then
+  if [ "${OMICRON_SKIP_BACKUP:-}" = 1 ]; then
+    warn "Skipping the pre-update backup (OMICRON_SKIP_BACKUP=1)."
+  else
+    log "Backing up before the update…"
+    if ! $COMPOSE exec -T backup backup-now; then
+      err "The pre-update backup failed, so nothing was changed."
+      err "Is the stack running? Start it with '$COMPOSE up -d' and re-run, or re-run with"
+      err "OMICRON_SKIP_BACKUP=1 if you have another, recent backup."
+      exit 1
+    fi
+  fi
 fi
 
 # ── The files those images run with ────────────────────────────────────────
@@ -198,8 +232,8 @@ if $source_checkout; then
   else
     git fetch --quiet origin "$rev"
   fi
-  # git replaces ignored files without asking, such as an admin's own
-  # docker-compose.override.yml; stop rather than lose one.
+  # git replaces ignored files without asking when a commit adds the same path;
+  # stop rather than lose an admin's own file.
   clobbered=""
   for f in $(git diff --name-only --diff-filter=A HEAD "$rev"); do
     if [ -e "$f" ] && ! git ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
@@ -208,7 +242,7 @@ if $source_checkout; then
   done
   if [ -n "$clobbered" ]; then
     err "This version adds files that would replace your own, untracked:$clobbered"
-    err "Move them aside (an extra Compose file can be listed in COMPOSE_FILE in .env), then re-run."
+    err "Move them aside, then re-run."
     exit 1
   fi
   if ! git checkout --quiet --detach "$rev"; then

@@ -62,8 +62,11 @@ Core goals:
 
 - `docker-compose.yml`: Postgres, Redis, backend, frontend, Caddy (TLS),
   Anubis (bot protection) and a restic `backup` service. It runs prebuilt
-  images; `docker-compose.override.yml` (source checkouts only) adds the build
-  sections, so `docker compose up -d --build` runs the working tree.
+  images; `docker-compose.build.yml` (source checkouts only) adds the build
+  sections: `docker compose -f docker-compose.yml -f docker-compose.build.yml
+  up -d --build` runs the working tree. Never ship a file named
+  `docker-compose.override.yml`: that name is the admin's own, which Compose
+  loads on every engine.
 - `install.sh` installs and updates: it pulls the images of the chosen channel
   and fetches `deploy.files` at the commit they were built from (their
   `org.opencontainers.image.revision` label). A new file the stack mounts from
