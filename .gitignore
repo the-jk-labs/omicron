@@ -31,3 +31,6 @@ apps/backend/.state/
 .vscode
 .claude
 .agents
+
+# An instance's own Compose settings; never part of the repository.
+/docker-compose.override.yml
