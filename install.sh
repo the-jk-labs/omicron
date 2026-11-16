@@ -70,6 +70,13 @@ env_set() { # key value
   fi
 }
 
+deploy_sum() { # one checksum over every file deploy.files lists, as they are on disk now
+  [ -f deploy.files ] || return 0
+  grep -v '^[[:space:]]*\(#\|$\)' deploy.files | while read -r f; do
+    [ -f "$f" ] && printf '%s ' "$f" && cksum < "$f"
+  done | cksum
+}
+
 label_of() { # image-or-container → its source commit, or nothing
   "$ENGINE" inspect --format "{{ index .Config.Labels \"$REVISION_LABEL\" }}" "$1" 2>/dev/null |
     grep -E '^[0-9a-f]{40}$' || true
@@ -182,6 +189,7 @@ if [ -n "$old_rev" ] && [ "$old_rev" != "$rev" ]; then
 fi
 
 # ── The files those images run with ────────────────────────────────────────
+sum_before="$(deploy_sum)"
 short_rev="$(printf '%s' "$rev" | cut -c1-7)"
 if $source_checkout; then
   log "Checking out $short_rev in this source checkout…"
@@ -230,8 +238,10 @@ fi
 log "Pulling the rest of the stack…"
 $COMPOSE pull
 log "Starting Omicron $version ($short_rev)…"
-if [ "$ENGINE" = podman ]; then
-  # podman-compose keeps a container on its old image unless it's recreated.
+# A replaced Caddyfile or bot policy is a new file: running containers keep the
+# old one mounted until they are recreated. podman-compose also keeps a
+# container on its old image unless it is recreated.
+if [ "$ENGINE" = podman ] || [ "$(deploy_sum)" != "$sum_before" ]; then
   $COMPOSE up -d --force-recreate
 else
   $COMPOSE up -d
