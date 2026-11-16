@@ -1,16 +1,27 @@
 # Omicron — single-command self-hostable federated blog.
-#   docker compose up -d --build      (no .env editing required)
+#   curl -fsSL https://raw.githubusercontent.com/the-jk-labs/omicron/main/install.sh | sh
+#
+# Runs prebuilt images. OMICRON_VERSION in .env picks the release channel:
+#   stable  — the newest release (default)
+#   edge    — every change merged to main, as soon as CI passes
+#   2.1.0   — one exact release, never moves on its own
+# Upgrade by running ./install.sh again: it backs up first, pulls the images and
+# fetches the matching versions of this file, the Caddyfile and the bot policy.
+# A bare `docker compose pull` would update the images without those files.
 #
 # On first boot the `init-secrets` service generates a random Postgres password
 # and session secret into the `secrets` volume; Postgres and the backend read
 # them from files, so no credentials are ever hardcoded or hand-typed.
 #
-# Upgrades:
-#   git pull && docker compose up -d --build && docker image prune -f && docker builder prune -f
-# Migrations run automatically on backend startup; data lives in the `pgdata`
-# volume and secrets in the `secrets` volume, so upgrades never lose content.
-# `image prune`/`builder prune` only drop untagged image layers and build
-# cache — they never touch a named volume, so this is safe to run every time.
+# Migrations run automatically on backend startup and only go forward: moving
+# back to an older version (or edge → stable) needs a restore from a backup.
+# Data lives in named volumes, which upgrades and `image prune` never touch.
+#
+# In a source checkout, docker-compose.override.yml adds the build sections, so
+# `docker compose up -d --build` builds these images from the working tree.
+
+# Volumes are named after this directory (omicron_pgdata, …), so keep the
+# install in the same directory across upgrades.
 
 services:
   # Generates any missing secrets once, then exits. Postgres, the backend and
@@ -87,10 +98,7 @@ services:
       retries: 10
 
   backend:
-    # From the repository root, so the image can include the API contract (packages/contract).
-    build:
-      context: .
-      dockerfile: apps/backend/Dockerfile
+    image: ${OMICRON_REGISTRY:-ghcr.io/the-jk-labs}/omicron-backend:${OMICRON_VERSION:-stable}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -145,7 +153,7 @@ services:
       - "127.0.0.1:8000:8000"
 
   frontend:
-    build: ./apps/frontend
+    image: ${OMICRON_REGISTRY:-ghcr.io/the-jk-labs}/omicron-frontend:${OMICRON_VERSION:-stable}
     restart: unless-stopped
     depends_on:
       - backend
@@ -188,7 +196,7 @@ services:
   #   List:        docker compose exec backup restic snapshots
   #   Restore:     ./backup/restore.sh [snapshot-id]
   backup:
-    build: ./backup
+    image: ${OMICRON_REGISTRY:-ghcr.io/the-jk-labs}/omicron-backup:${OMICRON_VERSION:-stable}
     restart: unless-stopped
     depends_on:
       postgres:
