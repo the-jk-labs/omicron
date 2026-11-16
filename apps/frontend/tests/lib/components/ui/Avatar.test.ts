@@ -90,4 +90,24 @@ describe("Avatar", () => {
     expect(container.querySelector("img")).toBeNull();
     expect(screen.getByText("YA")).not.toHaveStyle({ display: "none" });
   });
+  // SvelteKit reuses the profile page between profiles, so one Avatar sees its `src` change.
+  it("shows the initials after switching from a person with a photo to one without", async () => {
+    const { container, rerender } = render(Avatar, {
+      props: { name: "Yusif Aliyev", src: "https://example.test/avatar.png", size: 72 },
+    });
+
+    await rerender({ name: "Pipi Wiz", src: undefined, size: 72 });
+
+    expect(container.querySelector("img")).toBeNull();
+    expect(screen.getByText("PW")).not.toHaveStyle({ display: "none" });
+  });
+
+  it("shows the photo at once after switching from a person without one to one with", async () => {
+    const { container, rerender } = render(Avatar, { props: { name: "Pipi Wiz", size: 72 } });
+
+    await rerender({ name: "Yusif Aliyev", src: "https://example.test/avatar.png", size: 72 });
+
+    expect(container.querySelector("img")).toHaveStyle({ display: "block" });
+    expect(screen.getByText("YA")).toHaveStyle({ display: "none" });
+  });
 });
