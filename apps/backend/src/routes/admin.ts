@@ -21,6 +21,7 @@ import { dnsRecords } from "@/services/dkim.ts";
 import { sendTestEmail } from "@/services/email.ts";
 import { checkOutboundPort25, verifyRecords } from "@/services/emailDns.ts";
 import * as emailSettings from "@/services/emailSettings.ts";
+import * as federationAdmin from "@/services/federationAdmin.ts";
 import { federationRunning } from "@/services/federationState.ts";
 import * as setup from "@/services/instanceSetup.ts";
 import * as invites from "@/services/invites.ts";
@@ -735,14 +736,19 @@ adminRoutes.get("/domains", async (c) => {
   return c.json({ domains: await moderation.listBlockedDomains() } satisfies Reply<"BlockedDomains">);
 });
 
-const blockDomainSchema = z.object({ domain: z.string().min(1), reason: z.string().optional() });
+const blockDomainSchema = z.object({
+  domain: z.string().min(1),
+  reason: z.string().optional(),
+  severity: z.enum(["suspend", "limit"]).optional(),
+});
 
-// Defederate a domain. Returns the normalized domain and how many cached actors
-// were purged as a result.
-adminRoutes.post("/domains", jsonBody(blockDomainSchema, "Expected { domain, reason? }."), async (c) => {
+// Suspend or limit a domain (re-posting one already listed changes its
+// severity). Returns the normalized domain and how many cached actors were
+// purged as a result.
+adminRoutes.post("/domains", jsonBody(blockDomainSchema, "Expected { domain, reason?, severity? }."), async (c) => {
   requireAdmin(c);
-  const { domain, reason } = c.req.valid("json");
-  const result = await moderation.blockDomain(domain, reason ?? "");
+  const { domain, reason, severity } = c.req.valid("json");
+  const result = await moderation.blockDomain(domain, reason ?? "", severity ?? "suspend");
   return c.json(result satisfies Reply<"BlockedDomainResult">, 201);
 });
 
@@ -751,6 +757,115 @@ adminRoutes.delete("/domains/:domain", async (c) => {
   requireAdmin(c);
   await moderation.unblockDomain(c.req.param("domain"));
   return c.json({ ok: true } satisfies Reply<"Ok">);
+});
+
+// ── Account-level defederation ──────────────────────────────────────────────
+
+adminRoutes.get("/blocked-actors", async (c) => {
+  requireAdmin(c);
+  return c.json({ actors: await moderation.listBlockedActors() } satisfies Reply<"BlockedActors">);
+});
+
+const blockActorSchema = z.object({ account: z.string().min(1).max(2048), reason: z.string().optional() });
+
+// Block one remote account instance-wide. An account this instance hasn't
+// cached is resolved first, which needs federation running.
+adminRoutes.post("/blocked-actors", jsonBody(blockActorSchema, "Expected { account, reason? }."), async (c) => {
+  requireAdmin(c);
+  const { account, reason } = c.req.valid("json");
+  const actor = await moderation.blockRemoteActor(account, reason ?? "", federationAdmin.resolveForBlock);
+  return c.json({ actor } satisfies Reply<"BlockedActorResponse">, 201);
+});
+
+// The actor's ActivityPub id is a URL, so it travels in the query.
+adminRoutes.delete("/blocked-actors", async (c) => {
+  requireAdmin(c);
+  const apId = c.req.query("apId");
+  if (!apId) throw badRequest("Expected ?apId=.");
+  await moderation.unblockRemoteActor(apId);
+  return c.json({ ok: true } satisfies Reply<"Ok">);
+});
+
+// ── Auto-cache network ──────────────────────────────────────────────────────
+
+// Discovery and manual syncs reach out to other servers; a stuck button shouldn't flood them.
+const federationLimiter = rateLimit({
+  name: "admin-federation",
+  windowMs: 60_000,
+  max: 6,
+  key: (c) => requireAdmin(c).id,
+});
+
+adminRoutes.get("/federation", async (c) => {
+  requireAdmin(c);
+  return c.json((await federationAdmin.overview()) satisfies Reply<"FederationOverview">);
+});
+
+const federationSettingsSchema = z.object({
+  autoCache: z.boolean().optional(),
+  fedidbDiscovery: z.boolean().optional(),
+  syncIntervalHours: z
+    .number()
+    .int()
+    .min(settings.FEDERATION_LIMITS.syncIntervalHours.min)
+    .max(settings.FEDERATION_LIMITS.syncIntervalHours.max)
+    .optional(),
+  authorsPerInstance: z
+    .number()
+    .int()
+    .min(settings.FEDERATION_LIMITS.authorsPerInstance.min)
+    .max(settings.FEDERATION_LIMITS.authorsPerInstance.max)
+    .optional(),
+});
+
+adminRoutes.patch(
+  "/federation/settings",
+  jsonBody(federationSettingsSchema, "Expected federation settings."),
+  async (c) => {
+    requireAdmin(c);
+    const next = await federationAdmin.updateSettings(c.req.valid("json"));
+    return c.json(next satisfies Reply<"FederationSettings">);
+  },
+);
+
+// Read the FediDB directory now instead of waiting for the daily run.
+adminRoutes.post("/federation/discover", federationLimiter, async (c) => {
+  requireAdmin(c);
+  return c.json((await federationAdmin.discoverNow()) satisfies Reply<"FederationDiscoveryRun">);
+});
+
+adminRoutes.post(
+  "/federation/instances",
+  jsonBody(z.object({ domain: z.string().min(1).max(300) }), "Expected { domain }."),
+  async (c) => {
+    requireAdmin(c);
+    const instance = await federationAdmin.addInstance(c.req.valid("json").domain);
+    return c.json({ instance } satisfies Reply<"FederatedInstanceResponse">, 201);
+  },
+);
+
+adminRoutes.patch(
+  "/federation/instances/:domain",
+  jsonBody(z.object({ autoCache: z.boolean() }), "Expected { autoCache }."),
+  async (c) => {
+    requireAdmin(c);
+    const instance = await federationAdmin.setAutoCache(c.req.param("domain"), c.req.valid("json").autoCache);
+    return c.json({ instance } satisfies Reply<"FederatedInstanceResponse">);
+  },
+);
+
+adminRoutes.delete("/federation/instances/:domain", async (c) => {
+  requireAdmin(c);
+  await federationAdmin.removeInstance(c.req.param("domain"));
+  return c.json({ ok: true } satisfies Reply<"Ok">);
+});
+
+// Sync one instance now. Bounded by the per-lookup deadlines, so it answers
+// within a few minutes at worst.
+adminRoutes.post("/federation/instances/:domain/sync", federationLimiter, async (c) => {
+  requireAdmin(c);
+  const instance = await federationAdmin.syncInstanceNow(c.req.param("domain"));
+  return c.json({ instance } satisfies Reply<"FederatedInstanceResponse">);
 });
 
 // ── Tags (alias + merge for fragmented / misspelled tags) ────────────────────

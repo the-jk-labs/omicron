@@ -70,6 +70,34 @@ const emptyPage = { items: [], nextCursor: null };
 
 // Populated data for the route sweep, so its checks see real rows rather than empty states.
 const TIME = "2026-01-01T12:00:00.000Z";
+
+// A tracked instance in the auto-cache network, synced and healthy unless overridden.
+function fedInstance(overrides: Record<string, unknown>) {
+  return {
+    domain: "omicron.example",
+    source: "fedidb",
+    autoCache: true,
+    software: "omicron",
+    softwareVersion: "0.1.0",
+    nodeName: "Omicron",
+    userCount: 68,
+    activeMonth: 38,
+    localPosts: 53,
+    status: "ok",
+    lastError: null,
+    consecutiveFailures: 0,
+    actorsSynced: 20,
+    postsSynced: 140,
+    lastSyncedAt: TIME,
+    lastSuccessAt: TIME,
+    nextSyncAt: "2099-01-01T00:00:00.000Z",
+    syncing: false,
+    cachedAccounts: 20,
+    cachedPosts: 140,
+    createdAt: TIME,
+    ...overrides,
+  };
+}
 const adminUser: Me = { ...user, isAdmin: true };
 const tag = { id: "tag-1", slug: "design", name: "Design" };
 const actor = { id: "author-2", username: "bob", displayName: "Bob", avatarUrl: null, remote: false };
@@ -171,7 +199,57 @@ const fixtures: Record<string, unknown> = {
   "/api/admin/reports": { reports: [report], openCount: 1 },
   "/api/admin/users": { users: [member], nextCursor: null, total: 1, filteredTotal: 1 },
   "/api/admin/users/deleted": { users: [], nextCursor: null, total: 0, filteredTotal: 0 },
-  "/api/admin/domains": { domains: [{ domain: "spam.example", reason: "Spam", createdAt: TIME }] },
+  "/api/admin/domains": {
+    domains: [
+      { domain: "spam.example", reason: "Spam", severity: "suspend", createdAt: TIME },
+      { domain: "noisy.example", reason: "Floods the Global feed", severity: "limit", createdAt: TIME },
+    ],
+  },
+  "/api/admin/blocked-actors": {
+    actors: [
+      { apId: "https://elsewhere.example/users/bot", handle: "bot@elsewhere.example", reason: "Bot", createdAt: TIME },
+    ],
+  },
+  "/api/admin/federation": {
+    running: true,
+    settings: { autoCache: true, fedidbDiscovery: true, syncIntervalHours: 6, authorsPerInstance: 20 },
+    discovery: { at: TIME, ok: true, found: 3, added: 0, error: null },
+    instances: [
+      fedInstance({
+        domain: "akifzada.example",
+        nodeName: "Akif's blog",
+        userCount: 1,
+        activeMonth: 1,
+        cachedAccounts: 1,
+        cachedPosts: 0,
+        actorsSynced: 0,
+        postsSynced: 0,
+      }),
+      fedInstance({
+        domain: "down.example",
+        status: "error",
+        lastError: "HTTP 503",
+        consecutiveFailures: 3,
+        lastSuccessAt: null,
+        cachedAccounts: 0,
+        cachedPosts: 0,
+      }),
+      fedInstance({
+        domain: "mastodon.example",
+        source: "manual",
+        status: "unsupported",
+        software: "mastodon",
+        softwareVersion: "4.3.0",
+        nodeName: "Mastodon",
+        userCount: 120400,
+        activeMonth: 9800,
+        lastError: "Runs mastodon; finding its writers needs Omicron. Follows and replies still federate.",
+        cachedAccounts: 4,
+        cachedPosts: 0,
+      }),
+      fedInstance({}),
+    ],
+  },
   "/api/admin/email": {
     mode: "console",
     from: "",

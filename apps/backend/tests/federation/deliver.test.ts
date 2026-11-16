@@ -11,6 +11,7 @@ const fake = vi.hoisted(() => ({ value: null as unknown }));
 vi.mock(import("@/federation/mod.ts"), () => ({
   getFederation: (() => ({ createContext: () => (fake.value as { ctx: unknown }).ctx })) as never,
 }));
+vi.mock(import("@/db/repositories/blockedActors.ts"));
 vi.mock(import("@/db/repositories/blockedDomains.ts"));
 vi.mock(import("@/db/repositories/comments.ts"));
 vi.mock(import("@/db/repositories/follows.ts"));

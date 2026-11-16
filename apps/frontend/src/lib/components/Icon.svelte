@@ -69,10 +69,13 @@
   import Plug from "@lucide/svelte/icons/plug";
   import Plus from "@lucide/svelte/icons/plus";
   import Quote from "@lucide/svelte/icons/quote";
+  import Radar from "@lucide/svelte/icons/radar";
+  import RefreshCw from "@lucide/svelte/icons/refresh-cw";
   import Repeat2 from "@lucide/svelte/icons/repeat-2";
   import Reply from "@lucide/svelte/icons/reply";
   import Rss from "@lucide/svelte/icons/rss";
   import Search from "@lucide/svelte/icons/search";
+  import Server from "@lucide/svelte/icons/server";
   import Settings from "@lucide/svelte/icons/settings";
   import Share from "@lucide/svelte/icons/share";
   import ShieldCheck from "@lucide/svelte/icons/shield-check";
@@ -175,6 +178,9 @@
     sliders: SlidersHorizontal,
     phone: Smartphone,
     plug: Plug,
+    radar: Radar,
+    refresh: RefreshCw,
+    server: Server,
     plus: Plus,
     minus: Minus,
     flag: Flag,

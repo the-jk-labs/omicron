@@ -1,21 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client.ts";
-import { blockedDomains } from "@/db/schema.ts";
+import { blockedDomains, type DomainBlockSeverity } from "@/db/schema.ts";
 import { hostMatchesDomain } from "@/lib/domain.ts";
 
 // All blocked-domain DB access. `isBlocked` is on the federation hot path (called
-// per inbound/outbound activity), so the domain set is cached in-process behind a
-// short TTL and busted on every mutation.
+// per inbound/outbound activity), so the domain → severity map is cached
+// in-process behind a short TTL and busted on every mutation.
 
 const TTL_MS = 30_000;
-let cache: Set<string> | null = null;
+let cache: Map<string, DomainBlockSeverity> | null = null;
 let cachedAt = 0;
 
-async function domainSet(): Promise<Set<string>> {
+async function domainMap(): Promise<Map<string, DomainBlockSeverity>> {
   if (cache && Date.now() - cachedAt < TTL_MS) return cache;
-  const rows = await db.select({ domain: blockedDomains.domain }).from(blockedDomains);
-  cache = new Set(rows.map((r) => r.domain));
+  const rows = await db
+    .select({ domain: blockedDomains.domain, severity: blockedDomains.severity })
+    .from(blockedDomains);
+  cache = new Map(rows.map((r) => [r.domain, r.severity]));
   cachedAt = Date.now();
   return cache;
 }
@@ -28,10 +30,17 @@ export function list() {
   return db.select().from(blockedDomains).orderBy(blockedDomains.domain);
 }
 
-// Adds a (already-normalized) domain. Idempotent — re-blocking is a no-op that
-// leaves the original reason intact.
-export async function add(domain: string, reason: string) {
-  await db.insert(blockedDomains).values({ domain, reason }).onConflictDoNothing({ target: blockedDomains.domain });
+export function find(domain: string) {
+  return db.query.blockedDomains.findFirst({ where: eq(blockedDomains.domain, domain) });
+}
+
+// Adds an (already-normalized) domain, or changes the severity and reason of one
+// already on the list.
+export async function upsert(domain: string, reason: string, severity: DomainBlockSeverity) {
+  await db
+    .insert(blockedDomains)
+    .values({ domain, reason, severity })
+    .onConflictDoUpdate({ target: blockedDomains.domain, set: { reason, severity } });
   bust();
 }
 
@@ -40,12 +49,21 @@ export async function remove(domain: string) {
   bust();
 }
 
-// Whether a hostname is defederated (exact host or a subdomain of a block).
-export async function isBlocked(host: string): Promise<boolean> {
-  const set = await domainSet();
-  if (set.size === 0) return false;
-  for (const d of set) {
-    if (hostMatchesDomain(host, d)) return true;
+// The strongest policy covering a hostname (exact host or a parent domain), or
+// null when none does. A suspension anywhere up the chain wins over a limit.
+export async function policyFor(host: string): Promise<DomainBlockSeverity | null> {
+  const map = await domainMap();
+  if (map.size === 0) return null;
+  let found: DomainBlockSeverity | null = null;
+  for (const [d, severity] of map) {
+    if (!hostMatchesDomain(host, d)) continue;
+    if (severity === "suspend") return "suspend";
+    found = severity;
   }
-  return false;
+  return found;
+}
+
+// Whether a hostname is defederated (suspended: exact host or a subdomain of a block).
+export async function isBlocked(host: string): Promise<boolean> {
+  return (await policyFor(host)) === "suspend";
 }

@@ -28,6 +28,7 @@ import {
   Update,
 } from "@fedify/fedify/vocab";
 import { RedisKvStore, RedisMessageQueue } from "@fedify/redis";
+import * as blockedActorsRepo from "@/db/repositories/blockedActors.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
@@ -249,11 +250,12 @@ function setupNotes(f: Federation<ContextData>) {
 }
 
 // Drops inbound activities whose sender is on a defederated domain (exact host
-// or subdomain). Every inbox listener bails on this before touching the DB.
+// or subdomain) or is an account blocked instance-wide. Every inbox listener
+// bails on this before touching the DB.
 async function fromBlockedDomain(actorId: URL | null | undefined): Promise<boolean> {
   if (!actorId) return false;
   try {
-    return await blockedDomainsRepo.isBlocked(actorId.host);
+    return (await blockedDomainsRepo.isBlocked(actorId.host)) || (await blockedActorsRepo.isBlocked(actorId.href));
   } catch {
     return false;
   }
@@ -279,6 +281,9 @@ async function ingestArticle(ctx: Context<ContextData>, article: Article): Promi
   if (!isPubliclyAddressed(article)) return undefined;
 
   if (!article.attributionId) return undefined;
+  // An Announce comes from the booster's server, so the writer's own may still be
+  // defederated; check it before fetching anything from there.
+  if (await fromBlockedDomain(article.attributionId)) return undefined;
   const author = await ctx.lookupObject(article.attributionId);
   if (!isActor(author) || !author.id) return undefined;
 

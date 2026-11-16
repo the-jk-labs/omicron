@@ -7,6 +7,8 @@ import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
 export const SETTING_KEYS = {
   analyticsOnInstanceViews: "analytics.onInstanceViews",
   inviteOnly: "signups.inviteOnly",
+  federationNetwork: "federation.network",
+  federationDiscovery: "federation.discovery",
 } as const;
 
 // Whether joining this instance takes an invite. Off by default: sign-up is open.
@@ -29,4 +31,71 @@ export async function onInstanceViewsEnabled(): Promise<boolean> {
 
 export function setOnInstanceViewsEnabled(enabled: boolean): Promise<void> {
   return settingsRepo.set(SETTING_KEYS.analyticsOnInstanceViews, enabled);
+}
+
+// How this instance grows its federated cache on its own (services/federationSync.ts).
+// Both switches default on, so a new instance's Global feed carries the rest of
+// the Omicron network from its first day.
+export type FederationNetworkSettings = {
+  /** Sync tracked instances in the background. */
+  autoCache: boolean;
+  /** Track every Omicron instance FediDB lists. */
+  fedidbDiscovery: boolean;
+  /** Hours between two syncs of one instance. */
+  syncIntervalHours: number;
+  /** Most recent authors whose outboxes one sync refreshes. */
+  authorsPerInstance: number;
+};
+
+export const FEDERATION_LIMITS = {
+  syncIntervalHours: { min: 1, max: 168 },
+  authorsPerInstance: { min: 1, max: 100 },
+} as const;
+
+const FEDERATION_DEFAULTS: FederationNetworkSettings = {
+  autoCache: true,
+  fedidbDiscovery: true,
+  syncIntervalHours: 6,
+  authorsPerInstance: 20,
+};
+
+const clampInt = (value: unknown, { min, max }: { min: number; max: number }, fallback: number) =>
+  typeof value === "number" && Number.isFinite(value) ? Math.min(max, Math.max(min, Math.round(value))) : fallback;
+
+export async function getFederationNetwork(): Promise<FederationNetworkSettings> {
+  const stored = (await settingsRepo.get<Partial<FederationNetworkSettings>>(SETTING_KEYS.federationNetwork)) ?? {};
+  return {
+    autoCache: typeof stored.autoCache === "boolean" ? stored.autoCache : FEDERATION_DEFAULTS.autoCache,
+    fedidbDiscovery:
+      typeof stored.fedidbDiscovery === "boolean" ? stored.fedidbDiscovery : FEDERATION_DEFAULTS.fedidbDiscovery,
+    syncIntervalHours: clampInt(
+      stored.syncIntervalHours,
+      FEDERATION_LIMITS.syncIntervalHours,
+      FEDERATION_DEFAULTS.syncIntervalHours,
+    ),
+    authorsPerInstance: clampInt(
+      stored.authorsPerInstance,
+      FEDERATION_LIMITS.authorsPerInstance,
+      FEDERATION_DEFAULTS.authorsPerInstance,
+    ),
+  };
+}
+
+export async function setFederationNetwork(
+  patch: Partial<FederationNetworkSettings>,
+): Promise<FederationNetworkSettings> {
+  const next = { ...(await getFederationNetwork()), ...patch };
+  await settingsRepo.set(SETTING_KEYS.federationNetwork, next);
+  return getFederationNetwork();
+}
+
+/** The last FediDB discovery run. */
+export type FederationDiscoveryRun = { at: string; ok: boolean; found: number; added: number; error: string | null };
+
+export async function getFederationDiscovery(): Promise<FederationDiscoveryRun | null> {
+  return (await settingsRepo.get<FederationDiscoveryRun>(SETTING_KEYS.federationDiscovery)) ?? null;
+}
+
+export function setFederationDiscovery(run: FederationDiscoveryRun): Promise<void> {
+  return settingsRepo.set(SETTING_KEYS.federationDiscovery, run);
 }

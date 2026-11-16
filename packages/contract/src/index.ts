@@ -675,8 +675,70 @@ export const AdminUser = z.object({
 export type AdminUser = z.infer<typeof AdminUser>;
 
 /** A defederated domain; blocking one also blocks its subdomains. */
-export const BlockedDomain = z.object({ domain: z.string(), reason: z.string(), createdAt: z.string() });
+/** `suspend` cuts the domain off; `limit` keeps federating but hides it from Global, Trending and auto-caching. */
+export const DomainBlockSeverity = z.enum(["suspend", "limit"]);
+export type DomainBlockSeverity = z.infer<typeof DomainBlockSeverity>;
+
+export const BlockedDomain = z.object({
+  domain: z.string(),
+  reason: z.string(),
+  severity: DomainBlockSeverity,
+  createdAt: z.string(),
+});
 export type BlockedDomain = z.infer<typeof BlockedDomain>;
+
+/** A remote account blocked instance-wide, by its ActivityPub id. */
+export const BlockedActor = z.object({ apId: z.string(), handle: z.string(), reason: z.string(), createdAt: z.string() });
+export type BlockedActor = z.infer<typeof BlockedActor>;
+
+export const FederatedInstanceStatus = z.enum(["pending", "ok", "unsupported", "error"]);
+export type FederatedInstanceStatus = z.infer<typeof FederatedInstanceStatus>;
+
+/** A remote instance in the auto-cache network, with what its last sync found. */
+export const FederatedInstance = z.object({
+  domain: z.string(),
+  /** Where it came from: the FediDB directory, or an admin. */
+  source: z.enum(["fedidb", "manual"]),
+  autoCache: z.boolean(),
+  software: z.nullable(z.string()),
+  softwareVersion: z.nullable(z.string()),
+  nodeName: z.nullable(z.string()),
+  userCount: z.nullable(z.number()),
+  activeMonth: z.nullable(z.number()),
+  localPosts: z.nullable(z.number()),
+  status: FederatedInstanceStatus,
+  lastError: z.nullable(z.string()),
+  consecutiveFailures: z.number(),
+  actorsSynced: z.number(),
+  postsSynced: z.number(),
+  lastSyncedAt: z.nullable(z.string()),
+  lastSuccessAt: z.nullable(z.string()),
+  nextSyncAt: z.string(),
+  /** A sync holds its lease right now. */
+  syncing: z.boolean(),
+  /** What this instance has cached from it today, subdomains included. */
+  cachedAccounts: z.number(),
+  cachedPosts: z.number(),
+  createdAt: z.string(),
+});
+export type FederatedInstance = z.infer<typeof FederatedInstance>;
+
+export const FederationSettings = z.object({
+  autoCache: z.boolean(),
+  fedidbDiscovery: z.boolean(),
+  syncIntervalHours: z.number(),
+  authorsPerInstance: z.number(),
+});
+export type FederationSettings = z.infer<typeof FederationSettings>;
+
+export const FederationDiscoveryRun = z.object({
+  at: z.string(),
+  ok: z.boolean(),
+  found: z.number(),
+  added: z.number(),
+  error: z.nullable(z.string()),
+});
+export type FederationDiscoveryRun = z.infer<typeof FederationDiscoveryRun>;
 
 /** A deleted account awaiting restore, until `expiresAt` erases it. */
 export const DeletedUser = z.object({
@@ -800,6 +862,17 @@ export const AdminReports = z.object({ reports: z.array(Report), openCount: z.nu
 export const AiAssistedState = z.object({ aiAssisted: z.boolean() });
 export const BlockedDomains = z.object({ domains: z.array(BlockedDomain) });
 export const BlockedDomainResult = z.object({ domain: z.string(), purged: z.number() });
+export const BlockedActors = z.object({ actors: z.array(BlockedActor) });
+export const BlockedActorResponse = z.object({ actor: BlockedActor });
+/** The Federation tab: whether federation runs in this process, the network settings and tracked instances. */
+export const FederationOverview = z.object({
+  running: z.boolean(),
+  settings: FederationSettings,
+  discovery: z.nullable(FederationDiscoveryRun),
+  instances: z.array(FederatedInstance),
+});
+export type FederationOverview = z.infer<typeof FederationOverview>;
+export const FederatedInstanceResponse = z.object({ instance: FederatedInstance });
 export const TagAliases = z.object({
   aliases: z.array(z.object({ aliasSlug: z.string(), slug: z.string(), name: z.string() })),
 });

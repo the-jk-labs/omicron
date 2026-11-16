@@ -541,9 +541,21 @@ function languageFilter(filter: LanguageFilter | null | undefined) {
     : or(isNull(posts.language), inArray(posts.language, filter.langs));
 }
 
+// Keeps posts from limited domains (blocked_domains.severity = 'limit') off the
+// discovery surfaces — Global, Trending, random — while profiles, follows and
+// search still reach them. Matches subdomains and a ported host like the blocklist.
+export const notFromLimitedDomain = sql`(${posts.remoteActorId} is null or not exists (
+  select 1 from remote_actors ra
+  join blocked_domains bd on bd.severity = 'limit'
+    and (ra.host = bd.domain or ra.host like '%.' || bd.domain
+      or ra.host like bd.domain || ':%' or ra.host like '%.' || bd.domain || ':%')
+  where ra.id = ${posts.remoteActorId}
+))`;
+
 function timelineConditions(viewerId: string | null, langFilter: LanguageFilter | null, local: boolean) {
   return and(
     local ? eq(posts.remote, false) : eq(posts.apType, "Article"),
+    local ? undefined : notFromLimitedDomain,
     isPublished,
     notSuspended,
     notHidden(viewerId),
@@ -690,6 +702,7 @@ export function listTrending(viewerId: string | null, limit = 5, sinceDays = 30)
     .where(
       and(
         eq(posts.apType, "Article"),
+        notFromLimitedDomain,
         isPublished,
         notSuspended,
         notHidden(viewerId),

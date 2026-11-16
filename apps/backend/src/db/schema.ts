@@ -982,11 +982,86 @@ export const reports = pgTable(
 // blocked host are dropped, outbound delivery skips them, and browse-time
 // fetches are refused. A block matches the exact host and any subdomain (see
 // lib/domain.ts). `domain` is the normalized, lowercased hostname.
-export const blockedDomains = pgTable("blocked_domains", {
-  domain: text("domain").primaryKey(),
-  reason: text("reason").notNull().default(""),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+//
+// `severity` picks how hard: `suspend` is full defederation as described above;
+// `limit` keeps federating (follows, replies and profiles still work) but keeps
+// the domain's posts off the Global feed and Trending, and out of auto-caching.
+export const blockedDomains = pgTable(
+  "blocked_domains",
+  {
+    domain: text("domain").primaryKey(),
+    reason: text("reason").notNull().default(""),
+    severity: text("severity").$type<DomainBlockSeverity>().notNull().default("suspend"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("blocked_domains_severity_ck", sql`${t.severity} in ('suspend', 'limit')`)],
+);
+
+export type DomainBlockSeverity = "suspend" | "limit";
+
+// ── blocked remote actors (account-level defederation) ─────────────────
+// Single remote accounts this instance refuses, without cutting off the rest of
+// their server: inbound activity from the actor is dropped, browsing refuses to
+// resolve it, and its cached profile and posts are purged. Keyed by the actor's
+// ActivityPub id, the one identifier a server cannot reassign; `handle` is kept
+// for display and to refuse a lookup before any network I/O.
+export const blockedRemoteActors = pgTable(
+  "blocked_remote_actors",
+  {
+    apId: text("ap_id").primaryKey(),
+    handle: text("handle").notNull(),
+    reason: text("reason").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("blocked_remote_actors_handle_idx").on(t.handle)],
+);
+
+// ── federated instances (auto-cache network) ───────────────────────────
+// Remote instances whose public writing this instance caches ahead of time, so
+// the Global feed carries them even when no local user has looked them up or
+// followed anyone there. Rows come from the FediDB directory (`source = fedidb`)
+// or an admin (`manual`). A background sweeper (services/federationSync.ts)
+// claims due rows, checks NodeInfo, discovers recent authors and refreshes their
+// outboxes through the normal ActivityPub path, so every cached post passes the
+// same signature, authority and visibility checks as one delivered to the inbox.
+export const federatedInstances = pgTable(
+  "federated_instances",
+  {
+    // Normalized hostname (lib/domain.ts normalizeDomain).
+    domain: text("domain").primaryKey(),
+    source: text("source").$type<"fedidb" | "manual">().notNull(),
+    // Off keeps the row (so directory discovery doesn't add it back) but stops syncing.
+    autoCache: boolean("auto_cache").notNull().default(true),
+    // From the instance's own NodeInfo, refreshed on every sync.
+    software: text("software"),
+    softwareVersion: text("software_version"),
+    nodeName: text("node_name"),
+    userCount: integer("user_count"),
+    activeMonth: integer("active_month"),
+    localPosts: integer("local_posts"),
+    status: text("status").$type<FederatedInstanceStatus>().notNull().default("pending"),
+    lastError: text("last_error"),
+    // Drives the failure backoff, so a dead instance is retried ever less often.
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    actorsSynced: integer("actors_synced").notNull().default(0),
+    postsSynced: integer("posts_synced").notNull().default(0),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+    lastSuccessAt: timestamp("last_success_at", { withTimezone: true }),
+    nextSyncAt: timestamp("next_sync_at", { withTimezone: true }).notNull().defaultNow(),
+    // Lease: set when a sweeper claims the row, so two backends never sync it at once.
+    syncStartedAt: timestamp("sync_started_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check("federated_instances_source_ck", sql`${t.source} in ('fedidb', 'manual')`),
+    check("federated_instances_status_ck", sql`${t.status} in ('pending', 'ok', 'unsupported', 'error')`),
+    index("federated_instances_due_idx")
+      .on(t.nextSyncAt)
+      .where(sql`${t.autoCache}`),
+  ],
+);
+
+export type FederatedInstanceStatus = "pending" | "ok" | "unsupported" | "error";
 
 // ── instance settings ──────────────────────────────────────────────────
 // Runtime, moderator-tunable instance config that cannot live in env (env is
@@ -1161,6 +1236,8 @@ export type InstanceSetting = typeof instanceSettings.$inferSelect;
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
 export type BlockedDomain = typeof blockedDomains.$inferSelect;
+export type BlockedRemoteActor = typeof blockedRemoteActors.$inferSelect;
+export type FederatedInstance = typeof federatedInstances.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
 export type PostView = typeof postViews.$inferSelect;

@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
 import * as accountsRepo from "@/db/repositories/accounts.ts";
+import * as blockedActorsRepo from "@/db/repositories/blockedActors.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
+import * as instancesRepo from "@/db/repositories/federatedInstances.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as linksRepo from "@/db/repositories/profileLinks.ts";
@@ -12,7 +14,7 @@ import * as tagsRepo from "@/db/repositories/tags.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as usersRepo from "@/db/repositories/users.ts";
 import type { AdminCursor, AdminUserFilter, AdminUserSort } from "@/db/repositories/users.ts";
-import type { BlockedDomain } from "@/db/schema.ts";
+import type { BlockedDomain, BlockedRemoteActor, DomainBlockSeverity } from "@/db/schema.ts";
 import { hostMatchesDomain, normalizeDomain } from "@/lib/domain.ts";
 import { badRequest, conflict, forbidden, notFound, unauthorized } from "@/lib/http.ts";
 import { type Cursor, encodeCursor } from "@/lib/pagination.ts";
@@ -591,10 +593,17 @@ export function isDomainBlocked(host: string): Promise<boolean> {
   return blockedDomainsRepo.isBlocked(host);
 }
 
-// Defederates a domain: refuses future federation with it and purges any content
-// already cached from it (actors + their posts cascade). Returns the normalized
-// domain and how many cached actors were removed.
-export async function blockDomain(input: string, reason: string): Promise<{ domain: string; purged: number }> {
+// Defederates (suspends) or limits a domain. A suspension refuses all future
+// federation with it and purges what is already cached from it (actors and their
+// posts cascade); a limit only keeps it off the discovery surfaces, so nothing is
+// purged. Re-blocking changes the severity and reason. Either way the domain
+// leaves the auto-cache network. Returns the normalized domain and how many
+// cached actors were removed.
+export async function blockDomain(
+  input: string,
+  reason: string,
+  severity: DomainBlockSeverity = "suspend",
+): Promise<{ domain: string; purged: number }> {
   const domain = normalizeDomain(input);
   if (!domain) throw badRequest("Enter a valid domain, e.g. example.social.");
   // Guard against locking ourselves out of our own instance. The effective domain
@@ -603,8 +612,9 @@ export async function blockDomain(input: string, reason: string): Promise<{ doma
   if (ownHost && hostMatchesDomain(ownHost, domain)) {
     throw badRequest("You can't block your own instance.");
   }
-  await blockedDomainsRepo.add(domain, (reason ?? "").trim().slice(0, 1000));
-  const purged = await remoteActorsRepo.removeByDomain(domain);
+  await blockedDomainsRepo.upsert(domain, (reason ?? "").trim().slice(0, 1000), severity);
+  await instancesRepo.disableUnder(domain);
+  const purged = severity === "suspend" ? await remoteActorsRepo.removeByDomain(domain) : 0;
   return { domain, purged };
 }
 
@@ -613,4 +623,66 @@ export async function blockDomain(input: string, reason: string): Promise<{ doma
 export async function unblockDomain(input: string): Promise<void> {
   const domain = normalizeDomain(input) ?? input.trim().toLowerCase();
   await blockedDomainsRepo.remove(domain);
+}
+
+// ── Account-level defederation ────────────────────────────────────────────
+
+export function listBlockedActors(): Promise<BlockedRemoteActor[]> {
+  return blockedActorsRepo.list();
+}
+
+// Reads a `user@host`, `@user@host` or a profile/actor URL into a lowercased
+// `user@host`, or null. URLs need the `/@user` or `/users/user` shape.
+export function parseRemoteHandle(input: string): string | null {
+  let s = input.trim();
+  if (s.includes("://")) {
+    let url: URL;
+    try {
+      url = new URL(s);
+    } catch {
+      return null;
+    }
+    const m = url.pathname.match(/^\/(?:@|users\/|u\/)([^/@]+)\/?$/);
+    if (!m) return null;
+    s = `${decodeURIComponent(m[1])}@${url.host}`;
+  }
+  s = s.replace(/^@/, "").toLowerCase();
+  const at = s.lastIndexOf("@");
+  if (at <= 0) return null;
+  const user = s.slice(0, at);
+  const host = normalizeDomain(s.slice(at + 1));
+  if (!host || !/^[a-z0-9_][a-z0-9_.-]{0,63}$/.test(user)) return null;
+  return `${user}@${host}`;
+}
+
+// Blocks one remote account instance-wide and forgets everything cached from it
+// (its profile, posts and follow edges). The account is resolved first so the
+// block names its ActivityPub id, which survives a handle change on its server.
+// `resolve` is injected because only a federating process can look an actor up.
+export async function blockRemoteActor(
+  input: string,
+  reason: string,
+  resolve: (handle: string) => Promise<{ apId: string; handle: string } | null>,
+): Promise<BlockedRemoteActor> {
+  const handle = parseRemoteHandle(input);
+  if (!handle) throw badRequest("Enter an account as user@example.social or its profile URL.");
+  const ownHost = normalizeDomain(await getAppDomain());
+  if (ownHost && hostMatchesDomain(ownHost, handle.slice(handle.lastIndexOf("@") + 1))) {
+    throw badRequest("That's a local account. Suspend it from the Users tab instead.");
+  }
+  const cached = await remoteActorsRepo.findByHandle(handle);
+  const target = cached ? { apId: cached.apId, handle: cached.handle } : await resolve(handle);
+  if (!target) throw notFound("Couldn't find that account. Check the handle, or try again if its server is down.");
+  const row = await blockedActorsRepo.upsert(
+    target.apId,
+    target.handle.toLowerCase(),
+    (reason ?? "").trim().slice(0, 1000),
+  );
+  await remoteActorsRepo.removeByApId(target.apId);
+  await followsRepo.removeRemoteFollowerEverywhere(target.apId);
+  return row;
+}
+
+export async function unblockRemoteActor(apId: string): Promise<void> {
+  if (!(await blockedActorsRepo.remove(apId))) throw notFound("That account isn't blocked.");
 }

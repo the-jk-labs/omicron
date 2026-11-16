@@ -4,8 +4,10 @@
   import { Tabs } from "bits-ui";
   import { untrack } from "svelte";
   import { ADMIN_TABS, type AdminTab, asAdminTab } from "#lib/adminTabs.js";
+  import AdminBlockedActors from "#lib/components/AdminBlockedActors.svelte";
   import AdminDomains from "#lib/components/AdminDomains.svelte";
   import AdminEmail from "#lib/components/AdminEmail.svelte";
+  import AdminFederation from "#lib/components/AdminFederation.svelte";
   import AdminInstanceSettings from "#lib/components/AdminInstanceSettings.svelte";
   import AdminReports from "#lib/components/AdminReports.svelte";
   import AdminSecurity from "#lib/components/AdminSecurity.svelte";
@@ -93,17 +95,36 @@
   <Tabs.Content value="federation" class="mt-6">
     {#if isAdmin}
       <section class="rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Defederation</h2>
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Federation network</h2>
         <p class="mt-1 text-sm text-muted-foreground">
-          Block domains this instance won't federate with. Inbound activity is dropped, delivery skips them, and their
-          content stops surfacing here.
+          Cache the wider network's public writing ahead of your readers, so the Global feed is full from day one.
         </p>
         <div class="mt-5">
-          <AdminDomains initial={initial.domains} />
+          <AdminFederation initial={initial.federation?.network} />
+        </div>
+      </section>
+
+      <section class="mt-6 rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Domain blocks</h2>
+        <p class="mt-1 text-sm text-muted-foreground">
+          Suspend a domain to stop federating with it entirely, or limit it to keep it out of discovery.
+        </p>
+        <div class="mt-5">
+          <AdminDomains initial={initial.federation?.domains} />
+        </div>
+      </section>
+
+      <section class="mt-6 rounded-card border border-border bg-background p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Account blocks</h2>
+        <p class="mt-1 text-sm text-muted-foreground">
+          Block single remote accounts for everyone here, without cutting off the rest of their server.
+        </p>
+        <div class="mt-5">
+          <AdminBlockedActors initial={initial.federation?.actors} />
         </div>
       </section>
     {:else}
-      {@render requiresAdmin("Defederation")}
+      {@render requiresAdmin("Federation")}
     {/if}
   </Tabs.Content>
 

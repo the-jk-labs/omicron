@@ -111,6 +111,8 @@ allow(
   "/admin/users/:id",
   "/admin/reports",
   "/admin/domains",
+  "/admin/blocked-actors",
+  "/admin/federation",
   "/admin/tags/aliases",
 );
 allow(
@@ -149,10 +151,21 @@ allow(
   "/admin/posts/:id/ai-assisted",
   "/admin/reports/:id/resolve",
   "/admin/domains",
+  "/admin/blocked-actors",
+  "/admin/federation/discover",
+  "/admin/federation/instances",
+  "/admin/federation/instances/:domain/sync",
   "/admin/tags/alias",
   "/admin/tags/merge",
 );
-allow("admin:write", "PATCH", "/admin/security/access-rules/:id", "/admin/users/:id");
+allow(
+  "admin:write",
+  "PATCH",
+  "/admin/security/access-rules/:id",
+  "/admin/users/:id",
+  "/admin/federation/settings",
+  "/admin/federation/instances/:domain",
+);
 allow(
   "admin:write",
   "DELETE",
@@ -166,6 +179,8 @@ allow(
   "/admin/posts/:id",
   "/admin/posts/:id/ai-assisted",
   "/admin/domains/:domain",
+  "/admin/blocked-actors",
+  "/admin/federation/instances/:domain",
 );
 allow(
   "read",

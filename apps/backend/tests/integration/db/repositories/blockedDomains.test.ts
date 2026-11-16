@@ -13,19 +13,19 @@ test("nothing is blocked on an empty list", async () => {
 });
 
 test("a block covers the domain and its subdomains, and a write busts the cache", async () => {
-  await blockedDomainsRepo.add("bad.example", "spam");
+  await blockedDomainsRepo.upsert("bad.example", "spam", "suspend");
   expect(await blockedDomainsRepo.isBlocked("bad.example")).toBe(true);
   expect(await blockedDomainsRepo.isBlocked("Social.Bad.Example")).toBe(true);
   expect(await blockedDomainsRepo.isBlocked("notbad.example")).toBe(false);
   expect(await blockedDomainsRepo.isBlocked("bad.example.org")).toBe(false);
 });
 
-test("re-blocking is a no-op that keeps the original reason", async () => {
-  await blockedDomainsRepo.add("bad.example", "changed");
-  await blockedDomainsRepo.add("alpha.example", "");
-  expect((await blockedDomainsRepo.list()).map((d) => [d.domain, d.reason])).toEqual([
-    ["alpha.example", ""],
-    ["bad.example", "spam"],
+test("re-blocking updates the reason and severity in place", async () => {
+  await blockedDomainsRepo.upsert("bad.example", "changed", "suspend");
+  await blockedDomainsRepo.upsert("alpha.example", "", "suspend");
+  expect((await blockedDomainsRepo.list()).map((d) => [d.domain, d.reason, d.severity])).toEqual([
+    ["alpha.example", "", "suspend"],
+    ["bad.example", "changed", "suspend"],
   ]);
 });
 
@@ -33,4 +33,19 @@ test("unblocking takes effect at once", async () => {
   await blockedDomainsRepo.remove("bad.example");
   expect(await blockedDomainsRepo.isBlocked("bad.example")).toBe(false);
   expect(await blockedDomainsRepo.isBlocked("alpha.example")).toBe(true);
+});
+
+test("a limit is a policy but not a block, and a suspension up the chain wins", async () => {
+  await blockedDomainsRepo.upsert("noisy.example", "", "limit");
+  expect(await blockedDomainsRepo.policyFor("blog.noisy.example")).toBe("limit");
+  expect(await blockedDomainsRepo.isBlocked("blog.noisy.example")).toBe(false);
+  await blockedDomainsRepo.upsert("blog.noisy.example", "", "suspend");
+  expect(await blockedDomainsRepo.policyFor("www.blog.noisy.example")).toBe("suspend");
+  expect(await blockedDomainsRepo.policyFor("fine.example")).toBe(null);
+});
+
+test("the database refuses an unknown severity", async () => {
+  await expect(blockedDomainsRepo.upsert("x.example", "", "mute" as never)).rejects.toMatchObject({
+    cause: { constraint_name: "blocked_domains_severity_ck" },
+  });
 });

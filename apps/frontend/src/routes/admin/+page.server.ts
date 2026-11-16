@@ -10,7 +10,11 @@ type Loaded<K extends keyof Api> = Awaited<ReturnType<Api[K]>> | null;
 export type AdminInitial = {
   reports?: Loaded<"adminReports">;
   users?: { users: Loaded<"adminUsers">; deleted: Loaded<"deletedUsers"> };
-  domains?: Loaded<"blockedDomains">;
+  federation?: {
+    network: Loaded<"federation">;
+    domains: Loaded<"blockedDomains">;
+    actors: Loaded<"blockedActors">;
+  };
   email?: Loaded<"adminEmail">;
   security?: Loaded<"adminSecurity">;
   seo?: Loaded<"adminSeo">;
@@ -30,8 +34,14 @@ async function loadTab(api: Api, tab: AdminTab): Promise<AdminInitial> {
       const [users, deleted] = await Promise.all([ok(api.adminUsers()), ok(api.deletedUsers())]);
       return { users: { users, deleted } };
     }
-    case "federation":
-      return { domains: await ok(api.blockedDomains()) };
+    case "federation": {
+      const [network, domains, actors] = await Promise.all([
+        ok(api.federation()),
+        ok(api.blockedDomains()),
+        ok(api.blockedActors()),
+      ]);
+      return { federation: { network, domains, actors } };
+    }
     case "email":
       return { email: await ok(api.adminEmail()) };
     case "security":

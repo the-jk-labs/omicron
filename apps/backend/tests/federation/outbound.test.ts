@@ -13,6 +13,7 @@ vi.mock(import("@/federation/mod.ts"), () => ({
 vi.mock(import("@/db/repositories/follows.ts"));
 vi.mock(import("@/db/repositories/posts.ts"));
 vi.mock(import("@/db/repositories/users.ts"));
+vi.mock(import("@/db/repositories/blockedActors.ts"));
 vi.mock(import("@/db/repositories/blockedDomains.ts"));
 
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
