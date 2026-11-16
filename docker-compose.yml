@@ -17,8 +17,10 @@
 # back to an older version (or edge → stable) needs a restore from a backup.
 # Data lives in named volumes, which upgrades and `image prune` never touch.
 #
-# In a source checkout, docker-compose.override.yml adds the build sections, so
-# `docker compose up -d --build` builds these images from the working tree.
+# Your own settings go in docker-compose.override.yml, which Compose loads on its
+# own and the updater never touches. In a source checkout, docker-compose.build.yml
+# adds the build sections:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 
 # Volumes are named after this directory (omicron_pgdata, …), so keep the
 # install in the same directory across upgrades.
