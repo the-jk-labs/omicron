@@ -17,12 +17,9 @@
   const sourceUrl = $derived(PUBLIC_SOURCE_URL?.trim() || "https://github.com/the-jk-labs/omicron");
   const statusUrl = $derived(instance?.statusUrl || PUBLIC_STATUS_URL?.trim() || "/status");
   const contactHref = $derived(instance?.contactUrl || PUBLIC_CONTACT_URL?.trim() || "/contact");
-  const fediverseUrl = $derived.by(() => {
-    if (instance?.federationEnabled && instance.domain) return `https://${instance.domain}`;
-    return "https://joinmastodon.org/servers";
-  });
+  // Only a federating instance has a fediverse identity to link to.
+  const fediverseDomain = $derived(instance?.federationEnabled ? instance.domain : null);
   const domainLabel = $derived(instance?.domain || appName);
-  const fediverseLabel = $derived(instance?.federationEnabled && instance.domain ? `@${instance.domain}` : "Fediverse");
 </script>
 
 <footer
@@ -68,16 +65,34 @@
         >
         <span aria-hidden="true" class="opacity-60">·</span>
       </span>
-      <a
-        href={contactHref}
-        class="inline-flex min-h-6 items-center hover:text-foreground hover:underline hover:underline-offset-2"
-        >Contact</a
-      >
+      {#if fediverseDomain}
+        <span class="inline-flex items-center gap-1 whitespace-nowrap">
+          <a
+            href={contactHref}
+            class="inline-flex min-h-6 items-center hover:text-foreground hover:underline hover:underline-offset-2"
+            >Contact</a
+          >
+          <span aria-hidden="true" class="opacity-60">·</span>
+        </span>
+        <a
+          href="https://{fediverseDomain}"
+          target="_blank"
+          rel="me noopener noreferrer"
+          class="inline-flex min-h-6 items-center hover:text-foreground hover:underline hover:underline-offset-2"
+          >@{fediverseDomain}</a
+        >
+      {:else}
+        <a
+          href={contactHref}
+          class="inline-flex min-h-6 items-center hover:text-foreground hover:underline hover:underline-offset-2"
+          >Contact</a
+        >
+      {/if}
     </p>
 
-    <!-- Project line — like Mastodon: same wrapping fix -->
+    <!-- Software line: the platform this instance runs, whatever the instance is called -->
     <p class="flex flex-wrap items-center gap-x-1">
-      <span class="font-semibold text-foreground">{appName}:</span>
+      <span class="font-semibold text-foreground">Omicron:</span>
       <span class="inline-flex items-center gap-1 whitespace-nowrap">
         <a
           href={sourceUrl}
@@ -89,20 +104,12 @@
         <span aria-hidden="true" class="opacity-60">·</span>
       </span>
       <span class="inline-flex items-center gap-1 whitespace-nowrap">
-        <a
-          href={fediverseUrl}
-          target={fediverseUrl.startsWith("http") ? "_blank" : undefined}
-          rel={fediverseUrl.startsWith("http") ? "me noopener noreferrer" : "me"}
-          class="inline-flex min-h-6 items-center hover:text-foreground hover:underline hover:underline-offset-2"
-          >{fediverseLabel}</a
-        >
-        <span aria-hidden="true" class="opacity-60">·</span>
-      </span>
-      <span class="inline-flex items-center gap-1 whitespace-nowrap">
         <span>AGPL-3.0</span>
         <span aria-hidden="true" class="opacity-60">·</span>
       </span>
-      <span class="whitespace-nowrap">© {year} {appName} · Federated blogging</span>
+      <span class="whitespace-nowrap">Federated blogging</span>
     </p>
+
+    <p>© {year} {appName}</p>
   </div>
 </footer>

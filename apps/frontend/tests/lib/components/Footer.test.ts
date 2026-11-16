@@ -3,6 +3,30 @@ import { render, screen } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
 import Footer from "#lib/components/Footer.svelte";
 
+const instance = {
+  name: "akifzada blog",
+  domain: "akifzada.com",
+  federationEnabled: true,
+  setupComplete: true,
+  emailEnabled: false,
+  emailVerificationRequired: true,
+  inviteOnly: false,
+  bannerText: null,
+  bannerImageUrl: null,
+  logoUrl: null,
+  faviconUrl: null,
+  aboutHtml: null,
+  rulesHtml: null,
+  privacyPolicyHtml: null,
+  contactEmail: null,
+  contactUrl: null,
+  abuseEmail: null,
+  apiVersion: 1,
+  statusUrl: null,
+};
+
+const lines = () => [...screen.getByTestId("site-footer").querySelectorAll("p")].map((p) => p.textContent ?? "");
+
 describe("Footer", () => {
   it("renders legal and AGPL-required links", () => {
     render(Footer, {
@@ -57,5 +81,20 @@ describe("Footer", () => {
     render(Footer, { props: { appName: "Omicron", instance: null } });
     expect(screen.getByTestId("site-footer").textContent).toMatch(/AGPL-3\.0/);
     expect(screen.getByTestId("site-footer").textContent).toMatch(/Source/);
+  });
+
+  it("labels the software line Omicron, not the instance's name", () => {
+    render(Footer, { props: { appName: "akifzada blog", instance } });
+    const [instanceLine, softwareLine] = lines();
+    expect(instanceLine).toMatch(/^\s*akifzada\.com:/);
+    expect(softwareLine).toMatch(/^\s*Omicron:/);
+    expect(softwareLine).not.toContain("akifzada");
+  });
+
+  it("puts the instance's fediverse handle on the instance line", () => {
+    render(Footer, { props: { appName: "akifzada blog", instance } });
+    const [instanceLine] = lines();
+    expect(instanceLine).toContain("@akifzada.com");
+    expect(screen.getByRole("link", { name: "@akifzada.com" })).toHaveAttribute("href", "https://akifzada.com");
   });
 });
