@@ -182,8 +182,20 @@ describe("the contract, at runtime", () => {
       isMuted: false,
       isBlocked: false,
       locked: false,
+      frozen: false,
     };
     expect(overTheWire(contract.Profile, profile).user.username).toBe("ada");
+    const frozen = {
+      user: publicUser(userRow({ frozenAt: new Date() }), [], [], { locked: true, frozen: true }),
+      counts: { followers: 0, following: 0 },
+      followState: "none",
+      isFollowing: false,
+      isMuted: false,
+      isBlocked: false,
+      locked: true,
+      frozen: true,
+    };
+    expect(overTheWire(contract.Profile, frozen).user.bio).toBe("");
     expect(overTheWire(contract.RemoteProfile, remoteProfile(remoteActorRow())).user.remote).toBe(true);
   });
 

@@ -188,3 +188,21 @@ export async function notifyEmailChanged(oldEmail: string, username: string, new
     console.error("accountNotices: failed to queue email-changed notice (continuing):", err);
   }
 }
+
+/** Freeze notice after a moderator freezes the account. */
+export async function notifyFrozen(email: string, username: string): Promise<void> {
+  try {
+    queue.add("send_account_frozen", { to: email, username, ...(await instanceVars()) });
+  } catch (err) {
+    console.error("accountNotices: failed to queue freeze notice (continuing):", err);
+  }
+}
+
+/** Unfreeze notice after a moderator lifts the freeze. */
+export async function notifyUnfrozen(email: string, username: string): Promise<void> {
+  try {
+    queue.add("send_account_unfrozen", { to: email, username, ...(await instanceVars()) });
+  } catch (err) {
+    console.error("accountNotices: failed to queue unfreeze notice (continuing):", err);
+  }
+}

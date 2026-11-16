@@ -31,6 +31,7 @@ export function userRow(overrides: Partial<User> = {}): User {
     showAiAssistedPosts: true,
     emailVerified: true,
     suspendedAt: null,
+    frozenAt: null,
     deletedAt: null,
     deletedBy: null,
     actorKeyPair: null,

@@ -108,6 +108,7 @@ describe("emitting", () => {
   test.each([
     ["private", { isPrivate: true }],
     ["suspended", { suspendedAt: now }],
+    ["frozen", { frozenAt: now }],
     ["deleted", { deletedAt: now }],
   ])("a %s author emits nothing", async (_label, opts) => {
     vi.mocked(usersRepo.findById).mockResolvedValue(userRow(opts));
@@ -188,6 +189,7 @@ describe("sweep", () => {
   test.each([
     ["private", { isPrivate: true }],
     ["suspended", { suspendedAt: now }],
+    ["frozen", { frozenAt: now }],
     ["deleted", { deletedAt: now }],
   ])("nothing is sent once the author is %s", async (_label, opts) => {
     claim(delivery());

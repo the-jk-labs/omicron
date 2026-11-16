@@ -59,6 +59,7 @@ export type UserOpts = {
   isPrivate?: boolean;
   showAiAssistedPosts?: boolean;
   suspended?: boolean;
+  frozen?: boolean;
   isAdmin?: boolean;
   isModerator?: boolean;
   deleted?: boolean;
@@ -81,6 +82,7 @@ export async function mkUser(username: string, opts: UserOpts = {}) {
       isAdmin: opts.isAdmin ?? false,
       isModerator: opts.isModerator ?? false,
       suspendedAt: opts.suspended ? new Date() : null,
+      frozenAt: opts.frozen ? new Date() : null,
       deletedAt: opts.deleted ? new Date() : null,
       ...(opts.createdAt ? { createdAt: opts.createdAt, updatedAt: opts.createdAt } : {}),
     })

@@ -108,6 +108,7 @@ test.for([
   ["an unknown", undefined],
   ["a suspended", userRow({ suspendedAt: new Date() })],
   ["a deleted", userRow({ deletedAt: new Date() })],
+  ["a frozen", userRow({ frozenAt: new Date() })],
 ])("%s account is a 404", async ([, user]) => {
   vi.mocked(usersRepo.findByUsername).mockResolvedValue(user as never);
   await expect(profileCard("ada")).rejects.toMatchObject({ status: 404 });

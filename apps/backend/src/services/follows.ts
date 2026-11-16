@@ -22,6 +22,7 @@ export async function follow(
 ): Promise<{ state: "requested" | "following" }> {
   const target = await usersRepo.findByUsername(targetUsername);
   if (!target || target.deletedAt) throw notFound("User not found.");
+  if (target.frozenAt) throw forbidden("This account is deactivated.");
   if (target.id === followerId) throw badRequest("You cannot follow yourself.");
   // A block (either direction) forbids following — the blocked user can't
   // re-follow, and the blocker can't follow whom they've blocked.
@@ -102,13 +103,28 @@ export async function profile(username: string, viewerId: string | null) {
   // followers: the header + counts still render, but posts and the
   // follower/following lists are withheld (see followersOf/followingOf).
   const isSelf = viewerId === user.id;
-  const locked = user.isPrivate && !isSelf && state !== "following";
-  return { user, counts, followState: state, isFollowing, isMuted, isBlocked, locked };
+  // A frozen account is a deactivated placeholder: no counts, and locked like a private profile.
+  const frozen = user.frozenAt !== null;
+  const locked = frozen || (user.isPrivate && !isSelf && state !== "following");
+  return {
+    user,
+    counts: frozen ? { followers: 0, following: 0 } : counts,
+    followState: state,
+    isFollowing,
+    isMuted,
+    isBlocked,
+    locked,
+    frozen,
+  };
 }
 
 // Whether `viewerId` may see a user's posts / follower lists — the owner or an
 // approved follower of a private account, or anyone for a public account.
-async function canViewPrivate(user: { id: string; isPrivate: boolean }, viewerId: string | null) {
+async function canViewPrivate(
+  user: { id: string; isPrivate: boolean; frozenAt: Date | null },
+  viewerId: string | null,
+) {
+  if (user.frozenAt) return false;
   if (!user.isPrivate) return true;
   if (viewerId === user.id) return true;
   return viewerId ? await followsRepo.isFollowing(viewerId, user.id) : false;

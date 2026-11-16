@@ -182,7 +182,7 @@ describe("application ownership", () => {
       oauth.createApp({ ...registration(), token_endpoint_auth_method: "magic" }, headers()),
     ).rejects.toMatchObject({ error: "invalid_request" });
   });
-  test.each(["suspendedAt", "deletedAt"])("an owner with %s can't collect new approvals", async (field) => {
+  test.each(["suspendedAt", "frozenAt", "deletedAt"])("an owner with %s can't collect new approvals", async (field) => {
     // The first lookup is the signed-in viewer, the second the owner.
     vi.mocked(users.findById).mockResolvedValueOnce(userRow());
     vi.mocked(users.findById).mockResolvedValueOnce(userRow({ [field]: new Date() }));
@@ -234,7 +234,7 @@ describe("consent", () => {
     getSession.mockResolvedValue(null);
     await expect(oauth.prepare(request(), headers())).rejects.toMatchObject({ status: 401 });
   });
-  test.for(["suspendedAt", "deletedAt"] as const)("blocks %s accounts", async (key) => {
+  test.for(["suspendedAt", "frozenAt", "deletedAt"] as const)("blocks %s accounts", async (key) => {
     vi.mocked(users.findById).mockResolvedValue(userRow({ [key]: new Date() }));
     await expect(oauth.prepare(request(), headers())).rejects.toMatchObject({ status: 401 });
   });

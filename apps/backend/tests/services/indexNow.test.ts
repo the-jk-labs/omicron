@@ -85,6 +85,7 @@ describe("submitPost", () => {
   test.for([
     ["suspended", { suspendedAt: new Date() }],
     ["deleted", { deletedAt: new Date() }],
+    ["frozen", { frozenAt: new Date() }],
     ["private", { isPrivate: true }],
   ])("never submits a post by a %s author", async ([, u]) => {
     vi.mocked(usersRepo.findById).mockResolvedValue(userRow({ id: "a", ...(u as object) }));

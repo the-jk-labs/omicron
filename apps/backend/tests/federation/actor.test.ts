@@ -110,3 +110,33 @@ describe("buildPerson", () => {
     expect(p.summary?.toString()).toBe("<p>I &lt;3 cats &amp; dogs</p>");
   });
 });
+
+describe("buildPerson for a frozen account", () => {
+  const frozen = () => userRow({ displayName: "Ada", bio: "Hello", avatarUrl: "/a.png", frozenAt: new Date() });
+
+  test("keeps the actor identity, so an unfreeze needs no re-follow", async () => {
+    const p = await buildPerson(ctx, "ada", frozen(), [], []);
+    expect(p.id?.href).toBe(`${ORIGIN}/users/ada`);
+    expect(p.inboxId?.href).toBe(`${ORIGIN}/users/ada/inbox`);
+    expect(p.outboxId?.href).toBe(`${ORIGIN}/users/ada/outbox`);
+    expect(p.followersId?.href).toBe(`${ORIGIN}/users/ada/followers`);
+    expect(p.name?.toString()).toBe("Ada");
+  });
+
+  test("publishes no bio, avatar, tags, links or lists", async () => {
+    vi.mocked(linksRepo.listForUser).mockResolvedValue([link("github", "https://github.com/ada")]);
+    vi.mocked(listsRepo.listForUser).mockResolvedValue([{ id: "list-1" } as never]);
+    const p = await buildPerson(ctx, "ada", frozen(), [{ name: "rust", slug: "rust" }], []);
+    expect(p.summary).toBeFalsy();
+    expect(await p.getIcon()).toBe(null);
+    expect(p.tagIds ?? []).toEqual([]);
+    expect([...p.attachmentIds]).toEqual([]);
+    expect([...p.streamIds]).toEqual([]);
+    expect(listsRepo.listForUser).not.toHaveBeenCalled();
+  });
+
+  test("an active account of the same shape still publishes its full profile", async () => {
+    const p = await buildPerson(ctx, "ada", userRow({ displayName: "Ada", bio: "Hello" }), [], []);
+    expect(p.summary?.toString()).toContain("Hello");
+  });
+});

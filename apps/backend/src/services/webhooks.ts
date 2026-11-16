@@ -84,6 +84,7 @@ async function authorForToken(presented: string): Promise<User> {
   // reachable in a race. Treat it as a bad credential, not a server error.
   if (!user) throw unauthorized("Invalid webhook credentials.");
   if (user.suspendedAt) throw forbidden("This account is suspended.");
+  if (user.frozenAt) throw forbidden("This account is frozen.");
   if (user.deletedAt) throw forbidden("This account no longer exists.");
 
   // Best-effort: the owner reads this to spot a token they forgot about, so it
@@ -107,7 +108,7 @@ async function configuredAuthor(): Promise<User> {
         : "Content ingestion is unavailable until this instance has an account.",
     );
   }
-  if (user.suspendedAt) {
+  if (user.suspendedAt || user.frozenAt) {
     throw new HttpError(503, "The ingestion author account is suspended.");
   }
   if (user.deletedAt) {

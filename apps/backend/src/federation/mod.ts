@@ -177,8 +177,8 @@ function setupFollowers(f: Federation<ContextData>) {
   f.setFollowersDispatcher("/users/{identifier}/followers", async (ctx, identifier) => {
     const user = await usersRepo.findByUsername(identifier);
     if (!user || user.deletedAt) return null;
-    // Same rule as the web API (follows.followersOf): a private account's list is hidden.
-    if (user.isPrivate) return { items: [] };
+    // Same rule as the web API (follows.followersOf): a private or frozen account's list is hidden.
+    if (user.isPrivate || user.frozenAt) return { items: [] };
     const [locals, remotes] = await Promise.all([
       followsRepo.localFollowerUsernames(user.id),
       followsRepo.remoteFollowerActors(user.id),
@@ -331,6 +331,8 @@ function setupInbox(f: Federation<ContextData>) {
       const followee = await usersRepo.findByUsername(parsed.identifier);
       const follower = await follow.getActor(ctx);
       if (!followee || !isActor(follower) || !follower.id) return;
+      // A frozen account accepts no new followers.
+      if (followee.frozenAt) return;
 
       // If the local user has blocked this remote actor, ignore the follow —
       // a blocked account can't re-follow (Mastodon semantics).
@@ -583,7 +585,7 @@ function setupOutbox(f: Federation<ContextData>) {
     if (!user) return null;
     // A private account's posts are followers-only; the public outbox must not
     // enumerate them to anyone who fetches it. Serve an empty collection.
-    if (user.isPrivate) return { items: [] };
+    if (user.isPrivate || user.frozenAt) return { items: [] };
     const rows: postsRepo.PostWithAuthor[] = await postsRepo.listByAuthor(user.id, null, null, 20);
     const page = rows.slice(0, 20);
     const tagsByPost = await tagsRepo.tagsForPosts(page.map(({ post }) => post.id));

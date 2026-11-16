@@ -191,7 +191,8 @@ export async function browserIdentity(headers: Headers) {
   if (cookie) cookieHeaders.set("cookie", cookie);
   const session = await auth.api.getSession({ headers: cookieHeaders, query: { disableCookieCache: true } });
   const user = session ? await usersRepo.findById(session.user.id) : null;
-  if (!session || !user || user.suspendedAt || user.deletedAt) throw unauthorized("Sign in to continue.");
+  if (!session || !user || user.suspendedAt || user.frozenAt || user.deletedAt)
+    throw unauthorized("Sign in to continue.");
   return { user, sessionId: session.session.id };
 }
 
@@ -224,7 +225,7 @@ export async function prepare(input: Input, headers: Headers) {
   const { user, sessionId } = await browserIdentity(headers);
   // A suspended owner's application can't keep collecting new approvals.
   const owner = await usersRepo.findById(app.ownerId);
-  if (!owner || owner.suspendedAt || owner.deletedAt)
+  if (!owner || owner.suspendedAt || owner.frozenAt || owner.deletedAt)
     throw new OAuthError("invalid_request", "This application is unavailable.");
   const ticket = opaque();
   await oauthRepo.createRequest({
@@ -313,7 +314,8 @@ export async function exchange(input: Input) {
     }
   } else if (verifier) throw new OAuthError("invalid_grant", "No PKCE challenge was authorized.");
   const user = await usersRepo.findById(code.userId);
-  if (!user || user.suspendedAt || user.deletedAt) throw new OAuthError("invalid_grant", "The account is unavailable.");
+  if (!user || user.suspendedAt || user.frozenAt || user.deletedAt)
+    throw new OAuthError("invalid_grant", "The account is unavailable.");
   const renewable = code.scopes !== IDENTITY_SCOPE;
   const token = `${renewable ? "omi_at_" : "omi_id_"}${opaque()}`;
   const refreshToken = renewable ? `omi_rt_${opaque()}` : null;
@@ -351,7 +353,8 @@ async function refresh(input: Input, clientId: string) {
   if (input.scope !== undefined && parseScopes(input.scope) !== grant.scopes)
     throw new OAuthError("invalid_scope", "Refresh cannot change the authorized scope.");
   const user = await usersRepo.findById(grant.userId);
-  if (!user || user.suspendedAt || user.deletedAt) throw new OAuthError("invalid_grant", "The account is unavailable.");
+  if (!user || user.suspendedAt || user.frozenAt || user.deletedAt)
+    throw new OAuthError("invalid_grant", "The account is unavailable.");
   const token = `omi_at_${opaque()}`;
   const refreshToken = `omi_rt_${opaque()}`;
   const expiresAt = new Date(Math.min(Date.now() + TOKEN_TTL_SECONDS * 1000, grant.refreshExpiresAt!.getTime()));
@@ -376,7 +379,7 @@ export async function accessIdentity(headers: Headers) {
   const match = /^Bearer\s+(omi_(?:id|at)_[A-Za-z0-9_-]{43})$/i.exec(headers.get("authorization") ?? "");
   const token = match ? await oauthRepo.findToken(await hashToken(match[1])) : null;
   const user = token ? await usersRepo.findById(token.userId) : null;
-  if (!user || user.suspendedAt || user.deletedAt)
+  if (!user || user.suspendedAt || user.frozenAt || user.deletedAt)
     throw new OAuthError("invalid_token", "A valid OAuth access token is required.", 401);
   return { user, grant: token! };
 }

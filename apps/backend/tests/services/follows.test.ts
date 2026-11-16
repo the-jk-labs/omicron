@@ -76,6 +76,12 @@ describe("follow", () => {
     expect(followsRepo.createLocal).not.toHaveBeenCalled();
   });
 
+  test("refuses to follow a frozen account, which is deactivated rather than missing", async () => {
+    vi.mocked(usersRepo.findByUsername).mockResolvedValue(userRow({ id: "bob", frozenAt: new Date() }));
+    await expect(follow("ada", "bob")).rejects.toMatchObject({ status: 403, message: "This account is deactivated." });
+    expect(followsRepo.createLocal).not.toHaveBeenCalled();
+  });
+
   // Like profile(), follow() treats an admin-deleted account as not found.
   test("refuses to follow a deleted account", async () => {
     vi.mocked(usersRepo.findByUsername).mockResolvedValue(userRow({ id: "bob", deletedAt: new Date() }));
@@ -136,6 +142,7 @@ describe("profile", () => {
       isMuted: false,
       isBlocked: false,
       locked: false,
+      frozen: false,
     });
     expect(relationsRepo.hasLocal).not.toHaveBeenCalled();
   });

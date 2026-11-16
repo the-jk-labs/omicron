@@ -22,6 +22,8 @@ describe("simple notices", () => {
   test.for([
     ["notifySelfDeleted", "send_account_erased"],
     ["notifySuspended", "send_account_suspended"],
+    ["notifyFrozen", "send_account_frozen"],
+    ["notifyUnfrozen", "send_account_unfrozen"],
     ["notifyReinstated", "send_account_reinstated"],
     ["notifyRestored", "send_account_restored"],
     ["notifyAdminGranted", "send_admin_granted"],

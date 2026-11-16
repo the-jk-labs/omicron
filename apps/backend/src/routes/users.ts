@@ -147,20 +147,21 @@ userRoutes.get("/suggested", async (c) => {
 // Public profile + the viewer's follow/mute/block state.
 userRoutes.get("/:username", async (c) => {
   const viewer = c.get("user");
-  const { user, counts, followState, isFollowing, isMuted, isBlocked, locked } = await followsService.profile(
+  const { user, counts, followState, isFollowing, isMuted, isBlocked, locked, frozen } = await followsService.profile(
     c.req.param("username"),
     viewer?.id ?? null,
   );
-  const tags = await tagsRepo.tagsForUser(user.id);
-  const links = await usersService.profileLinks(user.id);
+  const tags = frozen ? [] : await tagsRepo.tagsForUser(user.id);
+  const links = frozen ? [] : await usersService.profileLinks(user.id);
   return c.json({
-    user: publicUser(user, tags, links.map(profileLinkView), { locked }),
+    user: publicUser(user, tags, links.map(profileLinkView), { locked, frozen }),
     counts,
     followState,
     isFollowing,
     isMuted,
     isBlocked,
     locked,
+    frozen,
   } satisfies Reply<"Profile">);
 });
 

@@ -512,6 +512,17 @@ adminRoutes.post("/users/:id/suspend", jsonBody(suspendSchema, "Expected { suspe
   return c.json({ ok: true } satisfies Reply<"Ok">);
 });
 
+const freezeSchema = z.object({ freeze: z.boolean(), notify: z.boolean().optional() });
+
+// Freeze or unfreeze a local account: a reversible hold that hides the account's content and shows its
+// profile as deactivated. The account is mailed only when the moderator opts in with `notify`.
+adminRoutes.post("/users/:id/freeze", jsonBody(freezeSchema, "Expected { freeze: boolean }."), async (c) => {
+  const viewer = requireModerator(c);
+  const { freeze, notify } = c.req.valid("json");
+  await moderation.setFrozen(viewer.id, c.req.param("id"), freeze, { notify });
+  return c.json({ ok: true } satisfies Reply<"Ok">);
+});
+
 const deleteUserSchema = z.object({
   username: z.string().trim().min(1, "Type the account's username to confirm."),
   password: z.string().min(1, "Your password is required."),
