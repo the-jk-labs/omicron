@@ -61,7 +61,26 @@ Core goals:
 ### Deployment
 
 - `docker-compose.yml`: Postgres, Redis, backend, frontend, Caddy (TLS),
-  Anubis (bot protection) and a restic `backup` service
+  Anubis (bot protection) and a restic `backup` service. It runs prebuilt
+  images; `docker-compose.override.yml` (source checkouts only) adds the build
+  sections, so `docker compose up -d --build` runs the working tree.
+- `install.sh` installs and updates: it pulls the images of the chosen channel
+  and fetches `deploy.files` at the commit they were built from (their
+  `org.opencontainers.image.revision` label). A new file the stack mounts from
+  the host must be added to `deploy.files`; CI checks it.
+
+### Releases
+
+CI publishes images to `ghcr.io/the-jk-labs` and Docker Hub
+(`.github/workflows/images.yml`) once every check passes:
+
+- Merge to `main` → **edge** (`edge`, `edge-sha-<commit>`).
+- Tag `vX.Y.Z` on `main` → **stable** (`X.Y.Z`, `X.Y`, `X`, `stable`, `latest`)
+  plus a GitHub Release with the deployment bundle. A pre-release tag
+  (`v2.2.0-rc.1`) gets only its own tag and moves no channel.
+
+To release: bump the versions in a `chore/release-X.Y.Z` PR, merge it, then
+`git tag -s vX.Y.Z && git push origin vX.Y.Z` from the merged `main`.
 
 ---
 
