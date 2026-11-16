@@ -326,6 +326,9 @@ jobs:
             run: pnpm check oxfmt oxlint --no-hints
 
           - name: Tests
+            # The Hermes lint-rule test lists Hermes sources through api.github.com, whose anonymous limit runners share.
+            env:
+              GITHUB_TOKEN: ${{ github.token }}
             run: pnpm check tests --no-hints
 
           - name: Assets
