@@ -238,12 +238,29 @@ jobs:
               done
               exit $status
 
+  stack:
+    name: Stack starts (${{ matrix.compose }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compose: ["docker compose", "podman-compose"]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install podman-compose
+        if: matrix.compose == 'podman-compose'
+        run: pipx install podman-compose
+      # The real docker-compose.yml, with stand-ins for Omicron's own images:
+      # every service must come up, whatever the engine.
+      - name: Every service starts
+        run: tests/deploy/stack-starts.test.sh "${{ matrix.compose }}"
+
   images:
     name: Publish images
     # Pushes to main (edge) and v* tags (releases) on the main repository; forks
     # and pull requests never publish.
     if: github.event_name == 'push' && github.repository == 'the-jk-labs/omicron'
-    needs: [backend, frontend, frontend-browser, docker-build]
+    needs: [backend, frontend, frontend-browser, docker-build, stack]
     permissions:
       contents: write
       packages: write
