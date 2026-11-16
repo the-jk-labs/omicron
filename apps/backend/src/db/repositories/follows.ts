@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { and, desc, eq, gte, isNotNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
+import { notDeletedUser } from "@/db/repositories/liveUsers.ts";
 import { follows, remoteActors, users } from "@/db/schema.ts";
 
 // Follow-edge DB access. Supports local↔local and remote↔local rows.
@@ -45,6 +46,12 @@ export async function severLocal(a: string, b: string) {
 
 export async function removeRemoteFollower(followeeId: string, remoteActor: string) {
   await db.delete(follows).where(and(eq(follows.followeeId, followeeId), eq(follows.remoteActor, remoteActor)));
+}
+
+// Drops every inbound edge (approved or pending) from a remote actor that was
+// deleted. These rows hold its URI, not a foreign key, so nothing cascades.
+export async function removeRemoteFollowerEverywhere(remoteActor: string) {
+  await db.delete(follows).where(eq(follows.remoteActor, remoteActor));
 }
 
 // True only for an *approved* follow edge — a pending request is not following.
@@ -117,7 +124,14 @@ export async function counts(userId: string) {
       followers: sql<number>`count(*) filter (where ${follows.followeeId} = ${userId} and ${follows.approved})::int`,
       following: sql<number>`count(*) filter (where ${follows.followerId} = ${userId} and ${follows.approved})::int`,
     })
-    .from(follows);
+    .from(follows)
+    .where(
+      and(
+        or(eq(follows.followeeId, userId), eq(follows.followerId, userId)),
+        notDeletedUser(follows.followerId),
+        notDeletedUser(follows.followeeId),
+      ),
+    );
   return { followers: row?.followers ?? 0, following: row?.following ?? 0 };
 }
 
@@ -128,7 +142,7 @@ export async function localFollowerUsernames(followeeId: string): Promise<string
     .select({ username: users.username })
     .from(follows)
     .innerJoin(users, eq(follows.followerId, users.id))
-    .where(and(eq(follows.followeeId, followeeId), eq(follows.approved, true)));
+    .where(and(eq(follows.followeeId, followeeId), eq(follows.approved, true), isNull(users.deletedAt)));
   return rows.map((r: { username: string }) => r.username);
 }
 
@@ -166,7 +180,14 @@ export function listLocalFollowing(followerId: string, viewerId: string | null =
     })
     .from(follows)
     .innerJoin(users, eq(follows.followeeId, users.id))
-    .where(and(eq(follows.followerId, followerId), eq(follows.approved, true), notBlockedLocal(viewerId)))
+    .where(
+      and(
+        eq(follows.followerId, followerId),
+        eq(follows.approved, true),
+        isNull(users.deletedAt),
+        notBlockedLocal(viewerId),
+      ),
+    )
     .orderBy(follows.createdAt);
 }
 
@@ -181,7 +202,14 @@ export function listLocalFollowers(followeeId: string, viewerId: string | null =
     })
     .from(follows)
     .innerJoin(users, eq(follows.followerId, users.id))
-    .where(and(eq(follows.followeeId, followeeId), eq(follows.approved, true), notBlockedLocal(viewerId)))
+    .where(
+      and(
+        eq(follows.followeeId, followeeId),
+        eq(follows.approved, true),
+        isNull(users.deletedAt),
+        notBlockedLocal(viewerId),
+      ),
+    )
     .orderBy(follows.createdAt);
 }
 
@@ -235,7 +263,7 @@ export function listLocalFollowRequests(followeeId: string) {
     })
     .from(follows)
     .innerJoin(users, eq(follows.followerId, users.id))
-    .where(and(eq(follows.followeeId, followeeId), eq(follows.approved, false)))
+    .where(and(eq(follows.followeeId, followeeId), eq(follows.approved, false), isNull(users.deletedAt)))
     .orderBy(desc(follows.createdAt));
 }
 
@@ -288,6 +316,13 @@ export async function followersSince(userId: string, since: Date): Promise<numbe
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(follows)
-    .where(and(eq(follows.followeeId, userId), eq(follows.approved, true), gte(follows.createdAt, since)));
+    .where(
+      and(
+        eq(follows.followeeId, userId),
+        eq(follows.approved, true),
+        gte(follows.createdAt, since),
+        notDeletedUser(follows.followerId),
+      ),
+    );
   return row?.count ?? 0;
 }

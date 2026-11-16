@@ -2,6 +2,7 @@
 import { aliasedTable, and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db/client.ts";
 import { recommendedFeedSource } from "@/db/repositories/feedSources.ts";
+import { notDeletedUser } from "@/db/repositories/liveUsers.ts";
 import {
   aiAssistedVisibleToViewer,
   isPublished,
@@ -54,7 +55,7 @@ export async function statsFor(postIds: string[], viewerId: string | null): Prom
       recommended: viewerId ? sql<boolean>`bool_or(${recommendations.userId} = ${viewerId})` : sql<boolean>`false`,
     })
     .from(recommendations)
-    .where(inArray(recommendations.postId, postIds))
+    .where(and(inArray(recommendations.postId, postIds), notDeletedUser(recommendations.userId)))
     .groupBy(recommendations.postId);
 
   for (const r of rows as { postId: string; count: number; recommended: boolean }[]) {

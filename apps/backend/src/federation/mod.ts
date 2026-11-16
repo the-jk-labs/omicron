@@ -10,7 +10,7 @@ import {
   MemoryKvStore,
   type MessageQueue,
 } from "@fedify/fedify";
-import type { Context } from "@fedify/fedify";
+import type { Context, UnverifiedActivityReason } from "@fedify/fedify";
 import {
   Accept,
   Announce,
@@ -527,9 +527,8 @@ function setupInbox(f: Federation<ContextData>) {
       if (!objectId || !del.actorId) return;
 
       // Delete(Actor): an account deleting itself sends its own id as the object.
-      // Purge the cached actor; their posts, follow edges, etc. cascade away.
       if (objectId === del.actorId.href) {
-        await remoteActorsRepo.removeByApId(objectId);
+        await purgeRemoteActor(objectId);
         return;
       }
 
@@ -544,7 +543,32 @@ function setupInbox(f: Federation<ContextData>) {
       const actor = await remoteActorsRepo.findByApId(del.actorId.href);
       if (!actor || actor.id !== post.remoteActorId) return;
       await postsRepo.removeByApId(objectId);
+    })
+    .onUnverifiedActivity(async (_ctx, activity, reason) => {
+      if (!(activity instanceof Delete) || !isGoneActorKey(activity, reason)) return undefined;
+      if (await fromBlockedDomain(activity.actorId)) return undefined;
+      await purgeRemoteActor(activity.actorId!.href);
+      return new Response(null, { status: 202 });
     });
+}
+
+// Forgets a deleted remote account: the cached actor (its posts and outbound
+// follows cascade) and its inbound follow edges, which hold only its URI.
+async function purgeRemoteActor(apId: string): Promise<void> {
+  await remoteActorsRepo.removeByApId(apId);
+  await followsRepo.removeRemoteFollowerEverywhere(apId);
+}
+
+// A deleted account's key goes with it, so its own Delete(actor) can't be
+// verified. Our fetch of the actor's own document answering 410 Gone is proof
+// enough that it was deleted; anything less (404, a foreign key) is not.
+function isGoneActorKey(del: Delete, reason: UnverifiedActivityReason): boolean {
+  const actorId = del.actorId;
+  if (!actorId || del.objectId?.href !== actorId.href) return false;
+  if (reason.type !== "keyFetchError" || !("status" in reason.result) || reason.result.status !== 410) return false;
+  const keyDoc = new URL(reason.keyId);
+  keyDoc.hash = "";
+  return keyDoc.href === actorId.href;
 }
 
 // ── Outbox: list the user's articles ──────────────────────────────────────
