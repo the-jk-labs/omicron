@@ -90,6 +90,7 @@ describe("toProfileData", () => {
       isMuted: false,
       isBlocked: false,
       locked: true,
+      frozen: false,
     };
     expect(toProfileData(local)).toMatchObject({
       remote: false,

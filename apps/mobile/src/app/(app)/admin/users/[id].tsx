@@ -108,6 +108,7 @@ function UserSummary({ detail }: { detail: Detail }) {
           </Text>
           <View className="flex-row flex-wrap gap-1.5">
             {user.suspended && <Badge>Suspended</Badge>}
+            {user.frozen && <Badge>Frozen</Badge>}
             {user.isAdmin && <Badge>Admin</Badge>}
             {user.isModerator && <Badge>Moderator</Badge>}
             <Badge>{user.emailVerified ? "Verified" : "Unverified"}</Badge>
@@ -122,10 +123,12 @@ function UserSummary({ detail }: { detail: Detail }) {
   );
 }
 
-const DONE: Record<"suspend" | "unsuspend" | "resend" | "verify" | "reset", string> = {
+const DONE: Record<"suspend" | "unsuspend" | "freeze" | "unfreeze" | "resend" | "verify" | "reset", string> = {
   reset: "Password reset email sent",
   suspend: "Suspended",
   unsuspend: "Unsuspended",
+  freeze: "Frozen",
+  unfreeze: "Unfrozen",
   resend: "Verification email sent",
   verify: "Email marked verified",
 };
@@ -133,12 +136,23 @@ const DONE: Record<"suspend" | "unsuspend" | "resend" | "verify" | "reset", stri
 function ModerationActions({ detail, canSendReset }: { detail: Detail; canSendReset: boolean }) {
   const api = useApi();
   const queryClient = useQueryClient();
-  const { id, suspended, emailVerified, username } = detail.user;
+  const { id, suspended, frozen, emailVerified, username } = detail.user;
   const act = useMutation({
     mutationFn: async (action: keyof typeof DONE) => {
       if (action === "resend") return api.resendVerification(id);
       if (action === "reset") return api.sendPasswordReset(id);
       if (action === "verify") return api.verifyEmail(id);
+      if (action === "freeze" || action === "unfreeze") {
+        const freeze = action === "freeze";
+        const { confirmed, notify } = await confirmDialog({
+          title: freeze ? "Freeze this account?" : "Unfreeze this account?",
+          description: freeze ? "Its profile shows as deactivated and its posts are hidden until unfrozen." : undefined,
+          confirmText: freeze ? "Freeze" : "Unfreeze",
+          destructive: freeze,
+          notify: "Tell them by email",
+        });
+        return confirmed ? api.freezeUser(id, freeze, notify) : null;
+      }
       const suspend = action === "suspend";
       const { confirmed, notify } = await confirmDialog({
         title: suspend ? "Suspend this account?" : "Unsuspend this account?",
@@ -165,6 +179,12 @@ function ModerationActions({ detail, canSendReset }: { detail: Detail; canSendRe
         label={suspended ? "Unsuspend" : "Suspend"}
         destructive={!suspended}
         onPress={() => act.mutate(suspended ? "unsuspend" : "suspend")}
+      />
+      <SettingsRow
+        icon={frozen ? "user-check" : "lock"}
+        label={frozen ? "Unfreeze" : "Freeze"}
+        destructive={!frozen}
+        onPress={() => act.mutate(frozen ? "unfreeze" : "freeze")}
       />
       {canSendReset && <SettingsRow icon="key-round" label="Send password reset" onPress={() => act.mutate("reset")} />}
       {!emailVerified && (
