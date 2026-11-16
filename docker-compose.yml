@@ -24,8 +24,11 @@
 # install in the same directory across upgrades.
 
 services:
-  # Generates any missing secrets once, then exits. Postgres, the backend and
-  # Anubis depend on it completing, so the files always exist before they start.
+  # Generates any missing secrets, then stays up doing nothing and reports
+  # healthy. Postgres, the backend, backup and Anubis wait for that, so the files
+  # always exist before they start. It stays running, rather than exiting once,
+  # because podman-compose makes it a Podman container dependency, and Podman
+  # won't start a container whose dependency has already exited.
   # Each is 32 random bytes as 64 hex characters — which is also exactly the
   # Ed25519 seed length Anubis wants for anubis_ed25519_key.
   init-secrets:
@@ -48,6 +51,15 @@ services:
         # only that one, and every boot rather than only at generation, so an
         # instance upgrading into this also gets fixed.
         chown 1000 /secrets/anubis_ed25519_key
+        touch /tmp/ready
+        trap 'exit 0' TERM INT
+        while :; do sleep 3600 & wait $$!; done
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/ready"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
     volumes:
       - secrets:/secrets
 
@@ -56,7 +68,7 @@ services:
     restart: unless-stopped
     depends_on:
       init-secrets:
-        condition: service_completed_successfully
+        condition: service_healthy
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-omicron}
       POSTGRES_DB: ${POSTGRES_DB:-omicron}
@@ -106,7 +118,7 @@ services:
       redis:
         condition: service_healthy
       init-secrets:
-        condition: service_completed_successfully
+        condition: service_healthy
     environment:
       # Zero-config default: DATABASE_URL is assembled in-app from these parts +
       # the generated password file, and SESSION_SECRET is read from its file.
@@ -143,7 +155,7 @@ services:
       - secrets:/run/secrets:ro
       # Read-only view of the real Caddyfile: the scraper-shield toggle reads it,
       # swaps one upstream line, and reloads it through Caddy's admin API.
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
       - caddy_admin:/run/caddy-admin:ro
     ports:
       # Loopback only: Caddy reaches the backend over the compose network and is
@@ -202,7 +214,7 @@ services:
       postgres:
         condition: service_healthy
       init-secrets:
-        condition: service_completed_successfully
+        condition: service_healthy
     environment:
       BACKUP_ENABLED: ${BACKUP_ENABLED:-true}
       BACKUP_SCHEDULE: "${BACKUP_SCHEDULE:-0 2 * * *}"
@@ -233,8 +245,8 @@ services:
       - uploads:/data/uploads
       - state:/data/state
       - secrets:/run/secrets:ro
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./botPolicy.yaml:/data/cfg/botPolicy.yaml:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
+      - ./botPolicy.yaml:/data/cfg/botPolicy.yaml:ro,z
     healthcheck:
       test: ["CMD-SHELL", "pidof crond"]
       interval: 60s
@@ -256,7 +268,7 @@ services:
     restart: unless-stopped
     depends_on:
       init-secrets:
-        condition: service_completed_successfully
+        condition: service_healthy
       frontend:
         condition: service_started
     environment:
@@ -300,7 +312,7 @@ services:
       OG_PASSTHROUGH: "true"
       OG_EXPIRY_TIME: "24h"
     volumes:
-      - ./botPolicy.yaml:/data/cfg/botPolicy.yaml:ro
+      - ./botPolicy.yaml:/data/cfg/botPolicy.yaml:ro,z
       - secrets:/run/secrets:ro
 
   # Public entrypoint: terminates TLS and reverse-proxies to frontend/backend.
@@ -317,13 +329,13 @@ services:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro,z
       # Omicron's skin for the Anubis challenge screen, served by Caddy at the
       # path Anubis links its own stylesheet from. See anubis-theme.css and the
       # @anubis_theme handler in the Caddyfile.
-      - ./anubis-theme.css:/srv/anubis-theme.css:ro
+      - ./anubis-theme.css:/srv/anubis-theme.css:ro,z
       # Original Omicron artwork for Anubis's challenge, success and denial states.
-      - ./assets/anubis:/srv/anubis-images:ro
+      - ./assets/anubis:/srv/anubis-images:ro,z
       - caddy_data:/data
       - caddy_config:/config
       - caddy_admin:/run/caddy-admin
