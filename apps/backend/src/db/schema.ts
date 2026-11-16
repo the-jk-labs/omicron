@@ -19,6 +19,11 @@ import {
 } from "drizzle-orm/pg-core";
 import type { CoverCredit } from "@/lib/cover.ts";
 
+// Columns that keyset cursors page on store whole milliseconds. A cursor carries
+// its timestamp through a JS Date (milliseconds), so with Postgres's default
+// microseconds two rows in one millisecond were cut apart and one was skipped.
+const CURSOR_PRECISION = 3;
+
 // Postgres full-text search vector. Drizzle has no native `tsvector` type, so we
 // declare a minimal custom type purely so the column and its GIN index live in
 // the schema (source of truth); the value is always database-generated.
@@ -79,13 +84,13 @@ export const users = pgTable(
     // lookup. The row — posts, follows and all — is kept for the retention
     // window so the deletion can be reverted, then hard-deleted by a sweeper
     // (see services/moderation.ts and services/deletedUsers.ts).
-    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true, precision: CURSOR_PRECISION }),
     // Which moderator deleted the account (null when unknown, or when that
     // moderator's own account is gone). Shown in the admin "recently deleted"
     // list; never a public surface.
     deletedBy: uuid("deleted_by").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
     actorKeyPair: jsonb("actor_key_pair").$type<ActorKeyPair | null>(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true, precision: CURSOR_PRECISION }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -202,7 +207,7 @@ export const posts = pgTable(
     // time is never claimed and simply never publishes, and a published post that
     // still claims to be due would be re-federated on the next sweeper tick.
     // Cleared as the post publishes — see `claimDue` in repositories/posts.ts.
-    publishAt: timestamp("publish_at", { withTimezone: true }),
+    publishAt: timestamp("publish_at", { withTimezone: true, precision: CURSOR_PRECISION }),
     // BCP-47 primary language subtag the author wrote this post in (e.g. "en",
     // "tr"), lowercased, or null when unspecified. Drives the reader's per-language
     // feed filter and federates as the Article content's language tag. Remote posts
@@ -231,7 +236,7 @@ export const posts = pgTable(
     // machine-ingested posts, and what makes re-delivery of the same content
     // update the existing post instead of publishing a duplicate.
     externalId: text("external_id"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true, precision: CURSOR_PRECISION }).notNull().defaultNow(),
     // Last time the post's own content changed — the body, title, tags, cover or
     // language, not a like or a comment. Drives `<lastmod>` in the sitemap, which
     // is how a search engine learns an article is worth re-reading; without it an
@@ -427,7 +432,7 @@ export const recommendations = pgTable(
       .references(() => posts.id, { onDelete: "cascade" }),
     userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
     remoteActorId: uuid("remote_actor_id").references(() => remoteActors.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true, precision: CURSOR_PRECISION }).notNull().defaultNow(),
   },
   (t) => [
     // Recommending is idempotent per (post, recommender), local or remote.
@@ -469,7 +474,7 @@ export const comments = pgTable(
     parentId: uuid("parent_id").references((): AnyPgColumn => comments.id, { onDelete: "cascade" }),
     content: text("content").notNull(),
     apId: text("ap_id"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true, precision: CURSOR_PRECISION }).notNull().defaultNow(),
   },
   (t) => [
     index("comments_post_created_idx").on(t.postId, t.createdAt.desc(), t.id.desc()),
@@ -674,7 +679,7 @@ export const readingListItems = pgTable(
     postId: uuid("post_id")
       .notNull()
       .references(() => posts.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true, precision: CURSOR_PRECISION }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("reading_list_items_unique_idx").on(t.listId, t.postId),
@@ -1137,7 +1142,7 @@ export const notifications = pgTable(
     postId: uuid("post_id").references(() => posts.id, { onDelete: "cascade" }),
     commentId: uuid("comment_id").references(() => comments.id, { onDelete: "cascade" }),
     readAt: timestamp("read_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true, precision: CURSOR_PRECISION }).notNull().defaultNow(),
   },
   (t) => [
     // Backs the list + keyset pagination: a recipient's newest first.
