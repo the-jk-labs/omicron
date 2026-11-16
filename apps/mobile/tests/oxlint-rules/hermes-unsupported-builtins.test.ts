@@ -29,7 +29,11 @@ async function cached(key: string, url: string) {
   const file = join(CACHE, tag, key);
   if (existsSync(file)) return readFile(file, "utf8");
 
-  const response = await fetch(url);
+  // api.github.com allows 60 anonymous requests an hour per IP, which shared CI runners use up; CI passes its token.
+  // Only that host gets it.
+  const token = process.env.GITHUB_TOKEN;
+  const headers = token && url.startsWith("https://api.github.com/") ? { authorization: `Bearer ${token}` } : undefined;
+  const response = await fetch(url, { headers });
   if (!response.ok) throw new Error(`Could not download Hermes source ${url} (HTTP ${response.status})`);
   const text = await response.text();
   await mkdir(dirname(file), { recursive: true });
