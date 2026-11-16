@@ -198,6 +198,19 @@ if $source_checkout; then
   else
     git fetch --quiet origin "$rev"
   fi
+  # git replaces ignored files without asking, such as an admin's own
+  # docker-compose.override.yml; stop rather than lose one.
+  clobbered=""
+  for f in $(git diff --name-only --diff-filter=A HEAD "$rev"); do
+    if [ -e "$f" ] && ! git ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
+      clobbered="$clobbered $f"
+    fi
+  done
+  if [ -n "$clobbered" ]; then
+    err "This version adds files that would replace your own, untracked:$clobbered"
+    err "Move them aside (an extra Compose file can be listed in COMPOSE_FILE in .env), then re-run."
+    exit 1
+  fi
   if ! git checkout --quiet --detach "$rev"; then
     err "Local changes block the checkout; commit or stash them, then re-run."
     exit 1
