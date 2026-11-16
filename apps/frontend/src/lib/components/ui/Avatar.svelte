@@ -1,7 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { Avatar } from "bits-ui";
-  import { untrack } from "svelte";
   import type { AvatarSize } from "#lib/avatarSizes.js";
   import { imageUrl } from "#lib/imageProxy.js";
 
@@ -43,8 +42,9 @@
   // bits-ui starts every avatar "loading": the server-rendered <img> stays hidden
   // until a test load after hydration, so even a cached photo appeared late. With
   // a photo we start "loaded" so the browser paints it at once; a failing image
-  // still falls back to the initials through its own error event.
-  let status = $state<"loading" | "loaded" | "error">(untrack(() => (src ? "loaded" : "error")));
+  // still falls back to the initials through its own error event. Derived from
+  // `src` so a reused avatar (another profile on the same page) starts over.
+  let status = $derived<"loading" | "loaded" | "error">(src ? "loaded" : "error");
 </script>
 
 <Avatar.Root
