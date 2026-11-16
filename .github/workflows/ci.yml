@@ -1,17 +1,20 @@
 # Continuous integration. Runs the checks that already exist as local tasks on
-# every push and PR, so a typecheck, lint, or test regression can't land on
-# `main` and reach self-hosters on their next `git pull && docker compose up`.
+# every push and PR. On main and on release tags, a green run then publishes the
+# images (images.yml): main becomes the edge channel, a v* tag a release.
 name: CI
 
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
 
-# A newer push to the same branch/PR cancels the older, still-running job.
+# A newer push to the same PR cancels the older, still-running job. On main and
+# tags runs queue instead: cancelling one mid-publish could leave edge with a
+# backend and a frontend from different commits.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   backend:
@@ -208,14 +211,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      # The compose stack builds both images from source (no prebuilt images
-      # yet), so a broken Dockerfile breaks `install.sh` for everyone. Build both
-      # here to catch it before release.
+      # Every pull request builds the images, so a broken Dockerfile shows up
+      # before it reaches edge (the published build happens in images.yml).
       - parallel:
           - name: Build backend image
             run: docker build -t omicron-backend -f apps/backend/Dockerfile .
           - name: Build frontend image
             run: docker build -t omicron-frontend ./apps/frontend
+          - name: Build backup image
+            run: docker build -t omicron-backup ./backup
+
+          # Image installs get only the files in deploy.files: anything compose
+          # mounts from the host must be listed, or it is missing there.
+          - name: Deployment files cover every mount
+            run: |
+              listed="$(grep -v '^[[:space:]]*\(#\|$\)' deploy.files)"
+              status=0
+              for src in $(grep -oE '^ +- \./[^:]+' docker-compose.yml | sed 's#.*\./##' | sort -u); do
+                if ! printf '%s\n' "$listed" | grep -qE "^$src(/|\$)"; then
+                  echo "::error file=deploy.files::docker-compose.yml mounts ./$src, which deploy.files doesn't list"
+                  status=1
+                fi
+              done
+              for f in $listed; do
+                [ -f "$f" ] || { echo "::error file=deploy.files::$f is listed but doesn't exist"; status=1; }
+              done
+              exit $status
+
+  images:
+    name: Publish images
+    # Pushes to main (edge) and v* tags (releases) on the main repository; forks
+    # and pull requests never publish.
+    if: github.event_name == 'push' && github.repository == 'the-jk-labs/omicron'
+    needs: [backend, frontend, frontend-browser, docker-build]
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/images.yml
+    secrets: inherit
 
   mobile:
     name: Mobile (typecheck · lint · test)

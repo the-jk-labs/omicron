@@ -1,0 +1,14 @@
+# Files an image-based install needs next to its .env, one path per line.
+# install.sh fetches them at the exact commit the images were built from, and
+# each release attaches them as omicron-<version>.tar.gz. CI checks that every
+# file docker-compose.yml mounts is listed here.
+docker-compose.yml
+Caddyfile
+botPolicy.yaml
+anubis-theme.css
+assets/anubis/happy.webp
+assets/anubis/pensive.webp
+assets/anubis/reject.webp
+backup/restore.sh
+.env.example
+install.sh

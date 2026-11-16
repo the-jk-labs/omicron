@@ -1,0 +1,212 @@
+# Builds and publishes Omicron's images to GHCR, mirrored to Docker Hub. Called
+# by CI once every check has passed, so a broken commit never becomes an image:
+#   push to main   → edge, edge-sha-<commit>
+#   tag v2.1.0     → 2.1.0, 2.1, 2, stable, latest, and a GitHub Release
+#   tag v2.2.0-rc.1 → 2.2.0-rc.1 only (a pre-release moves no channel)
+# A stable tag only moves stable/latest/2 when it is the newest release, so a
+# patch to an older line (v2.0.5 after v2.1.0) can't drag instances backwards.
+name: Images
+
+on:
+  workflow_call:
+
+env:
+  GHCR_NAMESPACE: ghcr.io/the-jk-labs
+
+jobs:
+  channel:
+    name: Channel
+    runs-on: ubuntu-latest
+    outputs:
+      newest-stable: ${{ steps.check.outputs.newest-stable }}
+    steps:
+      - id: check
+        run: |
+          newest=false
+          if [[ "$GITHUB_REF" == refs/tags/v* && "$GITHUB_REF_NAME" != *-* ]]; then
+            top="$(git ls-remote --tags --refs "https://github.com/$GITHUB_REPOSITORY" 'v*' |
+              sed 's#.*refs/tags/##' | grep -v -- - | sort -V | tail -n 1)"
+            [ "$top" = "$GITHUB_REF_NAME" ] && newest=true
+          fi
+          echo "newest-stable=$newest" >> "$GITHUB_OUTPUT"
+          echo "$GITHUB_REF_NAME: newest stable = $newest"
+
+  build:
+    name: Build ${{ matrix.image }} (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    env:
+      DOCKERHUB_NAMESPACE: docker.io/${{ secrets.DOCKERHUB_USERNAME }}
+    strategy:
+      matrix:
+        image: [backend, frontend, backup]
+        platform: [linux/amd64, linux/arm64]
+        include:
+          # The backend builds from the repository root to reach packages/contract.
+          - { image: backend, context: ., file: apps/backend/Dockerfile }
+          - { image: frontend, context: apps/frontend, file: apps/frontend/Dockerfile }
+          - { image: backup, context: backup, file: backup/Dockerfile }
+          # Native runners for each architecture: emulating arm64 makes the
+          # frontend build several times slower.
+          - { platform: linux/amd64, runner: ubuntu-24.04, arch: amd64 }
+          - { platform: linux/arm64, runner: ubuntu-24.04-arm, arch: arm64 }
+    steps:
+      - uses: actions/checkout@v7
+
+      # Labels only here (source, revision, version): install.sh reads the
+      # revision label to fetch the deployment files that match the image.
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: |
+            ${{ env.GHCR_NAMESPACE }}/omicron-${{ matrix.image }}
+            ${{ env.DOCKERHUB_NAMESPACE }}/omicron-${{ matrix.image }}
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Pushed by digest only; the merge job below names them once both
+      # architectures exist, so no tag ever points at half a release.
+      - id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,"name=${{ env.GHCR_NAMESPACE }}/omicron-${{ matrix.image }},${{ env.DOCKERHUB_NAMESPACE }}/omicron-${{ matrix.image }}",push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.arch }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Export digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: digests-${{ matrix.image }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: Publish ${{ matrix.image }}
+    needs: [channel, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      DOCKERHUB_NAMESPACE: docker.io/${{ secrets.DOCKERHUB_USERNAME }}
+    strategy:
+      matrix:
+        image: [backend, frontend, backup]
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-${{ matrix.image }}-*
+          merge-multiple: true
+
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: |
+            ${{ env.GHCR_NAMESPACE }}/omicron-${{ matrix.image }}
+            ${{ env.DOCKERHUB_NAMESPACE }}/omicron-${{ matrix.image }}
+          flavor: latest=false
+          tags: |
+            type=raw,value=edge,enable={{is_default_branch}}
+            type=sha,prefix=edge-sha-,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ needs.channel.outputs.newest-stable }}
+            type=raw,value=stable,enable=${{ needs.channel.outputs.newest-stable }}
+            type=raw,value=latest,enable=${{ needs.channel.outputs.newest-stable }}
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Tag the multi-arch image in both registries
+        working-directory: ${{ runner.temp }}/digests
+        env:
+          IMAGE: omicron-${{ matrix.image }}
+        run: |
+          for repo in "$GHCR_NAMESPACE/$IMAGE" "$DOCKERHUB_NAMESPACE/$IMAGE"; do
+            # shellcheck disable=SC2046
+            docker buildx imagetools create \
+              $(jq -cr --arg repo "$repo:" '.tags | map(select(startswith($repo))) | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+              $(printf "$repo@sha256:%s " *)
+            docker buildx imagetools inspect "$repo:${DOCKER_METADATA_OUTPUT_VERSION}"
+          done
+
+  release:
+    name: GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [channel, merge]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      # Unpacks into omicron/, the installer's own directory, so the volumes
+      # (named after the directory) stay the same from one release to the next.
+      - name: Bundle the deployment files
+        run: |
+          mkdir -p dist/omicron
+          grep -v '^[[:space:]]*\(#\|$\)' deploy.files | while read -r f; do
+            install -D -m "$( [ -x "$f" ] && echo 755 || echo 644 )" "$f" "dist/omicron/$f"
+          done
+          cp deploy.files dist/omicron/
+          tar -C dist -czf "dist/omicron-${GITHUB_REF_NAME#v}.tar.gz" omicron
+          (cd dist && sha256sum "omicron-${GITHUB_REF_NAME#v}.tar.gz" > SHA256SUMS)
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEWEST_STABLE: ${{ needs.channel.outputs.newest-stable }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          flags=(--verify-tag --generate-notes --title "Omicron $version")
+          if [[ "$version" == *-* ]]; then flags+=(--prerelease --latest=false)
+          elif [ "$NEWEST_STABLE" != true ]; then flags+=(--latest=false); fi
+          cat > notes.md <<EOF
+          Install, or update an existing install to this release:
+
+          \`\`\`sh
+          curl -fsSL https://raw.githubusercontent.com/$GITHUB_REPOSITORY/main/install.sh | OMICRON_VERSION=$version sh
+          \`\`\`
+
+          Images: \`ghcr.io/the-jk-labs/omicron-{backend,frontend,backup}:$version\` (also on Docker Hub).
+          The attached bundle holds the same deployment files, for installing by hand.
+          EOF
+          gh release create "$GITHUB_REF_NAME" "dist/omicron-$version.tar.gz" dist/SHA256SUMS \
+            "${flags[@]}" --notes-file notes.md
