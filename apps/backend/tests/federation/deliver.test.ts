@@ -252,6 +252,19 @@ describe("deliverCommentDelete", () => {
 
 describe("a frozen account's federation", () => {
   const frozenAda = () => userRow({ id: "ada-id", username: "ada", frozenAt: new Date() });
+  beforeEach(() => {
+    vi.mocked(commentsRepo.localIdsByAuthor).mockReturnValue(Promise.resolve([]) as never);
+  });
+
+  test("a freeze also retracts the author's comments, and an unfreeze sends them again", async () => {
+    vi.mocked(commentsRepo.localIdsByAuthor).mockReturnValue(Promise.resolve([{ id: "c1", postId: POST_ID }]) as never);
+    vi.mocked(usersRepo.findById).mockResolvedValue(frozenAda());
+    vi.mocked(postsRepo.publishedLocalIdsByAuthor).mockResolvedValue([]);
+    await deliverFreezeChange("ada-id", true);
+    const deleted = f.sent.at(-1)?.activity as Delete;
+    expect(deleted).toBeInstanceOf(Delete);
+    expect(((await deleted.getObject()) as Tombstone).id?.href).toBe(`${ORIGIN}/users/ada/comments/c1`);
+  });
 
   test("a frozen author's new post or edit is never sent", async () => {
     vi.mocked(usersRepo.findById).mockResolvedValue(frozenAda());

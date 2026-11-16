@@ -267,7 +267,7 @@ export async function ingestNote(ctx: Context<unknown>, note: Note): Promise<Com
   const postId = post.post.id;
   if (post.post.authorId) {
     const postAuthor = await usersRepo.findById(post.post.authorId);
-    if (!postAuthor || !isCommentFederable(post.post, postAuthor.isPrivate)) return undefined;
+    if (!postAuthor || postAuthor.frozenAt || !isCommentFederable(post.post, postAuthor.isPrivate)) return undefined;
   } else if (!isCommentFederable(post.post, false)) {
     return undefined;
   }

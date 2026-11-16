@@ -51,6 +51,11 @@ export async function createRemote(data: Omit<NewComment, "authorId"> & { remote
   return findByApId(data.apId);
 }
 
+// A local author's comments (id and post), for federating a freeze: retracted on freeze, sent again on unfreeze.
+export function localIdsByAuthor(authorId: string) {
+  return db.select({ id: comments.id, postId: comments.postId }).from(comments).where(eq(comments.authorId, authorId));
+}
+
 export function findById(id: string) {
   return db
     .select()

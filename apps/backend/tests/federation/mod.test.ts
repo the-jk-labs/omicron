@@ -470,6 +470,13 @@ describe("inbox: Announce", () => {
     f.remote(BOB);
   });
 
+  it("a boost of a frozen author's post records nothing", async () => {
+    vi.mocked(postsRepo.findById).mockResolvedValue(postWithAuthor({ id: POST_ID }, { id: "ada-id" }));
+    vi.mocked(usersRepo.findById).mockResolvedValue(userRow({ id: "ada-id", frozenAt: new Date() }));
+    await on(Announce)(new Announce({ actor: bobPerson(), object: new URL(`${ORIGIN}/posts/${POST_ID}`) }));
+    expect(recommendationsRepo.addRemote).not.toHaveBeenCalled();
+  });
+
   it("a boost of an Article written on a defederated domain is not cached", async () => {
     vi.mocked(postsRepo.findByApId).mockResolvedValue(undefined);
     const writer = "https://banned.example/users/eve";

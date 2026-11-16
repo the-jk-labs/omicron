@@ -483,6 +483,8 @@ function setupInbox(f: Federation<ContextData>) {
         if (!post) return;
       }
 
+      // A frozen author's post is withdrawn: a boost of it records nothing.
+      if (post.authorId && (await usersRepo.findById(post.authorId))?.frozenAt) return;
       await recommendationsRepo.addRemote(post.id, actor.id);
       // Notify the post's local author (if any); remote-authored posts have no
       // local recipient.

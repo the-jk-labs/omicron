@@ -245,7 +245,7 @@ export async function deliverActorUpdate(userId: string): Promise<void> {
   );
 }
 
-// A freeze retracts the account's published posts from remote instances: one Delete(Tombstone) per post, the
+// A freeze retracts the account's published posts and comments from remote instances: one Delete(Tombstone) per post, the
 // same one a delete sends, so their cached copies go. An unfreeze re-sends each post's Create under its original
 // id. The actor Update goes first so the deactivated profile is in place before the posts disappear.
 export async function deliverFreezeChange(userId: string, frozen: boolean): Promise<void> {
@@ -254,6 +254,12 @@ export async function deliverFreezeChange(userId: string, frozen: boolean): Prom
   for (const postId of postIds) {
     if (frozen) await deliverPostDelete(postId, userId);
     else await deliverPost(postId, "create");
+  }
+  // Their comments travel with them: retracted with the posts, sent again on unfreeze.
+  const commentRows = await commentsRepo.localIdsByAuthor(userId);
+  for (const { id, postId } of commentRows) {
+    if (frozen) await deliverCommentDelete(id, userId, postId);
+    else await deliverComment(id, "create");
   }
 }
 
