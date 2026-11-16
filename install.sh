@@ -15,7 +15,7 @@
 #   OMICRON_VERSION   stable (default) | edge | an exact version such as 2.1.0.
 #                     Saved to .env, so later runs keep the choice.
 #   OMICRON_REGISTRY  where images come from (default: ghcr.io/the-jk-labs;
-#                     the Docker Hub mirror is docker.io/<namespace>). Saved too.
+#                     the Docker Hub mirror is docker.io/omicronhq). Saved too.
 #   OMICRON_DIR       install directory (default: ./omicron, or . inside one)
 #   OMICRON_SKIP_BACKUP=1      update without the pre-update backup
 #   OMICRON_ALLOW_DOWNGRADE=1  move to an older version (needs a restore after)

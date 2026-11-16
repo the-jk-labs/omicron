@@ -73,7 +73,7 @@ It installs the **stable** channel, the newest release. For every change as
 soon as it is merged, choose **edge** instead (`OMICRON_VERSION=edge`), or pin
 one release (`OMICRON_VERSION=2.1.0`). To update, run `./install.sh` again in
 the `omicron` directory: it backs up first, then pulls the new version. Images
-are on `ghcr.io/the-jk-labs`, mirrored to Docker Hub, for `amd64` and `arm64`.
+are on `ghcr.io/the-jk-labs`, mirrored to Docker Hub (`docker.io/omicronhq`), for `amd64` and `arm64`.
 
 No config to edit — the session secret and database password are generated
 automatically on first boot. Open <http://localhost> and finish the short setup
