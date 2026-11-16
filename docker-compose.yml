@@ -210,6 +210,7 @@ services:
       BACKUP_KEEP_DAILY: ${BACKUP_KEEP_DAILY:-3}
       BACKUP_KEEP_WEEKLY: ${BACKUP_KEEP_WEEKLY:-1}
       BACKUP_KEEP_MONTHLY: ${BACKUP_KEEP_MONTHLY:-0}
+      BACKUP_KEEP_MANUAL: ${BACKUP_KEEP_MANUAL:-5}
       BACKUP_PASSWORD_FILE: /run/secrets/backup_password
       # Direct restic bindings so `docker compose exec backup restic …` works too.
       RESTIC_REPOSITORY: ${BACKUP_REPOSITORY:-/backups/restic}

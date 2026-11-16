@@ -69,8 +69,21 @@ for spec in "DAILY:${BACKUP_KEEP_DAILY:-3}:--keep-daily" \
     *) FORGET_ARGS="$FORGET_ARGS $flag $value" ;;
   esac
 done
-# shellcheck disable=SC2086
-restic forget --prune $FORGET_ARGS
+# The daily rule only covers automatic backups. Manual ones (backup-now, and the
+# installer's pre-update backup) are kept by count instead: under the daily rule
+# the next boot or scheduled backup on the same day would remove them, and with
+# them the state before an upgrade that a rollback restores.
+if [ -n "$FORGET_ARGS" ]; then
+  # shellcheck disable=SC2086
+  restic forget --tag scheduled --tag boot $FORGET_ARGS
+fi
+KEEP_MANUAL="${BACKUP_KEEP_MANUAL:-5}"
+case "$KEEP_MANUAL" in
+  ''|*[!0-9]*) echo "backup [$TAG]: ignoring non-numeric BACKUP_KEEP_MANUAL: $KEEP_MANUAL" ;;
+  0) ;; # keep every manual backup
+  *) restic forget --tag manual --keep-last "$KEEP_MANUAL" ;;
+esac
+restic prune
 
 echo "backup [$TAG]: checking repository…"
 restic check

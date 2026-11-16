@@ -211,6 +211,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # Runs the real backup script in its image against a throwaway repository.
+      - name: Backup retention tests
+        run: |
+          docker build -t omicron-backup ./backup
+          docker run --rm -v "$PWD/backup/tests:/tests:ro" --entrypoint sh omicron-backup /tests/retention.test.sh
+
       # Every pull request builds the images, so a broken Dockerfile shows up
       # before it reaches edge (the published build happens in images.yml).
       - parallel:
@@ -218,8 +224,6 @@ jobs:
             run: docker build -t omicron-backend -f apps/backend/Dockerfile .
           - name: Build frontend image
             run: docker build -t omicron-frontend ./apps/frontend
-          - name: Build backup image
-            run: docker build -t omicron-backup ./backup
 
           # Image installs get only the files in deploy.files: anything compose
           # mounts from the host must be listed, or it is missing there.
