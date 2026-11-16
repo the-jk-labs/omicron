@@ -99,6 +99,15 @@ fi
 mkdir -p "$OMICRON_DIR"
 cd "$OMICRON_DIR"
 
+# Docker Compose reads these from .env; podman-compose only from the environment.
+# Pass them on, so every engine loads the same files and project.
+for var in COMPOSE_FILE COMPOSE_PROJECT_NAME; do
+  value="$(env_get "$var")"
+  if [ -n "$value" ] && [ -z "$(printenv "$var" || true)" ]; then
+    export "$var=$value"
+  fi
+done
+
 existing=false
 [ -f docker-compose.yml ] && existing=true
 source_checkout=false
@@ -198,8 +207,8 @@ if $source_checkout; then
   else
     git fetch --quiet origin "$rev"
   fi
-  # git replaces ignored files without asking, such as an admin's own
-  # docker-compose.override.yml; stop rather than lose one.
+  # git replaces ignored files without asking when a commit adds the same path;
+  # stop rather than lose an admin's own file.
   clobbered=""
   for f in $(git diff --name-only --diff-filter=A HEAD "$rev"); do
     if [ -e "$f" ] && ! git ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
@@ -208,7 +217,7 @@ if $source_checkout; then
   done
   if [ -n "$clobbered" ]; then
     err "This version adds files that would replace your own, untracked:$clobbered"
-    err "Move them aside (an extra Compose file can be listed in COMPOSE_FILE in .env), then re-run."
+    err "Move them aside, then re-run."
     exit 1
   fi
   if ! git checkout --quiet --detach "$rev"; then
