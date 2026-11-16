@@ -8,6 +8,7 @@ import { mount } from "./harness.ts";
 
 vi.mock(import("@/services/anubisProtection.ts"));
 vi.mock(import("@/services/email.ts"));
+vi.mock(import("@/services/federationAdmin.ts"));
 vi.mock(import("@/services/emailDns.ts"));
 vi.mock(import("@/services/emailSettings.ts"));
 vi.mock(import("@/services/instanceSetup.ts"));
@@ -23,6 +24,7 @@ import * as anubis from "@/services/anubisProtection.ts";
 import { sendTestEmail } from "@/services/email.ts";
 import { verifyRecords } from "@/services/emailDns.ts";
 import * as emailSettings from "@/services/emailSettings.ts";
+import * as federationAdmin from "@/services/federationAdmin.ts";
 import * as setup from "@/services/instanceSetup.ts";
 import * as mediaService from "@/services/media.ts";
 import * as moderation from "@/services/moderation.ts";
@@ -71,6 +73,16 @@ const routes: Route[] = [
   ["GET", "/domains", undefined, "admin"],
   ["POST", "/domains", { domain: "bad.example" }, "admin"],
   ["DELETE", "/domains/bad.example", undefined, "admin"],
+  ["GET", "/blocked-actors", undefined, "admin"],
+  ["POST", "/blocked-actors", { account: "spam@bad.example" }, "admin"],
+  ["DELETE", "/blocked-actors?apId=https%3A%2F%2Fbad.example%2Fu%2Fspam", undefined, "admin"],
+  ["GET", "/federation", undefined, "admin"],
+  ["PATCH", "/federation/settings", { fedidbDiscovery: false }, "admin"],
+  ["POST", "/federation/discover", undefined, "admin"],
+  ["POST", "/federation/instances", { domain: "peer.example" }, "admin"],
+  ["PATCH", "/federation/instances/peer.example", { autoCache: false }, "admin"],
+  ["DELETE", "/federation/instances/peer.example", undefined, "admin"],
+  ["POST", "/federation/instances/peer.example/sync", undefined, "admin"],
   ["GET", "/tags/aliases", undefined, "admin"],
   ["POST", "/tags/alias", { alias: "js", target: "javascript" }, "admin"],
   ["POST", "/tags/merge", { from: "a", to: "b" }, "admin"],
@@ -358,10 +370,52 @@ describe("admin endpoints", () => {
     );
   });
 
+  test("a domain can be limited instead of suspended", async () => {
+    const res = await api.json("/api/admin/domains", "POST", { domain: "noisy.example", severity: "limit" });
+    expect(res.status).toBe(201);
+    expect(moderation.blockDomain).toHaveBeenCalledWith("noisy.example", "", "limit");
+    expect((await api.json("/api/admin/domains", "POST", { domain: "x.example", severity: "mute" })).status).toBe(400);
+  });
+
+  test("blocking an account hands the federation resolver to the service", async () => {
+    const res = await api.json("/api/admin/blocked-actors", "POST", { account: "spam@bad.example", reason: "bot" });
+    expect(res.status).toBe(201);
+    expect(moderation.blockRemoteActor).toHaveBeenCalledWith(
+      "spam@bad.example",
+      "bot",
+      federationAdmin.resolveForBlock,
+    );
+  });
+
+  test("unblocking an account needs its id", async () => {
+    expect((await api.request("/api/admin/blocked-actors", { method: "DELETE" })).status).toBe(400);
+    await api.request("/api/admin/blocked-actors?apId=https%3A%2F%2Fbad.example%2Fu%2F1", { method: "DELETE" });
+    expect(moderation.unblockRemoteActor).toHaveBeenCalledWith("https://bad.example/u/1");
+  });
+
+  test("federation settings are range-checked", async () => {
+    vi.mocked(federationAdmin.updateSettings).mockResolvedValue({
+      autoCache: true,
+      fedidbDiscovery: true,
+      syncIntervalHours: 12,
+      authorsPerInstance: 20,
+    });
+    expect((await api.json("/api/admin/federation/settings", "PATCH", { syncIntervalHours: 12 })).status).toBe(200);
+    expect(federationAdmin.updateSettings).toHaveBeenCalledWith({ syncIntervalHours: 12 });
+    for (const bad of [
+      { syncIntervalHours: 0 },
+      { syncIntervalHours: 169 },
+      { authorsPerInstance: 101 },
+      { autoCache: "on" },
+    ]) {
+      expect((await api.json("/api/admin/federation/settings", "PATCH", bad)).status).toBe(400);
+    }
+  });
+
   test("blocking a domain answers 201 with the purge count", async () => {
     const res = await api.json("/api/admin/domains", "POST", { domain: "bad.example", reason: "spam" });
     expect(res.status).toBe(201);
-    expect(moderation.blockDomain).toHaveBeenCalledWith("bad.example", "spam");
+    expect(moderation.blockDomain).toHaveBeenCalledWith("bad.example", "spam", "suspend");
   });
 });
 

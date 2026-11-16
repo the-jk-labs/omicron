@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import type { DocumentLoader } from "@fedify/fedify";
 import { type Actor, Article, Create, Hashtag, isActor } from "@fedify/fedify/vocab";
+import * as blockedActorsRepo from "@/db/repositories/blockedActors.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
@@ -75,8 +76,9 @@ export async function resolveActor(handle: string): Promise<RemoteActor | null> 
   // at the fetch layer; this makes the property explicit and testable here.
   if (handleBlockedSync(handle)) return null;
   if (!(await handleAllowed(handle))) return null;
-  // Never reach out to a defederated domain.
+  // Never reach out to a defederated domain or a blocked account.
   if (await blockedDomainsRepo.isBlocked(handleHost(handle))) return null;
+  if (await blockedActorsRepo.isHandleBlocked(handle)) return null;
   return await runOutbound(handleHost(handle), async (signal) => {
     try {
       const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
@@ -87,6 +89,8 @@ export async function resolveActor(handle: string): Promise<RemoteActor | null> 
       // A server may only vouch for actors on its own host (or a subdomain, the
       // usual split-domain setup); otherwise it could pass off anyone's account as its own.
       if (!hostMatchesDomain(object.id.host, handleHost(handle).toLowerCase())) return null;
+      // A blocked account may come back under a new handle; its id is what the block names.
+      if (await blockedActorsRepo.isBlocked(object.id.href)) return null;
       return await cacheActor(object, handle);
     } catch {
       // A timeout/cancellation surfaces as an AbortError; treat every failure as
@@ -132,12 +136,14 @@ export async function cacheActor(actor: Actor, handle?: string): Promise<RemoteA
 
 // Fetches the first page of an actor's outbox and upserts each Article as a
 // local (remote-flagged) post. Best-effort: failures are swallowed so the
-// profile still renders from whatever is cached.
-export async function fetchOutboxPosts(handle: string, remoteActorId: string): Promise<void> {
+// profile still renders from whatever is cached. Returns how many Articles were
+// stored or refreshed.
+export async function fetchOutboxPosts(handle: string, remoteActorId: string): Promise<number> {
+  let count = 0;
   try {
-    if (handleBlockedSync(handle)) return;
-    if (!(await handleAllowed(handle))) return;
-    if (await blockedDomainsRepo.isBlocked(handleHost(handle))) return;
+    if (handleBlockedSync(handle)) return 0;
+    if (!(await handleAllowed(handle))) return 0;
+    if (await blockedDomainsRepo.isBlocked(handleHost(handle))) return 0;
     await runOutbound(handleHost(handle), async (signal) => {
       if (signal.aborted) return;
       const ctx = getFederation().createContext(new URL(federationOrigin()), undefined);
@@ -153,7 +159,6 @@ export async function fetchOutboxPosts(handle: string, remoteActorId: string): P
       const page =
         "getFirst" in outbox && outbox.firstId ? ((await outbox.getFirst({ documentLoader })) ?? outbox) : outbox;
 
-      let count = 0;
       for await (const item of page.getItems({ documentLoader })) {
         if (signal.aborted) break;
         if (count >= MAX_OUTBOX_POSTS) break;
@@ -189,4 +194,5 @@ export async function fetchOutboxPosts(handle: string, remoteActorId: string): P
   } catch (err) {
     console.warn(`[federation] outbox fetch failed for ${handle}:`, err);
   }
+  return count;
 }

@@ -29,6 +29,7 @@ vi.mock(import("@/federation/mod.ts"), () => ({
 vi.mock(import("node:dns/promises"), () => ({
   lookup: vi.fn<() => Promise<unknown>>(async () => [{ address: "93.184.216.34", family: 4 }]) as never,
 }));
+vi.mock(import("@/db/repositories/blockedActors.ts"));
 vi.mock(import("@/db/repositories/blockedDomains.ts"));
 vi.mock(import("@/db/repositories/posts.ts"));
 vi.mock(import("@/db/repositories/remoteActors.ts"));
@@ -36,6 +37,7 @@ vi.mock(import("@/db/repositories/tags.ts"));
 vi.mock(import("@/db/repositories/users.ts"));
 
 import { lookup } from "node:dns/promises";
+import * as blockedActorsRepo from "@/db/repositories/blockedActors.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
@@ -138,6 +140,20 @@ describe("resolveActor", () => {
     expect(f.ctx.lookupObject).not.toHaveBeenCalled();
   });
 
+  test("refuses a blocked handle before any lookup", async () => {
+    vi.mocked(blockedActorsRepo.isHandleBlocked).mockResolvedValueOnce(true);
+    expect(await resolveActor("bob@remote.example")).toBe(null);
+    expect(f.ctx.lookupObject).not.toHaveBeenCalled();
+  });
+
+  test("refuses a blocked actor id even under a new handle, without caching it", async () => {
+    f.ctx.lookupObject.mockResolvedValue(bob());
+    vi.mocked(blockedActorsRepo.isBlocked).mockImplementation(async (id) => id === "https://remote.example/users/bob");
+    expect(await resolveActor("robert@remote.example")).toBe(null);
+    expect(remoteActorsRepo.upsert).not.toHaveBeenCalled();
+    vi.mocked(blockedActorsRepo.isBlocked).mockReset();
+  });
+
   test("a non-actor or a failed lookup is null, never a throw", async () => {
     f.ctx.lookupObject.mockResolvedValue(new Note({ id: new URL("https://remote.example/n/1") }) as never);
     expect(await resolveActor("bob@remote.example")).toBe(null);
@@ -226,9 +242,9 @@ describe("fetchOutboxPosts", () => {
     ]);
   });
 
-  test("caps a crawl at 20 posts", async () => {
+  test("caps a crawl at 20 posts, and reports how many it stored", async () => {
     withOutbox(Array.from({ length: 30 }, (_, i) => article(`https://remote.example/posts/${i}`)));
-    await fetchOutboxPosts("bob@remote.example", "actor-1");
+    expect(await fetchOutboxPosts("bob@remote.example", "actor-1")).toBe(20);
     expect(postsRepo.upsertRemotePost).toHaveBeenCalledTimes(20);
   });
 
@@ -240,6 +256,6 @@ describe("fetchOutboxPosts", () => {
     vi.mocked(blockedDomainsRepo.isBlocked).mockResolvedValue(false);
     f.ctx.lookupObject.mockRejectedValue(new Error("boom"));
     vi.spyOn(console, "warn").mockImplementation(() => {});
-    await expect(fetchOutboxPosts("bob@remote.example", "a")).resolves.toBeUndefined();
+    await expect(fetchOutboxPosts("bob@remote.example", "a")).resolves.toBe(0);
   });
 });

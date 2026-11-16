@@ -7,6 +7,7 @@ import { startJobWorker } from "@/queue/queue.ts";
 import { reconcileAnubisInBackground } from "@/services/anubisProtection.ts";
 import { startDeletedUserSweeper } from "@/services/deletedUsers.ts";
 import { seedFederationOrigin, seedFederationRunning } from "@/services/federationState.ts";
+import { startFederationSyncSweeper } from "@/services/federationSync.ts";
 import { getFederationEnabled, getOrigin } from "@/services/instanceSetup.ts";
 import { completeRollover } from "@/services/jwtKeys.ts";
 import { startOAuthSweeper } from "@/services/oauthGc.ts";
@@ -61,6 +62,11 @@ async function main() {
   // so a hostile instance can't grow the remote tables without bound by serving
   // many distinct actors. Safe to run on every node — see services/remoteCacheGc.ts.
   startRemoteCacheGcSweeper();
+
+  // Cache the wider network's public writing ahead of readers: FediDB discovery
+  // plus per-instance outbox refreshes. Only while federating — see
+  // services/federationSync.ts.
+  startFederationSyncSweeper();
 
   // Erase soft-deleted accounts once their retention window ends. Same
   // database-backed pattern as the sweepers above — see services/deletedUsers.ts.

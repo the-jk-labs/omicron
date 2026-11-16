@@ -4,7 +4,13 @@ import { expect, test, vi } from "vitest";
 vi.mock(import("@/db/repositories/instanceSettings.ts"));
 
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
-import { onInstanceViewsEnabled, SETTING_KEYS, setOnInstanceViewsEnabled } from "@/services/settings.ts";
+import {
+  getFederationNetwork,
+  onInstanceViewsEnabled,
+  SETTING_KEYS,
+  setFederationNetwork,
+  setOnInstanceViewsEnabled,
+} from "@/services/settings.ts";
 
 test("on-instance view counting is on by default", async () => {
   vi.mocked(settingsRepo.get).mockResolvedValue(undefined);
@@ -25,4 +31,40 @@ test("a stored null still means the default (on)", async () => {
 test("setting the flag writes the documented key", async () => {
   await setOnInstanceViewsEnabled(false);
   expect(settingsRepo.set).toHaveBeenCalledWith(SETTING_KEYS.analyticsOnInstanceViews, false);
+});
+
+test("the federation network defaults to auto-caching with FediDB discovery on", async () => {
+  vi.mocked(settingsRepo.get).mockResolvedValue(undefined);
+  expect(await getFederationNetwork()).toEqual({
+    autoCache: true,
+    fedidbDiscovery: true,
+    syncIntervalHours: 6,
+    authorsPerInstance: 20,
+  });
+});
+
+test("stored federation numbers are clamped and junk falls back to the defaults", async () => {
+  vi.mocked(settingsRepo.get).mockResolvedValue({
+    autoCache: "yes",
+    fedidbDiscovery: false,
+    syncIntervalHours: 10_000,
+    authorsPerInstance: 0.4,
+  });
+  expect(await getFederationNetwork()).toEqual({
+    autoCache: true,
+    fedidbDiscovery: false,
+    syncIntervalHours: 168,
+    authorsPerInstance: 1,
+  });
+});
+
+test("a federation patch merges into what is stored", async () => {
+  vi.mocked(settingsRepo.get).mockResolvedValue({ syncIntervalHours: 3 });
+  await setFederationNetwork({ fedidbDiscovery: false });
+  expect(settingsRepo.set).toHaveBeenCalledWith(SETTING_KEYS.federationNetwork, {
+    autoCache: true,
+    fedidbDiscovery: false,
+    syncIntervalHours: 3,
+    authorsPerInstance: 20,
+  });
 });

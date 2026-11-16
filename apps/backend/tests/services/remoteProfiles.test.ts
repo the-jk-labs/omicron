@@ -35,7 +35,7 @@ const originalMissMax = config.RL_REMOTE_MISS_MAX;
 
 beforeEach(() => {
   vi.mocked(resolveActor).mockResolvedValue(null);
-  vi.mocked(fetchOutboxPosts).mockResolvedValue();
+  vi.mocked(fetchOutboxPosts).mockResolvedValue(0);
   vi.mocked(relationsRepo.hasRemote).mockResolvedValue(false);
   vi.mocked(followsRepo.isFollowingRemote).mockResolvedValue(false);
   vi.mocked(tagsRepo.tagsForRemoteActor).mockResolvedValue([]);

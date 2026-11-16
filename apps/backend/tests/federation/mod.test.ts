@@ -75,6 +75,7 @@ vi.mock(import("@fedify/fedify"), async (importOriginal) => {
   };
 });
 
+vi.mock(import("@/db/repositories/blockedActors.ts"));
 vi.mock(import("@/db/repositories/blockedDomains.ts"));
 vi.mock(import("@/db/repositories/follows.ts"));
 vi.mock(import("@/db/repositories/posts.ts"));
@@ -102,6 +103,7 @@ vi.mock(import("@/federation/remote.ts"), () => ({
   fetchOutboxPosts: vi.fn<typeof remote.fetchOutboxPosts>(),
 }));
 
+import * as blockedActorsRepo from "@/db/repositories/blockedActors.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as notificationsRepo from "@/db/repositories/notifications.ts";
@@ -162,6 +164,7 @@ const ada = userRow({ id: "ada-id", username: "ada" });
 beforeEach(() => {
   f.reset();
   vi.mocked(blockedDomainsRepo.isBlocked).mockResolvedValue(false);
+  vi.mocked(blockedActorsRepo.isBlocked).mockResolvedValue(false);
   vi.mocked(usersRepo.findByUsername).mockImplementation(((u: string) =>
     Promise.resolve(u === "ada" ? ada : undefined)) as never);
   vi.mocked(remoteActorsRepo.findByApId).mockImplementation(((apId: string) =>
@@ -439,6 +442,17 @@ describe("inbox: Create / Update / Delete", () => {
     expect(ingestNoteDelete).toHaveBeenCalledWith("https://remote.example/n/1", BOB);
   });
 
+  it.for([Create, Update, Delete, Announce, Undo, Block, Accept, Follow])(
+    "%o from an account blocked instance-wide is dropped",
+    async (type) => {
+      vi.mocked(blockedActorsRepo.isBlocked).mockImplementation(async (id) => id === BOB);
+      await on(type)(new (type as typeof Create)({ actor: new URL(BOB), object: new URL(ADA) }));
+      expect(postsRepo.findByApId).not.toHaveBeenCalled();
+      expect(usersRepo.findByUsername).not.toHaveBeenCalled();
+      expect(remoteActorsRepo.removeByApId).not.toHaveBeenCalled();
+    },
+  );
+
   it.for([Create, Update, Delete, Announce, Undo, Block, Accept])(
     "%o from a defederated domain is dropped",
     async (type) => {
@@ -454,6 +468,23 @@ describe("inbox: Create / Update / Delete", () => {
 describe("inbox: Announce", () => {
   beforeEach(() => {
     f.remote(BOB);
+  });
+
+  it("a boost of an Article written on a defederated domain is not cached", async () => {
+    vi.mocked(postsRepo.findByApId).mockResolvedValue(undefined);
+    const writer = "https://banned.example/users/eve";
+    f.remote(writer);
+    vi.mocked(blockedDomainsRepo.isBlocked).mockImplementation(async (host) => host === "banned.example");
+    const boosted = new Article({
+      id: new URL("https://banned.example/posts/1"),
+      attribution: new URL(writer),
+      name: "Spam",
+      content: "<p>x</p>",
+      to: PUBLIC_COLLECTION,
+    });
+    await on(Announce)(new Announce({ actor: bobPerson(), object: boosted }));
+    expect(postsRepo.upsertRemotePost).not.toHaveBeenCalled();
+    expect(f.ctx.lookupObject).not.toHaveBeenCalledWith(new URL(writer));
   });
 
   it("a boost of a cached remote post is recorded and its local author notified", async () => {

@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import bcrypt from "bcryptjs";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { postWithAuthor, remotePostWithAuthor, userRow, uuid } from "../fixtures.ts";
+import { postWithAuthor, remoteActorRow, remotePostWithAuthor, userRow, uuid } from "../fixtures.ts";
 
 vi.mock(import("@/db/repositories/accounts.ts"));
+vi.mock(import("@/db/repositories/blockedActors.ts"));
 vi.mock(import("@/db/repositories/blockedDomains.ts"));
+vi.mock(import("@/db/repositories/federatedInstances.ts"));
 vi.mock(import("@/db/repositories/follows.ts"));
 vi.mock(import("@/db/repositories/instanceSettings.ts"));
 vi.mock(import("@/db/repositories/posts.ts"));
@@ -25,7 +27,9 @@ vi.mock(import("@/queue/queue.ts"), () => ({ queue: { add: vi.fn<(...args: unkno
 import { auth } from "@/auth/auth.ts";
 import { config } from "@/config.ts";
 import * as accountsRepo from "@/db/repositories/accounts.ts";
+import * as blockedActorsRepo from "@/db/repositories/blockedActors.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
+import * as instancesRepo from "@/db/repositories/federatedInstances.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
@@ -615,12 +619,13 @@ describe("domain blocks", () => {
       domain: "bad.example",
       purged: 4,
     });
-    expect(blockedDomainsRepo.add).toHaveBeenCalledWith("bad.example", "spam");
+    expect(blockedDomainsRepo.upsert).toHaveBeenCalledWith("bad.example", "spam", "suspend");
+    expect(instancesRepo.disableUnder).toHaveBeenCalledWith("bad.example");
   });
 
   test("caps the reason at 1000 characters", async () => {
     await mod.blockDomain("bad.example", "r".repeat(2000));
-    expect(vi.mocked(blockedDomainsRepo.add).mock.calls[0][1]).toHaveLength(1000);
+    expect(vi.mocked(blockedDomainsRepo.upsert).mock.calls[0][1]).toHaveLength(1000);
   });
 
   test("refuses input that is not a domain", async () => {
@@ -631,7 +636,7 @@ describe("domain blocks", () => {
     config.APP_DOMAIN = "blog.example.com";
     await expect(mod.blockDomain("blog.example.com", "")).rejects.toMatchObject({ status: 400 });
     await expect(mod.blockDomain("example.com", "")).rejects.toMatchObject({ status: 400 });
-    expect(blockedDomainsRepo.add).not.toHaveBeenCalled();
+    expect(blockedDomainsRepo.upsert).not.toHaveBeenCalled();
   });
 
   test("a subdomain of this instance's domain can still be blocked", async () => {
@@ -660,10 +665,86 @@ describe("domain blocks", () => {
     expect(blockedDomainsRepo.remove).toHaveBeenLastCalledWith("weird value");
   });
 
+  test("a limit records the severity, stops auto-caching, and purges nothing", async () => {
+    expect(await mod.blockDomain("noisy.example", "", "limit")).toEqual({ domain: "noisy.example", purged: 0 });
+    expect(blockedDomainsRepo.upsert).toHaveBeenCalledWith("noisy.example", "", "limit");
+    expect(instancesRepo.disableUnder).toHaveBeenCalledWith("noisy.example");
+    expect(remoteActorsRepo.removeByDomain).not.toHaveBeenCalled();
+  });
+
   test("list and isBlocked delegate", async () => {
     vi.mocked(blockedDomainsRepo.list).mockResolvedValue([]);
     vi.mocked(blockedDomainsRepo.isBlocked).mockResolvedValue(true);
     expect(await mod.listBlockedDomains()).toEqual([]);
     expect(await mod.isDomainBlocked("x.example")).toBe(true);
+  });
+});
+
+describe("remote account blocks", () => {
+  const resolve = vi.fn<(handle: string) => Promise<{ apId: string; handle: string } | null>>();
+  const blocked = (apId: string, handle: string) => ({ apId, handle, reason: "", createdAt: new Date() });
+
+  beforeEach(() => {
+    resolve.mockReset();
+    config.APP_DOMAIN = "blog.example.com";
+    vi.mocked(blockedActorsRepo.upsert).mockImplementation(async (apId, handle, reason) => ({
+      ...blocked(apId, handle),
+      reason,
+    }));
+  });
+
+  test.each([
+    ["@Spam@Bad.Example", "spam@bad.example"],
+    ["spam@bad.example", "spam@bad.example"],
+    ["https://bad.example/@spam", "spam@bad.example"],
+    ["https://bad.example/users/spam", "spam@bad.example"],
+  ])("reads %s as %s", (input, handle) => {
+    expect(mod.parseRemoteHandle(input)).toBe(handle);
+  });
+
+  test.each(["spam", "@bad.example", "https://bad.example/about", "sp am@bad.example", "spam@localhost"])(
+    "refuses %s",
+    (input) => {
+      expect(mod.parseRemoteHandle(input)).toBeNull();
+    },
+  );
+
+  test("blocks a cached account by its ActivityPub id and forgets it", async () => {
+    vi.mocked(remoteActorsRepo.findByHandle).mockResolvedValue(
+      remoteActorRow({ apId: "https://bad.example/users/spam", handle: "spam@bad.example" }),
+    );
+    const row = await mod.blockRemoteActor("@spam@bad.example", "  bot  ", resolve);
+    expect(row).toMatchObject({ apId: "https://bad.example/users/spam", reason: "bot" });
+    expect(resolve).not.toHaveBeenCalled();
+    expect(remoteActorsRepo.removeByApId).toHaveBeenCalledWith("https://bad.example/users/spam");
+    expect(followsRepo.removeRemoteFollowerEverywhere).toHaveBeenCalledWith("https://bad.example/users/spam");
+  });
+
+  test("resolves an account it hasn't cached", async () => {
+    vi.mocked(remoteActorsRepo.findByHandle).mockResolvedValue(undefined);
+    resolve.mockResolvedValue({ apId: "https://bad.example/ap/1", handle: "Spam@bad.example" });
+    await mod.blockRemoteActor("spam@bad.example", "", resolve);
+    expect(resolve).toHaveBeenCalledWith("spam@bad.example");
+    expect(blockedActorsRepo.upsert).toHaveBeenCalledWith("https://bad.example/ap/1", "spam@bad.example", "");
+  });
+
+  test("404s when the account can't be found", async () => {
+    vi.mocked(remoteActorsRepo.findByHandle).mockResolvedValue(undefined);
+    resolve.mockResolvedValue(null);
+    await expect(mod.blockRemoteActor("ghost@bad.example", "", resolve)).rejects.toMatchObject({ status: 404 });
+    expect(blockedActorsRepo.upsert).not.toHaveBeenCalled();
+  });
+
+  test("refuses a local account and malformed input", async () => {
+    await expect(mod.blockRemoteActor("ada@blog.example.com", "", resolve)).rejects.toMatchObject({ status: 400 });
+    await expect(mod.blockRemoteActor("not an account", "", resolve)).rejects.toMatchObject({ status: 400 });
+    expect(blockedActorsRepo.upsert).not.toHaveBeenCalled();
+  });
+
+  test("unblocking an account that isn't blocked is a 404", async () => {
+    vi.mocked(blockedActorsRepo.remove).mockResolvedValue(false);
+    await expect(mod.unblockRemoteActor("https://x.example/u")).rejects.toMatchObject({ status: 404 });
+    vi.mocked(blockedActorsRepo.remove).mockResolvedValue(true);
+    await expect(mod.unblockRemoteActor("https://x.example/u")).resolves.toBeUndefined();
   });
 });
