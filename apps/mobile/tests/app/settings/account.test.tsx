@@ -1,6 +1,5 @@
-// @vitest-environment happy-dom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import AccountSettings from "@/app/(app)/settings/account";
@@ -21,29 +20,37 @@ vi.mock("@/lib/auth/session", () => ({
     user: { username: "ada", email: "ada@omicron.test", emailVerified: true, createdAt: "2026-01-01T00:00:00Z" },
   }),
 }));
-vi.mock("@/components/settings/form-screen", () => ({
-  FormScreen: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
-vi.mock("@/components/settings/settings-row", () => ({
-  SettingsSection: ({ children }: { children: ReactNode }) => <section>{children}</section>,
-  SettingsRow: ({ label, detail, onPress }: { label: string; detail?: string; onPress?: () => void }) => (
-    <button type="button" onClick={onPress}>
-      {label} {detail}
-    </button>
-  ),
-}));
+vi.mock("@/components/settings/form-screen", async () => {
+  const { View } = await import("react-native");
+  return { FormScreen: ({ children }: { children: ReactNode }) => <View>{children}</View> };
+});
+vi.mock("@/components/settings/settings-row", async () => {
+  const { Pressable, Text, View } = await import("react-native");
+  return {
+    SettingsSection: ({ children }: { children: ReactNode }) => <View>{children}</View>,
+    SettingsRow: ({ label, detail, onPress }: { label: string; detail?: string; onPress?: () => void }) => (
+      <Pressable role="button" onPress={onPress}>
+        <Text>
+          {label} {detail}
+        </Text>
+      </Pressable>
+    ),
+  };
+});
 vi.mock("@/components/ui/badge", () => ({ Badge: () => null }));
-vi.mock("@/components/ui/button", () => ({
-  Button: ({ children }: { children: ReactNode }) => <span>{children}</span>,
-}));
-vi.mock("@/components/ui/spinner", () => ({ Spinner: () => <progress /> }));
-vi.mock("@/components/ui/text", () => ({
-  Text: ({ children }: { children: ReactNode }) => <span>{children}</span>,
-}));
+vi.mock("@/components/ui/button", async () => {
+  const { Text } = await import("react-native");
+  return { Button: ({ children }: { children: ReactNode }) => <Text>{children}</Text> };
+});
+vi.mock("@/components/ui/spinner", async () => ({ Spinner: (await import("react-native")).ActivityIndicator }));
+vi.mock("@/components/ui/text", async () => {
+  const { Text } = await import("react-native");
+  return { Text: ({ children }: { children: ReactNode }) => <Text>{children}</Text> };
+});
 
-function renderScreen() {
+async function renderScreen() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  return await render(
     <QueryClientProvider client={client}>
       <AccountSettings />
     </QueryClientProvider>,
@@ -64,16 +71,16 @@ beforeEach(() => {
 describe("signed-in devices", () => {
   test("a sign-in older than a day asks for the password instead of an empty card", async () => {
     listSessions.mockResolvedValue({ error: { code: "SESSION_NOT_FRESH", message: "Session is not fresh" } });
-    renderScreen();
+    await renderScreen();
 
-    fireEvent.click(await screen.findByRole("button", { name: /confirm it's you/i }));
+    await fireEvent.press(await screen.findByRole("button", { name: /confirm it's you/i }));
 
     expect(push).toHaveBeenCalledExactlyOnceWith("/settings/confirm-password");
   });
 
   test("any other failure says so instead of an empty card", async () => {
     listSessions.mockResolvedValue({ error: { code: "INTERNAL", message: "Database is down" } });
-    renderScreen();
+    await renderScreen();
 
     expect(await screen.findByText(/database is down/i)).toBeTruthy();
     expect(screen.queryByRole("button", { name: /confirm it's you/i })).toBeNull();
@@ -83,7 +90,7 @@ describe("signed-in devices", () => {
     listSessions.mockResolvedValue({
       data: [session("here", "Omicron/0.1.0 (Android 16)"), session("there", "Mozilla/5.0 (Windows NT 10.0) Chrome/1")],
     });
-    renderScreen();
+    await renderScreen();
 
     expect(await screen.findByRole("button", { name: /this device/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /chrome on windows/i })).toBeTruthy();

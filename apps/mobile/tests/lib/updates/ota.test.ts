@@ -1,11 +1,10 @@
-// @vitest-environment happy-dom
 // oxlint-disable typescript/no-unsafe-type-assertion, typescript/unbound-method -- deliberately partial test doubles
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react-native";
 import * as Updates from "expo-updates";
 import { AppState } from "react-native";
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, type MockInstance, test, vi } from "vitest";
 import { toasts } from "@/lib/dialogs/toast";
 import { downloadLatestUpdate, isCheckDue, shouldDismissSwipe, useOtaUpdate } from "@/lib/updates/ota";
 
@@ -27,7 +26,7 @@ vi.mock("expo-updates", () => ({
 const check = vi.mocked(Updates.checkForUpdateAsync);
 const fetchUpdate = vi.mocked(Updates.fetchUpdateAsync);
 const reload = vi.mocked(Updates.reloadAsync);
-const listen = vi.mocked(AppState.addEventListener);
+let listen: MockInstance<typeof AppState.addEventListener>;
 
 const MINUTE = 60_000;
 const pending = (updateId: string | undefined) => ({ isUpdatePending: true, downloadedUpdate: { updateId } });
@@ -39,7 +38,7 @@ function comeBack() {
 }
 
 // Only EAS Build adds a channel on its own; without one the update server answers every check with a 400.
-test("builds made outside EAS still ask for an update channel", () => {
+test("builds made outside EAS still ask for an update channel", async () => {
   expect(readFileSync(resolve("app.config.ts"), "utf8")).toContain(
     'requestHeaders: { "expo-channel-name": IS_DEV ? "development" : "production" }',
   );
@@ -54,35 +53,36 @@ beforeEach(() => {
   fetchUpdate.mockResolvedValue({} as never);
   reload.mockResolvedValue(undefined);
   toasts.set([]);
+  listen = vi.spyOn(AppState, "addEventListener").mockReturnValue({ remove: vi.fn<() => void>() });
 });
 
 describe("isCheckDue", () => {
   const now = 100 * MINUTE;
 
-  test("is due when nothing was checked since launch", () => {
+  test("is due when nothing was checked since launch", async () => {
     expect(isCheckDue(undefined, now)).toBe(true);
   });
 
-  test("waits half an hour after a check", () => {
+  test("waits half an hour after a check", async () => {
     expect(isCheckDue(new Date(now - 29 * MINUTE), now)).toBe(false);
     expect(isCheckDue(new Date(now - 30 * MINUTE), now)).toBe(true);
   });
 });
 
 describe("shouldDismissSwipe", () => {
-  test("a long enough downward drag dismisses", () => {
+  test("a long enough downward drag dismisses", async () => {
     expect(shouldDismissSwipe(40, 0)).toBe(true);
   });
 
-  test("a short downward flick dismisses", () => {
+  test("a short downward flick dismisses", async () => {
     expect(shouldDismissSwipe(10, 600)).toBe(true);
   });
 
-  test("a short slow drag springs back", () => {
+  test("a short slow drag springs back", async () => {
     expect(shouldDismissSwipe(39, 100)).toBe(false);
   });
 
-  test("flicking back up after dragging down doesn't count as a flick down", () => {
+  test("flicking back up after dragging down doesn't count as a flick down", async () => {
     expect(shouldDismissSwipe(20, -800)).toBe(false);
   });
 });
@@ -118,46 +118,46 @@ describe("downloadLatestUpdate", () => {
 });
 
 describe("useOtaUpdate", () => {
-  test("hides while no update is pending", () => {
-    const { result } = renderHook(() => useOtaUpdate());
+  test("hides while no update is pending", async () => {
+    const { result } = await renderHook(() => useOtaUpdate());
     expect(result.current.visible).toBe(false);
   });
 
-  test("shows once an update is downloaded, and never reloads by itself", () => {
+  test("shows once an update is downloaded, and never reloads by itself", async () => {
     state.updates = pending("a");
-    const { result } = renderHook(() => useOtaUpdate());
+    const { result } = await renderHook(() => useOtaUpdate());
     expect(result.current.visible).toBe(true);
     expect(reload).not.toHaveBeenCalled();
   });
 
-  test("shows for a rollback, which has no id", () => {
+  test("shows for a rollback, which has no id", async () => {
     state.updates = pending(undefined);
-    const { result } = renderHook(() => useOtaUpdate());
+    const { result } = await renderHook(() => useOtaUpdate());
     expect(result.current.visible).toBe(true);
   });
 
-  test("dismissing hides it without restarting", () => {
+  test("dismissing hides it without restarting", async () => {
     state.updates = pending("a");
-    const { result, rerender } = renderHook(() => useOtaUpdate());
-    act(() => result.current.dismiss());
-    rerender();
+    const { result, rerender } = await renderHook(() => useOtaUpdate());
+    await act(() => result.current.dismiss());
+    await rerender({});
     expect(result.current.visible).toBe(false);
     expect(reload).not.toHaveBeenCalled();
   });
 
-  test("a newer update shows again after the last one was dismissed", () => {
+  test("a newer update shows again after the last one was dismissed", async () => {
     state.updates = pending("a");
-    const { result, rerender } = renderHook(() => useOtaUpdate());
-    act(() => result.current.dismiss());
+    const { result, rerender } = await renderHook(() => useOtaUpdate());
+    await act(() => result.current.dismiss());
     state.updates = pending("b");
-    rerender();
+    await rerender({});
     expect(result.current.visible).toBe(true);
   });
 
-  test("restart reloads into the update", () => {
+  test("restart reloads into the update", async () => {
     state.updates = pending("a");
-    const { result } = renderHook(() => useOtaUpdate());
-    act(() => result.current.restart());
+    const { result } = await renderHook(() => useOtaUpdate());
+    await act(() => result.current.restart());
     expect(reload).toHaveBeenCalledOnce();
     expect(result.current.restarting).toBe(true);
   });
@@ -165,47 +165,47 @@ describe("useOtaUpdate", () => {
   test("a failed restart says so and lets them try again", async () => {
     reload.mockRejectedValue(new Error("no"));
     state.updates = pending("a");
-    const { result } = renderHook(() => useOtaUpdate());
+    const { result } = await renderHook(() => useOtaUpdate());
     await act(async () => result.current.restart());
     expect(result.current.restarting).toBe(false);
     expect(toasts.get()).toMatchObject([{ tone: "error" }]);
   });
 
-  test("coming back checks again when one is due", () => {
+  test("coming back checks again when one is due", async () => {
     state.updates = { lastCheckForUpdateTimeSinceRestart: new Date(Date.now() - 31 * MINUTE) };
-    renderHook(() => useOtaUpdate());
+    await renderHook(() => useOtaUpdate());
     comeBack();
     expect(check).toHaveBeenCalledOnce();
   });
 
-  test("coming back soon after a check leaves it", () => {
+  test("coming back soon after a check leaves it", async () => {
     state.updates = { lastCheckForUpdateTimeSinceRestart: new Date(Date.now() - MINUTE) };
-    renderHook(() => useOtaUpdate());
+    await renderHook(() => useOtaUpdate());
     comeBack();
     expect(check).not.toHaveBeenCalled();
   });
 
   test.each(["isChecking", "isDownloading", "isStartupProcedureRunning"])(
     "coming back while %s doesn't start a second check",
-    (flag) => {
+    async (flag) => {
       state.updates = { [flag]: true };
-      renderHook(() => useOtaUpdate());
+      await renderHook(() => useOtaUpdate());
       comeBack();
       expect(check).not.toHaveBeenCalled();
     },
   );
 
-  test("does nothing in a build with updates off, as in development", () => {
+  test("does nothing in a build with updates off, as in development", async () => {
     state.isEnabled = false;
-    renderHook(() => useOtaUpdate());
+    await renderHook(() => useOtaUpdate());
     expect(listen).not.toHaveBeenCalled();
   });
 
-  test("stops listening on unmount", () => {
+  test("stops listening on unmount", async () => {
     const remove = vi.fn<() => void>();
     listen.mockReturnValueOnce({ remove });
-    const { unmount } = renderHook(() => useOtaUpdate());
-    unmount();
+    const { unmount } = await renderHook(() => useOtaUpdate());
+    await unmount();
     expect(remove).toHaveBeenCalledOnce();
   });
 });
