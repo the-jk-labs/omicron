@@ -25,6 +25,8 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["./tests/setup.ts"],
     fsModuleCache: true,
+    // Real React Native: a file's first render or typeset can pass 5 s on a loaded or cold-cache run (CI).
+    testTimeout: 15_000,
     mockReset: true,
     restoreMocks: true,
     unstubGlobals: true,
