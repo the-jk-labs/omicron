@@ -201,6 +201,7 @@ const fixtures: Record<string, unknown> = {
   "/api/admin/reports": { reports: [report], openCount: 1 },
   "/api/admin/users": { users: [member], nextCursor: null, total: 1, filteredTotal: 1 },
   "/api/admin/users/deleted": { users: [], nextCursor: null, total: 0, filteredTotal: 0 },
+  "/api/admin/email-change-requests": { items: [] },
   "/api/admin/domains": {
     domains: [
       { domain: "spam.example", reason: "Spam", severity: "suspend", createdAt: TIME },
@@ -259,7 +260,7 @@ const fixtures: Record<string, unknown> = {
     relay: { provider: "resend", hasApiKey: false },
     dkim: { selector: "omicron", hasKey: false },
   },
-  "/api/admin/security": { anubisProtection: false, anubisManaged: false },
+  "/api/admin/security": { anubisProtection: false, anubisManaged: false, staffTwoFactorRequired: true },
   "/api/admin/security/access-rules": { rules: [] },
   "/api/admin/seo": { indexingEnabled: true, verification: {}, indexNowKey: null },
   "/api/admin/unsplash": { configured: false },
