@@ -10,7 +10,26 @@ import {
   SETTING_KEYS,
   setFederationNetwork,
   setOnInstanceViewsEnabled,
+  setStaffTwoFactorRequired,
+  staffTwoFactorRequired,
+  twoFactorRequiredFor,
 } from "@/services/settings.ts";
+
+test("moderators and admins need two-factor sign-in unless an admin turns it off", async () => {
+  vi.mocked(settingsRepo.get).mockResolvedValue(undefined);
+  expect(await staffTwoFactorRequired()).toBe(true);
+  vi.mocked(settingsRepo.get).mockResolvedValue(false);
+  expect(await staffTwoFactorRequired()).toBe(false);
+  await setStaffTwoFactorRequired(false);
+  expect(settingsRepo.set).toHaveBeenCalledWith("security.staffTwoFactorRequired", false);
+});
+
+test("only moderators and admins are ever required to use it", async () => {
+  vi.mocked(settingsRepo.get).mockResolvedValue(undefined);
+  expect(await twoFactorRequiredFor({ isAdmin: false, isModerator: false })).toBe(false);
+  expect(await twoFactorRequiredFor({ isAdmin: false, isModerator: true })).toBe(true);
+  expect(await twoFactorRequiredFor({ isAdmin: true, isModerator: false })).toBe(true);
+});
 
 test("on-instance view counting is on by default", async () => {
   vi.mocked(settingsRepo.get).mockResolvedValue(undefined);

@@ -50,6 +50,10 @@ export const Me = z.extend(User, {
   email: z.string(),
   emailVerified: z.boolean(),
   showAiAssistedPosts: z.boolean(),
+  /** A password sign-in also asks for an authenticator-app code. */
+  twoFactorEnabled: z.boolean(),
+  /** A moderator or admin on an instance that requires them to use two-factor sign-in. */
+  twoFactorRequired: z.boolean(),
 });
 export type Me = z.infer<typeof Me>;
 
@@ -340,6 +344,8 @@ export const NotificationType = z.enum([
   "recommend",
   /** The reader's own scheduled post went live: the only type with no actor. */
   "post_published",
+  /** Admins only: a moderator (the actor) asked to change an account's login email, for review in the admin panel. */
+  "email_change_request",
 ]);
 export type NotificationType = z.infer<typeof NotificationType>;
 
@@ -491,7 +497,12 @@ export const UmamiSettings = z.object({ enabled: z.boolean(), websiteId: z.strin
 export type UmamiSettings = z.infer<typeof UmamiSettings>;
 
 /** The AI-scraper wall (Anubis); `anubisManaged` is false when this deployment can't toggle it. */
-export const SecuritySettings = z.object({ anubisProtection: z.boolean(), anubisManaged: z.boolean() });
+export const SecuritySettings = z.object({
+  anubisProtection: z.boolean(),
+  anubisManaged: z.boolean(),
+  /** Moderators and admins must use two-factor sign-in before they may moderate. */
+  staffTwoFactorRequired: z.boolean(),
+});
 export type SecuritySettings = z.infer<typeof SecuritySettings>;
 
 const RuleAction = z.enum(["allow", "block"]);
@@ -671,12 +682,26 @@ export const AdminUser = z.object({
   isModerator: z.boolean(),
   email: z.string(),
   emailVerified: z.boolean(),
+  twoFactorEnabled: z.boolean(),
   suspended: z.boolean(),
   /** Frozen by a moderator: a reversible hold, shown as deactivated. */
   frozen: z.boolean(),
   createdAt: z.string(),
 });
 export type AdminUser = z.infer<typeof AdminUser>;
+
+/** A moderator's proposed login email for an account, waiting for an admin to approve or decline it. */
+export const EmailChangeRequest = z.object({
+  id: z.string(),
+  user: z.object({ id: z.string(), username: z.string(), displayName: z.string(), email: z.string() }),
+  /** Null once the moderator's own account is gone. */
+  requestedBy: z.nullable(z.object({ id: z.string(), username: z.string(), displayName: z.string() })),
+  newEmail: z.string(),
+  createdAt: z.string(),
+});
+export type EmailChangeRequest = z.infer<typeof EmailChangeRequest>;
+
+export const EmailChangeRequestList = z.object({ items: z.array(EmailChangeRequest) });
 
 /** A defederated domain; blocking one also blocks its subdomains. */
 /** `suspend` cuts the domain off; `limit` keeps federating but hides it from Global, Trending and auto-caching. */

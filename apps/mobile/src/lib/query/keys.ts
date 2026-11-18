@@ -52,5 +52,6 @@ export const queryKeys = {
 
   adminReports: (status: "open" | "resolved") => ["admin-reports", status] as const,
   adminUsers: (q: string, filter: string) => ["admin-users", q, filter] as const,
+  adminEmailChanges: ["admin-email-changes"] as const,
   adminUser: (id: string) => ["admin-user", id] as const,
 };

@@ -5,13 +5,13 @@ import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
-import { emailOTP, haveIBeenPwned, jwt, username } from "better-auth/plugins";
+import { emailOTP, haveIBeenPwned, jwt, twoFactor, username } from "better-auth/plugins";
 import { authRateLimitStorage } from "@/auth/rateLimit.ts";
 import { config } from "@/config.ts";
 import { db } from "@/db/client.ts";
 import * as passkeysRepo from "@/db/repositories/passkeys.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
-import { accounts, jwks, type Passkey, passkeys, sessions, users, verifications } from "@/db/schema.ts";
+import { accounts, jwks, type Passkey, passkeys, sessions, twoFactors, users, verifications } from "@/db/schema.ts";
 import { androidOrigins } from "@/lib/androidApp.ts";
 import { queue } from "@/queue/queue.ts";
 import {
@@ -25,12 +25,27 @@ import { createUndoLink } from "@/services/emailChange.ts";
 import { getAppName, getOrigin } from "@/services/instanceSetup.ts";
 import * as invites from "@/services/invites.ts";
 import { completeRollover } from "@/services/jwtKeys.ts";
+import { staffTwoFactorRequired } from "@/services/settings.ts";
 
 const inviteRequired = (status: "FORBIDDEN" | "CONFLICT" = "FORBIDDEN") =>
   new APIError(status, {
     code: "INVITE_REQUIRED",
     message: "This instance is invite-only, and that invite isn't valid or has been used.",
   });
+
+// The account a sign-in's pending second step belongs to, from the plugin's signed cookie.
+async function pendingTwoFactorUserId(ctx: {
+  context: {
+    secret: string;
+    createAuthCookie: (name: string) => { name: string };
+    internalAdapter: { findVerificationValue: (id: string) => Promise<{ value: string } | null> };
+  };
+  getSignedCookie: (name: string, secret: string) => Promise<string | null | false>;
+}): Promise<string | undefined> {
+  const identifier = await ctx.getSignedCookie(ctx.context.createAuthCookie("two_factor").name, ctx.context.secret);
+  if (!identifier) return undefined;
+  return (await ctx.context.internalAdapter.findVerificationValue(identifier))?.value;
+}
 
 const BCRYPT_COST = 12;
 const MINUTE_S = 60;
@@ -51,7 +66,20 @@ const AUTHORITATIVE_SESSION_PATHS = new Set([
   "/passkey/list-user-passkeys",
   "/passkey/update-passkey",
   "/passkey/delete-passkey",
+  "/two-factor/enable",
+  "/two-factor/disable",
+  "/two-factor/get-totp-uri",
+  "/two-factor/generate-backup-codes",
 ]);
+
+const isStaff = (user: Record<string, unknown>) => user.isAdmin === true || user.isModerator === true;
+
+// Staff recover a lost authenticator through an admin or the server CLI, never a backup code.
+const noStaffBackupCodes = () =>
+  new APIError("FORBIDDEN", {
+    code: "BACKUP_CODES_NOT_FOR_STAFF",
+    message: "Moderators and admins can't use backup codes. Ask an admin to reset two-factor authentication.",
+  });
 
 // The settings dialog re-checks the password by signing in again right before
 // an email change, so the change endpoints only take a session that new.
@@ -75,7 +103,15 @@ export const auth = betterAuth({
   secret: config.SESSION_SECRET,
   database: drizzleAdapter(db, {
     provider: "pg",
-    schema: { user: users, session: sessions, account: accounts, verification: verifications, passkey: passkeys, jwks },
+    schema: {
+      user: users,
+      session: sessions,
+      account: accounts,
+      verification: verifications,
+      passkey: passkeys,
+      jwks,
+      twoFactor: twoFactors,
+    },
   }),
   plugins: [
     jwt({
@@ -110,6 +146,8 @@ export const auth = betterAuth({
           Promise.resolve({ name: getAuthenticatorName(verification.registrationInfo?.aaguid) }),
       },
     }),
+    // Authenticator apps only: an emailed code is only as safe as the inbox (its paths are disabled below).
+    twoFactor({ totpOptions: { digits: 6, period: 30 } }),
     expo(),
   ],
   disabledPaths: [
@@ -120,6 +158,8 @@ export const auth = betterAuth({
     "/email-otp/request-password-reset",
     "/email-otp/reset-password",
     "/forget-password/email-otp",
+    "/two-factor/send-otp",
+    "/two-factor/verify-otp",
   ],
   advanced: {
     database: { generateId: "uuid" },
@@ -135,11 +175,16 @@ export const auth = betterAuth({
       "/sign-in/username": { window: 15 * MINUTE_S, max: config.RL_LOGIN_MAX },
       "/sign-in/email": { window: 15 * MINUTE_S, max: config.RL_LOGIN_MAX },
       "/sign-up/email": { window: HOUR_S, max: config.RL_REGISTER_MAX },
-      // A six-digit code.
+      // A six-digit code; the plugin also locks the account after 10 misses in a row.
+      "/two-factor/verify-totp": { window: 15 * MINUTE_S, max: 10 },
+      "/two-factor/verify-backup-code": { window: 15 * MINUTE_S, max: 10 },
       "/email-otp/change-email": { window: 15 * MINUTE_S, max: 10 },
       // Each re-checks the password of a signed-in account.
       "/change-password": { window: HOUR_S, max: 10 },
       "/delete-user": { window: HOUR_S, max: 10 },
+      "/two-factor/enable": { window: HOUR_S, max: 10 },
+      "/two-factor/disable": { window: HOUR_S, max: 10 },
+      "/two-factor/generate-backup-codes": { window: HOUR_S, max: 10 },
       // Each mails an address the requester picks.
       "/request-password-reset": { window: HOUR_S, max: 5 },
       "/send-verification-email": { window: HOUR_S, max: 5 },
@@ -177,6 +222,32 @@ export const auth = betterAuth({
             ...(typeof handle === "string" && { query: { ...ctx.query, name: handle } }),
           },
         };
+      }
+      if (ctx.path.startsWith("/two-factor/")) {
+        const session = await getSessionFromCtx(ctx);
+        if (ctx.path === "/two-factor/generate-backup-codes" && session && isStaff(session.user)) {
+          throw noStaffBackupCodes();
+        }
+        if (ctx.path === "/two-factor/verify-backup-code") {
+          const userId = session?.user.id ?? (await pendingTwoFactorUserId(ctx));
+          const user = userId ? await usersRepo.findById(userId) : undefined;
+          if (user && isStaff(user)) throw noStaffBackupCodes();
+        }
+        if (
+          ctx.path === "/two-factor/disable" &&
+          session &&
+          isStaff(session.user) &&
+          (await staffTwoFactorRequired())
+        ) {
+          throw new APIError("FORBIDDEN", {
+            code: "TWO_FACTOR_REQUIRED",
+            message: "Moderators and admins must keep two-factor authentication on.",
+          });
+        }
+        // The authenticator app labels the account with the instance's live name.
+        return ctx.path === "/two-factor/enable"
+          ? { context: { context: { appName: await getAppName() } } }
+          : undefined;
       }
       if (EMAIL_CHANGE_PATHS.has(ctx.path)) {
         const session = await getSessionFromCtx(ctx);
@@ -224,6 +295,10 @@ export const auth = betterAuth({
       } else if (ctx.path === "/passkey/delete-passkey" && ctx.request) {
         const removed = deletingPasskeys.get(ctx.request);
         if (removed) await notifyPasskeyChanged("removed", removed.userId, removed.name);
+      } else if (ctx.path === "/two-factor/enable") {
+        // Staff get no backup codes (see noStaffBackupCodes), so they never see any.
+        const session = await getSessionFromCtx(ctx);
+        if (session && isStaff(session.user)) return ctx.json({ ...returned, backupCodes: [] });
       } else if (ctx.path === "/email-otp/change-email" && ctx.request) {
         const from = changingEmail.get(ctx.request);
         const newEmail = String(ctx.body?.newEmail ?? "")

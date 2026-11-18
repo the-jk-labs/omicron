@@ -13,7 +13,9 @@ test("accessibility: login", async () => {
 
 const auth = vi.hoisted(() => ({
   email: vi.fn<(a: unknown) => Promise<{ error?: { message?: string; code?: string } | null }>>(),
-  username: vi.fn<(a: unknown) => Promise<{ error?: { message?: string; code?: string } | null }>>(),
+  username: vi.fn<(a: unknown) => Promise<{ data?: unknown; error?: { message?: string; code?: string } | null }>>(),
+  verifyTotp: vi.fn<(a: unknown) => Promise<{ error?: { message?: string; code?: string } | null }>>(),
+  verifyBackupCode: vi.fn<(a: unknown) => Promise<{ error?: { message?: string; code?: string } | null }>>(),
   sendVerificationEmail: vi.fn<(a: unknown) => Promise<{ error?: { message?: string } | null }>>(),
   passkey: vi.fn<(a?: unknown) => Promise<{ data?: unknown; error?: { message?: string; code?: string } | null }>>(),
 }));
@@ -21,6 +23,7 @@ vi.mock("#lib/auth-client.js", () => ({
   authClient: {
     signIn: { email: auth.email, username: auth.username, passkey: auth.passkey },
     sendVerificationEmail: auth.sendVerificationEmail,
+    twoFactor: { verifyTotp: auth.verifyTotp, verifyBackupCode: auth.verifyBackupCode },
   },
 }));
 
@@ -172,5 +175,87 @@ describe("passkeys", () => {
     await fireEvent.click(await screen.findByRole("button", { name: "Sign in with a passkey" }));
     await screen.findByText("This account has been suspended.");
     expect(goto).not.toHaveBeenCalled();
+  });
+});
+
+const challenge = { data: { twoFactorRedirect: true, twoFactorMethods: ["totp"] }, error: null };
+const codeField = () => screen.getByLabelText("Code from your authenticator app");
+
+describe("two-factor sign-in", () => {
+  test("a password sign-in on an account with two-factor asks for the app's code, then signs in", async () => {
+    auth.username.mockResolvedValue(challenge);
+    auth.verifyTotp.mockResolvedValue({ error: null });
+    render(LoginPage);
+    await signIn("ada");
+    expect(goto).not.toHaveBeenCalled();
+    await fireEvent.input(await waitFor(codeField), { target: { value: "12 34-56" } });
+    expect(codeField()).toHaveValue("123456");
+    await fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+    await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
+    expect(auth.verifyTotp).toHaveBeenCalledWith({ code: "123456" });
+  });
+
+  test("a password manager can fill the code for the login it saved", async () => {
+    auth.username.mockResolvedValue(challenge);
+    render(LoginPage);
+    await signIn("ada");
+    const code = await waitFor(codeField);
+    expect(code).toHaveAttribute("autocomplete", "one-time-code");
+    for (const ignore of ["data-1p-ignore", "data-lpignore", "data-bwignore"]) expect(code).not.toHaveAttribute(ignore);
+    expect(code.closest("form")?.querySelector('input[autocomplete="username"]')).toHaveValue("ada");
+  });
+
+  test("Verify waits for all six digits", async () => {
+    auth.username.mockResolvedValue(challenge);
+    render(LoginPage);
+    await signIn("ada");
+    await fireEvent.input(await waitFor(codeField), { target: { value: "123" } });
+    expect(screen.getByRole("button", { name: "Verify" })).toBeDisabled();
+  });
+
+  test("a wrong code says so and stays on the code step", async () => {
+    auth.username.mockResolvedValue(challenge);
+    auth.verifyTotp.mockResolvedValue({ error: { code: "INVALID_CODE", message: "Invalid code" } });
+    render(LoginPage);
+    await signIn("ada");
+    await fireEvent.input(await waitFor(codeField), { target: { value: "000000" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+    await screen.findByText("That code didn't work. Check your authenticator app and try again.");
+    expect(codeField()).toBeInTheDocument();
+    expect(goto).not.toHaveBeenCalled();
+  });
+
+  test("a backup code can stand in for the app", async () => {
+    auth.username.mockResolvedValue(challenge);
+    auth.verifyBackupCode.mockResolvedValue({ error: null });
+    render(LoginPage);
+    await signIn("ada");
+    await fireEvent.click(await screen.findByRole("button", { name: "Use a backup code" }));
+    await fireEvent.input(screen.getByLabelText("Backup code"), { target: { value: "abcde-12345" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+    await waitFor(() => expect(goto).toHaveBeenCalledWith("/"));
+    expect(auth.verifyBackupCode).toHaveBeenCalledWith({ code: "abcde-12345" });
+  });
+
+  test("a moderator's backup code is refused with the way back in", async () => {
+    auth.username.mockResolvedValue(challenge);
+    auth.verifyBackupCode.mockResolvedValue({ error: { code: "BACKUP_CODES_NOT_FOR_STAFF", message: "x" } });
+    render(LoginPage);
+    await signIn("ada");
+    await fireEvent.click(await screen.findByRole("button", { name: "Use a backup code" }));
+    await fireEvent.input(screen.getByLabelText("Backup code"), { target: { value: "abcde-12345" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+    await screen.findByText(/Ask an admin to reset your two-factor authentication/);
+  });
+
+  test("an expired second step goes back to the password", async () => {
+    auth.username.mockResolvedValue(challenge);
+    auth.verifyTotp.mockResolvedValue({ error: { code: "INVALID_TWO_FACTOR_COOKIE" } });
+    render(LoginPage);
+    await signIn("ada");
+    await fireEvent.input(await waitFor(codeField), { target: { value: "123456" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+    await screen.findByText("This sign-in took too long. Enter your password again.");
+    expect(screen.getByLabelText("Password")).toHaveValue("");
   });
 });

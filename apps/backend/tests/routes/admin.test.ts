@@ -45,6 +45,7 @@ const routes: Route[] = [
   ["PUT", "/umami", { enabled: true, websiteId: UUID }, "admin"],
   ["GET", "/security", undefined, "admin"],
   ["PUT", "/security/anubis", { anubisProtection: true }, "admin"],
+  ["PUT", "/security/staff-two-factor", { required: false }, "admin"],
   ["GET", "/security/access-rules", undefined, "admin"],
   ["POST", "/security/access-rules", { network: "192.0.2.1", action: "block", expiresInHours: 24 }, "admin"],
   ["PATCH", `/security/access-rules/${UUID}`, { enabled: false }, "admin"],
@@ -99,6 +100,11 @@ const routes: Route[] = [
   ["DELETE", `/users/${UUID}/avatar`, undefined, "moderator"],
   ["POST", `/users/${UUID}/verification-email`, undefined, "moderator"],
   ["POST", `/users/${UUID}/verify`, undefined, "moderator"],
+  ["POST", `/users/${UUID}/email-change-requests`, { email: "new@x.test" }, "moderator"],
+  ["GET", "/email-change-requests", undefined, "admin"],
+  ["POST", `/email-change-requests/${UUID}/approve`, undefined, "admin"],
+  ["DELETE", `/email-change-requests/${UUID}`, undefined, "admin"],
+  ["DELETE", `/users/${UUID}/two-factor`, undefined, "admin"],
   ["DELETE", `/posts/${UUID}`, undefined, "moderator"],
   ["POST", `/posts/${UUID}/ai-assisted`, undefined, "moderator"],
   ["DELETE", `/posts/${UUID}/ai-assisted`, undefined, "moderator"],
@@ -130,6 +136,9 @@ beforeEach(() => {
     links: [],
   });
   vi.mocked(moderation.updateUserDetails).mockResolvedValue(userRow());
+  vi.mocked(moderation.approveEmailChange).mockResolvedValue(userRow());
+  vi.mocked(moderation.resetTwoFactor).mockResolvedValue(userRow());
+  vi.mocked(moderation.listEmailChangeRequests).mockResolvedValue([]);
   vi.mocked(moderation.setUserAvatar).mockResolvedValue(userRow());
   vi.mocked(moderation.removeUserAvatar).mockResolvedValue(userRow());
   vi.mocked(moderation.listReports).mockResolvedValue([]);
@@ -189,6 +198,41 @@ describe("role boundary", () => {
 describe("admin endpoints", () => {
   beforeEach(() => {
     api.signIn({ id: "admin", isAdmin: true });
+  });
+
+  test("the review list shows the account, the new address and who asked", async () => {
+    vi.mocked(moderation.listEmailChangeRequests).mockResolvedValue([
+      {
+        request: {
+          id: "req",
+          userId: "u",
+          requestedBy: "m",
+          newEmail: "new@x.test",
+          createdAt: new Date("2026-11-01T00:00:00Z"),
+        },
+        user: { id: "u", username: "ada", displayName: "Ada", email: "ada@x.test" },
+        requester: { id: "m", username: "mod", displayName: "Mod" },
+      },
+    ]);
+    const res = await api.request("/api/admin/email-change-requests");
+    expect(await res.json()).toEqual({
+      items: [
+        {
+          id: "req",
+          user: { id: "u", username: "ada", displayName: "Ada", email: "ada@x.test" },
+          requestedBy: { id: "m", username: "mod", displayName: "Mod" },
+          newEmail: "new@x.test",
+          createdAt: "2026-11-01T00:00:00.000Z",
+        },
+      ],
+    });
+  });
+
+  test("turning the staff two-factor requirement off saves it", async () => {
+    vi.mocked(settings.staffTwoFactorRequired).mockResolvedValue(false);
+    const res = await api.json("/api/admin/security/staff-two-factor", "PUT", { required: false });
+    expect(settings.setStaffTwoFactorRequired).toHaveBeenCalledWith(false);
+    expect(await res.json()).toMatchObject({ staffTwoFactorRequired: false });
   });
 
   test("marking an AI-assisted post delegates only the post id and returns the disclosure", async () => {

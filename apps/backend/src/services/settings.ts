@@ -9,7 +9,23 @@ export const SETTING_KEYS = {
   inviteOnly: "signups.inviteOnly",
   federationNetwork: "federation.network",
   federationDiscovery: "federation.discovery",
+  staffTwoFactor: "security.staffTwoFactorRequired",
 } as const;
+
+// Whether moderators and admins must use two-factor sign-in to moderate. On by default: their
+// sessions can act on every account, so a stolen password alone must not be enough.
+export async function staffTwoFactorRequired(): Promise<boolean> {
+  return (await settingsRepo.get<boolean>(SETTING_KEYS.staffTwoFactor)) !== false;
+}
+
+export function setStaffTwoFactorRequired(required: boolean): Promise<void> {
+  return settingsRepo.set(SETTING_KEYS.staffTwoFactor, required);
+}
+
+// Whether this account has to turn two-factor on before it may moderate.
+export async function twoFactorRequiredFor(user: { isAdmin: boolean; isModerator: boolean }): Promise<boolean> {
+  return (user.isAdmin || user.isModerator) && (await staffTwoFactorRequired());
+}
 
 // Whether joining this instance takes an invite. Off by default: sign-up is open.
 export async function inviteOnlyEnabled(): Promise<boolean> {

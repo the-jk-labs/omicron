@@ -173,7 +173,9 @@ describe("the contract, at runtime", () => {
   });
 
   test("the account's own record and a public profile parse", () => {
-    expect(overTheWire(contract.MeResponse, { user: privateUser(userRow()) }).user?.email).toBe("ada@example.test");
+    expect(overTheWire(contract.MeResponse, { user: privateUser(userRow(), true) }).user?.email).toBe(
+      "ada@example.test",
+    );
     const profile = {
       user: publicUser(userRow(), [], [], { locked: false }),
       counts: { followers: 1, following: 2 },

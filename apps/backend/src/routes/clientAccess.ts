@@ -149,6 +149,7 @@ allow(
   "/admin/users/:id/password-reset",
   "/admin/users/:id/verification-email",
   "/admin/users/:id/verify",
+  "/admin/users/:id/email-change-requests",
   "/admin/posts/:id/ai-assisted",
   "/admin/reports/:id/resolve",
   "/admin/domains",
@@ -201,6 +202,12 @@ allow(
 );
 allow(null, "GET", "/instance/tls-check", "/site/script.js");
 allow(null, "POST", "/setup", "/setup/test-email", "/email-change/undo", "/site/api/send", "/webhooks/content");
+// What can hand an account to someone else, or switch off the staff two-factor
+// rule, needs a first-party session, not a delegated grant.
+allow(null, "GET", "/admin/email-change-requests");
+allow(null, "POST", "/admin/email-change-requests/:id/approve");
+allow(null, "PUT", "/admin/security/staff-two-factor");
+allow(null, "DELETE", "/admin/email-change-requests/:id", "/admin/users/:id/two-factor");
 // Bulk content transfer requires a first-party session, not a delegated grant.
 allow(null, "GET", "/content/export");
 allow(null, "POST", "/content/preview", "/content/import");

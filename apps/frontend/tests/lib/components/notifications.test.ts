@@ -19,6 +19,7 @@ const TYPES: Notification["type"][] = [
   "mention",
   "recommend",
   "post_published",
+  "email_change_request",
 ];
 
 function n(overrides: Partial<Notification>): Notification {
@@ -63,6 +64,16 @@ test.for([
   [{ type: "comment" }, "/posts/p1"],
   [{ type: "post_published", actor: null }, "/posts/p1"],
   [{ type: "like", postId: null }, null],
+  [{ type: "email_change_request", postId: null }, "/admin?tab=users"],
 ] as const)("%o links to %s", ([overrides, href]) => {
   expect(notificationHref(n(overrides as Partial<Notification>))).toBe(href);
+});
+
+// Shown only to admins: a moderator asked them to approve a new login email for an account.
+test("an email change request names the moderator and leads to the review list", () => {
+  const request = n({ type: "email_change_request", postId: null });
+  expect(notificationSubject(request)).toBe("Bob");
+  expect(notificationAction("email_change_request")).toBe("asked you to approve a login email change");
+  expect(notificationIcon("email_change_request")).toBe("mail");
+  expect(notificationSubject(n({ type: "email_change_request", actor: null }))).toBe("A moderator");
 });

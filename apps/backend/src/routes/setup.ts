@@ -11,6 +11,7 @@ import type { AppEnv } from "@/routes/types.ts";
 import { sendTestEmail } from "@/services/email.ts";
 import * as emailSettings from "@/services/emailSettings.ts";
 import * as setup from "@/services/instanceSetup.ts";
+import { twoFactorRequiredFor } from "@/services/settings.ts";
 
 // Public, unauthenticated snapshot of the instance's identity. Drives the
 // frontend chrome (app name) and the first-run setup gate.
@@ -106,7 +107,10 @@ setupRoutes.post("/", async (c) => {
   await setup.completeSetup({ appName, appDomain, email });
 
   const user = await usersRepo.findByUsername(admin.username.trim().toLowerCase());
-  return c.json({ user: user ? privateUser(user) : null } satisfies Reply<"MeResponse">, 201);
+  return c.json(
+    { user: user ? privateUser(user, await twoFactorRequiredFor(user)) : null } satisfies Reply<"MeResponse">,
+    201,
+  );
 });
 
 // Send a test email during the wizard so the operator can confirm SMTP works

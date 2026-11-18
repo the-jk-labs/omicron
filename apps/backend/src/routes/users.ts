@@ -18,6 +18,7 @@ import { hasScope } from "@/services/oauthScopes.ts";
 import * as postsService from "@/services/posts.ts";
 import * as recommendationsService from "@/services/recommendations.ts";
 import * as relationsService from "@/services/relations.ts";
+import { twoFactorRequiredFor } from "@/services/settings.ts";
 import * as usersService from "@/services/users.ts";
 import { MAX_AVATAR_BYTES, MAX_CUSTOM_SECTION_LEN } from "@/services/users.ts";
 
@@ -80,7 +81,9 @@ userRoutes.patch("/me/preferences", jsonBody(z.object({ showAiAssistedPosts: z.b
     return c.json({
       user: { ...publicUser(user), showAiAssistedPosts: user.showAiAssistedPosts },
     } satisfies Reply<"PreferencesResponse">);
-  return c.json({ user: privateUser(user) } satisfies Reply<"PreferencesResponse">);
+  return c.json({
+    user: privateUser(user, await twoFactorRequiredFor(user)),
+  } satisfies Reply<"PreferencesResponse">);
 });
 
 // Pending follow requests to the signed-in (private) user, and approve/reject.

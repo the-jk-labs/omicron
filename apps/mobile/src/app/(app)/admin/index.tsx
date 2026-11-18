@@ -1,14 +1,16 @@
 import { LegendList } from "@legendapp/list/react-native";
-import type { Report } from "@omicron/contract";
+import type { EmailChangeRequest, Report } from "@omicron/contract";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useMemo, useState } from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { TwoFactorSetup } from "@/components/auth/two-factor-setup";
 import { useApi, useInstance } from "@/components/instance-provider";
 import { Screen, ScreenHeader } from "@/components/layout/screen";
 import { UserAvatar } from "@/components/post/post-bits";
+import { FormScreen } from "@/components/settings/form-screen";
 import { Badge } from "@/components/ui/badge";
 import { Button, IconButton } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -31,9 +33,10 @@ import { queryKeys } from "@/lib/query/keys";
 type Section = "reports" | "users";
 
 /** Open reports, from the open list's own answer: the section tab and the filter chip share it. */
-function useOpenReportCount() {
+function useOpenReportCount(enabled: boolean) {
   const api = useApi();
   return useQuery({
+    enabled,
     queryKey: queryKeys.adminReports("open"),
     queryFn: () => api.adminReports("open"),
     select: (data) => data.openCount,
@@ -175,7 +178,7 @@ function Reports() {
   const insets = useSafeAreaInsets();
   const [status, setStatus] = useState<"open" | "resolved">("open");
   const query = useQuery({ queryKey: queryKeys.adminReports(status), queryFn: () => api.adminReports(status) });
-  const openCount = useOpenReportCount();
+  const openCount = useOpenReportCount(true);
   return (
     <LegendList
       key={status}
@@ -213,8 +216,86 @@ function Reports() {
   );
 }
 
+/** Admins only: login-email changes moderators asked for. Whoever holds the address can sign in as the account. */
+function EmailChangeRequests() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const query = useQuery({ queryKey: queryKeys.adminEmailChanges, queryFn: () => api.emailChangeRequests() });
+  const decide = useMutation({
+    mutationFn: async ({ request, approve }: { request: EmailChangeRequest; approve: boolean }) => {
+      const { confirmed } = await confirmDialog(
+        approve
+          ? {
+              title: `Change @${request.user.username}'s login email?`,
+              description: `It becomes ${request.newEmail}, unverified until they click the link sent there. Whoever holds the new address can sign in as this account, so approve only if you know it's theirs.`,
+              confirmText: "Approve",
+            }
+          : {
+              title: `Decline this change for @${request.user.username}?`,
+              description: `Their login email stays ${request.user.email}.`,
+              confirmText: "Decline",
+              destructive: true,
+            },
+      );
+      if (!confirmed) return null;
+      if (approve) await api.approveEmailChange(request.id);
+      else await api.declineEmailChange(request.id);
+      return approve;
+    },
+    onSuccess: (approved) => {
+      if (approved === null) return;
+      toast(approved ? "Login email changed" : "Change declined");
+      void queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith("admin") });
+    },
+    onError: (error) => toast(errorMessage(error), "error"),
+  });
+  const items = query.data?.items ?? [];
+  if (!items.length) return null;
+
+  return (
+    <View className="gap-2 px-4">
+      <Text size="sm" weight="semibold">
+        Login email changes awaiting approval
+      </Text>
+      {items.map((request) => (
+        <Card key={request.id} className="gap-2">
+          <Text weight="medium" numberOfLines={1}>
+            {request.user.displayName} <Text tone="muted">@{request.user.username}</Text>
+          </Text>
+          <Text size="sm" tone="muted" numberOfLines={2}>
+            {request.user.email} → <Text weight="medium">{request.newEmail}</Text>
+          </Text>
+          <Text size="xs" tone="muted">
+            Asked by {request.requestedBy ? `@${request.requestedBy.username}` : "a former moderator"} ·{" "}
+            {timeAgo(request.createdAt)}
+          </Text>
+          <View className="flex-row gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              disabled={decide.isPending}
+              onPress={() => decide.mutate({ request, approve: false })}
+            >
+              Decline
+            </Button>
+            <Button
+              variant="solid"
+              className="flex-1"
+              disabled={decide.isPending}
+              onPress={() => decide.mutate({ request, approve: true })}
+            >
+              Approve
+            </Button>
+          </View>
+        </Card>
+      ))}
+    </View>
+  );
+}
+
 function Users() {
   const api = useApi();
+  const { user: viewer } = useViewer();
   const insets = useSafeAreaInsets();
   const [text, setText] = useState("");
   const [filter, setFilter] = useState<UserFilter>("all");
@@ -269,6 +350,7 @@ function Users() {
       )}
       ListHeaderComponent={
         <View className="gap-3 border-b border-border py-3">
+          {viewer?.isAdmin && <EmailChangeRequests />}
           <View className="justify-center px-4">
             <Input
               value={text}
@@ -318,10 +400,28 @@ function Users() {
 /** Moderation: reports and accounts. The rest of /admin (instance, email, security…) opens on the web. */
 export default function Admin() {
   const { origin } = useInstance();
-  const { user } = useViewer();
+  const { user, refetch } = useViewer();
   const [section, setSection] = useState<Section>("reports");
-  const openCount = useOpenReportCount();
+  // The server refuses every moderation request until it's set up.
+  const needsTwoFactor = !!user?.twoFactorRequired && !user.twoFactorEnabled;
+  const openCount = useOpenReportCount(!needsTwoFactor);
   if (!user?.isAdmin && !user?.isModerator) return null;
+
+  if (needsTwoFactor) {
+    return (
+      <FormScreen title={user.isAdmin ? "Admin" : "Moderation"}>
+        <View className="gap-1">
+          <Text size="lg" weight="semibold">
+            Set up two-factor authentication
+          </Text>
+          <Text tone="muted">
+            This instance requires moderators and admins to sign in with a code from an authenticator app.
+          </Text>
+        </View>
+        <TwoFactorSetup staff onDone={() => void refetch()} />
+      </FormScreen>
+    );
+  }
 
   return (
     <Screen>

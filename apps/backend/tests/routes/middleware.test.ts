@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
-import { beforeEach, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { userRow } from "../fixtures.ts";
 
 const getSession = vi.hoisted(() => vi.fn<(a: { query?: { disableCookieCache?: boolean } }) => Promise<unknown>>());
@@ -8,6 +8,7 @@ const verifyJWT = vi.hoisted(() => vi.fn<(a: { body: { token: string } }) => Pro
 vi.mock("@/auth/auth.ts", () => ({ auth: { api: { getSession, verifyJWT } } }));
 vi.mock(import("@/db/repositories/users.ts"));
 vi.mock(import("@/services/instanceSetup.ts"));
+vi.mock(import("@/services/settings.ts"));
 vi.mock(import("@/services/oauth.ts"), async (importOriginal) => {
   const actual = await importOriginal();
   return { ...actual, accessIdentity: vi.fn<typeof actual.accessIdentity>() };
@@ -15,9 +16,10 @@ vi.mock(import("@/services/oauth.ts"), async (importOriginal) => {
 
 import * as usersRepo from "@/db/repositories/users.ts";
 import { handleError } from "@/lib/http.ts";
-import { sessionMiddleware } from "@/routes/middleware.ts";
+import { mayModerate, requireAdmin, requireModerator, sessionMiddleware } from "@/routes/middleware.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import { getOrigin } from "@/services/instanceSetup.ts";
+import { twoFactorRequiredFor } from "@/services/settings.ts";
 
 const origin = "https://blog.example.test";
 const app = new Hono<AppEnv>().onError(handleError);
@@ -167,4 +169,38 @@ test("anonymous writes are left to the endpoint's own authentication", async () 
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({ user: null });
   expect(getOrigin).not.toHaveBeenCalled();
+});
+
+describe("two-factor sign-in for moderators and admins", () => {
+  const staff = new Hono<AppEnv>().onError(handleError);
+  staff.use("/api/*", sessionMiddleware);
+  staff.get("/api/mod", (c) => c.json({ id: requireModerator(c).id }));
+  staff.get("/api/admin", (c) => c.json({ id: requireAdmin(c).id }));
+  staff.get("/api/may", (c) => c.json({ may: mayModerate(c) }));
+
+  const as = (overrides: Parameters<typeof userRow>[0], required: boolean) => {
+    vi.mocked(usersRepo.findById).mockResolvedValue(userRow({ id: "u1", ...overrides }));
+    vi.mocked(twoFactorRequiredFor).mockResolvedValue(required);
+  };
+
+  test("without it, a required moderator or admin is refused every moderation route", async () => {
+    as({ isAdmin: true }, true);
+    for (const path of ["/api/mod", "/api/admin"]) {
+      const res = await staff.request(path);
+      expect(res.status).toBe(403);
+      expect(await res.json()).toEqual({ error: "Set up two-factor authentication to use moderation tools." });
+    }
+    expect(await (await staff.request("/api/may")).json()).toEqual({ may: false });
+  });
+
+  test("with it on, they moderate as usual", async () => {
+    as({ isModerator: true, twoFactorEnabled: true }, true);
+    expect((await staff.request("/api/mod")).status).toBe(200);
+    expect(await (await staff.request("/api/may")).json()).toEqual({ may: true });
+  });
+
+  test("an instance that doesn't require it lets them moderate without it", async () => {
+    as({ isAdmin: true }, false);
+    expect((await staff.request("/api/admin")).status).toBe(200);
+  });
 });

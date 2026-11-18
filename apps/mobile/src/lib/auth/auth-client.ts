@@ -1,5 +1,5 @@
 import { expoClient } from "@better-auth/expo/client";
-import { emailOTPClient, usernameClient } from "better-auth/client/plugins";
+import { emailOTPClient, twoFactorClient, usernameClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 import { expoPasskeyClient } from "expo-better-auth-passkey";
 import * as SecureStore from "expo-secure-store";
@@ -36,6 +36,8 @@ export function createInstanceAuthClient(origin: string) {
       }),
       usernameClient(),
       emailOTPClient(),
+      // Authenticator-app codes only: the sign-in screen handles the second step itself.
+      twoFactorClient(),
     ],
   });
 }

@@ -67,5 +67,13 @@ export function makeUser(patch: Partial<User> = {}): User {
 }
 
 export function makeMe(patch: Partial<Me> = {}): Me {
-  return { ...makeUser(), email: "ada@example.test", emailVerified: true, showAiAssistedPosts: true, ...patch };
+  return {
+    ...makeUser(),
+    email: "ada@example.test",
+    emailVerified: true,
+    showAiAssistedPosts: true,
+    twoFactorEnabled: false,
+    twoFactorRequired: false,
+    ...patch,
+  };
 }

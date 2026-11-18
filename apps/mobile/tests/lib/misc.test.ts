@@ -57,6 +57,16 @@ describe("notifications", () => {
       "Your scheduled post is now live",
     );
   });
+
+  // Admins only: a moderator asked them to approve a new login email, reviewed on the moderation screen.
+  test("an email change request names the moderator and opens moderation", () => {
+    const request = { ...base, type: "email_change_request" as const, postId: null, postTitle: null };
+    expect(`${notificationSubject(request)} ${notificationAction(request.type)}`).toBe(
+      "Ada asked you to approve a login email change",
+    );
+    expect(notificationHref(request)).toBe("/admin");
+    expect(notificationSubject({ ...request, actor: null })).toBe("A moderator");
+  });
 });
 
 describe("toProfileData", () => {

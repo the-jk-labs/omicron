@@ -7,5 +7,7 @@ export type AppEnv = {
     user: User | null;
     oauthScopes?: string;
     oauthGrant?: { id: string; clientId: string };
+    /** A moderator or admin who hasn't set up the two-factor sign-in this instance requires of them. */
+    staffTwoFactorMissing?: boolean;
   };
 };

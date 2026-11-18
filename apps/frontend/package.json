@@ -41,7 +41,8 @@
     "compression": "1.8.2",
     "emoji-picker-element": "1.29.1",
     "highlight.js": "11.12.0",
-    "tiptap-markdown": "0.9.0"
+    "tiptap-markdown": "0.9.0",
+    "uqr": "0.1.3"
   },
   "devDependencies": {
     "@omicron/contract": "link:../../packages/contract",

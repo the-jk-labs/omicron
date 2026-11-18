@@ -6,6 +6,9 @@ import SignIn from "@/app/(app)/(auth)/sign-in";
 type AuthResult = { data?: unknown; error?: { code?: string; message?: string } | null };
 
 const signInPasskey = vi.fn<() => Promise<AuthResult>>();
+const signInUsername = vi.fn<(body: unknown) => Promise<AuthResult>>();
+const verifyTotp = vi.fn<(body: unknown) => Promise<AuthResult>>();
+const verifyBackupCode = vi.fn<(body: unknown) => Promise<AuthResult>>();
 const dismissTo = vi.fn<(href: string) => void>();
 const sessionChanged = vi.fn<() => Promise<void>>();
 let available = true;
@@ -19,7 +22,13 @@ vi.mock("expo-router", async () => {
   };
 });
 vi.mock("@/components/instance-provider", () => ({
-  useInstance: () => ({ name: "Omicron", auth: { signIn: { passkey: signInPasskey } } }),
+  useInstance: () => ({
+    name: "Omicron",
+    auth: {
+      signIn: { passkey: signInPasskey, username: signInUsername },
+      twoFactor: { verifyTotp, verifyBackupCode },
+    },
+  }),
 }));
 vi.mock("@/lib/auth/session", () => ({ useSessionChanged: () => sessionChanged }));
 vi.mock(import("@/lib/auth/passkeys"), async (original) => ({
@@ -39,16 +48,12 @@ vi.mock("@/components/auth/auth-shell", async () => {
       ) : null,
   };
 });
-vi.mock("@/components/auth/password-input", async () => {
-  const { TextInput } = await import("react-native");
-  return { PasswordInput: () => <TextInput aria-label="Password" /> };
-});
+vi.mock("@/components/auth/password-input", async () => ({
+  PasswordInput: (await import("../../support/field")).Input,
+}));
 vi.mock("@/components/ui/input", async () => {
-  const { TextInput, View } = await import("react-native");
-  return {
-    Field: ({ children }: { children: ReactNode }) => <View>{children}</View>,
-    Input: () => <TextInput aria-label="Username" />,
-  };
+  const { Field, Input } = await import("../../support/field");
+  return { Field, Input };
 });
 vi.mock("@/components/ui/button", async () => {
   const { Pressable, Text } = await import("react-native");
@@ -101,5 +106,63 @@ describe("signing in with a passkey", () => {
     await render(<SignIn />);
     await fireEvent.press(passkeyButton());
     expect(await screen.findByRole("alert")).toHaveTextContent(/couldn't find a passkey/i);
+  });
+});
+
+describe("two-factor sign-in", () => {
+  const challenge = { data: { twoFactorRedirect: true, twoFactorMethods: ["totp"] }, error: null };
+
+  async function passwordStep() {
+    signInUsername.mockResolvedValue(challenge);
+    await render(<SignIn />);
+    await fireEvent.changeText(screen.getByLabelText("Username or email"), "ada");
+    await fireEvent.changeText(screen.getByLabelText("Password"), "correct horse battery");
+    await fireEvent.press(screen.getByRole("button", { name: "Sign in" }));
+    return screen.findByLabelText("Code from your authenticator app");
+  }
+
+  test("a password on an account with two-factor asks for the app's code, then signs in", async () => {
+    verifyTotp.mockResolvedValue({ data: {}, error: null });
+    const code = await passwordStep();
+    expect(dismissTo).not.toHaveBeenCalled();
+    await fireEvent.changeText(code, "12 34-56");
+    await fireEvent.press(screen.getByRole("button", { name: "Verify" }));
+    await waitFor(() => expect(dismissTo).toHaveBeenCalledExactlyOnceWith("/"));
+    expect(verifyTotp).toHaveBeenCalledWith({ code: "123456" });
+    expect(sessionChanged).toHaveBeenCalledOnce();
+  });
+
+  // Android password managers (1Password, Bitwarden) and iOS fill a field marked as a one-time code.
+  test("the code field invites password managers to fill it", async () => {
+    const code = await passwordStep();
+    expect(code).toHaveProp("autoComplete", "one-time-code");
+    expect(code).toHaveProp("textContentType", "oneTimeCode");
+  });
+
+  test("a wrong code says so and stays on the code", async () => {
+    verifyTotp.mockResolvedValue({ error: { code: "INVALID_CODE" } });
+    await fireEvent.changeText(await passwordStep(), "000000");
+    await fireEvent.press(screen.getByRole("button", { name: "Verify" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/code didn't work/);
+    expect(screen.getByLabelText("Code from your authenticator app")).toBeOnTheScreen();
+    expect(dismissTo).not.toHaveBeenCalled();
+  });
+
+  test("a backup code can stand in for the app", async () => {
+    verifyBackupCode.mockResolvedValue({ data: {}, error: null });
+    await passwordStep();
+    await fireEvent.press(screen.getByRole("button", { name: "Use a backup code" }));
+    await fireEvent.changeText(screen.getByLabelText("Backup code"), "abcde-12345");
+    await fireEvent.press(screen.getByRole("button", { name: "Verify" }));
+    await waitFor(() => expect(dismissTo).toHaveBeenCalledOnce());
+    expect(verifyBackupCode).toHaveBeenCalledWith({ code: "abcde-12345" });
+  });
+
+  test("an expired second step goes back to the password", async () => {
+    verifyTotp.mockResolvedValue({ error: { code: "INVALID_TWO_FACTOR_COOKIE" } });
+    await fireEvent.changeText(await passwordStep(), "123456");
+    await fireEvent.press(screen.getByRole("button", { name: "Verify" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/took too long/);
+    expect(screen.getByLabelText("Password")).toBeOnTheScreen();
   });
 });

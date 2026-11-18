@@ -2,6 +2,7 @@
 import { error, redirect } from "@sveltejs/kit";
 import { type AdminTab, asAdminTab, MODERATOR_TABS } from "#lib/adminTabs.js";
 import { endpoints } from "#lib/api/index.js";
+import type { EmailChangeRequest } from "#lib/types.js";
 import type { PageServerLoad } from "./$types";
 
 type Api = ReturnType<typeof endpoints>;
@@ -9,7 +10,11 @@ type Loaded<K extends keyof Api> = Awaited<ReturnType<Api[K]>> | null;
 
 export type AdminInitial = {
   reports?: Loaded<"adminReports">;
-  users?: { users: Loaded<"adminUsers">; deleted: Loaded<"deletedUsers"> };
+  users?: {
+    users: Loaded<"adminUsers">;
+    deleted: Loaded<"deletedUsers">;
+    emailChanges: EmailChangeRequest[] | null;
+  };
   federation?: {
     network: Loaded<"federation">;
     domains: Loaded<"blockedDomains">;
@@ -26,13 +31,17 @@ export type AdminInitial = {
 // A failed read is left to the browser, which then shows the error in place.
 const ok = <T>(p: Promise<T>): Promise<T | null> => p.catch(() => null);
 
-async function loadTab(api: Api, tab: AdminTab): Promise<AdminInitial> {
+async function loadTab(api: Api, tab: AdminTab, isAdmin: boolean): Promise<AdminInitial> {
   switch (tab) {
     case "reports":
       return { reports: await ok(api.adminReports("open")) };
     case "users": {
-      const [users, deleted] = await Promise.all([ok(api.adminUsers()), ok(api.deletedUsers())]);
-      return { users: { users, deleted } };
+      const [users, deleted, emailChanges] = await Promise.all([
+        ok(api.adminUsers()),
+        ok(api.deletedUsers()),
+        isAdmin ? ok(api.emailChangeRequests().then((r) => r.items)) : Promise.resolve(null),
+      ]);
+      return { users: { users, deleted, emailChanges } };
     }
     case "federation": {
       const [network, domains, actors] = await Promise.all([
@@ -72,7 +81,11 @@ export const load: PageServerLoad = async ({ parent, fetch, url }) => {
   if (!user) redirect(302, "/login");
   if (!user.isAdmin && !user.isModerator) error(403, "You don't have access to this page.");
   const tab = asAdminTab(url.searchParams.get("tab"));
+  // Rendered here, not after load, so the setup screen is all that ever shows.
+  if (user.twoFactorRequired && !user.twoFactorEnabled) {
+    return { user, tab, initial: {}, needsTwoFactor: true };
+  }
   const allowed = user.isAdmin || MODERATOR_TABS.includes(tab);
-  const initial = allowed ? await loadTab(endpoints(fetch), tab) : {};
-  return { user, tab, initial };
+  const initial = allowed ? await loadTab(endpoints(fetch), tab, user.isAdmin) : {};
+  return { user, tab, initial, needsTwoFactor: false };
 };

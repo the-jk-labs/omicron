@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Minimal SvelteKit load / request events: just the fields the app's loaders
 // and endpoints read. `fetch` is a fakeFetch, so the backend is a route table.
-import type { User } from "#lib/types.js";
+import type { Me } from "#lib/types.js";
 import { fakeFetch } from "../fakeFetch";
 
 type Routes = Parameters<typeof fakeFetch>[0];
@@ -11,7 +11,7 @@ export function event(
     url?: string;
     params?: Record<string, string>;
     routes?: Routes;
-    user?: Partial<User> | null;
+    user?: Partial<Me> | null;
     routeId?: string | null;
     cookies?: Record<string, string>;
     headers?: Record<string, string>;
@@ -38,6 +38,6 @@ export function event(
 }
 
 /** A signed-in user as the root layout hands it to child loads. */
-export function user(overrides: Partial<User> = {}): Partial<User> {
+export function user(overrides: Partial<Me> = {}): Partial<Me> {
   return { id: "u1", username: "ada", isAdmin: false, isModerator: false, ...overrides };
 }

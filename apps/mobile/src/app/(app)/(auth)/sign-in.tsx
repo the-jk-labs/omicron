@@ -12,6 +12,7 @@ import type { InstanceAuthClient } from "@/lib/auth/auth-client";
 import { isUnverifiedError, parseLoginId } from "@/lib/auth/login";
 import { signInWithPasskey, usePasskeysAvailable } from "@/lib/auth/passkeys";
 import { useSessionChanged } from "@/lib/auth/session";
+import { backupCodeInput, needsSecondStep, totpDigits, verifySecondStep } from "@/lib/auth/two-factor";
 import { goBack } from "@/lib/navigation";
 
 type SignInFailure = { message: string; unverified: boolean };
@@ -22,7 +23,7 @@ async function signIn(
   identifier: string,
   password: string,
   onSignedIn: () => Promise<void>,
-): Promise<SignInFailure | null> {
+): Promise<SignInFailure | "two-factor" | null> {
   try {
     const login = parseLoginId(identifier);
     const res =
@@ -37,6 +38,7 @@ async function signIn(
           }
         : { unverified: false, message: res.error.message ?? "Invalid username or password." };
     }
+    if (needsSecondStep(res.data)) return "two-factor";
     await onSignedIn();
     return null;
   } catch (err) {
@@ -58,6 +60,10 @@ export default function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [needsVerification, setNeedsVerification] = useState(false);
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
+  // An account with two-factor on answers the password with a second step.
+  const [secondStep, setSecondStep] = useState(false);
+  const [code, setCode] = useState("");
+  const [useBackupCode, setUseBackupCode] = useState(false);
 
   const submit = async () => {
     setError(null);
@@ -69,10 +75,33 @@ export default function SignIn() {
       router.dismissTo("/");
       return;
     }
+    if (failure === "two-factor") {
+      setPassword("");
+      setCode("");
+      setUseBackupCode(false);
+      setSecondStep(true);
+      setBusy(false);
+      return;
+    }
     setNeedsVerification(failure.unverified);
     setError(failure.message);
     setBusy(false);
   };
+
+  const submitCode = async () => {
+    setError(null);
+    setBusy(true);
+    const result = await verifySecondStep(auth, code, useBackupCode, sessionChanged);
+    if (result === "signed-in") {
+      router.dismissTo("/");
+      return;
+    }
+    setError(result.message);
+    if (result.expired) setSecondStep(false);
+    setBusy(false);
+  };
+
+  const codeReady = useBackupCode ? code.length >= 8 : code.length === 6;
 
   const submitPasskey = async () => {
     setError(null);
@@ -103,6 +132,68 @@ export default function SignIn() {
     }
     setResendState("sent");
   };
+
+  if (secondStep) {
+    return (
+      <AuthShell title="Two-factor authentication" subtitle="Open your authenticator app and enter the code.">
+        <View className="gap-4">
+          <Field
+            label={useBackupCode ? "Backup code" : "Code from your authenticator app"}
+            hint={useBackupCode ? "Each backup code works once." : undefined}
+          >
+            {useBackupCode ? (
+              <Input
+                value={code}
+                onChangeText={(text) => setCode(backupCodeInput(text))}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="off"
+                importantForAutofill="no"
+                onSubmitEditing={() => codeReady && void submitCode()}
+              />
+            ) : (
+              <Input
+                {...autofill("otp")}
+                value={code}
+                onChangeText={(text) => setCode(totpDigits(text))}
+                keyboardType="number-pad"
+                // Lets 1Password, Bitwarden and the system fill the code they keep for this login.
+                autoComplete="one-time-code"
+                textContentType="oneTimeCode"
+                maxLength={6}
+                placeholder="123456"
+                className="font-mono tracking-[4px]"
+                onSubmitEditing={() => codeReady && void submitCode()}
+              />
+            )}
+          </Field>
+          <FormError message={error} />
+          <Button variant="solid" onPress={() => void submitCode()} loading={busy} disabled={!codeReady}>
+            Verify
+          </Button>
+          <Button
+            variant="ghost"
+            onPress={() => {
+              setUseBackupCode(!useBackupCode);
+              setCode("");
+              setError(null);
+            }}
+          >
+            {useBackupCode ? "Use your authenticator app" : "Use a backup code"}
+          </Button>
+          <Button
+            variant="ghost"
+            onPress={() => {
+              setSecondStep(false);
+              setError(null);
+            }}
+          >
+            Start over
+          </Button>
+        </View>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell

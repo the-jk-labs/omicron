@@ -76,6 +76,7 @@ function row(i: number, overrides: Partial<NotificationRow> = {}): NotificationR
       remoteActorId: null,
       postId: "p",
       commentId: null,
+      emailChangeRequestId: null,
       readAt: null,
       createdAt: new Date(Date.UTC(2026, 0, 1, 0, 0, 60 - i)),
     },

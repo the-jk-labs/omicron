@@ -5,11 +5,11 @@ import AdminSecurity from "#lib/components/AdminSecurity.svelte";
 import { apiError, fakeFetch } from "../../fakeFetch";
 
 function setup(
-  state: { anubisProtection: boolean; anubisManaged: boolean },
+  state: { anubisProtection: boolean; anubisManaged: boolean; staffTwoFactorRequired?: boolean },
   routes: Parameters<typeof fakeFetch>[0] = {},
 ) {
   const f = fakeFetch({
-    "GET /api/admin/security": state,
+    "GET /api/admin/security": { staffTwoFactorRequired: true, ...state },
     "GET /api/admin/security/access-rules": { rules: [] },
     ...routes,
   });
@@ -18,7 +18,38 @@ function setup(
   return f;
 }
 
-const toggle = () => screen.getByRole("switch");
+const toggle = () => screen.getByRole("switch", { name: "AI-scraper protection" });
+const staffToggle = () => screen.getByRole("switch", { name: "Require two-factor for moderators and admins" });
+
+test("staff two-factor is required by default, and an admin can make it optional", async () => {
+  const { calls } = setup(
+    { anubisProtection: false, anubisManaged: true },
+    {
+      "PUT /api/admin/security/staff-two-factor": {
+        anubisProtection: false,
+        anubisManaged: true,
+        staffTwoFactorRequired: false,
+      },
+    },
+  );
+  await waitFor(() => expect(staffToggle()).not.toBeDisabled());
+  expect(staffToggle()).toHaveAttribute("aria-checked", "true");
+  expect(screen.getByText("Required")).toBeInTheDocument();
+  await fireEvent.click(staffToggle());
+  await waitFor(() => expect(staffToggle()).toHaveAttribute("aria-checked", "false"));
+  expect(calls.at(-1)?.body).toEqual({ required: false });
+});
+
+test("a refused staff two-factor change puts the switch back and says why", async () => {
+  setup(
+    { anubisProtection: false, anubisManaged: true },
+    { "PUT /api/admin/security/staff-two-factor": apiError(403, "Set up two-factor authentication first.") },
+  );
+  await waitFor(() => expect(staffToggle()).not.toBeDisabled());
+  await fireEvent.click(staffToggle());
+  await screen.findByText("Set up two-factor authentication first.");
+  expect(staffToggle()).toHaveAttribute("aria-checked", "true");
+});
 
 test("reflects the live setting and toggles it", async () => {
   const { calls } = setup(

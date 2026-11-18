@@ -45,6 +45,8 @@ const user: Me = {
   email: "ada@example.test",
   emailVerified: true,
   showAiAssistedPosts: true,
+  twoFactorEnabled: false,
+  twoFactorRequired: false,
 };
 const article = post({
   language: "en",
