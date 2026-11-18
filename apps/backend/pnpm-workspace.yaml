@@ -14,3 +14,7 @@ overrides:
 permissions:
   "@fedify/fedify":
     skills: true
+auditConfig:
+  ignoreGhsas:
+    # picomatch ReDoS with no patched release; it only matches build/test tooling globs. Drop once fixed.
+    - GHSA-fc5q-39xc-vjpf
