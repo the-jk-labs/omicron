@@ -33,6 +33,8 @@ const inviteRequired = (status: "FORBIDDEN" | "CONFLICT" = "FORBIDDEN") =>
   });
 
 const BCRYPT_COST = 12;
+const MINUTE_S = 60;
+const HOUR_S = 60 * MINUTE_S;
 const SESSION_TTL_S = 60 * 60 * 24 * 30;
 const USERNAME_RE = /^[a-z0-9_]{3,30}$/;
 const PASSKEY_NAME_MAX = 60;
@@ -125,10 +127,23 @@ export const auth = betterAuth({
     cookiePrefix: "omicron",
   },
   rateLimit: {
+    enabled: config.RATE_LIMIT_ENABLED,
     customStorage: authRateLimitStorage,
+    // Per IP and path. Better Auth's own sign-in rule (3 per 10 seconds) still allows about a
+    // thousand password guesses an hour, so every endpoint that checks a secret gets a tighter budget.
     customRules: {
-      // Each request mails a code to an address the requester picks.
-      "/email-otp/request-email-change": { window: 60, max: 3 },
+      "/sign-in/username": { window: 15 * MINUTE_S, max: config.RL_LOGIN_MAX },
+      "/sign-in/email": { window: 15 * MINUTE_S, max: config.RL_LOGIN_MAX },
+      "/sign-up/email": { window: HOUR_S, max: config.RL_REGISTER_MAX },
+      // A six-digit code.
+      "/email-otp/change-email": { window: 15 * MINUTE_S, max: 10 },
+      // Each re-checks the password of a signed-in account.
+      "/change-password": { window: HOUR_S, max: 10 },
+      "/delete-user": { window: HOUR_S, max: 10 },
+      // Each mails an address the requester picks.
+      "/request-password-reset": { window: HOUR_S, max: 5 },
+      "/send-verification-email": { window: HOUR_S, max: 5 },
+      "/email-otp/request-email-change": { window: 24 * HOUR_S, max: 3 },
     },
   },
   hooks: {

@@ -511,7 +511,7 @@ describe("changing the login email", () => {
   // Each request mails a code to an address of the requester's choosing.
   it("caps code requests so the instance can't be used to flood an inbox", async () => {
     const { auth } = await import("@/auth/auth.ts");
-    expect(auth.options.rateLimit?.customRules?.["/email-otp/request-email-change"]).toEqual({ window: 60, max: 3 });
+    expect(auth.options.rateLimit?.customRules?.["/email-otp/request-email-change"]).toEqual({ window: 3600 * 24, max: 3 });
   });
 
   it.each([
@@ -647,5 +647,62 @@ describe("sign-in for frozen accounts", () => {
 
     await expect(before!({ userId: "frozen-user" })).rejects.toThrow("This account is frozen.");
     await expect(before!({ userId: "active-user" })).resolves.toMatchObject({ data: { userId: "active-user" } });
+  });
+});
+
+// The documented budgets (.env.example): RL_LOGIN_MAX sign-ins per 15 minutes and RL_REGISTER_MAX
+// sign-ups per hour, per IP, whatever NODE_ENV says.
+describe("sign-in and sign-up rate limits", () => {
+  let ip = 0;
+
+  async function attempt(path: string, body: unknown, from: string) {
+    const { auth } = await import("@/auth/auth.ts");
+    return auth.handler(
+      new Request(`http://localhost:3000/api/auth${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: "http://localhost:3000", "X-Forwarded-For": from },
+        body: JSON.stringify(body),
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    vi.resetModules();
+    for (const rows of Object.values(store)) rows.length = 0;
+    vi.stubEnv("APP_DOMAIN", "localhost:3000");
+    vi.stubEnv("HIBP_CHECK_ENABLED", "false");
+    vi.stubEnv("NODE_ENV", "");
+    ip += 1;
+  });
+
+  it("stops password guessing after RL_LOGIN_MAX tries", async () => {
+    vi.stubEnv("RL_LOGIN_MAX", "2");
+    const from = `198.51.100.${ip}`;
+    const guess = { username: "ada", password: "wrong-password-123" };
+    expect((await attempt("/sign-in/username", guess, from)).status).not.toBe(429);
+    expect((await attempt("/sign-in/username", guess, from)).status).not.toBe(429);
+    expect((await attempt("/sign-in/username", guess, from)).status).toBe(429);
+  });
+
+  it("allows the documented 15 logins per 15 minutes, and 5 sign-ups an hour", async () => {
+    const { auth } = await import("@/auth/auth.ts");
+    const rules = auth.options.rateLimit?.customRules ?? {};
+    expect(auth.options.rateLimit?.enabled).toBe(true);
+    expect(rules["/sign-in/username"]).toEqual({ window: 15 * 60, max: 15 });
+    expect(rules["/sign-in/email"]).toEqual({ window: 15 * 60, max: 15 });
+    expect(rules["/sign-up/email"]).toEqual({ window: 60 * 60, max: 5 });
+  });
+
+  it("stops sign-ups after RL_REGISTER_MAX from one address", async () => {
+    vi.stubEnv("RL_REGISTER_MAX", "1");
+    const from = `203.0.113.${ip}`;
+    const register = (n: number) =>
+      attempt(
+        "/sign-up/email",
+        { email: `u${n}@example.com`, password: "Unique-test-password-123!", name: "U", username: `user_${n}` },
+        from,
+      );
+    expect((await register(1)).status).not.toBe(429);
+    expect((await register(2)).status).toBe(429);
   });
 });
