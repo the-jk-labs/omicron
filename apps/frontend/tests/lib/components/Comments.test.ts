@@ -133,7 +133,7 @@ test("typing @ suggests thread participants and searched people; picking one fil
       },
     },
   });
-  const box = screen.getByPlaceholderText("What are your thoughts?") as HTMLTextAreaElement;
+  const box = screen.getByPlaceholderText<HTMLTextAreaElement>("What are your thoughts?");
   box.focus();
   box.value = "hi @c";
   box.setSelectionRange(5, 5);
@@ -153,7 +153,7 @@ test("typing @ suggests thread participants and searched people; picking one fil
 
 test("Escape closes the suggestions without changing the text", async () => {
   setup({ items: [comment("c1", author("u-cy", "Cy"))] });
-  const box = screen.getByPlaceholderText("What are your thoughts?") as HTMLTextAreaElement;
+  const box = screen.getByPlaceholderText<HTMLTextAreaElement>("What are your thoughts?");
   box.focus();
   box.value = "@";
   box.setSelectionRange(1, 1);
