@@ -42,8 +42,13 @@ start_caddy() { # TRUSTED_PROXIES value
   "$ENGINE" rm -f "$net-caddy" > /dev/null 2>&1 || true
   "$ENGINE" run -d --name "$net-caddy" --network "$net" --network-alias caddy -e "TRUSTED_PROXIES=$1" \
     -v "$repo/Caddyfile:/etc/caddy/Caddyfile:ro,z" --tmpfs /run/caddy-admin "$caddy_image" > /dev/null
+  # Ready when both stand-ins answer through Caddy: a slow runner may still be starting either.
   for _ in $(seq 1 30); do
-    "$ENGINE" run --rm --network "$net" "$caddy_image" wget -qO- --header "Host: localhost" http://caddy/api/x > /dev/null 2>&1 && return 0
+    if "$ENGINE" run --rm --network "$net" "$caddy_image" sh -c \
+      'wget -qO- --header "Host: localhost" http://caddy/api/x && wget -qO- --header "Host: localhost" http://caddy/' \
+      > /dev/null 2>&1; then
+      return 0
+    fi
     sleep 1
   done
   echo "Caddy didn't start:"; "$ENGINE" logs "$net-caddy" 2>&1 | tail -5; exit 1
