@@ -262,6 +262,9 @@ jobs:
       # every service must come up, whatever the engine.
       - name: Every service starts
         run: tests/deploy/stack-starts.test.sh "${{ matrix.compose }}"
+      # The real Caddyfile behind a stand-in CDN: upstreams must see the visitor, never a forged address.
+      - name: Upstreams see the real client IP
+        run: tests/deploy/client-ip.test.sh "${{ matrix.compose == 'docker compose' && 'docker' || 'podman' }}"
 
   images:
     name: Publish images
