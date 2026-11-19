@@ -1,4 +1,5 @@
 import type { CommentWithAuthor } from "@/db/repositories/comments.ts";
+import type { PendingEmailChange } from "@/db/repositories/emailChangeRequests.ts";
 import type { NotificationRow } from "@/db/repositories/notifications.ts";
 import type { PostWithAuthor } from "@/db/repositories/posts.ts";
 import type { ReportRow } from "@/db/repositories/reports.ts";
@@ -88,12 +89,15 @@ export function publicUser(
 // Self-view payload: everything in `publicUser` plus the private account fields
 // (login email + verification state). Only ever returned to the authenticated
 // account owner (their own /api/me) — never for other users.
-export function privateUser(u: User, tags: TagSummary[] = [], links: LinkSummary[] = []) {
+// `twoFactorRequired`: services/settings.ts twoFactorRequiredFor.
+export function privateUser(u: User, twoFactorRequired: boolean, tags: TagSummary[] = [], links: LinkSummary[] = []) {
   return {
     ...publicUser(u, tags, links),
     email: u.email,
     emailVerified: u.emailVerified,
     showAiAssistedPosts: u.showAiAssistedPosts,
+    twoFactorEnabled: u.twoFactorEnabled,
+    twoFactorRequired,
   };
 }
 
@@ -114,9 +118,21 @@ export function adminUserView(u: User) {
     isModerator: u.isModerator,
     email: u.email,
     emailVerified: u.emailVerified,
+    twoFactorEnabled: u.twoFactorEnabled,
     suspended: u.suspendedAt !== null,
     frozen: u.frozenAt !== null,
     createdAt: u.createdAt,
+  };
+}
+
+// A pending login-email change for the admin review list.
+export function emailChangeRequestView(row: PendingEmailChange) {
+  return {
+    id: row.request.id,
+    user: row.user,
+    requestedBy: row.requester,
+    newEmail: row.request.newEmail,
+    createdAt: row.request.createdAt,
   };
 }
 
@@ -381,7 +397,8 @@ export function notificationView(row: NotificationRow) {
       | "comment_like"
       | "mention"
       | "recommend"
-      | "post_published",
+      | "post_published"
+      | "email_change_request",
     actor,
     postId: n.postId,
     postTitle: row.postTitle,

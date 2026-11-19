@@ -47,7 +47,7 @@ src/lib/            no React components; hooks only where they wrap a library
   editor/           composer bridge, autosave
   dialogs/          toast and confirm stores (their hosts live in components/ui)
 editor-web/         the composer's WebView bundle (Vite), built into editor-web/build/editorHtml.js
-tests/              mirrors src/ (vitest, Node; react-native is stubbed in tests/support)
+tests/              mirrors src/ (vitest + vitest-native: real react-native JS, native layer mocked)
 ```
 
 ## Rules
@@ -108,6 +108,19 @@ We do test-driven development:
 - **Feature requests:** build the feature first, then write its tests (main flow, edge cases, failure paths). A
   feature isn't done until it's tested and `pnpm check` passes.
 
-Logic lives in `src/lib` so it can be tested on Node. Native
-modules are mocked in `tests/setup.ts`; `react-native` and `react-native-mmkv` are aliased to stand-ins in
-`vitest.config.mts`.
+Logic lives in `src/lib` so it can be tested on Node.
+
+- **Real React Native:** [vitest-native](https://vitest-native.danfry.dev/) (`engine: "native"`,
+  `platform: "android"`, in `vitest.config.mts`) runs React Native's and Expo's real JavaScript and mocks only the
+  native layer; its presets cover Reanimated, Worklets, Screens, SVG, safe-area-context, bottom sheet and the
+  keyboard controller. Other native modules (Nitro, expo-updates, …) are mocked in `tests/setup.ts`, and
+  `react-native-mmkv` runs its own in-memory test mode, wiped after each test.
+- **Testing Library:** use `@testing-library/react-native` 14, where `render`, `renderHook`, `act`, `fireEvent`
+  (and `rerender`/`unmount`) return promises — always `await` them. Its matchers (`toBeDisabled`,
+  `toHaveTextContent`, …) are registered in `tests/setup.ts`. Query by role/text/label/`testID`; bare strings must
+  be inside `<Text>`.
+- **Mocking components:** build stand-ins from React Native components loaded inside the factory
+  (`vi.mock("x", async () => { const { View } = await import("react-native"); … })`). `tests/support/field.tsx`
+  has labelled `Field`/`Input` stand-ins, and `tests/support/back.ts` presses Android Back. Spy on real React
+  Native APIs (`vi.spyOn(AppState, "addEventListener")`) instead of mocking `react-native`; to swap one export,
+  wrap the module in a Proxy rather than spreading it, which trips its deprecation warnings.

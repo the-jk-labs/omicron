@@ -6,6 +6,7 @@ import type { IconName } from "@/components/ui/icon";
 /** The bold half of a notification line: normally who did it. */
 export function notificationSubject(n: Notification): string {
   if (n.type === "post_published") return "Your scheduled post";
+  if (n.type === "email_change_request" && !n.actor) return "A moderator";
   return n.actor?.displayName ?? "Someone";
 }
 
@@ -31,6 +32,8 @@ export function notificationAction(type: Notification["type"]): string {
       return "recommended your post";
     case "post_published":
       return "is now live";
+    case "email_change_request":
+      return "asked you to approve a login email change";
     default: {
       const exhaustive: never = type;
       return exhaustive;
@@ -58,6 +61,8 @@ export function notificationIcon(type: Notification["type"]): IconName {
       return "repeat-2";
     case "post_published":
       return "clock";
+    case "email_change_request":
+      return "mail";
     default: {
       const exhaustive: never = type;
       return exhaustive;
@@ -68,6 +73,8 @@ export function notificationIcon(type: Notification["type"]): IconName {
 /** Where tapping the row goes: the request inbox, the actor's profile, or the post. */
 export function notificationHref(n: Notification): string | null {
   if (n.type === "follow_request") return "/follow-requests";
+  // Admins review it in the moderation screen.
+  if (n.type === "email_change_request") return "/admin";
   if (n.type === "follow" || n.type === "follow_accepted") return n.actor ? `/@${n.actor.username}` : null;
   return n.postId ? `/posts/${n.postId}` : null;
 }

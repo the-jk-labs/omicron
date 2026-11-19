@@ -14,6 +14,7 @@ import type { Notification } from "#lib/types.js";
  */
 export function notificationSubject(n: Notification): string {
   if (n.type === "post_published") return "Your scheduled post";
+  if (n.type === "email_change_request" && !n.actor) return "A moderator";
   return n.actor?.displayName ?? "Someone";
 }
 
@@ -40,6 +41,8 @@ export function notificationAction(type: Notification["type"]): string {
       return "recommended your post";
     case "post_published":
       return "is now live";
+    case "email_change_request":
+      return "asked you to approve a login email change";
     default: {
       const exhaustive: never = type;
       return exhaustive;
@@ -68,6 +71,8 @@ export function notificationIcon(type: Notification["type"]): IconName {
       return "recommend";
     case "post_published":
       return "clock";
+    case "email_change_request":
+      return "mail";
     default: {
       const exhaustive: never = type;
       return exhaustive;
@@ -81,6 +86,7 @@ export function notificationHref(n: Notification): string | null {
   // A follow request points at your inbox to approve/reject; the others point at
   // the actor's profile (follow / accepted) or the target post.
   if (n.type === "follow_request") return "/follow-requests";
+  if (n.type === "email_change_request") return "/admin?tab=users";
   if (n.type === "follow" || n.type === "follow_accepted") {
     return n.actor ? `/@${n.actor.username}` : null;
   }

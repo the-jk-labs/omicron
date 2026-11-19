@@ -1,5 +1,4 @@
-// @vitest-environment happy-dom
-import { waitFor } from "@testing-library/react";
+import { waitFor } from "@testing-library/react-native";
 import { describe, expect, test } from "vitest";
 import { emptyPhase } from "@/lib/query/list-state";
 import { usePagedQuery } from "@/lib/query/paged";
@@ -9,15 +8,19 @@ const page = { items: [], nextCursor: null };
 
 describe("emptyPhase", () => {
   // A private account's posts query is disabled; it never fetches, so it must not spin forever.
-  test("a disabled query is empty, not loading", () => {
-    const { result } = renderQueryHook(() => usePagedQuery(["posts", "locked"], async () => page, { enabled: false }));
+  test("a disabled query is empty, not loading", async () => {
+    const { result } = await renderQueryHook(() =>
+      usePagedQuery(["posts", "locked"], async () => page, { enabled: false }),
+    );
     expect(result.current.isPending).toBe(true);
     expect(emptyPhase(result.current, false)).toBe("empty");
   });
 
   test("loading while the first page is in flight, empty once it arrives", async () => {
-    const { result } = renderQueryHook(() => usePagedQuery(["posts", "open"], async () => page));
+    const { promise, resolve } = Promise.withResolvers<typeof page>();
+    const { result } = await renderQueryHook(() => usePagedQuery(["posts", "open"], () => promise));
     expect(emptyPhase(result.current, false)).toBe("loading");
+    resolve(page);
     await waitFor(() => expect(emptyPhase(result.current, false)).toBe("empty"));
   });
 
@@ -26,7 +29,7 @@ describe("emptyPhase", () => {
   });
 
   test("an error with nothing cached", async () => {
-    const { result } = renderQueryHook(() =>
+    const { result } = await renderQueryHook(() =>
       usePagedQuery(["posts", "broken"], async () => {
         throw new Error("down");
       }),

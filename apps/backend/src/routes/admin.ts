@@ -14,7 +14,13 @@ import { rateLimit } from "@/lib/rateLimit.ts";
 import type { Reply } from "@/lib/reply.ts";
 import { jsonBody } from "@/lib/validate.ts";
 import { readUpload, requireAdmin, requireModerator } from "@/routes/middleware.ts";
-import { adminUserDetailView, adminUserView, deletedUserView, inviteView } from "@/routes/serializers.ts";
+import {
+  adminUserDetailView,
+  adminUserView,
+  emailChangeRequestView,
+  deletedUserView,
+  inviteView,
+} from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import * as anubis from "@/services/anubisProtection.ts";
 import { dnsRecords } from "@/services/dkim.ts";
@@ -115,6 +121,7 @@ async function securitySnapshot() {
   return {
     anubisProtection: await anubis.anubisProtectionEnabled(),
     anubisManaged: anubis.anubisManaged(),
+    staffTwoFactorRequired: await settings.staffTwoFactorRequired(),
   };
 }
 
@@ -122,6 +129,19 @@ adminRoutes.get("/security", async (c) => {
   requireAdmin(c);
   return c.json((await securitySnapshot()) satisfies Reply<"SecuritySettings">);
 });
+
+// Whether moderators and admins must use two-factor sign-in. Only an admin who
+// already has it can reach this route while it is on, so nobody switches it off
+// to skip it.
+adminRoutes.put(
+  "/security/staff-two-factor",
+  jsonBody(z.object({ required: z.boolean() }), "Expected { required: boolean }."),
+  async (c) => {
+    requireAdmin(c);
+    await settings.setStaffTwoFactorRequired(c.req.valid("json").required);
+    return c.json((await securitySnapshot()) satisfies Reply<"SecuritySettings">);
+  },
+);
 
 const securitySchema = z.object({ anubisProtection: z.boolean() });
 
@@ -668,6 +688,43 @@ adminRoutes.post("/users/:id/avatar", async (c) => {
 adminRoutes.delete("/users/:id/avatar", async (c) => {
   const viewer = requireModerator(c);
   const user = await moderation.removeUserAvatar(viewer.id, c.req.param("id"));
+  return c.json({ user: adminUserView(user) } satisfies Reply<"AdminUserResponse">);
+});
+
+// A moderator proposes a new login email; every admin is notified to decide it.
+adminRoutes.post(
+  "/users/:id/email-change-requests",
+  jsonBody(z.object({ email: z.string() }), "Expected { email: string }."),
+  async (c) => {
+    const viewer = requireModerator(c);
+    await moderation.requestEmailChange(viewer.id, c.req.param("id"), c.req.valid("json").email);
+    return c.json({ ok: true } satisfies Reply<"Ok">);
+  },
+);
+
+adminRoutes.get("/email-change-requests", async (c) => {
+  requireAdmin(c);
+  const rows = await moderation.listEmailChangeRequests();
+  return c.json({ items: rows.map(emailChangeRequestView) } satisfies Reply<"EmailChangeRequestList">);
+});
+
+adminRoutes.post("/email-change-requests/:id/approve", async (c) => {
+  const viewer = requireAdmin(c);
+  const user = await moderation.approveEmailChange(viewer.id, c.req.param("id"));
+  return c.json({ user: adminUserView(user) } satisfies Reply<"AdminUserResponse">);
+});
+
+adminRoutes.delete("/email-change-requests/:id", async (c) => {
+  requireAdmin(c);
+  await moderation.declineEmailChange(c.req.param("id"));
+  return c.json({ ok: true } satisfies Reply<"Ok">);
+});
+
+// Turn off another account's two-factor sign-in after a lost authenticator. Admins only;
+// an admin's own is reset from the server shell (reset-two-factor).
+adminRoutes.delete("/users/:id/two-factor", async (c) => {
+  const viewer = requireAdmin(c);
+  const user = await moderation.resetTwoFactor(viewer.id, c.req.param("id"));
   return c.json({ user: adminUserView(user) } satisfies Reply<"AdminUserResponse">);
 });
 

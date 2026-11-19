@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
-  import { replaceState } from "$app/navigation";
+  import { invalidateAll, replaceState } from "$app/navigation";
   import { Tabs } from "bits-ui";
   import { untrack } from "svelte";
   import { ADMIN_TABS, type AdminTab, asAdminTab } from "#lib/adminTabs.js";
@@ -19,6 +19,7 @@
   import Icon from "#lib/components/Icon.svelte";
   import InstanceModeration from "#lib/components/InstanceModeration.svelte";
   import PageTitle from "#lib/components/PageTitle.svelte";
+  import TwoFactorSetup from "#lib/components/TwoFactorSetup.svelte";
   import PageTabs from "#lib/components/ui/PageTabs.svelte";
   import type { PageData } from "./$types";
 
@@ -60,171 +61,192 @@
   </p>
 </header>
 
-<Tabs.Root value={tab} onValueChange={selectTab}>
-  <PageTabs tabs={ADMIN_TABS} />
-
-  <Tabs.Content value="reports" class="mt-6">
-    <section class="rounded-card border border-border bg-background p-6">
-      <h2 class="text-lg font-semibold tracking-tight text-foreground">Moderation queue</h2>
-      <p class="mt-1 text-sm text-muted-foreground">
-        Reports filed by users. Remove content or suspend accounts, then resolve.
-      </p>
-      <div class="mt-5">
-        <AdminReports initial={initial.reports} />
+{#if data.needsTwoFactor}
+  <!-- Nothing to dismiss: the server refuses every moderation request until this is done. -->
+  <section class="mx-auto max-w-[480px] rounded-card border border-border bg-background p-6 shadow-card">
+    <div class="mb-4 flex items-start gap-3">
+      <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground">
+        <Icon name="admin" size={20} />
+      </span>
+      <div>
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Set up two-factor authentication</h2>
+        <p class="mt-1 text-sm text-muted-foreground">
+          This instance requires moderators and admins to sign in with a code from an authenticator app.
+          {#if isAdmin}
+            Once it's set up, you can change this rule in the Security tab.
+          {/if}
+        </p>
       </div>
-    </section>
-  </Tabs.Content>
+    </div>
+    <TwoFactorSetup username={data.user.username} staff ondone={() => invalidateAll()} />
+  </section>
+{:else}
+  <Tabs.Root value={tab} onValueChange={selectTab}>
+    <PageTabs tabs={ADMIN_TABS} />
 
-  <Tabs.Content value="users" class="mt-6">
-    <section class="rounded-card border border-border bg-background p-4 sm:p-6">
-      <h2 class="text-lg font-semibold tracking-tight text-foreground">Users</h2>
-      <p class="mt-1 text-sm text-muted-foreground">
-        Every local account on this instance. Expand a row for detail; edit, suspend, delete, or change roles.
-      </p>
-      <div class="mt-5">
-        <AdminUsers
-          selfId={data.user.id}
-          selfUsername={data.user.username}
-          isViewerAdmin={isAdmin}
-          initial={initial.users}
-        />
-      </div>
-    </section>
-  </Tabs.Content>
-
-  <Tabs.Content value="federation" class="mt-6">
-    {#if isAdmin}
+    <Tabs.Content value="reports" class="mt-6">
       <section class="rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Federation network</h2>
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Moderation queue</h2>
         <p class="mt-1 text-sm text-muted-foreground">
-          Cache the wider network's public writing ahead of your readers, so the Global feed is full from day one.
+          Reports filed by users. Remove content or suspend accounts, then resolve.
         </p>
         <div class="mt-5">
-          <AdminFederation initial={initial.federation?.network} />
+          <AdminReports initial={initial.reports} />
         </div>
       </section>
+    </Tabs.Content>
 
-      <section class="mt-6 rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Domain blocks</h2>
+    <Tabs.Content value="users" class="mt-6">
+      <section class="rounded-card border border-border bg-background p-4 sm:p-6">
+        <h2 class="text-lg font-semibold tracking-tight text-foreground">Users</h2>
         <p class="mt-1 text-sm text-muted-foreground">
-          Suspend a domain to stop federating with it entirely, or limit it to keep it out of discovery.
+          Every local account on this instance. Expand a row for detail; edit, suspend, delete, or change roles.
         </p>
         <div class="mt-5">
-          <AdminDomains initial={initial.federation?.domains} />
+          <AdminUsers
+            selfId={data.user.id}
+            selfUsername={data.user.username}
+            isViewerAdmin={isAdmin}
+            initial={initial.users}
+          />
         </div>
       </section>
+    </Tabs.Content>
 
-      <section class="mt-6 rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Account blocks</h2>
-        <p class="mt-1 text-sm text-muted-foreground">
-          Block single remote accounts for everyone here, without cutting off the rest of their server.
-        </p>
-        <div class="mt-5">
-          <AdminBlockedActors initial={initial.federation?.actors} />
-        </div>
-      </section>
-    {:else}
-      {@render requiresAdmin("Federation")}
-    {/if}
-  </Tabs.Content>
+    <Tabs.Content value="federation" class="mt-6">
+      {#if isAdmin}
+        <section class="rounded-card border border-border bg-background p-6">
+          <h2 class="text-lg font-semibold tracking-tight text-foreground">Federation network</h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            Cache the wider network's public writing ahead of your readers, so the Global feed is full from day one.
+          </p>
+          <div class="mt-5">
+            <AdminFederation initial={initial.federation?.network} />
+          </div>
+        </section>
 
-  <Tabs.Content value="email" class="mt-6">
-    {#if isAdmin}
-      <section class="rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Email delivery</h2>
-        <p class="mt-1 text-sm text-muted-foreground">
-          How this instance sends password-reset and verification mail. Configure and test it here. No config files.
-        </p>
-        <div class="mt-5">
-          <AdminEmail initial={initial.email} />
-        </div>
-      </section>
-    {:else}
-      {@render requiresAdmin("Email delivery")}
-    {/if}
-  </Tabs.Content>
+        <section class="mt-6 rounded-card border border-border bg-background p-6">
+          <h2 class="text-lg font-semibold tracking-tight text-foreground">Domain blocks</h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            Suspend a domain to stop federating with it entirely, or limit it to keep it out of discovery.
+          </p>
+          <div class="mt-5">
+            <AdminDomains initial={initial.federation?.domains} />
+          </div>
+        </section>
 
-  <Tabs.Content value="security" class="mt-6">
-    {#if isAdmin}
-      <section class="rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Security</h2>
-        <p class="mt-1 text-sm text-muted-foreground">
-          Defenses against automated abuse. Toggles apply live. No config files, no restart.
-        </p>
-        <div class="mt-5">
-          <AdminSecurity initial={initial.security} />
-        </div>
-      </section>
-    {:else}
-      {@render requiresAdmin("Security")}
-    {/if}
-  </Tabs.Content>
+        <section class="mt-6 rounded-card border border-border bg-background p-6">
+          <h2 class="text-lg font-semibold tracking-tight text-foreground">Account blocks</h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            Block single remote accounts for everyone here, without cutting off the rest of their server.
+          </p>
+          <div class="mt-5">
+            <AdminBlockedActors initial={initial.federation?.actors} />
+          </div>
+        </section>
+      {:else}
+        {@render requiresAdmin("Federation")}
+      {/if}
+    </Tabs.Content>
 
-  <Tabs.Content value="discoverability" class="mt-6">
-    {#if isAdmin}
-      <section class="rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Discoverability</h2>
-        <p class="mt-1 text-sm text-muted-foreground">
-          Search-engine indexing, sitemap, and per-engine site verification. Applies live.
-        </p>
-        <div class="mt-5">
-          <AdminSeo initial={initial.seo} />
-        </div>
-      </section>
-    {:else}
-      {@render requiresAdmin("Discoverability")}
-    {/if}
-  </Tabs.Content>
+    <Tabs.Content value="email" class="mt-6">
+      {#if isAdmin}
+        <section class="rounded-card border border-border bg-background p-6">
+          <h2 class="text-lg font-semibold tracking-tight text-foreground">Email delivery</h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            How this instance sends password-reset and verification mail. Configure and test it here. No config files.
+          </p>
+          <div class="mt-5">
+            <AdminEmail initial={initial.email} />
+          </div>
+        </section>
+      {:else}
+        {@render requiresAdmin("Email delivery")}
+      {/if}
+    </Tabs.Content>
 
-  <Tabs.Content value="media" class="mt-6">
-    {#if isAdmin}
-      <section class="rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Photo search</h2>
-        <p class="mt-1 text-sm text-muted-foreground">
-          Writers can already search free, openly-licensed photos for a post banner. Openverse needs no setup. Add an
-          Unsplash key here to offer their library as a second source.
-        </p>
-        <div class="mt-5">
-          <AdminUnsplash initial={initial.unsplash} />
-        </div>
-      </section>
-    {:else}
-      {@render requiresAdmin("Photo search")}
-    {/if}
-  </Tabs.Content>
+    <Tabs.Content value="security" class="mt-6">
+      {#if isAdmin}
+        <section class="rounded-card border border-border bg-background p-6">
+          <h2 class="text-lg font-semibold tracking-tight text-foreground">Security</h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            Defenses against automated abuse. Toggles apply live. No config files, no restart.
+          </p>
+          <div class="mt-5">
+            <AdminSecurity initial={initial.security} />
+          </div>
+        </section>
+      {:else}
+        {@render requiresAdmin("Security")}
+      {/if}
+    </Tabs.Content>
 
-  <Tabs.Content value="settings" class="mt-6">
-    {#if isAdmin}
-      <section class="rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Instance identity</h2>
-        <p class="mt-1 text-sm text-muted-foreground">The public name and domain for this server.</p>
-        <div class="mt-5">
-          <AdminInstanceSettings initial={initial.instance?.identity} />
-        </div>
-      </section>
+    <Tabs.Content value="discoverability" class="mt-6">
+      {#if isAdmin}
+        <section class="rounded-card border border-border bg-background p-6">
+          <h2 class="text-lg font-semibold tracking-tight text-foreground">Discoverability</h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            Search-engine indexing, sitemap, and per-engine site verification. Applies live.
+          </p>
+          <div class="mt-5">
+            <AdminSeo initial={initial.seo} />
+          </div>
+        </section>
+      {:else}
+        {@render requiresAdmin("Discoverability")}
+      {/if}
+    </Tabs.Content>
 
-      <section class="mt-6 rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Who can join</h2>
-        <p class="mt-1 text-sm text-muted-foreground">Keep sign-up open to anyone, or only to people you invite.</p>
-        <div class="mt-5">
-          <AdminSignups />
-        </div>
-      </section>
+    <Tabs.Content value="media" class="mt-6">
+      {#if isAdmin}
+        <section class="rounded-card border border-border bg-background p-6">
+          <h2 class="text-lg font-semibold tracking-tight text-foreground">Photo search</h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            Writers can already search free, openly-licensed photos for a post banner. Openverse needs no setup. Add an
+            Unsplash key here to offer their library as a second source.
+          </p>
+          <div class="mt-5">
+            <AdminUnsplash initial={initial.unsplash} />
+          </div>
+        </section>
+      {:else}
+        {@render requiresAdmin("Photo search")}
+      {/if}
+    </Tabs.Content>
 
-      <section class="mt-6 rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Instance settings</h2>
-        <p class="mt-1 text-sm text-muted-foreground">Settings that apply to everyone on this instance.</p>
-        <div class="mt-5">
-          <InstanceModeration initial={initial.instance?.settings} />
-        </div>
-      </section>
+    <Tabs.Content value="settings" class="mt-6">
+      {#if isAdmin}
+        <section class="rounded-card border border-border bg-background p-6">
+          <h2 class="text-lg font-semibold tracking-tight text-foreground">Instance identity</h2>
+          <p class="mt-1 text-sm text-muted-foreground">The public name and domain for this server.</p>
+          <div class="mt-5">
+            <AdminInstanceSettings initial={initial.instance?.identity} />
+          </div>
+        </section>
 
-      <section class="mt-6 rounded-card border border-border bg-background p-6">
-        <h2 class="text-lg font-semibold tracking-tight text-foreground">Umami Cloud</h2>
-        <div class="mt-5"><AdminUmami initial={initial.umami} /></div>
-      </section>
-    {:else}
-      {@render requiresAdmin("Instance identity")}
-    {/if}
-  </Tabs.Content>
-</Tabs.Root>
+        <section class="mt-6 rounded-card border border-border bg-background p-6">
+          <h2 class="text-lg font-semibold tracking-tight text-foreground">Who can join</h2>
+          <p class="mt-1 text-sm text-muted-foreground">Keep sign-up open to anyone, or only to people you invite.</p>
+          <div class="mt-5">
+            <AdminSignups />
+          </div>
+        </section>
+
+        <section class="mt-6 rounded-card border border-border bg-background p-6">
+          <h2 class="text-lg font-semibold tracking-tight text-foreground">Instance settings</h2>
+          <p class="mt-1 text-sm text-muted-foreground">Settings that apply to everyone on this instance.</p>
+          <div class="mt-5">
+            <InstanceModeration initial={initial.instance?.settings} />
+          </div>
+        </section>
+
+        <section class="mt-6 rounded-card border border-border bg-background p-6">
+          <h2 class="text-lg font-semibold tracking-tight text-foreground">Umami Cloud</h2>
+          <div class="mt-5"><AdminUmami initial={initial.umami} /></div>
+        </section>
+      {:else}
+        {@render requiresAdmin("Instance identity")}
+      {/if}
+    </Tabs.Content>
+  </Tabs.Root>
+{/if}

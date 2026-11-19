@@ -1,6 +1,5 @@
-// @vitest-environment happy-dom
 // oxlint-disable typescript/unbound-method -- deliberately partial test doubles
-import { render } from "@testing-library/react";
+import { render } from "@testing-library/react-native";
 import { Observe } from "expo-observe";
 import * as SplashScreen from "expo-splash-screen";
 import type { ComponentType, ReactNode } from "react";
@@ -30,12 +29,14 @@ vi.mock("expo-system-ui", () => ({ setBackgroundColorAsync: vi.fn<() => Promise<
 vi.mock("expo-router", () => ({
   Stack: Object.assign(() => null, { Protected: () => null, Screen: () => null }),
 }));
-vi.mock("react-native-gesture-handler", () => ({
-  GestureHandlerRootView: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
-vi.mock("react-native-keyboard-controller", () => ({
-  KeyboardProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
+vi.mock("react-native-gesture-handler", async () => {
+  const { View } = await import("react-native");
+  return { GestureHandlerRootView: ({ children }: { children: ReactNode }) => <View>{children}</View> };
+});
+vi.mock("react-native-keyboard-controller", async () => {
+  const { View } = await import("react-native");
+  return { KeyboardProvider: ({ children }: { children: ReactNode }) => <View>{children}</View> };
+});
 vi.mock("@/components/layout/stack-options", () => ({ useStackOptions: () => ({ contentStyle: {} }) }));
 vi.mock("@/components/ui/states", () => ({ EmptyState: () => null }));
 vi.mock("@/lib/instance/store", () => ({ useSavedInstance: () => null }));
@@ -45,7 +46,7 @@ vi.mock("@/lib/theme/theme", () => ({ applySavedTheme: () => undefined }));
 
 test("Observe is configured before the first render and marks the app interactive once it's up", async () => {
   const { default: RootLayout } = await import("@/app/_layout");
-  render(<RootLayout />);
+  await render(<RootLayout />);
   expect(configureObserve).toHaveBeenCalledOnce();
   expect(events).toEqual(["configured", "rendered"]);
   expect(SplashScreen.hide).toHaveBeenCalledOnce();

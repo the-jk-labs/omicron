@@ -51,6 +51,8 @@ function me(o: Partial<Me> = {}): Me {
     isModerator: false,
     isPrivate: false,
     showAiAssistedPosts: true,
+    twoFactorEnabled: false,
+    twoFactorRequired: false,
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",
     tags: [],

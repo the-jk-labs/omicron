@@ -1,5 +1,4 @@
-// @vitest-environment happy-dom
-import { render } from "@testing-library/react";
+import { render } from "@testing-library/react-native";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { SignInPrompt } from "@/components/auth/sign-in-prompt";
 import { chooseInstance, readInstance, signInPrompt } from "@/lib/instance/store";
@@ -17,33 +16,33 @@ beforeEach(() => {
 });
 
 describe("SignInPrompt", () => {
-  test("choosing an instance saves it and opens its sign-in once, with the option to put it off", () => {
+  test("choosing an instance saves it and opens its sign-in once, with the option to put it off", async () => {
     chooseInstance({ origin: "https://omicron.test", name: "Omicron" });
     expect(readInstance()).toEqual({ origin: "https://omicron.test", name: "Omicron" });
 
-    const { rerender } = render(<SignInPrompt />);
+    const { rerender } = await render(<SignInPrompt />);
     expect(push).toHaveBeenCalledExactlyOnceWith({ pathname: "/sign-in", params: { welcome: "1" } });
     expect(signInPrompt.get()).toBe(false);
 
-    rerender(<SignInPrompt />);
+    await rerender(<SignInPrompt />);
     expect(push).toHaveBeenCalledOnce();
   });
 
-  test("waits for the session, and stays quiet when the instance already knows this device", () => {
+  test("waits for the session, and stays quiet when the instance already knows this device", async () => {
     viewer = { signedIn: false, isPending: true };
     signInPrompt.set(true);
-    const { rerender } = render(<SignInPrompt />);
+    const { rerender } = await render(<SignInPrompt />);
     expect(push).not.toHaveBeenCalled();
     expect(signInPrompt.get()).toBe(true);
 
     viewer = { signedIn: true, isPending: false };
-    rerender(<SignInPrompt />);
+    await rerender(<SignInPrompt />);
     expect(push).not.toHaveBeenCalled();
     expect(signInPrompt.get()).toBe(false);
   });
 
-  test("an app opened on a saved instance never prompts", () => {
-    render(<SignInPrompt />);
+  test("an app opened on a saved instance never prompts", async () => {
+    await render(<SignInPrompt />);
     expect(push).not.toHaveBeenCalled();
   });
 });

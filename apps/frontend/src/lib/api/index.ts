@@ -22,6 +22,7 @@ import type {
   CoverCredit,
   DashboardSummary,
   DeletedUser,
+  EmailChangeRequest,
   DkimGenerateResult,
   EmailDnsResult,
   EmailInput,
@@ -163,6 +164,8 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     adminSecurity: () => api.get<SecuritySettings>("/admin/security"),
     setAnubisProtection: (enabled: boolean) =>
       api.put<SecuritySettings>("/admin/security/anubis", { anubisProtection: enabled }),
+    setStaffTwoFactorRequired: (required: boolean) =>
+      api.put<SecuritySettings>("/admin/security/staff-two-factor", { required }),
     accessRules: () => api.get<{ rules: AccessRule[] }>("/admin/security/access-rules"),
     addAccessRule: (body: AccessRuleInput) => api.post<{ rules: AccessRule[] }>("/admin/security/access-rules", body),
     setAccessRuleEnabled: (id: string, enabled: boolean) =>
@@ -253,6 +256,14 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     resendVerification: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/verification-email`, {}),
     sendPasswordReset: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/password-reset`, {}),
     verifyEmail: (id: string) => api.post<{ ok: true }>(`/admin/users/${id}/verify`, {}),
+    // A moderator proposes a new login email; an admin approves or declines it.
+    requestEmailChange: (id: string, email: string) =>
+      api.post<{ ok: true }>(`/admin/users/${id}/email-change-requests`, { email }),
+    emailChangeRequests: () => api.get<{ items: EmailChangeRequest[] }>("/admin/email-change-requests"),
+    approveEmailChange: (id: string) => api.post<{ user: AdminUser }>(`/admin/email-change-requests/${id}/approve`, {}),
+    declineEmailChange: (id: string) => api.del<{ ok: true }>(`/admin/email-change-requests/${id}`),
+    // Turn off an account's two-factor sign-in after a lost authenticator (admins only).
+    resetTwoFactor: (id: string) => api.del<{ user: AdminUser }>(`/admin/users/${id}/two-factor`),
     // Grant or revoke the admin role. The acting admin's own password travels
     // with the request — the server re-verifies it. `notify` mails the account.
     setUserRole: (id: string, body: { makeAdmin: boolean; password: string; notify?: boolean }) =>

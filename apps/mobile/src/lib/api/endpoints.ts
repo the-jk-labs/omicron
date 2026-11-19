@@ -63,6 +63,12 @@ export function createEndpoints(api: ApiClient) {
       api.post(`/admin/users/${id}/delete`, c.Ok, body),
     // Restore a deleted account within its retention window.
     restoreUser: (id: string, notify = false) => api.post(`/admin/users/${id}/restore`, c.Ok, { notify }),
+    // A moderator proposes a new login email; an admin approves or declines it.
+    requestEmailChange: (id: string, email: string) =>
+      api.post(`/admin/users/${id}/email-change-requests`, c.Ok, { email }),
+    emailChangeRequests: () => api.get("/admin/email-change-requests", c.EmailChangeRequestList),
+    approveEmailChange: (id: string) => api.post(`/admin/email-change-requests/${id}/approve`, c.AdminUserResponse, {}),
+    declineEmailChange: (id: string) => api.del(`/admin/email-change-requests/${id}`, c.Ok),
     // Full detail for one account: counts, latest posts and reports against it.
     adminUserDetail: (id: string) => api.get(`/admin/users/${id}`, c.AdminUserDetail),
     // Edit another account's profile + login email. Every field optional; only

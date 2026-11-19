@@ -160,7 +160,7 @@ const schema = z.object({
 
   // Rate limiting. Disable only when a trusted upstream (CDN/gateway) already
   // enforces limits. The per-limiter maxima below are the request budgets;
-  // windows are fixed in code (see routes/auth.ts and app.ts).
+  // windows are fixed in code (see auth/auth.ts and app.ts).
   RATE_LIMIT_ENABLED: z
     .string()
     .transform((v) => v.toLowerCase() !== "false")

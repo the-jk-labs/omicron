@@ -10,8 +10,11 @@
   import InstanceLogo from "#lib/components/InstanceLogo.svelte";
   import PageTitle from "#lib/components/PageTitle.svelte";
   import Button from "#lib/components/ui/Button.svelte";
+  import UsernameHint from "#lib/components/UsernameHint.svelte";
   import { oauthReturnTo } from "#lib/oauth.js";
   import { passkeyAutofill, passkeySignInError, passkeysSupported } from "#lib/passkeys.js";
+  import { notALoginField } from "#lib/passwordManagers.js";
+  import { backupCodeInput, totpDigits, twoFactorError } from "#lib/twoFactor.js";
   import type { InstanceInfo } from "#lib/types.js";
 
   // "Omicron" is the software's name; the site has the operator's. Same
@@ -34,6 +37,10 @@
   // button until mount shifted the page. Where it's missing the button is disabled.
   let passkeys = $state(true);
   let passkeyBusy = $state(false);
+  // An account with two-factor on answers the password with a second step.
+  let step = $state<"password" | "code">("password");
+  let twoFactorCode = $state("");
+  let useBackupCode = $state(false);
 
   const field =
     "h-11 rounded-input border border-input bg-background shadow-btn px-3.5 text-sm outline-hidden transition-colors placeholder:text-muted-foreground focus:border-foreground";
@@ -66,12 +73,48 @@
         error = res.error.message ?? "Invalid username or password.";
         return;
       }
+      if (res.data && "twoFactorRedirect" in res.data && res.data.twoFactorRedirect) {
+        password = "";
+        twoFactorCode = "";
+        useBackupCode = false;
+        step = "code";
+        return;
+      }
       await signedIn();
     } catch (err) {
       error = err instanceof Error ? err.message : "Something went wrong.";
     } finally {
       busy = false;
     }
+  }
+
+  async function verifyCode(e: SubmitEvent) {
+    e.preventDefault();
+    if (busy || !codeReady) return;
+    error = "";
+    busy = true;
+    try {
+      const res = useBackupCode
+        ? await authClient.twoFactor.verifyBackupCode({ code: twoFactorCode })
+        : await authClient.twoFactor.verifyTotp({ code: twoFactorCode });
+      if (res.error) {
+        error = twoFactorError(res.error);
+        if (res.error.code === "INVALID_TWO_FACTOR_COOKIE") startOver();
+        return;
+      }
+      await signedIn();
+    } catch (err) {
+      error = err instanceof Error ? err.message : "Something went wrong.";
+    } finally {
+      busy = false;
+    }
+  }
+
+  const codeReady = $derived(useBackupCode ? twoFactorCode.length >= 8 : twoFactorCode.length === 6);
+
+  function startOver() {
+    step = "password";
+    twoFactorCode = "";
   }
 
   async function signedIn() {
@@ -140,15 +183,71 @@
   <p class="mt-1.5 text-sm text-muted-foreground">Sign in to continue to {appName}.</p>
 </div>
 
-<form onsubmit={submit} class="flex flex-col gap-4">
-  <div class="flex flex-col gap-1.5">
-    <Label.Root for="identifier" class={labelClass}>Username or email</Label.Root>
-    <input id="identifier" bind:value={identifier} autocomplete="username webauthn" class={field} />
-  </div>
-  <div class="flex flex-col gap-1.5">
-    <div class="flex items-center justify-between">
-      <Label.Root for="password" class={labelClass}>Password</Label.Root>
-      <!-- The one escape hatch for a locked-out reader, so it has to read as a
+{#if step === "code"}
+  <form onsubmit={verifyCode} class="flex flex-col gap-4">
+    <!-- Names the saved login, so a password manager fills its one-time code here. -->
+    <UsernameHint username={loginId()} />
+    <div class="flex flex-col gap-1.5">
+      <Label.Root for="two-factor-code" class={labelClass}>
+        {useBackupCode ? "Backup code" : "Code from your authenticator app"}
+      </Label.Root>
+      {#if useBackupCode}
+        <input
+          id="two-factor-code"
+          bind:value={twoFactorCode}
+          oninput={() => (twoFactorCode = backupCodeInput(twoFactorCode))}
+          autocomplete="off"
+          {...notALoginField}
+          autocapitalize="off"
+          spellcheck={false}
+          class={`${field} font-mono`}
+        />
+      {:else}
+        <input
+          id="two-factor-code"
+          bind:value={twoFactorCode}
+          oninput={() => (twoFactorCode = totpDigits(twoFactorCode))}
+          inputmode="numeric"
+          name="otp"
+          autocomplete="one-time-code"
+          maxlength={6}
+          placeholder="123456"
+          class={`${field} font-mono tracking-[0.3em]`}
+        />
+      {/if}
+      <p class="text-xs text-muted-foreground">
+        {useBackupCode
+          ? "Each backup code works once."
+          : "Two-factor authentication is on for this account. Open your app and enter the 6-digit code."}
+      </p>
+    </div>
+    {#if error}<p class="text-sm text-destructive" role="alert">{error}</p>{/if}
+    <Button type="submit" disabled={busy || !codeReady} variant="solid" class="mt-1 h-11">
+      {busy ? "Verifying…" : "Verify"}
+    </Button>
+    <div class="flex items-center justify-center gap-2 text-sm">
+      <Button
+        type="button"
+        variant="link"
+        class="px-0"
+        onclick={() => ((useBackupCode = !useBackupCode), (twoFactorCode = ""), (error = ""))}
+      >
+        {useBackupCode ? "Use your authenticator app" : "Use a backup code"}
+      </Button>
+      <span class="text-muted-foreground">·</span>
+      <Button type="button" variant="link" class="px-0" onclick={() => ((error = ""), startOver())}>Start over</Button>
+    </div>
+  </form>
+{:else}
+  <form onsubmit={submit} class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1.5">
+      <Label.Root for="identifier" class={labelClass}>Username or email</Label.Root>
+      <input id="identifier" bind:value={identifier} autocomplete="username webauthn" class={field} />
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <div class="flex items-center justify-between">
+        <Label.Root for="password" class={labelClass}>Password</Label.Root>
+        <!-- The one escape hatch for a locked-out reader, so it has to read as a
            link before it is hovered. It used to be a bare <a> with
            `underline-offset-4 hover:underline` — an offset for an underline it
            never drew — in `text-xs text-muted-foreground`, which is this page's
@@ -160,73 +259,74 @@
            already uses ("Create one", "Sign in"): underlined, in the foreground
            colour. Kept one step down at text-xs so it stays subordinate to the
            label it sits beside. -->
-      <Button href="/forgot-password" variant="link" class="text-xs">Forgot password?</Button>
-    </div>
-    <div class="relative">
-      <input
-        id="password"
-        type={showPassword ? "text" : "password"}
-        bind:value={password}
-        autocomplete="current-password webauthn"
-        class={`${field} w-full pr-10`}
-      />
-      <button
-        type="button"
-        onclick={() => (showPassword = !showPassword)}
-        aria-label={showPassword ? "Hide password" : "Show password"}
-        aria-pressed={showPassword}
-        aria-controls="password"
-        title={showPassword ? "Hide password" : "Show password"}
-        class="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-      >
-        <Icon name="eye" size={16} />
-      </button>
-    </div>
-  </div>
-  {#if error}
-    <p class="text-sm text-destructive" role="alert">{error}</p>
-    {#if needsVerification}
-      <div class="flex flex-col gap-2">
-        {#if resent}
-          <p class="text-xs text-muted-foreground" aria-live="polite">
-            A fresh link is on its way. It expires in 24 hours.
-          </p>
-        {/if}
-        {#if resendError}<p class="text-xs text-destructive" role="alert">{resendError}</p>{/if}
-        <div class="flex items-center gap-2 text-sm">
-          <Button type="button" onclick={resendConfirmation} disabled={resending} variant="link" class="px-0">
-            {resending ? "Sending…" : "Resend confirmation link"}
-          </Button>
-          <span class="text-muted-foreground">·</span>
-          <Button href="/verify-email" variant="link" class="px-0">Enter a different email</Button>
-        </div>
+        <Button href="/forgot-password" variant="link" class="text-xs">Forgot password?</Button>
       </div>
+      <div class="relative">
+        <input
+          id="password"
+          type={showPassword ? "text" : "password"}
+          bind:value={password}
+          autocomplete="current-password webauthn"
+          class={`${field} w-full pr-10`}
+        />
+        <button
+          type="button"
+          onclick={() => (showPassword = !showPassword)}
+          aria-label={showPassword ? "Hide password" : "Show password"}
+          aria-pressed={showPassword}
+          aria-controls="password"
+          title={showPassword ? "Hide password" : "Show password"}
+          class="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <Icon name="eye" size={16} />
+        </button>
+      </div>
+    </div>
+    {#if error}
+      <p class="text-sm text-destructive" role="alert">{error}</p>
+      {#if needsVerification}
+        <div class="flex flex-col gap-2">
+          {#if resent}
+            <p class="text-xs text-muted-foreground" aria-live="polite">
+              A fresh link is on its way. It expires in 24 hours.
+            </p>
+          {/if}
+          {#if resendError}<p class="text-xs text-destructive" role="alert">{resendError}</p>{/if}
+          <div class="flex items-center gap-2 text-sm">
+            <Button type="button" onclick={resendConfirmation} disabled={resending} variant="link" class="px-0">
+              {resending ? "Sending…" : "Resend confirmation link"}
+            </Button>
+            <span class="text-muted-foreground">·</span>
+            <Button href="/verify-email" variant="link" class="px-0">Enter a different email</Button>
+          </div>
+        </div>
+      {/if}
     {/if}
-  {/if}
-  <Button type="submit" disabled={busy} variant="solid" class="mt-1 h-11">
-    {busy ? "Signing in…" : "Sign in"}
-  </Button>
-</form>
+    <Button type="submit" disabled={busy} variant="solid" class="mt-1 h-11">
+      {busy ? "Signing in…" : "Sign in"}
+    </Button>
+  </form>
 
-<div class="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-  <Separator.Root class="h-px flex-1 bg-border" />
-  or
-  <Separator.Root class="h-px flex-1 bg-border" />
-</div>
-<Button
-  type="button"
-  variant="outline"
-  class="h-11 w-full"
-  disabled={!passkeys || passkeyBusy}
-  onclick={signInWithPasskey}
->
-  <Icon name="key" size={16} />
-  {#if !passkeys}
-    This browser doesn't support passkeys
-  {:else}
-    {passkeyBusy ? "Waiting for your passkey…" : "Sign in with a passkey"}
-  {/if}
-</Button>
+  <div class="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+    <Separator.Root class="h-px flex-1 bg-border" />
+    or
+    <Separator.Root class="h-px flex-1 bg-border" />
+  </div>
+  <Button
+    type="button"
+    variant="outline"
+    class="h-11 w-full"
+    disabled={!passkeys || passkeyBusy}
+    onclick={signInWithPasskey}
+  >
+    <Icon name="key" size={16} />
+    {#if !passkeys}
+      This browser doesn't support passkeys
+    {:else}
+      {passkeyBusy ? "Waiting for your passkey…" : "Sign in with a passkey"}
+    {/if}
+  </Button>
+{/if}
 
 {#if (page.data.instance as InstanceInfo | null)?.inviteOnly !== true}
   <p class="mt-8 text-center text-sm text-muted-foreground">

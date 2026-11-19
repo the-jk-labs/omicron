@@ -1,6 +1,5 @@
-// @vitest-environment happy-dom
 import type { User } from "@omicron/contract";
-import { act, waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react-native";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { useSignOut, useViewer } from "@/lib/auth/session";
 import { queryKeys } from "@/lib/query/keys";
@@ -28,7 +27,7 @@ describe("useSignOut", () => {
   // Bug: clearing the cache dropped the query mounted screens were watching, so they kept showing the signed-in
   // tab bar and profile until a navigation remounted them.
   test("screens already on display see the signed-out state at once", async () => {
-    const { result } = renderQueryHook(() => ({ viewer: useViewer(), signOut: useSignOut() }));
+    const { result } = await renderQueryHook(() => ({ viewer: useViewer(), signOut: useSignOut() }));
     await waitFor(() => expect(result.current.viewer.signedIn).toBe(true));
 
     await act(() => result.current.signOut());
@@ -38,7 +37,7 @@ describe("useSignOut", () => {
   });
 
   test("account data is dropped, so nothing from the session shows to the next one", async () => {
-    const { result, queryClient } = renderQueryHook(() => useSignOut());
+    const { result, queryClient } = await renderQueryHook(() => useSignOut());
     queryClient.setQueryData(queryKeys.me, makeUser());
     queryClient.setQueryData(["notifications"], { private: true });
 
@@ -50,7 +49,7 @@ describe("useSignOut", () => {
 
   test("a failed server sign-out still signs out on the device", async () => {
     signOut.mockRejectedValueOnce(new Error("offline"));
-    const { result } = renderQueryHook(() => ({ viewer: useViewer(), signOut: useSignOut() }));
+    const { result } = await renderQueryHook(() => ({ viewer: useViewer(), signOut: useSignOut() }));
     await waitFor(() => expect(result.current.viewer.signedIn).toBe(true));
 
     await act(() => result.current.signOut());
