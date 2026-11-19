@@ -56,14 +56,19 @@ test.each(["https://example.com", "//example.com/admin", "/?query", "/#fragment"
   (path) => expect(() => testAccessRules([], "192.0.2.1", path, now)).toThrow(/path/),
 );
 
-test("generates literal ordered routes with request-time expiry and unspoofable peer IPs", () => {
+test("generates literal ordered routes with request-time expiry and Caddy's unspoofable client IP", () => {
   const rendered = renderAccessRules(caddyfile, [rule, { ...rule, id: "allow", action: "allow" }]);
-  expect(rendered).toContain("remote_ip('192.0.2.0/24') && int({time.now.unix_ms}) < 1792328400000");
+  // client_ip, not remote_ip: behind a trusted CDN (TRUSTED_PROXIES) a rule must match the visitor, not the CDN.
+  expect(rendered).toContain("client_ip('192.0.2.0/24') && int({time.now.unix_ms}) < 1792328400000");
   expect(rendered).not.toContain("X-Forwarded-For'");
   expect(rendered.indexOf("route @access_pages")).toBeLessThan(rendered.indexOf("respond @access_0"));
   expect(rendered).toContain("@access_pages expression `!(path(");
   expect(rendered).not.toContain("reverse_proxy @access_exempt");
   expect(rendered.indexOf("respond @access_0")).toBeLessThan(rendered.indexOf("reverse_proxy @access_1"));
+  // An allowed visitor reaches the app with one address, as on the normal route.
+  expect(rendered).toContain(
+    "reverse_proxy @access_1 http://frontend:3000 {\nheader_up X-Forwarded-For {client_ip}\n}",
+  );
   expect(rendered).toContain("reverse_proxy frontend:3000");
   expect(rendered).toContain("handle @federation");
   expect(rendered).toContain("path_regexp('^/indexnow-[0-9a-fA-F]+[.]txt$')");

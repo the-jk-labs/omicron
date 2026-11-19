@@ -118,11 +118,11 @@ export function renderAccessRules(caddyfile: string, rules: AccessRule[]): strin
     const network = normalizeNetwork(rule.network);
     const expiry = Date.parse(rule.expiresAt);
     if (!Number.isSafeInteger(expiry)) throw new Error("Invalid access rule expiry.");
-    lines.push(`@access_${i} expression \`remote_ip('${network}') && int({time.now.unix_ms}) < ${expiry}\``);
+    lines.push(`@access_${i} expression \`client_ip('${network}') && int({time.now.unix_ms}) < ${expiry}\``);
     lines.push(
       rule.action === "block"
         ? `respond @access_${i} "Access blocked by an instance IP rule." 403`
-        : `reverse_proxy @access_${i} http://frontend:3000`,
+        : `reverse_proxy @access_${i} http://frontend:3000 {\nheader_up X-Forwarded-For {client_ip}\n}`,
     );
   }
   lines.push("}");
