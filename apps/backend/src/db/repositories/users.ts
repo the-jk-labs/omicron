@@ -404,6 +404,15 @@ export async function countAdmins(): Promise<number> {
   return row?.n ?? 0;
 }
 
+// Ids of every live admin, e.g. to notify them of something only an admin may decide.
+export async function listAdminIds(): Promise<string[]> {
+  const rows = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.isAdmin, true), sql`${users.deletedAt} is null`));
+  return rows.map((r) => r.id);
+}
+
 // Every account's id, email, and creation time — for the one-off email-lowercase
 // backfill (scripts/backfill_email_lowercase.ts), which canonicalises rows that
 // predate case-normalised registration. Oldest first, so a collision report is

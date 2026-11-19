@@ -1,15 +1,14 @@
-// @vitest-environment happy-dom
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react-native";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { HtmlContent } from "@/components/reader/html-content";
 
 vi.mock("expo-clipboard", () => ({ setStringAsync: vi.fn<() => void>() }));
-vi.mock("expo-image", () => ({ Image: () => <img alt="" /> }));
+vi.mock("expo-image", async () => ({ Image: (await import("react-native")).View }));
 vi.mock("expo-router", () => ({ router: { push: vi.fn<() => void>() } }));
 vi.mock("expo-web-browser", () => ({ openBrowserAsync: vi.fn<() => void>() }));
-vi.mock("react-native-reanimated", () => ({
-  default: { View: ({ children }: { children: ReactNode }) => <div>{children}</div> },
+vi.mock("react-native-reanimated", async () => ({
+  default: { View: (await import("react-native")).View },
   FadeIn: { duration: () => undefined },
   useAnimatedStyle: () => ({}),
   withTiming: (value: unknown) => value,
@@ -19,10 +18,14 @@ vi.mock("@/components/instance-provider", () => ({
 }));
 vi.mock("@/components/ui/button", () => ({ IconButton: () => null }));
 vi.mock("@/components/ui/icon", () => ({ Icon: () => null }));
-vi.mock("@/components/ui/text", () => ({
-  Text: ({ children }: { children: ReactNode }) => <span>{children}</span>,
-}));
-vi.mock("@/components/reader/math-view", () => ({ MathView: () => <i>formula</i> }));
+vi.mock("@/components/ui/text", async () => {
+  const { Text } = await import("react-native");
+  return { Text: ({ children }: { children: ReactNode }) => <Text>{children}</Text> };
+});
+vi.mock("@/components/reader/math-view", async () => {
+  const { Text } = await import("react-native");
+  return { MathView: () => <Text>formula</Text> };
+});
 
 const paragraph = (index: number) => `<p>Paragraph ${index} ${"word ".repeat(40)}</p>`;
 const post = (count: number) => Array.from({ length: count }, (_, index) => paragraph(index)).join("");
@@ -46,15 +49,15 @@ beforeEach(() => {
 });
 
 describe("HtmlContent", () => {
-  test("a long post starts with its first screens, not the whole thing, so the slide-in isn't held up", () => {
-    render(<HtmlContent html={post(100)} />);
+  test("a long post starts with its first screens, not the whole thing, so the slide-in isn't held up", async () => {
+    await render(<HtmlContent html={post(100)} />);
     expect(shown(0)).toBe(true);
     expect(shown(99)).toBe(false);
   });
 
   test("the rest follows, in order, until the whole post is there", async () => {
     const onComplete = vi.fn<() => void>();
-    render(<HtmlContent html={post(100)} onComplete={onComplete} />);
+    await render(<HtmlContent html={post(100)} onComplete={onComplete} />);
     expect(onComplete).not.toHaveBeenCalled();
 
     await settle();
@@ -64,7 +67,7 @@ describe("HtmlContent", () => {
   });
 
   test("nothing more appears until the slide-in has had time to run", async () => {
-    render(<HtmlContent html={post(100)} />);
+    await render(<HtmlContent html={post(100)} />);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(200);
     });
@@ -73,7 +76,7 @@ describe("HtmlContent", () => {
 
   test("a short post shows whole at once, and what's below it still waits for the slide-in", async () => {
     const onComplete = vi.fn<() => void>();
-    render(<HtmlContent html={post(2)} onComplete={onComplete} />);
+    await render(<HtmlContent html={post(2)} onComplete={onComplete} />);
     expect(shown(1)).toBe(true);
     expect(onComplete).not.toHaveBeenCalled();
     await settle();
@@ -82,23 +85,23 @@ describe("HtmlContent", () => {
 
   test("a post with nothing in it still completes", async () => {
     const onComplete = vi.fn<() => void>();
-    render(<HtmlContent html="" onComplete={onComplete} />);
+    await render(<HtmlContent html="" onComplete={onComplete} />);
     await settle();
     expect(onComplete).toHaveBeenCalledOnce();
   });
 
   test("an edited body starts over with its own content", async () => {
-    const { rerender } = render(<HtmlContent html={post(100)} />);
+    const { rerender } = await render(<HtmlContent html={post(100)} />);
     await settle();
-    rerender(<HtmlContent html="<p>Rewritten</p>" />);
+    await rerender(<HtmlContent html="<p>Rewritten</p>" />);
     expect(screen.getByText(/Rewritten/)).toBeTruthy();
     expect(shown(0)).toBe(false);
   });
 
   test("leaving part way stops the work", async () => {
     const onComplete = vi.fn<() => void>();
-    const { unmount } = render(<HtmlContent html={post(100)} onComplete={onComplete} />);
-    unmount();
+    const { unmount } = await render(<HtmlContent html={post(100)} onComplete={onComplete} />);
+    await unmount();
     await settle();
     expect(onComplete).not.toHaveBeenCalled();
   });

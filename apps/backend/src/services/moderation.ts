@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import * as accountsRepo from "@/db/repositories/accounts.ts";
 import * as blockedActorsRepo from "@/db/repositories/blockedActors.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
+import * as emailChangeRequestsRepo from "@/db/repositories/emailChangeRequests.ts";
 import * as instancesRepo from "@/db/repositories/federatedInstances.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as postsRepo from "@/db/repositories/posts.ts";
@@ -11,10 +12,11 @@ import * as reportsRepo from "@/db/repositories/reports.ts";
 import type { ReportRow } from "@/db/repositories/reports.ts";
 import * as sessionsRepo from "@/db/repositories/sessions.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
+import * as twoFactorsRepo from "@/db/repositories/twoFactors.ts";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import * as usersRepo from "@/db/repositories/users.ts";
 import type { AdminCursor, AdminUserFilter, AdminUserSort } from "@/db/repositories/users.ts";
-import type { BlockedDomain, BlockedRemoteActor, DomainBlockSeverity } from "@/db/schema.ts";
+import type { BlockedDomain, BlockedRemoteActor, DomainBlockSeverity, User } from "@/db/schema.ts";
 import { hostMatchesDomain, normalizeDomain } from "@/lib/domain.ts";
 import { badRequest, conflict, forbidden, notFound, unauthorized } from "@/lib/http.ts";
 import { type Cursor, encodeCursor } from "@/lib/pagination.ts";
@@ -36,6 +38,7 @@ import {
 import { getEmailMode } from "@/services/emailSettings.ts";
 import { federationRunning } from "@/services/federationState.ts";
 import { getAppDomain } from "@/services/instanceSetup.ts";
+import { notify } from "@/services/notifications.ts";
 import * as postsService from "@/services/posts.ts";
 import type { ProfileLinkInput } from "@/services/users.ts";
 import * as usersService from "@/services/users.ts";
@@ -467,6 +470,21 @@ export async function verifyEmail(actorId: string, targetId: string): Promise<vo
   await notifyVerified(target.email, target.username);
 }
 
+// Turns off another account's two-factor sign-in, for someone who lost their
+// authenticator (staff have no backup codes). Admins only, and never on another
+// admin: an admin's is reset from the server shell.
+export async function resetTwoFactor(actorId: string, targetId: string) {
+  const [actor, target] = await Promise.all([usersRepo.findById(actorId), usersRepo.findById(targetId)]);
+  if (!target || target.deletedAt) throw notFound("Account not found.");
+  if (!actor?.isAdmin) throw forbidden("Admin access required.");
+  assertCanModerateAccount(actor, target);
+  if (!target.twoFactorEnabled) throw badRequest("This account doesn't use two-factor authentication.");
+  await twoFactorsRepo.resetForUser(targetId);
+  const updated = await usersRepo.findById(targetId);
+  if (!updated) throw notFound("Account not found.");
+  return updated;
+}
+
 // Resends the verification email to an unverified account. Goes through
 // Better Auth's own endpoint so token format and expiry stay in one place;
 // already-verified is a caller error, not a silent no-op.
@@ -532,9 +550,26 @@ export type AdminUpdateUserInput = {
   email?: string;
 };
 
+// A login email for `target`: normalized, well-formed, and not another account's.
+async function checkedLoginEmail(email: string, target: User): Promise<string> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) throw badRequest("Enter a valid email address.");
+  if (normalized.length > 254) throw badRequest("Email must be 254 characters or fewer.");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    throw badRequest("Enter a valid email address.");
+  }
+  if (normalized !== target.email.toLowerCase()) {
+    const existing = await usersRepo.findByEmail(normalized);
+    if (existing && existing.id !== target.id) throw badRequest("That email is already in use.");
+  }
+  return normalized;
+}
+
 // Edits another account's profile + login email. Profile fields reuse the
 // user's own update path (services/users.ts) so validation, tag/link caps and
-// federation stay in one place; the login email has its own flow: it is
+// federation stay in one place; the login email has its own flow: only an admin
+// moves it to another address (whoever holds it can sign in as the account, so a
+// moderator files a request instead, see requestEmailChange), and it is
 // normalized, checked for uniqueness, stored unverified, and the owner must
 // prove the new address via the standard verification link while the previous
 // address gets a security notice. Best-effort mail never fails the edit
@@ -548,17 +583,9 @@ export async function updateUserDetails(actorId: string, targetId: string, input
 
   const { email, ...profileInput } = input;
   // Validate the email before any write, so a rejected one leaves the profile untouched.
-  const normalized = email?.trim().toLowerCase();
-  if (normalized !== undefined) {
-    if (!normalized) throw badRequest("Enter a valid email address.");
-    if (normalized.length > 254) throw badRequest("Email must be 254 characters or fewer.");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
-      throw badRequest("Enter a valid email address.");
-    }
-    if (normalized !== target.email.toLowerCase()) {
-      const existing = await usersRepo.findByEmail(normalized);
-      if (existing && existing.id !== targetId) throw badRequest("That email is already in use.");
-    }
+  const normalized = email === undefined ? undefined : await checkedLoginEmail(email, target);
+  if (normalized !== undefined && normalized !== target.email.toLowerCase() && !actor.isAdmin) {
+    throw forbidden("Only an admin can change a login email. Send the change to an admin for approval.");
   }
 
   if (Object.keys(profileInput).length > 0) {
@@ -591,6 +618,47 @@ export async function updateUserDetails(actorId: string, targetId: string, input
   const updated = await usersRepo.findById(targetId);
   if (!updated) throw notFound("Account not found.");
   return updated;
+}
+
+// ── Login-email change requests (moderator asks, admin decides) ───────────
+
+// A moderator's proposed login email for an account, sent to every admin to
+// approve or decline. A newer request for the same account replaces the old one.
+export async function requestEmailChange(actorId: string, targetId: string, email: string) {
+  const [actor, target] = await Promise.all([usersRepo.findById(actorId), usersRepo.findById(targetId)]);
+  if (!target || target.deletedAt) throw notFound("Account not found.");
+  if (!actor) throw forbidden("Moderator access required.");
+  assertCanModerateAccount(actor, target);
+  const newEmail = await checkedLoginEmail(email, target);
+  if (newEmail === target.email.toLowerCase()) throw badRequest("That is already the account's login email.");
+  const request = await emailChangeRequestsRepo.upsert(targetId, actorId, newEmail);
+  for (const adminId of await usersRepo.listAdminIds()) {
+    await notify({ recipientId: adminId, type: "email_change_request", actorId, emailChangeRequestId: request.id });
+  }
+  return request;
+}
+
+export function listEmailChangeRequests() {
+  return emailChangeRequestsRepo.listPending();
+}
+
+// Makes a pending change through the admin edit flow (unverified address,
+// verification link, notice to the old address) and closes the request. A
+// request that no longer validates (the address got taken) stays open.
+export async function approveEmailChange(adminId: string, requestId: string) {
+  const request = await emailChangeRequestsRepo.findById(requestId);
+  if (!request) throw notFound("That request was already decided.");
+  const target = await usersRepo.findById(request.userId);
+  if (!target || target.deletedAt) throw notFound("Account not found.");
+  await checkedLoginEmail(request.newEmail, target);
+  await emailChangeRequestsRepo.deleteById(requestId);
+  return updateUserDetails(adminId, request.userId, { email: request.newEmail });
+}
+
+export async function declineEmailChange(requestId: string): Promise<void> {
+  const request = await emailChangeRequestsRepo.findById(requestId);
+  if (!request) throw notFound("That request was already decided.");
+  await emailChangeRequestsRepo.deleteById(requestId);
 }
 
 // ── Posts (moderator) ──────────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { APIError } from "better-auth/api";
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,7 +17,7 @@ const {
   notifyEmailChangedBySelf: vi.fn<(...args: string[]) => Promise<void>>(),
   createUndoLink: vi.fn<(...args: string[]) => Promise<string>>(),
   notifyPasskeyChanged: vi.fn<(change: string, userId: string, name: unknown) => Promise<void>>(),
-  store: { user: [], account: [], session: [], verification: [], passkey: [], jwks: [] } as Record<
+  store: { user: [], account: [], session: [], verification: [], passkey: [], jwks: [], twoFactor: [] } as Record<
     string,
     Record<string, unknown>[]
   >,
@@ -511,7 +512,10 @@ describe("changing the login email", () => {
   // Each request mails a code to an address of the requester's choosing.
   it("caps code requests so the instance can't be used to flood an inbox", async () => {
     const { auth } = await import("@/auth/auth.ts");
-    expect(auth.options.rateLimit?.customRules?.["/email-otp/request-email-change"]).toEqual({ window: 60, max: 3 });
+    expect(auth.options.rateLimit?.customRules?.["/email-otp/request-email-change"]).toEqual({
+      window: 3600 * 24,
+      max: 3,
+    });
   });
 
   it.each([
@@ -647,5 +651,206 @@ describe("sign-in for frozen accounts", () => {
 
     await expect(before!({ userId: "frozen-user" })).rejects.toThrow("This account is frozen.");
     await expect(before!({ userId: "active-user" })).resolves.toMatchObject({ data: { userId: "active-user" } });
+  });
+});
+
+describe("two-factor sign-in", () => {
+  const cookies = new Map<string, string>();
+  const PASSWORD = "Unique-test-password-123!";
+
+  async function call(path: string, body?: unknown) {
+    const { auth } = await import("@/auth/auth.ts");
+    const res = await auth.handler(
+      new Request(`http://localhost:3000/api/auth${path}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "http://localhost:3000",
+          Cookie: [...cookies].map(([k, v]) => `${k}=${v}`).join("; "),
+        },
+        body: JSON.stringify(body ?? {}),
+      }),
+    );
+    for (const header of res.headers.getSetCookie()) {
+      const [pair] = header.split(";");
+      const at = pair.indexOf("=");
+      cookies.set(pair.slice(0, at), pair.slice(at + 1));
+    }
+    return res;
+  }
+
+  // What an authenticator app shows for the secret in a setup URI, right now.
+  function totpCode(uri: string): string {
+    const secret = new URL(uri).searchParams.get("secret") ?? "";
+    let bits = "";
+    for (const char of secret.replace(/=+$/, "")) {
+      bits += "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".indexOf(char).toString(2).padStart(5, "0");
+    }
+    const key = Buffer.from((bits.match(/.{8}/g) ?? []).map((byte) => Number.parseInt(byte, 2)));
+    const counter = Buffer.alloc(8);
+    counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30_000)));
+    const hmac = createHmac("sha1", key).update(counter).digest();
+    const offset = hmac[hmac.length - 1] & 0xf;
+    return String((hmac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, "0");
+  }
+
+  async function signUpAda() {
+    const res = await call("/sign-up/email", {
+      email: "ada@example.com",
+      password: PASSWORD,
+      name: "Ada",
+      username: "ada",
+    });
+    expect(res.status).toBe(200);
+    // The instance's first account is its admin; these tests pick the role themselves.
+    store.user[0].isAdmin = false;
+  }
+
+  // Turns two-factor on for the signed-in account; returns its setup URI and backup codes.
+  async function enable() {
+    const res = await call("/two-factor/enable", { password: PASSWORD });
+    expect(res.status).toBe(200);
+    const { totpURI, backupCodes } = (await res.json()) as { totpURI: string; backupCodes: string[] };
+    expect((await call("/two-factor/verify-totp", { code: totpCode(totpURI) })).status).toBe(200);
+    expect(store.user[0].twoFactorEnabled).toBe(true);
+    return { totpURI, backupCodes };
+  }
+
+  async function signInAgain() {
+    cookies.clear();
+    store.session.length = 0;
+    const res = await call("/sign-in/username", { username: "ada", password: PASSWORD });
+    expect(await res.json()).toMatchObject({ twoFactorRedirect: true, twoFactorMethods: ["totp"] });
+  }
+
+  const sessionCount = () => store.session.length;
+
+  beforeEach(() => {
+    vi.resetModules();
+    for (const rows of Object.values(store)) rows.length = 0;
+    for (const key of Object.keys(settings)) delete settings[key];
+    cookies.clear();
+    vi.stubEnv("APP_DOMAIN", "localhost:3000");
+    vi.stubEnv("HIBP_CHECK_ENABLED", "false");
+    vi.stubEnv("EMAIL_VERIFICATION_REQUIRED", "false");
+  });
+
+  it("asks for the authenticator code after the password, and only then signs in", async () => {
+    await signUpAda();
+    const { totpURI, backupCodes } = await enable();
+    expect(new URL(totpURI).searchParams.get("issuer")).toBe("Omicron");
+    expect(backupCodes).toHaveLength(10);
+
+    await signInAgain();
+    expect(sessionCount()).toBe(0);
+    expect((await call("/two-factor/verify-totp", { code: totpCode(totpURI) })).status).toBe(200);
+    expect(sessionCount()).toBe(1);
+  });
+
+  it("a regular account may sign in with a backup code", async () => {
+    await signUpAda();
+    const { backupCodes } = await enable();
+    await signInAgain();
+    expect((await call("/two-factor/verify-backup-code", { code: backupCodes[0] })).status).toBe(200);
+  });
+
+  // Staff recover through an admin or the server shell, so a leaked code list can't open their account.
+  it("moderators get no backup codes, and one kept from before is refused", async () => {
+    await signUpAda();
+    const { backupCodes } = await enable();
+    store.user[0].isModerator = true;
+
+    await signInAgain();
+    const res = await call("/two-factor/verify-backup-code", { code: backupCodes[0] });
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe("BACKUP_CODES_NOT_FOR_STAFF");
+    expect(sessionCount()).toBe(0);
+  });
+
+  it("a moderator setting it up is shown no backup codes and can't make new ones", async () => {
+    await signUpAda();
+    store.user[0].isModerator = true;
+    const { backupCodes } = await enable();
+    expect(backupCodes).toEqual([]);
+    const res = await call("/two-factor/generate-backup-codes", { password: PASSWORD });
+    expect(res.status).toBe(403);
+  });
+
+  it("staff can't turn it off while the instance requires it", async () => {
+    await signUpAda();
+    store.user[0].isAdmin = true;
+    await enable();
+    const res = await call("/two-factor/disable", { password: PASSWORD });
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe("TWO_FACTOR_REQUIRED");
+    expect(store.user[0].twoFactorEnabled).toBe(true);
+
+    settings["security.staffTwoFactorRequired"] = false;
+    expect((await call("/two-factor/disable", { password: PASSWORD })).status).toBe(200);
+    expect(store.user[0].twoFactorEnabled).toBe(false);
+  });
+
+  it.each(["/two-factor/send-otp", "/two-factor/verify-otp"])(
+    "%s is switched off: codes come from an authenticator app, never email",
+    async (path) => {
+      expect((await call(path, { code: "123456" })).status).toBe(404);
+    },
+  );
+});
+
+// The documented budgets (.env.example): RL_LOGIN_MAX sign-ins per 15 minutes and RL_REGISTER_MAX
+// sign-ups per hour, per IP, whatever NODE_ENV says.
+describe("sign-in and sign-up rate limits", () => {
+  let ip = 0;
+
+  async function attempt(path: string, body: unknown, from: string) {
+    const { auth } = await import("@/auth/auth.ts");
+    return auth.handler(
+      new Request(`http://localhost:3000/api/auth${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Origin: "http://localhost:3000", "X-Forwarded-For": from },
+        body: JSON.stringify(body),
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    vi.resetModules();
+    for (const rows of Object.values(store)) rows.length = 0;
+    vi.stubEnv("APP_DOMAIN", "localhost:3000");
+    vi.stubEnv("HIBP_CHECK_ENABLED", "false");
+    vi.stubEnv("NODE_ENV", "");
+    ip += 1;
+  });
+
+  it("stops password guessing after RL_LOGIN_MAX tries", async () => {
+    vi.stubEnv("RL_LOGIN_MAX", "2");
+    const from = `198.51.100.${ip}`;
+    const guess = { username: "ada", password: "wrong-password-123" };
+    expect((await attempt("/sign-in/username", guess, from)).status).not.toBe(429);
+    expect((await attempt("/sign-in/username", guess, from)).status).not.toBe(429);
+    expect((await attempt("/sign-in/username", guess, from)).status).toBe(429);
+  });
+
+  it("allows the documented 15 logins per 15 minutes, and 5 sign-ups an hour", async () => {
+    const { auth } = await import("@/auth/auth.ts");
+    const rules = auth.options.rateLimit?.customRules ?? {};
+    expect(auth.options.rateLimit?.enabled).toBe(true);
+    expect(rules["/sign-in/username"]).toEqual({ window: 15 * 60, max: 15 });
+    expect(rules["/sign-in/email"]).toEqual({ window: 15 * 60, max: 15 });
+    expect(rules["/sign-up/email"]).toEqual({ window: 60 * 60, max: 5 });
+  });
+
+  it("stops sign-ups after RL_REGISTER_MAX from one address", async () => {
+    vi.stubEnv("RL_REGISTER_MAX", "1");
+    const from = `203.0.113.${ip}`;
+    const register = (n: number) =>
+      attempt(
+        "/sign-up/email",
+        { email: `u${n}@example.com`, password: "Unique-test-password-123!", name: "U", username: `user_${n}` },
+        from,
+      );
+    expect((await register(1)).status).not.toBe(429);
+    expect((await register(2)).status).toBe(429);
   });
 });

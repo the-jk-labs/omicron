@@ -74,6 +74,8 @@ export const users = pgTable(
     showAiAssistedPosts: boolean("show_ai_assisted_posts").notNull().default(true),
     // Better Auth's `emailVerified`. Gates sign-in only when EMAIL_VERIFICATION_REQUIRED is set.
     emailVerified: boolean("email_verified").notNull().default(false),
+    // Better Auth's two-factor plugin: a password sign-in also asks for an authenticator code (see twoFactors).
+    twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
     // When an admin suspended this account (null = active). A suspended user is
     // blocked from signing in and treated as signed out (see auth/auth.ts and
     // routes/middleware.ts).
@@ -930,6 +932,46 @@ export const passkeys = pgTable(
   (t) => [index("passkeys_user_idx").on(t.userId), uniqueIndex("passkeys_credential_id_idx").on(t.credentialID)],
 );
 
+// ── login-email change requests ──────────────────────────────────────────
+// A moderator's proposed new login email for an account, waiting for an admin.
+// Whoever holds the login email can sign in as the account, so only an admin
+// makes the change. One pending request per account; a newer one replaces it,
+// and approving or declining deletes it.
+export const emailChangeRequests = pgTable(
+  "email_change_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    requestedBy: uuid("requested_by").references((): AnyPgColumn => users.id, { onDelete: "set null" }),
+    newEmail: text("new_email").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("email_change_requests_user_idx").on(t.userId)],
+);
+
+export type EmailChangeRequest = typeof emailChangeRequests.$inferSelect;
+
+// ── two-factor (Better Auth plugin) ──────────────────────────────────────
+// One authenticator-app (TOTP) secret per account, encrypted with SESSION_SECRET, plus its
+// encrypted one-time backup codes. `verified` stays false until the first code confirms setup.
+export const twoFactors = pgTable(
+  "two_factors",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    verified: boolean("verified").notNull().default(true),
+    failedVerificationCount: integer("failed_verification_count").notNull().default(0),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("two_factors_user_idx").on(t.userId), index("two_factors_secret_idx").on(t.secret)],
+);
+
 // ── webhook tokens ─────────────────────────────────────────────────────
 // Per-user publishing credentials for the content webhook. One row is one
 // token a writer minted for one external system, so revoking a leaked Sanity
@@ -1145,6 +1187,10 @@ export const notifications = pgTable(
     remoteActorId: uuid("remote_actor_id").references(() => remoteActors.id, { onDelete: "cascade" }),
     postId: uuid("post_id").references(() => posts.id, { onDelete: "cascade" }),
     commentId: uuid("comment_id").references(() => comments.id, { onDelete: "cascade" }),
+    // An admin's "review this login-email change"; deciding it deletes the request, and so this row.
+    emailChangeRequestId: uuid("email_change_request_id").references((): AnyPgColumn => emailChangeRequests.id, {
+      onDelete: "cascade",
+    }),
     readAt: timestamp("read_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true, precision: CURSOR_PRECISION }).notNull().defaultNow(),
   },
@@ -1160,7 +1206,7 @@ export const notifications = pgTable(
     // DISTINCT so rows whose target columns are null (e.g. a follow, which has no
     // post/comment) still collide instead of every insert being treated as unique.
     unique("notifications_dedupe_idx")
-      .on(t.recipientId, t.type, t.actorId, t.remoteActorId, t.postId, t.commentId)
+      .on(t.recipientId, t.type, t.actorId, t.remoteActorId, t.postId, t.commentId, t.emailChangeRequestId)
       .nullsNotDistinct(),
   ],
 );

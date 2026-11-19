@@ -4,6 +4,7 @@ import { createMiddleware } from "hono/factory";
 import { matchedRoutes } from "hono/route";
 import { auth } from "@/auth/auth.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
+import type { User } from "@/db/schema.ts";
 import { badRequest, forbidden, unauthorized } from "@/lib/http.ts";
 import { readCappedBody } from "@/lib/inboxBody.ts";
 import { OAuthError } from "@/lib/oauthError.ts";
@@ -11,8 +12,16 @@ import { clientAccess } from "@/routes/clientAccess.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import { accessIdentity, requireSameOrigin } from "@/services/oauth.ts";
 import { hasScope } from "@/services/oauthScopes.ts";
+import { twoFactorRequiredFor } from "@/services/settings.ts";
 
 export const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+type Vars = AppEnv["Variables"];
+type Getter = { get: <K extends keyof Vars>(key: K) => Vars[K] };
+
+async function markStaffTwoFactor(c: Context<AppEnv>, user: User | null) {
+  if (user && !user.twoFactorEnabled && (await twoFactorRequiredFor(user))) c.set("staffTwoFactorMissing", true);
+}
 
 async function userFromJwt(headers: Headers) {
   const authorization = headers.get("authorization");
@@ -43,6 +52,7 @@ export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
       );
     }
     c.set("user", user);
+    await markStaffTwoFactor(c, user);
     c.set("oauthScopes", grant.scopes);
     c.set("oauthGrant", { id: grant.id, clientId: grant.clientId });
     c.header("Cache-Control", "no-store");
@@ -64,6 +74,7 @@ export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   // A suspended or deleted account is treated as signed out at once, regardless
   // of the session cookie cache (its sign-in is also blocked in auth/auth.ts).
   c.set("user", user && !user.suspendedAt && !user.frozenAt && !user.deletedAt ? user : null);
+  await markStaffTwoFactor(c, c.get("user"));
   // Cookie writes retain their CSRF boundary when Caddy bypasses SvelteKit.
   if (session && c.get("user") && !READ_METHODS.has(c.req.method)) {
     await requireSameOrigin(c.req.raw.headers);
@@ -74,7 +85,17 @@ export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
 export function mayModerate(c: Context<AppEnv>) {
   const user = requireUser(c);
   const scopes = c.get("oauthScopes");
-  return (user.isAdmin || user.isModerator) && (!scopes || hasScope(scopes, "admin:write"));
+  return (
+    (user.isAdmin || user.isModerator) &&
+    !c.get("staffTwoFactorMissing") &&
+    (!scopes || hasScope(scopes, "admin:write"))
+  );
+}
+
+function requireStaffTwoFactor(c: Getter) {
+  if (c.get("staffTwoFactorMissing")) {
+    throw forbidden("Set up two-factor authentication to use moderation tools.");
+  }
 }
 
 // Guard for routes that require authentication. Returns the user (non-null).
@@ -86,18 +107,20 @@ export function requireUser(c: { get: (k: "user") => AppEnv["Variables"]["user"]
 
 // Guard for moderation routes (users / posts / reports operations). Admins
 // implicitly hold every moderator power. Returns the moderator user.
-export function requireModerator(c: { get: (k: "user") => AppEnv["Variables"]["user"] }) {
+export function requireModerator(c: Getter) {
   const user = requireUser(c);
   if (!user.isAdmin && !user.isModerator) throw forbidden("Moderator access required.");
+  requireStaffTwoFactor(c);
   return user;
 }
 
 // Guard for instance-administration routes (settings, email, federation,
 // domains, SEO, media, role grants). Moderators are refused here. Returns the
 // admin user.
-export function requireAdmin(c: { get: (k: "user") => AppEnv["Variables"]["user"] }) {
+export function requireAdmin(c: Getter) {
   const user = requireUser(c);
   if (!user.isAdmin) throw forbidden("Admin access required.");
+  requireStaffTwoFactor(c);
   return user;
 }
 

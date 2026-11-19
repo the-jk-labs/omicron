@@ -288,6 +288,9 @@ test("read-only, profile-write, and administrator permissions remain separate", 
   const admin = await grant("admin:read admin:write");
   expect((await api(admin.access_token, "/admin/settings")).status).toBe(403);
   await db.update(users).set({ isAdmin: true }).where(eq(users.id, userId));
+  // An admin without the two-factor sign-in staff must use can't moderate through an app either.
+  expect((await api(admin.access_token, "/admin/settings")).status).toBe(403);
+  await db.update(users).set({ twoFactorEnabled: true }).where(eq(users.id, userId));
   expect((await api(admin.access_token, "/admin/settings")).status).toBe(200);
   const bob = await mkUser("bob");
   expect((await api(admin.access_token, `/admin/users/${bob.id}/suspend`, "POST", { suspend: true })).status).toBe(200);

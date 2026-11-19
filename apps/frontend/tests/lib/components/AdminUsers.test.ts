@@ -21,6 +21,7 @@ function user(o: Partial<AdminUser> = {}): AdminUser {
     isModerator: false,
     email: `${username}@example.com`,
     emailVerified: true,
+    twoFactorEnabled: false,
     suspended: false,
     frozen: false,
     createdAt: "2026-01-01T00:00:00Z",
@@ -768,4 +769,70 @@ test("a failed deleted-list load is shown", async () => {
   expect(
     within(screen.getByText("Deleted list broke").parentElement!).getByText("No deleted accounts."),
   ).toBeInTheDocument();
+});
+
+// A moderator never changes a login email: whoever holds it can sign in as the account.
+test("a moderator's new login email goes to an admin for approval; the rest saves as usual", async () => {
+  const { calls } = setup(
+    {
+      "GET /api/admin/users/u-bob": detail(bob),
+      "POST /api/admin/users/u-bob/email-change-requests": { ok: true },
+      "PATCH /api/admin/users/u-bob": { user: { ...bob, displayName: "Robert" } },
+    },
+    { isViewerAdmin: false },
+  );
+  await screen.findByText("2 accounts total");
+  await openMenu("bob", "Edit profile…");
+  await waitFor(() => expect(screen.getByLabelText("Login email")).toHaveValue("bob@example.com"));
+  expect(screen.getByText(/A change goes to an admin for approval/)).toBeInTheDocument();
+  await fireEvent.input(screen.getByLabelText("Login email"), { target: { value: "new@example.com" } });
+  await fireEvent.input(screen.getByLabelText("Display name"), { target: { value: "Robert" } });
+  await fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await screen.findByText("Saved. The new login email was sent to an admin for approval.");
+  expect(calls.find((c) => c.method === "POST")?.body).toEqual({ email: "new@example.com" });
+  expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ displayName: "Robert" });
+});
+
+test("a moderator's email-only change sends just the request", async () => {
+  const { calls } = setup(
+    {
+      "GET /api/admin/users/u-bob": detail(bob),
+      "POST /api/admin/users/u-bob/email-change-requests": { ok: true },
+    },
+    { isViewerAdmin: false },
+  );
+  await screen.findByText("2 accounts total");
+  await openMenu("bob", "Edit profile…");
+  await waitFor(() => expect(screen.getByLabelText("Login email")).toHaveValue("bob@example.com"));
+  await fireEvent.input(screen.getByLabelText("Login email"), { target: { value: "new@example.com" } });
+  await fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await screen.findByText(/Sent to an admin for approval/);
+  expect(calls.some((c) => c.method === "PATCH")).toBe(false);
+});
+
+test("an admin resets two-factor for someone who lost their authenticator", async () => {
+  const withTwoFactor = user({ username: "bob", twoFactorEnabled: true });
+  const { calls } = setup({
+    "GET /api/admin/users": page([ada, withTwoFactor]),
+    "DELETE /api/admin/users/u-bob/two-factor": { user: { ...withTwoFactor, twoFactorEnabled: false } },
+    "GET /api/admin/users/u-bob": detail(withTwoFactor),
+  });
+  await screen.findByText("2 accounts total");
+  await openMenu("bob", "Reset two-factor…");
+  expect(get(confirmRequest)?.title).toBe("Reset @bob's two-factor authentication?");
+  await confirmWith({ ok: true });
+  await waitFor(() => expect(calls.some((c) => c.method === "DELETE" && c.path.endsWith("/two-factor"))).toBe(true));
+});
+
+test("only admins can reset two-factor, and only where it's on", async () => {
+  setup(
+    { "GET /api/admin/users": page([ada, user({ username: "bob", twoFactorEnabled: true })]) },
+    {
+      isViewerAdmin: false,
+    },
+  );
+  await screen.findByText("2 accounts total");
+  await fireEvent.keyDown(screen.getByRole("button", { name: "More actions for @bob" }), { key: "Enter" });
+  await screen.findByRole("menuitem", { name: "Edit profile…" });
+  expect(screen.queryByRole("menuitem", { name: "Reset two-factor…" })).toBe(null);
 });

@@ -167,3 +167,22 @@ test.for([
   expect(panel().queryByText("Loading…")).toBe(null);
   expect(api.calls.filter((c) => c.path === path || c.path.startsWith(`${path}?`))).toEqual([]);
 });
+
+test("staff without the required two-factor see only its setup, with no way past it", () => {
+  api = fakeFetch({ "*": apiError(404) });
+  vi.stubGlobal("fetch", api.fetch);
+  render(AdminPage, {
+    props: {
+      data: {
+        user: { id: "me", username: "me", isAdmin: true, isModerator: false },
+        tab: "reports",
+        initial: {},
+        needsTwoFactor: true,
+      } as never,
+    },
+  });
+  expect(screen.getByRole("heading", { name: "Set up two-factor authentication" })).toBeInTheDocument();
+  expect(screen.getByText(/change this rule in the Security tab/)).toBeInTheDocument();
+  expect(screen.queryByRole("tablist")).toBe(null);
+  expect(screen.queryByRole("button", { name: /cancel|close/i })).toBe(null);
+});

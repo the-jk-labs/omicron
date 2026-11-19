@@ -23,6 +23,7 @@
   import SessionsManager from "#lib/components/SessionsManager.svelte";
   import TagInput from "#lib/components/TagInput.svelte";
   import Time from "#lib/components/Time.svelte";
+  import TwoFactorManager from "#lib/components/TwoFactorManager.svelte";
   import Avatar from "#lib/components/ui/Avatar.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import PageTabs from "#lib/components/ui/PageTabs.svelte";
@@ -760,6 +761,23 @@
             </p>
           {/snippet}
         </PasskeysManager>
+      </section>
+
+      <!-- Two-factor authentication -->
+      <section id="two-factor" class="rounded-card border border-border bg-background p-6">
+        <TwoFactorManager
+          username={data.user.username}
+          enabled={data.user.twoFactorEnabled}
+          staff={data.user.isAdmin || data.user.isModerator}
+          required={data.user.twoFactorRequired}
+        >
+          {#snippet header()}
+            <h2 class="text-lg font-semibold tracking-tight text-foreground">Two-factor authentication</h2>
+            <p class="mt-1 max-w-prose text-sm text-muted-foreground">
+              Ask for a code from an authenticator app whenever you sign in with your password.
+            </p>
+          {/snippet}
+        </TwoFactorManager>
       </section>
 
       <!-- Active sessions -->

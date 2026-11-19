@@ -6,6 +6,7 @@ import { postWithAuthor, remoteActorRow, remotePostWithAuthor, userRow, uuid } f
 vi.mock(import("@/db/repositories/accounts.ts"));
 vi.mock(import("@/db/repositories/blockedActors.ts"));
 vi.mock(import("@/db/repositories/blockedDomains.ts"));
+vi.mock(import("@/db/repositories/emailChangeRequests.ts"));
 vi.mock(import("@/db/repositories/federatedInstances.ts"));
 vi.mock(import("@/db/repositories/follows.ts"));
 vi.mock(import("@/db/repositories/instanceSettings.ts"));
@@ -15,9 +16,11 @@ vi.mock(import("@/db/repositories/remoteActors.ts"));
 vi.mock(import("@/db/repositories/reports.ts"));
 vi.mock(import("@/db/repositories/sessions.ts"));
 vi.mock(import("@/db/repositories/tags.ts"));
+vi.mock(import("@/db/repositories/twoFactors.ts"));
 vi.mock(import("@/db/repositories/users.ts"));
 vi.mock(import("@/services/accountNotices.ts"));
 vi.mock(import("@/services/users.ts"));
+vi.mock(import("@/services/notifications.ts"));
 vi.mock(import("@/federation/outbound.ts"));
 vi.mock(import("@/auth/auth.ts"), () => ({
   auth: { api: { sendVerificationEmail: vi.fn<(...args: unknown[]) => Promise<unknown>>() } } as never,
@@ -29,6 +32,7 @@ import { config } from "@/config.ts";
 import * as accountsRepo from "@/db/repositories/accounts.ts";
 import * as blockedActorsRepo from "@/db/repositories/blockedActors.ts";
 import * as blockedDomainsRepo from "@/db/repositories/blockedDomains.ts";
+import * as emailChangeRequestsRepo from "@/db/repositories/emailChangeRequests.ts";
 import * as instancesRepo from "@/db/repositories/federatedInstances.ts";
 import * as followsRepo from "@/db/repositories/follows.ts";
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
@@ -38,6 +42,7 @@ import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
 import * as reportsRepo from "@/db/repositories/reports.ts";
 import * as sessionsRepo from "@/db/repositories/sessions.ts";
 import * as tagsRepo from "@/db/repositories/tags.ts";
+import * as twoFactorsRepo from "@/db/repositories/twoFactors.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import type { User } from "@/db/schema.ts";
 import { sendActorDelete } from "@/federation/outbound.ts";
@@ -46,6 +51,7 @@ import { queue } from "@/queue/queue.ts";
 import * as notices from "@/services/accountNotices.ts";
 import { seedFederationRunning } from "@/services/federationState.ts";
 import * as mod from "@/services/moderation.ts";
+import { notify } from "@/services/notifications.ts";
 import * as usersService from "@/services/users.ts";
 
 const PASSWORD = "correct horse battery staple";
@@ -531,12 +537,12 @@ describe("updateUserDetails", () => {
   });
 
   test("an email-only edit does not touch the profile", async () => {
-    await mod.updateUserDetails("mod", "user", { email: "new@x.test" });
+    await mod.updateUserDetails("admin", "user", { email: "new@x.test" });
     expect(usersService.updateProfile).not.toHaveBeenCalled();
   });
 
   test("a new email is stored unverified, the old address told, and a link sent", async () => {
-    await mod.updateUserDetails("mod", "user", { email: "  New@X.test " });
+    await mod.updateUserDetails("admin", "user", { email: "  New@X.test " });
     expect(usersRepo.update).toHaveBeenCalledWith("user", { email: "new@x.test", emailVerified: false });
     expect(accountsRepo.setCredentialAccountId).toHaveBeenCalledWith("user", "new@x.test");
     expect(notices.notifyEmailChanged).toHaveBeenCalledWith("ada@x.test", "ada", "new@x.test");
@@ -564,7 +570,7 @@ describe("updateUserDetails", () => {
 
   test("an address owned by someone else is refused", async () => {
     vi.mocked(usersRepo.findByEmail).mockResolvedValue(userRow({ id: "other" }));
-    await expect(mod.updateUserDetails("mod", "user", { email: "taken@x.test" })).rejects.toMatchObject({
+    await expect(mod.updateUserDetails("admin", "user", { email: "taken@x.test" })).rejects.toMatchObject({
       status: 400,
       message: "That email is already in use.",
     });
@@ -572,7 +578,7 @@ describe("updateUserDetails", () => {
 
   test("a failed verification send is reported but the address is already changed", async () => {
     vi.mocked(auth.api.sendVerificationEmail).mockRejectedValue(new Error("SMTP down"));
-    await expect(mod.updateUserDetails("mod", "user", { email: "new@x.test" })).rejects.toMatchObject({
+    await expect(mod.updateUserDetails("admin", "user", { email: "new@x.test" })).rejects.toMatchObject({
       status: 400,
       message: "Email updated, but the verification email could not be sent: SMTP down",
     });
@@ -587,6 +593,114 @@ describe("updateUserDetails", () => {
   test("a rejected email leaves the profile fields untouched", async () => {
     await mod.updateUserDetails("mod", "user", { displayName: "Changed", email: "not-an-email" }).catch(() => {});
     expect(usersService.updateProfile).not.toHaveBeenCalled();
+  });
+
+  // Whoever holds the login email can sign in as the account, so a moderator only proposes one.
+  test("a moderator can't move the login email to another address, and nothing else changes", async () => {
+    await expect(
+      mod.updateUserDetails("mod", "user", { displayName: "Changed", email: "mod-owned@x.test" }),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(usersRepo.update).not.toHaveBeenCalled();
+    expect(usersService.updateProfile).not.toHaveBeenCalled();
+  });
+
+  test("a moderator's profile edit may carry the unchanged email", async () => {
+    await mod.updateUserDetails("mod", "user", { displayName: "Ada", email: "ada@x.test" });
+    expect(usersService.updateProfile).toHaveBeenCalledWith("user", { displayName: "Ada" });
+    expect(usersRepo.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("login-email change requests", () => {
+  const request = {
+    id: "req",
+    userId: "user",
+    requestedBy: "mod",
+    newEmail: "new@x.test",
+    createdAt: new Date("2026-11-01T00:00:00Z"),
+  };
+
+  beforeEach(() => {
+    vi.mocked(usersRepo.findByEmail).mockResolvedValue(undefined);
+    vi.mocked(usersRepo.listAdminIds).mockResolvedValue(["admin", "admin2"]);
+    vi.mocked(emailChangeRequestsRepo.upsert).mockResolvedValue(request);
+    vi.mocked(emailChangeRequestsRepo.findById).mockResolvedValue(request);
+  });
+
+  test("a moderator's request is stored, not applied, and every admin is notified", async () => {
+    await mod.requestEmailChange("mod", "user", "  New@X.test ");
+    expect(emailChangeRequestsRepo.upsert).toHaveBeenCalledWith("user", "mod", "new@x.test");
+    expect(usersRepo.update).not.toHaveBeenCalled();
+    for (const recipientId of ["admin", "admin2"]) {
+      expect(notify).toHaveBeenCalledWith({
+        recipientId,
+        type: "email_change_request",
+        actorId: "mod",
+        emailChangeRequestId: "req",
+      });
+    }
+  });
+
+  test.for(["nope", "ADA@x.test"])("refuses %j (malformed, or the current address)", async (email) => {
+    await expect(mod.requestEmailChange("mod", "user", email)).rejects.toMatchObject({ status: 400 });
+    expect(emailChangeRequestsRepo.upsert).not.toHaveBeenCalled();
+  });
+
+  test("refuses an address another account uses", async () => {
+    vi.mocked(usersRepo.findByEmail).mockResolvedValue(userRow({ id: "other" }));
+    await expect(mod.requestEmailChange("mod", "user", "taken@x.test")).rejects.toMatchObject({ status: 400 });
+  });
+
+  test("keeps to the role hierarchy", async () => {
+    await expect(mod.requestEmailChange("mod", "admin", "x@x.test")).rejects.toMatchObject({ status: 403 });
+    await expect(mod.requestEmailChange("mod", "mod2", "x@x.test")).rejects.toMatchObject({ status: 403 });
+  });
+
+  test("approving makes the change through the admin flow and closes the request", async () => {
+    await mod.approveEmailChange("admin", "req");
+    expect(emailChangeRequestsRepo.deleteById).toHaveBeenCalledWith("req");
+    expect(usersRepo.update).toHaveBeenCalledWith("user", { email: "new@x.test", emailVerified: false });
+    expect(auth.api.sendVerificationEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ body: { email: "new@x.test" } }),
+    );
+  });
+
+  test("an address taken since the request is refused and the request stays open", async () => {
+    vi.mocked(usersRepo.findByEmail).mockResolvedValue(userRow({ id: "other" }));
+    await expect(mod.approveEmailChange("admin", "req")).rejects.toMatchObject({ status: 400 });
+    expect(emailChangeRequestsRepo.deleteById).not.toHaveBeenCalled();
+    expect(usersRepo.update).not.toHaveBeenCalled();
+  });
+
+  test("declining closes the request and changes nothing", async () => {
+    await mod.declineEmailChange("req");
+    expect(emailChangeRequestsRepo.deleteById).toHaveBeenCalledWith("req");
+    expect(usersRepo.update).not.toHaveBeenCalled();
+  });
+
+  test("a request already decided is gone", async () => {
+    vi.mocked(emailChangeRequestsRepo.findById).mockResolvedValue(undefined);
+    await expect(mod.approveEmailChange("admin", "req")).rejects.toMatchObject({ status: 404 });
+    await expect(mod.declineEmailChange("req")).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+describe("resetTwoFactor", () => {
+  test("an admin turns it off for a moderator who lost their authenticator", async () => {
+    accounts(admin, userRow({ id: "mod", isModerator: true, twoFactorEnabled: true }));
+    await mod.resetTwoFactor("admin", "mod");
+    expect(twoFactorsRepo.resetForUser).toHaveBeenCalledWith("mod");
+  });
+
+  test("a moderator can't, and nobody resets another admin's here", async () => {
+    accounts(moderator, admin, admin2, userRow({ id: "user", twoFactorEnabled: true }));
+    await expect(mod.resetTwoFactor("mod", "user")).rejects.toMatchObject({ status: 403 });
+    await expect(mod.resetTwoFactor("admin", "admin2")).rejects.toMatchObject({ status: 403 });
+    expect(twoFactorsRepo.resetForUser).not.toHaveBeenCalled();
+  });
+
+  test("an account without two-factor has nothing to reset", async () => {
+    await expect(mod.resetTwoFactor("admin", "user")).rejects.toMatchObject({ status: 400 });
   });
 });
 

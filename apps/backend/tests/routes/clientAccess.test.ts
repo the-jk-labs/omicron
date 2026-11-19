@@ -6,6 +6,7 @@ import { userRow } from "../fixtures.ts";
 vi.mock(import("@/auth/auth.ts"));
 vi.mock(import("@/db/repositories/oauth.ts"));
 vi.mock(import("@/db/repositories/users.ts"));
+vi.mock(import("@/services/settings.ts"));
 import * as oauthRepo from "@/db/repositories/oauth.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
 import { handleError } from "@/lib/http.ts";

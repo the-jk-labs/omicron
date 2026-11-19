@@ -22,7 +22,9 @@ export type NotificationType =
   // The instance published a scheduled post. The only type with no actor —
   // nobody did this, a timer did — which is why the reader renders it as a
   // statement rather than as "<someone> did <something>".
-  | "post_published";
+  | "post_published"
+  // A moderator asked to change an account's login email; the admin recipient decides it.
+  | "email_change_request";
 
 type NotifyParams = {
   recipientId: string;
@@ -31,6 +33,7 @@ type NotifyParams = {
   remoteActorId?: string | null;
   postId?: string | null;
   commentId?: string | null;
+  emailChangeRequestId?: string | null;
 };
 
 export async function notify(params: NotifyParams): Promise<void> {
@@ -44,6 +47,7 @@ export async function notify(params: NotifyParams): Promise<void> {
       remoteActorId: params.remoteActorId ?? null,
       postId: params.postId ?? null,
       commentId: params.commentId ?? null,
+      ...(params.emailChangeRequestId && { emailChangeRequestId: params.emailChangeRequestId }),
     });
   } catch (err) {
     console.error("notifications: failed to create", err);

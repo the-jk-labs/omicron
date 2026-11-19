@@ -3,6 +3,7 @@
   import { Checkbox, Dialog, DropdownMenu, Label, ToggleGroup } from "bits-ui";
   import { onMount, untrack } from "svelte";
   import { endpoints, ApiError } from "#lib/api/index.js";
+  import AdminEmailChangeRequests from "#lib/components/AdminEmailChangeRequests.svelte";
   import CustomSectionEditor from "#lib/components/CustomSectionEditor.svelte";
   import Icon from "#lib/components/Icon.svelte";
   import ProfileLinksEditor from "#lib/components/ProfileLinksEditor.svelte";
@@ -16,7 +17,7 @@
   import { notALoginField } from "#lib/passwordManagers.js";
   import { identifierToUrl, platformMeta, urlToIdentifier } from "#lib/profileLinks.js";
   import { MAX_PROFILE_TAGS } from "#lib/tags.js";
-  import type { AdminUser, AdminUserDetail, DeletedUser, ProfileLink } from "#lib/types.js";
+  import type { AdminUser, AdminUserDetail, DeletedUser, EmailChangeRequest, ProfileLink } from "#lib/types.js";
 
   // The signed-in admin's own id, so the row for self can hide every action
   // (the server also forbids them). `isViewerAdmin` gates the role grants —
@@ -34,7 +35,12 @@
     selfId: string;
     selfUsername: string;
     isViewerAdmin?: boolean;
-    initial?: { users: Listed<AdminUser> | null; deleted: Listed<DeletedUser> | null } | null;
+    initial?: {
+      users: Listed<AdminUser> | null;
+      deleted: Listed<DeletedUser> | null;
+      /** Admins only: pending login-email changes. */
+      emailChanges?: EmailChangeRequest[] | null;
+    } | null;
   } = $props();
   const seed = untrack(() => initial);
 
@@ -497,6 +503,30 @@
     }
   }
 
+  // For someone who lost their authenticator; staff have no backup codes.
+  async function resetTwoFactor(u: AdminUser) {
+    const { ok } = await confirm({
+      title: `Reset @${u.username}'s two-factor authentication?`,
+      description:
+        "They'll sign in with their password alone until they set it up again. Only do this once you're sure it's really them asking.",
+      confirmText: "Reset",
+      destructive: true,
+    });
+    if (!ok) return;
+    busyId = u.id;
+    clearDetailMsg(u.id);
+    try {
+      const { user } = await endpoints().resetTwoFactor(u.id);
+      users = users.map((x) => (x.id === u.id ? { ...x, ...user } : x));
+      if (details[u.id]) details[u.id] = { ...details[u.id], user: { ...details[u.id].user, ...user } };
+      setDetailNotice(u.id, "Two-factor authentication reset.");
+    } catch (e) {
+      setDetailError(u.id, e instanceof ApiError ? e.message : "Action failed.");
+    } finally {
+      busyId = null;
+    }
+  }
+
   async function markVerified(u: AdminUser) {
     const { ok } = await confirm({
       title: `Mark @${u.username}'s email verified?`,
@@ -797,7 +827,9 @@
     } = {};
     if (displayName !== saved.displayName) body.displayName = displayName;
     if (editBio !== saved.bio) body.bio = editBio;
-    if (email !== saved.email) body.email = email;
+    // A moderator only proposes a new login email; an admin approves it (sent below).
+    const requestedEmail = !isViewerAdmin && email.toLowerCase() !== String(saved.email).toLowerCase() ? email : null;
+    if (email !== saved.email && !requestedEmail) body.email = email;
     if (publicEmail !== saved.publicEmail) body.publicEmail = publicEmail;
     if (editCustomSection !== saved.customSection) body.customSection = editCustomSection;
     if (JSON.stringify(editTags) !== JSON.stringify(saved.tags)) body.tags = editTags;
@@ -811,7 +843,7 @@
       delete body.tags;
       delete body.links;
     }
-    if (Object.keys(body).length === 0) {
+    if (Object.keys(body).length === 0 && !requestedEmail) {
       editTarget = null;
       return;
     }
@@ -819,6 +851,13 @@
     const emailChanged = body.email !== undefined && body.email.trim() !== saved.email;
     editBusy = true;
     try {
+      if (requestedEmail) await endpoints().requestEmailChange(target.id, requestedEmail);
+      if (Object.keys(body).length === 0) {
+        editTarget = null;
+        setDetailNotice(target.id, "Sent to an admin for approval. The login email stays the same until then.");
+        if (expandedId !== target.id) expandedId = target.id;
+        return;
+      }
       const { user } = await endpoints().updateUserAsAdmin(target.id, body);
       users = users.map((x) => (x.id === target.id ? { ...x, ...user } : x));
       if (details[target.id]) {
@@ -832,9 +871,11 @@
       editTarget = null;
       setDetailNotice(
         target.id,
-        emailChanged
-          ? "Saved. Login email updated. A verification link was sent to the new address and the previous address was notified."
-          : "Saved.",
+        requestedEmail
+          ? "Saved. The new login email was sent to an admin for approval."
+          : emailChanged
+            ? "Saved. Login email updated. A verification link was sent to the new address and the previous address was notified."
+            : "Saved.",
       );
       if (expandedId !== target.id) expandedId = target.id;
     } catch (e) {
@@ -962,6 +1003,13 @@
   const segItemClass =
     "h-7 flex-1 rounded-button px-2.5 text-xs font-medium text-muted-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-mini focus-visible:outline-hidden sm:flex-initial";
 </script>
+
+{#if isViewerAdmin}
+  <AdminEmailChangeRequests
+    initial={seed?.emailChanges}
+    onapproved={(user) => (users = users.map((x) => (x.id === user.id ? { ...x, ...user } : x)))}
+  />
+{/if}
 
 <div class="flex flex-col gap-4">
   <div class="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1162,6 +1210,11 @@
                           {u.isModerator ? "Remove moderator…" : "Make moderator…"}
                         </DropdownMenu.Item>
                       {/if}
+                      {#if isViewerAdmin && !u.isAdmin && u.twoFactorEnabled}
+                        <DropdownMenu.Item onSelect={() => resetTwoFactor(u)} class={menuItemClass}>
+                          <Icon name="phone" size={16} /> Reset two-factor…
+                        </DropdownMenu.Item>
+                      {/if}
                       {#if !u.isAdmin}
                         <DropdownMenu.Separator class="my-1 h-px bg-border" />
                         <DropdownMenu.Item onSelect={() => openDelete(u)} class={destructiveItemClass}>
@@ -1189,6 +1242,7 @@
                   >
                   <span><strong class="text-foreground">{d.followCounts.followers}</strong> followers</span>
                   <span><strong class="text-foreground">{d.followCounts.following}</strong> following</span>
+                  <span>{d.user.twoFactorEnabled ? "Two-factor on" : "Two-factor off"}</span>
                   <span class="inline-flex flex-wrap items-center gap-2">
                     <span>{d.user.emailVerified ? "Email verified" : "Email unverified"}</span>
                     {#if !d.user.emailVerified && canModerateRow(u)}
@@ -1636,7 +1690,11 @@
             class={field}
           />
           <p class="text-xs text-muted-foreground">
-            Private. Used for sign-in and account recovery. Changing it requires the new address to be verified.
+            {#if isViewerAdmin}
+              Private. Used for sign-in and account recovery. Changing it requires the new address to be verified.
+            {:else}
+              Private. Used for sign-in and account recovery. A change goes to an admin for approval.
+            {/if}
           </p>
         </div>
         <div class="flex flex-col gap-1.5">

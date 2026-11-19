@@ -1,6 +1,5 @@
-// @vitest-environment happy-dom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import * as WebBrowser from "expo-web-browser";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
@@ -30,59 +29,85 @@ vi.mock(import("@/lib/auth/passkeys"), async (original) => ({
   usePasskeysAvailable: () => available,
 }));
 vi.mock("@/lib/dialogs/confirm", () => ({ confirm: (options: unknown) => askConfirm(options) }));
-vi.mock("@/components/auth/auth-shell", () => ({
-  FormError: ({ message }: { message: string | null }) => (message ? <p role="alert">{message}</p> : null),
-}));
-vi.mock("@/components/settings/form-screen", () => ({
-  FormScreen: ({ title, children }: { title: string; children: ReactNode }) => (
-    <div>
-      <h1>{title}</h1>
-      {children}
-    </div>
-  ),
-}));
-vi.mock("@/components/settings/confirm-password-form", () => ({
-  ConfirmPasswordForm: ({ onConfirmed }: { onConfirmed: () => void }) => (
-    <button type="button" onClick={onConfirmed}>
-      Password confirmed
-    </button>
-  ),
-}));
-vi.mock("@/components/settings/settings-row", () => ({
-  SettingsSection: ({ children }: { children: ReactNode }) => <section>{children}</section>,
-  SettingsRow: ({ label, detail, trailing }: { label: string; detail?: string; trailing?: ReactNode }) => (
-    <div>
-      {label} {detail}
-      {trailing}
-    </div>
-  ),
-}));
-vi.mock("@/components/ui/button", () => ({
-  Button: ({ children, onPress, disabled }: { children: ReactNode; onPress?: () => void; disabled?: boolean }) => (
-    <button type="button" disabled={disabled} onClick={onPress}>
-      {children}
-    </button>
-  ),
-  IconButton: ({ label, onPress }: { label: string; onPress?: () => void }) => (
-    <button type="button" aria-label={label} onClick={onPress} />
-  ),
-}));
-vi.mock("@/components/ui/input", () => ({
-  Input: ({ value, onChangeText }: { value: string; onChangeText: (text: string) => void }) => (
-    <input aria-label="Passkey name" value={value} onChange={(event) => onChangeText(event.target.value)} />
-  ),
-}));
-vi.mock("@/components/ui/spinner", () => ({ Spinner: () => <progress /> }));
-vi.mock("@/components/ui/text", () => ({
-  Text: ({ children }: { children: ReactNode }) => <span>{children}</span>,
-}));
+vi.mock("@/components/auth/auth-shell", async () => {
+  const { Text } = await import("react-native");
+  return {
+    FormError: ({ message }: { message: string | null }) =>
+      message ? (
+        <Text role="alert" accessible>
+          {message}
+        </Text>
+      ) : null,
+  };
+});
+vi.mock("@/components/settings/form-screen", async () => {
+  const { Text, View } = await import("react-native");
+  return {
+    FormScreen: ({ title, children }: { title: string; children: ReactNode }) => (
+      <View>
+        <Text role="heading">{title}</Text>
+        {children}
+      </View>
+    ),
+  };
+});
+vi.mock("@/components/settings/confirm-password-form", async () => {
+  const { Pressable, Text } = await import("react-native");
+  return {
+    ConfirmPasswordForm: ({ onConfirmed }: { onConfirmed: () => void }) => (
+      <Pressable role="button" onPress={onConfirmed}>
+        <Text>Password confirmed</Text>
+      </Pressable>
+    ),
+  };
+});
+vi.mock("@/components/settings/settings-row", async () => {
+  const { Text, View } = await import("react-native");
+  return {
+    SettingsSection: ({ children }: { children: ReactNode }) => <View>{children}</View>,
+    SettingsRow: ({ label, detail, trailing }: { label: string; detail?: string; trailing?: ReactNode }) => (
+      <View>
+        <Text>
+          {label} {detail}
+        </Text>
+        {trailing}
+      </View>
+    ),
+  };
+});
+vi.mock("@/components/ui/button", async () => {
+  const { Pressable, Text } = await import("react-native");
+  return {
+    Button: ({ children, onPress, disabled }: { children: ReactNode; onPress?: () => void; disabled?: boolean }) => (
+      <Pressable role="button" disabled={disabled} onPress={onPress}>
+        <Text>{children}</Text>
+      </Pressable>
+    ),
+    IconButton: ({ label, onPress }: { label: string; onPress?: () => void }) => (
+      <Pressable role="button" aria-label={label} onPress={onPress} />
+    ),
+  };
+});
+vi.mock("@/components/ui/input", async () => {
+  const { TextInput } = await import("react-native");
+  return {
+    Input: ({ value, onChangeText }: { value: string; onChangeText: (text: string) => void }) => (
+      <TextInput aria-label="Passkey name" value={value} onChangeText={onChangeText} />
+    ),
+  };
+});
+vi.mock("@/components/ui/spinner", async () => ({ Spinner: (await import("react-native")).ActivityIndicator }));
+vi.mock("@/components/ui/text", async () => {
+  const { Text } = await import("react-native");
+  return { Text: ({ children }: { children: ReactNode }) => <Text>{children}</Text> };
+});
 
 const pixel = { id: "a", name: "Pixel", backedUp: true, createdAt: "2026-11-01T00:00:00Z" };
 const addButton = () => screen.findByRole("button", { name: "Add a passkey" });
 
-function renderScreen() {
+async function renderScreen() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  return await render(
     <QueryClientProvider client={client}>
       <Passkeys />
     </QueryClientProvider>,
@@ -99,43 +124,43 @@ beforeEach(() => {
   askConfirm.mockResolvedValue(true);
 });
 
-const startRename = async () => fireEvent.click(await screen.findByRole("button", { name: "Rename Pixel" }));
+const startRename = async () => fireEvent.press(await screen.findByRole("button", { name: "Rename Pixel" }));
 
-const pressRemove = async () => fireEvent.click(await screen.findByRole("button", { name: "Remove Pixel" }));
+const pressRemove = async () => fireEvent.press(await screen.findByRole("button", { name: "Remove Pixel" }));
 
 describe("the list", () => {
   test("shows each passkey as the web does", async () => {
-    renderScreen();
+    await renderScreen();
     expect(await screen.findByText(/Pixel Synced · Added/)).toBeTruthy();
   });
 
   test("says when there are none", async () => {
     list.mockResolvedValue({ data: [] });
-    renderScreen();
+    await renderScreen();
     expect(await screen.findByText("No passkeys yet.")).toBeTruthy();
   });
 
   test("says when it can't load rather than looking empty", async () => {
     list.mockResolvedValue({ error: { message: "Database is down" } });
-    renderScreen();
+    await renderScreen();
     expect(await screen.findByText(/database is down/i)).toBeTruthy();
   });
 });
 
 describe("adding", () => {
   test("reloads the list once added", async () => {
-    renderScreen();
-    fireEvent.click(await addButton());
+    await renderScreen();
+    await fireEvent.press(await addButton());
     await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
     expect(add).toHaveBeenCalledOnce();
   });
 
   test("an old sign-in asks for the password, then carries on adding", async () => {
     add.mockResolvedValueOnce({ error: { code: "SESSION_NOT_FRESH" } });
-    renderScreen();
-    fireEvent.click(await addButton());
+    await renderScreen();
+    await fireEvent.press(await addButton());
 
-    fireEvent.click(await screen.findByRole("button", { name: "Password confirmed" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Password confirmed" }));
 
     await waitFor(() => expect(add).toHaveBeenCalledTimes(2));
     expect(await addButton()).toBeTruthy();
@@ -143,33 +168,33 @@ describe("adding", () => {
 
   test("opened from the offer, it asks for the password first", async () => {
     params = { confirm: "1" };
-    renderScreen();
+    await renderScreen();
     expect(await screen.findByRole("button", { name: "Password confirmed" })).toBeTruthy();
     expect(add).not.toHaveBeenCalled();
   });
 
   test("a cancel shows nothing", async () => {
     add.mockResolvedValue({ error: { code: "ERROR_CEREMONY_ABORTED" } });
-    renderScreen();
-    fireEvent.click(await addButton());
+    await renderScreen();
+    await fireEvent.press(await addButton());
     await waitFor(() => expect(add).toHaveBeenCalledOnce());
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
   test("a failure says why", async () => {
     add.mockResolvedValue({ error: { code: "ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED" } });
-    renderScreen();
-    fireEvent.click(await addButton());
-    expect((await screen.findByRole("alert")).textContent).toMatch(/already has a passkey/i);
+    await renderScreen();
+    await fireEvent.press(await addButton());
+    expect(await screen.findByRole("alert")).toHaveTextContent(/already has a passkey/i);
   });
 
   test("where the app can't add one, the web can, and the list still works", async () => {
     available = false;
-    renderScreen();
+    await renderScreen();
     expect(await screen.findByText(/Pixel/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Add a passkey" })).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Open settings on the web" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Open settings on the web" }));
 
     expect(WebBrowser.openBrowserAsync).toHaveBeenCalledExactlyOnceWith("https://omicron.test/settings?tab=account");
   });
@@ -177,31 +202,31 @@ describe("adding", () => {
 
 describe("renaming", () => {
   test("saves the trimmed name and reloads", async () => {
-    renderScreen();
+    await renderScreen();
     await startRename();
-    fireEvent.change(screen.getByRole("textbox", { name: "Passkey name" }), { target: { value: "  Work phone " } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await fireEvent.changeText(screen.getByLabelText("Passkey name"), "  Work phone ");
+    await fireEvent.press(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(update).toHaveBeenCalledExactlyOnceWith({ id: "a", name: "Work phone" }));
-    await waitFor(() => expect(screen.queryByRole("textbox")).toBeNull());
+    await waitFor(() => expect(screen.queryByLabelText("Passkey name")).toBeNull());
   });
 
   test("a blank name can't be saved, and cancelling changes nothing", async () => {
-    renderScreen();
+    await renderScreen();
     await startRename();
-    fireEvent.change(screen.getByRole("textbox", { name: "Passkey name" }), { target: { value: "   " } });
-    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Save" }).disabled).toBe(true);
+    await fireEvent.changeText(screen.getByLabelText("Passkey name"), "   ");
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
 
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Cancel" }));
 
-    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByLabelText("Passkey name")).toBeNull();
     expect(update).not.toHaveBeenCalled();
   });
 });
 
 describe("removing", () => {
   test("asks first, then removes", async () => {
-    renderScreen();
+    await renderScreen();
     await pressRemove();
     await waitFor(() => expect(remove).toHaveBeenCalledExactlyOnceWith({ id: "a" }));
     expect(askConfirm).toHaveBeenCalledOnce();
@@ -209,7 +234,7 @@ describe("removing", () => {
 
   test("declining keeps it", async () => {
     askConfirm.mockResolvedValue(false);
-    renderScreen();
+    await renderScreen();
     await pressRemove();
     await waitFor(() => expect(askConfirm).toHaveBeenCalledOnce());
     expect(remove).not.toHaveBeenCalled();

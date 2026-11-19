@@ -1,11 +1,9 @@
-// @vitest-environment happy-dom
-import { renderHook } from "@testing-library/react";
+import { renderHook } from "@testing-library/react-native";
 import { useEffect } from "react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { useBackDismiss } from "@/hooks/use-back-dismiss";
 import { useFocusedBack } from "@/hooks/use-focused-back";
-// The same module the app gets as `react-native` (vitest.config.mts), imported directly for its `press` helper.
-import { BackHandler } from "../support/react-native";
+import { pressBack } from "../support/back";
 
 let focused = true;
 vi.mock("expo-router", () => ({
@@ -14,62 +12,60 @@ vi.mock("expo-router", () => ({
   },
 }));
 
-const pressBack = () => BackHandler.press();
-
 beforeEach(() => {
   focused = true;
 });
 
 describe("useFocusedBack", () => {
-  test("while active and focused, Back runs the action and goes no further", () => {
+  test("while active and focused, Back runs the action and goes no further", async () => {
     const action = vi.fn<() => void>();
-    const { unmount } = renderHook(() => useFocusedBack(true, action));
+    const { unmount } = await renderHook(() => useFocusedBack(true, action));
     expect(pressBack()).toBe(true);
     expect(action).toHaveBeenCalledOnce();
-    unmount();
+    await unmount();
   });
 
-  test("inactive, it leaves Back alone", () => {
+  test("inactive, it leaves Back alone", async () => {
     const action = vi.fn<() => void>();
-    renderHook(() => useFocusedBack(false, action));
+    await renderHook(() => useFocusedBack(false, action));
     expect(pressBack()).toBe(false);
     expect(action).not.toHaveBeenCalled();
   });
 
-  test("not focused, it leaves Back to the screen above", () => {
+  test("not focused, it leaves Back to the screen above", async () => {
     focused = false;
     const action = vi.fn<() => void>();
-    renderHook(() => useFocusedBack(true, action));
+    await renderHook(() => useFocusedBack(true, action));
     expect(pressBack()).toBe(false);
     expect(action).not.toHaveBeenCalled();
   });
 
-  test("stops once it becomes inactive", () => {
+  test("stops once it becomes inactive", async () => {
     const action = vi.fn<() => void>();
-    const { rerender } = renderHook(({ active }) => useFocusedBack(active, action), {
+    const { rerender } = await renderHook(({ active }: { active: boolean }) => useFocusedBack(active, action), {
       initialProps: { active: true },
     });
-    rerender({ active: false });
+    await rerender({ active: false });
     expect(pressBack()).toBe(false);
   });
 
-  test("stops when the screen goes away", () => {
+  test("stops when the screen goes away", async () => {
     const action = vi.fn<() => void>();
-    const { unmount } = renderHook(() => useFocusedBack(true, action));
-    unmount();
+    const { unmount } = await renderHook(() => useFocusedBack(true, action));
+    await unmount();
     expect(pressBack()).toBe(false);
   });
 
-  test("a sheet opened afterwards closes first", () => {
+  test("a sheet opened afterwards closes first", async () => {
     const action = vi.fn<() => void>();
     const dismiss = vi.fn<() => void>();
-    const screen = renderHook(() => useFocusedBack(true, action));
-    const sheet = renderHook(() => useBackDismiss(true, dismiss));
+    const screen = await renderHook(() => useFocusedBack(true, action));
+    const sheet = await renderHook(() => useBackDismiss(true, dismiss));
 
     expect(pressBack()).toBe(true);
     expect(dismiss).toHaveBeenCalledOnce();
     expect(action).not.toHaveBeenCalled();
-    sheet.unmount();
-    screen.unmount();
+    await sheet.unmount();
+    await screen.unmount();
   });
 });

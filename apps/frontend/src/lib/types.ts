@@ -28,6 +28,7 @@ export type {
   DashboardSummary,
   DayTotals,
   DeletedUser,
+  EmailChangeRequest,
   DkimGenerateResult,
   DnsCheck,
   DnsRecord,
