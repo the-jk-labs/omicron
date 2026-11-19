@@ -16,6 +16,13 @@
 	on_demand_tls {
 		ask http://backend:8000/api/instance/tls-check
 	}
+	# A CDN or load balancer in front of Caddy: TRUSTED_PROXIES lists its address
+	# ranges. Only their X-Forwarded-For is believed, read right to left, so
+	# {client_ip} is the visitor; with none trusted, it's whoever connects.
+	servers {
+		trusted_proxies static {$TRUSTED_PROXIES}
+		trusted_proxies_strict
+	}
 }
 
 # Shared routing: ActivityPub + federation discovery are served by the backend
@@ -55,7 +62,7 @@
 	# leaves Anubis with an empty XFF and every request 500s. Setting it here —
 	# unconditionally, from the connection's real peer, so a client can't spoof
 	# it — is also what Anubis's install docs ask a reverse proxy to do.
-	request_header X-Real-IP {remote_host}
+	request_header X-Real-IP {client_ip}
 
 	# Anubis's challenge page is a race waiting to happen, and these two files are
 	# the trigger. The page loads its script as `<script async type="module">`, so
@@ -122,16 +129,22 @@
 	}
 
 	handle /.well-known/security.txt {
-		reverse_proxy http://frontend:3000
+		reverse_proxy http://frontend:3000 {
+			header_up X-Forwarded-For {client_ip}
+		}
 	}
 	@federation path /.well-known/* /users/* /inbox /nodeinfo /nodeinfo/*
 	handle @federation {
-		reverse_proxy backend:8000
+		reverse_proxy backend:8000 {
+			header_up X-Forwarded-For {client_ip}
+		}
 	}
 	# API clients and OAuth transports must never receive an Anubis challenge.
 	@client_api path /api /api/* /oauth/token /oauth/revoke /healthz /version
 	handle @client_api {
-		reverse_proxy backend:8000
+		reverse_proxy backend:8000 {
+			header_up X-Forwarded-For {client_ip}
+		}
 	}
 	handle {
 		# App (SvelteKit) branch. When the admin enables AI-scraper protection,
@@ -146,6 +159,10 @@
 		# Managed IP rules are inserted here, ahead of the normal app policy.
 		# managed-access-rules
 		reverse_proxy frontend:3000 {
+			# Upstreams get one address, the visitor's (see trusted_proxies above):
+			# the rate limiters, Better Auth included, key on X-Forwarded-For.
+			header_up X-Forwarded-For {client_ip}
+
 			# Anubis announces a challenge with 503 (see status_codes in
 			# botPolicy.yaml). A 503 is supposed to say *when* to come back, and
 			# nothing else in the stack can say it: Anubis has no way to set a

@@ -33,7 +33,9 @@ test("security.txt bypasses both Fedify and the bot challenge", () => {
 test("all client API methods and OAuth transports bypass the bot challenge", () => {
   const routed = routeThroughAnubis(CADDYFILE);
   expect(routed).toContain("@client_api path /api /api/* /oauth/token /oauth/revoke /healthz /version");
-  expect(routed).toContain("handle @client_api {\n\t\treverse_proxy backend:8000\n\t}");
+  expect(routed).toContain(
+    "handle @client_api {\n\t\treverse_proxy backend:8000 {\n\t\t\theader_up X-Forwarded-For {client_ip}\n\t\t}\n\t}",
+  );
   expect(routed.indexOf("handle @client_api")).toBeLessThan(routed.indexOf("reverse_proxy anubis:8080"));
 });
 
