@@ -22,14 +22,16 @@ cleanup() {
 trap cleanup EXIT
 "$ENGINE" network create --subnet "$subnet_prefix.0/24" "$net" > /dev/null
 
-# A one-line HTTP server that answers with the client-IP headers it received.
+# A small HTTP server that answers with the client-IP headers it received. Keep-alive
+# and threaded, like a real upstream: Caddy reuses its connections between requests.
 echo_server='import http.server as h
 class E(h.BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
     def do_GET(s):
         body = ("xff=%s|real=%s" % (s.headers.get("X-Forwarded-For", ""), s.headers.get("X-Real-IP", ""))).encode()
         s.send_response(200); s.send_header("Content-Length", str(len(body))); s.end_headers(); s.wfile.write(body)
     def log_message(s, *a): pass
-import sys; h.HTTPServer(("", int(sys.argv[1])), E).serve_forever()'
+import sys; h.ThreadingHTTPServer(("", int(sys.argv[1])), E).serve_forever()'
 for upstream in backend:8000 frontend:3000; do
   name="${upstream%%:*}" port="${upstream##*:}"
   "$ENGINE" run -d --name "$net-$name" --network "$net" --network-alias "$name" \
