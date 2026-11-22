@@ -27,20 +27,20 @@
   maxlength={6}
   {...rest}
   oninput={digitsOnly}
-  class="group/pininput flex items-center text-foreground has-disabled:opacity-30"
+  class="group/pininput flex w-full items-center text-foreground has-disabled:opacity-30"
 >
   {#snippet children({ cells })}
-    <div class="flex">
+    <div class="flex flex-1 rounded-input shadow-btn">
       {#each cells.slice(0, 3) as cell, i (i)}
         {@render Cell(cell)}
       {/each}
     </div>
 
-    <div class="flex w-10 items-center justify-center">
+    <div class="flex w-8 shrink-0 items-center justify-center" aria-hidden="true">
       <div class="h-1 w-3 rounded-full bg-border"></div>
     </div>
 
-    <div class="flex">
+    <div class="flex flex-1 rounded-input shadow-btn">
       {#each cells.slice(3, 6) as cell, i (i)}
         {@render Cell(cell)}
       {/each}
@@ -51,14 +51,14 @@
 {#snippet Cell(cell: Cell)}
   <PinInput.Cell
     {cell}
-    class="relative flex h-14 w-10 items-center justify-center border-y border-r border-foreground/20 text-[2rem] text-foreground outline-0 transition-all duration-75 group-focus-within/pininput:border-foreground/40 group-hover/pininput:border-foreground/40 first:rounded-l-md first:border-l last:rounded-r-md data-active:outline-1 data-active:outline-foreground"
+    class="relative flex h-11 min-w-0 flex-1 items-center justify-center border-y border-r border-input bg-background text-lg font-medium text-foreground tabular-nums transition-all duration-75 group-focus-within/pininput:border-foreground/40 group-hover/pininput:border-foreground/40 first:rounded-l-input first:border-l last:rounded-r-input data-active:z-10 data-active:ring-1 data-active:ring-foreground"
   >
     {#if cell.char !== null}
       <div>{cell.char}</div>
     {/if}
     {#if cell.hasFakeCaret}
       <div class="pointer-events-none absolute inset-0 flex animate-caret-blink items-center justify-center">
-        <div class="h-8 w-px bg-foreground"></div>
+        <div class="h-5 w-px bg-foreground"></div>
       </div>
     {/if}
   </PinInput.Cell>
