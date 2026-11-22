@@ -54,7 +54,6 @@ jobs:
         uses: pnpm/action-setup@v6
         with:
           package_json_file: apps/frontend/package.json
-          version: 12.x
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -118,7 +117,6 @@ jobs:
         uses: pnpm/action-setup@v6
         with:
           package_json_file: apps/frontend/package.json
-          version: 12.x
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -177,7 +175,6 @@ jobs:
         uses: pnpm/action-setup@v6
         with:
           package_json_file: apps/frontend/package.json
-          version: 12.x
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
@@ -291,7 +288,6 @@ jobs:
         uses: pnpm/action-setup@v6
         with:
           package_json_file: apps/mobile/package.json
-          version: 12.x
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
