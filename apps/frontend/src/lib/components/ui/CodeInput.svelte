@@ -13,6 +13,13 @@
 
   type Cell = PinInputRootSnippetProps["cells"][0];
 
+  // PinInput skips injecting its <style> (blocked by the CSP) when this id exists; app.css has the rules.
+  if (typeof document !== "undefined" && !document.getElementById("pin-input-style")) {
+    const marker = document.createElement("template");
+    marker.id = "pin-input-style";
+    document.head.append(marker);
+  }
+
   // Strip non-digits before PinInput reads the value, so pasted "123 456" or "12-34-56" still fits.
   // (Its `pattern` would reject the whole value instead.)
   const digitsOnly = (event: Event) => {
