@@ -8,8 +8,9 @@
   import { authClient } from "#lib/auth-client.js";
   import Icon from "#lib/components/Icon.svelte";
   import Button from "#lib/components/ui/Button.svelte";
+  import CodeInput from "#lib/components/ui/CodeInput.svelte";
   import UsernameHint from "#lib/components/UsernameHint.svelte";
-  import { totpDigits, totpKey, totpQrSvg, twoFactorError } from "#lib/twoFactor.js";
+  import { totpKey, totpQrSvg, twoFactorError } from "#lib/twoFactor.js";
 
   let {
     username,
@@ -152,18 +153,7 @@
     </div>
     <div class="mt-4 flex flex-col gap-1.5">
       <Label.Root for="two-factor-code" class={labelClass}>6-digit code from the app</Label.Root>
-      <input
-        id="two-factor-code"
-        bind:value={code}
-        oninput={() => (code = totpDigits(code))}
-        inputmode="numeric"
-        name="otp"
-        autocomplete="one-time-code"
-        maxlength={6}
-        placeholder="123456"
-        data-step-focus
-        class={`${field} font-mono tracking-[0.3em]`}
-      />
+      <CodeInput id="two-factor-code" bind:value={code} name="otp" data-step-focus />
     </div>
   {:else}
     <p class="text-sm text-muted-foreground">

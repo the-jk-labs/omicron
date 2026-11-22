@@ -10,11 +10,12 @@
   import InstanceLogo from "#lib/components/InstanceLogo.svelte";
   import PageTitle from "#lib/components/PageTitle.svelte";
   import Button from "#lib/components/ui/Button.svelte";
+  import CodeInput from "#lib/components/ui/CodeInput.svelte";
   import UsernameHint from "#lib/components/UsernameHint.svelte";
   import { oauthReturnTo } from "#lib/oauth.js";
   import { passkeyAutofill, passkeySignInError, passkeysSupported } from "#lib/passkeys.js";
   import { notALoginField } from "#lib/passwordManagers.js";
-  import { backupCodeInput, totpDigits, twoFactorError } from "#lib/twoFactor.js";
+  import { backupCodeInput, twoFactorError } from "#lib/twoFactor.js";
   import type { InstanceInfo } from "#lib/types.js";
 
   // "Omicron" is the software's name; the site has the operator's. Same
@@ -203,17 +204,7 @@
           class={`${field} font-mono`}
         />
       {:else}
-        <input
-          id="two-factor-code"
-          bind:value={twoFactorCode}
-          oninput={() => (twoFactorCode = totpDigits(twoFactorCode))}
-          inputmode="numeric"
-          name="otp"
-          autocomplete="one-time-code"
-          maxlength={6}
-          placeholder="123456"
-          class={`${field} font-mono tracking-[0.3em]`}
-        />
+        <CodeInput id="two-factor-code" bind:value={twoFactorCode} name="otp" />
       {/if}
       <p class="text-xs text-muted-foreground">
         {useBackupCode
