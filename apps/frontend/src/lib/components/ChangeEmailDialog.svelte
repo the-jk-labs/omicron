@@ -11,6 +11,7 @@
   import { authClient } from "#lib/auth-client.js";
   import Icon from "#lib/components/Icon.svelte";
   import Button from "#lib/components/ui/Button.svelte";
+  import CodeInput from "#lib/components/ui/CodeInput.svelte";
   import UsernameHint from "#lib/components/UsernameHint.svelte";
   import { emailChangeError, needsPassword } from "#lib/emailChange.js";
   import { confirmPassword } from "#lib/passkeys.js";
@@ -216,18 +217,7 @@
                   </Dialog.Description>
                   <div class="mt-4 flex flex-col gap-1.5">
                     <Label.Root for="change-email-code" class={labelClass}>Code</Label.Root>
-                    <input
-                      id="change-email-code"
-                      bind:value={code}
-                      oninput={() => (code = code.replace(/\D/g, "").slice(0, 6))}
-                      inputmode="numeric"
-                      autocomplete="one-time-code"
-                      {...notALoginField}
-                      maxlength={6}
-                      placeholder="123456"
-                      data-step-focus
-                      class={`${field} font-mono tracking-[0.3em]`}
-                    />
+                    <CodeInput id="change-email-code" bind:value={code} {...notALoginField} data-step-focus />
                     <p class="text-xs text-muted-foreground">
                       Didn't get it?
                       {#if resendIn > 0}

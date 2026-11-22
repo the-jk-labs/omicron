@@ -40,5 +40,8 @@ if (!("animate" in Element.prototype)) {
   });
 }
 
+// jsdom has no hit testing; Bits UI's PinInput probes for password manager badges with it.
+if (!("elementFromPoint" in document)) Object.assign(document, { elementFromPoint: () => null });
+
 // The vmThreads context exposes jsdom's crypto, which has no `subtle`.
 if (!globalThis.crypto?.subtle) Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true });
