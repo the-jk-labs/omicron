@@ -338,11 +338,11 @@ importers:
         specifier: 0.13.0
         version: 0.13.0(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(supports-color@8.1.1)
       tailwind-merge:
-        specifier: 3.7.0
-        version: 3.7.0
+        specifier: 3.7.1
+        version: 3.7.1
       tailwind-variants:
-        specifier: 4.0.1
-        version: 4.0.1
+        specifier: 4.0.2
+        version: 4.0.2
       uniwind:
         specifier: 1.14.0
         version: 1.14.0(@expo/metro-config@58.0.23(expo@58.0.26)(supports-color@8.1.1)(typescript@6.0.3))(metro-cache@0.87.2(supports-color@8.1.1))(metro-transform-worker@0.87.2(supports-color@8.1.1))(metro@0.87.2(supports-color@8.1.1))(react-native@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(@react-native/metro-config@0.88.1(@babel/core@7.29.7(supports-color@8.1.1))(supports-color@8.1.1))(@types/react@19.3.0)(react@19.3.0)(supports-color@8.1.1))(react@19.3.0)(tailwindcss@4.3.5)
@@ -5786,11 +5786,11 @@ packages:
     resolution: {integrity: sha512-yEFYrVhod+hdNyx7g5Bnkkb0G6si8HJurOoOEgC8B/O0uXLHlaey/65KRv6cuWBNhBgHKAROVpc7QyYqE5gFng==}
     engines: {node: '>=20'}
 
-  tailwind-merge@3.7.0:
-    resolution: {integrity: sha512-XPPUyAc+cvspz3lHTcR/QgPfW2A0lv/xQNIjX3HGhLR+Nq2lHaLq5MtTesHn8GUr3W3DguT2KT5x3NVgRtYwmA==}
+  tailwind-merge@3.7.1:
+    resolution: {integrity: sha512-v7y4BV4FUlO8exj/4M5UXKeoowDiuugVUg3tkMNIyOUCOHy5xp8+5aWQeXCtZ2491sUV1YPsVeM9EveZ6/xuZQ==}
 
-  tailwind-variants@4.0.1:
-    resolution: {integrity: sha512-VumzgPklIwpneDWtskGuhEqPlfZZ2DeN1nIb2um9DRhk9XBX580s4N84A533j+oHN+dLz274HkKvSjr+64fggA==}
+  tailwind-variants@4.0.2:
+    resolution: {integrity: sha512-sZvOFkfe5LlYG/crRX5IvP3oUHmJPu+7WmrLQFvF0kCRq51C+lurlzFMm/jURG/5keT7VOJ/it0N3jkzYux85w==}
     engines: {node: '>=16.9.x', pnpm: '>=7.x'}
 
   tailwindcss@4.3.3:
@@ -11770,9 +11770,9 @@ snapshots:
 
   tagged-tag@1.0.0: {}
 
-  tailwind-merge@3.7.0: {}
+  tailwind-merge@3.7.1: {}
 
-  tailwind-variants@4.0.1: {}
+  tailwind-variants@4.0.2: {}
 
   tailwindcss@4.3.3: {}
 
