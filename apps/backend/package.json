@@ -26,8 +26,8 @@
     "reset-two-factor": "deno run -A scripts/reset_two_factor.ts"
   },
   "dependencies": {
-    "@better-auth/expo": "1.7.25",
-    "@better-auth/passkey": "1.7.25",
+    "@better-auth/expo": "1.7.27",
+    "@better-auth/passkey": "1.7.27",
     "@fedify/fedify": "2.4.6",
     "@fedify/redis": "2.4.6",
     "@hono/zod-validator": "0.9.1",
@@ -35,14 +35,14 @@
     "@omicron/contract": "link:../../packages/contract",
     "@vscode/markdown-it-katex": "1.1.2",
     "bcryptjs": "3.0.3",
-    "better-auth": "1.7.25",
+    "better-auth": "1.7.27",
     "cheerio": "1.2.0",
     "csv-parse": "7.0.3",
     "dotenv": "18.0.10",
     "drizzle-orm": "0.45.4",
     "fflate": "0.8.3",
-    "hono": "4.13.19",
-    "ioredis": "6.0.0",
+    "hono": "4.13.21",
+    "ioredis": "6.1.0",
     "katex": "0.19.1",
     "markdown-it": "15.0.3",
     "postgres": "4.1.1",
@@ -55,23 +55,22 @@
     "@types/sanitize-html": "2.16.2",
     "@vitest/coverage-v8": "5.1.1",
     "drizzle-kit": "0.31.11",
-    "greenly": "1.2.0",
-    "oxfmt": "0.79.0",
-    "oxlint": "1.94.0",
-    "oxlint-tsgolint": "7.0.2007",
+    "greenly": "1.4.0",
+    "oxfmt": "0.80.0",
+    "oxlint": "1.95.0",
+    "oxlint-tsgolint": "7.0.2008",
     "typescript": "7.0.2",
     "vitest": "5.1.1"
   },
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": ">=12.11.0",
+      "version": ">=12.23.0",
       "onFail": "error"
     }
   },
   "engines": {
     "node": ">=24",
-    "pnpm": ">=12.11.0"
-  },
-  "packageManager": "pnpm@12.16.1"
+    "pnpm": ">=12.23.0"
+  }
 }
