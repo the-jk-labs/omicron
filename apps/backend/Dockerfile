@@ -12,7 +12,10 @@ COPY packages/contract/package.json packages/contract/pnpm-lock.yaml packages/co
 RUN pnpm install --frozen-lockfile --prod
 WORKDIR /app/apps/backend
 COPY apps/backend/package.json apps/backend/pnpm-lock.yaml apps/backend/pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile
+# Runtime dependencies only: Deno runs the TypeScript itself, and migrations go
+# through drizzle-orm, so the type checker, linters, test runner and drizzle-kit
+# have no place in the image.
+RUN pnpm install --frozen-lockfile --prod
 
 # --- runtime: Deno with the installed dependencies --------------------------
 FROM denoland/deno:2.9.8
