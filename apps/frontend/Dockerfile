@@ -10,12 +10,22 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm run build
 
+# Runtime dependencies only. adapter-node bundles devDependencies (Kit, Svelte)
+# into build/ and imports only `dependencies` at runtime, so the build toolchain,
+# browsers and test runners stay out of the image.
+FROM node:24.22.3-alpine3.24 AS deps
+WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches ./patches
+RUN pnpm install --frozen-lockfile --prod
+
 FROM node:24.22.3-alpine3.24
 WORKDIR /app
 ENV NODE_ENV=production
 ENV BODY_SIZE_LIMIT=50m
 COPY --from=build /app/build ./build
-COPY --from=build /app/node_modules ./node_modules
+COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./
 COPY --from=build /app/server.js ./
 EXPOSE 3000
