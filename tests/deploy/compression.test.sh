@@ -45,12 +45,21 @@ done
   -v "$repo/Caddyfile:/etc/caddy/Caddyfile:ro,z" --tmpfs /run/caddy-admin "$caddy_image" > /dev/null
 
 # The response's Content-Encoding for a path, or "none". The client asks for
-# zstd and gzip the way browsers do.
+# zstd and gzip the way browsers do. A 5xx from a stand-in that dropped a
+# connection is retried: what's checked is the encoding, not the stand-in.
 encoding() { # path
   "$ENGINE" run --rm --network "$net" docker.io/library/python:3.13-alpine python -c '
-import sys, urllib.request
+import sys, time, urllib.error, urllib.request
 req = urllib.request.Request("http://caddy" + sys.argv[1], headers={"Host": "localhost", "Accept-Encoding": "zstd, gzip"})
-print(urllib.request.urlopen(req, timeout=5).headers.get("Content-Encoding") or "none")' "$1"
+for attempt in range(5):
+    try:
+        print(urllib.request.urlopen(req, timeout=5).headers.get("Content-Encoding") or "none")
+        break
+    except urllib.error.HTTPError as e:
+        if e.code < 500 or attempt == 4:
+            print("HTTP %d" % e.code)
+            break
+        time.sleep(1)' "$1"
 }
 
 for _ in $(seq 1 30); do
@@ -70,7 +79,8 @@ expect "HTML the web app already gzipped passes through as is" "$(encoding /gzip
 expect "images are left alone" "$(encoding /api/png)" none
 
 if [ "$failures" != 0 ]; then
-  echo "$failures compression check(s) failed"
+  echo "$failures compression check(s) failed. Caddy's log:"
+  "$ENGINE" logs "$net-caddy" 2>&1 | tail -20
   exit 1
 fi
 echo "text responses are compressed exactly once"
