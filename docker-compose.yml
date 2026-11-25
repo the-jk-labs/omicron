@@ -330,6 +330,10 @@ services:
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
+      # HTTP/3 (QUIC). Caddy already advertises it; without this UDP port every
+      # browser's attempt failed and it fell back to TCP. Blocked by a host
+      # firewall it costs nothing: browsers keep using HTTP/2.
+      - "${HTTPS_PORT:-443}:443/udp"
     environment:
       # Address ranges of a CDN or load balancer in front of Caddy, if any. Empty
       # trusts nothing: whoever connects is the client. See .env.example.
