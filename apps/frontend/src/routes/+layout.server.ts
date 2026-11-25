@@ -3,6 +3,7 @@ import { redirect } from "@sveltejs/kit";
 import { endpoints } from "#lib/api/index.js";
 import { LOCALE_COOKIE, localeFromAcceptLanguage, validLocale } from "#lib/locale.svelte.js";
 import { feedFilterFrom } from "#lib/prefs.svelte.js";
+import { currentUser } from "#lib/server/currentUser.js";
 import { TZ_COOKIE, validTimeZone } from "#lib/timezone.svelte.js";
 import type { LayoutServerLoad } from "./$types";
 
@@ -13,7 +14,7 @@ const DISCOVER_ROUTES = new Set(["/", "/[handle]"]);
 // Resolves the current user once for every page (used by the nav + guards) and,
 // on the routes that show it, the discovery rail — server-side, in parallel, so
 // the rail renders with the page instead of popping in after client hydration.
-export const load: LayoutServerLoad = async ({ cookies, fetch, route, request }) => {
+export const load: LayoutServerLoad = async ({ cookies, fetch, locals, route, request }) => {
   const api = endpoints(fetch);
 
   // The reader's own timezone, parked in a cookie by the browser on their last
@@ -27,28 +28,28 @@ export const load: LayoutServerLoad = async ({ cookies, fetch, route, request })
   const locale =
     validLocale(cookies.get(LOCALE_COOKIE)) ?? localeFromAcceptLanguage(request.headers.get("accept-language")) ?? null;
 
+  // Every backend call starts at once; the first-run gate below only awaits the
+  // instance, so a page pays one round trip instead of two in a row. Each call
+  // has its own fallback, so one abandoned by a redirect never rejects unhandled.
+  const instancePromise = api.instance().catch(() => null);
+  // Discoverability config drives the <head> verification tags + noindex. Public
+  // and cheap; default to indexable if the backend hiccups.
+  const seoPromise = api.seo().catch(() => ({ indexingEnabled: true, verification: {} }));
+  const umamiPromise = api.siteStatistics().catch(() => ({ websiteId: null }));
+  const userPromise = currentUser({ locals, fetch });
+  const discoverPromise = DISCOVER_ROUTES.has(route.id ?? "")
+    ? Promise.allSettled([api.trendingPosts(), api.suggestedUsers(), api.trendingTags()])
+    : null;
+
   // First-run gate: until the instance is set up, every route is redirected to
   // the wizard; once set up, the wizard route redirects back into the app. If
   // the backend is unreachable we skip gating and let normal errors surface.
-  const instance = await api.instance().catch(() => null);
+  const instance = await instancePromise;
   if (instance) {
     const onSetup = route.id === "/setup";
     if (!instance.setupComplete && !onSetup) redirect(303, "/setup");
     if (instance.setupComplete && onSetup) redirect(303, "/");
   }
-
-  // Discoverability config drives the <head> verification tags + noindex. Public
-  // and cheap; default to indexable if the backend hiccups.
-  const seoPromise = api.seo().catch(() => ({ indexingEnabled: true, verification: {} }));
-  const umamiPromise = api.siteStatistics().catch(() => ({ websiteId: null }));
-
-  const userPromise = api
-    .me()
-    .then((r) => r.user)
-    .catch(() => null);
-  const discoverPromise = DISCOVER_ROUTES.has(route.id ?? "")
-    ? Promise.allSettled([api.trendingPosts(), api.suggestedUsers(), api.trendingTags()])
-    : null;
 
   const user = await userPromise;
 

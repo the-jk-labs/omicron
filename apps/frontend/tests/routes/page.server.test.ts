@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from "vitest";
 import { load } from "../../src/routes/+page.server";
+import { apiError, type Call } from "../fakeFetch";
 import { event, user } from "./event";
+
+// The load asks `/api/me` itself; these tests are about which feed it fetches.
+const feedCalls = (calls: Call[]) => calls.filter((c) => c.path !== "/api/me");
 
 const routes = {
   "GET /api/feed": { items: ["mine"], nextCursor: null },
@@ -41,7 +45,7 @@ test.for([
     personalized: true,
     tab,
   });
-  expect(refreshed.calls).toHaveLength(1);
+  expect(feedCalls(refreshed.calls)).toHaveLength(1);
 });
 
 test("a guest can refresh the Local feed", async () => {
@@ -72,10 +76,10 @@ test("a signed-in reader's timeline is preloaded with their language filter; a g
   const cookies = { "default-feed": "local", "feed-lang-mode": "hide", "feed-langs": "de,fr" };
   const signedIn = event({ routes, user: user(), cookies });
   await load(signedIn.event);
-  expect(signedIn.calls.map((c) => c.path)).toEqual(["/api/posts?scope=local&langMode=hide&langs=de%2Cfr"]);
+  expect(feedCalls(signedIn.calls).map((c) => c.path)).toEqual(["/api/posts?scope=local&langMode=hide&langs=de%2Cfr"]);
   const guest = event({ routes, cookies });
   await load(guest.event);
-  expect(guest.calls.map((c) => c.path)).toEqual(["/api/posts?scope=local"]);
+  expect(feedCalls(guest.calls).map((c) => c.path)).toEqual(["/api/posts?scope=local"]);
 });
 
 test("a saved default that isn't offered or isn't a feed falls back", async () => {
@@ -86,4 +90,17 @@ test("a saved default that isn't offered or isn't a feed falls back", async () =
   expect(await load(event({ routes, user: user(), cookies: { "default-feed": "trending" } }).event)).toMatchObject({
     tab: "for-you",
   });
+});
+
+// The feed used to wait on `parent()`, i.e. on the layout's instance, SEO and
+// discovery calls, before it even started.
+test("the feed is fetched without waiting for the root layout", async () => {
+  const { event: e } = event({ routes, user: user() });
+  const stalled = { ...(e as object), parent: () => new Promise(() => {}) } as never;
+  expect(await load(stalled)).toMatchObject({ tab: "for-you", personalized: true });
+});
+
+test("a failed /api/me renders the guest feed", async () => {
+  const { event: e } = event({ routes: { ...routes, "GET /api/me": apiError(500) }, user: user() });
+  expect(await load(e)).toMatchObject({ tab: "global", personalized: false });
 });

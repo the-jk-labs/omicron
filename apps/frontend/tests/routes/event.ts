@@ -18,7 +18,9 @@ export function event(
     method?: string;
   } = {},
 ) {
-  const { fetch, calls } = fakeFetch(opts.routes ?? {});
+  // Loads that read the user themselves (currentUser) ask `/api/me` for the same
+  // user `parent()` hands out, unless the test routes it.
+  const { fetch, calls } = fakeFetch({ "GET /api/me": { user: opts.user ?? null }, ...opts.routes });
   const url = new URL(opts.url ?? "https://blog.example/");
   const locals: { lang?: string | null } = {};
   return {
