@@ -34,6 +34,25 @@
 	handle @internal {
 		respond 404
 	}
+	# Compress text responses: the backend's JSON and ActivityPub documents leave
+	# it uncompressed. One already encoded upstream (SvelteKit's HTML, its
+	# precompressed assets) passes through untouched. The match lists the
+	# defaults plus ActivityPub's own type, which Caddy's defaults leave out.
+	encode zstd gzip {
+		match {
+			header Content-Type text/*
+			header Content-Type application/json*
+			header Content-Type application/activity+json*
+			header Content-Type application/ld+json*
+			header Content-Type application/jrd+json*
+			header Content-Type application/javascript*
+			header Content-Type application/xml*
+			header Content-Type application/rss+xml*
+			header Content-Type application/atom+xml*
+			header Content-Type application/manifest+json*
+			header Content-Type image/svg+xml*
+		}
+	}
 	# Security hardening applied to every response: stop browsers from MIME
 	# sniffing and trust the declared Content-Type instead, and switch off the
 	# powerful browser APIs a blogging platform never uses (camera, microphone,
