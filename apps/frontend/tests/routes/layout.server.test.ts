@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { load } from "../../src/routes/+layout.server";
 import { apiError } from "../fakeFetch";
 import { event } from "./event";
@@ -113,4 +113,43 @@ describe("discover rail", () => {
     expect(discover.people).toEqual([]);
     expect(discover.posts).toHaveLength(4);
   });
+});
+
+// The instance used to be awaited before any other call started, so every page
+// paid two backend round trips back to back.
+test("every backend call starts before the instance answers", async () => {
+  let answer!: () => void;
+  const gate = new Promise<void>((resolve) => (answer = resolve));
+  const { event: e, calls } = event({
+    routes: {
+      ...base,
+      "GET /api/instance": async () => {
+        await gate;
+        return Response.json({ setupComplete: true, name: "Omicron" });
+      },
+    },
+    routeId: "/",
+  });
+  const pending = load(e) as Promise<Record<string, unknown>>;
+  await vi.waitFor(() => expect(calls).toHaveLength(7));
+  expect(calls.map((c) => c.path).toSorted()).toEqual(
+    [
+      "/api/instance",
+      "/api/me",
+      "/api/posts/trending",
+      "/api/seo",
+      "/api/site",
+      "/api/tags",
+      "/api/users/suggested",
+    ].toSorted(),
+  );
+  answer();
+  expect(await pending).toMatchObject({ user: { username: "ada" }, instance: { setupComplete: true } });
+});
+
+test("a redirect to setup leaves no call rejecting unhandled", async () => {
+  const failing = Object.fromEntries(Object.keys(base).map((k) => [k, apiError(500)]));
+  await expect(
+    run({ routes: { ...failing, "GET /api/instance": { setupComplete: false } }, routeId: "/" }),
+  ).rejects.toMatchObject({ status: 303, location: "/setup" });
 });
