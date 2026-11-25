@@ -262,6 +262,9 @@ jobs:
       # The real Caddyfile behind a stand-in CDN: upstreams must see the visitor, never a forged address.
       - name: Upstreams see the real client IP
         run: tests/deploy/client-ip.test.sh "${{ matrix.compose == 'docker compose' && 'docker' || 'podman' }}"
+      # The real Caddyfile in front of stand-ins: text is compressed once, images never.
+      - name: Text responses are compressed
+        run: tests/deploy/compression.test.sh "${{ matrix.compose == 'docker compose' && 'docker' || 'podman' }}"
 
   images:
     name: Publish images
