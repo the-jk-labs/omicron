@@ -10,13 +10,17 @@ ENGINE="${1:?usage: compression.test.sh <podman|docker>}"
 repo="$(cd "$(dirname "$0")/../.." && pwd)"
 caddy_image="$(grep -oE 'image: (docker.io/library/)?caddy:[^ ]+' "$repo/docker-compose.yml" | head -n 1 | cut -d' ' -f2)"
 net="omicron-encode-test-$$"
+# Fixed addresses handed to Caddy as host entries: on CI runners Podman's network
+# DNS intermittently timed out resolving the stand-ins, failing probes at random.
+subnet_prefix="10.91.$(($$ % 200 + 20))"
+backend_ip="$subnet_prefix.10" frontend_ip="$subnet_prefix.20"
 
 cleanup() {
   "$ENGINE" rm -f "$net-backend" "$net-frontend" "$net-caddy" > /dev/null 2>&1 || true
   "$ENGINE" network rm "$net" > /dev/null 2>&1 || true
 }
 trap cleanup EXIT
-"$ENGINE" network create "$net" > /dev/null
+"$ENGINE" network create --subnet "$subnet_prefix.0/24" "$net" > /dev/null
 
 # Answers 4 KB of text with the Content-Type the path names, e.g. /api/json →
 # application/json; /gzipped is HTML the upstream already gzipped itself.
@@ -35,13 +39,16 @@ class S(h.BaseHTTPRequestHandler):
         s.send_header("Content-Length", str(len(body))); s.end_headers(); s.wfile.write(body)
     def log_message(s, *a): pass
 h.ThreadingHTTPServer(("", int(sys.argv[1])), S).serve_forever()'
-for upstream in backend:8000 frontend:3000; do
-  name="${upstream%%:*}" port="${upstream##*:}"
-  "$ENGINE" run -d --name "$net-$name" --network "$net" --network-alias "$name" \
+for upstream in backend:8000:$backend_ip frontend:3000:$frontend_ip; do
+  name="${upstream%%:*}" rest="${upstream#*:}"
+  port="${rest%%:*}" ip="${rest#*:}"
+  "$ENGINE" run -d --name "$net-$name" --network "$net" --ip "$ip" \
     docker.io/library/python:3.13-alpine python -c "$stand_in" "$port" > /dev/null
 done
 
-"$ENGINE" run -d --name "$net-caddy" --network "$net" --network-alias caddy \
+caddy_ip="$subnet_prefix.30"
+"$ENGINE" run -d --name "$net-caddy" --network "$net" --ip "$caddy_ip" \
+  --add-host "backend:$backend_ip" --add-host "frontend:$frontend_ip" \
   -v "$repo/Caddyfile:/etc/caddy/Caddyfile:ro,z" --tmpfs /run/caddy-admin "$caddy_image" > /dev/null
 
 # The response's Content-Encoding for a path, or "none". The client asks for
@@ -50,7 +57,7 @@ done
 encoding() { # path
   "$ENGINE" run --rm --network "$net" docker.io/library/python:3.13-alpine python -c '
 import sys, time, urllib.error, urllib.request
-req = urllib.request.Request("http://caddy" + sys.argv[1], headers={"Host": "localhost", "Accept-Encoding": "zstd, gzip"})
+req = urllib.request.Request("http://" + sys.argv[2] + sys.argv[1], headers={"Host": "localhost", "Accept-Encoding": "zstd, gzip"})
 for attempt in range(5):
     try:
         print(urllib.request.urlopen(req, timeout=5).headers.get("Content-Encoding") or "none")
@@ -59,7 +66,7 @@ for attempt in range(5):
         if e.code < 500 or attempt == 4:
             print("HTTP %d" % e.code)
             break
-        time.sleep(1)' "$1"
+        time.sleep(1)' "$1" "$caddy_ip"
 }
 
 for _ in $(seq 1 30); do
