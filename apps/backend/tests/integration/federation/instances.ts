@@ -39,7 +39,6 @@ export class Instances {
         detached: process.platform !== "win32",
         env: {
           ...env,
-          COREPACK_ENABLE_PROJECT_SPEC: "0",
           DOTENV_PATH: join(backend, "tests/test.env"),
           DATABASE_URL: database.href,
           SESSION_SECRET: secret,
