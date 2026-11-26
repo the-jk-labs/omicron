@@ -4,7 +4,7 @@
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 vi.mock(import("node:fs/promises"), async (importOriginal) => {
@@ -17,6 +17,7 @@ vi.mock(import("@/db/repositories/instanceSettings.ts"));
 import { config } from "@/config.ts";
 import * as settingsRepo from "@/db/repositories/instanceSettings.ts";
 import * as uploadsRepo from "@/db/repositories/uploads.ts";
+import { variantPath } from "@/services/imageVariants.ts";
 import { SETUP_KEYS } from "@/services/instanceSetup.ts";
 import { cachePath } from "@/services/shareImage.ts";
 import { startUploadGcSweeper, sweep } from "@/services/uploadGc.ts";
@@ -144,4 +145,23 @@ test("the sweeper starts once and repeats daily", async () => {
   expect(uploadsRepo.referencedFilenames).toHaveBeenCalledTimes(1);
   await vi.advanceTimersByTimeAsync(86_400_000);
   expect(uploadsRepo.referencedFilenames).toHaveBeenCalledTimes(2);
+});
+
+test("reaping an upload also deletes its resized variants, and only its own", async () => {
+  upload(`${A}.webp`);
+  upload(`${B}.webp`);
+  for (const [file, width] of [
+    [`${A}.webp`, 256],
+    [`${B}.webp`, 256],
+    [`${B}.webp`, 1280],
+  ] as const) {
+    mkdirSync(dirname(variantPath(file, width)), { recursive: true });
+    writeFileSync(variantPath(file, width), "webp");
+  }
+  vi.mocked(uploadsRepo.listReapable).mockResolvedValue([{ id: "row-1", filename: `${B}.webp` }]);
+  vi.spyOn(console, "log").mockImplementation(() => {});
+  expect(await sweep()).toBe(1);
+  expect(existsSync(variantPath(`${B}.webp`, 256))).toBe(false);
+  expect(existsSync(variantPath(`${B}.webp`, 1280))).toBe(false);
+  expect(existsSync(variantPath(`${A}.webp`, 256))).toBe(true);
 });

@@ -54,7 +54,8 @@ done
 
 echo "backup [$TAG]: storing snapshot…"
 # shellcheck disable=SC2086
-restic backup --host omicron --tag "$TAG" $SOURCES
+# Resized image copies (uploads/w) are rebuilt from the originals on demand.
+restic backup --host omicron --tag "$TAG" --exclude /data/uploads/w $SOURCES
 
 echo "backup [$TAG]: pruning…"
 FORGET_ARGS=""

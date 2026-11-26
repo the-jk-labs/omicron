@@ -198,6 +198,10 @@ Post editors can submit HTML without Tiptap. `contentJson` is optional opaque
 Tiptap data, not a required editor format. Comments are plain text. Image
 uploads send raw bytes with the image MIME `Content-Type`, not multipart form
 data. Resolve root-relative returned media URLs against the instance origin.
+To show an upload (`/api/uploads/<file>`) or a proxied image
+(`/api/media/proxy?url=…`) small, add `w=<px>`: the instance returns a WebP at
+most that wide, snapped up to one of 64, 128, 256, 384, 640, 960 or 1280, and
+the original when it is already narrower, animated or an SVG.
 
 Paginated core resources return `{ items, nextCursor }`; some admin resources
 have named collections. Pass opaque cursors back unchanged and URL-encoded.

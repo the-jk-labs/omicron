@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Uploaded files are served from a real temp UPLOADS_DIR.
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -148,5 +148,49 @@ describe("share images", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect((await api.request("/api/uploads/og/abc.jpg")).status).toBe(404);
     expect(warn).toHaveBeenCalled();
+  });
+});
+
+describe("smaller copies (?w=)", () => {
+  const ID = "0b0e7c4e-5d2a-4e0f-9f53-5f5a4f0d3a11";
+
+  async function storeImage(width: number, height: number) {
+    const { ImageMagick, MagickColor, MagickFormat } = await import("@imagemagick/magick-wasm");
+    const { initializeMagick } = await import("@/lib/magick.ts");
+    await initializeMagick();
+    let bytes!: Uint8Array;
+    ImageMagick.read(new MagickColor("#3366cc"), width, height, (img) => {
+      img.write(MagickFormat.WebP, (b) => (bytes = new Uint8Array(b)));
+    });
+    writeFileSync(join(tmp, `${ID}.webp`), bytes);
+    return bytes;
+  }
+
+  test("a large upload comes back resized to the width asked for, as WebP, cached as hard", async () => {
+    await storeImage(1600, 900);
+    const res = await api.request(`/api/uploads/${ID}.webp?w=300`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/webp");
+    expect(res.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+    const { MagickImageInfo } = await import("@imagemagick/magick-wasm");
+    // 300 snaps up to the next served width.
+    expect(MagickImageInfo.create(new Uint8Array(await res.arrayBuffer())).width).toBe(384);
+    expect(existsSync(join(tmp, "w", "384", `${ID}.webp`))).toBe(true);
+  });
+
+  test("an upload already that narrow, or a width that isn't one, gets the original bytes", async () => {
+    const original = await storeImage(200, 100);
+    for (const query of ["?w=384", "?w=abc", "?w=99999", ""]) {
+      const res = await api.request(`/api/uploads/${ID}.webp${query}`);
+      expect(res.status).toBe(200);
+      expect(new Uint8Array(await res.arrayBuffer())).toEqual(original);
+    }
+  });
+
+  test("a cached copy never outlives its upload", async () => {
+    await storeImage(1600, 900);
+    expect((await api.request(`/api/uploads/${ID}.webp?w=256`)).status).toBe(200);
+    rmSync(join(tmp, `${ID}.webp`));
+    expect((await api.request(`/api/uploads/${ID}.webp?w=256`)).status).toBe(404);
   });
 });

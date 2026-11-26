@@ -15,8 +15,12 @@ describe("Avatar", () => {
     const { container } = render(Avatar, { name: "Remote user", src: "https://remote.example/avatar.png" });
     expect(container.querySelector("img")).toHaveAttribute(
       "src",
-      "/api/media/proxy?url=https%3A%2F%2Fremote.example%2Favatar.png",
+      "/api/media/proxy?url=https%3A%2F%2Fremote.example%2Favatar.png&w=80",
     );
+  });
+  it("asks for a copy at twice its size, sharp on high-density screens", () => {
+    const { container } = render(Avatar, { name: "Ada", src: "/api/uploads/a.webp", size: 72 });
+    expect(container.querySelector("img")).toHaveAttribute("src", "/api/uploads/a.webp?w=144");
   });
   it("renders the image with an empty alt attribute", () => {
     const { container } = render(Avatar, {
