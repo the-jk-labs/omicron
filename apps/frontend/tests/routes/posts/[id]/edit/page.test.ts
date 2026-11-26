@@ -41,7 +41,7 @@ const save = () => fireEvent.click(screen.getByRole("button", { name: "Save" }))
 test("is seeded from the post, with Cancel back to it", async () => {
   setup();
   expect(title()).toHaveValue("Hello world");
-  expect(title()).toHaveClass("font-content", "font-semibold");
+  expect(title()).toHaveClass("font-headline", "font-semibold");
   expect(screen.getByRole("button", { name: "Remove tag deno" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Cancel" })).toHaveAttribute("href", "/@ada/hello-world");
   const editor = await screen.findByRole("textbox", { name: "Body" });
