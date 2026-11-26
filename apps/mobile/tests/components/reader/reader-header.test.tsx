@@ -24,7 +24,11 @@ vi.mock("@/components/ui/pressable", async () => {
 });
 vi.mock("@/components/ui/text", async () => {
   const { Text } = await import("react-native");
-  return { Text: ({ children }: { children: ReactNode }) => <Text>{children}</Text> };
+  return {
+    Text: ({ children, ...props }: { children: ReactNode } & Record<string, unknown>) => (
+      <Text {...props}>{children}</Text>
+    ),
+  };
 });
 
 const IMAGE = "https://cdn.test/opening.jpg";
@@ -47,8 +51,10 @@ describe("ReaderHeader", () => {
     expect(screen.queryByTestId("banner")).toBeNull();
   });
 
-  test("renders the article headline when the post has a title", async () => {
-    await render(<ReaderHeader post={makePost({ title: "A Serif Headline" })} />);
-    expect(screen.getByText("A Serif Headline")).toHaveProp("accessibilityRole", "header");
+  test("renders the article headline in semibold Inter when the post has a title", async () => {
+    await render(<ReaderHeader post={makePost({ title: "An Inter Headline" })} />);
+    const headline = screen.getByText("An Inter Headline");
+    expect(headline).toHaveProp("accessibilityRole", "header");
+    expect(headline).toHaveProp("weight", "semibold");
   });
 });

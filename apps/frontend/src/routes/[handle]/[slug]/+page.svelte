@@ -296,7 +296,7 @@
   {/if}
 
   {#if post.title}
-    <h1 class="mb-4 font-headline text-3xl leading-tight font-semibold tracking-tight text-foreground sm:text-4xl">
+    <h1 class="mb-4 text-3xl leading-tight font-semibold tracking-tight text-foreground sm:text-4xl">
       {post.title}
     </h1>
   {/if}

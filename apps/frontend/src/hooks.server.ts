@@ -116,7 +116,7 @@ function pageLang(locals: App.Locals): string {
 // (Latin + Latin Extended, which covers Azerbaijani) gets them in before paint;
 // the other scripts and italics stay lazy so no page pays for unused files.
 const UI_FONTS = /\/inter-latin(-ext)?-wght-normal\.woff2$/;
-const POST_FONTS = /\/source-(sans-3|serif-4)-latin(-ext)?-wght-normal\.woff2$/;
+const POST_FONTS = /\/source-serif-4-latin(-ext)?-wght-normal\.woff2$/;
 const POST_ROUTE = "/[handle]/[slug]";
 
 export function preloadFile(

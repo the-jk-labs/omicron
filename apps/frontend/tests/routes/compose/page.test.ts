@@ -55,7 +55,8 @@ async function publishingMenu(item: string) {
 
 test("a new post starts as a draft in the server's default language, editor loaded lazily", async () => {
   setup(null, {}, "de");
-  expect(title()).toHaveClass("font-headline", "font-semibold");
+  expect(title()).toHaveClass("font-semibold");
+  expect(title()).not.toHaveClass("font-content", "font-bold");
   expect(screen.getByText("Draft")).toBeInTheDocument();
   expect(screen.getByText("German")).toBeInTheDocument();
   await screen.findByRole("textbox", { name: "Body" });
