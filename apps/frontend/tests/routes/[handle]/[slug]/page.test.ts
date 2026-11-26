@@ -399,9 +399,14 @@ test("an explicit cover renders with its credit, and hides if it fails to load",
     },
   });
   const img = document.querySelector<HTMLImageElement>(
-    'img[src="/api/media/proxy?url=https%3A%2F%2Fimg.example%2Fc.jpg"]',
+    'img[src="/api/media/proxy?url=https%3A%2F%2Fimg.example%2Fc.jpg&w=1280"]',
   )!;
   expect(img).not.toBe(null);
+  // The browser picks the copy for the column width it actually draws.
+  expect(img.getAttribute("srcset")).toBe(
+    [640, 960, 1280].map((w) => `/api/media/proxy?url=https%3A%2F%2Fimg.example%2Fc.jpg&w=${w} ${w}w`).join(", "),
+  );
+  expect(img.getAttribute("sizes")).toBe("(min-width: 704px) 672px, 100vw");
   expect(screen.getByRole("link", { name: "Jo" })).toHaveAttribute("href", "https://u.example/jo");
   expect(screen.getByRole("link", { name: "CC0" })).toHaveAttribute("href", "https://cc.example");
   await fireEvent.error(img);

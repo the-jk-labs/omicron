@@ -160,4 +160,10 @@ describe("PostCard reaction counters", () => {
     const later = render(PostCard, { props: { post: withBanner } });
     expect(later.container.querySelector("img")).toHaveAttribute("loading", "lazy");
   });
+
+  // The thumbnail is 144x96 CSS px; it used to download the full 1600 px upload.
+  it("asks for a thumbnail-sized copy of the banner", () => {
+    const { container } = render(PostCard, { props: { post: { ...post, bannerUrl: "/api/uploads/banner.webp" } } });
+    expect(container.querySelector("img")).toHaveAttribute("src", "/api/uploads/banner.webp?w=288");
+  });
 });

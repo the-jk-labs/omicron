@@ -55,7 +55,7 @@
   <div class="flex h-full w-full items-center justify-center overflow-hidden rounded-full border-2 border-transparent">
     {#if src}
       <Avatar.Image
-        src={imageUrl(src)}
+        src={imageUrl(src, size * 2)}
         alt=""
         width={size}
         height={size}

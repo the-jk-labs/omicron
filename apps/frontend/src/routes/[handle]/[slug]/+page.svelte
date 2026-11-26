@@ -17,7 +17,7 @@
   import Button from "#lib/components/ui/Button.svelte";
   import { confirm } from "#lib/components/ui/confirm.js";
   import { countLabel, readTime } from "#lib/format.js";
-  import { imageUrl, proxyImageHtml } from "#lib/imageProxy.js";
+  import { imageSrcset, imageUrl, proxyImageHtml } from "#lib/imageProxy.js";
   import { languageLabel } from "#lib/languages.js";
   import type { PageData } from "./$types";
 
@@ -413,7 +413,9 @@
     <div class="mb-8 aspect-video max-h-112 w-full overflow-hidden rounded-card border border-border">
       <!-- Decorative: the headline above it already names the post. -->
       <img
-        src={imageUrl(post.coverUrl)}
+        src={imageUrl(post.coverUrl, 1280)}
+        srcset={imageSrcset(post.coverUrl, [640, 960, 1280]) || undefined}
+        sizes="(min-width: 704px) 672px, 100vw"
         alt=""
         fetchpriority="high"
         onerror={() => (coverFailed = true)}

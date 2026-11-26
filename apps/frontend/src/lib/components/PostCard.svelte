@@ -108,7 +108,7 @@
              near the top: both let the first paint go out without the image, so
              even a cached one flickered in a frame later. -->
       <img
-        src={imageUrl(post.bannerUrl)}
+        src={imageUrl(post.bannerUrl, 288)}
         alt=""
         width="144"
         height="96"
