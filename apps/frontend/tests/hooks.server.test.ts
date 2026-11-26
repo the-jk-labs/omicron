@@ -230,7 +230,7 @@ describe("security headers", () => {
 const font = (file: string) => ({
   type: "font" as const,
   path: `/_app/immutable/assets/${file}`,
-  filename: `node_modules/@fontsource-variable/${file.startsWith("inter") ? "inter" : "source-sans-3"}/files/${file}`,
+  filename: `node_modules/@fontsource-variable/${file.startsWith("inter") ? "inter" : "source-serif-4"}/files/${file}`,
 });
 
 describe("preloading", () => {
@@ -247,15 +247,15 @@ describe("preloading", () => {
       "inter-cyrillic-wght-normal.woff2",
       "inter-greek-wght-normal.woff2",
       "inter-latin-wght-italic.woff2",
-      "source-sans-3-latin-wght-normal.woff2",
+      "source-serif-4-latin-wght-normal.woff2",
     ])
       expect(preloadFile(font(file), "/"), file).toBe(false);
   });
 
   test("the article font is preloaded on a post page", async () => {
     const { preloadFile } = await import("../src/hooks.server");
-    expect(preloadFile(font("source-sans-3-latin-wght-normal.woff2"), "/[handle]/[slug]")).toBe(true);
-    expect(preloadFile(font("source-sans-3-latin-ext-wght-normal.woff2"), "/[handle]/[slug]")).toBe(true);
+    expect(preloadFile(font("source-serif-4-latin-wght-normal.woff2"), "/[handle]/[slug]")).toBe(true);
+    expect(preloadFile(font("source-serif-4-latin-ext-wght-normal.woff2"), "/[handle]/[slug]")).toBe(true);
   });
 
   test("scripts and stylesheets keep SvelteKit's default preloading", async () => {

@@ -3,7 +3,7 @@ import { Image } from "expo-image";
 import { Link } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
-import { View } from "react-native";
+import { Text as RNText, View } from "react-native";
 import { useInstance } from "@/components/instance-provider";
 import { AiAssistedBadge, UserAvatar } from "@/components/post/post-bits";
 import { Icon } from "@/components/ui/icon";
@@ -23,9 +23,9 @@ export function ReaderHeader({ post }: { post: Post }) {
   return (
     <>
       {post.title && (
-        <Text size="3xl" weight="bold" className="leading-tight" accessibilityRole="header">
+        <RNText accessibilityRole="header" className="font-content-semibold text-3xl leading-tight text-foreground">
           {post.title}
-        </Text>
+        </RNText>
       )}
 
       <Link href={profilePath(post.author.username)} asChild>
