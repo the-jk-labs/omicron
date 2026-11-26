@@ -23,7 +23,7 @@ export function ReaderHeader({ post }: { post: Post }) {
   return (
     <>
       {post.title && (
-        <RNText accessibilityRole="header" className="font-content-semibold text-3xl leading-tight text-foreground">
+        <RNText accessibilityRole="header" className="font-headline-semibold text-3xl leading-tight text-foreground">
           {post.title}
         </RNText>
       )}

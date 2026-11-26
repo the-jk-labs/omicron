@@ -178,6 +178,9 @@ importers:
       '@expo-google-fonts/inter':
         specifier: 0.4.2
         version: 0.4.2
+      '@expo-google-fonts/source-sans-3':
+        specifier: 0.4.2
+        version: 0.4.2
       '@expo-google-fonts/source-serif-4':
         specifier: 0.4.2
         version: 0.4.2
@@ -1038,6 +1041,9 @@ packages:
 
   '@expo-google-fonts/inter@0.4.2':
     resolution: {integrity: sha512-syfiImMaDmq7cFi0of+waE2M4uSCyd16zgyWxdPOY7fN2VBmSLKEzkfbZgeOjJq61kSqPBNNtXjggiQiSD6gMQ==}
+
+  '@expo-google-fonts/source-sans-3@0.4.2':
+    resolution: {integrity: sha512-pqnxji7ox1jwLGnX5xSGDpk7C5F6VjyQnBe4NT0xrcBFTW+oxxF4ug6eol3y7ucCk/bYjgg3GFLeKvKbFlHnHA==}
 
   '@expo-google-fonts/source-serif-4@0.4.2':
     resolution: {integrity: sha512-7X2w5KT0n/pxRXr5Ogv6W35D004IbCXUouTCr9VCh9bSlSWbryyvk8/ovXNOaJLOJV8QeIDnX0hIppgH0UZ8sA==}
@@ -6920,6 +6926,8 @@ snapshots:
       levn: 0.4.1
 
   '@expo-google-fonts/inter@0.4.2': {}
+
+  '@expo-google-fonts/source-sans-3@0.4.2': {}
 
   '@expo-google-fonts/source-serif-4@0.4.2': {}
 
