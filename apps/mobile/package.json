@@ -31,6 +31,7 @@
     "@better-auth/expo": "1.7.27",
     "@better-auth/passkey": "1.7.27",
     "@expo-google-fonts/inter": "0.4.2",
+    "@expo-google-fonts/source-sans-3": "0.4.2",
     "@expo-google-fonts/source-serif-4": "0.4.2",
     "@expo/ui": "~58.0.29",
     "@gorhom/bottom-sheet": "5.2.14",
