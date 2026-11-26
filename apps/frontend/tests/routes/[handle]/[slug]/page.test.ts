@@ -88,7 +88,10 @@ async function answerConfirm(result: { ok: boolean; notify?: boolean }) {
 
 test("shows the title, author, read time and language", () => {
   setup({ language: "de" });
-  expect(screen.getByRole("heading", { level: 1, name: "Hello world" })).toBeInTheDocument();
+  const heading = screen.getByRole("heading", { level: 1, name: "Hello world" });
+  expect(heading).toBeInTheDocument();
+  expect(heading).toHaveClass("font-content", "font-semibold");
+  expect(heading).not.toHaveClass("font-bold");
   expect(screen.getAllByRole("link", { name: /Ada/ })[0]).toHaveAttribute("href", "/@ada");
   // "read" is for screen readers only; on screen the clock says it.
   const readTime = screen.getByText(/\d+ min/);
