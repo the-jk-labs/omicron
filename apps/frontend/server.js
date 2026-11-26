@@ -21,7 +21,7 @@ process.on("unhandledRejection", (reason) => {
   console.error("Unhandled rejection:", reason);
 });
 
-http
+const server = http
   .createServer((req, res) => {
     compress(req, res, () => {
       handler(req, res, () => {
@@ -33,3 +33,16 @@ http
   .listen(port, () => {
     console.log(`Listening on port ${port}`);
   });
+
+// As a container's PID 1, Node has no default SIGTERM handler, so `docker stop`
+// waited its full 10 s and then killed requests mid-flight. Stop accepting,
+// let in-flight requests finish, and exit well inside that grace period.
+const SHUTDOWN_DEADLINE_MS = Number(process.env.SHUTDOWN_DEADLINE_MS) || 8000;
+function shutdown() {
+  server.close(() => process.exit(0));
+  // Keep-alive connections with no request in flight would hold close() open.
+  server.closeIdleConnections();
+  setTimeout(() => process.exit(0), SHUTDOWN_DEADLINE_MS).unref();
+}
+process.once("SIGTERM", shutdown);
+process.once("SIGINT", shutdown);
