@@ -4,10 +4,10 @@
      next sign-in or sign-out. -->
 <script lang="ts">
   import { Dialog, Label } from "bits-ui";
-  import { authClient } from "#lib/auth-client.js";
   import Icon from "#lib/components/Icon.svelte";
   import Button from "#lib/components/ui/Button.svelte";
   import UsernameHint from "#lib/components/UsernameHint.svelte";
+  import { loadAuthClient } from "#lib/loadAuthClient.js";
   import { dismissPasskeyPrompt, passkeyPromptDismissed } from "#lib/passkeyPrompt.js";
   import { addPasskeyError, confirmPassword, needsFreshSignIn, passkeysSupported } from "#lib/passkeys.js";
 
@@ -34,7 +34,7 @@
   const OFFER_DELAY_MS = 1500;
 
   async function offerIfNone(userId: string) {
-    const res = await authClient.passkey.listUserPasskeys().catch(() => null);
+    const res = await (await loadAuthClient()).passkey.listUserPasskeys().catch(() => null);
     if (res?.data?.length !== 0) return;
     await new Promise((resolve) => setTimeout(resolve, OFFER_DELAY_MS));
     // Still on home, still the same account, still not declined.
@@ -65,7 +65,7 @@
     error = "";
     adding = true;
     try {
-      const res = await authClient.passkey.addPasskey();
+      const res = await (await loadAuthClient()).passkey.addPasskey();
       if (!res?.error) step = "added";
       else if (needsFreshSignIn(res.error)) step = "confirm";
       else error = addPasskeyError(res.error);

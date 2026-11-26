@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { authClient } from "#lib/auth-client.js";
 import { freshSignIn } from "#lib/freshSignIn.svelte.js";
+import { loadAuthClient } from "#lib/loadAuthClient.js";
 
 type AuthError = { code?: string; message?: string } | null | undefined;
 
@@ -36,6 +36,7 @@ export const needsFreshSignIn = (error: AuthError) => error?.code === "SESSION_N
  * an error message, or null on success.
  */
 export async function confirmPassword(username: string, password: string): Promise<string | null> {
+  const authClient = await loadAuthClient();
   const previous = (await authClient.getSession().catch(() => null))?.data?.session.token;
   const res = await authClient.signIn.username({ username, password });
   if (res.error) {
@@ -54,6 +55,7 @@ export async function confirmPassword(username: string, password: string): Promi
  */
 export async function passkeyAutofill(): Promise<boolean> {
   if (!passkeysSupported() || !(await PublicKeyCredential.isConditionalMediationAvailable?.())) return false;
+  const authClient = await loadAuthClient();
   const res = await authClient.signIn.passkey({ autoFill: true });
   return !!res?.data && !res.error;
 }

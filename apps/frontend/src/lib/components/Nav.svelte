@@ -5,7 +5,6 @@
   import { page } from "$app/state";
   import { DropdownMenu } from "bits-ui";
   import { ApiError, endpoints } from "#lib/api/index.js";
-  import { authClient } from "#lib/auth-client.js";
   import Icon from "#lib/components/Icon.svelte";
   import ImageDisplay from "#lib/components/ImageDisplay.svelte";
   import InstanceLogo from "#lib/components/InstanceLogo.svelte";
@@ -21,6 +20,7 @@
   import { timeAgo } from "#lib/format.js";
   import { IMAGE_DISPLAY_OPTIONS, imageDisplay, type ImageDisplayPreference } from "#lib/imageDisplay.svelte.js";
   import { postPath } from "#lib/links.js";
+  import { loadAuthClient } from "#lib/loadAuthClient.js";
   import { notifications } from "#lib/notifications.svelte.js";
   import { type FeedTab, feedTab, reading } from "#lib/prefs.svelte.js";
   import { theme } from "#lib/theme.svelte.js";
@@ -45,7 +45,7 @@
   );
 
   async function logout() {
-    await authClient.signOut();
+    await (await loadAuthClient()).signOut();
     // Reload data on the way home, not in place: on a protected page that would
     // rerun its guard and bounce through /login first.
     await goto("/", { refreshAll: true });
