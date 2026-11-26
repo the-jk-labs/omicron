@@ -1,7 +1,8 @@
 #!/bin/sh
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
-# One backup run: pg_dump → restic backup → forget/prune → check.
+# One backup run: pg_dump → restic backup → forget → prune/check (see
+# BACKUP_MAINTENANCE_DAYS).
 # Usage: backup [tag]   (tag defaults to "manual"; the daily cron passes
 # "scheduled", the entrypoint passes "boot"). Also available as `backup-now`.
 set -eu
@@ -57,7 +58,7 @@ echo "backup [$TAG]: storing snapshot…"
 # Resized image copies (uploads/w) are rebuilt from the originals on demand.
 restic backup --host omicron --tag "$TAG" --exclude /data/uploads/w $SOURCES
 
-echo "backup [$TAG]: pruning…"
+echo "backup [$TAG]: applying retention…"
 FORGET_ARGS=""
 for spec in "DAILY:${BACKUP_KEEP_DAILY:-3}:--keep-daily" \
             "WEEKLY:${BACKUP_KEEP_WEEKLY:-1}:--keep-weekly" \
@@ -84,10 +85,37 @@ case "$KEEP_MANUAL" in
   0) ;; # keep every manual backup
   *) restic forget --tag manual --keep-last "$KEEP_MANUAL" ;;
 esac
-restic prune
+# Prune and check read and rewrite repository data, which on S3 means paying to
+# download it on every run. BACKUP_MAINTENANCE_DAYS=N does them at most every N
+# days (0, the default: every run). Retention above still applies each run; only
+# reclaiming the space and verifying the repository wait. The stamp names the
+# repository it was for, so pointing backups elsewhere maintains the new one now,
+# and losing it only means maintaining once more.
+MAINTENANCE_DAYS="${BACKUP_MAINTENANCE_DAYS:-0}"
+STAMP="${BACKUP_MAINTENANCE_STAMP:-/backups/last-maintenance}"
+maintenance_due() {
+  case "$MAINTENANCE_DAYS" in
+    0) return 0 ;;
+    ''|*[!0-9]*) echo "backup [$TAG]: ignoring non-numeric BACKUP_MAINTENANCE_DAYS: $MAINTENANCE_DAYS"; return 0 ;;
+  esac
+  [ -s "$STAMP" ] || return 0
+  last="$(sed -n 1p "$STAMP")"
+  [ "$(sed -n 2p "$STAMP")" = "$RESTIC_REPOSITORY" ] || return 0
+  case "$last" in ''|*[!0-9]*) return 0 ;; esac
+  [ $(($(date +%s) - last)) -ge $((MAINTENANCE_DAYS * 86400)) ]
+}
 
-echo "backup [$TAG]: checking repository…"
-restic check
+if maintenance_due; then
+  echo "backup [$TAG]: pruning…"
+  restic prune
+  echo "backup [$TAG]: checking repository…"
+  restic check
+  # Written only after both succeed, so a failed check is retried next run.
+  mkdir -p "$(dirname "$STAMP")"
+  printf '%s\n%s\n' "$(date +%s)" "$RESTIC_REPOSITORY" > "$STAMP"
+else
+  echo "backup [$TAG]: prune and check skipped (last within $MAINTENANCE_DAYS days)."
+fi
 
 echo "backup [$TAG]: done."
 restic snapshots --compact

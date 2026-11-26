@@ -108,6 +108,58 @@ run boot
 if [ "$(count boot)" = 2 ] && [ "$(count scheduled)" = 2 ]; then pass "all automatic rules at 0 remove nothing"; else fail "all automatic rules at 0 removed snapshots"; fi
 unset BACKUP_KEEP_DAILY BACKUP_KEEP_WEEKLY BACKUP_KEEP_MONTHLY
 
+# ── BACKUP_MAINTENANCE_DAYS ──
+export BACKUP_MAINTENANCE_STAMP="$work/last-maintenance"
+maintained() { grep -q "checking repository" "$work/last.log"; }
+
+# The default prunes and checks after every run, as before.
+fresh
+rm -f "$BACKUP_MAINTENANCE_STAMP"
+run boot
+maintained && first=yes || first=no
+run boot
+if [ "$first" = yes ] && maintained; then pass "by default every run prunes and checks"; else fail "the default skipped prune or check"; fi
+
+# With an interval, the first run maintains and the next ones within it don't,
+# while retention still applies on every run.
+fresh
+rm -f "$BACKUP_MAINTENANCE_STAMP"
+export BACKUP_MAINTENANCE_DAYS=7 BACKUP_KEEP_MANUAL=1
+run manual
+maintained && first=yes || first=no
+run manual
+if [ "$first" = yes ] && ! maintained && grep -q "skipped" "$work/last.log"; then
+  pass "BACKUP_MAINTENANCE_DAYS=7 maintains once, then skips within the interval"
+else
+  fail "BACKUP_MAINTENANCE_DAYS=7 did not maintain once and then skip"
+fi
+if [ "$(count manual)" = 1 ]; then pass "retention still applies on a run that skips maintenance"; else fail "a skipped run kept $(count manual) manual backups, want 1"; fi
+
+# Once the interval has passed it maintains again.
+printf '%s\n%s\n' "$(($(date +%s) - 8 * 86400))" "$RESTIC_REPOSITORY" > "$BACKUP_MAINTENANCE_STAMP"
+run manual
+if maintained; then pass "maintenance runs again once the interval has passed"; else fail "maintenance did not run after the interval"; fi
+
+# A stamp for another repository doesn't count for this one.
+printf '%s\n%s\n' "$(date +%s)" "s3:elsewhere/bucket" > "$BACKUP_MAINTENANCE_STAMP"
+run manual
+if maintained; then pass "a new repository is maintained at once"; else fail "a stamp for another repository skipped maintenance"; fi
+
+# A failed check fails the run and leaves no stamp, so the next run tries again.
+fresh
+rm -f "$BACKUP_MAINTENANCE_STAMP"
+mkdir -p "$work/failing"
+printf '#!/bin/sh\n[ "$1" = check ] && exit 1\nexec "$REAL_RESTIC" "$@"\n' > "$work/failing/restic"
+chmod +x "$work/failing/restic"
+status=0
+REAL_RESTIC="$(command -v restic)" PATH="$work/failing:$PATH" /usr/local/bin/backup manual > "$work/last.log" 2>&1 || status=$?
+if [ "$status" != 0 ] && [ ! -e "$BACKUP_MAINTENANCE_STAMP" ]; then
+  pass "a failed check fails the run and is retried next time"
+else
+  fail "a failed check (status $status) left a stamp or passed"
+fi
+unset BACKUP_MAINTENANCE_DAYS BACKUP_KEEP_MANUAL BACKUP_MAINTENANCE_STAMP
+
 if [ "$failures" != 0 ]; then
   echo "$failures retention test(s) failed"
   exit 1
