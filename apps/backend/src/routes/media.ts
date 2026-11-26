@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { Hono } from "hono";
 import { config } from "@/config.ts";
 import { notFound } from "@/lib/http.ts";
 import type { Reply } from "@/lib/reply.ts";
+import { variantWidth } from "@/lib/resizeImage.ts";
 import { readUpload, requireUser } from "@/routes/middleware.ts";
 import type { AppEnv } from "@/routes/types.ts";
+import * as imageVariants from "@/services/imageVariants.ts";
 import * as mediaService from "@/services/media.ts";
 import * as shareImageService from "@/services/shareImage.ts";
 
@@ -71,12 +73,25 @@ mediaRoutes.get("/:file", async (c) => {
   // Reject anything that isn't a plain `<uuid>.<ext>` to prevent path traversal.
   if (!/^[a-zA-Z0-9-]+\.(png|jpe?g|webp|gif)$/.test(file)) throw notFound("File not found.");
   const ext = file.split(".").pop()!.toLowerCase();
+  const contentType = CONTENT_TYPE[ext] ?? "application/octet-stream";
+  const path = `${config.UPLOADS_DIR}/${file}`;
 
   try {
-    const bytes = await readFile(`${config.UPLOADS_DIR}/${file}`);
-    return new Response(bytes, {
+    let bytes: Uint8Array | null = null;
+    let type = contentType;
+    // `?w=` asks for a smaller copy (lib/resizeImage.ts); without one, or when
+    // the original is already as small, the stored file is served as is.
+    const width = variantWidth(c.req.query("w"));
+    if (width) {
+      // The source must still exist: a cached variant never outlives its upload.
+      await stat(path);
+      const variant = await imageVariants.uploadVariant(file, () => readFile(path), contentType, width);
+      if (variant) ({ bytes, contentType: type } = variant);
+    }
+    bytes ??= await readFile(path);
+    return new Response(bytes as BodyInit, {
       headers: {
-        "content-type": CONTENT_TYPE[ext] ?? "application/octet-stream",
+        "content-type": type,
         "cache-control": "public, max-age=31536000, immutable",
         // Never let the browser re-interpret a stored file as anything other
         // than its declared image type (defence in depth alongside upload-time

@@ -4,6 +4,7 @@ import { config } from "@/config.ts";
 import * as instanceSettingsRepo from "@/db/repositories/instanceSettings.ts";
 import * as uploadsRepo from "@/db/repositories/uploads.ts";
 import { uploadFilenameFromUrl } from "@/lib/uploads.ts";
+import { removeUploadVariants } from "@/services/imageVariants.ts";
 import { SETUP_KEYS } from "@/services/instanceSetup.ts";
 import { cachePath } from "@/services/shareImage.ts";
 
@@ -91,6 +92,7 @@ export async function sweep(): Promise<number> {
     // stale otherwise, and it would never be rebuilt once the source is gone.
     const id = victim.filename.replace(/\.[a-z0-9]+$/i, "");
     await unlink(cachePath(id)).catch(() => {});
+    await removeUploadVariants(victim.filename);
     try {
       await uploadsRepo.remove(victim.id);
     } catch (err) {
