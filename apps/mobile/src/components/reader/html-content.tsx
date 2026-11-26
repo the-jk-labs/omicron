@@ -92,15 +92,15 @@ function InlineRuns({ items }: { items: Inline[] }) {
 }
 
 const HEADING_CLASS = {
-  1: "mt-10 mb-4 text-3xl font-content-bold",
-  2: "mt-8 mb-3 text-2xl font-content-bold",
-  3: "mt-7 mb-2 text-xl font-content-bold",
+  1: "mt-10 mb-4 text-3xl font-content-semibold",
+  2: "mt-8 mb-3 text-2xl font-content-semibold",
+  3: "mt-7 mb-2 text-xl font-content-semibold",
   4: "mt-6 mb-2 text-lg font-content-semibold",
   5: "mt-6 mb-2 text-base font-content-semibold",
   6: "mt-6 mb-2 text-sm font-content-semibold uppercase text-muted-foreground",
 } as const;
 
-// `.prose-omicron` from the web: Source Sans 3 at 17px with roomy leading.
+// `.prose-omicron` from the web: Source Serif 4 at 17px with roomy leading.
 const BODY = "font-content text-[17px] leading-[30px] text-foreground";
 
 // Inside a blockquote the web sets text italic and in foreground-alt.

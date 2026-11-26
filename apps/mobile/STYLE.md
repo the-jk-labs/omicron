@@ -12,7 +12,7 @@ navigation and controls follow platform conventions where those serve people bet
   (`bg-gray-*`), no hex values in components.
 - A prop that needs a colour value (SVG fill, sheet background, Reanimated interpolation, WebView CSS) reads it
   with `useThemeColor`/`useThemeColors` (`src/hooks/use-theme-colors.ts`).
-- Fonts: Inter for the interface (`font-sans`, `-medium`, `-semibold`, `-bold`), Source Sans 3 for article text
+- Fonts: Inter for the interface (`font-sans`, `-medium`, `-semibold`, `-bold`), Source Serif 4 for article text
   (`font-content*`). React Native can't synthesize weights: pick the family, not `font-bold`. Use `Text`'s
   `weight` prop.
 

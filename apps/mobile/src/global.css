@@ -26,11 +26,11 @@
   --font-sans-medium: "Inter_500Medium";
   --font-sans-semibold: "Inter_600SemiBold";
   --font-sans-bold: "Inter_700Bold";
-  --font-content: "SourceSans3_400Regular";
-  --font-content-italic: "SourceSans3_400Regular_Italic";
-  --font-content-semibold: "SourceSans3_600SemiBold";
-  --font-content-semibold-italic: "SourceSans3_600SemiBold_Italic";
-  --font-content-bold: "SourceSans3_700Bold";
+  --font-content: "SourceSerif4_400Regular";
+  --font-content-italic: "SourceSerif4_400Regular_Italic";
+  --font-content-semibold: "SourceSerif4_600SemiBold";
+  --font-content-semibold-italic: "SourceSerif4_600SemiBold_Italic";
+  --font-content-bold: "SourceSerif4_700Bold";
 }
 
 /* The theme colours by name, as Uniwind registers them once Metro runs, so tooling that reads this file (oxfmt

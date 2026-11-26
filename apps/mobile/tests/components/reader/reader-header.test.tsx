@@ -46,4 +46,9 @@ describe("ReaderHeader", () => {
     await render(<ReaderHeader post={makePost()} />);
     expect(screen.queryByTestId("banner")).toBeNull();
   });
+
+  test("renders the article headline when the post has a title", async () => {
+    await render(<ReaderHeader post={makePost({ title: "A Serif Headline" })} />);
+    expect(screen.getByText("A Serif Headline")).toHaveProp("accessibilityRole", "header");
+  });
 });

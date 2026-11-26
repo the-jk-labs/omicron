@@ -15,9 +15,10 @@ export function useEditorCss(): string {
   return `
     * { -webkit-tap-highlight-color: transparent; }
     html, body { background: ${background}; color: ${foreground}; margin: 0; }
-    body { font-family: "Source Sans 3", -apple-system, Roboto, "Segoe UI", sans-serif; }
+    body { font-family: "Source Serif 4", Georgia, Cambria, "Times New Roman", serif; font-weight: 400; }
     .tiptap { min-height: 60vh; padding: 0 20px 120px; outline: none; font-size: 17px; line-height: 1.75; caret-color: ${foreground}; }
     .tiptap p { margin: 0.6em 0; }
+    .tiptap h1, .tiptap h2, .tiptap h3, .tiptap h4, .tiptap h5, .tiptap h6 { font-weight: 600; }
     .tiptap h1 { font-size: 1.875rem; margin: 1.4em 0 0.5em; }
     .tiptap h2 { font-size: 1.5rem; margin: 1.3em 0 0.4em; }
     .tiptap h3 { font-size: 1.25rem; margin: 1.2em 0 0.3em; }
