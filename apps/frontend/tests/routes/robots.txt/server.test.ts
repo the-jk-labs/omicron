@@ -17,8 +17,22 @@ test("indexable: private areas disallowed, media allowed, sitemap on the canonic
   });
   const lines = body.split("\n");
   expect(lines[0]).toBe("User-agent: *");
-  for (const path of ["/compose", "/admin", "/settings", "/search", "/api/", "/setup"]) {
+  for (const path of [
+    "/compose",
+    "/admin",
+    "/settings",
+    "/search",
+    "/api/",
+    "/verify-email",
+    "/reset-password",
+    "/forgot-password",
+    "/setup",
+  ]) {
     expect(lines).toContain(`Disallow: ${path}`);
+  }
+  // Linked site-wide and already `noindex, nofollow`; must stay crawlable so engines can drop them.
+  for (const path of ["/login", "/register"]) {
+    expect(lines).not.toContain(`Disallow: ${path}`);
   }
   // The media exceptions sit right under the /api/ block they carve out of.
   const api = lines.indexOf("Disallow: /api/");
