@@ -284,7 +284,41 @@
       (page.route.id === "/[handle]" && (page.data as { remote?: boolean }).remote === true),
   );
 
-  const robots = $derived(noindex ? "noindex, nofollow" : federated ? "noindex, follow" : null);
+  // Local index pages the sitemap already omits as thin or non-public: tags
+  // with fewer than two local articles (empty, remote-only or single-post),
+  // empty/private/frozen local profiles, and empty, private or Read-Later
+  // reading lists. Keeps `follow` so crawlers still traverse links onward.
+  const thin = $derived.by(() => {
+    if (page.route.id === "/tags/[tag]") {
+      const detail = (page.data as { detail?: { localPostCount?: number } }).detail;
+      return typeof detail?.localPostCount === "number" && detail.localPostCount < 2;
+    }
+    if (page.route.id === "/[handle]") {
+      const pd = page.data as {
+        remote?: boolean;
+        profile?: { locked?: boolean; frozen?: boolean };
+        page?: { items: unknown[] };
+      };
+      if (pd.remote) return false;
+      return pd.profile?.locked === true || pd.profile?.frozen === true || pd.page?.items?.length === 0;
+    }
+    if (page.route.id === "/lists/[id]") {
+      const pd = page.data as {
+        list?: { visibility?: string; isReadLater?: boolean; itemCount?: number };
+        page?: { items?: unknown[] };
+      };
+      if (!pd.list) return false;
+      return (
+        pd.list.visibility !== "public" ||
+        pd.list.isReadLater === true ||
+        pd.list.itemCount === 0 ||
+        pd.page?.items?.length === 0
+      );
+    }
+    return false;
+  });
+
+  const robots = $derived(noindex ? "noindex, nofollow" : federated || thin ? "noindex, follow" : null);
 
   // Schema.org description of what this page is (see $lib/seo). Built here for
   // the same reason the Open Graph block is: one head, so a child route can't

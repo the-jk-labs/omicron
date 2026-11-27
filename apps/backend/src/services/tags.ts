@@ -17,14 +17,15 @@ export async function getTag(rawSlug: string, viewerId: string | null) {
   if (!slug) throw notFound("Tag not found.");
   const tag = await tagsRepo.findBySlug(slug);
   if (!tag) throw notFound("Tag not found.");
-  const [postCount, followerCount, isFollowing] = await Promise.all([
-    tagsRepo.postCount(tag.id, viewerId),
+  const [{ postCount, localPostCount }, followerCount, isFollowing] = await Promise.all([
+    tagsRepo.postCounts(tag.id, viewerId),
     tagsRepo.followerCount(tag.id),
     viewerId ? tagsRepo.isFollowing(viewerId, tag.id) : Promise.resolve(false),
   ]);
   return {
     tag: { slug: tag.slug, name: tag.name },
     postCount,
+    localPostCount,
     followerCount,
     isFollowing,
   };

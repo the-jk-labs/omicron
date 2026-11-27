@@ -349,7 +349,7 @@ export function endpoints(fetchFn?: typeof globalThis.fetch) {
     },
 
     // tags
-    tag: (slug: string) => api.get<TagDetail>(`/tags/${encodeURIComponent(slug)}`),
+    tag: (slug: string) => api.get<TagDetail>(`/tags/${encodeURIComponent(slug)}/detail`),
     tagPosts: (slug: string, cursor?: string | null) =>
       api.get<Page<Post>>(
         `/tags/${encodeURIComponent(slug)}/posts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,

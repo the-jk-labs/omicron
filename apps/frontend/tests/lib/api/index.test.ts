@@ -293,7 +293,7 @@ const rows: Row[] = [
   ["search", (e) => e.search("a&b"), "GET", "/api/search?q=a%26b"],
   ["search(scope)", (e) => e.search("q", "people"), "GET", "/api/search?q=q&scope=people"],
   ["search(opts)", (e) => e.search("q", { tag: "deno", author: "ada" }), "GET", "/api/search?q=q&tag=deno&author=ada"],
-  ["tag", (e) => e.tag("c#"), "GET", "/api/tags/c%23"],
+  ["tag", (e) => e.tag("c#"), "GET", "/api/tags/c%23/detail"],
   ["tagPosts", (e) => e.tagPosts("deno", "cur"), "GET", "/api/tags/deno/posts?cursor=cur"],
   ["followTag", (e) => e.followTag("deno"), "POST", "/api/tags/deno/follow"],
   ["unfollowTag", (e) => e.unfollowTag("deno"), "DELETE", "/api/tags/deno/follow"],

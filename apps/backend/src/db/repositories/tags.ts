@@ -105,13 +105,21 @@ export function listAliases() {
     .orderBy(tagAliases.aliasSlug);
 }
 
-// Count of published Article posts carrying a tag, as the viewer may see them.
-// Carries the same predicates as the listing (posts.listByTag) — a count taken
-// over a wider set than the list it labels is itself a disclosure: it tells the
-// reader how many posts they are not being shown.
-export async function postCount(tagId: string, viewerId: string | null): Promise<number> {
+// Count of published Article posts carrying a tag, as the viewer may see them —
+// both total and local-only (which mirrors `listSitemapTags()` so thin and
+// remote-only tag pages stay out of the search index). Carries the same
+// predicates as the listing (posts.listByTag) — a count taken over a wider set
+// than the list it labels is itself a disclosure: it tells the reader how many
+// posts they are not being shown.
+export async function postCounts(
+  tagId: string,
+  viewerId: string | null,
+): Promise<{ postCount: number; localPostCount: number }> {
   const [row] = await db
-    .select({ count: sql<number>`count(*)::int` })
+    .select({
+      postCount: sql<number>`count(*)::int`,
+      localPostCount: sql<number>`(count(*) filter (where ${eq(posts.remote, false)}))::int`,
+    })
     .from(postTags)
     .innerJoin(posts, eq(posts.id, postTags.postId))
     .leftJoin(users, eq(posts.authorId, users.id))
@@ -125,7 +133,11 @@ export async function postCount(tagId: string, viewerId: string | null): Promise
         aiAssistedVisibleToViewer(viewerId),
       ),
     );
-  return row?.count ?? 0;
+  return { postCount: row?.postCount ?? 0, localPostCount: row?.localPostCount ?? 0 };
+}
+
+export async function postCount(tagId: string, viewerId: string | null): Promise<number> {
+  return (await postCounts(tagId, viewerId)).postCount;
 }
 
 export async function followerCount(tagId: string): Promise<number> {
