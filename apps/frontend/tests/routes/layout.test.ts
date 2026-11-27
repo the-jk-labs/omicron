@@ -215,20 +215,90 @@ test.for([
   [1, 1, "1 article, 1 follower"],
   [2, 0, "2 articles, 0 followers"],
 ] as const)("a tag page with %i posts and %i followers says so", ([postCount, followerCount, phrase]) => {
-  at("/tags/[tag]", "/tags/deno", { detail: { tag: { name: "deno" }, postCount, followerCount } });
+  at("/tags/[tag]", "/tags/deno", {
+    detail: { tag: { name: "deno" }, postCount, localPostCount: postCount, followerCount },
+  });
   setup();
   expect(og("og:title")).toBe("#deno · Starlog");
   expect(og("og:description")).toContain(phrase);
 });
 
+test.for([
+  ["empty", 0, 0],
+  ["remote-only", 5, 0],
+  ["single-post", 1, 1],
+] as const)("a %s tag page is noindex, follow", ([_label, postCount, localPostCount]) => {
+  at("/tags/[tag]", "/tags/deno", { detail: { tag: { name: "deno" }, postCount, localPostCount, followerCount: 0 } });
+  setup();
+  expect(meta("robots")).toBe("noindex, follow");
+});
+
+test("a tag page with two or more local articles stays indexable", () => {
+  at("/tags/[tag]", "/tags/deno", {
+    detail: { tag: { name: "deno" }, postCount: 3, localPostCount: 2, followerCount: 1 },
+  });
+  setup();
+  expect(meta("robots")).toBeUndefined();
+});
+
+test.for([
+  ["empty", { locked: false, frozen: false }, []],
+  ["private", { locked: true, frozen: false }, []],
+  ["frozen", { locked: true, frozen: true }, []],
+] as const)("a %s local profile is noindex, follow and omits ProfilePage JSON-LD", ([_label, flags, items]) => {
+  at("/[handle]", "/@ada", {
+    remote: false,
+    profile: {
+      user: { username: "ada", displayName: "Ada", bio: "" },
+      counts: { followers: 0, following: 0 },
+      ...flags,
+    },
+    page: { items, nextCursor: null },
+  });
+  setup({ instance: { name: "Starlog", federationEnabled: true } });
+  expect(meta("robots")).toBe("noindex, follow");
+  expect(jsonLd()).toBe(null);
+  expect(link('[type="application/activity+json"]')).toBe("http://localhost/users/ada");
+});
+
+test("a public local profile with published articles stays indexable", () => {
+  at("/[handle]", "/@ada", {
+    remote: false,
+    profile: {
+      user: { username: "ada", displayName: "Ada", bio: "" },
+      counts: { followers: 0, following: 0 },
+      locked: false,
+      frozen: false,
+    },
+    page: { items: [post()], nextCursor: null },
+  });
+  setup();
+  expect(meta("robots")).toBeUndefined();
+  expect(jsonLd()["@type"]).toBe("ProfilePage");
+});
+
 test("only a public reading list advertises a feed", () => {
-  at("/lists/[id]", "/lists/l1", { list: { title: "Reads", visibility: "public" } });
+  at("/lists/[id]", "/lists/l1", {
+    list: { title: "Reads", visibility: "public", isReadLater: false, itemCount: 1 },
+    page: { items: [post()], nextCursor: null },
+  });
   const { unmount } = setup();
   expect(link('[type="application/rss+xml"]')).toBe("/lists/l1/feed.xml");
+  expect(meta("robots")).toBeUndefined();
   unmount();
-  at("/lists/[id]", "/lists/l1", { list: { title: "Reads", visibility: "private" } });
+  at("/lists/[id]", "/lists/l1", { list: { title: "Reads", visibility: "private", isReadLater: false, itemCount: 1 } });
   setup();
   expect(link('[type="application/rss+xml"]')).toBeUndefined();
+  expect(meta("robots")).toBe("noindex, follow");
+});
+
+test.for([
+  ["empty public", { title: "Empty", visibility: "public", isReadLater: false, itemCount: 0 }, []],
+  ["public Read-Later", { title: "Read later", visibility: "public", isReadLater: true, itemCount: 2 }, [post()]],
+] as const)("a %s reading list is noindex, follow", ([_label, list, items]) => {
+  at("/lists/[id]", "/lists/l1", { list, page: { items, nextCursor: null } });
+  setup();
+  expect(meta("robots")).toBe("noindex, follow");
 });
 
 test("a render error in a page is contained with a way back", () => {

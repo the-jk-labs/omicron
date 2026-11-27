@@ -116,13 +116,15 @@ describe("counts and discovery", () => {
     return { ada, priv };
   }
 
-  test("postCount counts what the viewer may read", async () => {
+  test("postCount counts what the viewer may read; postCounts splits local vs total", async () => {
     const { ada, priv } = await seed();
     const deno = await tagsRepo.findBySlug("deno");
     expect(await tagsRepo.postCount(deno!.id, null)).toBe(3);
+    expect(await tagsRepo.postCounts(deno!.id, null)).toEqual({ postCount: 3, localPostCount: 2 });
     const follower = await mkUser("follower");
     await follow(follower.id, priv.id);
     expect(await tagsRepo.postCount(deno!.id, follower.id)).toBe(4);
+    expect(await tagsRepo.postCounts(deno!.id, follower.id)).toEqual({ postCount: 4, localPostCount: 3 });
     expect(await tagsRepo.postCount(deno!.id, ada.id)).toBe(3);
   });
 

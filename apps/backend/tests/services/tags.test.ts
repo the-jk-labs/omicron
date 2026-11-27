@@ -27,7 +27,7 @@ const deno = { id: "t1", slug: "deno", name: "Deno", createdAt: new Date(0) };
 
 beforeEach(() => {
   vi.mocked(tagsRepo.findBySlug).mockResolvedValue(deno);
-  vi.mocked(tagsRepo.postCount).mockResolvedValue(7);
+  vi.mocked(tagsRepo.postCounts).mockResolvedValue({ postCount: 7, localPostCount: 4 });
   vi.mocked(tagsRepo.followerCount).mockResolvedValue(3);
   vi.mocked(tagsRepo.isFollowing).mockResolvedValue(true);
 });
@@ -37,11 +37,12 @@ describe("getTag", () => {
     expect(await getTag("#Deno", "me")).toEqual({
       tag: { slug: "deno", name: "Deno" },
       postCount: 7,
+      localPostCount: 4,
       followerCount: 3,
       isFollowing: true,
     });
     expect(tagsRepo.findBySlug).toHaveBeenCalledWith("deno");
-    expect(tagsRepo.postCount).toHaveBeenCalledWith("t1", "me");
+    expect(tagsRepo.postCounts).toHaveBeenCalledWith("t1", "me");
   });
 
   test("anonymous viewers never follow", async () => {

@@ -26,6 +26,7 @@ function setup(
         detail: {
           tag: { slug: "deno", name: "Deno" },
           postCount: o.postCount ?? 2,
+          localPostCount: o.postCount ?? 2,
           followerCount: o.followerCount ?? 1,
           isFollowing: false,
         },

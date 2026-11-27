@@ -39,10 +39,16 @@ test("following needs a session; 'following' is never read as a slug", async () 
 });
 
 test("tag detail and posts", async () => {
-  vi.mocked(tagsService.getTag).mockResolvedValue({ tag, postCount: 1, followerCount: 0, isFollowing: false });
+  vi.mocked(tagsService.getTag).mockResolvedValue({
+    tag,
+    postCount: 1,
+    localPostCount: 1,
+    followerCount: 0,
+    isFollowing: false,
+  });
   vi.mocked(tagsService.tagPosts).mockResolvedValue({ items: [postWithAuthor({ id: "p1" })], nextCursor: null });
   expect((await (await api.request("/api/tags/deno")).json()).postCount).toBe(1);
-  expect((await (await api.request("/api/tags/deno/detail")).json()).postCount).toBe(1);
+  expect((await (await api.request("/api/tags/deno/detail")).json()).localPostCount).toBe(1);
   expect(await (await api.request("/api/tags/deno/posts")).json()).toEqual({ items: [{ id: "p1" }], nextCursor: null });
   expect(tagsService.tagPosts).toHaveBeenCalledWith("deno", null, null);
 });
@@ -53,12 +59,13 @@ test.for(["following", "suggest", "search", "detail"])(
     vi.mocked(tagsService.getTag).mockResolvedValue({
       tag: { slug, name: slug },
       postCount: 0,
+      localPostCount: 0,
       followerCount: 0,
       isFollowing: false,
     });
     const res = await api.request(`/api/tags/${slug}/detail`);
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ tag: { slug, name: slug } });
+    expect(await res.json()).toMatchObject({ tag: { slug, name: slug }, localPostCount: 0 });
     expect(tagsService.getTag).toHaveBeenCalledWith(slug, null);
   },
 );

@@ -292,6 +292,8 @@ export type RecommendState = z.infer<typeof RecommendState>;
 export const TagDetail = z.object({
   tag: Tag,
   postCount: z.number(),
+  /** Published local articles carrying this tag; mirrors the sitemap threshold so thin/remote-only tags stay out of the index. */
+  localPostCount: z.number(),
   followerCount: z.number(),
   isFollowing: z.boolean(),
 });
