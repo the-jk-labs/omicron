@@ -55,6 +55,24 @@ describe("getTag", () => {
     vi.mocked(tagsRepo.findBySlug).mockResolvedValue(undefined);
     await expect(getTag("nope", null)).rejects.toMatchObject({ status: 404, message: "Tag not found." });
   });
+
+  test("404s on an orphaned or draft-only tag with no visible posts, followers or profile references", async () => {
+    vi.mocked(tagsRepo.postCounts).mockResolvedValue({ postCount: 0, localPostCount: 0 });
+    vi.mocked(tagsRepo.followerCount).mockResolvedValue(0);
+    vi.mocked(tagsRepo.hasPublicProfileRef).mockResolvedValue(false);
+    await expect(getTag("deno", null)).rejects.toMatchObject({ status: 404, message: "Tag not found." });
+  });
+
+  test("stays reachable when a zero-article tag is referenced on a profile or followed", async () => {
+    vi.mocked(tagsRepo.postCounts).mockResolvedValue({ postCount: 0, localPostCount: 0 });
+    vi.mocked(tagsRepo.followerCount).mockResolvedValue(0);
+    vi.mocked(tagsRepo.hasPublicProfileRef).mockResolvedValue(true);
+    expect((await getTag("deno", null)).postCount).toBe(0);
+
+    vi.mocked(tagsRepo.followerCount).mockResolvedValue(1);
+    vi.mocked(tagsRepo.hasPublicProfileRef).mockResolvedValue(false);
+    expect((await getTag("deno", null)).followerCount).toBe(1);
+  });
 });
 
 describe("tagPosts", () => {

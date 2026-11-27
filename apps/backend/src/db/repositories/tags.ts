@@ -148,6 +148,48 @@ export async function followerCount(tagId: string): Promise<number> {
   return row?.count ?? 0;
 }
 
+// Whether any active local profile or cached remote actor features this tag,
+// so clicking a hashtag on a profile still resolves before any article uses it.
+export async function hasPublicProfileRef(tagId: string): Promise<boolean> {
+  const [local] = await db
+    .select({ id: userTags.id })
+    .from(userTags)
+    .innerJoin(users, eq(users.id, userTags.userId))
+    .where(
+      and(
+        eq(userTags.tagId, tagId),
+        sql`${users.deletedAt} is null`,
+        sql`${users.suspendedAt} is null`,
+        sql`${users.frozenAt} is null`,
+      ),
+    )
+    .limit(1);
+  if (local) return true;
+  const [remote] = await db
+    .select({ id: remoteActorTags.id })
+    .from(remoteActorTags)
+    .where(eq(remoteActorTags.tagId, tagId))
+    .limit(1);
+  return !!remote;
+}
+
+// Deletes tag rows with zero references across posts (drafts included),
+// profiles, remote actors, follows and aliases — left behind when posts are
+// deleted or remote actors are pruned.
+export async function pruneOrphaned(): Promise<number> {
+  const removed = await db
+    .delete(tags)
+    .where(
+      sql`not exists (select 1 from post_tags where post_tags.tag_id = ${tags.id})
+        and not exists (select 1 from user_tags where user_tags.tag_id = ${tags.id})
+        and not exists (select 1 from remote_actor_tags where remote_actor_tags.tag_id = ${tags.id})
+        and not exists (select 1 from tag_follows where tag_follows.tag_id = ${tags.id})
+        and not exists (select 1 from tag_aliases where tag_aliases.tag_id = ${tags.id})`,
+    )
+    .returning({ id: tags.id });
+  return removed.length;
+}
+
 // A published Article an anonymous reader may see. Public tag lists count only
 // these, so a tag used just on drafts or private posts never surfaces.
 function publicArticle() {

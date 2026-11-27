@@ -2,9 +2,11 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 vi.mock(import("@/db/repositories/remoteActors.ts"));
+vi.mock(import("@/db/repositories/tags.ts"));
 
 import { config } from "@/config.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
 
 async function load() {
   vi.resetModules();
@@ -18,20 +20,34 @@ const NOW = new Date("2026-06-01T00:00:00.000Z");
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(NOW);
+  vi.mocked(tagsRepo.pruneOrphaned).mockResolvedValue(0);
 });
 
 afterEach(() => {
   vi.useRealTimers();
 });
 
-test("forgets every listed actor older than the retention window", async () => {
+test("forgets every listed actor older than the retention window and prunes orphaned tags", async () => {
   const { sweep, cfg } = await load();
   cfg.REMOTE_CACHE_RETENTION_DAYS = 30;
   vi.mocked(remoteActorsRepo.listPrunable).mockResolvedValue([{ id: "a" }, { id: "b" }]);
+  vi.mocked(tagsRepo.pruneOrphaned).mockResolvedValue(3);
   vi.spyOn(console, "log").mockImplementation(() => {});
   expect(await sweep()).toBe(2);
   expect(remoteActorsRepo.listPrunable).toHaveBeenCalledWith(new Date(NOW.getTime() - 30 * 86_400_000), 200);
   expect(vi.mocked(remoteActorsRepo.removeById).mock.calls).toEqual([["a"], ["b"]]);
+  expect(tagsRepo.pruneOrphaned).toHaveBeenCalledTimes(1);
+});
+
+test("an orphaned-tag prune failure is logged without aborting the sweep", async () => {
+  const { sweep, cfg } = await load();
+  cfg.REMOTE_CACHE_RETENTION_DAYS = 30;
+  vi.mocked(remoteActorsRepo.listPrunable).mockResolvedValue([{ id: "a" }]);
+  vi.mocked(tagsRepo.pruneOrphaned).mockRejectedValue(new Error("db hiccup"));
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  vi.spyOn(console, "log").mockImplementation(() => {});
+  expect(await sweep()).toBe(1);
+  expect(warn).toHaveBeenCalled();
 });
 
 test("a retention of 0 disables pruning entirely", async () => {

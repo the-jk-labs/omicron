@@ -22,6 +22,11 @@ export async function getTag(rawSlug: string, viewerId: string | null) {
     tagsRepo.followerCount(tag.id),
     viewerId ? tagsRepo.isFollowing(viewerId, tag.id) : Promise.resolve(false),
   ]);
+  // Draft-only or orphaned tags (no visible articles, no followers and no
+  // public profile reference) 404 rather than leaking drafts or serving dead shells.
+  if (postCount === 0 && followerCount === 0 && !(await tagsRepo.hasPublicProfileRef(tag.id))) {
+    throw notFound("Tag not found.");
+  }
   return {
     tag: { slug: tag.slug, name: tag.name },
     postCount,
