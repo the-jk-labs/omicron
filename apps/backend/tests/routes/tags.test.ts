@@ -42,9 +42,26 @@ test("tag detail and posts", async () => {
   vi.mocked(tagsService.getTag).mockResolvedValue({ tag, postCount: 1, followerCount: 0, isFollowing: false });
   vi.mocked(tagsService.tagPosts).mockResolvedValue({ items: [postWithAuthor({ id: "p1" })], nextCursor: null });
   expect((await (await api.request("/api/tags/deno")).json()).postCount).toBe(1);
+  expect((await (await api.request("/api/tags/deno/detail")).json()).postCount).toBe(1);
   expect(await (await api.request("/api/tags/deno/posts")).json()).toEqual({ items: [{ id: "p1" }], nextCursor: null });
   expect(tagsService.tagPosts).toHaveBeenCalledWith("deno", null, null);
 });
+
+test.for(["following", "suggest", "search", "detail"])(
+  "GET /api/tags/%s/detail resolves reserved collection names as tag slugs",
+  async (slug) => {
+    vi.mocked(tagsService.getTag).mockResolvedValue({
+      tag: { slug, name: slug },
+      postCount: 0,
+      followerCount: 0,
+      isFollowing: false,
+    });
+    const res = await api.request(`/api/tags/${slug}/detail`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ tag: { slug, name: slug } });
+    expect(tagsService.getTag).toHaveBeenCalledWith(slug, null);
+  },
+);
 
 test("an unknown tag is a 404", async () => {
   vi.mocked(tagsService.getTag).mockRejectedValue(notFound("Tag not found."));

@@ -33,12 +33,16 @@ tagRoutes.get("/following", async (c) => {
   return c.json({ tags: await tagsService.followed(user.id) } satisfies Reply<"TagList">);
 });
 
-// Tag meta: counts + viewer's follow state (public).
-tagRoutes.get("/:slug", async (c) => {
-  const viewer = c.get("user");
-  const detail = await tagsService.getTag(c.req.param("slug"), viewer?.id ?? null);
-  return c.json(detail satisfies Reply<"TagDetail">);
-});
+// Tag meta: counts + viewer's follow state (public). Served at `/:slug/detail`
+// so slugs like `following`, `suggest` and `search` don't collide with the
+// literal collection routes above; `/:slug` remains as a compatible alias.
+for (const path of ["/:slug/detail", "/:slug"] as const) {
+  tagRoutes.get(path, async (c) => {
+    const viewer = c.get("user");
+    const detail = await tagsService.getTag(c.req.param("slug"), viewer?.id ?? null);
+    return c.json(detail satisfies Reply<"TagDetail">);
+  });
+}
 
 // A tag's posts (public, paginated).
 tagRoutes.get("/:slug/posts", async (c) => {

@@ -84,7 +84,7 @@ allow("write:lists", "DELETE", "/lists/:id", "/lists/:id/items/:postId");
 allow("read:notifications", "GET", "/notifications", "/notifications/unread-count");
 allow("write:notifications", "POST", "/notifications/read", "/notifications/:id/read");
 allow("read:analytics", "GET", "/dashboard");
-allow("read:search", "GET", "/search", "/tags", "/tags/suggest", "/tags/search", "/tags/:slug");
+allow("read:search", "GET", "/search", "/tags", "/tags/suggest", "/tags/search", "/tags/:slug/detail", "/tags/:slug");
 allow("write:media", "POST", "/uploads", "/photos/use");
 allow("write:media", "GET", "/photos/providers", "/photos/search");
 allow("write:reports", "POST", "/reports");

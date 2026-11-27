@@ -151,7 +151,7 @@ export function createEndpoints(api: ApiClient) {
     },
 
     // tags
-    tag: (slug: string) => api.get(`/tags/${encodeURIComponent(slug)}`, c.TagDetail),
+    tag: (slug: string) => api.get(`/tags/${encodeURIComponent(slug)}/detail`, c.TagDetail),
     tagPosts: (slug: string, cursor?: string | null) =>
       api.get(
         `/tags/${encodeURIComponent(slug)}/posts${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""}`,

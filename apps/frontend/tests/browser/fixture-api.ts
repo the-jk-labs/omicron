@@ -162,6 +162,7 @@ const fixtures: Record<string, unknown> = {
   "/api/lists/list-1": { list, isOwner: true, owner: { username: "ada", displayName: "Ada" } },
   "/api/lists/list-1/items": { items: [article], nextCursor: null },
   "/api/tags/design": { tag, postCount: 1, followerCount: 2, isFollowing: false },
+  "/api/tags/design/detail": { tag, postCount: 1, followerCount: 2, isFollowing: false },
   "/api/tags/design/posts": { items: [article], nextCursor: null },
   "/api/tags/following": { tags: [{ ...tag, postCount: 1 }] },
   "/api/search": { posts: [article], people: [actor], tags: [{ ...tag, postCount: 1 }] },
