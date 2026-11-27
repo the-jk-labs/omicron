@@ -60,15 +60,20 @@ import type { RequestHandler } from "./$types";
 // `Disallow`.
 const ALLOW = ["/api/uploads/", "/api/og/"];
 
-// This list is also the AI-scraper shield's challenge list: the `app-challenge`
-// rule in botPolicy.yaml walls exactly these routes (bar `/api/`, which the
-// frontend's own XHR needs). Adding a route here means adding it there too.
-// Kept in step with that rule so robots.txt (crawl budget) and Anubis (live
-// traffic) tell the same story about what is private. They differ only where
-// they must: `/api/` is Disallow here (crawlers should not crawl JSON) but
-// Allow in botPolicy.yaml (the browser needs XHR), and `/lists` is absent
-// here because a prefix would swallow public lists while Anubis can match it
-// exactly.
+// `/login` and `/register` are intentionally NOT disallowed here. Both are
+// linked from the header and sidebar on every public page, and both already
+// carry `<meta name="robots" content="noindex, nofollow">`. Blocking them in
+// robots.txt prevents search engines from reading that `noindex` tag, so Google
+// indexes the bare URLs anyway ("Indexed, though blocked by robots.txt"). They
+// remain behind Anubis's `app-challenge` rule in botPolicy.yaml (which still
+// allows verified search crawlers through via `_allow-good.yaml`).
+//
+// This list otherwise mirrors the `app-challenge` rule in botPolicy.yaml. They
+// differ only where they must: `/api/` is Disallow here (crawlers should not
+// crawl JSON) but Allow in botPolicy.yaml (the browser needs XHR), `/lists` is
+// absent here because a prefix would swallow public lists while Anubis can
+// match it exactly, and `/login` / `/register` stay crawlable here so engines
+// honour their `noindex` tag.
 const DISALLOW = [
   "/compose",
   // Kept alongside its replacement: the old address still redirects, and a
@@ -82,8 +87,6 @@ const DISALLOW = [
   "/search",
   "/notifications",
   "/follow-requests",
-  "/login",
-  "/register",
   "/verify-email",
   "/reset-password",
   "/forgot-password",

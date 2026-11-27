@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { config } from "@/config.ts";
 import * as remoteActorsRepo from "@/db/repositories/remoteActors.ts";
+import * as tagsRepo from "@/db/repositories/tags.ts";
 
 // Age-based pruning of the remote actor/post cache.
 //
@@ -74,5 +75,13 @@ export async function sweep(): Promise<number> {
     pruned++;
   }
   if (pruned > 0) console.log(`remote-cache-gc: pruned ${pruned} unreferenced remote actor(s).`);
+
+  try {
+    const orphanedTags = await tagsRepo.pruneOrphaned();
+    if (orphanedTags > 0) console.log(`remote-cache-gc: pruned ${orphanedTags} orphaned tag(s).`);
+  } catch (err) {
+    console.warn("remote-cache-gc: could not prune orphaned tags:", err);
+  }
+
   return pruned;
 }

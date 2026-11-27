@@ -211,4 +211,45 @@ describe("tag follows and profile tags", () => {
     await tagsRepo.setRemoteActorTags(eve.id, []);
     expect(await tagsRepo.tagsForRemoteActor(eve.id)).toEqual([]);
   });
+
+  test("hasPublicProfileRef recognises active local and remote profile tags, ignoring suspended/frozen/orphaned", async () => {
+    const [ada, sus, frozen] = [
+      await mkUser("ada"),
+      await mkUser("sus", { suspended: true }),
+      await mkUser("frozen", { frozen: true }),
+    ];
+    const eve = await mkRemoteActor("eve@remote.example");
+    await tagsRepo.setUserTags(ada.id, ["local-tag"]);
+    await tagsRepo.setUserTags(sus.id, ["sus-tag"]);
+    await tagsRepo.setUserTags(frozen.id, ["frozen-tag"]);
+    await tagsRepo.setRemoteActorTags(eve.id, ["remote-tag"]);
+    const orphan = await mkTag("orphan");
+
+    expect(await tagsRepo.hasPublicProfileRef((await tagsRepo.findBySlug("local-tag"))!.id)).toBe(true);
+    expect(await tagsRepo.hasPublicProfileRef((await tagsRepo.findBySlug("remote-tag"))!.id)).toBe(true);
+    expect(await tagsRepo.hasPublicProfileRef((await tagsRepo.findBySlug("sus-tag"))!.id)).toBe(false);
+    expect(await tagsRepo.hasPublicProfileRef((await tagsRepo.findBySlug("frozen-tag"))!.id)).toBe(false);
+    expect(await tagsRepo.hasPublicProfileRef(orphan.id)).toBe(false);
+  });
+
+  test("pruneOrphaned deletes unreferenced tags while keeping every referenced kind", async () => {
+    const ada = await mkUser("ada");
+    const eve = await mkRemoteActor("eve@remote.example");
+    await tagsRepo.setPostTags((await mkPost(ada.id, "draft", { status: "draft" })).id, ["draft-tag"]);
+    await tagsRepo.setUserTags(ada.id, ["profile-tag"]);
+    await tagsRepo.setRemoteActorTags(eve.id, ["remote-tag"]);
+    const followed = await mkTag("followed-tag");
+    await tagsRepo.follow(ada.id, followed.id);
+    await mkTag("alias-target");
+    await tagsRepo.createAlias("old-alias", "alias-target");
+    await mkTag("dead-one");
+    await mkTag("dead-two");
+
+    expect(await tagsRepo.pruneOrphaned()).toBe(2);
+    expect(await tagsRepo.findBySlug("dead-one")).toBe(null);
+    expect(await tagsRepo.findBySlug("dead-two")).toBe(null);
+    for (const kept of ["draft-tag", "profile-tag", "remote-tag", "followed-tag", "alias-target"]) {
+      expect(await tagsRepo.findBySlug(kept)).not.toBe(null);
+    }
+  });
 });
